@@ -105,7 +105,10 @@ export function LiveTvScreen() {
               <div
                 key={c.id}
                 className={`channel-row${selected?.id === c.id ? " active" : ""}`}
+                role="button"
+                tabIndex={0}
                 onClick={() => setSelected(c)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(c); } }}
               >
                 <span className="num">{c.number || ""}</span>
                 <ProxyImg src={c.logoUrl} alt="" fallback={<span style={{ width: 36 }} />} />
