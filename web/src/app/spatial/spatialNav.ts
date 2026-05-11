@@ -1,22 +1,26 @@
-// Lightweight spatial navigation for Android TV / Google TV / Fire TV remotes.
+// Spatial navigation for Android TV / Google TV / Fire TV remotes.
 //
-// How it works
-// ------------
-// - Intercepts the four arrow keys + Enter globally (D-pad on Android TV is
-//   forwarded by MainActivity.java → dispatchKeyEvent → JS KeyboardEvent).
-// - Walks the live DOM to find every focusable element (links, buttons,
-//   inputs, anything with tabindex >= 0, [role=button]).
-// - Picks the geometrically nearest one in the requested direction from the
-//   currently-focused element.
-// - Focuses it and scrolls it into view smoothly so horizontal shelves and
-//   vertical lists "drag" with the cursor.
-// - On Enter / OK, dispatches a real click on the focused element.
+// Two entry points:
+//   1. `window.__ultratv_remote(action)` — called *directly* from the native
+//      MainActivity when a D-pad key is pressed. Most reliable on TV WebViews.
+//   2. `window` keydown listener — for browsers, Electron, and as a fallback
+//      when the synthetic KeyboardEvent fires (MainActivity dispatches both).
 //
-// Why not @noriginmedia/norigin-spatial-navigation alone
-// ------------------------------------------------------
-// That library requires wrapping every focusable component with `useFocusable`
-// hooks. The app already has 100+ interactive elements — this implementation
-// walks the DOM at runtime, no per-component changes needed.
+// What it does on each action:
+//   - up/down/left/right: walks the DOM, finds the geometrically nearest
+//     focusable element in that direction, focuses it and scrolls it into view.
+//   - enter: clicks the currently focused element.
+//   - back: dispatches a CustomEvent('androidback') so screens can handle it.
+//
+// A tiny on-screen debug HUD (toggle with Shift+R or hold OK for ~1 s) shows
+// the last action received — useful when diagnosing a remote that's not firing.
+
+declare global {
+  interface Window {
+    __ultratv_remote?: (action: "up" | "down" | "left" | "right" | "enter" | "back" | "menu") => void;
+    __ultratv_remote_debug?: boolean;
+  }
+}
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -42,7 +46,7 @@ function isVisible(el: HTMLElement): boolean {
   if (el.hidden) return false;
   const r = el.getBoundingClientRect();
   if (r.width === 0 || r.height === 0) return false;
-  if (r.bottom < 0 || r.top > window.innerHeight + 2000) return false; // off-screen far away
+  if (r.bottom < -1000 || r.top > window.innerHeight + 2000) return false;
   const style = window.getComputedStyle(el);
   if (style.visibility === "hidden" || style.display === "none" || Number(style.opacity) === 0) return false;
   return true;
@@ -59,14 +63,14 @@ function focusables(): HTMLElement[] {
 function pickNext(from: HTMLElement, dir: Direction): HTMLElement | null {
   const origin = rect(from);
   const candidates = focusables().filter((el) => el !== from).map(rect);
+  const tol = 6;
 
-  const tolerance = 6;
   const inDir = candidates.filter((c) => {
     switch (dir) {
-      case "up":    return c.cy + c.h / 2 < origin.cy - tolerance;
-      case "down":  return c.cy - c.h / 2 > origin.cy + tolerance;
-      case "left":  return c.cx + c.w / 2 < origin.cx - tolerance;
-      case "right": return c.cx - c.w / 2 > origin.cx + tolerance;
+      case "up":    return c.cy + c.h / 2 < origin.cy - tol;
+      case "down":  return c.cy - c.h / 2 > origin.cy + tol;
+      case "left":  return c.cx + c.w / 2 < origin.cx - tol;
+      case "right": return c.cx - c.w / 2 > origin.cx + tol;
     }
   });
   if (inDir.length === 0) return null;
@@ -99,9 +103,51 @@ function scrollIntoView(el: HTMLElement) {
   el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
 }
 
-const DIR_KEYS: Record<string, Direction> = {
-  ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
-};
+function highlightFocus() {
+  document.querySelectorAll(".spatial-focused").forEach((el) => el.classList.remove("spatial-focused"));
+  const a = document.activeElement as HTMLElement | null;
+  if (a && a !== document.body) a.classList.add("spatial-focused");
+}
+
+function move(dir: Direction): boolean {
+  const current = ensureSomethingFocused();
+  if (!current) return false;
+  const next = pickNext(current, dir);
+  if (!next) return false;
+  next.focus({ preventScroll: true });
+  scrollIntoView(next);
+  highlightFocus();
+  return true;
+}
+
+function activate() {
+  const a = document.activeElement as HTMLElement | null;
+  if (a && a !== document.body) {
+    a.click();
+    return true;
+  }
+  return false;
+}
+
+function fireBack() {
+  const ev = new CustomEvent("androidback", { cancelable: true });
+  window.dispatchEvent(ev);
+  if (!ev.defaultPrevented && history.length > 1) history.back();
+}
+
+// Debug HUD — shows the last remote action received in the bottom-right corner.
+let hud: HTMLDivElement | null = null;
+function showHud(text: string) {
+  if (!window.__ultratv_remote_debug) return;
+  if (!hud) {
+    hud = document.createElement("div");
+    hud.style.cssText = "position:fixed;bottom:8px;right:8px;background:rgba(0,0,0,.8);color:#6ea8ff;padding:6px 10px;border-radius:6px;font:12px/1.2 ui-monospace,monospace;z-index:99999;pointer-events:none;";
+    document.body.appendChild(hud);
+  }
+  hud.textContent = `remote: ${text}`;
+  hud.style.opacity = "1";
+  setTimeout(() => { if (hud) hud.style.opacity = "0.3"; }, 600);
+}
 
 let installed = false;
 
@@ -109,54 +155,50 @@ export function installSpatialNav() {
   if (installed) return;
   installed = true;
 
-  const updateClass = () => {
-    document.querySelectorAll(".spatial-focused").forEach((el) => el.classList.remove("spatial-focused"));
-    const a = document.activeElement as HTMLElement | null;
-    if (a && a !== document.body) a.classList.add("spatial-focused");
-  };
-  document.addEventListener("focusin", updateClass);
-  document.addEventListener("focusout", updateClass);
+  // Temporary: enable the debug HUD on Android so we can see whether key
+  // events are reaching JS at all. Toggle off with Shift+R once nav works.
+  const ua = (navigator.userAgent || "").toLowerCase();
+  if (ua.includes("android")) {
+    window.__ultratv_remote_debug = true;
+  }
 
-  const handler = (e: KeyboardEvent) => {
+  // Expose the native bridge entry point.
+  window.__ultratv_remote = (action) => {
+    showHud(action);
+    switch (action) {
+      case "up": case "down": case "left": case "right": move(action); break;
+      case "enter": activate(); break;
+      case "back": fireBack(); break;
+      case "menu": /* future: open command palette */ break;
+    }
+  };
+
+  // Browser / Electron path + fallback when MainActivity fires synthetic events.
+  const onKey = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement | null;
     const tag = t?.tagName;
-
-    // Inputs and the video element keep their native arrow-key behaviour
-    // (text caret, volume, seek). Everything else routes through spatial nav.
     const inEditable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t as HTMLElement | null)?.isContentEditable === true;
     const inVideo = tag === "VIDEO";
     if (inEditable || inVideo) return;
 
-    if (e.key === "Enter") {
-      const a = document.activeElement as HTMLElement | null;
-      if (a && a !== document.body) {
-        e.preventDefault();
-        a.click();
-        return;
-      }
-    }
-
-    const dir = DIR_KEYS[e.key];
-    if (!dir) return;
-    const current = ensureSomethingFocused();
-    if (!current) return;
-    const next = pickNext(current, dir);
-    if (next) {
-      e.preventDefault();
-      next.focus({ preventScroll: true });
-      scrollIntoView(next);
-    }
+    let handled = false;
+    if (e.key === "ArrowUp")    handled = move("up");
+    else if (e.key === "ArrowDown")  handled = move("down");
+    else if (e.key === "ArrowLeft")  handled = move("left");
+    else if (e.key === "ArrowRight") handled = move("right");
+    else if (e.key === "Enter")      handled = activate();
+    else if (e.key === "R" && e.shiftKey) { window.__ultratv_remote_debug = !window.__ultratv_remote_debug; showHud("debug " + (window.__ultratv_remote_debug ? "on" : "off")); }
+    if (handled) e.preventDefault();
   };
+  window.addEventListener("keydown", onKey, true);
 
-  // Capture phase so we beat any other listener that might stopPropagation.
-  window.addEventListener("keydown", handler, true);
+  document.addEventListener("focusin", highlightFocus);
+  document.addEventListener("focusout", highlightFocus);
 
-  // Whenever the user navigates (React Router updates the DOM), re-establish
-  // an initial focus so the first arrow press actually moves.
-  const reFocus = () => setTimeout(ensureSomethingFocused, 200);
+  // Initial focus + after each navigation.
+  const reFocus = () => setTimeout(() => { ensureSomethingFocused(); highlightFocus(); }, 200);
   reFocus();
   window.addEventListener("popstate", reFocus);
-  // React Router pushState — patch once
   const origPush = history.pushState;
   history.pushState = function (...args) {
     const r = origPush.apply(this, args as never);
