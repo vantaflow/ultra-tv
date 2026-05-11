@@ -60,3 +60,6 @@ npm-debug.log*
 *.jks
 
 # (No blanket excludes for top-level src folders — would shadow web/src/app, web/src/data, …)
+
+web/tsconfig.tsbuildinfo
+web/vite.config.js
