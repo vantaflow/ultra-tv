@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android TV banner — 320x180 dp. Shown in the Leanback Apps row. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+    <path
+        android:fillColor="#0b1020"
+        android:pathData="M0,0h320v180h-320z"/>
+    <path
+        android:strokeColor="#6ea8ff"
+        android:strokeWidth="4"
+        android:pathData="M30,40 h180 a8,8 0 0 1 8,8 v84 a8,8 0 0 1 -8,8 h-180 a8,8 0 0 1 -8,-8 v-84 a8,8 0 0 1 8,-8 z"
+        android:fillColor="#00000000"/>
+    <path
+        android:fillColor="#6ea8ff"
+        android:pathData="M80,70 L140,90 L80,110 z"/>
+</vector>

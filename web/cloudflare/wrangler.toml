@@ -1,0 +1,8 @@
+name = "ultratv-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Optional: restrict upstream hosts. Comma-separated, no spaces around commas.
+# Set via dashboard or:  wrangler secret put ALLOWED_HOSTS
+# [vars]
+# ALLOWED_HOSTS = "example.com,iptv.foo.tv"

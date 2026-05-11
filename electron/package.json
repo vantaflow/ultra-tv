@@ -1,0 +1,43 @@
+{
+  "name": "ultratv-desktop",
+  "version": "0.1.0",
+  "description": "Ultra TV desktop wrapper — Electron shell around the web app with native codecs.",
+  "main": "main.cjs",
+  "scripts": {
+    "build:web": "cd ../web && npm run build",
+    "dev": "electron .",
+    "package:mac": "npm run build:web && electron-builder --mac",
+    "package:win": "npm run build:web && electron-builder --win",
+    "package:linux": "npm run build:web && electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.ultratv.desktop",
+    "productName": "Ultra TV",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "../web/dist/**/*"
+    ],
+    "extraMetadata": { "main": "main.cjs" },
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "asar": true,
+    "mac": {
+      "category": "public.app-category.entertainment",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "AudioVideo"
+    }
+  }
+}

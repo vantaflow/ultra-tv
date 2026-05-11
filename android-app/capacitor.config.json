@@ -1,0 +1,14 @@
+{
+  "appId": "com.ultratv.tv",
+  "appName": "Ultra TV",
+  "webDir": "../web/dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true,
+    "captureInput": true
+  }
+}

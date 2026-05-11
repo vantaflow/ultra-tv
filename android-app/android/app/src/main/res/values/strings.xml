@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ultra TV</string>
+    <string name="title_activity_main">Ultra TV</string>
+    <string name="package_name">com.ultratv.tv</string>
+    <string name="custom_url_scheme">com.ultratv.tv</string>
+</resources>

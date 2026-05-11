@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" fill="#0b1020"/>
+  <rect x="20" y="48" width="152" height="96" rx="12" fill="none" stroke="#6ea8ff" stroke-width="6"/>
+  <polygon points="76,76 132,96 76,116" fill="#6ea8ff"/>
+  <text x="96" y="170" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#e6e9f2" text-anchor="middle">Ultra TV</text>
+</svg>
