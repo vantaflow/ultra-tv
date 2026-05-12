@@ -94,8 +94,13 @@ function pickNext(from: HTMLElement, dir: Direction): HTMLElement | null {
 function ensureSomethingFocused(): HTMLElement | null {
   const active = document.activeElement as HTMLElement | null;
   if (active && active !== document.body && isVisible(active)) return active;
-  const first = focusables()[0];
-  if (first) { first.focus(); return first; }
+  // Prefer the first focusable inside <main> (skip the sidebar) so route loads
+  // land on content, not on the nav.
+  const main = document.querySelector("main") as HTMLElement | null;
+  const all = focusables();
+  const inMain = main ? all.filter((el) => main.contains(el)) : [];
+  const target = inMain[0] ?? all[0];
+  if (target) { target.focus(); return target; }
   return null;
 }
 
@@ -154,6 +159,8 @@ let installed = false;
 export function installSpatialNav() {
   if (installed) return;
   installed = true;
+  // Note: called both at module-load (see bottom of file) AND from React's
+  // SpatialFocusBootstrap. Idempotent.
 
   // Temporary: enable the debug HUD on Android so we can see whether key
   // events are reaching JS at all. Toggle off with Shift+R once nav works.
@@ -169,7 +176,7 @@ export function installSpatialNav() {
       case "up": case "down": case "left": case "right": move(action); break;
       case "enter": activate(); break;
       case "back": fireBack(); break;
-      case "menu": /* future: open command palette */ break;
+      case "menu": window.dispatchEvent(new CustomEvent("androidmenu")); break;
     }
   };
 
@@ -195,8 +202,12 @@ export function installSpatialNav() {
   document.addEventListener("focusin", highlightFocus);
   document.addEventListener("focusout", highlightFocus);
 
-  // Initial focus + after each navigation.
-  const reFocus = () => setTimeout(() => { ensureSomethingFocused(); highlightFocus(); }, 200);
+  // Initial focus + after each navigation. Two delays: a quick first try, and
+  // a second one after React has likely committed the new route.
+  const reFocus = () => {
+    setTimeout(() => { ensureSomethingFocused(); highlightFocus(); }, 80);
+    setTimeout(() => { ensureSomethingFocused(); highlightFocus(); }, 350);
+  };
   reFocus();
   window.addEventListener("popstate", reFocus);
   const origPush = history.pushState;
@@ -205,4 +216,36 @@ export function installSpatialNav() {
     reFocus();
     return r;
   };
+  const origReplace = history.replaceState;
+  history.replaceState = function (...args) {
+    const r = origReplace.apply(this, args as never);
+    reFocus();
+    return r;
+  };
+
+  // When new content is injected (lazy-loaded screens, async lists), make sure
+  // *some* element is focused. Throttled to once per animation frame so heavy
+  // renders don't thrash.
+  let pending = false;
+  const mo = new MutationObserver(() => {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(() => {
+      pending = false;
+      const a = document.activeElement as HTMLElement | null;
+      if (!a || a === document.body || !isVisible(a)) ensureSomethingFocused();
+    });
+  });
+  mo.observe(document.body, { childList: true, subtree: true });
+}
+
+// Module-load install: guarantees window.__ultratv_remote exists before the
+// MainActivity's first keypress reaches us, even if React hasn't hydrated yet.
+// The DOM listeners are deferred until DOMContentLoaded if body isn't ready.
+if (typeof window !== "undefined") {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => installSpatialNav(), { once: true });
+  } else {
+    installSpatialNav();
+  }
 }

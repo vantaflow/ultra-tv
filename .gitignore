@@ -63,3 +63,14 @@ npm-debug.log*
 
 web/tsconfig.tsbuildinfo
 web/vite.config.js
+
+# Android native build
+android-native/.gradle/
+android-native/local.properties
+android-native/app/build/
+android-native/.kotlin/
+android-native/build/
+
+# Cloudflare wrangler
+.wrangler/
+**/.wrangler/

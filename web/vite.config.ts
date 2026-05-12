@@ -3,6 +3,11 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
+  // Inject the build timestamp as a global constant so the diag panel can show
+  // which build the device is running — invaluable when there's no adb access.
+  define: {
+    __BUILD_STAMP__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ")),
+  },
   plugins: [react()],
   resolve: {
     alias: {

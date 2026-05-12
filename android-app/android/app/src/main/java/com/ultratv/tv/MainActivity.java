@@ -1,5 +1,9 @@
 package com.ultratv.tv;
 
+import android.app.UiModeManager;
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -39,8 +43,39 @@ public class MainActivity extends BridgeActivity {
             wv.setFocusable(true);
             wv.setFocusableInTouchMode(true);
             wv.requestFocus();
+            // Inject native-detected TV flag and device info as a JS bridge BEFORE
+            // any page script runs. JS can read window.__ultratv_isTv synchronously
+            // — no UA guessing, no race with React hydration.
+            final boolean isTv = detectTelevision();
+            final String model = android.os.Build.MODEL == null ? "" : android.os.Build.MODEL.replace("'", "");
+            final String manuf = android.os.Build.MANUFACTURER == null ? "" : android.os.Build.MANUFACTURER.replace("'", "");
+            final String js =
+                "window.__ultratv_isTv=" + (isTv ? "true" : "false") + ";" +
+                "window.__ultratv_device={model:'" + model + "',manufacturer:'" + manuf + "',sdk:" + android.os.Build.VERSION.SDK_INT + "};";
+            wv.evaluateJavascript(js, null);
+            Log.i(TAG, "Injected isTv=" + isTv + " model=" + model + " manuf=" + manuf);
         }
         Log.i(TAG, "MainActivity ready, WebView=" + (wv != null));
+    }
+
+    // Mirror StreamVault's robust TV detection — no UA guessing.
+    private boolean detectTelevision() {
+        try {
+            PackageManager pm = getPackageManager();
+            if (pm.hasSystemFeature(PackageManager.FEATURE_LEANBACK)) return true;
+            if (pm.hasSystemFeature("android.software.leanback_only")) return true;
+            if (pm.hasSystemFeature(PackageManager.FEATURE_TELEVISION)) return true;
+            if (pm.hasSystemFeature("amazon.hardware.fire_tv")) return true;
+            UiModeManager um = (UiModeManager) getSystemService(Context.UI_MODE_SERVICE);
+            if (um != null && um.getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION) return true;
+            // Last resort: no touchscreen + >=900dp screen → likely a TV box (Mecool, etc).
+            boolean hasTouch = pm.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN);
+            int widthDp = getResources().getConfiguration().screenWidthDp;
+            if (!hasTouch && widthDp >= 900) return true;
+        } catch (Throwable t) {
+            Log.e(TAG, "detectTelevision failed: " + t);
+        }
+        return false;
     }
 
     private WebView getWebView() {
@@ -58,6 +93,13 @@ public class MainActivity extends BridgeActivity {
         int action = event.getAction();
         Log.d(TAG, "dispatchKeyEvent code=" + code + " action=" + action);
 
+        // Always notify JS with the raw keycode — even for unmapped keys. This
+        // lets the on-screen diag panel show *every* key the remote produces,
+        // which is critical for boxes (Mecool, OEM) that use non-standard codes.
+        if (action == KeyEvent.ACTION_DOWN) {
+            notifyRawKey(code);
+        }
+
         String mapped = mapKey(code);
         if (mapped == null) {
             return super.dispatchKeyEvent(event);
@@ -71,6 +113,14 @@ public class MainActivity extends BridgeActivity {
             return true;
         }
         return super.dispatchKeyEvent(event);
+    }
+
+    private void notifyRawKey(int code) {
+        WebView wv = getWebView();
+        if (wv == null) return;
+        final String js =
+            "try{if(typeof window.__ultratv_rawkey==='function'){window.__ultratv_rawkey(" + code + ");}}catch(e){}";
+        wv.post(() -> wv.evaluateJavascript(js, null));
     }
 
     private String mapKey(int code) {

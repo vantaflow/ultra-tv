@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { useI18n } from "@app/i18n";
 import { useUiStore } from "@app/stores/ui";
+import { useTvMode } from "@app/tv/useTvMode";
 
 interface Item {
   to: string;
@@ -26,17 +27,23 @@ const ITEMS: Item[] = [
 export function Sidebar() {
   const t = useI18n((s) => s.t);
   const lang = useI18n((s) => s.lang);
-  const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const collapsedPref = useUiStore((s) => s.sidebarCollapsed);
   const toggle = useUiStore((s) => s.toggleSidebar);
+  const isTv = useTvMode();
+  // On TV, the sidebar is always expanded — the toggle button is removed since
+  // there's no pointer and no reason to hide labels.
+  const collapsed = isTv ? false : collapsedPref;
   void lang;
 
   return (
     <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
       <div className="sidebar-head">
         {!collapsed && <h1>Ultra TV</h1>}
-        <button className="sidebar-toggle" onClick={() => void toggle()} title={collapsed ? "Expand menu" : "Collapse menu"}>
-          {collapsed ? "›" : "‹"}
-        </button>
+        {!isTv && (
+          <button className="sidebar-toggle" onClick={() => void toggle()} title={collapsed ? "Expand menu" : "Collapse menu"}>
+            {collapsed ? "›" : "‹"}
+          </button>
+        )}
       </div>
       {ITEMS.map((it) => (
         <NavLink

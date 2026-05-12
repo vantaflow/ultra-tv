@@ -1,0 +1,212 @@
+package com.ultratv.tv.nativeapp.data.repo
+
+import com.ultratv.tv.nativeapp.data.db.CategoryDao
+import com.ultratv.tv.nativeapp.data.db.CategoryEntity
+import com.ultratv.tv.nativeapp.data.db.ChannelDao
+import com.ultratv.tv.nativeapp.data.db.EpisodeDao
+import com.ultratv.tv.nativeapp.data.db.MovieDao
+import com.ultratv.tv.nativeapp.data.db.ProviderDao
+import com.ultratv.tv.nativeapp.data.db.ProviderEntity
+import com.ultratv.tv.nativeapp.data.db.SeriesDao
+import com.ultratv.tv.nativeapp.data.m3u.M3uParser
+import com.ultratv.tv.nativeapp.data.parental.ParentalStore
+import com.ultratv.tv.nativeapp.data.stalker.StalkerClient
+import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class ProviderRepository @Inject constructor(
+    private val providerDao: ProviderDao,
+    private val channelDao: ChannelDao,
+    private val movieDao: MovieDao,
+    private val seriesDao: SeriesDao,
+    private val episodeDao: EpisodeDao,
+    private val categoryDao: CategoryDao,
+    private val xtream: XtreamClient,
+    private val m3u: M3uParser,
+    private val stalker: StalkerClient,
+    private val parental: ParentalStore,
+) {
+    private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
+    fun observeProviders(): Flow<List<ProviderEntity>> = providerDao.observeAll()
+    suspend fun firstActive(): ProviderEntity? = providerDao.firstActive()
+    suspend fun byId(id: Long): ProviderEntity? = providerDao.byId(id)
+
+    suspend fun addM3u(name: String, url: String): Long {
+        val pid = providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { runCatching { java.net.URI(url).host }.getOrNull() ?: "M3U" },
+                kind = "M3U",
+                baseUrl = url,
+                username = "",
+                password = "",
+                active = true,
+            ),
+        )
+        return pid
+    }
+
+    /**
+     * Imports an M3U playlist from raw text (no HTTP fetch). Used by the local
+     * file picker — caller reads the URI content via ContentResolver and hands
+     * us the bytes. `baseUrl` is just stored as a hint, no fetching ever happens.
+     */
+    suspend fun addM3uFromText(name: String, label: String, text: String): Long {
+        val pid = providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { label.ifBlank { "Local playlist" } },
+                kind = "M3U_LOCAL",
+                baseUrl = label,        // displayed-only; we never fetch this
+                username = "",
+                password = "",
+                active = true,
+            ),
+        )
+        val res = m3u.parse(text, pid)
+        val pinSet = parental.isSet()
+        val cats = if (!pinSet) res.categories
+        else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+        categoryDao.deleteForProviderKind(pid, "LIVE")
+        categoryDao.upsertAll(cats)
+        channelDao.deleteForProvider(pid)
+        channelDao.upsertAll(res.channels)
+        return pid
+    }
+
+    /** Syncs an M3U provider. Channels-only (M3U has no movies/series schema). */
+    suspend fun syncM3u(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+        val p = providerDao.byId(providerId) ?: return 0
+        if (p.kind != "M3U") return 0
+        onProgress("Downloading playlist…")
+        val res = m3u.fetch(p.baseUrl, p.id)
+        onProgress("Saving ${res.channels.size} channels…")
+        val pinSet = parental.isSet()
+        val cats = if (!pinSet) res.categories
+        else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+        categoryDao.deleteForProviderKind(p.id, "LIVE")
+        categoryDao.upsertAll(cats)
+        channelDao.deleteForProvider(p.id)
+        channelDao.upsertAll(res.channels)
+        return res.channels.size
+    }
+
+    suspend fun addStalker(name: String, portalUrl: String, mac: String): Long {
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { runCatching { java.net.URI(portalUrl).host }.getOrNull() ?: "Stalker" },
+                kind = "STALKER",
+                baseUrl = portalUrl.trimEnd('/'),
+                username = mac.trim(),         // MAC address
+                password = "",
+                active = true,
+            ),
+        )
+    }
+
+    /** Syncs a Stalker portal. Channels-only — VOD/series are portal-specific add-ons. */
+    suspend fun syncStalker(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+        val p = providerDao.byId(providerId) ?: return 0
+        if (p.kind != "STALKER") return 0
+        onProgress("Handshaking with portal…")
+        val s = stalker.handshake(p)
+        onProgress("Fetching categories…")
+        val cats = stalker.fetchLiveCategories(p, s)
+        onProgress("Fetching channels…")
+        val chans = stalker.fetchLiveChannels(p, s)
+        val pinSet = parental.isSet()
+        val finalCats = if (!pinSet) cats
+        else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+        categoryDao.deleteForProviderKind(p.id, "LIVE")
+        categoryDao.upsertAll(finalCats)
+        channelDao.deleteForProvider(p.id)
+        channelDao.upsertAll(chans)
+        return chans.size
+    }
+
+    /**
+     * Resolves a stored stream URL into a playable URL. Only does work for
+     * Stalker providers (URLs prefixed `stalker://`) — for everything else the
+     * URL is already directly playable and we return it unchanged.
+     */
+    suspend fun resolvePlayUrl(channelId: Long, storedUrl: String): String {
+        if (!storedUrl.startsWith("stalker://")) return storedUrl
+        val ch = channelDao.byId(channelId) ?: return storedUrl
+        val p = providerDao.byId(ch.providerId) ?: return storedUrl
+        return runCatching { stalker.resolvePlayUrl(p, storedUrl) }.getOrElse { storedUrl }
+    }
+
+    suspend fun addXtream(name: String, baseUrl: String, username: String, password: String): Long {
+        val normalised = baseUrl.trimEnd('/')
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { runCatching { java.net.URI(normalised).host }.getOrNull() ?: "Xtream" },
+                kind = "XTREAM",
+                baseUrl = normalised,
+                username = username,
+                password = password,
+                active = true,
+            ),
+        )
+    }
+
+    suspend fun delete(id: Long) {
+        channelDao.deleteForProvider(id)
+        movieDao.deleteForProvider(id)
+        seriesDao.deleteForProvider(id)
+        categoryDao.deleteForProviderKind(id, "LIVE")
+        categoryDao.deleteForProviderKind(id, "MOVIE")
+        categoryDao.deleteForProviderKind(id, "SERIES")
+        providerDao.delete(id)
+    }
+
+    /**
+     * Pulls Live + VOD + Series catalogs. Returns total item count.
+     * Note: episodes are loaded on-demand when the user opens a series.
+     */
+    suspend fun syncAll(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+        val p = providerDao.byId(providerId) ?: return 0
+        // Local M3U is parsed once at import — re-syncing requires picking the file again.
+        if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)
+        if (p.kind == "M3U") return syncM3u(providerId, onProgress)
+        if (p.kind == "STALKER") return syncStalker(providerId, onProgress)
+
+        // If a PIN is set, auto-lock any category whose name matches the adult
+        // regex (multilingual). When no PIN is configured, locking is pointless
+        // and would just hide content with no way to unlock — so we skip.
+        val pinSet = parental.isSet()
+        fun maybeLock(cats: List<CategoryEntity>): List<CategoryEntity> =
+            if (!pinSet) cats
+            else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+
+        onProgress("Live categories…")
+        val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
+        onProgress("Live channels…")
+        val chans = xtream.fetchLiveStreams(p)
+        categoryDao.deleteForProviderKind(p.id, "LIVE")
+        categoryDao.upsertAll(liveCats)
+        channelDao.deleteForProvider(p.id)
+        channelDao.upsertAll(chans)
+
+        onProgress("Movie categories…")
+        val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
+        onProgress("Movies…")
+        val movs = xtream.fetchVodStreams(p)
+        categoryDao.deleteForProviderKind(p.id, "MOVIE")
+        categoryDao.upsertAll(movCats)
+        movieDao.deleteForProvider(p.id)
+        movieDao.upsertAll(movs)
+
+        onProgress("Series categories…")
+        val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
+        onProgress("Series…")
+        val series = xtream.fetchSeries(p)
+        categoryDao.deleteForProviderKind(p.id, "SERIES")
+        categoryDao.upsertAll(serCats)
+        seriesDao.deleteForProvider(p.id)
+        seriesDao.upsertAll(series)
+
+        return chans.size + movs.size + series.size
+    }
+}

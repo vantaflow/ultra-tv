@@ -1,0 +1,14 @@
+name = "ultratv-config"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# Create the namespace once via:
+#   wrangler kv:namespace create CONFIG
+# then paste the returned id below (and a preview_id for `wrangler dev`).
+[[kv_namespaces]]
+binding = "CONFIG"
+id = "4d450f36e3e34ddf9520e53bf6c241ea"
+preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
+
+# Admin password is provisioned as a secret via `wrangler secret put ADMIN_PASSWORD`,
+# never committed to this file. The deployed Worker reads it from env.ADMIN_PASSWORD.

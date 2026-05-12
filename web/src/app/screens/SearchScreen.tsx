@@ -43,7 +43,7 @@ export function SearchScreen() {
     <div>
       <h2>Search</h2>
       <div style={{ display: "flex", gap: 8 }}>
-        <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} onBlur={commit} placeholder="Search…" />
+        <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} onBlur={commit} placeholder="Search…" type="search" inputMode="search" enterKeyHint="search" />
         <select value={scope} onChange={(e) => setScope(e.target.value as Scope)}>
           <option value="ALL">All</option>
           <option value="LIVE">Live</option>

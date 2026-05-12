@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { Sidebar } from "@app/components/Sidebar";
 import { SpatialFocusBootstrap } from "@app/components/SpatialFocus";
 import { CommandPalette } from "@app/components/CommandPalette";
@@ -24,6 +24,34 @@ import { useI18n } from "@app/i18n";
 import { useUiStore } from "@app/stores/ui";
 import { initProxyCache } from "@data/net/proxy";
 import { startReminderScheduler } from "@data/manager/ReminderScheduler";
+import { useTvMode } from "@app/tv/useTvMode";
+import { RemoteDiagPanel } from "@app/components/RemoteDiagPanel";
+
+// TV remote BACK / MENU bridge: spatialNav fires `androidback` and listens to a
+// custom `androidmenu` event. Wire them up inside the Router so we can navigate.
+function TvRemoteRouting() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+
+  useEffect(() => {
+    const onBack = (e: Event) => {
+      // Exit-confirm at root: let the native shell handle it (finish activity).
+      if (location.pathname === "/") return;
+      e.preventDefault();
+      navigate(-1);
+    };
+    const onMenu = () => { void toggleSidebar(); };
+    window.addEventListener("androidback", onBack);
+    window.addEventListener("androidmenu", onMenu);
+    return () => {
+      window.removeEventListener("androidback", onBack);
+      window.removeEventListener("androidmenu", onMenu);
+    };
+  }, [navigate, location.pathname, toggleSidebar]);
+
+  return null;
+}
 
 export function App() {
   const setActive = useProviderStore((s) => s.setActive);
@@ -31,6 +59,7 @@ export function App() {
   const initI18n = useI18n((s) => s.init);
   const initUi = useUiStore((s) => s.init);
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const isTv = useTvMode();
 
   useEffect(() => {
     void initProxyCache();
@@ -43,11 +72,21 @@ export function App() {
     startReminderScheduler();
   }, [setActive, initParental, initI18n, initUi]);
 
+  // In TV mode the sidebar is permanently expanded — collapse only applies on
+  // web/desktop where the user can click the toggle.
+  const layoutCollapsed = !isTv && collapsed;
+
   return (
     <SpatialFocusBootstrap>
       <BrowserRouter>
-        <CommandPalette />
-        <div className={`layout${collapsed ? " sidebar-collapsed" : ""}`}>
+        <TvRemoteRouting />
+        {/* Diag panel renders unconditionally inside the Capacitor native
+            shell so it's impossible to miss — useTvMode might still be false
+            on weird firmwares (Mecool, OEM Android boxes). On pure web we
+            keep it gated so it doesn't show in the browser. */}
+        {(isTv || !!window.Capacitor?.isNativePlatform?.()) && <RemoteDiagPanel />}
+        {!isTv && <CommandPalette />}
+        <div className={`layout${layoutCollapsed ? " sidebar-collapsed" : ""}${isTv ? " tv" : ""}`}>
           <Sidebar />
           <main className="content">
             <Routes>

@@ -1,23 +1,13 @@
-// Spatial-navigation provider. Wraps @noriginmedia/norigin-spatial-navigation so D-pad /
-// arrow-key navigation works on TV-style remotes. The init is idempotent.
+// Spatial-navigation provider. Installs the custom DOM-walking spatial nav
+// (spatial/spatialNav.ts) which is the only one wired to the Android-TV native
+// bridge via `window.__ultratv_remote`. Init is idempotent.
 
 import { useEffect } from "react";
-import { init, setKeyMap } from "@noriginmedia/norigin-spatial-navigation";
-
-let initialised = false;
+import { installSpatialNav } from "@app/spatial/spatialNav";
 
 export function SpatialFocusBootstrap({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    if (initialised) return;
-    initialised = true;
-    init({ debug: false, visualDebug: false });
-    setKeyMap({
-      left: [37],
-      up: [38],
-      right: [39],
-      down: [40],
-      enter: [13],
-    });
+    installSpatialNav();
   }, []);
   return <>{children}</>;
 }

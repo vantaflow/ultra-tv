@@ -860,3 +860,136 @@ input { min-width: 280px; }
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, monospace;
 }
+
+/* ============================================================
+   TV MODE — 10-foot UI for Android TV / Google TV / Fire TV
+   Activated by `tv-mode` class on <html> (see useTvMode hook).
+   Goals: visible focus, overscan-safe layout, no hover, bigger
+   touch targets, no scrollbars (D-pad scroll only).
+   ============================================================ */
+html.tv-mode {
+  --tv-overscan: 32px;           /* ~3% of 1920×1080 */
+  --tv-focus-ring: #6ea8ff;
+  --tv-focus-bg: rgba(110,168,255,0.22);
+  font-size: 18px;               /* ~+30% from the default 14-16px */
+}
+html.tv-mode body {
+  cursor: none;                  /* no mouse on a TV */
+  overflow: hidden;              /* container handles scroll */
+}
+html.tv-mode ::-webkit-scrollbar { width: 0; height: 0; display: none; }
+html.tv-mode * { scrollbar-width: none; }
+
+/* No hover styling — there's no pointer; reduces accidental visual noise. */
+html.tv-mode button:hover,
+html.tv-mode .sidebar a:hover,
+html.tv-mode .channel-row:hover,
+html.tv-mode .filter-chip:hover,
+html.tv-mode .sidebar-toggle:hover {
+  background: var(--bg-elev);
+  color: var(--fg);
+  border-color: var(--border);
+}
+
+/* Layout — wider sidebar, overscan padding around the main content. */
+html.tv-mode .layout {
+  grid-template-columns: 280px 1fr;
+  padding: var(--tv-overscan);
+  gap: var(--tv-overscan);
+  height: 100vh;
+}
+html.tv-mode .layout.tv { grid-template-columns: 280px 1fr; }
+html.tv-mode .sidebar {
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  padding: 18px 12px;
+  gap: 4px;
+}
+html.tv-mode .sidebar h1 { font-size: 22px; }
+html.tv-mode .sidebar a {
+  padding: 16px 18px;
+  font-size: 18px;
+  border-radius: 12px;
+  gap: 16px;
+}
+html.tv-mode .sidebar-icon { font-size: 22px; width: 28px; }
+html.tv-mode .sidebar-label { font-size: 18px; }
+html.tv-mode .content {
+  padding: 8px 4px;
+  border-radius: 18px;
+  overflow: auto;
+}
+
+/* Focus indication — single source of truth so every focusable item gets a
+   strong, unmistakable ring. Animated for clarity at 10 ft. */
+html.tv-mode *:focus,
+html.tv-mode *:focus-visible,
+html.tv-mode .spatial-focused {
+  outline: 4px solid var(--tv-focus-ring);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 8px rgba(110,168,255,0.18);
+  transition: outline-color .12s, box-shadow .12s, transform .12s;
+  z-index: 2;
+  position: relative;
+}
+html.tv-mode .poster-card:focus,
+html.tv-mode .poster-card:focus-visible,
+html.tv-mode .poster-card.spatial-focused {
+  transform: scale(1.06);
+}
+html.tv-mode .sidebar a:focus,
+html.tv-mode .sidebar a.spatial-focused {
+  background: var(--tv-focus-bg);
+  color: var(--accent);
+}
+
+/* Cards — slightly bigger so they read at 10 ft. */
+html.tv-mode .poster-card { font-size: 16px; }
+html.tv-mode .poster-title { font-size: 17px; }
+html.tv-mode .poster-subtitle { font-size: 14px; }
+html.tv-mode .poster-img { border-radius: 14px; }
+
+/* Channel rows */
+html.tv-mode .channel-row { padding: 14px 18px; font-size: 18px; }
+html.tv-mode .channel-row .num { width: 56px; font-size: 17px; }
+
+/* Filter chips */
+html.tv-mode .filter-chip { padding: 10px 16px; font-size: 16px; border-radius: 14px; }
+
+/* Form inputs — IME-friendly */
+html.tv-mode input,
+html.tv-mode select,
+html.tv-mode textarea {
+  padding: 14px 18px;
+  font-size: 18px;
+  border-radius: 12px;
+}
+html.tv-mode button {
+  padding: 12px 18px;
+  font-size: 17px;
+  border-radius: 12px;
+}
+
+/* Player — fullscreen-like on TV (covers content area). */
+html.tv-mode .player-wrap {
+  border-radius: 14px;
+  overflow: hidden;
+}
+html.tv-mode .video-fullscreen,
+html.tv-mode .player-wrap.fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  border-radius: 0;
+  background: #000;
+}
+
+/* Hide elements that don't make sense on TV. */
+html.tv-mode .sidebar-toggle,
+html.tv-mode .cmdk-backdrop,
+html.tv-mode .cmdk {
+  display: none !important;
+}
+
+/* Smooth, slower scroll behavior so D-pad scrolling feels deliberate. */
+html.tv-mode .content { scroll-behavior: smooth; }

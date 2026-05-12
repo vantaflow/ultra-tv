@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultra TV Native</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_live">Live TV</string>
+    <string name="nav_settings">Settings</string>
+</resources>
