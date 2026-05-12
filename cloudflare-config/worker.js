@@ -50,7 +50,12 @@ function redirect(to, init = {}) {
 }
 
 function normaliseMac(raw) {
-  const s = (raw || "").toLowerCase().trim();
+  // URL.pathname keeps `%3A` encoded — if we strip non-hex without decoding
+  // first, the `3a` from `%3A` survives and the MAC ends up 22 chars instead
+  // of 12. decodeURIComponent first, then filter.
+  let s = (raw || "").trim();
+  try { s = decodeURIComponent(s); } catch (_) { /* leave as-is */ }
+  s = s.toLowerCase();
   const hex = s.replace(/[^a-f0-9]/g, "");
   if (hex.length !== 12) return null;
   return hex.match(/.{2}/g).join(":");
