@@ -15,7 +15,7 @@ import androidx.room.RoomDatabase
         EpgEntity::class,
         WatchHistoryEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class UltraDb : RoomDatabase() {

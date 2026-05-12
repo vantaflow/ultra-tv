@@ -38,6 +38,8 @@ class CatalogRepository @Inject constructor(
     private val xtream: XtreamClient,
 ) {
     fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
+    fun channelsForCategory(pid: Long, categoryRemoteId: String): Flow<List<ChannelEntity>> =
+        channelDao.observeForCategory(pid, categoryRemoteId)
     fun movies(pid: Long): Flow<List<MovieEntity>> = movieDao.observeForProvider(pid)
     fun seriesList(pid: Long): Flow<List<SeriesEntity>> = seriesDao.observeForProvider(pid)
     fun episodes(seriesId: Long): Flow<List<EpisodeEntity>> = episodeDao.observeForSeries(seriesId)

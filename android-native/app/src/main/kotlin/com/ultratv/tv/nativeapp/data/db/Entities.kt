@@ -17,7 +17,11 @@ data class ProviderEntity(
 
 @Entity(
     tableName = "channel",
-    indices = [Index("providerId"), Index(value = ["providerId", "remoteId"], unique = true)],
+    indices = [
+        Index("providerId"),
+        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "remoteId"], unique = true),
+    ],
 )
 data class ChannelEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -41,7 +45,11 @@ data class CategoryEntity(
 
 @Entity(
     tableName = "movie",
-    indices = [Index("providerId"), Index(value = ["providerId", "remoteId"], unique = true)],
+    indices = [
+        Index("providerId"),
+        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "remoteId"], unique = true),
+    ],
 )
 data class MovieEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -59,7 +67,11 @@ data class MovieEntity(
 
 @Entity(
     tableName = "series",
-    indices = [Index("providerId"), Index(value = ["providerId", "remoteId"], unique = true)],
+    indices = [
+        Index("providerId"),
+        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "remoteId"], unique = true),
+    ],
 )
 data class SeriesEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

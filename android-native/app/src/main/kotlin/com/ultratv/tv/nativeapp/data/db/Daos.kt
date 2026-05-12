@@ -15,6 +15,9 @@ interface ProviderDao {
     @Query("SELECT * FROM provider WHERE active = 1 LIMIT 1")
     suspend fun firstActive(): ProviderEntity?
 
+    @Query("SELECT * FROM provider WHERE kind = :kind AND baseUrl = :baseUrl AND username = :username LIMIT 1")
+    suspend fun findByIdentity(kind: String, baseUrl: String, username: String): ProviderEntity?
+
     @Query("SELECT * FROM provider WHERE id = :id")
     suspend fun byId(id: Long): ProviderEntity?
 

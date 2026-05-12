@@ -28,6 +28,7 @@ class ProviderRepository @Inject constructor(
     private val m3u: M3uParser,
     private val stalker: StalkerClient,
     private val parental: ParentalStore,
+    private val syncStatus: SyncStatusBus,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -45,6 +46,7 @@ class ProviderRepository @Inject constructor(
     suspend fun byId(id: Long): ProviderEntity? = providerDao.byId(id)
 
     suspend fun addM3u(name: String, url: String): Long {
+        providerDao.findByIdentity("M3U", url, "")?.let { return it.id }
         val pid = providerDao.upsert(
             ProviderEntity(
                 name = name.ifBlank { runCatching { java.net.URI(url).host }.getOrNull() ?: "M3U" },
@@ -89,20 +91,31 @@ class ProviderRepository @Inject constructor(
     suspend fun syncM3u(providerId: Long, onProgress: (String) -> Unit = {}): Int {
         val p = providerDao.byId(providerId) ?: return 0
         if (p.kind != "M3U") return 0
-        onProgress("Downloading playlist…")
-        val res = m3u.fetch(p.baseUrl, p.id)
-        onProgress("Saving ${res.channels.size} channels…")
-        val pinSet = parental.isSet()
-        val cats = if (!pinSet) res.categories
-        else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
-        categoryDao.deleteForProviderKind(p.id, "LIVE")
-        categoryDao.upsertAll(cats)
-        channelDao.deleteForProvider(p.id)
-        insertChunked(res.channels) { channelDao.upsertAll(it) }
-        return res.channels.size
+        fun step(s: String, pct: Int?) {
+            onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
+        }
+        try {
+            step("Downloading playlist…", 20)
+            val res = m3u.fetch(p.baseUrl, p.id)
+            step("Parsed ${res.channels.size} channels…", 60)
+            val pinSet = parental.isSet()
+            val cats = if (!pinSet) res.categories
+            else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+            categoryDao.deleteForProviderKind(p.id, "LIVE")
+            categoryDao.upsertAll(cats)
+            channelDao.deleteForProvider(p.id)
+            step("Saving ${res.channels.size} channels…", 90)
+            insertChunked(res.channels) { channelDao.upsertAll(it) }
+            step("Done — ${res.channels.size} channels", 100)
+            return res.channels.size
+        } finally {
+            syncStatus.clear()
+        }
     }
 
     suspend fun addStalker(name: String, portalUrl: String, mac: String): Long {
+        val normalised = portalUrl.trimEnd('/')
+        providerDao.findByIdentity("STALKER", normalised, mac.trim())?.let { return it.id }
         return providerDao.upsert(
             ProviderEntity(
                 name = name.ifBlank { runCatching { java.net.URI(portalUrl).host }.getOrNull() ?: "Stalker" },
@@ -119,20 +132,29 @@ class ProviderRepository @Inject constructor(
     suspend fun syncStalker(providerId: Long, onProgress: (String) -> Unit = {}): Int {
         val p = providerDao.byId(providerId) ?: return 0
         if (p.kind != "STALKER") return 0
-        onProgress("Handshaking with portal…")
-        val s = stalker.handshake(p)
-        onProgress("Fetching categories…")
-        val cats = stalker.fetchLiveCategories(p, s)
-        onProgress("Fetching channels…")
-        val chans = stalker.fetchLiveChannels(p, s)
-        val pinSet = parental.isSet()
-        val finalCats = if (!pinSet) cats
-        else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
-        categoryDao.deleteForProviderKind(p.id, "LIVE")
-        categoryDao.upsertAll(finalCats)
-        channelDao.deleteForProvider(p.id)
-        insertChunked(chans) { channelDao.upsertAll(it) }
-        return chans.size
+        fun step(s: String, pct: Int?) {
+            onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
+        }
+        try {
+            step("Handshaking with portal…", 10)
+            val s = stalker.handshake(p)
+            step("Fetching categories…", 30)
+            val cats = stalker.fetchLiveCategories(p, s)
+            step("Fetching channels…", 50)
+            val chans = stalker.fetchLiveChannels(p, s)
+            val pinSet = parental.isSet()
+            val finalCats = if (!pinSet) cats
+            else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+            categoryDao.deleteForProviderKind(p.id, "LIVE")
+            categoryDao.upsertAll(finalCats)
+            channelDao.deleteForProvider(p.id)
+            step("Saving ${chans.size} channels…", 90)
+            insertChunked(chans) { channelDao.upsertAll(it) }
+            step("Done — ${chans.size} channels", 100)
+            return chans.size
+        } finally {
+            syncStatus.clear()
+        }
     }
 
     // (Xtream path uses insertChunked(chans) above — see syncAll.)
@@ -151,6 +173,10 @@ class ProviderRepository @Inject constructor(
 
     suspend fun addXtream(name: String, baseUrl: String, username: String, password: String): Long {
         val normalised = baseUrl.trimEnd('/')
+        // Idempotent: if the (kind, baseUrl, username) tuple already exists,
+        // reuse its id rather than creating a duplicate row. Callers that
+        // sync after add() will simply re-pull catalogs into the same record.
+        providerDao.findByIdentity("XTREAM", normalised, username)?.let { return it.id }
         return providerDao.upsert(
             ProviderEntity(
                 name = name.ifBlank { runCatching { java.net.URI(normalised).host }.getOrNull() ?: "Xtream" },
@@ -184,41 +210,53 @@ class ProviderRepository @Inject constructor(
         if (p.kind == "M3U") return syncM3u(providerId, onProgress)
         if (p.kind == "STALKER") return syncStalker(providerId, onProgress)
 
-        // If a PIN is set, auto-lock any category whose name matches the adult
-        // regex (multilingual). When no PIN is configured, locking is pointless
-        // and would just hide content with no way to unlock — so we skip.
+        // Wrapper that pushes to both the user callback AND the global sync bus
+        // so a banner can show progress on any screen.
+        fun step(label: String, pct: Int? = null) {
+            onProgress(label)
+            syncStatus.set(SyncStatusBus.Status(provider = p.name, step = label, percent = pct))
+        }
+
         val pinSet = parental.isSet()
         fun maybeLock(cats: List<CategoryEntity>): List<CategoryEntity> =
             if (!pinSet) cats
             else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
 
-        onProgress("Live categories…")
-        val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
-        onProgress("Live channels…")
-        val chans = xtream.fetchLiveStreams(p)
-        categoryDao.deleteForProviderKind(p.id, "LIVE")
-        categoryDao.upsertAll(liveCats)
-        channelDao.deleteForProvider(p.id)
-        insertChunked(chans) { channelDao.upsertAll(it) }
+        try {
+            step("Live categories…", 5)
+            val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
+            step("Live channels…", 15)
+            val chans = xtream.fetchLiveStreams(p)
+            categoryDao.deleteForProviderKind(p.id, "LIVE")
+            categoryDao.upsertAll(liveCats)
+            channelDao.deleteForProvider(p.id)
+            step("Saving ${chans.size} channels…", 25)
+            insertChunked(chans) { channelDao.upsertAll(it) }
 
-        onProgress("Movie categories…")
-        val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
-        onProgress("Movies…")
-        val movs = xtream.fetchVodStreams(p)
-        categoryDao.deleteForProviderKind(p.id, "MOVIE")
-        categoryDao.upsertAll(movCats)
-        movieDao.deleteForProvider(p.id)
-        insertChunked(movs) { movieDao.upsertAll(it) }
+            step("Movie categories…", 35)
+            val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
+            step("Movies (${movCats.size} categories)…", 45)
+            val movs = xtream.fetchVodStreams(p)
+            categoryDao.deleteForProviderKind(p.id, "MOVIE")
+            categoryDao.upsertAll(movCats)
+            movieDao.deleteForProvider(p.id)
+            step("Saving ${movs.size} movies…", 55)
+            insertChunked(movs) { movieDao.upsertAll(it) }
 
-        onProgress("Series categories…")
-        val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
-        onProgress("Series…")
-        val series = xtream.fetchSeries(p)
-        categoryDao.deleteForProviderKind(p.id, "SERIES")
-        categoryDao.upsertAll(serCats)
-        seriesDao.deleteForProvider(p.id)
-        insertChunked(series) { seriesDao.upsertAll(it) }
+            step("Series categories…", 70)
+            val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
+            step("Series…", 80)
+            val series = xtream.fetchSeries(p)
+            categoryDao.deleteForProviderKind(p.id, "SERIES")
+            categoryDao.upsertAll(serCats)
+            seriesDao.deleteForProvider(p.id)
+            step("Saving ${series.size} series…", 95)
+            insertChunked(series) { seriesDao.upsertAll(it) }
 
-        return chans.size + movs.size + series.size
+            step("Done — ${chans.size} live · ${movs.size} movies · ${series.size} series", 100)
+            return chans.size + movs.size + series.size
+        } finally {
+            syncStatus.clear()
+        }
     }
 }

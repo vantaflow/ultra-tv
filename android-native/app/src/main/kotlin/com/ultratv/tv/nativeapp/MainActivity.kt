@@ -152,6 +152,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     ) {
         if (sidebarPosition == SidebarPosition.TOP) {
             Column(Modifier.fillMaxSize()) {
+                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
                 TopBarNav(navController = nav)
                 Box(
                     Modifier
@@ -161,14 +162,17 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 ) { NavGraph(nav) }
             }
         } else {
-            Row(Modifier.fillMaxSize()) {
-                SidebarNav(navController = nav)
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(PaddingValues(start = 12.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)),
-                ) { NavGraph(nav) }
+            Column(Modifier.fillMaxSize()) {
+                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
+                Row(Modifier.fillMaxSize()) {
+                    SidebarNav(navController = nav)
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(PaddingValues(start = 12.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)),
+                    ) { NavGraph(nav) }
+                }
             }
         }
     }
