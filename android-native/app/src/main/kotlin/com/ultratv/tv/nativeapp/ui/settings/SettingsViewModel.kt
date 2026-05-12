@@ -30,9 +30,22 @@ class SettingsViewModel @Inject constructor(
 
     val deviceMacAddress: String = deviceMac.mac
 
+    /**
+     * Effective Worker URL: user override (DataStore) takes precedence over
+     * the project default below. Each user can still self-host their own
+     * worker and paste its URL in Settings.
+     */
     val workerBaseUrl: StateFlow<String> = prefs.flow
-        .map { it.workerBaseUrl }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+        .map { it.workerBaseUrl.ifBlank { DEFAULT_WORKER_URL } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_WORKER_URL)
+
+    companion object {
+        // Default project-hosted Cloudflare Worker. Anyone using this default
+        // shares the same KV namespace (rows are scoped per MAC, so it's
+        // technically isolated, but the admin password can read everything —
+        // self-host for full privacy).
+        const val DEFAULT_WORKER_URL = "https://ultratv-config.khalilbenaz.workers.dev"
+    }
 
     fun saveWorkerBase(url: String) {
         viewModelScope.launch { prefs.setWorkerBase(url) }

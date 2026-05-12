@@ -108,16 +108,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    if (workerBase.isBlank()) "(no worker URL set)"
-                    else workerBase,
-                    color = if (workerBase.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onBackground,
+                    workerBase,
+                    color = MaterialTheme.colorScheme.onBackground,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = { openDialog = OpenDialog.WORKER }) {
-                    Text(if (workerBase.isBlank()) "Set worker URL" else "Change")
-                }
+                Button(onClick = { openDialog = OpenDialog.WORKER }) { Text("Change") }
             }
             Button(
                 onClick = { vm.importByMac(workerBase.trim()) },
