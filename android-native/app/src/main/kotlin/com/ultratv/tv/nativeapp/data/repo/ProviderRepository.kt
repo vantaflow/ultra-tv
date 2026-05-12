@@ -30,6 +30,16 @@ class ProviderRepository @Inject constructor(
     private val parental: ParentalStore,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
+
+    // Chunk size for bulk inserts. Room flushes the WAL on each call so very
+    // large lists (50k+ channels on big playlists) cause memory + I/O spikes;
+    // chunking keeps RAM flat and lets the UI repaint between batches.
+    private val INSERT_CHUNK = 500
+
+    private suspend inline fun <T> insertChunked(items: List<T>, crossinline block: suspend (List<T>) -> Unit) {
+        if (items.isEmpty()) return
+        items.chunked(INSERT_CHUNK).forEach { block(it) }
+    }
     fun observeProviders(): Flow<List<ProviderEntity>> = providerDao.observeAll()
     suspend fun firstActive(): ProviderEntity? = providerDao.firstActive()
     suspend fun byId(id: Long): ProviderEntity? = providerDao.byId(id)
@@ -88,7 +98,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(p.id, "LIVE")
         categoryDao.upsertAll(cats)
         channelDao.deleteForProvider(p.id)
-        channelDao.upsertAll(res.channels)
+        insertChunked(res.channels) { channelDao.upsertAll(it) }
         return res.channels.size
     }
 
@@ -121,9 +131,11 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(p.id, "LIVE")
         categoryDao.upsertAll(finalCats)
         channelDao.deleteForProvider(p.id)
-        channelDao.upsertAll(chans)
+        insertChunked(chans) { channelDao.upsertAll(it) }
         return chans.size
     }
+
+    // (Xtream path uses insertChunked(chans) above — see syncAll.)
 
     /**
      * Resolves a stored stream URL into a playable URL. Only does work for
@@ -187,7 +199,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(p.id, "LIVE")
         categoryDao.upsertAll(liveCats)
         channelDao.deleteForProvider(p.id)
-        channelDao.upsertAll(chans)
+        insertChunked(chans) { channelDao.upsertAll(it) }
 
         onProgress("Movie categories…")
         val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
@@ -196,7 +208,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(p.id, "MOVIE")
         categoryDao.upsertAll(movCats)
         movieDao.deleteForProvider(p.id)
-        movieDao.upsertAll(movs)
+        insertChunked(movs) { movieDao.upsertAll(it) }
 
         onProgress("Series categories…")
         val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
@@ -205,7 +217,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(p.id, "SERIES")
         categoryDao.upsertAll(serCats)
         seriesDao.deleteForProvider(p.id)
-        seriesDao.upsertAll(series)
+        insertChunked(series) { seriesDao.upsertAll(it) }
 
         return chans.size + movs.size + series.size
     }

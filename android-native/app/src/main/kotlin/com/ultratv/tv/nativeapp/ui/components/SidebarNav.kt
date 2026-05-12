@@ -35,6 +35,7 @@ private val items = listOf(
     NavItem("series", "Series", "📚"),
     NavItem("favorites", "Favorites", "★"),
     NavItem("search", "Search", "🔍"),
+    NavItem("categories", "Categories", "🏷"),
     NavItem("multiview", "Multi-View", "▦"),
     NavItem("settings", "Settings", "⚙"),
 )

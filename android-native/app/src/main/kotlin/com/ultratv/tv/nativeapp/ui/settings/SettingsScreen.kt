@@ -186,6 +186,10 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         ) { Text("Add Stalker portal", fontSize = 16.sp) }
 
         Spacer(Modifier.height(16.dp))
+        Text("Display & playback", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        com.ultratv.tv.nativeapp.ui.settings.PreferencesSection()
+
+        Spacer(Modifier.height(16.dp))
         Text("Parental controls", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         com.ultratv.tv.nativeapp.ui.parental.ParentalSection()
         Text(

@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.ui.live
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,8 +12,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,6 +25,7 @@ import javax.inject.Inject
 class LiveViewModel @Inject constructor(
     private val provider: ProviderRepository,
     catalog: CatalogRepository,
+    private val hiddenStore: HiddenCategoriesStore,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -30,21 +34,25 @@ class LiveViewModel @Inject constructor(
     private val _resolving = MutableStateFlow(false)
     val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
 
+    private val providers = provider.observeProviders()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val channels: StateFlow<List<ChannelEntity>> =
-        provider.observeProviders()
-            .flatMapLatest { ps ->
+        combine(providers, hiddenStore.hidden) { ps, hidden -> ps to hidden }
+            .flatMapLatest { (ps, hidden) ->
                 val pid = ps.firstOrNull { it.active }?.id ?: ps.firstOrNull()?.id
-                if (pid == null) flowOf(emptyList()) else catalog.channels(pid)
+                if (pid == null) flowOf(emptyList())
+                else catalog.channels(pid).map { list ->
+                    list.filter { ch ->
+                        val cid = ch.categoryId ?: return@filter true
+                        hiddenStore.keyFor("LIVE", pid, cid) !in hidden
+                    }
+                }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun setQuery(q: String) { _query.value = q }
 
-    /**
-     * Resolves the playable URL for [channel] and invokes [onReady] with it.
-     * For most providers this is a no-op (returns stream URL as-is); for
-     * Stalker it issues a `create_link` call to mint a fresh per-session URL.
-     */
     fun resolveAndPlay(channel: ChannelEntity, onReady: (url: String, title: String) -> Unit) {
         if (!channel.streamUrl.startsWith("stalker://")) {
             onReady(channel.streamUrl, channel.name)

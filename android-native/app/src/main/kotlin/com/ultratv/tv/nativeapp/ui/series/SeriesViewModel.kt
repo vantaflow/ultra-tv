@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
+import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,6 +28,7 @@ import javax.inject.Inject
 class SeriesListViewModel @Inject constructor(
     providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
+    private val hiddenStore: HiddenCategoriesStore,
 ) : ViewModel() {
 
     private val _sel = MutableStateFlow<String?>(null)
@@ -35,16 +37,30 @@ class SeriesListViewModel @Inject constructor(
     private val providers = providerRepo.observeProviders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val categories: StateFlow<List<CategoryEntity>> = providers.flatMapLatest { ps ->
-        val pid = ps.firstOrNull()?.id ?: return@flatMapLatest flowOf(emptyList())
-        catalog.categories(pid, "SERIES")
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val categories: StateFlow<List<CategoryEntity>> = combine(
+        providers, hiddenStore.hidden,
+    ) { ps, hidden -> ps to hidden }
+        .flatMapLatest { (ps, hidden) ->
+            val pid = ps.firstOrNull()?.id ?: return@flatMapLatest flowOf(emptyList())
+            catalog.categories(pid, "SERIES").map { list ->
+                list.filter { hiddenStore.keyFor("SERIES", pid, it.remoteId) !in hidden }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val items: StateFlow<List<SeriesEntity>> = combine(providers, _sel) { ps, cat -> ps to cat }
-        .flatMapLatest { (ps, cat) ->
+    val items: StateFlow<List<SeriesEntity>> = combine(
+        providers, _sel, hiddenStore.hidden,
+    ) { ps, cat, hidden -> Triple(ps, cat, hidden) }
+        .flatMapLatest { (ps, cat, hidden) ->
             val pid = ps.firstOrNull()?.id ?: return@flatMapLatest flowOf(emptyList())
             val all: Flow<List<SeriesEntity>> = catalog.seriesList(pid)
-            if (cat == null) all else all.map { list -> list.filter { it.categoryId == cat } }
+            all.map { list ->
+                list.filter { s ->
+                    val cid = s.categoryId
+                    if (cid != null && hiddenStore.keyFor("SERIES", pid, cid) in hidden) return@filter false
+                    if (cat == null) true else s.categoryId == cat
+                }
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -69,8 +85,6 @@ class SeriesDetailViewModel @Inject constructor(
             _series.value = catalog.seriesById(id)
             _loading.value = true
         }
-        // Network refresh runs independently — UI shows DB rows immediately
-        // and updates when the refresh completes.
         viewModelScope.launch {
             runCatching { catalog.loadEpisodes(id) }
             _loading.value = false
