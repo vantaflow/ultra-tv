@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,9 +25,18 @@ class SettingsViewModel @Inject constructor(
     private val repo: ProviderRepository,
     private val remoteConfig: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter,
     private val deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac,
+    private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
 ) : ViewModel() {
 
     val deviceMacAddress: String = deviceMac.mac
+
+    val workerBaseUrl: StateFlow<String> = prefs.flow
+        .map { it.workerBaseUrl }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    fun saveWorkerBase(url: String) {
+        viewModelScope.launch { prefs.setWorkerBase(url) }
+    }
 
     fun importByMac(workerBase: String) {
         viewModelScope.launch {

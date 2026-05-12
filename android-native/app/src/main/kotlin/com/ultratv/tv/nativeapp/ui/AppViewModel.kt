@@ -34,4 +34,5 @@ class AppViewModel @Inject constructor(
     fun setLaunchAtBoot(v: Boolean) = viewModelScope.launch { store.setLaunchAtBoot(v) }
     fun setAutoPlayLast(v: Boolean) = viewModelScope.launch { store.setAutoPlayLast(v) }
     fun setSyncInterval(hours: Int) = viewModelScope.launch { store.setSyncInterval(hours) }
+    fun setWorkerBase(url: String) = viewModelScope.launch { store.setWorkerBase(url) }
 }

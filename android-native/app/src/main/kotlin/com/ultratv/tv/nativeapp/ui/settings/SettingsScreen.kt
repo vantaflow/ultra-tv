@@ -38,7 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER }
+private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER, WORKER }
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
@@ -74,9 +74,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         },
     )
 
-    // Default worker URL pre-filled so users can just press "Sync from cloud"
-    // once their MAC is provisioned in the dashboard.
-    var workerBase by remember { mutableStateOf("https://ultratv-config.khalilbenaz.workers.dev") }
+    // Worker URL is now stored in DataStore (per-device), never hard-coded.
+    // Each user provisions their own worker and pastes its URL here once.
+    val workerBase by vm.workerBaseUrl.collectAsState()
 
     Column(
         Modifier
@@ -103,12 +103,25 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 )
             }
             Text(
-                "Open the dashboard, paste this MAC, add your providers there, then press Sync.",
+                "Open your worker dashboard, paste this MAC, add your providers there, then press Sync.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    if (workerBase.isBlank()) "(no worker URL set)"
+                    else workerBase,
+                    color = if (workerBase.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onBackground,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = { openDialog = OpenDialog.WORKER }) {
+                    Text(if (workerBase.isBlank()) "Set worker URL" else "Change")
+                }
+            }
             Button(
                 onClick = { vm.importByMac(workerBase.trim()) },
-                enabled = !syncing,
+                enabled = !syncing && workerBase.isNotBlank(),
             ) { Text(if (syncing) "Working…" else "Sync from cloud", fontSize = 15.sp) }
         }
 
@@ -204,7 +217,39 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
                 vm.addStalkerAndSync(name, url, mac); openDialog = OpenDialog.NONE
             },
         )
+        OpenDialog.WORKER -> WorkerUrlDialog(
+            initial = workerBase,
+            onDismiss = { openDialog = OpenDialog.NONE },
+            onSubmit = { url ->
+                vm.saveWorkerBase(url); openDialog = OpenDialog.NONE
+            },
+        )
         OpenDialog.NONE -> Unit
+    }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun WorkerUrlDialog(initial: String, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
+    var url by remember { mutableStateOf(initial) }
+    AddProviderDialog(
+        title = "Set Cloudflare Worker URL",
+        onDismiss = onDismiss,
+        onSubmit = { onSubmit(url) },
+        canSubmit = url.isNotBlank(),
+    ) {
+        Text(
+            "Each user deploys their own Worker (cloudflare-config/) and pastes its URL here. " +
+                "We never bundle a default URL in the app to avoid leaking yours through the source code.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+        )
+        FormField(
+            label = "Worker base URL (e.g. https://your-config.your-acct.workers.dev)",
+            value = url,
+            onChange = { url = it },
+            placeholder = "https://your-config.your-acct.workers.dev",
+        )
     }
 }
 

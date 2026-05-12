@@ -174,16 +174,16 @@ private fun MacOnboardingCard(mac: String, onGoSettings: () -> Unit) {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "On a web browser, open:",
+            "Two paths to add a provider:",
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
         )
         Text(
-            "https://ultratv-config.khalilbenaz.workers.dev",
-            color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp, fontWeight = FontWeight.Medium,
+            "1. Open Settings → +Xtream / +M3U / +M3U file / +Stalker, fill in the form.",
+            color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp,
         )
         Text(
-            "Sign in (admin / nimda), open this MAC, add your provider(s). Then come back here → Settings → \"Sync from cloud\".",
-            color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
+            "2. Self-host the Cloudflare Worker from cloudflare-config/, paste this MAC in its dashboard, then in Settings → Set worker URL → Sync from cloud.",
+            color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp,
         )
         Spacer(Modifier.height(4.dp))
         Button(onClick = onGoSettings) { Text("Open Settings") }

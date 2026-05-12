@@ -37,6 +37,9 @@ data class UserPrefs(
     val syncIntervalHours: Int = 0,
     /** Last successful auto-sync timestamp (ms). Internal; not user-visible. */
     val lastSyncAtMs: Long = 0L,
+    /** Cloudflare Worker base URL used by "Sync from cloud". Empty until the
+     *  user enters their own — never hard-coded in source. */
+    val workerBaseUrl: String = "",
 )
 
 @Singleton
@@ -54,6 +57,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val autoPlayLast = booleanPreferencesKey("auto_play_last_on_launch")
         val syncInterval = intPreferencesKey("sync_interval_hours")
         val lastSyncAt = longPreferencesKey("last_sync_at_ms")
+        val workerBase = stringPreferencesKey("worker_base_url")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -70,6 +74,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             autoPlayLastOnLaunch = p[Keys.autoPlayLast] ?: false,
             syncIntervalHours = p[Keys.syncInterval] ?: 0,
             lastSyncAtMs = p[Keys.lastSyncAt] ?: 0L,
+            workerBaseUrl = p[Keys.workerBase] ?: "",
         )
     }
 
@@ -85,6 +90,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setAutoPlayLast(v: Boolean) = update { it[Keys.autoPlayLast] = v }
     suspend fun setSyncInterval(hours: Int) = update { it[Keys.syncInterval] = hours }
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
+    suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }
