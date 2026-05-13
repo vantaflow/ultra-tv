@@ -36,6 +36,7 @@ class CatalogRepository @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val epgDao: EpgDao,
     private val xtream: XtreamClient,
+    private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
 ) {
     fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
     fun channelsForCategory(pid: Long, categoryRemoteId: String): Flow<List<ChannelEntity>> =
@@ -52,11 +53,23 @@ class CatalogRepository @Inject constructor(
     suspend fun seriesById(id: Long): SeriesEntity? = seriesDao.byId(id)
     suspend fun episodeById(id: Long): EpisodeEntity? = episodeDao.byId(id)
 
-    /** Lazily syncs episodes when the user opens a series detail. */
+    /**
+     * Lazily syncs episodes when the user opens a series detail. Dispatches
+     * to the right client based on provider kind — Xtream uses `get_series_info`
+     * (per-season episode map), Stalker uses `get_ordered_list` (flat list).
+     * M3U has no concept of series and is silently skipped.
+     */
     suspend fun loadEpisodes(seriesId: Long) {
         val s = seriesDao.byId(seriesId) ?: return
         val p = providerDao.byId(s.providerId) ?: return
-        val eps = xtream.fetchSeriesEpisodes(p, s.remoteId, s.id)
+        val eps = when (p.kind) {
+            "XTREAM" -> xtream.fetchSeriesEpisodes(p, s.remoteId, s.id)
+            "STALKER" -> {
+                val session = runCatching { stalker.handshake(p) }.getOrNull() ?: return
+                stalker.fetchSeriesEpisodes(p, session, s.remoteId, s.id)
+            }
+            else -> return
+        }
         episodeDao.deleteForSeries(seriesId)
         episodeDao.upsertAll(eps)
     }

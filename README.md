@@ -48,7 +48,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🟦 Focus scale animation (1.0 → 1.08, 160 ms tween)
 - 🔍 Cross-content **search** (debounced 220 ms): channels + movies + series, with **last-10 recent queries** as one-tap chips
 - ★ **Favorites** (per kind, browsable from a dedicated screen)
-- 📚 **Series episodes** loaded on demand via `get_series_info`, played through Media3
+- 📚 **Series episodes** loaded on demand — Xtream via `get_series_info` (per-season map), Stalker via `get_ordered_list?category=…`; played through Media3 (Stalker episodes resolve their `stalker://` URL via `create_link` at play time, exactly like channels and movies)
 
 ### Player
 - ▶ **Media3 / ExoPlayer** — HLS, DASH, MPEG-TS, MP4 with hardware codec support
@@ -188,7 +188,6 @@ In active development / next iterations:
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 📥 **Recording / DVR** via WorkManager + HLS download
-- 🧪 **Stalker series episodes** (Live + VOD list are wired; episode listing within a Stalker series is the next gap)
 - 🌐 **Extend i18n coverage** beyond nav / home / settings to every inline string (~100 more)
 
 ## Credits

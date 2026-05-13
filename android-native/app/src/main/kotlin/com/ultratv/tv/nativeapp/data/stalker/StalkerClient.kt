@@ -206,6 +206,57 @@ class StalkerClient @Inject constructor(private val ok: OkHttpClient) {
         }
     }
 
+    /**
+     * Pulls the episode list for a single series. Most MAG portals expose
+     * episodes via the same `get_ordered_list` action keyed on the series id:
+     *   `?type=series&action=get_ordered_list&movie_id=<seriesId>&category=<seriesId>`
+     *
+     * Episode-number parsing handles a few common shapes:
+     *  - `series` numeric  → S?? E<series>
+     *  - `name` "S01 E03"  → parsed via regex
+     *
+     * Returns rows already keyed to [seriesLocalId] so we can insert them
+     * straight into the episode table.
+     */
+    suspend fun fetchSeriesEpisodes(
+        p: ProviderEntity,
+        s: Session,
+        seriesRemoteId: String,
+        seriesLocalId: Long,
+    ): List<com.ultratv.tv.nativeapp.data.db.EpisodeEntity> {
+        val url = "${s.portalRoot}/portal.php?type=series&action=get_ordered_list" +
+            "&movie_id=$seriesRemoteId&category=$seriesRemoteId&JsHttpRequest=1-xml"
+        val body = runCatching { call(url, p, s.token) }.getOrNull() ?: return emptyList()
+        val arr = (json.parseToJsonElement(body) as? JsonObject)
+            ?.get("js")?.jsonObject?.get("data") as? JsonArray ?: return emptyList()
+
+        val seasonEpRegex = Regex("[Ss](\\d+)\\s*[Ee](\\d+)")
+        return arr.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val rid = o["id"]?.str() ?: return@mapNotNull null
+            val cmd = o["cmd"]?.str() ?: return@mapNotNull null
+            val name = o["name"]?.str() ?: "Episode"
+            val seriesField = o["series"]?.str()
+            // Some portals: "series": "[1, 2, 3]" or "1" or null. Take first int.
+            val episodeNo = seriesField
+                ?.replace(Regex("[^0-9]"), " ")?.trim()?.split(" ")
+                ?.firstOrNull { it.isNotEmpty() }?.toIntOrNull()
+                ?: seasonEpRegex.find(name)?.groupValues?.get(2)?.toIntOrNull()
+                ?: 0
+            val season = seasonEpRegex.find(name)?.groupValues?.get(1)?.toIntOrNull() ?: 1
+            com.ultratv.tv.nativeapp.data.db.EpisodeEntity(
+                seriesId = seriesLocalId,
+                remoteId = rid,
+                season = season,
+                episode = episodeNo,
+                title = name,
+                streamUrl = "stalker://$cmd",
+                container = null,
+                plot = o["description"]?.str(),
+            )
+        }.sortedWith(compareBy({ it.season }, { it.episode }))
+    }
+
     /** Turns a stored `stalker://<cmd>` URL into a playable URL via create_link. */
     suspend fun resolvePlayUrl(p: ProviderEntity, channelStreamUrl: String): String =
         withContext(Dispatchers.IO) {

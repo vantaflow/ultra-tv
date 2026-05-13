@@ -117,18 +117,31 @@ data class SeriesRail(val category: CategoryEntity?, val items: List<SeriesEntit
 class SeriesDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
+    private val provider: ProviderRepository,
 ) : ViewModel() {
 
-    fun registerPlay(seriesName: String, seriesRemoteId: String, providerId: Long, episode: EpisodeEntity) {
-        playback.set(PlaybackContext.Item(
-            providerId = providerId,
-            kind = "EPISODE",
-            remoteId = episode.remoteId,
-            title = "$seriesName · S${"%02d".format(episode.season)}E${"%02d".format(episode.episode)} · ${episode.title}",
-            poster = null,
-            streamUrl = episode.streamUrl,
-            parentRemoteId = seriesRemoteId,
-        ))
+    /** Same logic as MovieDetailViewModel.play: resolve stalker:// first so the
+     *  player gets a directly-playable URL. */
+    fun playEpisode(
+        seriesName: String, seriesRemoteId: String, providerId: Long, episode: EpisodeEntity,
+        onReady: (url: String, title: String) -> Unit,
+    ) {
+        val tag = "S${"%02d".format(episode.season)}E${"%02d".format(episode.episode)}"
+        val title = "$seriesName · $tag · ${episode.title}"
+        fun register(url: String) {
+            playback.set(PlaybackContext.Item(
+                providerId = providerId, kind = "EPISODE", remoteId = episode.remoteId,
+                title = title, poster = null, streamUrl = url,
+                parentRemoteId = seriesRemoteId,
+            ))
+        }
+        if (!episode.streamUrl.startsWith("stalker://")) {
+            register(episode.streamUrl); onReady(episode.streamUrl, title); return
+        }
+        viewModelScope.launch {
+            val resolved = provider.resolveStalkerUrl(providerId, episode.streamUrl)
+            register(resolved); onReady(resolved, title)
+        }
     }
 
     private val _series = MutableStateFlow<SeriesEntity?>(null)
