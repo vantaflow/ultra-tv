@@ -70,6 +70,8 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 📐 **Menu position**: Sidebar (left) or Top bar — toggle in Settings
 - 🌍 **Locale-aware** UI (follows system language)
 - 🔄 **Boot autolaunch** — open Ultra TV automatically when the box finishes booting
+- 🪟 **Picture-in-picture** — pressing Home while a stream plays shrinks the player into a corner (Android 8+)
+- 🪜 **Onboarding wizard** on first launch — 3-step flow showing the device MAC and the two provider-adding paths
 - 🔢 Show / hide channel numbers, hide adult categories beyond PIN, resume playback toggle, auto-play next episode
 
 ### Backup & state
@@ -182,13 +184,13 @@ In active development / next iterations:
 
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
-- 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 - 📻 **Chromecast** (Media3-cast)
-- 🪟 **Picture-in-picture** when exiting the player
 - 🎚️ **Subtitles + audio track selection** UI (Media3 already supports them)
+- 🎮 **Channel-zap controls** in the player (D-pad up/down to switch channel on Live, EPG drawer on OK)
 - 📥 **Recording / DVR** via WorkManager + HLS download
 - 🧪 **Stalker VOD / series** endpoints (only Live supported today)
-- 🩹 **Onboarding wizard** for first launch (toast layer + dialog forms are done)
+- 📱 **Phone / tablet variant** (touch-first UI sharing the data layer)
+- 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 
 ## Credits
 

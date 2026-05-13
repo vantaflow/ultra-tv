@@ -84,6 +84,23 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
+     * When the user presses Home while a stream is playing, enter PiP so the
+     * stream keeps going in a corner. Falls back silently on devices that
+     * don't support it (some TV firmwares).
+     */
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
+        if (playback.current.value == null) return
+        runCatching {
+            val params = android.app.PictureInPictureParams.Builder()
+                .setAspectRatio(android.util.Rational(16, 9))
+                .build()
+            enterPictureInPictureMode(params)
+        }
+    }
+
+    /**
      * Best-effort startup tasks. Both are gated by user prefs.
      *
      *  1. Auto-sync providers if `autoSyncOnLaunch` is on AND the configured
@@ -182,6 +199,9 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 }
             }
         }
+        com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
+            onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+        )
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         }
     }

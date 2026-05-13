@@ -40,6 +40,9 @@ data class UserPrefs(
     /** Cloudflare Worker base URL used by "Sync from cloud". Empty until the
      *  user enters their own — never hard-coded in source. */
     val workerBaseUrl: String = "",
+    /** Suppresses the onboarding wizard. Flipped to `true` when the user
+     *  dismisses or completes it. */
+    val hasSeenOnboarding: Boolean = false,
 )
 
 @Singleton
@@ -58,6 +61,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val syncInterval = intPreferencesKey("sync_interval_hours")
         val lastSyncAt = longPreferencesKey("last_sync_at_ms")
         val workerBase = stringPreferencesKey("worker_base_url")
+        val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -75,6 +79,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             syncIntervalHours = p[Keys.syncInterval] ?: 0,
             lastSyncAtMs = p[Keys.lastSyncAt] ?: 0L,
             workerBaseUrl = p[Keys.workerBase] ?: "",
+            hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
         )
     }
 
@@ -91,6 +96,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setSyncInterval(hours: Int) = update { it[Keys.syncInterval] = hours }
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
+    suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }
