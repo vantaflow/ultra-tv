@@ -69,9 +69,22 @@ class PlayerViewModel @Inject constructor(
     private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
     private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
+    private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
 ) : ViewModel() {
 
     val current: StateFlow<PlaybackContext.Item?> = playback.current
+
+    /** Queues a Live channel recording for `maxMinutes`. HLS m3u8 → segment
+     *  recorder; non-HLS live → single HTTP body grab (won't capture more than
+     *  what the server already buffered). */
+    fun recordLive(maxMinutes: Int = 120) {
+        val c = playback.current.value ?: return
+        if (c.kind != "LIVE") return
+        viewModelScope.launch {
+            recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, maxMinutes)
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Recording queued (max ${maxMinutes} min)")
+        }
+    }
 
     /** Resolves the next/previous channel in the active zap queue (Live only)
      *  and updates [PlaybackContext] so the player swaps stream URL. Returns
@@ -341,6 +354,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             }
             if (!isLive) {
                 Button(onClick = { tracksOpen = true }) { Text("🎚 Tracks") }
+            }
+            if (isLive) {
+                Button(onClick = { vm.recordLive(120) }) { Text("⏺ Record (2h)") }
             }
             Button(onClick = { displayMenu = !displayMenu }) { Text("📐 Display") }
             // Cast picker — only shown if the Cast SDK initialised successfully

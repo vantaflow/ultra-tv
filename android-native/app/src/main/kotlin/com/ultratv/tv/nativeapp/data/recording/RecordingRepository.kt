@@ -26,9 +26,15 @@ class RecordingRepository @Inject constructor(
      * already-resolved URL (Stalker/Xtream have done their thing). File goes
      * under app-private external storage so no permission is required.
      */
-    suspend fun enqueue(providerId: Long, kind: String, remoteId: String, title: String, url: String): Long {
+    suspend fun enqueue(
+        providerId: Long, kind: String, remoteId: String, title: String, url: String,
+        maxDurationMinutes: Int = 120,   // applies to HLS Live recordings; ignored for VOD
+    ): Long {
         val safeTitle = title.replace(Regex("[^A-Za-z0-9_.\\- ]"), "_").take(80)
-        val ext = url.substringAfterLast('.', "mp4")
+        // For HLS we always write a .ts (concatenated raw segments); for everything
+        // else we trust the URL extension (mp4 fallback).
+        val ext = if (url.contains(".m3u8", ignoreCase = true)) "ts"
+        else url.substringAfterLast('.', "mp4")
             .substringBefore('?').lowercase()
             .takeIf { it.length in 2..5 } ?: "mp4"
         val dir = File(context.getExternalFilesDir(null), "recordings").apply { mkdirs() }
@@ -43,7 +49,12 @@ class RecordingRepository @Inject constructor(
         )
 
         val req = OneTimeWorkRequestBuilder<RecordingWorker>()
-            .setInputData(Data.Builder().putLong(RecordingWorker.KEY_RECORDING_ID, id).build())
+            .setInputData(
+                Data.Builder()
+                    .putLong(RecordingWorker.KEY_RECORDING_ID, id)
+                    .putLong(RecordingWorker.KEY_MAX_DURATION_MS, maxDurationMinutes * 60L * 1000)
+                    .build(),
+            )
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
         WorkManager.getInstance(context).enqueue(req)
