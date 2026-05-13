@@ -121,18 +121,20 @@ fun CategoriesScreen(vm: CategoriesViewModel = hiltViewModel()) {
     }
     val visibleCount = filtered.count { "${it.kind}:${it.providerId}:${it.remoteId}" !in hidden }
     val hiddenCount = filtered.size - visibleCount
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Manage categories", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.categoriesManage, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         Text(
-            "${cats.size} total · $visibleCount shown · $hiddenCount hidden${if (search.isNotBlank()) " (filter: \"$search\")" else ""}",
+            S.categoriesCountTemplate.format(cats.size, visibleCount, hiddenCount) +
+                if (search.isNotBlank()) " (filter: \"$search\")" else "",
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            KindButton("LIVE", "Live TV", kind, vm::setKind)
-            KindButton("MOVIE", "Movies", kind, vm::setKind)
-            KindButton("SERIES", "Series", kind, vm::setKind)
+            KindButton("LIVE", S.live, kind, vm::setKind)
+            KindButton("MOVIE", S.movies, kind, vm::setKind)
+            KindButton("SERIES", S.series, kind, vm::setKind)
         }
 
         // Search box
@@ -152,7 +154,7 @@ fun CategoriesScreen(vm: CategoriesViewModel = hiltViewModel()) {
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
                     if (search.isEmpty()) Text(
-                        "Filter category names…",
+                        S.categoriesFilterHint,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp,
                     )
@@ -163,18 +165,18 @@ fun CategoriesScreen(vm: CategoriesViewModel = hiltViewModel()) {
 
         // Bulk actions — apply to the currently filtered list.
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = { vm.hideAllShown(filtered) }) { Text("Hide all filtered") }
+            Button(onClick = { vm.hideAllShown(filtered) }) { Text(S.categoriesHideAll) }
             Button(onClick = { vm.showAllShown(filtered) },
-                colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) { Text("Show all filtered") }
-            Button(onClick = { vm.hideAdultIn(filtered) }) { Text("🔞 Hide adult") }
+                colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) { Text(S.categoriesShowAll) }
+            Button(onClick = { vm.hideAdultIn(filtered) }) { Text(S.categoriesHideAdult) }
             Button(onClick = { vm.resetAll() },
-                colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) { Text("Reset everything") }
+                colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) { Text(S.categoriesResetAll) }
         }
 
         if (filtered.isEmpty()) {
             Text(
-                if (cats.isEmpty()) "No categories yet — add a provider and re-sync."
-                else "No category matches \"$search\".",
+                if (cats.isEmpty()) S.categoriesEmpty
+                else S.searchNoMatches,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
@@ -203,7 +205,7 @@ fun CategoriesScreen(vm: CategoriesViewModel = hiltViewModel()) {
                             colors = if (isHidden) ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)
                             else ButtonDefaults.colors(),
                         ) {
-                            Text(if (isHidden) "Show" else "Hide")
+                            Text(if (isHidden) S.categoriesShow else S.categoriesHide)
                         }
                     }
                 }
