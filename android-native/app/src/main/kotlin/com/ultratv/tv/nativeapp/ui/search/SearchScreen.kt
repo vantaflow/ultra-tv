@@ -39,6 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
@@ -48,11 +49,15 @@ import javax.inject.Inject
 class SearchViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
+    private val history: com.ultratv.tv.nativeapp.data.prefs.SearchHistoryStore,
 ) : ViewModel() {
     private val _q = MutableStateFlow("")
     val query: StateFlow<String> = _q.asStateFlow()
     private val _results = MutableStateFlow(SearchResults())
     val results: StateFlow<SearchResults> = _results.asStateFlow()
+
+    val recent: StateFlow<List<String>> = history.recent
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private var job: Job? = null
 
@@ -60,11 +65,15 @@ class SearchViewModel @Inject constructor(
         _q.value = s
         job?.cancel()
         job = viewModelScope.launch {
-            delay(220)  // debounce
+            delay(220)
             val pid = provider.firstActive()?.id ?: return@launch
             _results.value = catalog.search(pid, s)
+            // Record only meaningful queries (3+ chars, debounced).
+            if (s.length >= 3) history.record(s)
         }
     }
+
+    fun clearHistory() { viewModelScope.launch { history.clear() } }
 }
 
 @Composable
@@ -76,6 +85,7 @@ fun SearchScreen(
 ) {
     val q by vm.query.collectAsState()
     val r by vm.results.collectAsState()
+    val recent by vm.recent.collectAsState()
 
     Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Search", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
@@ -99,6 +109,30 @@ fun SearchScreen(
                     inner()
                 },
             )
+        }
+        if (q.isBlank() && recent.isNotEmpty()) {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text("Recent:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                androidx.tv.material3.Button(
+                    onClick = { vm.clearHistory() },
+                    colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                ) { Text("Clear", fontSize = 12.sp) }
+            }
+            androidx.compose.foundation.layout.FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                recent.forEach { rec ->
+                    androidx.tv.material3.Button(
+                        onClick = { vm.setQuery(rec) },
+                        colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
+                    ) { Text(rec, fontSize = 12.sp) }
+                }
+            }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (r.channels.isNotEmpty()) {

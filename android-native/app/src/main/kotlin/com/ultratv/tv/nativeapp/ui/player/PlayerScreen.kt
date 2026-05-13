@@ -8,7 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -49,6 +51,9 @@ import com.ultratv.tv.nativeapp.data.repo.HistoryRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,22 +86,47 @@ class PlayerViewModel @Inject constructor(
         return resolved
     }
 
-    /** Now / next programme for the currently-playing live channel. Null for VOD. */
-    private val _epg = kotlinx.coroutines.flow.MutableStateFlow<Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>(null to null)
-    val epg: StateFlow<Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>> = _epg
+    /** Channel list + now/next for each channel in the active zap queue.
+     *  Used by the OK-triggered drawer overlay. */
+    data class DrawerEntry(
+        val channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity,
+        val now: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
+        val next: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
+        val isCurrent: Boolean,
+    )
 
-    fun refreshEpg() {
-        val c = playback.current.value ?: return
-        if (c.kind != "LIVE") { _epg.value = null to null; return }
-        viewModelScope.launch {
-            // Look up the local ChannelEntity by providerId + remoteId to get id.
-            // The DAO doesn't expose that lookup directly; we use the rangeForChannels
-            // path which needs id. Skip if we can't resolve.
+    val queue: StateFlow<List<DrawerEntry>> = zapQueue.state.map { s ->
+        if (s == null) emptyList()
+        else {
+            val ids = s.channels.map { it.id }
             val now = System.currentTimeMillis()
-            val list = epgDao.rangeForChannels(emptyList(), now, now)  // shortcut; real lookup TODO
-            _epg.value = list.firstOrNull { it.startMs <= now && it.endMs > now } to
-                list.firstOrNull { it.startMs > now }
+            val rows = epgDao.rangeForChannels(ids, now - 30 * 60_000, now + 4 * 60 * 60_000)
+            val byCh = rows.groupBy { it.channelId }
+            s.channels.mapIndexed { idx, c ->
+                val list = byCh[c.id].orEmpty()
+                DrawerEntry(
+                    channel = c,
+                    now = list.firstOrNull { it.startMs <= now && it.endMs > now },
+                    next = list.firstOrNull { it.startMs > now },
+                    isCurrent = idx == s.index,
+                )
+            }
         }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Zap directly to a specific channel (drawer pick). Same flow as zap(). */
+    suspend fun zapTo(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
+        val s = zapQueue.state.value ?: return null
+        val idx = s.channels.indexOfFirst { it.id == channel.id }
+        if (idx < 0) return null
+        // Reuse setter to update index.
+        zapQueue.set(s.channels, channel)
+        val resolved = provider.resolvePlayUrl(channel.id, channel.streamUrl)
+        playback.set(PlaybackContext.Item(
+            providerId = channel.providerId, kind = "LIVE", remoteId = channel.remoteId,
+            title = channel.name, poster = channel.logo, streamUrl = resolved,
+        ))
+        return resolved
     }
 
     // Resume position to seek to when the player opens. Loaded once via [prepareResume].
@@ -148,6 +178,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     var currentUrl by remember { mutableStateOf(url) }
     var currentTitle by remember { mutableStateOf(title) }
     var tracksOpen by remember { mutableStateOf(false) }
+    var drawerOpen by remember { mutableStateOf(false) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = true }
@@ -233,6 +264,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                         }
                         true
                     }
+                    Key.Enter, Key.DirectionCenter -> {
+                        drawerOpen = !drawerOpen
+                        true
+                    }
                     else -> false
                 }
             },
@@ -314,6 +349,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 }
             }) { Text("External player") }
         }
+        if (drawerOpen && isLive) {
+            LiveDrawer(
+                vm = vm,
+                onPick = { ch ->
+                    scope.launch {
+                        vm.zapTo(ch)?.let {
+                            currentUrl = it
+                            currentTitle = vm.current.value?.title ?: currentTitle
+                        }
+                        drawerOpen = false
+                    }
+                },
+                onDismiss = { drawerOpen = false },
+            )
+        }
         if (tracksOpen) {
             TracksDialog(player = player, onDismiss = { tracksOpen = false })
         }
@@ -335,6 +385,79 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 StatRow("Audio channels", stats.audioChannels)
                 StatRow("Buffered", stats.bufferedAhead)
                 StatRow("Dropped frames", stats.droppedFrames)
+            }
+        }
+    }
+}
+
+/** Side-drawer overlay showing the active live-channel list with now/next EPG.
+ *  Opens on OK while Live, closes on OK again or BACK. Picking a channel zaps. */
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun LiveDrawer(
+    vm: PlayerViewModel,
+    onPick: (com.ultratv.tv.nativeapp.data.db.ChannelEntity) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val entries by vm.queue.collectAsState()
+    androidx.activity.compose.BackHandler { onDismiss() }
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
+        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(380.dp)
+                .background(Color(0xEE0B1020))
+                .padding(12.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+        ) {
+            androidx.tv.material3.Text(
+                "📺 Channels",
+                color = androidx.tv.material3.MaterialTheme.colorScheme.primary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            androidx.compose.foundation.lazy.LazyColumn(
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+            ) {
+                items(items = entries, key = { entry -> entry.channel.id }) { e ->
+                    androidx.tv.material3.Card(
+                        onClick = { onPick(e.channel) },
+                        shape = androidx.tv.material3.CardDefaults.shape(RoundedCornerShape(8.dp)),
+                        colors = if (e.isCurrent)
+                            androidx.tv.material3.CardDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.primary)
+                        else androidx.tv.material3.CardDefaults.colors(),
+                    ) {
+                        Column(Modifier.padding(10.dp)) {
+                            androidx.tv.material3.Text(
+                                (if (e.isCurrent) "▶ " else "") + e.channel.name,
+                                color = if (e.isCurrent) androidx.tv.material3.MaterialTheme.colorScheme.onPrimary
+                                else androidx.tv.material3.MaterialTheme.colorScheme.onBackground,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                            )
+                            if (e.now != null) {
+                                androidx.tv.material3.Text(
+                                    e.now.title,
+                                    color = if (e.isCurrent) androidx.tv.material3.MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
+                                    else androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                            if (e.next != null) {
+                                androidx.tv.material3.Text(
+                                    "next: " + e.next.title,
+                                    color = if (e.isCurrent) androidx.tv.material3.MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.7f)
+                                    else androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }

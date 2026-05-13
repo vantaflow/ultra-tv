@@ -46,7 +46,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 ### Movies / Series
 - 🎞️ **Netflix-style rails by category** (top 25 per rail), hero banner with the featured title
 - 🟦 Focus scale animation (1.0 → 1.08, 160 ms tween)
-- 🔍 Cross-content **search** (debounced 220 ms): channels + movies + series
+- 🔍 Cross-content **search** (debounced 220 ms): channels + movies + series, with **last-10 recent queries** as one-tap chips
 - ★ **Favorites** (per kind, browsable from a dedicated screen)
 - 📚 **Series episodes** loaded on demand via `get_series_info`, played through Media3
 
@@ -54,6 +54,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - ▶ **Media3 / ExoPlayer** — HLS, DASH, MPEG-TS, MP4 with hardware codec support
 - 🎮 D-pad: BACK = exit, plus **Live**: ▲/▼ zap channels in the current category; **VOD**: ◀/▶ seek
 - 🎚 **Subtitle + audio track selector** (VOD only) — reads Tracks from Media3, applies a TrackSelectionOverride
+- 📋 **EPG drawer overlay** (Live only) — press OK / center to slide in a right-side channel list with now/next; D-pad picks a channel to zap to
 - ⏸️ **Continue watching** (position recorded every 10 s + on dispose)
 - 🚀 **Auto-play last watched on launch** option
 - 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
@@ -186,7 +187,6 @@ In active development / next iterations:
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 📻 **Chromecast** (Media3-cast)
-- 🎮 **EPG drawer overlay** in the live player on OK (channel list + now/next, scope=current category)
 - 📥 **Recording / DVR** via WorkManager + HLS download
 - 🧪 **Stalker VOD / series** endpoints (only Live supported today)
 - 📱 **Phone / tablet variant** (touch-first UI sharing the data layer)
