@@ -60,7 +60,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 ### Discovery / Home
 - 🏠 Dynamic Home: **Continue watching**, **Recently watched**, **Movies**, **Series**, **Featured channels** rails
 - 🆕 **First-time MAC card**: shows your device MAC + dashboard steps when no provider is configured
-- 🗓 **TV Guide** with per-channel short-EPG (Xtream `get_short_epg`)
+- 🗓 **TV Guide grid** (Tivimate-style): 12 h × N channels timeline with "now" indicator, refreshed from the provider's full `xmltv.php` feed (streaming pull-parser handles 50 MB+ feeds)
 - ▦ **Multi-View**: up to 4 channels simultaneously in a 2×2 grid
 
 ### Personalization
@@ -173,7 +173,7 @@ android-native/
 
 In active development / next iterations:
 
-- 📊 **Full xmltv EPG** (7-day grid view, Tivimate-style)
+- 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 📑 **Paging** for huge catalogs (`androidx.paging`) — currently chunked-load works fine to ~50k items
 - 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 - 📻 **Chromecast** (Media3-cast)

@@ -176,4 +176,10 @@ interface EpgDao {
 
     @Query("DELETE FROM epg WHERE channelId = :cid")
     suspend fun deleteForChannel(cid: Long)
+
+    @Query("DELETE FROM epg WHERE channelId IN (SELECT id FROM channel WHERE providerId = :pid)")
+    suspend fun deleteForProvider(pid: Long)
+
+    @Query("SELECT * FROM epg WHERE channelId IN (:channelIds) AND endMs >= :nowMs AND startMs <= :windowEndMs ORDER BY startMs")
+    suspend fun rangeForChannels(channelIds: List<Long>, nowMs: Long, windowEndMs: Long): List<EpgEntity>
 }

@@ -57,6 +57,10 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
             logo = o["stream_icon"]?.str(),
             categoryId = o["category_id"]?.str(),
             streamUrl = url,
+            // Xtream exposes the xmltv ID either as epg_channel_id or, on some
+            // panels, the same value embedded in tv_archive_duration JSON. We
+            // take the canonical field and fall back to None.
+            epgChannelId = o["epg_channel_id"]?.str()?.takeIf { it.isNotBlank() },
         )
     }
 

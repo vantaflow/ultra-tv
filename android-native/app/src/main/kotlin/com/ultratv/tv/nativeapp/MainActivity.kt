@@ -39,7 +39,7 @@ import com.ultratv.tv.nativeapp.ui.categories.CategoriesScreen
 import com.ultratv.tv.nativeapp.ui.components.SidebarNav
 import com.ultratv.tv.nativeapp.ui.components.TopBarNav
 import com.ultratv.tv.nativeapp.ui.favorites.FavoritesScreen
-import com.ultratv.tv.nativeapp.ui.guide.GuideScreen
+import com.ultratv.tv.nativeapp.ui.guide.GuideGridScreen
 import com.ultratv.tv.nativeapp.ui.home.HomeScreen
 import com.ultratv.tv.nativeapp.ui.live.LiveScreen
 import com.ultratv.tv.nativeapp.ui.movies.MovieDetailScreen
@@ -239,7 +239,11 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             )
         }
         composable(Routes.MULTIVIEW) { MultiViewScreen() }
-        composable(Routes.GUIDE) { GuideScreen() }
+        composable(Routes.GUIDE) {
+            GuideGridScreen(
+                onPlayChannel = { ch -> nav.navigate(Routes.player(ch.streamUrl, ch.name)) },
+            )
+        }
         composable("categories") { CategoriesScreen() }
         composable(Routes.FAVORITES) {
             FavoritesScreen(

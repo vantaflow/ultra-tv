@@ -31,6 +31,9 @@ data class ChannelEntity(
     val logo: String?,
     val categoryId: String?,
     val streamUrl: String,
+    /** XMLTV channel id (`tvg-id` for M3U, `epg_channel_id` for Xtream). Used
+     *  to match programmes loaded from a full xmltv feed. */
+    val epgChannelId: String? = null,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])

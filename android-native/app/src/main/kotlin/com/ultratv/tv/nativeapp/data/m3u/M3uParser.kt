@@ -61,13 +61,15 @@ class M3uParser @Inject constructor(private val ok: OkHttpClient) {
                             remoteId = "g:$group", name = group,
                         )
                     }
+                    val tvgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() }
                     channels += ChannelEntity(
                         providerId = providerId,
-                        remoteId = (attrs["tvg-id"]?.takeIf { it.isNotBlank() } ?: "m3u-${seq++}"),
+                        remoteId = tvgId ?: "m3u-${seq++}",
                         name = displayName,
                         logo = logo,
                         categoryId = group?.let { "g:$it" },
                         streamUrl = url,
+                        epgChannelId = tvgId,
                     )
                     i = j + 1
                     continue

@@ -11,7 +11,9 @@ import com.ultratv.tv.nativeapp.data.db.SeriesDao
 import com.ultratv.tv.nativeapp.data.m3u.M3uParser
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
 import com.ultratv.tv.nativeapp.data.stalker.StalkerClient
+import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,6 +31,8 @@ class ProviderRepository @Inject constructor(
     private val stalker: StalkerClient,
     private val parental: ParentalStore,
     private val syncStatus: SyncStatusBus,
+    private val xmltv: XmltvParser,
+    private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -158,6 +162,46 @@ class ProviderRepository @Inject constructor(
     }
 
     // (Xtream path uses insertChunked(chans) above — see syncAll.)
+
+    /**
+     * Pulls the full xmltv feed for a provider and overwrites EPG for all its
+     * channels. Channels are matched by [ChannelEntity.epgChannelId] (`tvg-id`
+     * for M3U, `epg_channel_id` for Xtream) — channels without that field are
+     * silently skipped (the older per-channel `get_short_epg` path still works
+     * for those).
+     */
+    suspend fun syncXmltv(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+        val p = providerDao.byId(providerId) ?: return 0
+        // Local M3U can't fetch xmltv. Stalker has its own EPG path (TODO).
+        if (p.kind == "M3U_LOCAL" || p.kind == "STALKER") return 0
+        fun step(s: String, pct: Int?) {
+            onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
+        }
+        try {
+            step("Fetching xmltv…", 10)
+            // Build (xmltv channel id → local channel id) map for matching.
+            val all = channelDao.observeForProvider(providerId).first()
+            val map = all
+                .mapNotNull { ch -> ch.epgChannelId?.takeIf { it.isNotBlank() }?.let { it to ch.id } }
+                .toMap()
+            if (map.isEmpty()) {
+                step("No xmltv channel IDs available for this provider", 100)
+                return 0
+            }
+            step("Parsing xmltv (matching ${map.size} channels)…", 30)
+            val programmes = xmltv.fetchAndParse(p, map)
+            step("Saving ${programmes.size} programmes…", 75)
+            epgDao.deleteForProvider(p.id)
+            programmes.chunked(500).forEach { epgDao.upsertAll(it) }
+            step("Done — ${programmes.size} programmes", 100)
+            return programmes.size
+        } catch (t: Throwable) {
+            syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed: ${t.message}", null))
+            return 0
+        } finally {
+            syncStatus.clear()
+        }
+    }
 
     /**
      * Resolves a stored stream URL into a playable URL. Only does work for
