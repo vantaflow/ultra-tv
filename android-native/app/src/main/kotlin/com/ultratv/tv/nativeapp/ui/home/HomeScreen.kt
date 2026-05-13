@@ -52,6 +52,7 @@ fun HomeScreen(
     val channels by vm.featuredChannels.collectAsState()
 
     var actionsFor by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?>(null) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(
         Modifier
@@ -59,7 +60,7 @@ fun HomeScreen(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Welcome", fontSize = 36.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.homeWelcome, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         // ---- Onboarding card: shown prominently when no provider is configured ----
         if (providers.isEmpty()) {
@@ -79,7 +80,7 @@ fun HomeScreen(
         // ---- Continue watching ----
         if (continueW.isNotEmpty()) {
             ContentRail(
-                title = "Continue watching",
+                title = S.homeContinueWatching,
                 items = continueW,
                 itemKey = { "h-${it.kind}-${it.remoteId}" },
             ) { h ->
@@ -98,7 +99,7 @@ fun HomeScreen(
 
         if (recent.isNotEmpty() && recent.size > continueW.size) {
             ContentRail(
-                title = "Recently watched",
+                title = S.homeRecentlyWatched,
                 items = recent,
                 itemKey = { "r-${it.kind}-${it.remoteId}" },
             ) { h ->
@@ -116,7 +117,7 @@ fun HomeScreen(
         // ---- Catalog rails ----
         if (movies.isNotEmpty()) {
             ContentRail(
-                title = "Movies",
+                title = S.homeFeaturedMovies,
                 items = movies,
                 itemKey = { it.id },
             ) { m -> PosterCard(title = m.name, poster = m.poster, subtitle = m.year?.toString()) { onOpenMovie(m.id) } }
@@ -139,7 +140,7 @@ fun HomeScreen(
 
         if (channels.isNotEmpty()) {
             ContentRail(
-                title = "Featured channels",
+                title = S.homeFeaturedChannels,
                 items = channels,
                 itemKey = { it.id },
                 cardWidth = 150.dp,
