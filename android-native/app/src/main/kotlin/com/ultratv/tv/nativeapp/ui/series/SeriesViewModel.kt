@@ -31,7 +31,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SeriesListViewModel @Inject constructor(
-    providerRepo: ProviderRepository,
+    private val providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
@@ -39,6 +39,19 @@ class SeriesListViewModel @Inject constructor(
 
     private val _sel = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _sel.asStateFlow()
+
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    fun refresh() {
+        viewModelScope.launch {
+            val pid = providers.value.firstOrNull { it.active }?.id
+                ?: providers.value.firstOrNull()?.id
+                ?: return@launch
+            _refreshing.value = true
+            try { providerRepo.syncAll(pid) } finally { _refreshing.value = false }
+        }
+    }
 
     private val providers = providerRepo.observeProviders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

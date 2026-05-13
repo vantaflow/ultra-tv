@@ -1,8 +1,12 @@
 package com.ultratv.tv.nativeapp.ui.player
 
+import android.content.Context
 import android.content.Intent
+import android.media.AudioManager
 import android.net.Uri
 import android.view.ViewGroup
+import android.view.WindowManager
+import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -29,6 +33,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -317,6 +325,79 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             update = { v -> v.resizeMode = aspectMode.resizeMode },
             modifier = Modifier.fillMaxSize(),
         )
+
+        // Vertical-drag gestures for touch users: right strip = volume,
+        // left strip = brightness. The strips are narrow (120 dp) so the
+        // central PlayerView still receives tap-to-toggle-controls. On
+        // TV the D-pad never produces drag events, so this is inert there.
+        val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+        val activity = remember(context) { context as? Activity }
+        val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
+        var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
+        var brightness by remember {
+            mutableFloatStateOf(
+                activity?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
+            )
+        }
+        var gestureLabel by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(gestureLabel) {
+            if (gestureLabel != null) { delay(900); gestureLabel = null }
+        }
+        // Right strip: volume
+        var volAccum by remember { mutableFloatStateOf(0f) }
+        Box(
+            Modifier.align(Alignment.CenterEnd).width(120.dp).fillMaxHeight()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { volAccum = 0f },
+                    ) { _, dragAmount ->
+                        volAccum += -dragAmount
+                        val step = (volAccum / 60f).toInt()
+                        if (step != 0) {
+                            volume = (volume + step).coerceIn(0, maxVol)
+                            volAccum -= step * 60f
+                            audio.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
+                            gestureLabel = "🔊 ${(volume * 100 / maxVol)}%"
+                        }
+                    }
+                },
+        )
+        // Left strip: brightness
+        var brAccum by remember { mutableFloatStateOf(0f) }
+        Box(
+            Modifier.align(Alignment.CenterStart).width(120.dp).fillMaxHeight()
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragStart = { brAccum = 0f },
+                    ) { _, dragAmount ->
+                        brAccum += -dragAmount
+                        val deltaPct = (brAccum / 8f).toInt()
+                        if (deltaPct != 0) {
+                            brightness = (brightness + deltaPct / 100f).coerceIn(0.05f, 1f)
+                            brAccum -= deltaPct * 8f
+                            activity?.window?.let { w ->
+                                val attrs = w.attributes as WindowManager.LayoutParams
+                                attrs.screenBrightness = brightness
+                                w.attributes = attrs
+                            }
+                            gestureLabel = "☀ ${(brightness * 100).toInt()}%"
+                        }
+                    }
+                },
+        )
+        // Transient indicator
+        gestureLabel?.let { lbl ->
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xCC000000))
+                    .padding(horizontal = 20.dp, vertical = 14.dp),
+            ) {
+                Text(lbl, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
         Row(Modifier.align(Alignment.TopStart).padding(24.dp)) {
             Column {
                 Text(currentTitle, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)

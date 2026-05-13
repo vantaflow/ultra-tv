@@ -13,6 +13,8 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -27,7 +29,7 @@ import com.ultratv.tv.nativeapp.ui.common.ContentRail
 import com.ultratv.tv.nativeapp.ui.common.HeroBanner
 import com.ultratv.tv.nativeapp.ui.common.PosterCard
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) {
     val sel by vm.selectedCategory.collectAsState()
@@ -35,6 +37,7 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
     val rails by vm.rails.collectAsState()
     val featured by vm.featured.collectAsState()
     val flatMovies by vm.movies.collectAsState()
+    val refreshing by vm.refreshing.collectAsState()
 
     // When no category is filtered, show the Netflix-style rails view.
     // When a single category is picked from chips, fall back to a flat grid
@@ -42,6 +45,11 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
     val railsMode = sel == null
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
+    PullToRefreshBox(
+        isRefreshing = refreshing,
+        onRefresh = { vm.refresh() },
+        modifier = Modifier.fillMaxSize(),
+    ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -98,5 +106,6 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
                 }
             }
         }
+    }
     }
 }

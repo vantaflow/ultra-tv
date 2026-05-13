@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -31,11 +32,25 @@ data class MovieRail(val category: CategoryEntity?, val items: List<MovieEntity>
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MoviesViewModel @Inject constructor(
-    providerRepo: ProviderRepository,
+    private val providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
     private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
 ) : ViewModel() {
+
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    /** Re-sync the active provider's catalog. Wired to pull-to-refresh. */
+    fun refresh() {
+        viewModelScope.launch {
+            val pid = providers.value.firstOrNull { it.active }?.id
+                ?: providers.value.firstOrNull()?.id
+                ?: return@launch
+            _refreshing.value = true
+            try { providerRepo.syncAll(pid) } finally { _refreshing.value = false }
+        }
+    }
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
