@@ -410,7 +410,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     .padding(10.dp),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
             ) {
-                Text("Aspect", color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(S.playerAspect, color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 AspectMode.entries.forEach { mode ->
                     Button(
                         onClick = { aspectMode = mode; displayMenu = false },
@@ -419,7 +419,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     ) { Text(mode.label, fontSize = 12.sp) }
                 }
                 if (!isLive) {
-                    Text("Speed", color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+                    Text(S.playerSpeed, color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
                     listOf(0.5f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { sp ->
                         Button(
                             onClick = { playbackSpeed = sp; displayMenu = false },
@@ -551,6 +551,7 @@ private fun LiveDrawer(
 @Composable
 private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
     val tracks = player.currentTracks
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     androidx.compose.foundation.layout.Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
@@ -564,14 +565,14 @@ private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
         ) {
             androidx.tv.material3.Text(
-                "🎚 Tracks",
+                "🎚 " + S.playerTracks,
                 color = androidx.tv.material3.MaterialTheme.colorScheme.onBackground,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
             )
             // Audio tracks
             val audioGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
-            androidx.tv.material3.Text("Audio (${audioGroups.sumOf { it.length }})", color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            androidx.tv.material3.Text(S.playerAudioTemplate.format(audioGroups.sumOf { it.length }), color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             audioGroups.forEach { group ->
                 for (i in 0 until group.length) {
                     val fmt = group.getTrackFormat(i)
@@ -595,7 +596,7 @@ private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
             }
             // Subtitle tracks
             val subGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_TEXT }
-            androidx.tv.material3.Text("Subtitles (${subGroups.sumOf { it.length }})", color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            androidx.tv.material3.Text(S.playerSubtitlesTemplate.format(subGroups.sumOf { it.length }), color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             androidx.tv.material3.Button(
                 onClick = {
                     player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
@@ -604,7 +605,7 @@ private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
                     onDismiss()
                 },
                 colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-            ) { androidx.tv.material3.Text("Off", fontSize = 13.sp) }
+            ) { androidx.tv.material3.Text(S.playerOff, fontSize = 13.sp) }
             subGroups.forEach { group ->
                 for (i in 0 until group.length) {
                     val fmt = group.getTrackFormat(i)
@@ -625,7 +626,7 @@ private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
             androidx.tv.material3.Button(
                 onClick = onDismiss,
                 colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.background),
-            ) { androidx.tv.material3.Text("Close") }
+            ) { androidx.tv.material3.Text(S.close) }
         }
     }
 }
