@@ -54,14 +54,12 @@ fun RecordingsScreen(
 ) {
     val list by vm.items.collectAsState()
     val ctx = LocalContext.current
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Recordings", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.recordingsTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         if (list.isEmpty()) {
-            Text(
-                "No recordings yet. Open a movie or episode and press the ⏺ Record button to queue a download.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text(S.recordingsEmpty, color = MaterialTheme.colorScheme.onSurfaceVariant)
             return@Column
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -75,11 +73,11 @@ fun RecordingsScreen(
                         Text(r.title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
                         val pct = if (r.totalBytes > 0) (r.downloadedBytes * 100 / r.totalBytes).toInt() else 0
                         val sub = when (r.status) {
-                            "running" -> "Downloading… $pct% (${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)})"
-                            "done" -> "Saved · ${formatBytes(r.totalBytes)}"
-                            "failed" -> "Failed — ${r.errorMessage ?: "unknown error"}"
-                            "cancelled" -> "Cancelled"
-                            else -> "Queued"
+                            "running" -> "${S.recordingStatusRunning} $pct% (${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)})"
+                            "done" -> "${S.recordingStatusDone} · ${formatBytes(r.totalBytes)}"
+                            "failed" -> "${S.recordingStatusFailed} — ${r.errorMessage ?: "unknown error"}"
+                            "cancelled" -> S.recordingStatusCancelled
+                            else -> S.recordingStatusQueued
                         }
                         Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }

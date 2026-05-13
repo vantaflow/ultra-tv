@@ -40,12 +40,13 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
     // When a single category is picked from chips, fall back to a flat grid
     // (faster scanning when the user already narrowed scope).
     val railsMode = sel == null
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Movies", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.moviesTitle, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         if (railsMode && featured != null) {
             HeroBanner(
@@ -65,7 +66,7 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
 
         if (railsMode) {
             if (rails.isEmpty()) {
-                Text("No movies — add a provider in Settings and re-sync.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(S.noMovies, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             rails.forEach { rail ->
                 ContentRail(

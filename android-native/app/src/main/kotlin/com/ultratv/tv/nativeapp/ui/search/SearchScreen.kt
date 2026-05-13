@@ -86,6 +86,7 @@ fun SearchScreen(
     val q by vm.query.collectAsState()
     val r by vm.results.collectAsState()
     val recent by vm.recent.collectAsState()
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Search", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
@@ -105,7 +106,7 @@ fun SearchScreen(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
-                    if (q.isEmpty()) Text("Type to search channels, movies, series…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
+                    if (q.isEmpty()) Text(S.searchPlaceholder, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
                     inner()
                 },
             )
@@ -115,11 +116,11 @@ fun SearchScreen(
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text("Recent:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                Text(S.searchRecent, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                 androidx.tv.material3.Button(
                     onClick = { vm.clearHistory() },
                     colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
-                ) { Text("Clear", fontSize = 12.sp) }
+                ) { Text(S.searchClear, fontSize = 12.sp) }
             }
             androidx.compose.foundation.layout.FlowRow(
                 modifier = Modifier.fillMaxWidth(),
@@ -148,7 +149,7 @@ fun SearchScreen(
                 items(r.series, key = { "s-${it.id}" }) { SeriesRow(it) { onOpenSeries(it.id) } }
             }
             if (q.isNotBlank() && r.channels.isEmpty() && r.movies.isEmpty() && r.series.isEmpty()) {
-                item { Text("No matches.", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                item { Text(S.searchNoMatches, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
     }

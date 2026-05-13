@@ -37,12 +37,13 @@ fun SeriesScreen(onOpen: (Long) -> Unit, vm: SeriesListViewModel = hiltViewModel
     val flatItems by vm.items.collectAsState()
 
     val railsMode = sel == null
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text("Series", fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.seriesTitle, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         if (railsMode && featured != null) {
             HeroBanner(
@@ -61,7 +62,7 @@ fun SeriesScreen(onOpen: (Long) -> Unit, vm: SeriesListViewModel = hiltViewModel
 
         if (railsMode) {
             if (rails.isEmpty()) {
-                Text("No series — add a provider in Settings and re-sync.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(S.noSeries, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             rails.forEach { rail ->
                 ContentRail(

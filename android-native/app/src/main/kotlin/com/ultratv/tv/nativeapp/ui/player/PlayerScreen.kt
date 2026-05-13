@@ -195,6 +195,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     var displayMenu by remember { mutableStateOf(false) }
     var aspectMode by remember { mutableStateOf(AspectMode.Fit) }
     var playbackSpeed by remember { mutableStateOf(1.0f) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = true }
@@ -353,12 +354,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 }
             }
             if (!isLive) {
-                Button(onClick = { tracksOpen = true }) { Text("🎚 Tracks") }
+                Button(onClick = { tracksOpen = true }) { Text("🎚 ${S.playerTracks}") }
             }
             if (isLive) {
-                Button(onClick = { vm.recordLive(120) }) { Text("⏺ Record (2h)") }
+                Button(onClick = { vm.recordLive(120) }) { Text("⏺ ${S.playerRecord} (2h)") }
             }
-            Button(onClick = { displayMenu = !displayMenu }) { Text("📐 Display") }
+            Button(onClick = { displayMenu = !displayMenu }) { Text("📐 ${S.playerDisplay}") }
             // Cast picker — only shown if the Cast SDK initialised successfully
             // (Play Services present). We use the framework's MediaRouteButton
             // wrapped in an AndroidView so the system Cast UI takes over.
@@ -381,7 +382,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 )
             }
             Button(onClick = { statsOpen = !statsOpen }) {
-                Text(if (statsOpen) "📊 Hide stats" else "📊 Stats")
+                Text("📊 " + S.playerStats)
             }
             Button(onClick = {
                 runCatching {
@@ -392,7 +393,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     }
                     context.startActivity(Intent.createChooser(intent, "Open with…"))
                 }
-            }) { Text("External player") }
+            }) { Text(S.playerExternal) }
         }
         if (displayMenu) {
             Column(
