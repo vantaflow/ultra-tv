@@ -52,7 +52,8 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 
 ### Player
 - ▶ **Media3 / ExoPlayer** — HLS, DASH, MPEG-TS, MP4 with hardware codec support
-- 🎮 D-pad: directional keys = controller, OK = toggle play/pause, BACK = exit
+- 🎮 D-pad: BACK = exit, plus **Live**: ▲/▼ zap channels in the current category; **VOD**: ◀/▶ seek
+- 🎚 **Subtitle + audio track selector** (VOD only) — reads Tracks from Media3, applies a TrackSelectionOverride
 - ⏸️ **Continue watching** (position recorded every 10 s + on dispose)
 - 🚀 **Auto-play last watched on launch** option
 - 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
@@ -185,8 +186,7 @@ In active development / next iterations:
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 📻 **Chromecast** (Media3-cast)
-- 🎚️ **Subtitles + audio track selection** UI (Media3 already supports them)
-- 🎮 **Channel-zap controls** in the player (D-pad up/down to switch channel on Live, EPG drawer on OK)
+- 🎮 **EPG drawer overlay** in the live player on OK (channel list + now/next, scope=current category)
 - 📥 **Recording / DVR** via WorkManager + HLS download
 - 🧪 **Stalker VOD / series** endpoints (only Live supported today)
 - 📱 **Phone / tablet variant** (touch-first UI sharing the data layer)

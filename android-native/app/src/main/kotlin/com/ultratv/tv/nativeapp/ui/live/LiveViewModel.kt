@@ -39,6 +39,7 @@ class LiveViewModel @Inject constructor(
     private val lockedStore: LockedChannelsStore,
     private val playback: PlaybackContext,
     private val epgDaoArg: com.ultratv.tv.nativeapp.data.db.EpgDao,
+    private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
 ) : ViewModel() {
 
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
@@ -138,6 +139,9 @@ class LiveViewModel @Inject constructor(
     fun selectCategory(remoteId: String) { _selectedCategory.value = remoteId }
 
     fun resolveAndPlay(channel: ChannelEntity, onReady: (url: String, title: String) -> Unit) {
+        // Seed the zap queue with the list the user was browsing so the
+        // player can D-pad UP/DOWN through it without going back.
+        zapQueue.set(channels.value, channel)
         fun register(url: String) {
             playback.set(PlaybackContext.Item(
                 providerId = channel.providerId,

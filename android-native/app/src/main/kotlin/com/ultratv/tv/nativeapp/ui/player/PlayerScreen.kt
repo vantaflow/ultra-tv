@@ -11,6 +11,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,9 +61,43 @@ import javax.inject.Inject
 class PlayerViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val history: HistoryRepository,
+    private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
+    private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
+    private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
 ) : ViewModel() {
 
     val current: StateFlow<PlaybackContext.Item?> = playback.current
+
+    /** Resolves the next/previous channel in the active zap queue (Live only)
+     *  and updates [PlaybackContext] so the player swaps stream URL. Returns
+     *  the new URL or null when there's nothing queued. */
+    suspend fun zap(forward: Boolean): String? {
+        val target = (if (forward) zapQueue.next() else zapQueue.previous()) ?: return null
+        val resolved = provider.resolvePlayUrl(target.id, target.streamUrl)
+        playback.set(PlaybackContext.Item(
+            providerId = target.providerId, kind = "LIVE", remoteId = target.remoteId,
+            title = target.name, poster = target.logo, streamUrl = resolved,
+        ))
+        return resolved
+    }
+
+    /** Now / next programme for the currently-playing live channel. Null for VOD. */
+    private val _epg = kotlinx.coroutines.flow.MutableStateFlow<Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>(null to null)
+    val epg: StateFlow<Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>> = _epg
+
+    fun refreshEpg() {
+        val c = playback.current.value ?: return
+        if (c.kind != "LIVE") { _epg.value = null to null; return }
+        viewModelScope.launch {
+            // Look up the local ChannelEntity by providerId + remoteId to get id.
+            // The DAO doesn't expose that lookup directly; we use the rangeForChannels
+            // path which needs id. Skip if we can't resolve.
+            val now = System.currentTimeMillis()
+            val list = epgDao.rangeForChannels(emptyList(), now, now)  // shortcut; real lookup TODO
+            _epg.value = list.firstOrNull { it.startMs <= now && it.endMs > now } to
+                list.firstOrNull { it.startMs > now }
+        }
+    }
 
     // Resume position to seek to when the player opens. Loaded once via [prepareResume].
     private val _resumeMs = MutableStateFlow(0L)
@@ -96,7 +141,13 @@ class PlayerViewModel @Inject constructor(
 @Composable
 fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     BackHandler { onBack() }
+    val playbackItem by vm.current.collectAsState()
+    val isLive = playbackItem?.kind == "LIVE"
+    var currentUrl by remember { mutableStateOf(url) }
+    var currentTitle by remember { mutableStateOf(title) }
+    var tracksOpen by remember { mutableStateOf(false) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = true }
@@ -124,9 +175,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         com.ultratv.tv.nativeapp.ui.common.Toaster.show("Sleep timer reached — playback paused")
         onBack()
     }
-    LaunchedEffect(url) {
-        if (url.isNotBlank()) {
-            player.setMediaItem(MediaItem.fromUri(url))
+    LaunchedEffect(currentUrl) {
+        if (currentUrl.isNotBlank()) {
+            player.setMediaItem(MediaItem.fromUri(currentUrl))
             player.prepare()
             player.play()
         }
@@ -151,17 +202,51 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    // D-pad UP/DOWN = channel zap on Live. The PlayerView eats LEFT/RIGHT for
+    // seek when useController = true, which is what we want for VOD.
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { ev ->
+                if (!isLive || ev.type != KeyEventType.KeyDown) return@onKeyEvent false
+                when (ev.key) {
+                    Key.DirectionUp -> {
+                        scope.launch {
+                            vm.zap(forward = false)?.let {
+                                currentUrl = it
+                                currentTitle = vm.current.value?.title ?: currentTitle
+                            }
+                        }
+                        true
+                    }
+                    Key.DirectionDown -> {
+                        scope.launch {
+                            vm.zap(forward = true)?.let {
+                                currentUrl = it
+                                currentTitle = vm.current.value?.title ?: currentTitle
+                            }
+                        }
+                        true
+                    }
+                    else -> false
+                }
+            },
+    ) {
         AndroidView(
             factory = { ctx ->
                 PlayerView(ctx).apply {
                     this.player = player
                     useController = true
-                    setShowFastForwardButton(true)
-                    setShowRewindButton(true)
+                    setShowFastForwardButton(!isLive)
+                    setShowRewindButton(!isLive)
                     setShowNextButton(false)
                     setShowPreviousButton(false)
-                    controllerShowTimeoutMs = 3000
+                    controllerShowTimeoutMs = if (isLive) 1500 else 3000
                     layoutParams = ViewGroup.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT,
@@ -172,8 +257,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         )
         Row(Modifier.align(Alignment.TopStart).padding(24.dp)) {
             Column {
-                Text(title, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                Text(url.substringBefore('?').takeLast(60), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
+                Text(currentTitle, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                if (isLive) {
+                    Text(
+                        "▲ ▼ to zap channels",
+                        color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp,
+                    )
+                }
+                Text(currentUrl.substringBefore('?').takeLast(60), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
         }
         Row(
@@ -206,6 +297,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     }
                 }
             }
+            if (!isLive) {
+                Button(onClick = { tracksOpen = true }) { Text("🎚 Tracks") }
+            }
             Button(onClick = { statsOpen = !statsOpen }) {
                 Text(if (statsOpen) "📊 Hide stats" else "📊 Stats")
             }
@@ -219,6 +313,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     context.startActivity(Intent.createChooser(intent, "Open with…"))
                 }
             }) { Text("External player") }
+        }
+        if (tracksOpen) {
+            TracksDialog(player = player, onDismiss = { tracksOpen = false })
         }
         if (statsOpen) {
             Column(
@@ -239,6 +336,92 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 StatRow("Buffered", stats.bufferedAhead)
                 StatRow("Dropped frames", stats.droppedFrames)
             }
+        }
+    }
+}
+
+/** Subtitle + audio track picker for VOD playback. Reads the current Tracks
+ *  object from the player and writes back a TrackSelectionOverride when the
+ *  user picks a track. */
+@OptIn(androidx.media3.common.util.UnstableApi::class, androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
+    val tracks = player.currentTracks
+    androidx.compose.foundation.layout.Box(
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(min = 360.dp, max = 560.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(androidx.tv.material3.MaterialTheme.colorScheme.surface)
+                .padding(20.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
+        ) {
+            androidx.tv.material3.Text(
+                "🎚 Tracks",
+                color = androidx.tv.material3.MaterialTheme.colorScheme.onBackground,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            // Audio tracks
+            val audioGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
+            androidx.tv.material3.Text("Audio (${audioGroups.sumOf { it.length }})", color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            audioGroups.forEach { group ->
+                for (i in 0 until group.length) {
+                    val fmt = group.getTrackFormat(i)
+                    val label = listOfNotNull(
+                        fmt.label,
+                        fmt.language,
+                        fmt.sampleMimeType?.removePrefix("audio/"),
+                        fmt.channelCount.takeIf { it > 0 }?.let { "${it}ch" },
+                    ).joinToString(" · ").ifBlank { "Track ${i + 1}" }
+                    androidx.tv.material3.Button(
+                        onClick = {
+                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                                .setOverrideForType(androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i))
+                                .build()
+                            onDismiss()
+                        },
+                        colors = if (group.isTrackSelected(i)) androidx.tv.material3.ButtonDefaults.colors()
+                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
+                    ) { androidx.tv.material3.Text(label, fontSize = 13.sp) }
+                }
+            }
+            // Subtitle tracks
+            val subGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_TEXT }
+            androidx.tv.material3.Text("Subtitles (${subGroups.sumOf { it.length }})", color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            androidx.tv.material3.Button(
+                onClick = {
+                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                        .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, true)
+                        .build()
+                    onDismiss()
+                },
+                colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
+            ) { androidx.tv.material3.Text("Off", fontSize = 13.sp) }
+            subGroups.forEach { group ->
+                for (i in 0 until group.length) {
+                    val fmt = group.getTrackFormat(i)
+                    val label = listOfNotNull(fmt.label, fmt.language).joinToString(" · ").ifBlank { "Subtitle ${i + 1}" }
+                    androidx.tv.material3.Button(
+                        onClick = {
+                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, false)
+                                .setOverrideForType(androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i))
+                                .build()
+                            onDismiss()
+                        },
+                        colors = if (group.isTrackSelected(i)) androidx.tv.material3.ButtonDefaults.colors()
+                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
+                    ) { androidx.tv.material3.Text(label, fontSize = 13.sp) }
+                }
+            }
+            androidx.tv.material3.Button(
+                onClick = onDismiss,
+                colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.background),
+            ) { androidx.tv.material3.Text("Close") }
         }
     }
 }
