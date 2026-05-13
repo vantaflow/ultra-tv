@@ -44,6 +44,21 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        // Write any uncaught crash to /sdcard/Android/data/<pkg>/files/crash.txt
+        // so users on boxes without ADB can pull the stack trace via SAF.
+        val previous = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { t, e ->
+            runCatching {
+                val sw = java.io.StringWriter()
+                e.printStackTrace(java.io.PrintWriter(sw))
+                val ts = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US)
+                    .format(java.util.Date())
+                val body = "$ts ${t.name} ${e.javaClass.name}: ${e.message}\n$sw\n\n"
+                getExternalFilesDir(null)?.resolve("crash.txt")
+                    ?.appendText(body, Charsets.UTF_8)
+            }
+            previous?.uncaughtException(t, e)
+        }
         // Initialise the Cast SDK eagerly so the first time the player asks
         // for CastContext.getSharedInstance() it doesn't block. We swallow the
         // exception when Google Play Services are absent (some Android TV

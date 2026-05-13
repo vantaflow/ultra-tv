@@ -227,9 +227,6 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 }
             }
         }
-        com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
-            onOpenSettings = { nav.navigate(Routes.SETTINGS) },
-        )
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         }
     }
