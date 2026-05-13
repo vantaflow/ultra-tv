@@ -29,44 +29,45 @@ import com.ultratv.tv.nativeapp.ui.AppViewModel
 @Composable
 fun PreferencesSection(vm: AppViewModel = hiltViewModel()) {
     val p by vm.prefs.collectAsState()
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
 
         // Menu position
-        PrefRow(label = "Menu position") {
-            ChoiceChip("Sidebar", on = p.sidebarPosition == SidebarPosition.LEFT) { vm.setSidebar(SidebarPosition.LEFT) }
-            ChoiceChip("Top bar", on = p.sidebarPosition == SidebarPosition.TOP) { vm.setSidebar(SidebarPosition.TOP) }
+        PrefRow(label = S.settingsMenuPosition) {
+            ChoiceChip(S.prefSidebar, on = p.sidebarPosition == SidebarPosition.LEFT) { vm.setSidebar(SidebarPosition.LEFT) }
+            ChoiceChip(S.prefTopBar, on = p.sidebarPosition == SidebarPosition.TOP) { vm.setSidebar(SidebarPosition.TOP) }
         }
 
         // Theme
-        PrefRow(label = "Theme") {
-            ChoiceChip("Dark", on = p.theme == AppTheme.DARK) { vm.setTheme(AppTheme.DARK) }
-            ChoiceChip("AMOLED", on = p.theme == AppTheme.AMOLED) { vm.setTheme(AppTheme.AMOLED) }
-            ChoiceChip("Blue", on = p.theme == AppTheme.BLUE) { vm.setTheme(AppTheme.BLUE) }
+        PrefRow(label = S.settingsTheme) {
+            ChoiceChip(S.prefThemeDark, on = p.theme == AppTheme.DARK) { vm.setTheme(AppTheme.DARK) }
+            ChoiceChip(S.prefThemeAmoled, on = p.theme == AppTheme.AMOLED) { vm.setTheme(AppTheme.AMOLED) }
+            ChoiceChip(S.prefThemeBlue, on = p.theme == AppTheme.BLUE) { vm.setTheme(AppTheme.BLUE) }
         }
 
         // Default player
-        PrefRow(label = "Default player") {
-            ChoiceChip("Internal (Media3)", on = p.defaultPlayer == DefaultPlayer.INTERNAL) { vm.setDefaultPlayer(DefaultPlayer.INTERNAL) }
-            ChoiceChip("External (VLC / MX)", on = p.defaultPlayer == DefaultPlayer.EXTERNAL) { vm.setDefaultPlayer(DefaultPlayer.EXTERNAL) }
+        PrefRow(label = S.prefDefaultPlayer) {
+            ChoiceChip(S.prefPlayerInternal, on = p.defaultPlayer == DefaultPlayer.INTERNAL) { vm.setDefaultPlayer(DefaultPlayer.INTERNAL) }
+            ChoiceChip(S.prefPlayerExternal, on = p.defaultPlayer == DefaultPlayer.EXTERNAL) { vm.setDefaultPlayer(DefaultPlayer.EXTERNAL) }
         }
 
-        SwitchRow("Auto-sync on launch", "Pull provider catalogs every time the app starts.", p.autoSyncOnLaunch) { vm.setAutoSync(it) }
-        SwitchRow("Show channel numbers", "Display the position number next to each channel in Live TV.", p.showChannelNumbers) { vm.setShowChannelNumbers(it) }
-        SwitchRow("Hide adult categories", "Completely remove adult categories from lists (beyond PIN lock).", p.hideAdultCategories) { vm.setHideAdult(it) }
-        SwitchRow("Resume playback", "Reopen movies/episodes at the position you left them.", p.resumePlayback) { vm.setResumePlayback(it) }
-        SwitchRow("Auto-play next episode", "Automatically play S0xE0y+1 when an episode ends.", p.autoPlayNextEpisode) { vm.setAutoPlayNext(it) }
-        SwitchRow("Launch at TV boot", "Open Ultra TV automatically when the box finishes booting.", p.launchAtBoot) { vm.setLaunchAtBoot(it) }
-        SwitchRow("Auto-play last watched on launch", "Resume the last channel / movie / episode when the app starts.", p.autoPlayLastOnLaunch) { vm.setAutoPlayLast(it) }
+        SwitchRow(S.settingsAutoSync, S.prefAutoSyncHint, p.autoSyncOnLaunch) { vm.setAutoSync(it) }
+        SwitchRow(S.prefShowChannelNumbers, S.prefShowChannelNumbersHint, p.showChannelNumbers) { vm.setShowChannelNumbers(it) }
+        SwitchRow(S.prefHideAdult, S.prefHideAdultHint, p.hideAdultCategories) { vm.setHideAdult(it) }
+        SwitchRow(S.prefResume, S.prefResumeHint, p.resumePlayback) { vm.setResumePlayback(it) }
+        SwitchRow(S.prefAutoPlayNext, S.prefAutoPlayNextHint, p.autoPlayNextEpisode) { vm.setAutoPlayNext(it) }
+        SwitchRow(S.prefLaunchAtBoot, S.prefLaunchAtBootHint, p.launchAtBoot) { vm.setLaunchAtBoot(it) }
+        SwitchRow(S.prefAutoPlayLast, S.prefAutoPlayLastHint, p.autoPlayLastOnLaunch) { vm.setAutoPlayLast(it) }
 
-        PrefRow(label = "Refresh playlists") {
-            IntervalChip("Every launch", 0, p.syncIntervalHours, vm::setSyncInterval)
-            IntervalChip("Every 6h", 6, p.syncIntervalHours, vm::setSyncInterval)
-            IntervalChip("Every 12h", 12, p.syncIntervalHours, vm::setSyncInterval)
-            IntervalChip("Every 24h", 24, p.syncIntervalHours, vm::setSyncInterval)
+        PrefRow(label = S.settingsRefreshPlaylists) {
+            IntervalChip(S.prefIntervalLaunch, 0, p.syncIntervalHours, vm::setSyncInterval)
+            IntervalChip(S.prefInterval6, 6, p.syncIntervalHours, vm::setSyncInterval)
+            IntervalChip(S.prefInterval12, 12, p.syncIntervalHours, vm::setSyncInterval)
+            IntervalChip(S.prefInterval24, 24, p.syncIntervalHours, vm::setSyncInterval)
         }
 
-        PrefRow(label = "Language") {
+        PrefRow(label = S.settingsLanguage) {
             com.ultratv.tv.nativeapp.i18n.AppLang.entries.forEach { lang ->
                 ChoiceChip(
                     label = lang.displayName,
