@@ -53,6 +53,11 @@ fun SettingsScreen(
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var openDialog by remember { mutableStateOf(OpenDialog.NONE) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    val savedMsg = S.toastBackupSaved
+    val saveFailedMsg = S.toastSaveFailed
+    val emptyFileMsg = S.toastEmptyFile
+    val configPwdSavedMsg = S.toastConfigPasswordSaved
 
     // SAF picker for local M3U files. Kept here at the top so the contract is
     // remembered across recompositions; the trigger is a Button further down.
@@ -68,9 +73,9 @@ fun SettingsScreen(
                 runCatching {
                     ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
                 }.onSuccess {
-                    com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Backup saved")
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.ok(savedMsg)
                 }.onFailure {
-                    com.ultratv.tv.nativeapp.ui.common.Toaster.err("Save failed: ${it.message}")
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.err(saveFailedMsg + (it.message ?: ""))
                 }
             }
         },
@@ -85,7 +90,7 @@ fun SettingsScreen(
                         ?.toString(Charsets.UTF_8).orEmpty()
                 }.getOrNull()
                 if (txt.isNullOrBlank()) {
-                    com.ultratv.tv.nativeapp.ui.common.Toaster.err("Empty / unreadable file")
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.err(emptyFileMsg)
                 } else {
                     vm.restoreBackup(txt)
                 }
@@ -126,13 +131,13 @@ fun SettingsScreen(
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("Settings", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.settingsTitle, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
 
         // ---- 1. MAC + cloud sync ----
         SectionCard {
-            Text("📡 Auto-import via device MAC", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(S.settingsAutoImportTitle, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Your MAC:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                Text(S.settingsYourMac, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 Text(
                     vm.deviceMacAddress,
                     color = MaterialTheme.colorScheme.primary,
@@ -144,7 +149,7 @@ fun SettingsScreen(
                 )
             }
             Text(
-                "Open your worker dashboard, paste this MAC, add your providers there, then press Sync.",
+                S.settingsMacHint,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -154,11 +159,11 @@ fun SettingsScreen(
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = { openDialog = OpenDialog.WORKER }) { Text("Change") }
+                Button(onClick = { openDialog = OpenDialog.WORKER }) { Text(S.change) }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    "Config password: " + if (configPwd.isBlank()) "(none — anyone with the MAC reads it)"
+                    S.settingsConfigPasswordLabel + if (configPwd.isBlank()) S.settingsConfigPasswordNone
                     else "•".repeat(configPwd.length.coerceAtMost(20)),
                     color = if (configPwd.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onBackground,
@@ -166,25 +171,25 @@ fun SettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
                 Button(onClick = { openDialog = OpenDialog.CONFIG_PASSWORD }) {
-                    Text(if (configPwd.isBlank()) "Set" else "Change")
+                    Text(if (configPwd.isBlank()) S.settingsSet else S.change)
                 }
             }
             Button(
                 onClick = { vm.importByMac(workerBase.trim()) },
                 enabled = !syncing && workerBase.isNotBlank(),
-            ) { Text(if (syncing) "Working…" else "Sync from cloud", fontSize = 15.sp) }
+            ) { Text(if (syncing) S.settingsSyncing else S.settingsSyncFromCloud, fontSize = 15.sp) }
         }
 
         // ---- 2. Add a provider manually ----
         SectionCard {
-            Text("➕ Add a provider", color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(S.settingsAddProviderTitle, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Tap a button to open the form. The IME only shows up inside the dialog — you won't trip on it while scrolling Settings.",
+                S.settingsAddProviderHint,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { openDialog = OpenDialog.XTREAM }) { Text("+ Xtream Codes") }
-                Button(onClick = { openDialog = OpenDialog.M3U_URL }) { Text("+ M3U URL") }
+                Button(onClick = { openDialog = OpenDialog.XTREAM }) { Text(S.settingsAddXtream) }
+                Button(onClick = { openDialog = OpenDialog.M3U_URL }) { Text(S.settingsAddM3uUrl) }
                 Button(
                     onClick = {
                         pickFile.launch(arrayOf(
@@ -196,17 +201,17 @@ fun SettingsScreen(
                             "*/*",
                         ))
                     },
-                ) { Text("+ M3U file…") }
-                Button(onClick = { openDialog = OpenDialog.STALKER }) { Text("+ Stalker portal") }
+                ) { Text(S.settingsAddM3uFile) }
+                Button(onClick = { openDialog = OpenDialog.STALKER }) { Text(S.settingsAddStalker) }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp) }
         }
 
         // ---- 3. Configured providers ----
         SectionCard {
-            Text("Configured providers (${providers.size})", color = MaterialTheme.colorScheme.onBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text("${S.settingsConfiguredHeader} (${providers.size})", color = MaterialTheme.colorScheme.onBackground, fontSize = 17.sp, fontWeight = FontWeight.Bold)
             if (providers.isEmpty()) {
-                Text("(none yet)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(S.settingsNoneYet, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 providers.forEach { p ->
                     Row(
@@ -218,7 +223,7 @@ fun SettingsScreen(
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 if (p.active) {
                                     Text(
-                                        "★ Default",
+                                        S.settingsDefaultBadge,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimary,
@@ -232,14 +237,14 @@ fun SettingsScreen(
                             Text(p.baseUrl, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         if (!p.active) {
-                            Button(onClick = { vm.setDefault(p.id) }, enabled = !syncing) { Text("Set default") }
+                            Button(onClick = { vm.setDefault(p.id) }, enabled = !syncing) { Text(S.settingsSetDefault) }
                         }
-                        Button(onClick = { vm.resync(p.id) }, enabled = !syncing) { Text("Re-sync") }
+                        Button(onClick = { vm.resync(p.id) }, enabled = !syncing) { Text(S.settingsResync) }
                         Button(
                             onClick = { vm.delete(p.id) },
                             enabled = !syncing,
                             colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        ) { Text("Delete") }
+                        ) { Text(S.delete) }
                     }
                 }
             }
@@ -247,37 +252,36 @@ fun SettingsScreen(
 
         // ---- 4. Display & playback ----
         SectionCard {
-            Text("Display & playback", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(S.settingsDisplay, color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             PreferencesSection()
         }
 
         // ---- 4b. Backup / restore ----
         SectionCard {
-            Text("💾 Backup & restore", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(S.settingsBackupTitle, color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Exports providers, favorites and watch history to a JSON file you choose. " +
-                    "Catalogs (channels / movies / series) are re-fetched via sync, not bundled.",
+                S.settingsBackupHint,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     vm.prepareBackup()
                     saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json")
-                }) { Text("Export backup") }
+                }) { Text(S.settingsBackupExport) }
                 Button(onClick = {
                     loadBackup.launch(arrayOf("application/json", "*/*"))
-                }) { Text("Import backup…") }
+                }) { Text(S.settingsBackupImport) }
             }
         }
 
         // ---- 5. Parental ----
         SectionCard {
-            Text("Parental controls", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(S.settingsParental, color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             com.ultratv.tv.nativeapp.ui.parental.ParentalSection(
                 onManageLockedChannels = { onNavigate("locked-channels") },
             )
             Text(
-                "When a PIN is set, adult categories (xxx / adult / 18+ / etc.) auto-lock on each sync.",
+                S.settingsParentalHint,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
         }
@@ -316,7 +320,7 @@ fun SettingsScreen(
             onDismiss = { openDialog = OpenDialog.NONE },
             onSubmit = { pwd ->
                 vm.saveConfigPassword(pwd); openDialog = OpenDialog.NONE
-                com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Config password saved")
+                com.ultratv.tv.nativeapp.ui.common.Toaster.ok(configPwdSavedMsg)
             },
         )
         OpenDialog.NONE -> Unit
@@ -327,22 +331,23 @@ fun SettingsScreen(
 @Composable
 private fun ConfigPasswordDialog(initial: String, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
     var pwd by remember { mutableStateOf(initial) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     AddProviderDialog(
-        title = "Config password",
+        title = S.settingsConfigPwdDialogTitle,
         onDismiss = onDismiss,
         onSubmit = { onSubmit(pwd) },
         canSubmit = true,
     ) {
         Text(
-            "Each MAC's config on the worker can be protected by a password. Set the same value the admin set when provisioning your MAC. Leave blank to send no password (works only for unprotected MACs).",
+            S.settingsConfigPwdDialogHint,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
         FormField(
-            label = "Password (visible — TV remote-friendly)",
+            label = S.settingsConfigPwdFieldLabel,
             value = pwd,
             onChange = { pwd = it },
-            placeholder = "Leave blank to clear",
+            placeholder = S.settingsConfigPwdFieldPlaceholder,
         )
     }
 }
@@ -351,20 +356,20 @@ private fun ConfigPasswordDialog(initial: String, onDismiss: () -> Unit, onSubmi
 @Composable
 private fun WorkerUrlDialog(initial: String, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
     var url by remember { mutableStateOf(initial) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     AddProviderDialog(
-        title = "Set Cloudflare Worker URL",
+        title = S.settingsWorkerDialogTitle,
         onDismiss = onDismiss,
         onSubmit = { onSubmit(url) },
         canSubmit = url.isNotBlank(),
     ) {
         Text(
-            "Each user deploys their own Worker (cloudflare-config/) and pastes its URL here. " +
-                "We never bundle a default URL in the app to avoid leaking yours through the source code.",
+            S.settingsWorkerDialogHint,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 12.sp,
         )
         FormField(
-            label = "Worker base URL (e.g. https://your-config.your-acct.workers.dev)",
+            label = S.settingsWorkerFieldLabel,
             value = url,
             onChange = { url = it },
             placeholder = "https://your-config.your-acct.workers.dev",
