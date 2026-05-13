@@ -63,17 +63,18 @@ fun AddProviderDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
+            val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
             Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             content()
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
                 Button(
                     onClick = onSubmit,
                     enabled = canSubmit,
-                ) { Text("Add", fontSize = 15.sp) }
+                ) { Text(S.addProviderAdd, fontSize = 15.sp) }
                 Button(
                     onClick = onDismiss,
                     colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
-                ) { Text("Cancel", fontSize = 15.sp) }
+                ) { Text(S.cancel, fontSize = 15.sp) }
             }
         }
     }
@@ -128,17 +129,18 @@ fun XtreamDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, us
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     val canSubmit = url.isNotBlank() && user.isNotBlank() && pass.isNotBlank()
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     AddProviderDialog(
-        title = "Add Xtream Codes provider",
+        title = S.addProviderXtreamTitle,
         onDismiss = onDismiss,
         onSubmit = { onSubmit(name, url, user, pass) },
         canSubmit = canSubmit,
     ) {
-        FormField("Name (optional)", name, { name = it })
-        FormField("Server URL (http://host:port)", url, { url = it }, keyboardType = KeyboardType.Uri,
+        FormField(S.fieldNameOptional, name, { name = it })
+        FormField(S.fieldServerUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
             placeholder = "http://provider.com:8080")
-        FormField("Username", user, { user = it })
-        FormField("Password", pass, { pass = it }, password = true)
+        FormField(S.fieldUsername, user, { user = it })
+        FormField(S.fieldPassword, pass, { pass = it }, password = true)
     }
 }
 
@@ -147,14 +149,15 @@ fun XtreamDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, us
 fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     AddProviderDialog(
-        title = "Add M3U playlist",
+        title = S.addProviderM3uTitle,
         onDismiss = onDismiss,
         onSubmit = { onSubmit(name, url) },
         canSubmit = url.isNotBlank(),
     ) {
-        FormField("Name (optional)", name, { name = it })
-        FormField("Playlist URL", url, { url = it }, keyboardType = KeyboardType.Uri,
+        FormField(S.fieldNameOptional, name, { name = it })
+        FormField(S.fieldPlaylistUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
             placeholder = "https://host.tld/playlist.m3u")
     }
 }
@@ -165,16 +168,17 @@ fun StalkerDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, m
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var mac by remember { mutableStateOf("") }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     AddProviderDialog(
-        title = "Add Stalker portal",
+        title = S.addProviderStalkerTitle,
         onDismiss = onDismiss,
         onSubmit = { onSubmit(name, url, mac) },
         canSubmit = url.isNotBlank() && mac.length in 12..17,
     ) {
-        FormField("Name (optional)", name, { name = it })
-        FormField("Portal URL", url, { url = it }, keyboardType = KeyboardType.Uri,
+        FormField(S.fieldNameOptional, name, { name = it })
+        FormField(S.fieldPortalUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
             placeholder = "http://host:8080")
-        FormField("Device MAC (XX:XX:XX:XX:XX:XX)", mac, { mac = it.uppercase() },
+        FormField(S.fieldDeviceMac, mac, { mac = it.uppercase() },
             placeholder = "00:1A:79:XX:XX:XX")
     }
 }
