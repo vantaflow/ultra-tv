@@ -132,6 +132,23 @@ data class WatchHistoryEntity(
     val parentRemoteId: String? = null,
 )
 
+@Entity(tableName = "recording")
+data class RecordingEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val providerId: Long,
+    val kind: String,           // "MOVIE" | "EPISODE"
+    val remoteId: String,
+    val title: String,
+    val sourceUrl: String,
+    val filePath: String,       // absolute path under context.getExternalFilesDir
+    val status: String,         // "queued" | "running" | "done" | "failed" | "cancelled"
+    val downloadedBytes: Long = 0,
+    val totalBytes: Long = 0,
+    val createdAt: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null,
+    val errorMessage: String? = null,
+)
+
 @Entity(
     tableName = "epg",
     indices = [Index("channelId"), Index(value = ["channelId", "startMs"])],

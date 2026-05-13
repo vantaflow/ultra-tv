@@ -37,6 +37,7 @@ private val items = listOf(
     NavItem("search", { it.navSearch }, "🔍"),
     NavItem("categories", { it.navCategories }, "🏷"),
     NavItem("multiview", { it.navMultiview }, "▦"),
+    NavItem("recordings", { "Recordings" }, "⏺"),
     NavItem("settings", { it.navSettings }, "⚙"),
 )
 

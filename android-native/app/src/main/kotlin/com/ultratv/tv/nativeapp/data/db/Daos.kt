@@ -179,6 +179,24 @@ interface WatchHistoryDao {
 }
 
 @Dao
+interface RecordingDao {
+    @Query("SELECT * FROM recording ORDER BY createdAt DESC")
+    fun observeAll(): Flow<List<RecordingEntity>>
+
+    @Query("SELECT * FROM recording WHERE id = :id")
+    suspend fun byId(id: Long): RecordingEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(r: RecordingEntity): Long
+
+    @Query("UPDATE recording SET status = :status, downloadedBytes = :down, totalBytes = :total, errorMessage = :err, completedAt = :doneAt WHERE id = :id")
+    suspend fun updateProgress(id: Long, status: String, down: Long, total: Long, err: String?, doneAt: Long?)
+
+    @Query("DELETE FROM recording WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+@Dao
 interface EpgDao {
     @Query("SELECT * FROM epg WHERE channelId = :cid AND endMs >= :nowMs ORDER BY startMs LIMIT 20")
     fun observeUpcoming(cid: Long, nowMs: Long): Flow<List<EpgEntity>>

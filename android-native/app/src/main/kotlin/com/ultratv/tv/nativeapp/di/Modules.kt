@@ -34,6 +34,7 @@ object DatabaseModule {
     @Provides fun provideFavoriteDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.FavoriteDao = db.favoriteDao()
     @Provides fun provideEpgDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.EpgDao = db.epgDao()
     @Provides fun provideWatchHistoryDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.WatchHistoryDao = db.watchHistoryDao()
+    @Provides fun provideRecordingDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.RecordingDao = db.recordingDao()
 }
 
 @Module

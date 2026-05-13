@@ -59,6 +59,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - ⏸️ **Continue watching** (position recorded every 10 s + on dispose)
 - 🚀 **Auto-play last watched on launch** option
 - 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
+- ⏺ **Record VOD** — from a movie's detail page, queue an OkHttp-backed download via WorkManager; progress visible on a Recordings screen; played locally once done (no external storage permission — saved under app-private external storage)
 - 💤 **Sleep timer** (15 min · 30 min · 1 h · 2 h · cancel) — pauses + exits player at the deadline
 - 📊 **Stream stats overlay** — resolution / video & audio codec / frame rate / bitrate / buffer ahead, toggled from the player overlay
 
@@ -187,7 +188,7 @@ In active development / next iterations:
 
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
-- 📥 **Recording / DVR** via WorkManager + HLS download
+- 📥 **HLS-segment recording** for Live channels (VOD download is already shipped)
 - 🌐 **Extend i18n coverage** beyond nav / home / settings to every inline string (~100 more)
 
 ## Credits
