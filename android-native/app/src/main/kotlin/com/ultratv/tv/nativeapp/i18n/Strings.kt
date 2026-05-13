@@ -100,6 +100,13 @@ data class Strings(
     val wizardAddProviderCta: String,
     val wizardSkip: String,
 
+    // Locked channels screen
+    val lockChannelsTitle: String,
+    val lockChannelsSubtitle: String,
+    val lockChannelsFilterHint: String,
+    val lockChannelsLock: String,
+    val lockChannelsUnlock: String,
+
     // Settings sections
     val settingsTitle: String,
     val settingsDisplay: String,
@@ -229,6 +236,12 @@ private val EN = Strings(
     wizardAddProviderCta = "Add a provider →",
     wizardSkip = "Skip for now",
 
+    lockChannelsTitle = "Lock individual channels",
+    lockChannelsSubtitle = "Locked channels need the parental PIN to play. %1\$d total · %2\$d locked",
+    lockChannelsFilterHint = "Filter channels…",
+    lockChannelsLock = "Lock",
+    lockChannelsUnlock = "Unlock",
+
     settingsTitle = "Settings", settingsDisplay = "Display & playback",
     settingsParental = "Parental controls", settingsBackup = "Backup & restore",
     settingsLanguage = "Language", settingsTheme = "Theme",
@@ -329,6 +342,12 @@ private val FR = Strings(
     wizardNext = "Suivant",
     wizardAddProviderCta = "Ajouter un fournisseur →",
     wizardSkip = "Passer pour l'instant",
+
+    lockChannelsTitle = "Verrouiller des chaînes",
+    lockChannelsSubtitle = "Les chaînes verrouillées exigent le PIN parental. %1\$d au total · %2\$d verrouillées",
+    lockChannelsFilterHint = "Filtrer les chaînes…",
+    lockChannelsLock = "Verrouiller",
+    lockChannelsUnlock = "Déverrouiller",
 
     settingsTitle = "Paramètres", settingsDisplay = "Affichage et lecture",
     settingsParental = "Contrôle parental", settingsBackup = "Sauvegarde et restauration",
@@ -431,6 +450,12 @@ private val ES = Strings(
     wizardAddProviderCta = "Añadir un proveedor →",
     wizardSkip = "Omitir por ahora",
 
+    lockChannelsTitle = "Bloquear canales individuales",
+    lockChannelsSubtitle = "Los canales bloqueados requieren el PIN parental. %1\$d en total · %2\$d bloqueados",
+    lockChannelsFilterHint = "Filtrar canales…",
+    lockChannelsLock = "Bloquear",
+    lockChannelsUnlock = "Desbloquear",
+
     settingsTitle = "Ajustes", settingsDisplay = "Pantalla y reproducción",
     settingsParental = "Control parental", settingsBackup = "Copia y restauración",
     settingsLanguage = "Idioma", settingsTheme = "Tema",
@@ -531,6 +556,12 @@ private val AR = Strings(
     wizardNext = "التالي",
     wizardAddProviderCta = "إضافة موفّر ←",
     wizardSkip = "تخطٍّ الآن",
+
+    lockChannelsTitle = "قفل القنوات الفردية",
+    lockChannelsSubtitle = "القنوات المقفلة تتطلب PIN الرقابة الأبوية. %1\$d إجمالًا · %2\$d مقفلة",
+    lockChannelsFilterHint = "تصفية القنوات…",
+    lockChannelsLock = "قفل",
+    lockChannelsUnlock = "فتح",
 
     settingsTitle = "الإعدادات", settingsDisplay = "العرض والتشغيل",
     settingsParental = "الرقابة الأبوية", settingsBackup = "النسخ الاحتياطي والاستعادة",

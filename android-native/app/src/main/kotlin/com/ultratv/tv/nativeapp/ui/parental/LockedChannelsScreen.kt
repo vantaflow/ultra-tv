@@ -86,11 +86,12 @@ fun LockedChannelsScreen(vm: LockedChannelsViewModel = hiltViewModel()) {
         }
     }
     val lockedCount = filtered.count { "${it.providerId}:${it.remoteId}" in locked }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Lock individual channels", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.lockChannelsTitle, fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         Text(
-            "Locked channels need the parental PIN to play. ${chans.size} total · $lockedCount locked",
+            S.lockChannelsSubtitle.format(chans.size, lockedCount),
             fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
@@ -109,7 +110,7 @@ fun LockedChannelsScreen(vm: LockedChannelsViewModel = hiltViewModel()) {
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { inner ->
-                    if (search.isEmpty()) Text("Filter channels…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
+                    if (search.isEmpty()) Text(S.lockChannelsFilterHint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
                     inner()
                 },
             )
@@ -134,7 +135,7 @@ fun LockedChannelsScreen(vm: LockedChannelsViewModel = hiltViewModel()) {
                         onClick = { vm.toggle(c, !isOn) },
                         colors = if (isOn) ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)
                         else ButtonDefaults.colors(),
-                    ) { Text(if (isOn) "Unlock" else "Lock") }
+                    ) { Text(if (isOn) S.lockChannelsUnlock else S.lockChannelsLock) }
                 }
             }
         }
