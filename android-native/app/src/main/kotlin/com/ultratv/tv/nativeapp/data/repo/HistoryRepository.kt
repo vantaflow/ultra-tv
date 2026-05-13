@@ -48,4 +48,9 @@ class HistoryRepository @Inject constructor(
 
     suspend fun remove(providerId: Long, kind: String, remoteId: String) =
         dao.remove(providerId, kind, remoteId)
+
+    /** Resume position in ms for VOD/episode. 0 (or near-end) → start from the
+     *  beginning. Caller decides the threshold for "near-end". */
+    suspend fun resumePositionMs(providerId: Long, kind: String, remoteId: String): Long =
+        dao.positionFor(providerId, kind, remoteId) ?: 0L
 }

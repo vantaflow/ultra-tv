@@ -242,7 +242,9 @@ private fun ChannelRow(
                 if (channel.logo != null) {
                     AsyncImage(model = channel.logo, contentDescription = channel.name, modifier = Modifier.fillMaxSize())
                 } else {
-                    Text("📺", fontSize = 22.sp)
+                    com.ultratv.tv.nativeapp.ui.common.LetterAvatar(
+                        text = channel.name, fontSize = 16.sp, modifier = Modifier.fillMaxSize(),
+                    )
                 }
             }
             Column(Modifier.fillMaxWidth()) {

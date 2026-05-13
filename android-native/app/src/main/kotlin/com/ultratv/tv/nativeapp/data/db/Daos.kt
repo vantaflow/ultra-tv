@@ -162,6 +162,9 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history WHERE providerId = :pid ORDER BY watchedAt DESC LIMIT :limit")
     fun observeRecent(pid: Long, limit: Int = 30): Flow<List<WatchHistoryEntity>>
 
+    @Query("SELECT positionMs FROM watch_history WHERE providerId = :pid AND kind = :kind AND remoteId = :rid LIMIT 1")
+    suspend fun positionFor(pid: Long, kind: String, rid: String): Long?
+
     @Query("SELECT * FROM watch_history WHERE providerId = :pid AND kind = :kind ORDER BY watchedAt DESC LIMIT :limit")
     fun observeRecentByKind(pid: Long, kind: String, limit: Int = 30): Flow<List<WatchHistoryEntity>>
 

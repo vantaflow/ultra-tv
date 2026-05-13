@@ -146,17 +146,17 @@ class PlayerViewModel @Inject constructor(
     private val _resumeMs = MutableStateFlow(0L)
     val resumeMs: StateFlow<Long> = _resumeMs.asStateFlow()
 
+    /**
+     * Reads the last persisted position for the current item and exposes it
+     * via [resumeMs]. The player composable seeks to that offset once the
+     * source is ready. Live channels never resume — they snap to the live
+     * edge instead.
+     */
     fun prepareResume() {
-        // Live channels don't seek — only VOD/episodes resume.
+        val c = playback.current.value ?: run { _resumeMs.value = 0; return }
+        if (c.kind == "LIVE") { _resumeMs.value = 0; return }
         viewModelScope.launch {
-            val c = playback.current.value
-            if (c == null || c.kind == "LIVE") return@launch
-            // The history table doubles as the resume store: positionMs > 0 = resume.
-            // We don't have a direct "byId" — listen one tick via the kind-filtered flow.
-            // Simpler: re-record at play time but read first if present.
-            // For brevity we leave _resumeMs at 0 and rely on the player to start at 0;
-            // future improvement: a one-shot DAO query.
-            _resumeMs.value = 0L
+            _resumeMs.value = history.resumePositionMs(c.providerId, c.kind, c.remoteId)
         }
     }
 
@@ -227,9 +227,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         if (currentUrl.isNotBlank()) {
             player.setMediaItem(MediaItem.fromUri(currentUrl))
             player.prepare()
+            // Seek to last persisted position if VOD/episode has one.
+            vm.prepareResume()
+            val resume = vm.resumeMs.value
+            // Skip stale "near-end" positions so credits don't auto-replay.
+            if (resume > 5_000) {
+                player.seekTo(resume)
+            }
             player.play()
         }
-        vm.prepareResume()
     }
     LaunchedEffect(playbackSpeed) {
         player.playbackParameters = androidx.media3.common.PlaybackParameters(playbackSpeed)

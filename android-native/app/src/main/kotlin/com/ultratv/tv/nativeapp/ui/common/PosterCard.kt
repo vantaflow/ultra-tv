@@ -71,7 +71,7 @@ fun PosterCard(
                 if (poster != null) {
                     AsyncImage(model = poster, contentDescription = title, modifier = Modifier.fillMaxSize())
                 } else {
-                    Text(placeholderEmoji, fontSize = 64.sp)
+                    LetterAvatar(text = title, fontSize = 48.sp, modifier = Modifier.fillMaxSize())
                 }
             }
             Text(
