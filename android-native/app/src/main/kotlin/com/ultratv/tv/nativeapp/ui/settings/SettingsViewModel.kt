@@ -82,12 +82,22 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { prefs.setWorkerBase(url) }
     }
 
+    val configPassword: StateFlow<String> = prefs.flow
+        .map { it.configPassword }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+
+    fun saveConfigPassword(pwd: String) {
+        viewModelScope.launch { prefs.setConfigPassword(pwd) }
+    }
+
     fun importByMac(workerBase: String) {
         viewModelScope.launch {
             _syncing.value = true
             _message.value = "Asking dashboard for config matching ${deviceMac.mac}…"
             try {
-                val res = remoteConfig.importByMac(workerBase, deviceMac.mac) { _message.value = it }
+                val res = remoteConfig.importByMac(
+                    workerBase, deviceMac.mac, configPassword.value,
+                ) { _message.value = it }
                 // Ensure something becomes default so the UI has a provider to use.
                 if (res.imported > 0 && repo.firstActive() == null) {
                     repo.observeProviders().first().firstOrNull()?.id?.let { repo.setDefault(it) }
@@ -98,6 +108,8 @@ class SettingsViewModel @Inject constructor(
                     res.errors.isEmpty() -> "Imported ${res.imported} provider(s) ✓"
                     else -> "Imported ${res.imported} provider(s) · ${res.errors.size} error(s): ${res.errors.first()}"
                 }
+            } catch (e: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter.WrongPasswordException) {
+                _message.value = "⚠ Wrong / missing config password — set it in Settings."
             } catch (t: Throwable) {
                 _message.value = "Error: ${t.message}"
             } finally {

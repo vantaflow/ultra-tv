@@ -38,7 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER, WORKER }
+private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER, WORKER, CONFIG_PASSWORD }
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
@@ -117,6 +117,7 @@ fun SettingsScreen(
     // Worker URL is now stored in DataStore (per-device), never hard-coded.
     // Each user provisions their own worker and pastes its URL here once.
     val workerBase by vm.workerBaseUrl.collectAsState()
+    val configPwd by vm.configPassword.collectAsState()
 
     Column(
         Modifier
@@ -154,6 +155,19 @@ fun SettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
                 Button(onClick = { openDialog = OpenDialog.WORKER }) { Text("Change") }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Config password: " + if (configPwd.isBlank()) "(none — anyone with the MAC reads it)"
+                    else "•".repeat(configPwd.length.coerceAtMost(20)),
+                    color = if (configPwd.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onBackground,
+                    fontSize = 13.sp,
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = { openDialog = OpenDialog.CONFIG_PASSWORD }) {
+                    Text(if (configPwd.isBlank()) "Set" else "Change")
+                }
             }
             Button(
                 onClick = { vm.importByMac(workerBase.trim()) },
@@ -297,7 +311,39 @@ fun SettingsScreen(
                 vm.saveWorkerBase(url); openDialog = OpenDialog.NONE
             },
         )
+        OpenDialog.CONFIG_PASSWORD -> ConfigPasswordDialog(
+            initial = configPwd,
+            onDismiss = { openDialog = OpenDialog.NONE },
+            onSubmit = { pwd ->
+                vm.saveConfigPassword(pwd); openDialog = OpenDialog.NONE
+                com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Config password saved")
+            },
+        )
         OpenDialog.NONE -> Unit
+    }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ConfigPasswordDialog(initial: String, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
+    var pwd by remember { mutableStateOf(initial) }
+    AddProviderDialog(
+        title = "Config password",
+        onDismiss = onDismiss,
+        onSubmit = { onSubmit(pwd) },
+        canSubmit = true,
+    ) {
+        Text(
+            "Each MAC's config on the worker can be protected by a password. Set the same value the admin set when provisioning your MAC. Leave blank to send no password (works only for unprotected MACs).",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 12.sp,
+        )
+        FormField(
+            label = "Password (visible — TV remote-friendly)",
+            value = pwd,
+            onChange = { pwd = it },
+            placeholder = "Leave blank to clear",
+        )
     }
 }
 

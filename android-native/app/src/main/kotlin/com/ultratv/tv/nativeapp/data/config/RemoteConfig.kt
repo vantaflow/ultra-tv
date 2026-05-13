@@ -55,15 +55,27 @@ class RemoteConfigImporter @Inject constructor(
      * "https://ultratv-config.your-worker.workers.dev"); we append the API
      * path ourselves.
      */
-    suspend fun importByMac(workerBase: String, mac: String, onProgress: (String) -> Unit = {}): ImportResult {
+    suspend fun importByMac(
+        workerBase: String,
+        mac: String,
+        password: String = "",
+        onProgress: (String) -> Unit = {},
+    ): ImportResult {
         val base = workerBase.trimEnd('/')
-        return importFromUrl("$base/api/config/$mac", onProgress)
+        val pwdParam = if (password.isNotBlank()) "?password=${java.net.URLEncoder.encode(password, "UTF-8")}" else ""
+        return importFromUrl("$base/api/config/$mac$pwdParam", onProgress)
     }
+
+    /** HTTP 401 from the worker means the per-MAC password is missing/wrong. */
+    class WrongPasswordException(msg: String) : RuntimeException(msg)
 
     suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): ImportResult =
         withContext(Dispatchers.IO) {
             onProgress("Fetching config…")
             val body = ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (resp.code == 401) {
+                    throw WrongPasswordException("Config password missing or wrong for this MAC")
+                }
                 if (!resp.isSuccessful) error("HTTP ${resp.code} — config URL unreachable")
                 resp.body?.string().orEmpty()
             }

@@ -45,6 +45,9 @@ data class UserPrefs(
     val hasSeenOnboarding: Boolean = false,
     /** UI language code: "system", "en", "fr", "es", "ar". */
     val language: String = "system",
+    /** Per-MAC password used when fetching config from the worker. Optional —
+     *  empty for unprotected entries. Persists across launches; never logged. */
+    val configPassword: String = "",
 )
 
 @Singleton
@@ -65,6 +68,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val workerBase = stringPreferencesKey("worker_base_url")
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
         val language = stringPreferencesKey("language")
+        val configPassword = stringPreferencesKey("config_password")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -84,6 +88,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             workerBaseUrl = p[Keys.workerBase] ?: "",
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
             language = p[Keys.language] ?: "system",
+            configPassword = p[Keys.configPassword] ?: "",
         )
     }
 
@@ -102,6 +107,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
+    suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }

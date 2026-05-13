@@ -116,6 +116,41 @@ async function writeConfig(env, mac, cfg) {
   await env.CONFIG.put(mac, JSON.stringify(cfg));
 }
 
+// ---- Per-MAC password hashing ---------------------------------------------
+
+async function sha256Hex(input) {
+  const buf = new TextEncoder().encode(input);
+  const hash = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(hash))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+function randomSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Returns true when the supplied password matches the stored hash. Empty
+ *  password matches when no hash is set (legacy / unprotected entries). */
+async function passwordMatches(cfg, supplied) {
+  if (!cfg.passwordHash) return true;
+  if (!supplied) return false;
+  const computed = await sha256Hex(cfg.salt + ":" + supplied);
+  return computed === cfg.passwordHash;
+}
+
+async function setPassword(cfg, plaintext) {
+  if (!plaintext) {
+    delete cfg.passwordHash;
+    delete cfg.salt;
+    return;
+  }
+  cfg.salt = cfg.salt || randomSalt();
+  cfg.passwordHash = await sha256Hex(cfg.salt + ":" + plaintext);
+}
+
 // ---- Worker entry ----------------------------------------------------------
 
 export default {
@@ -129,9 +164,21 @@ export default {
       const mac = normaliseMac(macGet[1]);
       if (!mac) return json({ error: "invalid mac" }, { status: 400 });
       const cfg = await readConfig(env, mac);
-      return new Response(JSON.stringify({ providers: cfg.providers || [], known: !!cfg.providers?.length }), {
-        headers: { "content-type": "application/json; charset=utf-8", ...corsHeaders },
-      });
+      // Per-MAC password gate. Empty cfg passes through "unknown MAC" so the
+      // app can show its onboarding text without us leaking the existence of
+      // protected entries. Requesters with a password header / query still
+      // get a clean 401 if it doesn't match.
+      const supplied = url.searchParams.get("password") || req.headers.get("x-config-password") || "";
+      if (cfg.providers?.length && !(await passwordMatches(cfg, supplied))) {
+        return json(
+          { error: cfg.passwordHash ? "wrong password" : "password required", needsPassword: true },
+          { status: 401 },
+        );
+      }
+      return new Response(
+        JSON.stringify({ providers: cfg.providers || [], known: !!cfg.providers?.length }),
+        { headers: { "content-type": "application/json; charset=utf-8", ...corsHeaders } },
+      );
     }
 
     // ---- Auth routes ----
@@ -159,6 +206,19 @@ export default {
       // For browser pages → redirect to login. For API → 401 JSON.
       if (url.pathname.startsWith("/api/")) return json({ error: "auth required" }, { status: 401 });
       return redirect("/login");
+    }
+
+    // Set / clear per-MAC password (admin only).
+    const pwSet = url.pathname.match(/^\/api\/password\/([^/]+)\/?$/);
+    if (pwSet && req.method === "POST") {
+      const mac = normaliseMac(pwSet[1]);
+      if (!mac) return badRequest("Invalid MAC");
+      const form = await req.formData();
+      const password = (form.get("password") || "").toString();
+      const cfg = await readConfig(env, mac);
+      await setPassword(cfg, password);
+      await writeConfig(env, mac, cfg);
+      return redirect(`/?mac=${encodeURIComponent(mac)}`);
     }
 
     if (url.pathname === "/api/list" && req.method === "GET") {
@@ -315,6 +375,15 @@ function dashboardPage({ macs, selectedMac, cfg }) {
       <div><strong>Current MAC:</strong> <span style="font-family:ui-monospace,monospace; color:var(--accent)">${escape(selectedMac)}</span></div>
       <form method="post" action="/api/config/${encodeURIComponent(selectedMac)}/delete" onsubmit="return confirm('Delete ALL providers for ${escape(selectedMac)}?')">
         <button class="danger" type="submit">Delete MAC</button>
+      </form>
+    </div>
+
+    <div class="panel" style="margin-bottom:14px;">
+      <h2 style="margin:0 0 6px 0; font-size:15px;">🔑 App password for this MAC</h2>
+      <div class="muted" style="font-size:12px;">${cfg?.passwordHash ? "Set — the app must include <code>?password=…</code> when fetching this config." : "Not set — anyone who guesses the MAC can read the config. Set one below."}</div>
+      <form method="post" action="/api/password/${encodeURIComponent(selectedMac)}" style="display:flex; gap:8px; margin-top:8px;">
+        <input name="password" type="password" placeholder="${cfg?.passwordHash ? "New password (or blank to clear)" : "Set a password"}" />
+        <button type="submit">${cfg?.passwordHash ? "Change" : "Set password"}</button>
       </form>
     </div>
 
