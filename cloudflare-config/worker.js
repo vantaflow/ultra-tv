@@ -1,29 +1,38 @@
 /**
- * Ultra TV — MAC-based remote config Worker.
+ * Ultra TV — MAC-based remote config Worker (account-per-MAC).
  *
- * Auth: HTML form login → HMAC-signed session cookie (24h). The cookie carries
- * an HMAC of (expiry) keyed by ADMIN_PASSWORD so we don't need a session store.
+ * Auth model:
+ *   - Each MAC is its own "account". The user signs up with (MAC, password)
+ *     which creates the KV entry and stores a salted SHA-256 hash.
+ *   - Login = (MAC, password). Session = HMAC-signed cookie carrying
+ *     `mac.expiry`, signed with env.SESSION_SECRET (falls back to
+ *     env.ADMIN_PASSWORD so existing deployments keep working).
+ *   - The dashboard only ever shows the cookie's MAC. There is no global
+ *     admin / list of all MACs anymore.
  *
  * Public:
- *   GET  /api/config/:mac        → app polls its own config (no auth — the MAC
- *                                  itself is the secret)
+ *   GET  /api/config/:mac          → app polls its own config (`?password=`
+ *                                    required when a password is set).
  *
- * Authenticated (cookie):
- *   GET  /                       → dashboard (or redirect to /login)
- *   GET  /login                  → login form
- *   POST /login                  → check password, set cookie, redirect to /
- *   GET  /logout                 → clear cookie
- *   GET  /api/list               → list of known MACs (JSON)
- *   POST /api/config/:mac        → save a provider list (JSON body)
- *   POST /api/provider/:mac      → add a single provider (multipart form)
- *   POST /api/provider/:mac/:idx/delete → remove provider at index
- *   POST /api/config/:mac/delete → drop the entire MAC config
+ * Browser-authenticated (cookie carries the MAC):
+ *   GET  /                         → dashboard for cookie.mac
+ *   GET  /login                    → login form
+ *   POST /login                    → check (mac, password), issue cookie
+ *   GET  /signup                   → signup form
+ *   POST /signup                   → create new account, issue cookie
+ *   GET  /logout
+ *   POST /api/provider/:mac        → add a provider (cookie.mac must match)
+ *   POST /api/provider/:mac/:idx/delete
+ *   POST /api/config/:mac/delete   → delete the account (drops the KV entry)
+ *   POST /api/password/:mac        → change password
+ *   POST /api/config/:mac          → power-user raw JSON save
  *
  * KV `CONFIG`: stores the JSON config under the lowercased colon-separated MAC.
+ *   Schema: { providers: [...], passwordHash: string, salt: string }
  */
 
 const COOKIE_NAME = "uconf_sess";
-const SESSION_HOURS = 24;
+const SESSION_HOURS = 24 * 7; // a week — these are app installs, not banking
 
 const corsHeaders = {
   "access-control-allow-origin": "*",
@@ -50,15 +59,17 @@ function redirect(to, init = {}) {
 }
 
 function normaliseMac(raw) {
-  // URL.pathname keeps `%3A` encoded — if we strip non-hex without decoding
-  // first, the `3a` from `%3A` survives and the MAC ends up 22 chars instead
-  // of 12. decodeURIComponent first, then filter.
   let s = (raw || "").trim();
   try { s = decodeURIComponent(s); } catch (_) { /* leave as-is */ }
   s = s.toLowerCase();
   const hex = s.replace(/[^a-f0-9]/g, "");
   if (hex.length !== 12) return null;
   return hex.match(/.{2}/g).join(":");
+}
+
+function sessionSecret(env) {
+  // Prefer a dedicated secret; fall back so existing deployments keep working.
+  return env.SESSION_SECRET || env.ADMIN_PASSWORD || "ultra-tv-default-rotate-me";
 }
 
 // ---- Session (signed cookie) -----------------------------------------------
@@ -75,19 +86,23 @@ async function hmac(secret, msg) {
   return btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-async function makeSession(env) {
+async function makeSession(env, mac) {
   const exp = Date.now() + SESSION_HOURS * 3600 * 1000;
-  const payload = String(exp);
-  const sig = await hmac(env.ADMIN_PASSWORD, payload);
+  const payload = `${mac}.${exp}`;
+  const sig = await hmac(sessionSecret(env), payload);
   return `${payload}.${sig}`;
 }
 
+/** Returns the authed MAC, or null. */
 async function verifySession(value, env) {
-  if (!value || !value.includes(".")) return false;
-  const [exp, sig] = value.split(".", 2);
-  if (Date.now() > parseInt(exp, 10)) return false;
-  const want = await hmac(env.ADMIN_PASSWORD, exp);
-  return want === sig;
+  if (!value) return null;
+  const parts = value.split(".");
+  if (parts.length !== 3) return null;
+  const [mac, exp, sig] = parts;
+  if (Date.now() > parseInt(exp, 10)) return null;
+  const want = await hmac(sessionSecret(env), `${mac}.${exp}`);
+  if (want !== sig) return null;
+  return normaliseMac(mac);
 }
 
 function readCookie(req, name) {
@@ -99,9 +114,17 @@ function readCookie(req, name) {
   return null;
 }
 
-async function isAuthed(req, env) {
+async function authedMac(req, env) {
   const c = readCookie(req, COOKIE_NAME);
-  return c && (await verifySession(c, env));
+  return c ? await verifySession(c, env) : null;
+}
+
+function sessionCookie(value) {
+  return `${COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}`;
+}
+
+function clearCookie() {
+  return `${COOKIE_NAME}=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax`;
 }
 
 // ---- KV helpers ------------------------------------------------------------
@@ -132,10 +155,8 @@ function randomSalt() {
   return Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Returns true when the supplied password matches the stored hash. Empty
- *  password matches when no hash is set (legacy / unprotected entries). */
 async function passwordMatches(cfg, supplied) {
-  if (!cfg.passwordHash) return true;
+  if (!cfg.passwordHash) return true; // legacy / unprotected
   if (!supplied) return false;
   const computed = await sha256Hex(cfg.salt + ":" + supplied);
   return computed === cfg.passwordHash;
@@ -158,16 +179,12 @@ export default {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 
-    // ---- Public app-facing endpoint ----
+    // ---- Public: app fetches its own config ----
     const macGet = url.pathname.match(/^\/api\/config\/([^/]+)\/?$/);
     if (macGet && req.method === "GET") {
       const mac = normaliseMac(macGet[1]);
       if (!mac) return json({ error: "invalid mac" }, { status: 400 });
       const cfg = await readConfig(env, mac);
-      // Per-MAC password gate. Empty cfg passes through "unknown MAC" so the
-      // app can show its onboarding text without us leaking the existence of
-      // protected entries. Requesters with a password header / query still
-      // get a clean 401 if it doesn't match.
       const supplied = url.searchParams.get("password") || req.headers.get("x-config-password") || "";
       if (cfg.providers?.length && !(await passwordMatches(cfg, supplied))) {
         return json(
@@ -181,60 +198,85 @@ export default {
       );
     }
 
-    // ---- Auth routes ----
+    // ---- Public auth pages ----
     if (url.pathname === "/login" && req.method === "GET") {
-      const err = url.searchParams.get("e");
-      return html(loginPage(err));
+      return html(loginPage(url.searchParams.get("e")));
     }
     if (url.pathname === "/login" && req.method === "POST") {
-      const form = await req.formData();
-      const pw = (form.get("password") || "").toString();
-      if (pw !== env.ADMIN_PASSWORD) return redirect("/login?e=1");
-      const sess = await makeSession(env);
-      const cookie = `${COOKIE_NAME}=${encodeURIComponent(sess)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}`;
-      return new Response("", { status: 302, headers: { location: "/", "set-cookie": cookie } });
-    }
-    if (url.pathname === "/logout") {
-      return new Response("", {
-        status: 302,
-        headers: { location: "/login", "set-cookie": `${COOKIE_NAME}=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=Lax` },
-      });
+      const f = await req.formData();
+      const mac = normaliseMac((f.get("mac") || "").toString());
+      const password = (f.get("password") || "").toString();
+      if (!mac) return redirect("/login?e=mac");
+      const cfg = await readConfig(env, mac);
+      // Unknown account → bounce to signup so the user can claim the MAC.
+      if (!cfg.passwordHash && !cfg.providers?.length) return redirect(`/signup?mac=${encodeURIComponent(mac)}`);
+      // Legacy entry without password — block here; user must hit signup which
+      // sets one (and they can rotate from the dashboard afterwards).
+      if (!cfg.passwordHash) return redirect(`/signup?mac=${encodeURIComponent(mac)}&e=claim`);
+      if (!(await passwordMatches(cfg, password))) return redirect("/login?e=pw");
+      const sess = await makeSession(env, mac);
+      return new Response("", { status: 302, headers: { location: "/", "set-cookie": sessionCookie(sess) } });
     }
 
-    // ---- Authenticated routes ----
-    if (!(await isAuthed(req, env))) {
-      // For browser pages → redirect to login. For API → 401 JSON.
+    if (url.pathname === "/signup" && req.method === "GET") {
+      return html(signupPage({
+        mac: url.searchParams.get("mac") || "",
+        err: url.searchParams.get("e"),
+      }));
+    }
+    if (url.pathname === "/signup" && req.method === "POST") {
+      const f = await req.formData();
+      const mac = normaliseMac((f.get("mac") || "").toString());
+      const password = (f.get("password") || "").toString();
+      const confirm = (f.get("confirm") || "").toString();
+      if (!mac) return redirect("/signup?e=mac");
+      if (!password || password.length < 4) return redirect(`/signup?mac=${encodeURIComponent(mac)}&e=short`);
+      if (password !== confirm) return redirect(`/signup?mac=${encodeURIComponent(mac)}&e=mismatch`);
+      const cfg = await readConfig(env, mac);
+      if (cfg.passwordHash) return redirect(`/signup?mac=${encodeURIComponent(mac)}&e=taken`);
+      await setPassword(cfg, password);
+      cfg.providers = cfg.providers || [];
+      await writeConfig(env, mac, cfg);
+      const sess = await makeSession(env, mac);
+      return new Response("", { status: 302, headers: { location: "/", "set-cookie": sessionCookie(sess) } });
+    }
+
+    if (url.pathname === "/logout") {
+      return new Response("", { status: 302, headers: { location: "/login", "set-cookie": clearCookie() } });
+    }
+
+    // ---- Authenticated: cookie's MAC must match the path's MAC ----
+    const me = await authedMac(req, env);
+    if (!me) {
       if (url.pathname.startsWith("/api/")) return json({ error: "auth required" }, { status: 401 });
       return redirect("/login");
     }
 
-    // Set / clear per-MAC password (admin only).
-    const pwSet = url.pathname.match(/^\/api\/password\/([^/]+)\/?$/);
-    if (pwSet && req.method === "POST") {
-      const mac = normaliseMac(pwSet[1]);
-      if (!mac) return badRequest("Invalid MAC");
+    // Mac-scoped API guard: any /api/(provider|config|password)/:mac path must
+    // belong to the cookie-owner. No cross-account peeking.
+    const scoped = url.pathname.match(/^\/api\/(?:provider|config|password)\/([^/]+)/);
+    if (scoped) {
+      const target = normaliseMac(scoped[1]);
+      if (!target) return badRequest("Invalid MAC");
+      if (target !== me) return json({ error: "forbidden" }, { status: 403 });
+    }
+
+    // Change own password.
+    if (url.pathname === `/api/password/${encodeURIComponent(me)}` && req.method === "POST") {
       const form = await req.formData();
       const password = (form.get("password") || "").toString();
-      const cfg = await readConfig(env, mac);
+      if (password && password.length < 4) return redirect("/?e=short");
+      const cfg = await readConfig(env, me);
       await setPassword(cfg, password);
-      await writeConfig(env, mac, cfg);
-      return redirect(`/?mac=${encodeURIComponent(mac)}`);
+      await writeConfig(env, me, cfg);
+      return redirect("/");
     }
 
-    if (url.pathname === "/api/list" && req.method === "GET") {
-      const list = await env.CONFIG.list();
-      return json({ macs: list.keys.map((k) => k.name) });
-    }
-
-    // Add a provider for a MAC (form submit).
-    const addProv = url.pathname.match(/^\/api\/provider\/([^/]+)\/?$/);
-    if (addProv && req.method === "POST") {
-      const mac = normaliseMac(addProv[1]);
-      if (!mac) return badRequest("Invalid MAC");
+    // Add provider.
+    if (url.pathname === `/api/provider/${encodeURIComponent(me)}` && req.method === "POST") {
       const f = await req.formData();
       const kind = (f.get("kind") || "").toString().toUpperCase();
-      const name = (f.get("name") || "").toString();
-      const provider = { kind, name };
+      const provider = { kind, name: (f.get("name") || "").toString() };
       if (kind === "XTREAM") {
         provider.url = (f.get("url") || "").toString();
         provider.username = (f.get("username") || "").toString();
@@ -247,51 +289,44 @@ export default {
       } else {
         return badRequest("Unknown kind: " + kind);
       }
-      const cfg = await readConfig(env, mac);
+      const cfg = await readConfig(env, me);
       cfg.providers = cfg.providers || [];
       cfg.providers.push(provider);
-      await writeConfig(env, mac, cfg);
-      return redirect(`/?mac=${encodeURIComponent(mac)}`);
-    }
-
-    // Delete a provider at index.
-    const delProv = url.pathname.match(/^\/api\/provider\/([^/]+)\/(\d+)\/delete\/?$/);
-    if (delProv && req.method === "POST") {
-      const mac = normaliseMac(delProv[1]);
-      const idx = parseInt(delProv[2], 10);
-      if (!mac) return badRequest("Invalid MAC");
-      const cfg = await readConfig(env, mac);
-      cfg.providers = (cfg.providers || []).filter((_, i) => i !== idx);
-      await writeConfig(env, mac, cfg);
-      return redirect(`/?mac=${encodeURIComponent(mac)}`);
-    }
-
-    // Delete the whole MAC entry.
-    const delMac = url.pathname.match(/^\/api\/config\/([^/]+)\/delete\/?$/);
-    if (delMac && req.method === "POST") {
-      const mac = normaliseMac(delMac[1]);
-      if (!mac) return badRequest("Invalid MAC");
-      await env.CONFIG.delete(mac);
+      await writeConfig(env, me, cfg);
       return redirect("/");
     }
 
-    // Direct JSON save (advanced) — kept as a fallback for power users.
-    const saveCfg = url.pathname.match(/^\/api\/config\/([^/]+)\/?$/);
-    if (saveCfg && req.method === "POST") {
-      const mac = normaliseMac(saveCfg[1]);
-      if (!mac) return badRequest("Invalid MAC");
+    // Delete provider at index.
+    const delProv = url.pathname.match(/^\/api\/provider\/([^/]+)\/(\d+)\/delete\/?$/);
+    if (delProv && req.method === "POST") {
+      const idx = parseInt(delProv[2], 10);
+      const cfg = await readConfig(env, me);
+      cfg.providers = (cfg.providers || []).filter((_, i) => i !== idx);
+      await writeConfig(env, me, cfg);
+      return redirect("/");
+    }
+
+    // Delete the whole account.
+    if (url.pathname === `/api/config/${encodeURIComponent(me)}/delete` && req.method === "POST") {
+      await env.CONFIG.delete(me);
+      return new Response("", { status: 302, headers: { location: "/login", "set-cookie": clearCookie() } });
+    }
+
+    // Raw JSON save (advanced).
+    if (url.pathname === `/api/config/${encodeURIComponent(me)}` && req.method === "POST") {
       const body = await req.text();
       try { JSON.parse(body); } catch { return badRequest("Invalid JSON"); }
-      await env.CONFIG.put(mac, body);
-      return json({ ok: true, mac });
+      // Preserve the password hash + salt; only providers come from the body.
+      const incoming = JSON.parse(body);
+      const cfg = await readConfig(env, me);
+      cfg.providers = incoming.providers || [];
+      await writeConfig(env, me, cfg);
+      return json({ ok: true, mac: me });
     }
 
     if (url.pathname === "/" || url.pathname === "/dashboard") {
-      const selectedMac = normaliseMac(url.searchParams.get("mac") || "");
-      const list = await env.CONFIG.list();
-      const macs = list.keys.map((k) => k.name);
-      const cfg = selectedMac ? await readConfig(env, selectedMac) : null;
-      return html(dashboardPage({ macs, selectedMac, cfg }));
+      const cfg = await readConfig(env, me);
+      return html(dashboardPage({ mac: me, cfg }));
     }
 
     return new Response("Not found", { status: 404 });
@@ -318,11 +353,6 @@ button { background:var(--accent); color:#0b1020; border:0; border-radius:8px; p
 button.secondary { background:transparent; color:var(--fg); border:1px solid var(--border); font-weight:400; }
 button.danger { background:transparent; color:var(--danger); border:1px solid var(--danger); }
 .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; }
-ul.macs { list-style:none; padding:0; margin:0; max-height:60vh; overflow:auto; }
-ul.macs li { padding:9px 10px; border-radius:8px; font-family: ui-monospace, monospace; }
-ul.macs li a { display:block; color:var(--fg); }
-ul.macs li.active, ul.macs li:hover { background: rgba(110,168,255,.18); }
-ul.macs li.active a, ul.macs li:hover a { color: var(--accent); }
 .providers { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
 .provider { display:flex; gap:10px; align-items:center; padding:10px 12px; background:var(--bg3); border-radius:10px; }
 .provider .kind { background:var(--accent); color:#0b1020; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:700; }
@@ -332,129 +362,159 @@ ul.macs li.active a, ul.macs li:hover a { color: var(--accent); }
 .tabs { display:flex; gap:6px; border-bottom:1px solid var(--border); margin:12px 0; }
 .tabs button { background:transparent; color:var(--muted); padding:8px 14px; border-radius:0; font-weight:500; }
 .tabs button.on { color:var(--accent); border-bottom:2px solid var(--accent); }
-.field-help { color:var(--muted); font-size:11px; margin-top:4px; }
 .toolbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+.auth-card { max-width: 400px; margin: 80px auto; padding: 24px; background: var(--bg2); border-radius: 14px; border: 1px solid var(--border); }
+.notice { padding: 10px 12px; border-radius: 8px; background: var(--bg3); font-size: 13px; }
+.notice.err { color: var(--danger); border: 1px solid var(--danger); }
 `;
 
+const loginErrors = {
+  mac: "Adresse MAC invalide (12 chiffres hex).",
+  pw: "Mot de passe incorrect.",
+};
+const signupErrors = {
+  mac: "Adresse MAC invalide (12 chiffres hex).",
+  short: "Mot de passe trop court (4 caractères minimum).",
+  mismatch: "Les deux mots de passe ne correspondent pas.",
+  taken: "Ce MAC a déjà un compte — utilise la page de connexion.",
+  claim: "Ce MAC existe sans mot de passe — finis la configuration ici pour le protéger.",
+};
+
 function loginPage(err) {
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ultra TV — login</title><style>${baseStyles}
-form { max-width: 380px; margin: 80px auto; padding: 24px; background: var(--bg2); border-radius: 14px; border: 1px solid var(--border); }
-</style></head><body>
-<form method="post" action="/login">
-  <h1>Ultra TV config</h1>
-  <div class="sub">Admin sign-in</div>
-  ${err ? `<div style="color:var(--danger); margin-bottom:8px;">Wrong password.</div>` : ""}
-  <label>Password</label>
-  <input type="password" name="password" autocomplete="current-password" autofocus />
-  <div class="row" style="margin-top:16px;"><button type="submit">Sign in</button></div>
-</form>
+  const errMsg = err && loginErrors[err];
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ultra TV — connexion</title><style>${baseStyles}</style></head><body>
+<div class="auth-card">
+  <h1>Ultra TV</h1>
+  <div class="sub">Connexion à ta config</div>
+  ${errMsg ? `<div class="notice err">${escape(errMsg)}</div>` : ""}
+  <form method="post" action="/login" style="margin-top:12px;">
+    <label>Adresse MAC de l'appareil</label>
+    <input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required pattern="^[0-9a-fA-F:\\-]{12,17}$" autofocus />
+    <label>Mot de passe</label>
+    <input name="password" type="password" autocomplete="current-password" required />
+    <div class="row" style="margin-top:16px; justify-content:space-between;">
+      <button type="submit">Se connecter</button>
+      <a href="/signup" style="font-size:13px;">Créer un compte →</a>
+    </div>
+  </form>
+</div>
 </body></html>`;
 }
 
-function dashboardPage({ macs, selectedMac, cfg }) {
-  const macListHtml = macs.map((m) => `
-    <li class="${m === selectedMac ? "active" : ""}"><a href="/?mac=${encodeURIComponent(m)}">${m}</a></li>
-  `).join("");
+function signupPage({ mac, err }) {
+  const errMsg = err && signupErrors[err];
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ultra TV — inscription</title><style>${baseStyles}</style></head><body>
+<div class="auth-card">
+  <h1>Ultra TV</h1>
+  <div class="sub">Créer un compte pour ton appareil</div>
+  ${errMsg ? `<div class="notice err">${escape(errMsg)}</div>` : ""}
+  <form method="post" action="/signup" style="margin-top:12px;">
+    <label>Adresse MAC de l'appareil <span class="muted">(visible dans l'app, écran Réglages)</span></label>
+    <input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required pattern="^[0-9a-fA-F:\\-]{12,17}$" value="${escape(mac || "")}" />
+    <label>Mot de passe <span class="muted">(4 caractères minimum)</span></label>
+    <input name="password" type="password" autocomplete="new-password" required minlength="4" />
+    <label>Confirmer le mot de passe</label>
+    <input name="confirm" type="password" required minlength="4" />
+    <div class="row" style="margin-top:16px; justify-content:space-between;">
+      <button type="submit">Créer le compte</button>
+      <a href="/login" style="font-size:13px;">← J'ai déjà un compte</a>
+    </div>
+  </form>
+</div>
+</body></html>`;
+}
 
+function dashboardPage({ mac, cfg }) {
   const providers = (cfg && cfg.providers) || [];
   const providerRows = providers.map((p, i) => `
     <div class="provider">
       <span class="kind">${escape(p.kind || "?")}</span>
       <div>
-        <div class="name">${escape(p.name || "(unnamed)")}</div>
-        <div class="muted">${escape(p.url || "")} ${p.username ? " · " + escape(p.username) : ""}${p.mac ? " · MAC " + escape(p.mac) : ""}</div>
+        <div class="name">${escape(p.name || "(sans nom)")}</div>
+        <div class="muted">${escape(p.url || "")}${p.username ? " · " + escape(p.username) : ""}${p.mac ? " · MAC " + escape(p.mac) : ""}</div>
       </div>
-      <form method="post" action="/api/provider/${encodeURIComponent(selectedMac)}/${i}/delete" onsubmit="return confirm('Remove this provider?')">
-        <button type="submit" class="danger">Remove</button>
+      <form method="post" action="/api/provider/${encodeURIComponent(mac)}/${i}/delete" onsubmit="return confirm('Supprimer ce fournisseur ?')">
+        <button type="submit" class="danger">Supprimer</button>
       </form>
     </div>
   `).join("");
 
-  const macSection = selectedMac ? `
-    <div class="toolbar">
-      <div><strong>Current MAC:</strong> <span style="font-family:ui-monospace,monospace; color:var(--accent)">${escape(selectedMac)}</span></div>
-      <form method="post" action="/api/config/${encodeURIComponent(selectedMac)}/delete" onsubmit="return confirm('Delete ALL providers for ${escape(selectedMac)}?')">
-        <button class="danger" type="submit">Delete MAC</button>
-      </form>
+  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ultra TV — ${escape(mac)}</title><style>${baseStyles}
+.layout { max-width: 880px; margin: 0 auto; }
+.topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:12px; flex-wrap:wrap; }
+.macpill { font-family:ui-monospace,monospace; background:var(--bg3); padding:6px 10px; border-radius:8px; color:var(--accent); }
+</style></head><body>
+<div class="layout">
+  <div class="topbar">
+    <div>
+      <h1 style="display:inline; margin-right:10px;">Ultra TV</h1>
+      <span class="macpill">${escape(mac)}</span>
     </div>
+    <a href="/logout"><button class="secondary">Se déconnecter</button></a>
+  </div>
 
-    <div class="panel" style="margin-bottom:14px;">
-      <h2 style="margin:0 0 6px 0; font-size:15px;">🔑 App password for this MAC</h2>
-      <div class="muted" style="font-size:12px;">${cfg?.passwordHash ? "Set — the app must include <code>?password=…</code> when fetching this config." : "Not set — anyone who guesses the MAC can read the config. Set one below."}</div>
-      <form method="post" action="/api/password/${encodeURIComponent(selectedMac)}" style="display:flex; gap:8px; margin-top:8px;">
-        <input name="password" type="password" placeholder="${cfg?.passwordHash ? "New password (or blank to clear)" : "Set a password"}" />
-        <button type="submit">${cfg?.passwordHash ? "Change" : "Set password"}</button>
-      </form>
-    </div>
-
-    <h2 style="margin:0 0 6px 0; font-size:16px;">Providers (${providers.length})</h2>
+  <div class="panel" style="margin-bottom:14px;">
+    <h2 style="margin:0 0 8px 0; font-size:16px;">Fournisseurs (${providers.length})</h2>
     <div class="providers">
-      ${providers.length ? providerRows : `<div class="muted">No providers yet — add one below.</div>`}
+      ${providers.length ? providerRows : `<div class="muted">Aucun fournisseur. Ajoute-en un ci-dessous, puis ouvre l'app et synchronise.</div>`}
     </div>
 
-    <h2 style="margin:24px 0 8px 0; font-size:16px;">Add a provider</h2>
+    <h2 style="margin:24px 0 8px 0; font-size:16px;">Ajouter un fournisseur</h2>
     <div class="tabs">
       <button type="button" class="on" onclick="showTab('xtream')">Xtream Codes</button>
       <button type="button" onclick="showTab('m3u')">M3U URL</button>
       <button type="button" onclick="showTab('stalker')">Stalker Portal</button>
     </div>
 
-    <form method="post" action="/api/provider/${encodeURIComponent(selectedMac)}" id="form-xtream">
+    <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-xtream">
       <input type="hidden" name="kind" value="XTREAM" />
-      <label>Name (optional)</label>
+      <label>Nom (optionnel)</label>
       <input name="name" placeholder="My Xtream" />
-      <label>Server URL <span class="muted">(e.g. http://provider.com:8080)</span></label>
+      <label>URL du serveur <span class="muted">(http://provider.com:8080)</span></label>
       <input name="url" required />
-      <label>Username</label>
+      <label>Utilisateur</label>
       <input name="username" required />
-      <label>Password</label>
+      <label>Mot de passe</label>
       <input name="password" type="password" required />
-      <div class="row"><button type="submit">Add Xtream provider</button></div>
+      <div class="row"><button type="submit">Ajouter le fournisseur Xtream</button></div>
     </form>
 
-    <form method="post" action="/api/provider/${encodeURIComponent(selectedMac)}" id="form-m3u" style="display:none;">
+    <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-m3u" style="display:none;">
       <input type="hidden" name="kind" value="M3U" />
-      <label>Name (optional)</label>
+      <label>Nom (optionnel)</label>
       <input name="name" placeholder="My M3U" />
-      <label>Playlist URL <span class="muted">(.m3u / .m3u8)</span></label>
+      <label>URL de la playlist <span class="muted">(.m3u / .m3u8)</span></label>
       <input name="url" required />
-      <div class="row"><button type="submit">Add M3U provider</button></div>
+      <div class="row"><button type="submit">Ajouter la playlist M3U</button></div>
     </form>
 
-    <form method="post" action="/api/provider/${encodeURIComponent(selectedMac)}" id="form-stalker" style="display:none;">
+    <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-stalker" style="display:none;">
       <input type="hidden" name="kind" value="STALKER" />
-      <label>Name (optional)</label>
+      <label>Nom (optionnel)</label>
       <input name="name" placeholder="MAG portal" />
-      <label>Portal URL <span class="muted">(e.g. http://host:8080)</span></label>
+      <label>URL du portail <span class="muted">(http://host:8080)</span></label>
       <input name="url" required />
-      <label>Device MAC <span class="muted">(00:1A:79:XX:XX:XX)</span></label>
+      <label>MAC de l'appareil <span class="muted">(00:1A:79:XX:XX:XX)</span></label>
       <input name="mac" required pattern="^[0-9a-fA-F:]{17}$" />
-      <div class="row"><button type="submit">Add Stalker portal</button></div>
+      <div class="row"><button type="submit">Ajouter le portail Stalker</button></div>
     </form>
-  ` : `<div class="muted">Pick a MAC from the left or open a new one to start provisioning.</div>`;
+  </div>
 
-  return `<!doctype html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>Ultra TV — config</title><style>${baseStyles}
-.layout { display:grid; grid-template-columns: 320px 1fr; gap:24px; align-items:start; }
-.topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-</style></head><body>
-<div class="topbar">
-  <div><h1 style="display:inline; margin-right:12px;">Ultra TV — config dashboard</h1><span class="sub">Provision providers per device MAC.</span></div>
-  <a href="/logout"><button class="secondary">Sign out</button></a>
-</div>
-
-<div class="layout">
-  <div class="panel">
-    <form method="get" action="/" onsubmit="this.mac.value = this.mac.value.toLowerCase()">
-      <label>Open a MAC</label>
-      <input name="mac" placeholder="aa:bb:cc:dd:ee:ff" required pattern="^[0-9a-fA-F:\\-]{12,17}$" />
-      <div class="row"><button type="submit">Open</button></div>
+  <div class="panel" style="margin-bottom:14px;">
+    <h2 style="margin:0 0 8px 0; font-size:16px;">🔑 Mot de passe du compte</h2>
+    <div class="muted" style="font-size:12px;">Le mot de passe est exigé par l'application Ultra TV (écran Réglages → Mot de passe de la config) pour récupérer cette configuration. Laisse vide pour le retirer (déconseillé).</div>
+    <form method="post" action="/api/password/${encodeURIComponent(mac)}" style="display:flex; gap:8px; margin-top:8px;">
+      <input name="password" type="password" placeholder="Nouveau mot de passe (vide pour effacer)" />
+      <button type="submit">Mettre à jour</button>
     </form>
-    <div class="sub" style="margin-top:18px;">Known MACs (${macs.length}):</div>
-    <ul class="macs">${macListHtml || `<li class="muted">none yet</li>`}</ul>
   </div>
 
   <div class="panel">
-    ${macSection}
+    <h2 style="margin:0 0 8px 0; font-size:16px;">Zone dangereuse</h2>
+    <div class="muted" style="font-size:12px;">Supprime ton compte et toute sa config. L'application devra ré-importer une config (nouvelle inscription ou ajout manuel).</div>
+    <form method="post" action="/api/config/${encodeURIComponent(mac)}/delete" onsubmit="return confirm('Supprimer définitivement ce compte et toute la config ?')" style="margin-top:8px;">
+      <button class="danger" type="submit">Supprimer mon compte</button>
+    </form>
   </div>
 </div>
 

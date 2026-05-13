@@ -189,8 +189,13 @@ In active development / next iterations:
 
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
-- 📥 **HLS-segment recording** for Live channels (VOD download is already shipped)
-- 🌐 **Extend i18n coverage** beyond nav / home / settings to every inline string (~100 more)
+- 🩺 **Crash reporting** (Sentry / Firebase Crashlytics opt-in)
+
+Recently landed:
+
+- 📥 **HLS-segment recording** for Live channels (m3u8 polling + .ts append).
+- 🌐 **Deep i18n EN / FR / ES / AR** across every screen — Home, Live, Movies/Series, Settings (incl. private dialogs and SAF toasts), Preferences, Categories, Onboarding wizard, Guide list + grid, Add-provider dialogs, parental PIN flow, MultiView, Recordings, Search, Player overlays (Aspect / Speed / Tracks / Stats / Sleep timer / Record-queued toast) plus the rail-title fallback. ~270 keys, RTL-aware.
+- 👆 **Touch UX**: vertical-drag gesture overlays for system volume (right strip, `🔊 nn%`) and screen brightness (left strip, `☀ nn%`); **pull-to-refresh** on Home, Live TV, Movies, Series and the Guide grid. Both inert under D-pad, so TV remote behaviour is unchanged.
 
 ## Credits
 
