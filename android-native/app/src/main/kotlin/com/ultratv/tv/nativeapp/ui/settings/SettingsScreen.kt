@@ -58,6 +58,9 @@ fun SettingsScreen(
     val saveFailedMsg = S.toastSaveFailed
     val emptyFileMsg = S.toastEmptyFile
     val configPwdSavedMsg = S.toastConfigPasswordSaved
+    val backupReadyMsg = S.toastBackupReady
+    val restoredTemplate = S.toastRestoredTemplate
+    val restoreFailedPrefix = S.toastRestoreFailed
 
     // SAF picker for local M3U files. Kept here at the top so the contract is
     // remembered across recompositions; the trigger is a Button further down.
@@ -92,7 +95,7 @@ fun SettingsScreen(
                 if (txt.isNullOrBlank()) {
                     com.ultratv.tv.nativeapp.ui.common.Toaster.err(emptyFileMsg)
                 } else {
-                    vm.restoreBackup(txt)
+                    vm.restoreBackup(txt, restoredTemplate, restoreFailedPrefix)
                 }
             }
         },
@@ -265,7 +268,7 @@ fun SettingsScreen(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    vm.prepareBackup()
+                    vm.prepareBackup(backupReadyMsg)
                     saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json")
                 }) { Text(S.settingsBackupExport) }
                 Button(onClick = {

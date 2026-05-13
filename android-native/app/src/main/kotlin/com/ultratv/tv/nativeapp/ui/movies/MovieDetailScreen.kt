@@ -50,13 +50,13 @@ class MovieDetailViewModel @Inject constructor(
     /** Queue a VOD download for this movie. Resolves stalker:// first if
      *  needed so the worker downloads the actual stream URL, not the
      *  unplayable cmd. */
-    fun record(m: MovieEntity) {
+    fun record(m: MovieEntity, queuedMsg: String = "Recording queued — see Recordings screen") {
         viewModelScope.launch {
             val url = if (m.streamUrl.startsWith("stalker://"))
                 provider.resolveStalkerUrl(m.providerId, m.streamUrl)
             else m.streamUrl
             recordings.enqueue(m.providerId, "MOVIE", m.remoteId, m.name, url)
-            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Recording queued — see Recordings screen")
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok(queuedMsg)
         }
     }
     private val _m = MutableStateFlow<MovieEntity?>(null)
@@ -125,7 +125,7 @@ fun MovieDetailScreen(
             movie.plot?.let { Text(it, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(onClick = { vm.play(movie, onPlay) }) { Text(S.play, fontSize = 16.sp) }
-                Button(onClick = { vm.record(movie) }) { Text("⏺ Record", fontSize = 16.sp) }
+                Button(onClick = { vm.record(movie, S.toastRecordingQueued) }) { Text("⏺ " + S.playerRecord, fontSize = 16.sp) }
                 com.ultratv.tv.nativeapp.ui.common.FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
         }

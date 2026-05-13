@@ -232,6 +232,12 @@ data class Strings(
     val statBuffered: String,
     val statDroppedFrames: String,
 
+    // Backup + recording toasts
+    val toastBackupReady: String,
+    val toastRestoredTemplate: String,
+    val toastRestoreFailed: String,
+    val toastRecordingQueued: String,
+
     // Settings sections
     val settingsTitle: String,
     val settingsDisplay: String,
@@ -485,6 +491,11 @@ private val EN = Strings(
     statBuffered = "Buffered",
     statDroppedFrames = "Dropped frames",
 
+    toastBackupReady = "Backup ready — pick a file to save it.",
+    toastRestoredTemplate = "Restored %1\$d provider(s), %2\$d fav, %3\$d watch entries",
+    toastRestoreFailed = "Restore failed: ",
+    toastRecordingQueued = "Recording queued — see Recordings screen",
+
     settingsTitle = "Settings", settingsDisplay = "Display & playback",
     settingsParental = "Parental controls", settingsBackup = "Backup & restore",
     settingsLanguage = "Language", settingsTheme = "Theme",
@@ -709,6 +720,11 @@ private val FR = Strings(
     statAudioChannels = "Canaux audio",
     statBuffered = "Tampon",
     statDroppedFrames = "Images perdues",
+
+    toastBackupReady = "Sauvegarde prête — choisis un fichier pour l'enregistrer.",
+    toastRestoredTemplate = "Restauré : %1\$d fournisseur(s), %2\$d favoris, %3\$d entrées d'historique",
+    toastRestoreFailed = "Échec de la restauration : ",
+    toastRecordingQueued = "Enregistrement en file — voir l'écran Enregistrements",
 
     settingsTitle = "Paramètres", settingsDisplay = "Affichage et lecture",
     settingsParental = "Contrôle parental", settingsBackup = "Sauvegarde et restauration",
@@ -935,6 +951,11 @@ private val ES = Strings(
     statBuffered = "Buffer",
     statDroppedFrames = "Fotogramas perdidos",
 
+    toastBackupReady = "Copia lista — elige un archivo para guardarla.",
+    toastRestoredTemplate = "Restaurado: %1\$d proveedor(es), %2\$d favoritos, %3\$d entradas de historial",
+    toastRestoreFailed = "Error al restaurar: ",
+    toastRecordingQueued = "Grabación en cola — ver pantalla Grabaciones",
+
     settingsTitle = "Ajustes", settingsDisplay = "Pantalla y reproducción",
     settingsParental = "Control parental", settingsBackup = "Copia y restauración",
     settingsLanguage = "Idioma", settingsTheme = "Tema",
@@ -1159,6 +1180,11 @@ private val AR = Strings(
     statAudioChannels = "قنوات الصوت",
     statBuffered = "المخزن المؤقت",
     statDroppedFrames = "الإطارات المفقودة",
+
+    toastBackupReady = "النسخة جاهزة — اختر ملفًا لحفظها.",
+    toastRestoredTemplate = "تمت الاستعادة: %1\$d موفّر، %2\$d مفضّل، %3\$d إدخالًا في السجل",
+    toastRestoreFailed = "فشلت الاستعادة: ",
+    toastRecordingQueued = "التسجيل في الانتظار — راجع شاشة التسجيلات",
 
     settingsTitle = "الإعدادات", settingsDisplay = "العرض والتشغيل",
     settingsParental = "الرقابة الأبوية", settingsBackup = "النسخ الاحتياطي والاستعادة",
