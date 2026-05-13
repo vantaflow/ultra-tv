@@ -27,7 +27,37 @@ class SettingsViewModel @Inject constructor(
     private val remoteConfig: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter,
     private val deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac,
     private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
+    private val backupRepo: com.ultratv.tv.nativeapp.data.repo.BackupRepository,
 ) : ViewModel() {
+
+    private val _backupText = MutableStateFlow<String?>(null)
+    val backupText: StateFlow<String?> = _backupText.asStateFlow()
+
+    fun prepareBackup() {
+        viewModelScope.launch {
+            _backupText.value = backupRepo.export()
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Backup ready — pick a file to save it.")
+        }
+    }
+
+    fun consumeBackup(): String? {
+        val t = _backupText.value
+        _backupText.value = null
+        return t
+    }
+
+    fun restoreBackup(text: String) {
+        viewModelScope.launch {
+            try {
+                val r = backupRepo.import(text)
+                com.ultratv.tv.nativeapp.ui.common.Toaster.ok(
+                    "Restored ${r.providers} provider(s), ${r.favorites} fav, ${r.historyEntries} watch entries"
+                )
+            } catch (t: Throwable) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err("Restore failed: ${t.message}")
+            }
+        }
+    }
 
     val deviceMacAddress: String = deviceMac.mac
 

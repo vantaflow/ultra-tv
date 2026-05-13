@@ -24,7 +24,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +64,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val cats by vm.categories.collectAsState()
     val chans by vm.channels.collectAsState()
     val selected by vm.selectedCategory.collectAsState()
+    val locked by vm.lockedChannels.collectAsState()
+    // Channel awaiting PIN unlock; non-null while the dialog is up.
+    var pinPrompt by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.ChannelEntity?>(null) }
 
     Row(Modifier.fillMaxSize()) {
         // ---- Left pane: categories ----
@@ -136,15 +141,27 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                     contentPadding = PaddingValues(end = 8.dp),
                 ) {
                     itemsIndexed(chans, key = { _, c -> c.id }) { i, c ->
-                        // Position number = visible index (1-based). Using
-                        // itemsIndexed avoids the O(N²) indexOf trap.
-                        ChannelRow(channel = c, position = i + 1) {
-                            vm.resolveAndPlay(c, onPlay)
+                        val isLocked = "${c.providerId}:${c.remoteId}" in locked
+                        ChannelRow(channel = c, position = i + 1, locked = isLocked) {
+                            if (isLocked) pinPrompt = c
+                            else vm.resolveAndPlay(c, onPlay)
                         }
                     }
                 }
             }
         }
+    }
+
+    // PIN dialog when the user clicks a locked channel.
+    pinPrompt?.let { ch ->
+        com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+            title = "🔒 ${ch.name}",
+            onUnlocked = {
+                pinPrompt = null
+                vm.resolveAndPlay(ch, onPlay)
+            },
+            onCancel = { pinPrompt = null },
+        )
     }
 }
 
@@ -176,7 +193,7 @@ private fun CategoryRow(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
-private fun ChannelRow(channel: ChannelEntity, position: Int, onClick: () -> Unit) {
+private fun ChannelRow(channel: ChannelEntity, position: Int, locked: Boolean = false, onClick: () -> Unit) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Card(
@@ -214,7 +231,7 @@ private fun ChannelRow(channel: ChannelEntity, position: Int, onClick: () -> Uni
                 }
             }
             Text(
-                channel.name,
+                channel.name + if (locked) "  🔒" else "",
                 color = if (focused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Medium,

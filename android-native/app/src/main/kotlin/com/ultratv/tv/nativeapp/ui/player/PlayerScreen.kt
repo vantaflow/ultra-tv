@@ -15,7 +15,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -97,6 +100,18 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = true }
     }
+
+    // Sleep-timer: when > 0, stops playback at the given timestamp. The
+    // LaunchedEffect below polls every 5s and pauses + closes the screen
+    // when the deadline is reached.
+    var sleepDeadlineMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(sleepDeadlineMs) {
+        if (sleepDeadlineMs <= 0L) return@LaunchedEffect
+        while (System.currentTimeMillis() < sleepDeadlineMs) delay(5_000)
+        player.pause()
+        com.ultratv.tv.nativeapp.ui.common.Toaster.show("Sleep timer reached — playback paused")
+        onBack()
+    }
     LaunchedEffect(url) {
         if (url.isNotBlank()) {
             player.setMediaItem(MediaItem.fromUri(url))
@@ -149,7 +164,36 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 Text(url.substringBefore('?').takeLast(60), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
         }
-        Row(Modifier.align(Alignment.BottomEnd).padding(24.dp)) {
+        Row(
+            Modifier.align(Alignment.BottomEnd).padding(24.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        ) {
+            // Sleep timer menu — anchored bottom-right next to the external-player button.
+            var sleepMenu by remember { mutableStateOf(false) }
+            Button(onClick = { sleepMenu = !sleepMenu }) {
+                Text(
+                    if (sleepDeadlineMs > 0L) {
+                        val mins = ((sleepDeadlineMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0L)
+                        "💤 ${mins}min"
+                    } else "💤 Sleep"
+                )
+            }
+            if (sleepMenu) {
+                Column(
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .background(Color(0xCC000000), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        .padding(10.dp),
+                ) {
+                    SleepOption("15 min") { sleepDeadlineMs = System.currentTimeMillis() + 15 * 60_000; sleepMenu = false }
+                    SleepOption("30 min") { sleepDeadlineMs = System.currentTimeMillis() + 30 * 60_000; sleepMenu = false }
+                    SleepOption("1 hour") { sleepDeadlineMs = System.currentTimeMillis() + 60 * 60_000; sleepMenu = false }
+                    SleepOption("2 hours") { sleepDeadlineMs = System.currentTimeMillis() + 120 * 60_000; sleepMenu = false }
+                    if (sleepDeadlineMs > 0L) {
+                        SleepOption("Cancel timer") { sleepDeadlineMs = 0L; sleepMenu = false }
+                    }
+                }
+            }
             Button(onClick = {
                 runCatching {
                     val intent = Intent(Intent.ACTION_VIEW).apply {
@@ -159,7 +203,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     }
                     context.startActivity(Intent.createChooser(intent, "Open with…"))
                 }
-            }) { Text("Open in external player") }
+            }) { Text("External player") }
         }
     }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun SleepOption(label: String, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier.padding(vertical = 2.dp),
+    ) { Text(label, fontSize = 13.sp) }
 }

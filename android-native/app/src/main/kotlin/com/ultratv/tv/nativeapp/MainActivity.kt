@@ -156,6 +156,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         if (sidebarPosition == SidebarPosition.TOP) {
             Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
@@ -180,6 +181,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                     ) { NavGraph(nav) }
                 }
             }
+        }
+        com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         }
     }
 }

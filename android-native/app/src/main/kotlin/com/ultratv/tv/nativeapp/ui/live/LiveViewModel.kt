@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
+import com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
@@ -35,8 +36,20 @@ class LiveViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
+    private val lockedStore: LockedChannelsStore,
     private val playback: PlaybackContext,
 ) : ViewModel() {
+
+    val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun toggleLock(channel: ChannelEntity) {
+        viewModelScope.launch {
+            val key = lockedStore.keyFor(channel.providerId, channel.remoteId)
+            val on = key in lockedChannels.value
+            lockedStore.set(channel.providerId, channel.remoteId, !on)
+        }
+    }
 
     private val _query = MutableStateFlow("")
     val query: StateFlow<String> = _query.asStateFlow()

@@ -53,6 +53,43 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 
     // SAF picker for local M3U files. Kept here at the top so the contract is
     // remembered across recompositions; the trigger is a Button further down.
+    // Backup export: SAF CreateDocument with a JSON mime hint. The VM has
+    // already serialised the bundle to text via prepareBackup() before we
+    // get here, so we just stream it to the picked URI.
+    val saveBackup = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/json"),
+        onResult = { uri ->
+            val text = vm.consumeBackup()
+            if (uri == null || text == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                runCatching {
+                    ctx.contentResolver.openOutputStream(uri)?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+                }.onSuccess {
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Backup saved")
+                }.onFailure {
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.err("Save failed: ${it.message}")
+                }
+            }
+        },
+    )
+    val loadBackup = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+        onResult = { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            scope.launch(Dispatchers.IO) {
+                val txt = runCatching {
+                    ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?.toString(Charsets.UTF_8).orEmpty()
+                }.getOrNull()
+                if (txt.isNullOrBlank()) {
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.err("Empty / unreadable file")
+                } else {
+                    vm.restoreBackup(txt)
+                }
+            }
+        },
+    )
+
     val pickFile = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
         onResult = { uri ->
@@ -195,6 +232,25 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         SectionCard {
             Text("Display & playback", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             PreferencesSection()
+        }
+
+        // ---- 4b. Backup / restore ----
+        SectionCard {
+            Text("💾 Backup & restore", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Exports providers, favorites and watch history to a JSON file you choose. " +
+                    "Catalogs (channels / movies / series) are re-fetched via sync, not bundled.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    vm.prepareBackup()
+                    saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json")
+                }) { Text("Export backup") }
+                Button(onClick = {
+                    loadBackup.launch(arrayOf("application/json", "*/*"))
+                }) { Text("Import backup…") }
+            }
         }
 
         // ---- 5. Parental ----
