@@ -30,7 +30,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 ## Features
 
 ### Catalog & providers
-- 🎬 **Xtream Codes** · **M3U URL** · **M3U file from local storage** · **Stalker Portal** (MAC handshake + lazy `create_link` at play time)
+- 🎬 **Xtream Codes** · **M3U URL** · **M3U file from local storage** · **Stalker Portal** with Live + VOD + series catalogues (MAC handshake + lazy `create_link` at play time, including movies)
 - 🔁 **Multi-provider** — add as many as you want, pick the default in Settings (★ Default badge)
 - 🚦 **De-duplication** — re-adding the same `(kind, url, username)` reuses the existing row instead of duplicating
 - 🛰️ **Cloud sync via Cloudflare Worker** — paste your device MAC into the dashboard, add providers there, "Sync from cloud" pulls them all
@@ -188,7 +188,7 @@ In active development / next iterations:
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 📥 **Recording / DVR** via WorkManager + HLS download
-- 🧪 **Stalker VOD / series** endpoints (only Live supported today)
+- 🧪 **Stalker series episodes** (Live + VOD list are wired; episode listing within a Stalker series is the next gap)
 - 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 
 ## Credits

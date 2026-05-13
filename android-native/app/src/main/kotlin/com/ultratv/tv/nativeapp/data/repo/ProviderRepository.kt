@@ -140,22 +140,46 @@ class ProviderRepository @Inject constructor(
             onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
         }
         try {
-            step("Handshaking with portal…", 10)
+            step("Handshaking with portal…", 5)
             val s = stalker.handshake(p)
-            step("Fetching categories…", 30)
-            val cats = stalker.fetchLiveCategories(p, s)
-            step("Fetching channels…", 50)
-            val chans = stalker.fetchLiveChannels(p, s)
+
             val pinSet = parental.isSet()
-            val finalCats = if (!pinSet) cats
-            else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+            fun maybeLock(cats: List<CategoryEntity>): List<CategoryEntity> =
+                if (!pinSet) cats
+                else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+
+            step("Fetching live categories…", 10)
+            val liveCats = stalker.fetchLiveCategories(p, s).let(::maybeLock)
+            step("Fetching live channels…", 25)
+            val chans = stalker.fetchLiveChannels(p, s)
             categoryDao.deleteForProviderKind(p.id, "LIVE")
-            categoryDao.upsertAll(finalCats)
+            categoryDao.upsertAll(liveCats)
             channelDao.deleteForProvider(p.id)
-            step("Saving ${chans.size} channels…", 90)
+            step("Saving ${chans.size} channels…", 40)
             insertChunked(chans) { channelDao.upsertAll(it) }
-            step("Done — ${chans.size} channels", 100)
-            return chans.size
+
+            step("Fetching VOD categories…", 55)
+            val vodCats = stalker.fetchVodCategories(p, s).let(::maybeLock)
+            step("Fetching VOD…", 65)
+            val movies = stalker.fetchVodMovies(p, s)
+            categoryDao.deleteForProviderKind(p.id, "MOVIE")
+            categoryDao.upsertAll(vodCats)
+            movieDao.deleteForProvider(p.id)
+            step("Saving ${movies.size} movies…", 75)
+            insertChunked(movies) { movieDao.upsertAll(it) }
+
+            step("Fetching series categories…", 85)
+            val serCats = stalker.fetchSeriesCategories(p, s).let(::maybeLock)
+            step("Fetching series…", 90)
+            val series = stalker.fetchSeries(p, s)
+            categoryDao.deleteForProviderKind(p.id, "SERIES")
+            categoryDao.upsertAll(serCats)
+            seriesDao.deleteForProvider(p.id)
+            step("Saving ${series.size} series…", 95)
+            insertChunked(series) { seriesDao.upsertAll(it) }
+
+            step("Done — ${chans.size} live · ${movies.size} VOD · ${series.size} series", 100)
+            return chans.size + movies.size + series.size
         } finally {
             syncStatus.clear()
         }
@@ -212,6 +236,16 @@ class ProviderRepository @Inject constructor(
         if (!storedUrl.startsWith("stalker://")) return storedUrl
         val ch = channelDao.byId(channelId) ?: return storedUrl
         val p = providerDao.byId(ch.providerId) ?: return storedUrl
+        return runCatching { stalker.resolvePlayUrl(p, storedUrl) }.getOrElse { storedUrl }
+    }
+
+    /**
+     * Same as [resolvePlayUrl] but indexed by providerId — used for movies /
+     * episodes where we don't have a channel row to look up the provider on.
+     */
+    suspend fun resolveStalkerUrl(providerId: Long, storedUrl: String): String {
+        if (!storedUrl.startsWith("stalker://")) return storedUrl
+        val p = providerDao.byId(providerId) ?: return storedUrl
         return runCatching { stalker.resolvePlayUrl(p, storedUrl) }.getOrElse { storedUrl }
     }
 

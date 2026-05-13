@@ -43,15 +43,34 @@ import javax.inject.Inject
 class MovieDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
+    private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
 ) : ViewModel() {
     private val _m = MutableStateFlow<MovieEntity?>(null)
     val movie: StateFlow<MovieEntity?> = _m.asStateFlow()
     fun load(id: Long) { viewModelScope.launch { _m.value = catalog.movieById(id) } }
-    fun registerPlay(m: MovieEntity) {
-        playback.set(PlaybackContext.Item(
-            providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
-            title = m.name, poster = m.poster, streamUrl = m.streamUrl,
-        ))
+
+    /**
+     * Resolves any `stalker://…` URL to a playable one, sets PlaybackContext
+     * with the resolved URL, then invokes onReady. Non-Stalker URLs are
+     * forwarded directly.
+     */
+    fun play(m: MovieEntity, onReady: (url: String, title: String) -> Unit) {
+        if (!m.streamUrl.startsWith("stalker://")) {
+            playback.set(PlaybackContext.Item(
+                providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
+                title = m.name, poster = m.poster, streamUrl = m.streamUrl,
+            ))
+            onReady(m.streamUrl, m.name)
+            return
+        }
+        viewModelScope.launch {
+            val resolved = provider.resolveStalkerUrl(m.providerId, m.streamUrl)
+            playback.set(PlaybackContext.Item(
+                providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
+                title = m.name, poster = m.poster, streamUrl = resolved,
+            ))
+            onReady(resolved, m.name)
+        }
     }
 }
 
@@ -90,7 +109,7 @@ fun MovieDetailScreen(
             }
             movie.plot?.let { Text(it, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { vm.registerPlay(movie); onPlay(movie.streamUrl, movie.name) }) { Text("Play", fontSize = 16.sp) }
+                Button(onClick = { vm.play(movie, onPlay) }) { Text("Play", fontSize = 16.sp) }
                 com.ultratv.tv.nativeapp.ui.common.FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
         }

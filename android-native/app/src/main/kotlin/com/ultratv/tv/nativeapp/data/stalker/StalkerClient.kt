@@ -102,6 +102,110 @@ class StalkerClient @Inject constructor(private val ok: OkHttpClient) {
         }
     }.getOrDefault(emptyList())
 
+    // ---- VOD (Movies) ----
+
+    /**
+     * Pulls VOD categories. Some MAG portals use `type=vod`, others `type=video`
+     * — we try `vod` first and fall back to `video` if the response is empty.
+     */
+    suspend fun fetchVodCategories(p: ProviderEntity, s: Session): List<CategoryEntity> {
+        val body = runCatching {
+            call("${s.portalRoot}/portal.php?type=vod&action=get_categories", p, s.token)
+        }.getOrNull().orEmpty()
+        val arr = (json.parseToJsonElement(body) as? JsonObject)?.get("js") as? JsonArray
+        val items = arr?.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val rid = o["id"]?.str() ?: return@mapNotNull null
+            val name = o["title"]?.str() ?: return@mapNotNull null
+            CategoryEntity(providerId = p.id, kind = "MOVIE", remoteId = rid, name = name)
+        }.orEmpty()
+        if (items.isNotEmpty()) return items
+        // Fallback to "video".
+        val body2 = runCatching {
+            call("${s.portalRoot}/portal.php?type=video&action=get_categories", p, s.token)
+        }.getOrNull().orEmpty()
+        val arr2 = (json.parseToJsonElement(body2) as? JsonObject)?.get("js") as? JsonArray
+        return arr2?.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val rid = o["id"]?.str() ?: return@mapNotNull null
+            val name = o["title"]?.str() ?: return@mapNotNull null
+            CategoryEntity(providerId = p.id, kind = "MOVIE", remoteId = rid, name = name)
+        }.orEmpty()
+    }
+
+    /** Fetches the full VOD list (up to several thousand items). */
+    suspend fun fetchVodMovies(p: ProviderEntity, s: Session): List<com.ultratv.tv.nativeapp.data.db.MovieEntity> {
+        // get_ordered_list with page=0 returns everything on most portals.
+        val out = mutableListOf<com.ultratv.tv.nativeapp.data.db.MovieEntity>()
+        for (type in listOf("vod", "video")) {
+            val body = runCatching {
+                call("${s.portalRoot}/portal.php?type=$type&action=get_ordered_list&JsHttpRequest=1-xml", p, s.token)
+            }.getOrNull() ?: continue
+            val arr = (json.parseToJsonElement(body) as? JsonObject)
+                ?.get("js")?.jsonObject?.get("data") as? JsonArray ?: continue
+            arr.forEach { el ->
+                val o = el as? JsonObject ?: return@forEach
+                val rid = o["id"]?.str() ?: return@forEach
+                val name = o["name"]?.str() ?: return@forEach
+                val cmd = o["cmd"]?.str() ?: return@forEach
+                out += com.ultratv.tv.nativeapp.data.db.MovieEntity(
+                    providerId = p.id,
+                    remoteId = rid,
+                    name = name,
+                    poster = o["screenshot_uri"]?.str()?.takeIf { it.isNotBlank() }
+                        ?: o["pic"]?.str()?.takeIf { it.isNotBlank() },
+                    categoryId = o["category"]?.str() ?: o["genres_str"]?.str(),
+                    streamUrl = "stalker://$cmd",
+                    container = "mp4",
+                    year = o["year"]?.str()?.toIntOrNull(),
+                    rating = o["rating_imdb"]?.str()?.toDoubleOrNull(),
+                    plot = o["description"]?.str(),
+                )
+            }
+            if (out.isNotEmpty()) return out
+        }
+        return out
+    }
+
+    // ---- Series ----
+
+    suspend fun fetchSeriesCategories(p: ProviderEntity, s: Session): List<CategoryEntity> {
+        val body = runCatching {
+            call("${s.portalRoot}/portal.php?type=series&action=get_categories", p, s.token)
+        }.getOrNull().orEmpty()
+        val arr = (json.parseToJsonElement(body) as? JsonObject)?.get("js") as? JsonArray
+        return arr?.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val rid = o["id"]?.str() ?: return@mapNotNull null
+            val name = o["title"]?.str() ?: return@mapNotNull null
+            CategoryEntity(providerId = p.id, kind = "SERIES", remoteId = rid, name = name)
+        }.orEmpty()
+    }
+
+    suspend fun fetchSeries(p: ProviderEntity, s: Session): List<com.ultratv.tv.nativeapp.data.db.SeriesEntity> {
+        val body = runCatching {
+            call("${s.portalRoot}/portal.php?type=series&action=get_ordered_list&JsHttpRequest=1-xml", p, s.token)
+        }.getOrNull() ?: return emptyList()
+        val arr = (json.parseToJsonElement(body) as? JsonObject)
+            ?.get("js")?.jsonObject?.get("data") as? JsonArray ?: return emptyList()
+        return arr.mapNotNull { el ->
+            val o = el as? JsonObject ?: return@mapNotNull null
+            val rid = o["id"]?.str() ?: return@mapNotNull null
+            val name = o["name"]?.str() ?: return@mapNotNull null
+            com.ultratv.tv.nativeapp.data.db.SeriesEntity(
+                providerId = p.id,
+                remoteId = rid,
+                name = name,
+                poster = o["screenshot_uri"]?.str()?.takeIf { it.isNotBlank() }
+                    ?: o["pic"]?.str()?.takeIf { it.isNotBlank() },
+                categoryId = o["category"]?.str() ?: o["genres_str"]?.str(),
+                year = o["year"]?.str()?.toIntOrNull(),
+                rating = o["rating_imdb"]?.str()?.toDoubleOrNull(),
+                plot = o["description"]?.str(),
+            )
+        }
+    }
+
     /** Turns a stored `stalker://<cmd>` URL into a playable URL via create_link. */
     suspend fun resolvePlayUrl(p: ProviderEntity, channelStreamUrl: String): String =
         withContext(Dispatchers.IO) {
