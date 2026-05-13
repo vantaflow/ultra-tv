@@ -80,6 +80,7 @@ fun OnboardingWizard(
 
     var step by remember { mutableIntStateOf(0) }
     val total = 3
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.78f)),
@@ -95,42 +96,27 @@ fun OnboardingWizard(
         ) {
             Text(
                 when (step) {
-                    0 -> "👋 Welcome to Ultra TV"
-                    1 -> "📡 Add a provider"
-                    else -> "🎉 You're set"
+                    0 -> S.wizardWelcomeTitle
+                    1 -> S.wizardAddProviderTitle
+                    else -> S.wizardDoneTitle
                 },
                 fontSize = 24.sp, fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            Text("Step ${step + 1} / $total", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+            Text(S.wizardStepTemplate.format(step + 1, total), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
 
             when (step) {
                 0 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Ultra TV is a native Android-TV IPTV client. It speaks Xtream Codes, M3U / M3U8, M3U files from local storage, and Stalker Portal.",
-                        color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp,
-                    )
-                    Text(
-                        "It uses Compose-TV for the UI, Media3 / ExoPlayer for playback, Room for the catalog. D-pad navigation works out of the box.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
-                    )
+                    Text(S.wizardIntro1, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+                    Text(S.wizardIntro2, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                 }
 
                 1 -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Two paths:",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp,
-                    )
-                    Text(
-                        "• Settings → +Xtream / +M3U URL / +M3U file / +Stalker. Fill in the form.",
-                        color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp,
-                    )
-                    Text(
-                        "• Or open your Cloudflare Worker dashboard, paste the MAC below, add your providers there, then Settings → Sync from cloud.",
-                        color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp,
-                    )
+                    Text(S.wizardTwoPaths, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    Text(S.wizardPathManual, color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp)
+                    Text(S.wizardPathCloud, color = MaterialTheme.colorScheme.onBackground, fontSize = 14.sp)
                     Spacer(Modifier.height(8.dp))
-                    Text("Your device MAC:", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(S.onboardingMacLabel, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     Text(
                         vm.mac,
                         color = MaterialTheme.colorScheme.primary,
@@ -143,15 +129,12 @@ fun OnboardingWizard(
                 }
 
                 else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        "Tips you can come back to anytime:",
-                        color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp,
-                    )
-                    Text("• ★ Default provider switching is in Settings.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("• 💤 Sleep timer + 📊 Stream stats live in the player overlay.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("• 🔒 Lock individual channels via Settings → Parental.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("• 💾 Backup & restore exports providers + favorites + history as JSON.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("• 🗓 Guide → Refresh xmltv pulls a 12 h EPG grid.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(S.wizardTipsHead, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp)
+                    Text(S.wizardTipDefault, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(S.wizardTipSleep, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(S.wizardTipLock, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(S.wizardTipBackup, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(S.wizardTipGuide, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
@@ -163,18 +146,18 @@ fun OnboardingWizard(
                     Button(
                         onClick = { step-- },
                         colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text("Back") }
+                    ) { Text(S.wizardBack) }
                 }
                 if (step < total - 1) {
-                    Button(onClick = { step++ }) { Text("Next") }
+                    Button(onClick = { step++ }) { Text(S.wizardNext) }
                 } else {
                     Button(onClick = {
                         vm.dismiss(); onOpenSettings()
-                    }) { Text("Add a provider →") }
+                    }) { Text(S.wizardAddProviderCta) }
                     Button(
                         onClick = { vm.dismiss() },
                         colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text("Skip for now") }
+                    ) { Text(S.wizardSkip) }
                 }
             }
         }
