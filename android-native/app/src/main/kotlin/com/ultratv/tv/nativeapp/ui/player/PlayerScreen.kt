@@ -77,12 +77,12 @@ class PlayerViewModel @Inject constructor(
     /** Queues a Live channel recording for `maxMinutes`. HLS m3u8 → segment
      *  recorder; non-HLS live → single HTTP body grab (won't capture more than
      *  what the server already buffered). */
-    fun recordLive(maxMinutes: Int = 120) {
+    fun recordLive(maxMinutes: Int = 120, toastTemplate: String = "Recording queued (max %1\$d min)") {
         val c = playback.current.value ?: return
         if (c.kind != "LIVE") return
         viewModelScope.launch {
             recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, maxMinutes)
-            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Recording queued (max ${maxMinutes} min)")
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok(toastTemplate.format(maxMinutes))
         }
     }
 
@@ -220,7 +220,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         if (sleepDeadlineMs <= 0L) return@LaunchedEffect
         while (System.currentTimeMillis() < sleepDeadlineMs) delay(5_000)
         player.pause()
-        com.ultratv.tv.nativeapp.ui.common.Toaster.show("Sleep timer reached — playback paused")
+        com.ultratv.tv.nativeapp.ui.common.Toaster.show(S.sleepReached)
         onBack()
     }
     LaunchedEffect(currentUrl) {
@@ -340,7 +340,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     if (sleepDeadlineMs > 0L) {
                         val mins = ((sleepDeadlineMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0L)
                         "💤 ${mins}min"
-                    } else "💤 Sleep"
+                    } else "💤 " + S.sleepLabel
                 )
             }
             if (sleepMenu) {
@@ -350,12 +350,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                         .background(Color(0xCC000000), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                         .padding(10.dp),
                 ) {
-                    SleepOption("15 min") { sleepDeadlineMs = System.currentTimeMillis() + 15 * 60_000; sleepMenu = false }
-                    SleepOption("30 min") { sleepDeadlineMs = System.currentTimeMillis() + 30 * 60_000; sleepMenu = false }
-                    SleepOption("1 hour") { sleepDeadlineMs = System.currentTimeMillis() + 60 * 60_000; sleepMenu = false }
-                    SleepOption("2 hours") { sleepDeadlineMs = System.currentTimeMillis() + 120 * 60_000; sleepMenu = false }
+                    SleepOption(S.sleepMin15) { sleepDeadlineMs = System.currentTimeMillis() + 15 * 60_000; sleepMenu = false }
+                    SleepOption(S.sleepMin30) { sleepDeadlineMs = System.currentTimeMillis() + 30 * 60_000; sleepMenu = false }
+                    SleepOption(S.sleep1h) { sleepDeadlineMs = System.currentTimeMillis() + 60 * 60_000; sleepMenu = false }
+                    SleepOption(S.sleep2h) { sleepDeadlineMs = System.currentTimeMillis() + 120 * 60_000; sleepMenu = false }
                     if (sleepDeadlineMs > 0L) {
-                        SleepOption("Cancel timer") { sleepDeadlineMs = 0L; sleepMenu = false }
+                        SleepOption(S.sleepCancel) { sleepDeadlineMs = 0L; sleepMenu = false }
                     }
                 }
             }
@@ -363,7 +363,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 Button(onClick = { tracksOpen = true }) { Text("🎚 ${S.playerTracks}") }
             }
             if (isLive) {
-                Button(onClick = { vm.recordLive(120) }) { Text("⏺ ${S.playerRecord} (2h)") }
+                Button(onClick = { vm.recordLive(120, S.recordingQueuedTemplate) }) { Text("⏺ ${S.playerRecord} (2h)") }
             }
             Button(onClick = { displayMenu = !displayMenu }) { Text("📐 ${S.playerDisplay}") }
             // Cast picker — only shown if the Cast SDK initialised successfully
@@ -397,7 +397,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                         putExtra("title", title)
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK
                     }
-                    context.startActivity(Intent.createChooser(intent, "Open with…"))
+                    context.startActivity(Intent.createChooser(intent, S.recordingsOpenWith))
                 }
             }) { Text(S.playerExternal) }
         }
@@ -457,15 +457,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     .padding(12.dp),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
             ) {
-                Text("📊 Stream stats", color = Color(0xFF66B3FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                StatRow("Resolution", stats.resolution)
-                StatRow("Video codec", stats.videoCodec)
-                StatRow("Frame rate", stats.frameRate)
-                StatRow("Video bitrate", stats.videoBitrate)
-                StatRow("Audio codec", stats.audioCodec)
-                StatRow("Audio channels", stats.audioChannels)
-                StatRow("Buffered", stats.bufferedAhead)
-                StatRow("Dropped frames", stats.droppedFrames)
+                Text("📊 " + S.playerStats, color = Color(0xFF66B3FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                StatRow(S.statResolution, stats.resolution)
+                StatRow(S.statVideoCodec, stats.videoCodec)
+                StatRow(S.statFrameRate, stats.frameRate)
+                StatRow(S.statVideoBitrate, stats.videoBitrate)
+                StatRow(S.statAudioCodec, stats.audioCodec)
+                StatRow(S.statAudioChannels, stats.audioChannels)
+                StatRow(S.statBuffered, stats.bufferedAhead)
+                StatRow(S.statDroppedFrames, stats.droppedFrames)
             }
         }
     }
