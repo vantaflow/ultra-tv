@@ -60,11 +60,12 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🚀 **Auto-play last watched on launch** option
 - 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
 - ⏺ **Record VOD** — from a movie's detail page, queue an OkHttp-backed download via WorkManager; progress visible on a Recordings screen; played locally once done (no external storage permission — saved under app-private external storage)
+- 📐 **Aspect & speed** controls in the player toolbar — Fit / Fill / Zoom / 16:9 / 4:3 for picture, 0.5× / 1× / 1.25× / 1.5× / 2× for VOD playback speed
 - 💤 **Sleep timer** (15 min · 30 min · 1 h · 2 h · cancel) — pauses + exits player at the deadline
 - 📊 **Stream stats overlay** — resolution / video & audio codec / frame rate / bitrate / buffer ahead, toggled from the player overlay
 
 ### Discovery / Home
-- 🏠 Dynamic Home: **Continue watching**, **Recently watched**, **Movies**, **Series**, **Featured channels** rails
+- 🏠 Dynamic Home: **Continue watching** (tap an item → Resume / Dismiss sheet), **Recently watched**, **Movies**, **Series**, **Featured channels** rails
 - 🆕 **First-time MAC card**: shows your device MAC + dashboard steps when no provider is configured
 - 🗓 **TV Guide grid** (Tivimate-style): 12 h × N channels timeline with "now" indicator, refreshed from the provider's full `xmltv.php` feed (streaming pull-parser handles 50 MB+ feeds)
 - ▦ **Multi-View**: up to 4 channels simultaneously in a 2×2 grid

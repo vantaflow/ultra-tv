@@ -16,6 +16,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +50,8 @@ fun HomeScreen(
     val movies by vm.featuredMovies.collectAsState()
     val series by vm.featuredSeries.collectAsState()
     val channels by vm.featuredChannels.collectAsState()
+
+    var actionsFor by remember { mutableStateOf<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?>(null) }
 
     Column(
         Modifier
@@ -83,8 +88,10 @@ fun HomeScreen(
                     poster = h.poster,
                     subtitle = progressLabel(h.positionMs, h.durationMs),
                 ) {
-                    vm.playFromHistory(h)
-                    onPlay(h.streamUrl, h.title)
+                    // Open the actions sheet so the user can choose between
+                    // resume and dismiss — direct play would make Dismiss
+                    // unreachable on D-pad without a contextual menu key.
+                    actionsFor = h
                 }
             }
         }
@@ -146,6 +153,56 @@ fun HomeScreen(
             }
         }
         Spacer(Modifier.height(12.dp))
+    }
+
+    // Action sheet for a Continue watching entry.
+    actionsFor?.let { h ->
+        ContinueActions(
+            title = h.title,
+            onResume = {
+                vm.playFromHistory(h)
+                onPlay(h.streamUrl, h.title)
+                actionsFor = null
+            },
+            onDismiss = {
+                vm.dismiss(h)
+                actionsFor = null
+            },
+            onCancel = { actionsFor = null },
+        )
+    }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ContinueActions(
+    title: String,
+    onResume: () -> Unit,
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    androidx.compose.foundation.layout.Box(
+        Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(14.dp))
+                .background(MaterialTheme.colorScheme.surface)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground, maxLines = 2)
+            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = onResume) { Text("▶ Resume") }
+                Button(onClick = onDismiss, colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Text("✖ Dismiss")
+                }
+                Button(onClick = onCancel, colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.background)) {
+                    Text("Cancel")
+                }
+            }
+        }
     }
 }
 

@@ -179,6 +179,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     var currentTitle by remember { mutableStateOf(title) }
     var tracksOpen by remember { mutableStateOf(false) }
     var drawerOpen by remember { mutableStateOf(false) }
+    var displayMenu by remember { mutableStateOf(false) }
+    var aspectMode by remember { mutableStateOf(AspectMode.Fit) }
+    var playbackSpeed by remember { mutableStateOf(1.0f) }
 
     val player = remember {
         ExoPlayer.Builder(context).build().apply { playWhenReady = true }
@@ -213,6 +216,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             player.play()
         }
         vm.prepareResume()
+    }
+    LaunchedEffect(playbackSpeed) {
+        player.playbackParameters = androidx.media3.common.PlaybackParameters(playbackSpeed)
     }
 
     // Periodically record playback position so "Continue watching" works even
@@ -288,6 +294,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     )
                 }
             },
+            update = { v -> v.resizeMode = aspectMode.resizeMode },
             modifier = Modifier.fillMaxSize(),
         )
         Row(Modifier.align(Alignment.TopStart).padding(24.dp)) {
@@ -335,6 +342,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             if (!isLive) {
                 Button(onClick = { tracksOpen = true }) { Text("🎚 Tracks") }
             }
+            Button(onClick = { displayMenu = !displayMenu }) { Text("📐 Display") }
             // Cast picker — only shown if the Cast SDK initialised successfully
             // (Play Services present). We use the framework's MediaRouteButton
             // wrapped in an AndroidView so the system Cast UI takes over.
@@ -369,6 +377,35 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                     context.startActivity(Intent.createChooser(intent, "Open with…"))
                 }
             }) { Text("External player") }
+        }
+        if (displayMenu) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 24.dp, bottom = 70.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(10.dp))
+                    .padding(10.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
+            ) {
+                Text("Aspect", color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                AspectMode.entries.forEach { mode ->
+                    Button(
+                        onClick = { aspectMode = mode; displayMenu = false },
+                        colors = if (mode == aspectMode) androidx.tv.material3.ButtonDefaults.colors()
+                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
+                    ) { Text(mode.label, fontSize = 12.sp) }
+                }
+                if (!isLive) {
+                    Text("Speed", color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
+                    listOf(0.5f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { sp ->
+                        Button(
+                            onClick = { playbackSpeed = sp; displayMenu = false },
+                            colors = if (sp == playbackSpeed) androidx.tv.material3.ButtonDefaults.colors()
+                            else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
+                        ) { Text("${sp}x", fontSize = 12.sp) }
+                    }
+                }
+            }
         }
         if (drawerOpen && isLive) {
             LiveDrawer(
@@ -578,6 +615,16 @@ private fun StatRow(label: String, value: String) {
         Text(label, color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp, modifier = Modifier.width(90.dp))
         Text(value, color = Color.White, fontSize = 11.sp)
     }
+}
+
+/** PlayerView.resizeMode mapping. RESIZE_MODE_* values are ints exposed by
+ *  androidx.media3.ui.AspectRatioFrameLayout. */
+private enum class AspectMode(val label: String, val resizeMode: Int) {
+    Fit("Fit", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT),
+    Fill("Fill", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL),
+    Zoom("Zoom", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
+    FixedWidth("16:9", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
+    FixedHeight("4:3", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT),
 }
 
 private data class StreamStats(

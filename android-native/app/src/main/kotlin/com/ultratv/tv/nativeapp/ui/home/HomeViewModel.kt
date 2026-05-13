@@ -74,4 +74,9 @@ class HomeViewModel @Inject constructor(
             parentRemoteId = h.parentRemoteId,
         ))
     }
+
+    /** Removes an entry from history (used by "Dismiss" on Continue watching). */
+    fun dismiss(h: WatchHistoryEntity) {
+        viewModelScope.launch { history.remove(h.providerId, h.kind, h.remoteId) }
+    }
 }
