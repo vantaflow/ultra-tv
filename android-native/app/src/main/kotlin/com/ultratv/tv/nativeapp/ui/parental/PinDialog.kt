@@ -65,17 +65,18 @@ fun ParentalSection(
 ) {
     val set by vm.pinSet.collectAsState()
     var dialog by remember { mutableStateOf(false) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            if (set) "Parental PIN: enabled (4-digit)" else "Parental PIN: not set",
+            if (set) S.parentalPinEnabled else S.parentalPinNotSet,
             color = MaterialTheme.colorScheme.onBackground,
             fontSize = 15.sp,
             modifier = Modifier.padding(top = 10.dp),
         )
-        Button(onClick = { dialog = true }) { Text(if (set) "Change PIN" else "Set PIN") }
-        if (set) Button(onClick = { vm.setPin("") {} }) { Text("Clear") }
-        Button(onClick = onManageLockedChannels) { Text("Manage locked channels…") }
+        Button(onClick = { dialog = true }) { Text(if (set) S.parentalChangePin else S.parentalSetPin) }
+        if (set) Button(onClick = { vm.setPin("") {} }) { Text(S.parentalClearPin) }
+        Button(onClick = onManageLockedChannels) { Text(S.parentalManageLocked) }
     }
     if (dialog) {
         PinSetDialog(onCancel = { dialog = false }, onConfirm = { pin ->
@@ -89,6 +90,7 @@ fun ParentalSection(
 private fun PinSetDialog(onCancel: () -> Unit, onConfirm: (String) -> Unit) {
     var p1 by remember { mutableStateOf("") }
     var p2 by remember { mutableStateOf("") }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Box(
         Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
         contentAlignment = Alignment.Center,
@@ -100,15 +102,15 @@ private fun PinSetDialog(onCancel: () -> Unit, onConfirm: (String) -> Unit) {
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Set parental PIN", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            PinField(value = p1, onChange = { p1 = it.filter { c -> c.isDigit() }.take(4) }, hint = "PIN (4 digits)")
-            PinField(value = p2, onChange = { p2 = it.filter { c -> c.isDigit() }.take(4) }, hint = "Confirm PIN")
+            Text(S.parentalSetTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            PinField(value = p1, onChange = { p1 = it.filter { c -> c.isDigit() }.take(4) }, hint = S.parentalPinHint)
+            PinField(value = p2, onChange = { p2 = it.filter { c -> c.isDigit() }.take(4) }, hint = S.parentalConfirmHint)
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onCancel) { Text("Cancel") }
+                Button(onClick = onCancel) { Text(S.cancel) }
                 Button(
                     onClick = { if (p1.length == 4 && p1 == p2) onConfirm(p1) },
                     enabled = p1.length == 4 && p1 == p2,
-                ) { Text("Save") }
+                ) { Text(S.save) }
             }
         }
     }

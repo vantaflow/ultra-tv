@@ -44,7 +44,7 @@ import androidx.tv.material3.Text
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 fun PinPromptDialog(
-    title: String = "🔒 Locked content",
+    title: String? = null,
     onUnlocked: () -> Unit,
     onCancel: () -> Unit,
     vm: ParentalViewModel = hiltViewModel(),
@@ -53,6 +53,8 @@ fun PinPromptDialog(
     LaunchedEffect(pinSet) { if (!pinSet) onUnlocked() }
     if (!pinSet) return
 
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    val resolvedTitle = title ?: S.parentalLockedTitle
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -70,9 +72,9 @@ fun PinPromptDialog(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text(resolvedTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             Text(
-                "Enter your parental PIN to continue.",
+                S.parentalEnterPin,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
             )
             Box(
@@ -98,7 +100,7 @@ fun PinPromptDialog(
                     },
                 )
             }
-            if (error) Text("Wrong PIN.", color = androidx.compose.ui.graphics.Color(0xFFFF6B6B), fontSize = 13.sp)
+            if (error) Text(S.parentalWrongPin, color = androidx.compose.ui.graphics.Color(0xFFFF6B6B), fontSize = 13.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Button(
                     onClick = {
@@ -108,8 +110,8 @@ fun PinPromptDialog(
                         }
                     },
                     enabled = pin.length == 4,
-                ) { Text("Unlock") }
-                Button(onClick = onCancel) { Text("Cancel") }
+                ) { Text(S.parentalUnlock) }
+                Button(onClick = onCancel) { Text(S.cancel) }
             }
         }
     }
