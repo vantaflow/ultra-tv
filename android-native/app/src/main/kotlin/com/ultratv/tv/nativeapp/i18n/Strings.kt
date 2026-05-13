@@ -107,6 +107,14 @@ data class Strings(
     val lockChannelsLock: String,
     val lockChannelsUnlock: String,
 
+    // Guide
+    val guideClickHint: String,
+    val guideLoadingEpg: String,
+    val guideProgrammesTemplate: String,
+    val guideLoading: String,
+    val guideRefreshXmltv: String,
+    val guideNoChannels: String,
+
     // Settings sections
     val settingsTitle: String,
     val settingsDisplay: String,
@@ -242,6 +250,13 @@ private val EN = Strings(
     lockChannelsLock = "Lock",
     lockChannelsUnlock = "Unlock",
 
+    guideClickHint = "Click a channel to load its next programmes.",
+    guideLoadingEpg = "Loading EPG…",
+    guideProgrammesTemplate = "%1\$d programmes loaded · %2\$d channels",
+    guideLoading = "Loading…",
+    guideRefreshXmltv = "Refresh xmltv",
+    guideNoChannels = "No channels — add a provider in Settings.",
+
     settingsTitle = "Settings", settingsDisplay = "Display & playback",
     settingsParental = "Parental controls", settingsBackup = "Backup & restore",
     settingsLanguage = "Language", settingsTheme = "Theme",
@@ -348,6 +363,13 @@ private val FR = Strings(
     lockChannelsFilterHint = "Filtrer les chaînes…",
     lockChannelsLock = "Verrouiller",
     lockChannelsUnlock = "Déverrouiller",
+
+    guideClickHint = "Clique une chaîne pour charger les prochains programmes.",
+    guideLoadingEpg = "Chargement de l'EPG…",
+    guideProgrammesTemplate = "%1\$d programmes chargés · %2\$d chaînes",
+    guideLoading = "Chargement…",
+    guideRefreshXmltv = "Rafraîchir xmltv",
+    guideNoChannels = "Aucune chaîne — ajoute un fournisseur dans Paramètres.",
 
     settingsTitle = "Paramètres", settingsDisplay = "Affichage et lecture",
     settingsParental = "Contrôle parental", settingsBackup = "Sauvegarde et restauration",
@@ -456,6 +478,13 @@ private val ES = Strings(
     lockChannelsLock = "Bloquear",
     lockChannelsUnlock = "Desbloquear",
 
+    guideClickHint = "Pulsa un canal para cargar los próximos programas.",
+    guideLoadingEpg = "Cargando EPG…",
+    guideProgrammesTemplate = "%1\$d programas cargados · %2\$d canales",
+    guideLoading = "Cargando…",
+    guideRefreshXmltv = "Refrescar xmltv",
+    guideNoChannels = "Sin canales — añade un proveedor en Ajustes.",
+
     settingsTitle = "Ajustes", settingsDisplay = "Pantalla y reproducción",
     settingsParental = "Control parental", settingsBackup = "Copia y restauración",
     settingsLanguage = "Idioma", settingsTheme = "Tema",
@@ -562,6 +591,13 @@ private val AR = Strings(
     lockChannelsFilterHint = "تصفية القنوات…",
     lockChannelsLock = "قفل",
     lockChannelsUnlock = "فتح",
+
+    guideClickHint = "اضغط قناة لتحميل برامجها التالية.",
+    guideLoadingEpg = "جاري تحميل EPG…",
+    guideProgrammesTemplate = "%1\$d برنامج محمَّل · %2\$d قناة",
+    guideLoading = "جاري التحميل…",
+    guideRefreshXmltv = "تحديث xmltv",
+    guideNoChannels = "لا توجد قنوات — أضف موفّرًا من الإعدادات.",
 
     settingsTitle = "الإعدادات", settingsDisplay = "العرض والتشغيل",
     settingsParental = "الرقابة الأبوية", settingsBackup = "النسخ الاحتياطي والاستعادة",

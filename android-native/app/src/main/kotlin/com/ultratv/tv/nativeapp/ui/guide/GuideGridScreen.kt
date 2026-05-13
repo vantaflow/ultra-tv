@@ -136,13 +136,14 @@ fun GuideGridScreen(
     val windowStart = remember(now) { (now / 3_600_000L) * 3_600_000L - 30 * 60_000L }
     val windowEnd = remember(windowStart) { windowStart + 12 * 60 * 60 * 1000L }
 
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("TV Guide", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+            Text(S.tvGuide, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             val total = byChannel.values.sumOf { it.size }
-            Text("$total programmes loaded · ${channels.size} channels", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(S.guideProgrammesTemplate.format(total, channels.size), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(onClick = { vm.refreshXmltv() }, enabled = !loading) {
-                Text(if (loading) "Loading…" else "Refresh xmltv")
+                Text(if (loading) S.guideLoading else S.guideRefreshXmltv)
             }
         }
 
@@ -168,7 +169,7 @@ fun GuideGridScreen(
         }
 
         if (channels.isEmpty()) {
-            Text("No channels — add a provider in Settings.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(S.guideNoChannels, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

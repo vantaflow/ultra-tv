@@ -80,10 +80,11 @@ fun GuideScreen(vm: GuideViewModel = hiltViewModel()) {
     val channels by vm.channels.collectAsState()
     val epgMap by vm.epgByChannel.collectAsState()
     var expanded by remember { mutableStateOf<Long?>(null) }
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("TV Guide", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Text("Click a channel to load its next programmes.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        Text(S.tvGuide, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.guideClickHint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             items(channels, key = { it.id }) { c ->
                 val rows = epgMap[c.id].orEmpty()
@@ -100,7 +101,7 @@ fun GuideScreen(vm: GuideViewModel = hiltViewModel()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(c.name, color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                         if (expanded == c.id) {
-                            if (rows.isEmpty()) Text("Loading EPG…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            if (rows.isEmpty()) Text(S.guideLoadingEpg, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                             else rows.take(5).forEach { e ->
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Text(formatTime(e.startMs), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, modifier = Modifier.width(64.dp))
