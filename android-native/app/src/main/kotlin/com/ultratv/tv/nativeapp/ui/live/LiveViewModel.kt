@@ -123,15 +123,24 @@ class LiveViewModel @Inject constructor(
         }.flatMapLatest { (ps, cat, hidden) ->
             val pid = ps.firstOrNull { it.active }?.id ?: ps.firstOrNull()?.id
             if (pid == null) flowOf(emptyList())
-            else if (cat == CATEGORY_ALL) {
-                catalog.channels(pid).map { list ->
-                    list.filter { ch ->
-                        val cid = ch.categoryId ?: return@filter true
-                        hiddenStore.keyFor("LIVE", pid, cid) !in hidden
+            else {
+                val base = if (cat == CATEGORY_ALL) {
+                    catalog.channels(pid).map { list ->
+                        list.filter { ch ->
+                            val cid = ch.categoryId ?: return@filter true
+                            hiddenStore.keyFor("LIVE", pid, cid) !in hidden
+                        }
                     }
+                } else {
+                    catalog.channelsForCategory(pid, cat)
                 }
-            } else {
-                catalog.channelsForCategory(pid, cat)
+                // Reorder so favorited live channels float to the top of every
+                // view. We re-use the existing FavoriteEntity table (kind="LIVE").
+                combine(base, catalog.favoritesByKind(pid, "LIVE")) { all, favs ->
+                    val favIds = favs.map { it.remoteId }.toSet()
+                    val (pinned, rest) = all.partition { it.remoteId in favIds }
+                    pinned + rest
+                }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

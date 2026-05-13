@@ -61,6 +61,13 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Text(S.homeWelcome, fontSize = 36.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        val activeProvider = providers.firstOrNull { it.active } ?: providers.firstOrNull()
+        if (activeProvider != null) {
+            Text(
+                "★ " + activeProvider.name + "  ·  " + activeProvider.kind,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
+            )
+        }
 
         // ---- Onboarding card: shown prominently when no provider is configured ----
         if (providers.isEmpty()) {
