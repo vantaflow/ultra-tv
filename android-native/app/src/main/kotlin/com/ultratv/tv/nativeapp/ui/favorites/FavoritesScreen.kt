@@ -75,14 +75,15 @@ fun FavoritesScreen(
     val movies by vm.movies.collectAsState()
     val series by vm.series.collectAsState()
 
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Favorites", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.favorites, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         if (movies.isEmpty() && series.isEmpty()) {
-            Text("Nothing favorited yet — open a movie or series and tap ☆.",
+            Text(S.favoritesEmpty,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (movies.isNotEmpty()) {
-            Text("Movies — ${movies.size}", color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(S.favoritesMoviesSection.format(movies.size), color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 180.dp),
                 contentPadding = PaddingValues(2.dp),
@@ -98,7 +99,7 @@ fun FavoritesScreen(
             }
         }
         if (series.isNotEmpty()) {
-            Text("Series — ${series.size}", color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(S.favoritesSeriesSection.format(series.size), color = MaterialTheme.colorScheme.primary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 180.dp),
                 contentPadding = PaddingValues(2.dp),

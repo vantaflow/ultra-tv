@@ -99,8 +99,9 @@ fun MovieDetailScreen(
     LaunchedEffect(movieId) { vm.load(movieId) }
 
     val movie = m
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     if (movie == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Loading…", color = MaterialTheme.colorScheme.onBackground) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = MaterialTheme.colorScheme.onBackground) }
         return
     }
     Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -123,7 +124,7 @@ fun MovieDetailScreen(
             }
             movie.plot?.let { Text(it, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { vm.play(movie, onPlay) }) { Text("Play", fontSize = 16.sp) }
+                Button(onClick = { vm.play(movie, onPlay) }) { Text(S.play, fontSize = 16.sp) }
                 Button(onClick = { vm.record(movie) }) { Text("⏺ Record", fontSize = 16.sp) }
                 com.ultratv.tv.nativeapp.ui.common.FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }

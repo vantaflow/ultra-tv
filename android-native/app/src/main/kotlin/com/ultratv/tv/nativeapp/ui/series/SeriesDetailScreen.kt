@@ -42,8 +42,9 @@ fun SeriesDetailScreen(
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
     val series = s
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     if (series == null) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("Loading…", color = MaterialTheme.colorScheme.onBackground) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = MaterialTheme.colorScheme.onBackground) }
         return
     }
     Column(Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -67,9 +68,9 @@ fun SeriesDetailScreen(
             }
         }
 
-        Text("Episodes", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.seriesDetailEpisodes, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
         if (eps.isEmpty() && !loading) {
-            Text("No episodes available.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(S.seriesNoEpisodes, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),

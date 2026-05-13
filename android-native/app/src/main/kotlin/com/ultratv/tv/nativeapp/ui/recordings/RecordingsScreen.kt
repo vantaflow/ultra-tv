@@ -82,23 +82,23 @@ fun RecordingsScreen(
                         Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                     }
                     if (r.status == "done") {
-                        Button(onClick = { onPlayLocal("file://${r.filePath}", r.title) }) { Text("Play") }
+                        Button(onClick = { onPlayLocal("file://${r.filePath}", r.title) }) { Text(S.recordingsPlay) }
                         Button(onClick = {
                             runCatching {
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
                                     setDataAndType(android.net.Uri.parse("file://${r.filePath}"), "video/*")
                                     flags = Intent.FLAG_ACTIVITY_NEW_TASK
                                 }
-                                ctx.startActivity(Intent.createChooser(intent, "Open with…"))
+                                ctx.startActivity(Intent.createChooser(intent, S.recordingsOpenWith))
                             }
                         }, colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) {
-                            Text("Open with…")
+                            Text(S.recordingsOpenWith)
                         }
                     }
                     Button(
                         onClick = { vm.remove(r.id) },
                         colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text("Delete") }
+                    ) { Text(S.delete) }
                 }
             }
         }

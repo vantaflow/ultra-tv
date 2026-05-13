@@ -71,9 +71,10 @@ fun MultiViewScreen(vm: MultiViewViewModel = hiltViewModel()) {
     val slots = remember { mutableStateListOf<ChannelEntity?>(null, null, null, null) }
     var pickingIdx = remember { mutableStateListOf(-1) }  // -1 = not picking
 
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Multi-View", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Text("Tap a tile to assign a channel. ENTER cycles through tiles.",
+        Text(S.multiViewTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(S.multiViewHint,
             color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
 
         // 2×2 grid of player tiles
@@ -98,7 +99,7 @@ fun MultiViewScreen(vm: MultiViewViewModel = hiltViewModel()) {
         }
 
         if (pickingIdx[0] >= 0) {
-            Text("Choose a channel for tile ${pickingIdx[0] + 1}:", color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
+            Text(S.multiViewPickTemplate.format(pickingIdx[0] + 1), color = MaterialTheme.colorScheme.primary, fontSize = 14.sp)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 lazyItems(all.take(50), key = { it.id }) { c ->
                     Card(onClick = {
