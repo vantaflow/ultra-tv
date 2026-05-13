@@ -32,6 +32,7 @@ import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.repo.HistoryRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.sync.SyncScheduler
 import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.categories.CategoriesScreen
@@ -94,6 +95,11 @@ class MainActivity : ComponentActivity() {
     private fun kickoffStartupTasks() {
         lifecycleScope.launch(Dispatchers.IO) {
             val prefs = prefsStore.flow.first()
+
+            // (Re-)apply the background sync schedule from the stored prefs
+            // every time the app starts so a re-install / OS restart picks up
+            // where we left off.
+            SyncScheduler.schedule(this@MainActivity, prefs.syncIntervalHours)
 
             if (prefs.autoSyncOnLaunch) {
                 val intervalMs = prefs.syncIntervalHours * 3600L * 1000L

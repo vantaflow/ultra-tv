@@ -1,36 +1,44 @@
 package com.ultratv.tv.nativeapp
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 /**
- * Global Coil [ImageLoader] with both memory and disk caches. Without disk
- * cache, every scroll of a poster grid re-downloads every image — that's the
- * main source of lag on large catalogs. With caches sized below, repeated
- * scrolls of a 5000-poster grid stay smooth.
+ * Application root. Implements Coil's [ImageLoaderFactory] for app-wide image
+ * caching and WorkManager's [Configuration.Provider] so [SyncWorker] can be
+ * instantiated through Hilt with its repository dependencies.
  */
 @HiltAndroidApp
-class UltraTvApp : Application(), ImageLoaderFactory {
+class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
+
+    @Inject lateinit var workerFactory: HiltWorkerFactory
+
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .memoryCache {
             MemoryCache.Builder(this)
-                .maxSizePercent(0.25)        // 25% of available heap
+                .maxSizePercent(0.25)
                 .build()
         }
         .diskCache {
             DiskCache.Builder()
                 .directory(cacheDir.resolve("image_cache"))
-                .maxSizeBytes(256L * 1024 * 1024) // 256 MB
+                .maxSizeBytes(256L * 1024 * 1024)
                 .build()
         }
-        .respectCacheHeaders(false)         // many IPTV CDNs send no-cache; we override
+        .respectCacheHeaders(false)
         .memoryCachePolicy(CachePolicy.ENABLED)
         .diskCachePolicy(CachePolicy.ENABLED)
         .crossfade(true)
         .build()
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 }

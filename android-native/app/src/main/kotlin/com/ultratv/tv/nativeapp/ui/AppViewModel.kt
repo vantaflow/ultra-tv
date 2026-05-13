@@ -1,7 +1,10 @@
 package com.ultratv.tv.nativeapp.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ultratv.tv.nativeapp.data.sync.SyncScheduler
+import dagger.hilt.android.qualifiers.ApplicationContext
 import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.data.prefs.DefaultPlayer
 import com.ultratv.tv.nativeapp.data.prefs.SidebarPosition
@@ -19,6 +22,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AppViewModel @Inject constructor(
     private val store: UserPreferencesStore,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     val prefs: StateFlow<UserPrefs> = store.flow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserPrefs())
@@ -33,6 +37,10 @@ class AppViewModel @Inject constructor(
     fun setAutoPlayNext(v: Boolean) = viewModelScope.launch { store.setAutoPlayNext(v) }
     fun setLaunchAtBoot(v: Boolean) = viewModelScope.launch { store.setLaunchAtBoot(v) }
     fun setAutoPlayLast(v: Boolean) = viewModelScope.launch { store.setAutoPlayLast(v) }
-    fun setSyncInterval(hours: Int) = viewModelScope.launch { store.setSyncInterval(hours) }
+    fun setSyncInterval(hours: Int) = viewModelScope.launch {
+        store.setSyncInterval(hours)
+        // (Re-)schedule background sync. 0 cancels the periodic worker.
+        SyncScheduler.schedule(context, hours)
+    }
     fun setWorkerBase(url: String) = viewModelScope.launch { store.setWorkerBase(url) }
 }

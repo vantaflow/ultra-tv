@@ -28,8 +28,14 @@ android {
             isMinifyEnabled = false
         }
         release {
-            isMinifyEnabled = false
+            // R8 full-mode: shrinks resources + obfuscates code. ~18 MB → ~8 MB.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Reuse the debug signing key so users can install release APKs
+            // without setting up an upload-key keystore. Swap for a real one
+            // before publishing to Play.
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -96,6 +102,9 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.serialization.json)
     implementation(libs.datastore.preferences)
+    implementation(libs.work.runtime)
+    implementation(libs.hilt.work)
+    ksp(libs.hilt.work.compiler)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
