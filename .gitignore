@@ -74,3 +74,4 @@ android-native/build/
 # Cloudflare wrangler
 .wrangler/
 **/.wrangler/
+.claude/
