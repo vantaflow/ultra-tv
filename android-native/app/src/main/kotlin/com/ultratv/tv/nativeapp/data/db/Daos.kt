@@ -72,6 +72,12 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<MovieEntity>
 
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, MovieEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
 
@@ -92,6 +98,12 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, SeriesEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<SeriesEntity>)

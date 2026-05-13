@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /** Group of movies bound to a category — one rail in the Netflix-style screen. */
@@ -29,6 +34,7 @@ class MoviesViewModel @Inject constructor(
     providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
+    private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
@@ -106,4 +112,24 @@ class MoviesViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun selectCategory(remoteId: String?) { _selectedCategory.value = remoteId }
+
+    // Paged feed used by the flat-grid mode (when a category chip is selected).
+    val pagedMovies: Flow<PagingData<MovieEntity>> = combine(
+        providers, _selectedCategory,
+    ) { ps, cat -> ps to cat }.flatMapLatest { (ps, cat) ->
+        val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id
+            ?: return@flatMapLatest kotlinx.coroutines.flow.emptyFlow()
+        Pager(
+            config = PagingConfig(
+                pageSize = 60,
+                prefetchDistance = 60,
+                initialLoadSize = 120,
+                enablePlaceholders = false,
+            ),
+            pagingSourceFactory = {
+                if (cat == null) movieDao.pagedAll(pid)
+                else movieDao.pagedForCategory(pid, cat)
+            },
+        ).flow
+    }.cachedIn(viewModelScope)
 }

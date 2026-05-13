@@ -56,6 +56,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - ⏸️ **Continue watching** (position recorded every 10 s + on dispose)
 - 🚀 **Auto-play last watched on launch** option
 - 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
+- 💤 **Sleep timer** (15 min · 30 min · 1 h · 2 h · cancel) — pauses + exits player at the deadline
 
 ### Discovery / Home
 - 🏠 Dynamic Home: **Continue watching**, **Recently watched**, **Movies**, **Series**, **Featured channels** rails
@@ -70,6 +71,9 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🔄 **Boot autolaunch** — open Ultra TV automatically when the box finishes booting
 - 🔢 Show / hide channel numbers, hide adult categories beyond PIN, resume playback toggle, auto-play next episode
 
+### Backup & state
+- 💾 **Export / restore** providers + favorites + watch history as a single JSON file (Storage Access Framework picker)
+
 ### Security
 - 🔐 **Parental PIN** (SHA-256, DataStore-backed) — auto-locks adult categories on each sync when a PIN is set
 - 🆔 **Stable per-device MAC** derived from `ANDROID_ID` (hashed) — never the real WiFi MAC
@@ -79,7 +83,8 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 📦 **Chunked DB inserts** (500 rows / batch) during sync — flat memory on huge catalogs
 - ⚡ **DB indices** on `(providerId, categoryId)` for fast category filtering
 - 🎯 SQL-level filtering for Live TV per category (only the visible subset materialises)
-- 🧱 **R8 / ProGuard release build** with resource shrinking (~18 MB debug → ~8 MB release)
+- 🧱 **R8 / ProGuard release build** with resource shrinking — **18 MB debug → 3.4 MB release** (latest APK shipped is the release variant)
+- 📑 **Paging Room** for Movies / Series flat-grid (pages of 60, only ~120 items in memory regardless of catalog size)
 
 ### Distribution
 - 🇩 **Downloader code `5248504`** — sideload via the [Downloader app](https://www.aftvnews.com/downloader/) on any Android TV box
@@ -174,18 +179,15 @@ android-native/
 In active development / next iterations:
 
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
-- 📑 **Paging** for huge catalogs (`androidx.paging`) — currently chunked-load works fine to ~50k items
+- 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 - 📻 **Chromecast** (Media3-cast)
 - 🪟 **Picture-in-picture** when exiting the player
 - 🎚️ **Subtitles + audio track selection** UI (Media3 already supports them)
 - 📥 **Recording / DVR** via WorkManager + HLS download
-- 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
 - 🧪 **Stalker VOD / series** endpoints (only Live supported today)
-- ⏰ **Sleep timer**
-- 🔇 **Lock individual channels** (not just whole categories)
-- 💾 **Backup / restore** of providers + favorites + history (single JSON export)
-- 🩹 **Polish**: snackbar/toast layer, onboarding wizard, precise error messages
+- 🔇 **Lock individual channels** — UI toggle (PIN gate at play is already wired)
+- 🩹 **Onboarding wizard** for first launch (toast layer + dialog forms are done)
 
 ## Credits
 

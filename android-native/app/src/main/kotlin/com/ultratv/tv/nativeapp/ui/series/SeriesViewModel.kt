@@ -21,6 +21,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -30,6 +34,7 @@ class SeriesListViewModel @Inject constructor(
     providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
+    private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
 ) : ViewModel() {
 
     private val _sel = MutableStateFlow<String?>(null)
@@ -90,6 +95,20 @@ class SeriesListViewModel @Inject constructor(
     val featured: StateFlow<SeriesEntity?> = items
         .map { list -> list.maxByOrNull { (it.year ?: 0) * 100L + (it.name.length % 100) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val pagedSeries: kotlinx.coroutines.flow.Flow<PagingData<SeriesEntity>> = combine(
+        providers, _sel,
+    ) { ps, cat -> ps to cat }.flatMapLatest { (ps, cat) ->
+        val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id
+            ?: return@flatMapLatest kotlinx.coroutines.flow.emptyFlow()
+        Pager(
+            config = PagingConfig(pageSize = 60, prefetchDistance = 60, initialLoadSize = 120, enablePlaceholders = false),
+            pagingSourceFactory = {
+                if (cat == null) seriesDao.pagedAll(pid)
+                else seriesDao.pagedForCategory(pid, cat)
+            },
+        ).flow
+    }.cachedIn(viewModelScope)
 }
 
 data class SeriesRail(val category: CategoryEntity?, val items: List<SeriesEntity>)

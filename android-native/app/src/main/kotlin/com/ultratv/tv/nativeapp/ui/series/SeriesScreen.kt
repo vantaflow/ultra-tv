@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -78,25 +79,27 @@ fun SeriesScreen(onOpen: (Long) -> Unit, vm: SeriesListViewModel = hiltViewModel
             }
             Spacer(Modifier.height(12.dp))
         } else {
-            Text("${flatItems.size} titles", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (flatItems.isEmpty()) {
-                Text("Nothing in this category.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 180.dp),
-                    contentPadding = PaddingValues(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.height(720.dp),
-                ) {
-                    items(flatItems, key = { it.id }) { s ->
-                        PosterCard(
-                            title = s.name,
-                            poster = s.poster,
-                            subtitle = s.year?.toString(),
-                            placeholderEmoji = "📺",
-                        ) { onOpen(s.id) }
-                    }
+            val paged = vm.pagedSeries.collectAsLazyPagingItems()
+            Text("${paged.itemCount} titles loaded${if (paged.loadState.append is androidx.paging.LoadState.Loading) "…" else ""}",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 180.dp),
+                contentPadding = PaddingValues(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.height(720.dp),
+            ) {
+                items(
+                    count = paged.itemCount,
+                    key = { idx -> paged.peek(idx)?.id ?: idx },
+                ) { idx ->
+                    val s = paged[idx] ?: return@items
+                    PosterCard(
+                        title = s.name,
+                        poster = s.poster,
+                        subtitle = s.year?.toString(),
+                        placeholderEmoji = "📺",
+                    ) { onOpen(s.id) }
                 }
             }
         }

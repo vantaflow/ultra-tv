@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -75,20 +76,24 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
             }
             Spacer(Modifier.height(12.dp))
         } else {
-            Text("${flatMovies.size} titles", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            if (flatMovies.isEmpty()) {
-                Text("Nothing in this category.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 180.dp),
-                    contentPadding = PaddingValues(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.height(720.dp),       // bounded so we can be inside verticalScroll
-                ) {
-                    items(flatMovies, key = { it.id }) { m ->
-                        PosterCard(title = m.name, poster = m.poster, subtitle = m.year?.toString()) { onOpen(m.id) }
-                    }
+            // Flat-grid mode (single category) — uses PagingData so a 50k-item
+            // catalog only ever has ~120 items in memory at once.
+            val paged = vm.pagedMovies.collectAsLazyPagingItems()
+            Text("${paged.itemCount} titles loaded${if (paged.loadState.append is androidx.paging.LoadState.Loading) "…" else ""}",
+                fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(minSize = 180.dp),
+                contentPadding = PaddingValues(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.height(720.dp),
+            ) {
+                items(
+                    count = paged.itemCount,
+                    key = { idx -> paged.peek(idx)?.id ?: idx },
+                ) { idx ->
+                    val m = paged[idx] ?: return@items
+                    PosterCard(title = m.name, poster = m.poster, subtitle = m.year?.toString()) { onOpen(m.id) }
                 }
             }
         }
