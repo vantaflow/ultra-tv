@@ -69,7 +69,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 
 ### Personalization
 - 🎨 **3 themes**: Dark · AMOLED · Blue
-- 📐 **Menu position**: Sidebar (left) or Top bar — toggle in Settings
+- 📐 **Adaptive nav**: sidebar on tablets/TV (≥ 840 dp), top bar on medium widths (600–840 dp, also the user-selectable option in Settings), bottom bar on phones (< 600 dp). Phones / tablets ship from the same APK.
 - 🌍 **Locale-aware** UI (follows system language)
 - 🔄 **Boot autolaunch** — open Ultra TV automatically when the box finishes booting
 - 🪟 **Picture-in-picture** — pressing Home while a stream plays shrinks the player into a corner (Android 8+)
@@ -189,7 +189,6 @@ In active development / next iterations:
 - 📻 **Chromecast** (Media3-cast)
 - 📥 **Recording / DVR** via WorkManager + HLS download
 - 🧪 **Stalker VOD / series** endpoints (only Live supported today)
-- 📱 **Phone / tablet variant** (touch-first UI sharing the data layer)
 - 🌐 **Manual i18n** (FR / EN / ES / AR) — currently follows system locale
 
 ## Credits
