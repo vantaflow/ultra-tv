@@ -98,6 +98,19 @@ class LiveViewModel @Inject constructor(
     private val _resolving = MutableStateFlow(false)
     val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
 
+    private val _refreshing = MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+
+    fun refresh() {
+        viewModelScope.launch {
+            val pid = providers.value.firstOrNull { it.active }?.id
+                ?: providers.value.firstOrNull()?.id
+                ?: return@launch
+            _refreshing.value = true
+            try { provider.syncAll(pid) } finally { _refreshing.value = false }
+        }
+    }
+
     private val providers = provider.observeProviders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

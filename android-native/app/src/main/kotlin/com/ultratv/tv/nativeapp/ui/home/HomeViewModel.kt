@@ -79,4 +79,17 @@ class HomeViewModel @Inject constructor(
     fun dismiss(h: WatchHistoryEntity) {
         viewModelScope.launch { history.remove(h.providerId, h.kind, h.remoteId) }
     }
+
+    private val _refreshing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val refreshing: StateFlow<Boolean> = _refreshing
+
+    fun refresh() {
+        viewModelScope.launch {
+            val id = providers.value.firstOrNull { it.active }?.id
+                ?: providers.value.firstOrNull()?.id
+                ?: return@launch
+            _refreshing.value = true
+            try { provider.syncAll(id) } finally { _refreshing.value = false }
+        }
+    }
 }
