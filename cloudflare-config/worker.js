@@ -183,6 +183,10 @@ const CRASH_PREFIX = "crash:";
 const CRASH_TTL_S = 30 * 24 * 3600; // 30 days
 const CRASH_MAX_BODY = 64 * 1024;   // 64 KB — Compose stack traces are big
 
+const EVENT_PREFIX = "event:";
+const EVENT_TTL_S = 7 * 24 * 3600;  // 7 days — events are noisier than crashes
+const EVENT_MAX_BODY = 8 * 1024;    // 8 KB per event
+
 function crashToken(env) {
   return env.CRASH_TOKEN || env.ADMIN_PASSWORD || null;
 }
@@ -219,6 +223,107 @@ async function handleCrashPost(req, env) {
   const key = newCrashKey();
   await env.CONFIG.put(key, JSON.stringify(entry), { expirationTtl: CRASH_TTL_S });
   return json({ ok: true, key });
+}
+
+function newEventKey() {
+  const arr = new Uint8Array(6);
+  crypto.getRandomValues(arr);
+  const rand = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${EVENT_PREFIX}${Date.now()}:${rand}`;
+}
+
+async function handleEventPost(req, env) {
+  const want = crashToken(env);
+  const got = req.headers.get("x-crash-token") || "";
+  if (!want) return json({ error: "logging not configured" }, { status: 503 });
+  if (got !== want) return json({ error: "bad token" }, { status: 401 });
+  let body;
+  try {
+    const text = await req.text();
+    if (text.length > EVENT_MAX_BODY) return json({ error: "too large" }, { status: 413 });
+    body = JSON.parse(text);
+  } catch {
+    return json({ error: "invalid json" }, { status: 400 });
+  }
+  const entry = {
+    level: typeof body.level === "string" ? body.level.slice(0, 8) : "info",
+    tag: typeof body.tag === "string" ? body.tag.slice(0, 32) : "app",
+    message: typeof body.message === "string" ? body.message.slice(0, 4000) : "",
+    mac: typeof body.mac === "string" ? body.mac.slice(0, 64) : null,
+    version: typeof body.version === "string" ? body.version.slice(0, 32) : null,
+    versionCode: Number.isFinite(body.versionCode) ? body.versionCode : null,
+    device: typeof body.device === "string" ? body.device.slice(0, 128) : null,
+    ts: Date.now(),
+  };
+  const key = newEventKey();
+  await env.CONFIG.put(key, JSON.stringify(entry), { expirationTtl: EVENT_TTL_S });
+  return json({ ok: true, key });
+}
+
+async function listEvents(env, limit) {
+  const out = [];
+  let cursor;
+  do {
+    const r = await env.CONFIG.list({ prefix: EVENT_PREFIX, limit: 200, cursor });
+    for (const k of r.keys) {
+      out.push(k.name);
+      if (out.length >= limit) break;
+    }
+    cursor = r.cursor;
+    if (out.length >= limit || r.list_complete) break;
+  } while (cursor);
+  out.sort().reverse();
+  const sliced = out.slice(0, limit);
+  const items = await Promise.all(sliced.map(async (key) => {
+    const raw = await env.CONFIG.get(key);
+    try { return { key, ...JSON.parse(raw) }; } catch { return { key }; }
+  }));
+  return items;
+}
+
+function eventListPage({ items, tokenQs }) {
+  const rows = items.map((it) => {
+    const when = it.ts ? new Date(it.ts).toISOString().replace("T", " ").slice(0, 19) : "";
+    const lvl = (it.level || "info").toLowerCase();
+    return `
+      <tr class="lvl-${escape(lvl)}">
+        <td class="when">${escape(when)}</td>
+        <td class="level">${escape(lvl.toUpperCase())}</td>
+        <td class="tag">${escape(it.tag || "")}</td>
+        <td class="msg">${escape(it.message || "")}</td>
+        <td class="device">${escape(it.device || "")}</td>
+        <td class="version">${escape(it.version || "")} (${it.versionCode ?? "?"})</td>
+        <td class="mac">${escape(it.mac || "")}</td>
+      </tr>
+    `;
+  }).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"/>
+<title>Ultra TV — events</title>
+<style>${baseStyles}
+body { padding: 16px 28px; }
+.tools { display: flex; gap: 10px; align-items: center; margin: 8px 0 18px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+th { color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-size: 10px; }
+td.when, td.tag, td.version, td.mac { font-family: ui-monospace, monospace; color: var(--muted); white-space: nowrap; }
+td.level { font-family: ui-monospace, monospace; font-weight: 600; }
+tr.lvl-debug td.level { color: var(--muted); }
+tr.lvl-info td.level { color: var(--accent); }
+tr.lvl-warn td.level { color: #ffb547; }
+tr.lvl-error td.level { color: var(--danger); }
+td.msg { color: var(--fg); white-space: pre-wrap; word-break: break-word; max-width: 800px; }
+</style></head><body>
+<h1>Events — ${items.length}</h1>
+<div class="sub">7-day rolling window. Most recent first. <a href="/crashes?${tokenQs}">View crashes →</a></div>
+<div class="tools">
+  <a href="?${tokenQs}&limit=200"><button class="secondary">Show 200</button></a>
+  <a href="?${tokenQs}&limit=500"><button class="secondary">Show 500</button></a>
+</div>
+<table>
+  <thead><tr><th>When</th><th>Level</th><th>Tag</th><th>Message</th><th>Device</th><th>Version</th><th>MAC</th></tr></thead>
+  <tbody>${rows || "<tr><td colspan='7' class='muted'>No events recorded.</td></tr>"}</tbody>
+</table>
+</body></html>`;
 }
 
 async function listCrashes(env, limit) {
@@ -291,9 +396,12 @@ export default {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 
-    // ---- Crash report ingest (token-gated, no cookie session) ----
+    // ---- Crash + event ingest (token-gated, no cookie session) ----
     if (url.pathname === "/api/crash" && req.method === "POST") {
       return handleCrashPost(req, env);
+    }
+    if (url.pathname === "/api/event" && req.method === "POST") {
+      return handleEventPost(req, env);
     }
     if (url.pathname === "/crashes" && req.method === "GET") {
       const want = crashToken(env);
@@ -302,6 +410,14 @@ export default {
       const limit = Math.max(10, Math.min(500, parseInt(url.searchParams.get("limit") || "100", 10)));
       const items = await listCrashes(env, limit);
       return html(crashListPage({ items, tokenQs: `token=${encodeURIComponent(want)}` }));
+    }
+    if (url.pathname === "/logs" && req.method === "GET") {
+      const want = crashToken(env);
+      const got = url.searchParams.get("token") || "";
+      if (!want || got !== want) return new Response("Forbidden", { status: 403 });
+      const limit = Math.max(10, Math.min(500, parseInt(url.searchParams.get("limit") || "100", 10)));
+      const items = await listEvents(env, limit);
+      return html(eventListPage({ items, tokenQs: `token=${encodeURIComponent(want)}` }));
     }
 
     // ---- Public: app fetches its own config ----

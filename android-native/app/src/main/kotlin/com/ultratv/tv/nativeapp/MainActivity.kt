@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
         setContent { Root() }
         kickoffStartupTasks()
     }
