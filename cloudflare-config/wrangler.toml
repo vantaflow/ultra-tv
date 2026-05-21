@@ -12,3 +12,11 @@ preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
 
 # Admin password is provisioned as a secret via `wrangler secret put ADMIN_PASSWORD`,
 # never committed to this file. The deployed Worker reads it from env.ADMIN_PASSWORD.
+#
+# Crash reporting:
+#   - Apps POST /api/crash with header X-Crash-Token: <token>.
+#   - The token is env.CRASH_TOKEN (falls back to env.ADMIN_PASSWORD if not set).
+#   - View collected crashes at GET /crashes?token=<token> (HTML dashboard,
+#     30-day rolling TTL stored in CONFIG KV under `crash:*`).
+#   - Apps use the per-account configPassword as the token, so each user only
+#     uploads crashes to their own worker.

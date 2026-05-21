@@ -172,12 +172,137 @@ async function setPassword(cfg, plaintext) {
   cfg.passwordHash = await sha256Hex(cfg.salt + ":" + plaintext);
 }
 
+// ---- Crash reporting -------------------------------------------------------
+//
+// Apps POST their stack traces here on the next launch after a crash. We keep
+// them in CONFIG under `crash:<ms>:<rand>` so they share KV with the existing
+// per-MAC entries. The mac and version land in the value; the prefix lets the
+// admin dashboard list recent crashes cheaply.
+
+const CRASH_PREFIX = "crash:";
+const CRASH_TTL_S = 30 * 24 * 3600; // 30 days
+const CRASH_MAX_BODY = 64 * 1024;   // 64 KB — Compose stack traces are big
+
+function crashToken(env) {
+  return env.CRASH_TOKEN || env.ADMIN_PASSWORD || null;
+}
+
+function newCrashKey() {
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  const rand = Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `${CRASH_PREFIX}${Date.now()}:${rand}`;
+}
+
+async function handleCrashPost(req, env) {
+  const want = crashToken(env);
+  const got = req.headers.get("x-crash-token") || "";
+  if (!want) return json({ error: "crash reporting not configured" }, { status: 503 });
+  if (got !== want) return json({ error: "bad token" }, { status: 401 });
+  let body;
+  try {
+    const text = await req.text();
+    if (text.length > CRASH_MAX_BODY) return json({ error: "too large" }, { status: 413 });
+    body = JSON.parse(text);
+  } catch {
+    return json({ error: "invalid json" }, { status: 400 });
+  }
+  const entry = {
+    mac: typeof body.mac === "string" ? body.mac.slice(0, 64) : null,
+    version: typeof body.version === "string" ? body.version.slice(0, 32) : null,
+    versionCode: Number.isFinite(body.versionCode) ? body.versionCode : null,
+    device: typeof body.device === "string" ? body.device.slice(0, 128) : null,
+    androidSdk: Number.isFinite(body.androidSdk) ? body.androidSdk : null,
+    stack: typeof body.stack === "string" ? body.stack.slice(0, CRASH_MAX_BODY) : "",
+    ts: Date.now(),
+  };
+  const key = newCrashKey();
+  await env.CONFIG.put(key, JSON.stringify(entry), { expirationTtl: CRASH_TTL_S });
+  return json({ ok: true, key });
+}
+
+async function listCrashes(env, limit) {
+  const out = [];
+  let cursor;
+  do {
+    const r = await env.CONFIG.list({ prefix: CRASH_PREFIX, limit: 200, cursor });
+    for (const k of r.keys) {
+      out.push(k.name);
+      if (out.length >= limit) break;
+    }
+    cursor = r.cursor;
+    if (out.length >= limit || r.list_complete) break;
+  } while (cursor);
+  // Most-recent first (key embeds ms).
+  out.sort().reverse();
+  const sliced = out.slice(0, limit);
+  const items = await Promise.all(sliced.map(async (key) => {
+    const raw = await env.CONFIG.get(key);
+    try { return { key, ...JSON.parse(raw) }; } catch { return { key }; }
+  }));
+  return items;
+}
+
+function crashListPage({ items, tokenQs }) {
+  const rows = items.map((it) => {
+    const when = it.ts ? new Date(it.ts).toISOString().replace("T", " ").slice(0, 19) : "";
+    const head = (it.stack || "").split("\n").slice(0, 2).join(" | ");
+    return `
+      <details>
+        <summary>
+          <span class="when">${escape(when)}</span>
+          <span class="version">${escape(it.version || "?")} (${it.versionCode ?? "?"})</span>
+          <span class="device">${escape(it.device || "?")} · API ${it.androidSdk ?? "?"}</span>
+          <span class="mac">${escape(it.mac || "?")}</span>
+          <span class="preview">${escape(head)}</span>
+        </summary>
+        <pre>${escape(it.stack || "")}</pre>
+      </details>
+    `;
+  }).join("");
+  return `<!doctype html><html><head><meta charset="utf-8"/>
+<title>Ultra TV — crash log</title>
+<style>${baseStyles}
+body { padding: 16px 28px; }
+.tools { display: flex; gap: 10px; align-items: center; margin: 8px 0 18px; }
+details { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; padding: 10px 14px; }
+summary { cursor: pointer; display: grid; grid-template-columns: 170px 110px 280px 170px 1fr; gap: 12px; align-items: center; font-size: 13px; }
+summary .when { color: var(--accent); font-family: ui-monospace, monospace; }
+summary .version { color: var(--muted); font-family: ui-monospace, monospace; }
+summary .device { color: var(--muted); }
+summary .mac { color: var(--muted); font-family: ui-monospace, monospace; }
+summary .preview { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+pre { margin: 12px 0 0; padding: 12px; background: var(--bg); border-radius: 8px; overflow-x: auto; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; }
+</style></head><body>
+<h1>Crash log — ${items.length}</h1>
+<div class="sub">30-day rolling window. Most recent first.</div>
+<div class="tools">
+  <a href="?${tokenQs}&limit=200"><button class="secondary">Show 200</button></a>
+  <a href="?${tokenQs}&limit=500"><button class="secondary">Show 500</button></a>
+</div>
+${rows || "<div class='muted'>No crashes recorded.</div>"}
+</body></html>`;
+}
+
 // ---- Worker entry ----------------------------------------------------------
 
 export default {
   async fetch(req, env) {
     const url = new URL(req.url);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+
+    // ---- Crash report ingest (token-gated, no cookie session) ----
+    if (url.pathname === "/api/crash" && req.method === "POST") {
+      return handleCrashPost(req, env);
+    }
+    if (url.pathname === "/crashes" && req.method === "GET") {
+      const want = crashToken(env);
+      const got = url.searchParams.get("token") || "";
+      if (!want || got !== want) return new Response("Forbidden", { status: 403 });
+      const limit = Math.max(10, Math.min(500, parseInt(url.searchParams.get("limit") || "100", 10)));
+      const items = await listCrashes(env, limit);
+      return html(crashListPage({ items, tokenQs: `token=${encodeURIComponent(want)}` }));
+    }
 
     // ---- Public: app fetches its own config ----
     const macGet = url.pathname.match(/^\/api\/config\/([^/]+)\/?$/);

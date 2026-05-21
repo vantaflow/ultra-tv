@@ -10,6 +10,18 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
+import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 /**
  * Application root. Implements Coil's [ImageLoaderFactory] for app-wide image
@@ -20,6 +32,10 @@ import javax.inject.Inject
 class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
+    @Inject lateinit var prefs: UserPreferencesStore
+    @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
+
+    private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .memoryCache {
@@ -65,6 +81,50 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // builds strip them) — the player will just not show the Cast button.
         runCatching {
             com.google.android.gms.cast.framework.CastContext.getSharedInstance(this) { it.run() }
+        }
+
+        // If a previous run died and left a pending crash.txt, ship it to the
+        // configured Cloudflare Worker (POST /api/crash). The X-Crash-Token is
+        // the same configPassword the user set when claiming the MAC, so apps
+        // without a worker just never upload — local file remains for ADB pull.
+        bgScope.launch { uploadPendingCrashes() }
+    }
+
+    private suspend fun uploadPendingCrashes() {
+        val file = getExternalFilesDir(null)?.resolve("crash.txt") ?: return
+        if (!file.exists() || file.length() == 0L) return
+        val p = prefs.flow.first()
+        val base = p.workerBaseUrl.trim().trimEnd('/')
+        val token = p.configPassword
+        if (base.isBlank() || token.isBlank()) return
+
+        val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
+        if (stack.isBlank()) return
+
+        val pkg = packageManager.getPackageInfo(packageName, 0)
+        val payload = JSONObject().apply {
+            put("mac", deviceMac.mac)
+            put("version", pkg.versionName ?: "")
+            @Suppress("DEPRECATION")
+            put("versionCode", pkg.versionCode)
+            put("device", "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+            put("androidSdk", android.os.Build.VERSION.SDK_INT)
+            put("stack", stack.take(60_000)) // worker caps at 64 KB
+        }.toString()
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .build()
+        val req = Request.Builder()
+            .url("$base/api/crash")
+            .header("X-Crash-Token", token)
+            .post(payload.toRequestBody("application/json".toMediaType()))
+            .build()
+        runCatching {
+            client.newCall(req).execute().use { resp ->
+                if (resp.isSuccessful) file.delete()
+            }
         }
     }
 }
