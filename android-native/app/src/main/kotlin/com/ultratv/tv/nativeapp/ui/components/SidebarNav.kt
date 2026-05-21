@@ -4,6 +4,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,21 +158,27 @@ private fun SidebarItem(
     expanded: Boolean,
     onClick: () -> Unit,
 ) {
-    val bg = if (selected) UltraTokens.AccentSoft else Color.Transparent
-    val fg = if (selected) UltraTokens.Fg else UltraTokens.Fg3
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val highlight = focused || selected
+    val bg = when {
+        focused -> UltraTokens.SurfaceStrong
+        selected -> UltraTokens.AccentSoft
+        else -> Color.Transparent
+    }
+    val fg = if (highlight) UltraTokens.Fg else UltraTokens.Fg3
     Box(Modifier.padding(horizontal = 18.dp)) {
         Row(
             Modifier
                 .clip(RoundedCornerShape(12.dp))
                 .background(bg)
-                .clickable(onClick = onClick)
+                .clickable(interactionSource = interaction, indication = null, onClick = onClick)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (selected) {
+            if (selected || focused) {
                 Box(
                     Modifier
-                        .padding(end = 0.dp)
                         .size(width = 3.dp, height = 22.dp)
                         .background(UltraTokens.Accent, RoundedCornerShape(2.dp))
                 )

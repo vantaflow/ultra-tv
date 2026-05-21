@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -113,15 +114,22 @@ fun TopBarNav(navController: NavController) {
 
 @Composable
 private fun NavPill(icon: UltraIcon, label: String, selected: Boolean, onClick: () -> Unit) {
-    val bg = if (selected) UltraTokens.AccentSoft else UltraTokens.Surface2
-    val border = if (selected) UltraTokens.Accent else UltraTokens.Line2
-    val fg = if (selected) UltraTokens.Fg else UltraTokens.Fg2
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val highlight = selected || focused
+    val bg = when {
+        focused -> UltraTokens.SurfaceStrong
+        selected -> UltraTokens.AccentSoft
+        else -> UltraTokens.Surface2
+    }
+    val borderColor = if (highlight) UltraTokens.Accent else UltraTokens.Line2
+    val fg = if (highlight) UltraTokens.Fg else UltraTokens.Fg2
     Row(
         Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(bg)
-            .border(1.dp, border, RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick)
+            .border(1.dp, borderColor, RoundedCornerShape(999.dp))
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

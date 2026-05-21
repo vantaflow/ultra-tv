@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Android TV banner (320×180). Variant C: red gradient background, broadcast
-  arcs emanating from a dot on the left, play triangle in the centre, "ULTRA TV"
-  wordmark on the right.
+  Android TV banner (320×180). Variant C: red gradient, broadcast arcs,
+  play triangle. xmlns:aapt must be declared on the root vector so the
+  inline gradient resolves on every AGP version.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="320dp"
     android:height="180dp"
     android:viewportWidth="320"
     android:viewportHeight="180">
 
-    <!-- Red gradient background -->
     <path android:pathData="M0,0h320v180h-320z">
-        <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/aapt">
+        <aapt:attr name="android:fillColor">
             <gradient
                 android:type="linear"
                 android:startX="0"
@@ -25,7 +25,6 @@
         </aapt:attr>
     </path>
 
-    <!-- Broadcast arcs (concentric, from the emitter dot at 50,130) -->
     <path
         android:pathData="M 26,160 A 50,50 0 0 1 76,110"
         android:strokeColor="#F2FFFFFF"
@@ -42,18 +41,14 @@
         android:strokeWidth="5"
         android:strokeLineCap="round"/>
 
-    <!-- Emitter dot -->
     <path
         android:pathData="M 50,130 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0"
         android:fillColor="#FFFFFFFF"/>
 
-    <!-- Play triangle -->
     <path
         android:pathData="M 130,55 L 130,125 L 195,90 Z"
         android:fillColor="#FFFFFFFF"/>
 
-    <!-- Wordmark — drawn as stroked paths via Text would not render in vector;
-         we mimic the wordmark with two horizontal bars suggesting "ULTRA / TV". -->
     <path android:pathData="M 215,80 L 295,80" android:strokeColor="#FFFFFFFF" android:strokeWidth="3" android:strokeLineCap="round"/>
     <path android:pathData="M 215,100 L 270,100" android:strokeColor="#CCFFFFFF" android:strokeWidth="3" android:strokeLineCap="round"/>
 </vector>

@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.ui.search
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -259,23 +260,26 @@ fun SearchScreen(
             ) {
                 items(FILTERS.size) { idx ->
                     val active = idx == activeFilter
+                    val interaction = remember(idx) { androidx.compose.foundation.interaction.MutableInteractionSource() }
+                    val focused by interaction.collectIsFocusedAsState()
+                    val highlight = active || focused
                     Box(
                         Modifier
                             .clip(RoundedCornerShape(999.dp))
-                            .background(if (active) UltraTokens.Accent else UltraTokens.Surface2)
+                            .background(if (highlight) UltraTokens.Accent else UltraTokens.Surface2)
                             .border(
                                 1.dp,
-                                if (active) UltraTokens.Accent else UltraTokens.Line2,
+                                if (highlight) UltraTokens.Accent else UltraTokens.Line2,
                                 RoundedCornerShape(999.dp),
                             )
-                            .clickable { activeFilter = idx }
+                            .clickable(interactionSource = interaction, indication = null) { activeFilter = idx }
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                     ) {
                         Text(
                             FILTERS[idx],
-                            color = if (active) Color.White else UltraTokens.Fg2,
+                            color = if (highlight) Color.White else UltraTokens.Fg2,
                             fontSize = 13.sp,
-                            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+                            fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
                         )
                     }
                 }
@@ -345,26 +349,37 @@ private fun KeyboardKey(
     danger: Boolean = false,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
     Box(
         modifier
             .clip(RoundedCornerShape(8.dp))
             .background(
                 when {
+                    focused -> UltraTokens.Accent
                     danger -> UltraTokens.AccentSoft
                     else -> Color(0x0DFFFFFF)
                 }
             )
             .border(
                 1.dp,
-                if (danger) Color(0x4DFF3A2F) else UltraTokens.Line,
+                when {
+                    focused -> UltraTokens.Accent
+                    danger -> Color(0x4DFF3A2F)
+                    else -> UltraTokens.Line
+                },
                 RoundedCornerShape(8.dp),
             )
-            .clickable(onClick = onClick),
+            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
-            color = if (danger) UltraTokens.Accent else UltraTokens.Fg2,
+            color = when {
+                focused -> Color.White
+                danger -> UltraTokens.Accent
+                else -> UltraTokens.Fg2
+            },
             fontSize = if (label.length > 1) 11.sp else 14.sp,
             fontWeight = FontWeight.Medium,
         )
