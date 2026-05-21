@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.movies
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -104,28 +105,73 @@ fun MovieDetailScreen(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = MaterialTheme.colorScheme.onBackground) }
         return
     }
-    Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
+    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
+    Row(
+        Modifier
+            .fillMaxSize()
+            .padding(start = 140.dp, end = 80.dp, top = 110.dp),
+        horizontalArrangement = Arrangement.spacedBy(50.dp),
+    ) {
         Box(
             Modifier
-                .width(280.dp)
-                .height(420.dp)
-                .clip(RoundedCornerShape(14.dp)),
+                .width(320.dp)
+                .height(480.dp)
+                .clip(RoundedCornerShape(18.dp)),
             contentAlignment = Alignment.Center,
         ) {
             if (movie.poster != null) AsyncImage(model = movie.poster, contentDescription = movie.name, modifier = Modifier.fillMaxSize())
             else Text("🎬", fontSize = 80.sp)
         }
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxSize()) {
-            Text(movie.name, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                movie.year?.let { Text("$it", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) }
-                movie.rating?.let { Text("★ %.1f".format(it), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) }
-                movie.container?.let { Text(it.uppercase(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp) }
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp), modifier = Modifier.fillMaxSize()) {
+            Text(
+                "FILM · ${movie.year ?: ""}".trim().removeSuffix("·").trim(),
+                color = T.Accent,
+                fontSize = 13.sp,
+                letterSpacing = 2.3.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.height(14.dp))
+            Text(
+                movie.name,
+                fontFamily = F.Serif,
+                fontSize = 72.sp,
+                lineHeight = 70.sp,
+                letterSpacing = (-2.0).sp,
+                color = T.Fg,
+                maxLines = 2,
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.height(18.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                movie.rating?.let {
+                    Text(
+                        "${(it * 10).toInt()}% match",
+                        color = T.Accent,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                movie.year?.let { Text("$it", color = T.Fg2, fontSize = 13.sp) }
+                movie.container?.let { Text(it.uppercase(), color = T.Fg2, fontSize = 13.sp) }
             }
-            movie.plot?.let { Text(it, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp) }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { vm.play(movie, onPlay) }) { Text(S.play, fontSize = 16.sp) }
-                Button(onClick = { vm.record(movie, S.toastRecordingQueued) }) { Text("⏺ " + S.playerRecord, fontSize = 16.sp) }
+            androidx.compose.foundation.layout.Spacer(Modifier.height(20.dp))
+            movie.plot?.let {
+                Text(it, color = T.Fg2, fontSize = 17.sp, lineHeight = 26.sp, maxLines = 6)
+            }
+            androidx.compose.foundation.layout.Spacer(Modifier.height(30.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Button(
+                    onClick = { vm.play(movie, onPlay) },
+                    colors = androidx.tv.material3.ButtonDefaults.colors(
+                        containerColor = T.CtaBg,
+                        contentColor = T.CtaFgOnCta,
+                    ),
+                    modifier = Modifier.border(3.dp, T.Accent, RoundedCornerShape(14.dp)),
+                ) { Text("▶  " + S.play, fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+                Button(
+                    onClick = { vm.record(movie, S.toastRecordingQueued) },
+                    colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = T.Surface2),
+                ) { Text("⏺  " + S.playerRecord, fontSize = 14.sp, color = T.Fg2) }
                 com.ultratv.tv.nativeapp.ui.common.FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
         }

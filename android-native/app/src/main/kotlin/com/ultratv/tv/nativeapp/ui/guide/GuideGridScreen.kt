@@ -137,44 +137,104 @@ fun GuideGridScreen(
     val windowEnd = remember(windowStart) { windowStart + 12 * 60 * 60 * 1000L }
 
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(S.tvGuide, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            val total = byChannel.values.sumOf { it.size }
-            Text(S.guideProgrammesTemplate.format(total, channels.size), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Button(onClick = { vm.refreshXmltv() }, enabled = !loading) {
-                Text(if (loading) S.guideLoading else S.guideRefreshXmltv)
+    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
+    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
+    Column(Modifier.fillMaxSize()) {
+        // Editorial header
+        androidx.compose.foundation.layout.Spacer(Modifier.height(40.dp))
+        Column(Modifier.padding(start = T.EdgeGutter, end = T.EdgeGutter, bottom = 20.dp)) {
+            Text(
+                "GUIDE TÉLÉ",
+                color = T.Fg3,
+                fontSize = 11.sp,
+                letterSpacing = 2.3.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Text(
+                    S.tvGuide,
+                    fontFamily = F.Serif,
+                    fontSize = 48.sp,
+                    lineHeight = 48.sp,
+                    letterSpacing = (-1.4).sp,
+                    color = T.Fg,
+                )
+                val total = byChannel.values.sumOf { it.size }
+                Text(
+                    S.guideProgrammesTemplate.format(total, channels.size),
+                    fontSize = 13.sp,
+                    color = T.Fg3,
+                )
+                Button(
+                    onClick = { vm.refreshXmltv() },
+                    enabled = !loading,
+                    colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = T.Surface2),
+                ) {
+                    Text(if (loading) S.guideLoading else S.guideRefreshXmltv, fontSize = 13.sp, color = T.Fg2)
+                }
             }
         }
 
         // Time header row — sticky to the top of the right pane.
         val hScroll = rememberScrollState()
-        Row(Modifier.fillMaxWidth()) {
-            // Left placeholder above the channel column.
-            Box(Modifier.width(180.dp))
-            Row(Modifier.horizontalScroll(hScroll)) {
-                val slots = (0..23).toList()  // 24 half-hour slots = 12h
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = T.EdgeGutter, end = T.EdgeGutter)
+                .height(38.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Left header — CHAÎNE label
+            Text(
+                "CHAÎNE",
+                color = T.Fg3,
+                fontSize = 11.sp,
+                letterSpacing = 2.3.sp,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.width(200.dp),
+            )
+            Row(
+                Modifier
+                    .horizontalScroll(hScroll)
+                    .height(38.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val slots = (0..23).toList()
                 slots.forEach { slot ->
                     val slotMs = windowStart + slot * 30 * 60_000L
-                    Text(
-                        formatHm(slotMs),
+                    Box(
                         modifier = Modifier
                             .width((PX_PER_HOUR_DP / 2).dp)
-                            .padding(start = 4.dp),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
-                    )
+                            .height(38.dp)
+                            .background(if (slot % 2 == 0) T.Surface1 else androidx.compose.ui.graphics.Color.Transparent),
+                    ) {
+                        Text(
+                            formatHm(slotMs),
+                            color = T.Fg3,
+                            fontSize = 11.sp,
+                            fontFamily = F.Mono,
+                            modifier = Modifier.padding(start = 8.dp, top = 10.dp),
+                        )
+                    }
                 }
             }
         }
+        Box(Modifier.fillMaxWidth().height(1.dp).background(T.Line))
 
         if (channels.isEmpty()) {
-            Text(S.guideNoChannels, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                S.guideNoChannels,
+                color = T.Fg3,
+                modifier = Modifier.padding(start = T.EdgeGutter, top = 20.dp),
+            )
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-                contentPadding = PaddingValues(bottom = 8.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(start = T.EdgeGutter, end = T.EdgeGutter),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+                contentPadding = PaddingValues(bottom = 40.dp),
             ) {
                 items(channels, key = { it.id }) { c ->
                     GuideRow(
@@ -203,18 +263,43 @@ private fun GuideRow(
     hScroll: androidx.compose.foundation.ScrollState,
     onPlay: () -> Unit,
 ) {
+    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
+    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
     Row(
-        Modifier.fillMaxWidth().height(ROW_HEIGHT_DP.dp),
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_HEIGHT_DP.dp)
+            .background(androidx.compose.ui.graphics.Color.Transparent),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Channel name column — fixed left, clickable to start playback.
+        // Channel column — fixed left: logo + name, clickable to start playback.
         Card(
             onClick = onPlay,
-            modifier = Modifier.width(180.dp).fillMaxHeight().padding(end = 6.dp),
-            shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
+            modifier = Modifier.width(200.dp).fillMaxHeight().padding(end = 8.dp),
+            shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+            colors = CardDefaults.colors(containerColor = T.Surface1),
         ) {
-            Box(Modifier.fillMaxSize().padding(8.dp), contentAlignment = Alignment.CenterStart) {
-                Text(channel.name, maxLines = 2, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onBackground)
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                com.ultratv.tv.nativeapp.ui.common.ChannelLogo(
+                    name = channel.name,
+                    logoUrl = channel.logo,
+                    short = null,
+                    hueSeed = channel.name.hashCode(),
+                    hd = null,
+                    size = 36.dp,
+                    showBadge = false,
+                )
+                androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+                Text(
+                    channel.name,
+                    maxLines = 2,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = T.Fg,
+                )
             }
         }
         // Programme strip — scrolls horizontally in lock-step with the header.
@@ -238,28 +323,47 @@ private fun GuideRow(
                         Card(
                             onClick = onPlay,
                             modifier = Modifier
-                                .padding(start = leftDp)
+                                .padding(start = leftDp, top = 4.dp, bottom = 4.dp, end = 2.dp)
                                 .width(widthDp)
                                 .fillMaxHeight(),
-                            shape = CardDefaults.shape(RoundedCornerShape(6.dp)),
+                            shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
                             colors = if (isLive)
-                                CardDefaults.colors(containerColor = MaterialTheme.colorScheme.primary)
-                            else CardDefaults.colors(),
+                                CardDefaults.colors(containerColor = T.AccentSoft)
+                            else CardDefaults.colors(containerColor = T.Surface1),
                         ) {
-                            Column(Modifier.fillMaxSize().padding(6.dp)) {
+                            Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
                                 Text(
                                     prog.title,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = if (isLive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 2,
+                                    color = if (isLive) T.Fg else T.Fg2,
+                                    maxLines = 1,
                                 )
-                                Text(
-                                    "${formatHm(prog.startMs)}–${formatHm(prog.endMs)}",
-                                    fontSize = 10.sp,
-                                    color = if (isLive) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        formatHm(prog.startMs),
+                                        fontSize = 10.sp,
+                                        fontFamily = F.Mono,
+                                        color = if (isLive) T.Accent else T.Fg4,
+                                    )
+                                    if (isLive) {
+                                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+                                        Box(
+                                            Modifier
+                                                .width(5.dp)
+                                                .height(5.dp)
+                                                .background(T.Accent, androidx.compose.foundation.shape.CircleShape)
+                                        )
+                                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+                                        Text(
+                                            "EN COURS",
+                                            color = T.Accent,
+                                            fontSize = 9.sp,
+                                            letterSpacing = 0.6.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -270,7 +374,7 @@ private fun GuideRow(
                             .padding(start = nowLeftDp)
                             .width(2.dp)
                             .fillMaxHeight()
-                            .background(androidx.compose.ui.graphics.Color(0xFFFF6B6B)),
+                            .background(T.Accent),
                     )
                 }
             }

@@ -10,7 +10,6 @@ object Routes {
     const val SEARCH = "search"
     const val GUIDE = "guide"
     const val FAVORITES = "favorites"
-    const val MULTIVIEW = "multiview"
     const val SETTINGS = "settings"
     // Player accepts a stream URL (URL-encoded) + title.
     const val PLAYER = "player?url={url}&title={title}"

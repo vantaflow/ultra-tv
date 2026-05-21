@@ -1,8 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ultra TV — variant C foreground.
+  - Three concentric broadcast arcs emanate from a dot in the bottom-left.
+  - Solid play triangle on the right.
+  Drawn on the standard 108×108 adaptive-icon viewport; the inner 72dp area
+  is the safe zone, the rest gets clipped by the system mask.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:fillColor="#6EA8FF" android:pathData="M40,34 L78,54 L40,74 Z"/>
+
+    <!-- Outer arc (32% opacity) -->
+    <path
+        android:pathData="M 23.2,90.7 A 46.4,46.4 0 0 1 69.6,44.3"
+        android:strokeColor="#52FFFFFF"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Middle arc (60% opacity) -->
+    <path
+        android:pathData="M 23.2,84.4 A 33.75,33.75 0 0 1 56.9,50.6"
+        android:strokeColor="#99FFFFFF"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Inner arc (95% opacity) -->
+    <path
+        android:pathData="M 23.2,78.0 A 21.1,21.1 0 0 1 44.3,56.9"
+        android:strokeColor="#F2FFFFFF"
+        android:strokeWidth="3.8"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000"/>
+
+    <!-- Emitter dot -->
+    <path
+        android:pathData="M 23.2,78.0 m -2.3,0 a 2.3,2.3 0 1,0 4.6,0 a 2.3,2.3 0 1,0 -4.6,0"
+        android:fillColor="#FFFFFFFF"/>
+
+    <!-- Play triangle -->
+    <path
+        android:pathData="M 56.9,21.1 L 56.9,54.8 L 86.4,37.0 Z"
+        android:fillColor="#FFFFFFFF"/>
 </vector>

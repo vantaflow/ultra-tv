@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -49,32 +50,50 @@ fun SeriesScreen(onOpen: (Long) -> Unit, vm: SeriesListViewModel = hiltViewModel
     ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(S.seriesTitle, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-
         if (railsMode && featured != null) {
             HeroBanner(
+                eyebrow = "Série du moment",
                 title = featured!!.name,
-                subtitle = listOfNotNull(
+                subtitle = featured!!.plot,
+                meta = listOfNotNull(
                     featured!!.year?.toString(),
                     featured!!.rating?.let { "★ %.1f".format(it) },
-                ).joinToString(" · "),
+                ),
                 image = featured!!.poster,
                 primaryLabel = S.open,
                 onPrimary = { onOpen(featured!!.id) },
+                secondaryLabel = "Plus d'infos",
+                onSecondary = { onOpen(featured!!.id) },
+            )
+        } else {
+            Spacer(Modifier.height(60.dp))
+            Text(
+                S.seriesTitle,
+                fontFamily = com.ultratv.tv.nativeapp.ui.theme.UltraFonts.Serif,
+                fontSize = 64.sp,
+                letterSpacing = (-1.5).sp,
+                color = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Fg,
+                modifier = Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter),
             )
         }
-
-        CategoryChips(categories = cats, selected = sel, onSelect = vm::selectCategory)
+        Spacer(Modifier.height(20.dp))
+        Column(Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter, bottom = 12.dp)) {
+            CategoryChips(categories = cats, selected = sel, onSelect = vm::selectCategory)
+        }
 
         if (railsMode) {
             if (rails.isEmpty()) {
-                Text(S.noSeries, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    S.noSeries,
+                    color = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Fg3,
+                    modifier = Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter),
+                )
             }
-            rails.forEach { rail ->
+            rails.forEachIndexed { idx, rail ->
                 ContentRail(
                     title = rail.category?.name ?: S.railOther,
+                    eyebrow = if (idx == 0) "Séries" else null,
                     items = rail.items,
                     itemKey = { it.id },
                 ) { s ->
@@ -86,7 +105,7 @@ fun SeriesScreen(onOpen: (Long) -> Unit, vm: SeriesListViewModel = hiltViewModel
                     ) { onOpen(s.id) }
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(40.dp))
         } else {
             val paged = vm.pagedSeries.collectAsLazyPagingItems()
             Text("${paged.itemCount} titles loaded${if (paged.loadState.append is androidx.paging.LoadState.Loading) "…" else ""}",

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -52,38 +53,57 @@ fun MoviesScreen(onOpen: (Long) -> Unit, vm: MoviesViewModel = hiltViewModel()) 
     ) {
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(S.moviesTitle, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-
         if (railsMode && featured != null) {
             HeroBanner(
+                eyebrow = "Film du moment",
                 title = featured!!.name,
-                subtitle = listOfNotNull(
+                subtitle = featured!!.plot,
+                synopsis = null,
+                meta = listOfNotNull(
                     featured!!.year?.toString(),
                     featured!!.rating?.let { "★ %.1f".format(it) },
                     featured!!.container?.uppercase(),
-                ).joinToString(" · "),
+                ),
                 image = featured!!.poster,
                 primaryLabel = S.open,
                 onPrimary = { onOpen(featured!!.id) },
+                secondaryLabel = "Plus d'infos",
+                onSecondary = { onOpen(featured!!.id) },
+            )
+        } else {
+            Spacer(Modifier.height(60.dp))
+            Text(
+                S.moviesTitle,
+                fontFamily = com.ultratv.tv.nativeapp.ui.theme.UltraFonts.Serif,
+                fontSize = 64.sp,
+                letterSpacing = (-1.5).sp,
+                color = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Fg,
+                modifier = Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter),
             )
         }
-
-        CategoryChips(categories = cats, selected = sel, onSelect = vm::selectCategory)
+        Spacer(Modifier.height(20.dp))
+        Column(Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter, bottom = 12.dp)) {
+            CategoryChips(categories = cats, selected = sel, onSelect = vm::selectCategory)
+        }
 
         if (railsMode) {
             if (rails.isEmpty()) {
-                Text(S.noMovies, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    S.noMovies,
+                    color = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Fg3,
+                    modifier = Modifier.padding(start = com.ultratv.tv.nativeapp.ui.theme.UltraTokens.EdgeGutter),
+                )
             }
-            rails.forEach { rail ->
+            rails.forEachIndexed { idx, rail ->
                 ContentRail(
                     title = rail.category?.name ?: S.railOther,
+                    eyebrow = if (idx == 0) "Cinéma" else null,
                     items = rail.items,
                     itemKey = { it.id },
                 ) { m -> PosterCard(title = m.name, poster = m.poster, subtitle = m.year?.toString()) { onOpen(m.id) } }
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(40.dp))
         } else {
             // Flat-grid mode (single category) — uses PagingData so a 50k-item
             // catalog only ever has ~120 items in memory at once.

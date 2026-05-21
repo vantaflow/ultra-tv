@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.player
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.border
 import android.media.AudioManager
 import android.net.Uri
 import android.view.ViewGroup
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -530,15 +533,42 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             TracksDialog(player = player, onDismiss = { tracksOpen = false })
         }
         if (statsOpen) {
+            val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(top = 24.dp, end = 24.dp)
-                    .background(Color(0xCC000000), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-                    .padding(12.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+                    .padding(top = 110.dp, end = 60.dp)
+                    .width(280.dp)
+                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                    .background(Color(0xB3000000))
+                    .border(1.dp, T.Line2, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                    .padding(16.dp),
+                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
             ) {
-                Text("📊 " + S.playerStats, color = Color(0xFF66B3FF), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                androidx.compose.foundation.layout.Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "STREAM STATS",
+                        color = T.Fg3,
+                        fontSize = 10.sp,
+                        letterSpacing = 2.3.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.foundation.layout.Box(
+                            Modifier
+                                .width(6.dp)
+                                .height(6.dp)
+                                .background(T.Ok, androidx.compose.foundation.shape.CircleShape),
+                        )
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
+                        Text("sain", color = T.Ok, fontSize = 11.sp)
+                    }
+                }
+                androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
                 StatRow(S.statResolution, stats.resolution)
                 StatRow(S.statVideoCodec, stats.videoCodec)
                 StatRow(S.statFrameRate, stats.frameRate)

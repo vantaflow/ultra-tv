@@ -1,7 +1,7 @@
 # Ultra TV
 
 <p align="center">
-  <img src="docs/logo.png" alt="Ultra TV" width="160" />
+  <img src="docs/redesign/logo.svg" alt="Ultra TV" width="160" />
 </p>
 
 <p align="center">
@@ -18,6 +18,36 @@
   <img src="https://img.shields.io/badge/Compose--TV-1.0-4285F4?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Media3-1.5-FF6F00?style=for-the-badge" />
 </p>
+
+---
+
+## 🎨 New UI (2026 redesign)
+
+Full editorial redesign — AMOLED-first, accent rouge `#FF3A2F`, typo **Instrument Serif** pour les titres + **Geist** / **Geist Mono** pour le reste.
+
+<p align="center">
+  <img src="docs/redesign/home.png" alt="Home — hero éditorial + rails Netflix-style" width="900" />
+</p>
+
+| Écran | Description |
+|---|---|
+| **Home** | Hero éditorial 720 dp · serif 84 sp · eyebrow accent · colonne "En direct maintenant" · rails Continue Watching 16:9 + Films / Séries / Chaînes |
+| **Live TV** | Layout Tivimate 3 panes : catégories (accent pill) · chaînes (numérotation mono, logo dégradé hue) · **fenêtre preview** avec logo géant, chip `EN DIRECT`, cards now/next, CTA Regarder |
+| **Films / Séries** | Hero featured + rails Netflix par catégorie · focus Apple-TV (scale 1.08 + ring accent) |
+| **Detail** | Affiche 320×480 · serif 72 sp · meta accent · `94% match` · épisodes mono `S01E02` |
+| **Guide TV** | Timeline 12 h × N chaînes · ruler mono · ligne `NOW` accent · cards programme avec chip `EN COURS` |
+| **Recherche** | 2 panes : clavier d'écran 4×10 + récentes à gauche · chips de filtres + grille de résultats à droite |
+| **Player** | Overlays minimaux : top bar transport, bottom controls big play + ring accent, **stats card** mono, **EPG drawer** zapping |
+| **Settings** | Tabs sidebar 300 dp · section cards Surface1 + border · MAC card gradient accent · toggle, pills, color swatches |
+| **Onboarding** | Wizard 3 steps · stepper accent · option Cloud (recommandée) vs Manuel · QR code stub |
+
+### Logo
+
+<p align="center">
+  <img src="docs/redesign/logo.svg" alt="Ultra TV — logo variant C" width="120" />
+</p>
+
+Logo "variant C" : dégradé rouge `#FF3A2F → #7A0E08`, trois ondes de diffusion qui émanent d'un point en bas à gauche, triangle play plein à droite. Installé en tant que `ic_launcher` adaptive + banner Android TV (320×180).
 
 ---
 

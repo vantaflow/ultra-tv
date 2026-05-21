@@ -43,6 +43,11 @@ import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.border
+import com.ultratv.tv.nativeapp.ui.theme.UltraFonts
+import com.ultratv.tv.nativeapp.ui.theme.UltraTokens
 import java.text.SimpleDateFormat
 import java.util.Locale
 import javax.inject.Inject
@@ -82,36 +87,87 @@ fun GuideScreen(vm: GuideViewModel = hiltViewModel()) {
     var expanded by remember { mutableStateOf<Long?>(null) }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(S.tvGuide, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-        Text(S.guideClickHint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxSize()) {
+        Spacer(Modifier.height(40.dp))
+        Column(Modifier.padding(start = UltraTokens.EdgeGutter, end = UltraTokens.EdgeGutter, bottom = 16.dp)) {
+            Text(
+                "GUIDE TÉLÉ",
+                color = UltraTokens.Fg3,
+                fontSize = 11.sp,
+                letterSpacing = 2.3.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                S.tvGuide,
+                fontFamily = UltraFonts.Serif,
+                fontSize = 56.sp,
+                lineHeight = 56.sp,
+                letterSpacing = (-1.5).sp,
+                color = UltraTokens.Fg,
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(S.guideClickHint, color = UltraTokens.Fg3, fontSize = 13.sp)
+        }
+        LazyColumn(
+            Modifier.fillMaxSize().padding(horizontal = UltraTokens.EdgeGutter),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             items(channels, key = { it.id }) { c ->
                 val rows = epgMap[c.id].orEmpty()
+                val isOpen = expanded == c.id
                 Card(
                     onClick = {
-                        if (expanded == c.id) expanded = null
+                        if (isOpen) expanded = null
                         else {
                             expanded = c.id
                             if (rows.isEmpty()) vm.loadEpgFor(c.id)
                         }
                     },
-                    shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+                    shape = CardDefaults.shape(RoundedCornerShape(14.dp)),
+                    colors = CardDefaults.colors(
+                        containerColor = if (isOpen) UltraTokens.AccentSoft else UltraTokens.Surface1,
+                    ),
+                    modifier = Modifier.then(
+                        if (isOpen) Modifier.border(1.dp, UltraTokens.Accent, RoundedCornerShape(14.dp))
+                        else Modifier.border(1.dp, UltraTokens.Line, RoundedCornerShape(14.dp))
+                    ),
                 ) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(c.name, color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp, fontWeight = FontWeight.Medium)
-                        if (expanded == c.id) {
-                            if (rows.isEmpty()) Text(S.guideLoadingEpg, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                            else rows.take(5).forEach { e ->
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text(formatTime(e.startMs), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, modifier = Modifier.width(64.dp))
-                                    Text(e.title, color = MaterialTheme.colorScheme.onBackground, fontSize = 13.sp)
+                    Column(Modifier.padding(horizontal = 18.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(
+                            c.name,
+                            color = UltraTokens.Fg,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        if (isOpen) {
+                            if (rows.isEmpty()) {
+                                Text(S.guideLoadingEpg, color = UltraTokens.Fg3, fontSize = 13.sp)
+                            } else rows.take(6).forEachIndexed { idx, e ->
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                                ) {
+                                    Text(
+                                        formatTime(e.startMs),
+                                        color = if (idx == 0) UltraTokens.Accent else UltraTokens.Fg4,
+                                        fontFamily = UltraFonts.Mono,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        modifier = Modifier.width(56.dp),
+                                    )
+                                    Text(
+                                        e.title,
+                                        color = if (idx == 0) UltraTokens.Fg else UltraTokens.Fg2,
+                                        fontSize = 13.sp,
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+            item { Spacer(Modifier.height(40.dp)) }
         }
     }
 }

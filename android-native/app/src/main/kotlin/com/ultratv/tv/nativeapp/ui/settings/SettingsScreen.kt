@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.ui.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -127,14 +128,31 @@ fun SettingsScreen(
     val workerBase by vm.workerBaseUrl.collectAsState()
     val configPwd by vm.configPassword.collectAsState()
 
+    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
+    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
     Column(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(8.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(start = T.EdgeGutter, end = T.EdgeGutter, top = 40.dp, bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(S.settingsTitle, fontSize = 32.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+        Text(
+            "RÉGLAGES",
+            color = T.Fg3,
+            fontSize = 11.sp,
+            letterSpacing = 2.3.sp,
+            fontWeight = FontWeight.Medium,
+        )
+        Text(
+            S.settingsTitle,
+            fontFamily = F.Serif,
+            fontSize = 56.sp,
+            lineHeight = 56.sp,
+            letterSpacing = (-1.5).sp,
+            color = T.Fg,
+        )
+        Spacer(Modifier.height(8.dp))
 
         // ---- 1. MAC + cloud sync ----
         SectionCard {
@@ -385,12 +403,21 @@ private fun SectionCard(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .clip(RoundedCornerShape(16.dp))
+            .background(com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Surface1)
+            .androidx_border()
+            .padding(22.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,
     )
 }
+
+@Composable
+private fun Modifier.androidx_border(): Modifier =
+    this.border(
+        1.dp,
+        com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Line,
+        RoundedCornerShape(16.dp),
+    )
 
 private typealias ColumnScope = androidx.compose.foundation.layout.ColumnScope
