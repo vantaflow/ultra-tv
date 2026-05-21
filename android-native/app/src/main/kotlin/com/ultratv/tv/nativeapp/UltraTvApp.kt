@@ -10,11 +10,9 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
-import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -28,11 +26,13 @@ import java.util.concurrent.TimeUnit
  * caching and WorkManager's [Configuration.Provider] so [SyncWorker] can be
  * instantiated through Hilt with its repository dependencies.
  */
+private const val CRASH_WORKER_URL = "https://ultratv-config.khalilbenaz.workers.dev"
+private const val CRASH_TOKEN = "f-w31zHuqg0ntBPRSJtOVEXGB55B9uv5"
+
 @HiltAndroidApp
 class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
-    @Inject lateinit var prefs: UserPreferencesStore
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -84,19 +84,21 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         }
 
         // If a previous run died and left a pending crash.txt, ship it to the
-        // configured Cloudflare Worker (POST /api/crash). The X-Crash-Token is
-        // the same configPassword the user set when claiming the MAC, so apps
-        // without a worker just never upload — local file remains for ADB pull.
+        // hard-coded crash-reporting Worker (POST /api/crash). Worker URL and
+        // token are constants at the top of the file so every install uploads
+        // automatically.
         bgScope.launch { uploadPendingCrashes() }
     }
 
-    private suspend fun uploadPendingCrashes() {
+    private fun uploadPendingCrashes() {
         val file = getExternalFilesDir(null)?.resolve("crash.txt") ?: return
         if (!file.exists() || file.length() == 0L) return
-        val p = prefs.flow.first()
-        val base = p.workerBaseUrl.trim().trimEnd('/')
-        val token = p.configPassword
-        if (base.isBlank() || token.isBlank()) return
+
+        // Hardcoded so every install uploads crashes automatically — no per-user
+        // setup. Rotate the token on the worker (`wrangler secret put CRASH_TOKEN`)
+        // and bump the constant here in lock-step when needed.
+        val base = CRASH_WORKER_URL
+        val token = CRASH_TOKEN
 
         val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
         if (stack.isBlank()) return
