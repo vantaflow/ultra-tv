@@ -154,6 +154,39 @@ fun SettingsScreen(
         )
         Spacer(Modifier.height(8.dp))
 
+        // Manual update check — useful when the launch-time auto-check
+        // missed (no network at start, dialog dismissed too early, etc.).
+        val updateInfo by com.ultratv.tv.nativeapp.update.UpdateChecker.state.collectAsState()
+        var checking by remember { mutableStateOf(false) }
+        var checkMsg by remember { mutableStateOf<String?>(null) }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Button(
+                onClick = {
+                    if (checking) return@Button
+                    checking = true
+                    checkMsg = null
+                    scope.launch {
+                        val info = com.ultratv.tv.nativeapp.update.UpdateChecker.checkForUpdate()
+                        checking = false
+                        checkMsg = if (info != null) "Mise à jour ${info.versionName} disponible"
+                        else "Vous êtes à jour (v${com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME})"
+                    }
+                },
+            ) {
+                Text(if (checking) "Vérification…" else "Vérifier les mises à jour", fontSize = 14.sp)
+            }
+            checkMsg?.let { Text(it, color = T.Fg3, fontSize = 13.sp) }
+            if (updateInfo != null) {
+                Text(
+                    "v${updateInfo!!.versionName} prête à installer",
+                    color = T.Accent,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+
         // ---- 1. MAC + cloud sync ----
         SectionCard {
             Text(S.settingsAutoImportTitle, color = MaterialTheme.colorScheme.primary, fontSize = 18.sp, fontWeight = FontWeight.Bold)

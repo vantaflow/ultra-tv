@@ -124,7 +124,10 @@ class PlayerViewModel @Inject constructor(
         else {
             val ids = s.channels.map { it.id }
             val now = System.currentTimeMillis()
-            val rows = epgDao.rangeForChannels(ids, now - 30 * 60_000, now + 4 * 60 * 60_000)
+            // SQLite IN-list cap: 999 host params. Chunk to be safe with big playlists.
+            val rows = ids.chunked(500).flatMap { chunk ->
+                epgDao.rangeForChannels(chunk, now - 30 * 60_000, now + 4 * 60 * 60_000)
+            }
             val byCh = rows.groupBy { it.channelId }
             s.channels.mapIndexed { idx, c ->
                 val list = byCh[c.id].orEmpty()

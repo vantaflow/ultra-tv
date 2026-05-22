@@ -112,7 +112,10 @@ class GuideGridViewModel @Inject constructor(
             if (visible.isEmpty()) { _programmes.value = emptyMap(); return@launch }
             val now = System.currentTimeMillis()
             val end = now + 12 * 60 * 60 * 1000L
-            val flat = epgDao.rangeForChannels(visible.map { it.id }, now - 60 * 60_000, end)
+            // 500-id chunks: SQLite refuses IN-lists > 999 host params.
+            val flat = visible.map { it.id }.chunked(500).flatMap { ids ->
+                epgDao.rangeForChannels(ids, now - 60 * 60_000, end)
+            }
             _programmes.value = flat.groupBy { it.channelId }
         }
     }

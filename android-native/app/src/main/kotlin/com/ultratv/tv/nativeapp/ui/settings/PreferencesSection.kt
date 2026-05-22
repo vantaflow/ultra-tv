@@ -1,6 +1,10 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.remember
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -106,7 +110,24 @@ private fun ChoiceChip(label: String, on: Boolean, onClick: () -> Unit) {
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 private fun SwitchRow(title: String, hint: String, value: Boolean, onChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val bg = if (focused)
+        com.ultratv.tv.nativeapp.ui.theme.UltraTokens.AccentSoft
+    else
+        androidx.compose.ui.graphics.Color.Transparent
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .background(bg, androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+            .clickable(
+                interactionSource = interaction,
+                indication = null,
+            ) { onChange(!value) }
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Column(Modifier.weight(1f)) {
             Text(title, color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)

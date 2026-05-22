@@ -63,7 +63,12 @@ class LiveViewModel @Inject constructor(
     private suspend fun refreshNowNext(ids: List<Long>) {
         if (ids.isEmpty()) return
         val now = System.currentTimeMillis()
-        val rows = epgDao.rangeForChannels(ids, now - 30 * 60_000, now + 6 * 60 * 60_000)
+        // SQLite caps host parameters at 999. A 50 k-channel playlist would
+        // otherwise crash with "too many SQL variables". Split into 500-id
+        // chunks and concatenate.
+        val rows = ids.chunked(500).flatMap { chunk ->
+            epgDao.rangeForChannels(chunk, now - 30 * 60_000, now + 6 * 60 * 60_000)
+        }
         val byCh = rows.groupBy { it.channelId }
         _nowNext.value = ids.associateWith { id ->
             val list = byCh[id].orEmpty()
