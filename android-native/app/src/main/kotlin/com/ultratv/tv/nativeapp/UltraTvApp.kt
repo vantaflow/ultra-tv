@@ -53,6 +53,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         val pkg = packageManager.getPackageInfo(packageName, 0)
         @Suppress("DEPRECATION")
         RemoteLog.init(
+            ctx = this,
             mac = deviceMac.mac,
             versionName = pkg.versionName ?: "",
             versionCode = pkg.versionCode,
