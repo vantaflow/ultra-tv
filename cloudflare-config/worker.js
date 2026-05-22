@@ -421,18 +421,15 @@ export default {
     }
 
     // ---- Public: app fetches its own config ----
+    // The MAC itself is the bearer: it's hashed from ANDROID_ID so guessing is
+    // unfeasible, and each user runs their own worker. The dashboard at /
+    // still requires a per-MAC password for mutations; reads are anonymous so
+    // the app doesn't have to make the user re-enter the password to sync.
     const macGet = url.pathname.match(/^\/api\/config\/([^/]+)\/?$/);
     if (macGet && req.method === "GET") {
       const mac = normaliseMac(macGet[1]);
       if (!mac) return json({ error: "invalid mac" }, { status: 400 });
       const cfg = await readConfig(env, mac);
-      const supplied = url.searchParams.get("password") || req.headers.get("x-config-password") || "";
-      if (cfg.providers?.length && !(await passwordMatches(cfg, supplied))) {
-        return json(
-          { error: cfg.passwordHash ? "wrong password" : "password required", needsPassword: true },
-          { status: 401 },
-        );
-      }
       return new Response(
         JSON.stringify({ providers: cfg.providers || [], known: !!cfg.providers?.length }),
         { headers: { "content-type": "application/json; charset=utf-8", ...corsHeaders } },

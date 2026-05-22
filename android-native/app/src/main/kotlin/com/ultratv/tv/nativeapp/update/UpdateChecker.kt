@@ -75,8 +75,14 @@ object UpdateChecker {
                     RemoteLog.warn(TAG, "unparseable tag $tag")
                     return@use null
                 }
-                if (remoteCode <= BuildConfig.VERSION_CODE) {
-                    RemoteLog.debug(TAG, "up to date (local=${BuildConfig.VERSION_CODE} remote=$remoteCode)")
+                // Compare both sides on the same scale (semver → packed int).
+                // BuildConfig.VERSION_CODE is a small sequential number (17),
+                // while remoteCode encodes "x.y.z" as x*10000+y*100+z (10007).
+                // Earlier we were comparing 10007 > 17 every time, so the
+                // dialog kept popping even on the newest install.
+                val localCode = versionCodeFromName(BuildConfig.VERSION_NAME) ?: BuildConfig.VERSION_CODE
+                if (remoteCode <= localCode) {
+                    RemoteLog.debug(TAG, "up to date (local=$localCode remote=$remoteCode)")
                     return@use null
                 }
                 val assets = json.optJSONArray("assets")

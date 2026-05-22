@@ -369,6 +369,8 @@ private fun ConfigPasswordDialog(initial: String, onDismiss: () -> Unit, onSubmi
             value = pwd,
             onChange = { pwd = it },
             placeholder = S.settingsConfigPwdFieldPlaceholder,
+            password = true,
+            autoFocus = true,
         )
     }
 }

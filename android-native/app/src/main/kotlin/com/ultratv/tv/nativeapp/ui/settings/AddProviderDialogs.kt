@@ -1,6 +1,8 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -89,7 +92,17 @@ fun FormField(
     password: Boolean = false,
     keyboardType: KeyboardType = KeyboardType.Text,
     placeholder: String? = null,
+    autoFocus: Boolean = false,
 ) {
+    val interaction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Grab focus the first time the field is shown when caller marks it as the
+    // dialog's primary input. D-pad would otherwise stay on whatever was
+    // focused behind the dialog, leaving the user unable to type.
+    androidx.compose.runtime.LaunchedEffect(autoFocus) {
+        if (autoFocus) runCatching { focusRequester.requestFocus() }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
         Box(
@@ -97,6 +110,7 @@ fun FormField(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.background)
+                .androidx_border(focused)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
         ) {
             BasicTextField(
@@ -109,7 +123,10 @@ fun FormField(
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (password) KeyboardType.Password else keyboardType,
                 ),
-                modifier = Modifier.fillMaxWidth(),
+                interactionSource = interaction,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 decorationBox = { inner ->
                     if (value.isEmpty() && placeholder != null) {
                         Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
@@ -182,3 +199,10 @@ fun StalkerDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, m
             placeholder = "00:1A:79:XX:XX:XX")
     }
 }
+
+@Composable
+private fun Modifier.androidx_border(focused: Boolean): Modifier = this.border(
+    width = 1.dp,
+    color = if (focused) com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Accent else com.ultratv.tv.nativeapp.ui.theme.UltraTokens.Line2,
+    shape = RoundedCornerShape(8.dp),
+)
