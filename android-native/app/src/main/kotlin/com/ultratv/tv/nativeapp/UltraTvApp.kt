@@ -84,4 +84,39 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         RemoteLog.info("app", "onTerminate")
         super.onTerminate()
     }
+
+    /**
+     * Cheap ANR detector: a background thread pings the main looper every 2 s
+     * and waits 5 s for the ping to come back. If it doesn't, we know the main
+     * thread has been blocked at least that long and we ship an event with
+     * the active thread dump. Beats getting silent "app closed" reports with
+     * no logs (Android kills frozen UIs without going through our crash hook).
+     */
+    init {
+        Thread({
+            val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+            while (true) {
+                try { Thread.sleep(2_000) } catch (_: InterruptedException) { return@Thread }
+                val ack = java.util.concurrent.atomic.AtomicBoolean(false)
+                mainHandler.post { ack.set(true) }
+                var waited = 0
+                while (!ack.get() && waited < 5_000) {
+                    try { Thread.sleep(250) } catch (_: InterruptedException) { return@Thread }
+                    waited += 250
+                }
+                if (!ack.get()) {
+                    val mainTrace = android.os.Looper.getMainLooper().thread.stackTrace
+                        .joinToString("\n") { "  at $it" }
+                    RemoteLog.error(
+                        "anr",
+                        "main thread blocked ≥ 5 s\n$mainTrace",
+                    )
+                    // Don't spam: back off until main responds again.
+                    while (!ack.get()) {
+                        try { Thread.sleep(2_000) } catch (_: InterruptedException) { return@Thread }
+                    }
+                }
+            }
+        }, "ultra-anr-watchdog").apply { isDaemon = true; start() }
+    }
 }

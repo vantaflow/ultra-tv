@@ -212,7 +212,29 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     val player = remember {
-        ExoPlayer.Builder(context).build().apply { playWhenReady = true }
+        ExoPlayer.Builder(context).build().apply {
+            playWhenReady = true
+            // Surface playback failures to the dashboard so we can see WHY a
+            // stream silently never starts (codec, 403, DNS, etc).
+            addListener(object : androidx.media3.common.Player.Listener {
+                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                    com.ultratv.tv.nativeapp.RemoteLog.error(
+                        "player",
+                        "code=${error.errorCodeName} ${error.message ?: ""}",
+                    )
+                }
+                override fun onPlaybackStateChanged(state: Int) {
+                    val name = when (state) {
+                        androidx.media3.common.Player.STATE_IDLE -> "idle"
+                        androidx.media3.common.Player.STATE_BUFFERING -> "buffering"
+                        androidx.media3.common.Player.STATE_READY -> "ready"
+                        androidx.media3.common.Player.STATE_ENDED -> "ended"
+                        else -> "?"
+                    }
+                    com.ultratv.tv.nativeapp.RemoteLog.debug("player", "state=$name")
+                }
+            })
+        }
     }
 
     // Stream-stats overlay: tracks codec/resolution/bitrate while playing.
