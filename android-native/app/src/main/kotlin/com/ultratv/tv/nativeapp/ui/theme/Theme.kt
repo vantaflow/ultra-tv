@@ -23,7 +23,10 @@ private val Amoled = darkColorScheme(
     onSurfaceVariant = UltraTokens.Fg2,
     border = UltraTokens.Line,
     inverseSurface = Color(0xFF181820),
-    inverseOnSurface = UltraTokens.Fg,
+    // TV Button/Card focused state reads inverseOnSurface as the text colour;
+    // keeping it near-white made focus white-on-white. A near-black inverse-on
+    // means focused state renders as a white pill with dark text — readable.
+    inverseOnSurface = Color(0xFF0A0A0D),
 )
 
 private val Dark = darkColorScheme(
@@ -37,7 +40,10 @@ private val Dark = darkColorScheme(
     onSurfaceVariant = UltraTokens.Fg2,
     border = UltraTokens.Line,
     inverseSurface = Color(0xFF1F1F28),
-    inverseOnSurface = UltraTokens.Fg,
+    // TV Button/Card focused state reads inverseOnSurface as the text colour;
+    // keeping it near-white made focus white-on-white. A near-black inverse-on
+    // means focused state renders as a white pill with dark text — readable.
+    inverseOnSurface = Color(0xFF0A0A0D),
 )
 
 private val Blue = darkColorScheme(
@@ -51,7 +57,10 @@ private val Blue = darkColorScheme(
     onSurfaceVariant = UltraTokens.Fg2,
     border = UltraTokens.Line,
     inverseSurface = Color(0xFF1B2447),
-    inverseOnSurface = UltraTokens.Fg,
+    // TV Button/Card focused state reads inverseOnSurface as the text colour;
+    // keeping it near-white made focus white-on-white. A near-black inverse-on
+    // means focused state renders as a white pill with dark text — readable.
+    inverseOnSurface = Color(0xFF0A0A0D),
 )
 
 @Composable

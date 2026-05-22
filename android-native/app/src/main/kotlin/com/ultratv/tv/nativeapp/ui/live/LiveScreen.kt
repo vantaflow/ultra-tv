@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             modifier = Modifier
                 .width(230.dp)
                 .fillMaxHeight()
+                .clipToBounds()
                 .padding(top = 20.dp, end = 0.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {
@@ -129,6 +131,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             modifier = Modifier
                 .width(470.dp)
                 .fillMaxHeight()
+                .clipToBounds()
                 .padding(top = 20.dp, start = 0.dp),
             verticalArrangement = Arrangement.spacedBy(0.dp),
         ) {

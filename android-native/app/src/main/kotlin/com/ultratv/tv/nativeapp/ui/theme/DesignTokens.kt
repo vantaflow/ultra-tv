@@ -95,6 +95,28 @@ fun ultraCardColors(
     pressedContentColor = focusedContentColor,
 )
 
+/**
+ * Button colors that play nice with our AMOLED theme. Same problem as the
+ * Card defaults — TV ButtonDefaults uses primary/onSurface as the focused
+ * container, which on our scheme reads as solid red or solid white. Use this
+ * helper to keep buttons visually consistent on focus.
+ */
+@androidx.compose.runtime.Composable
+@androidx.tv.material3.ExperimentalTvMaterial3Api
+fun ultraButtonColors(
+    containerColor: androidx.compose.ui.graphics.Color = UltraTokens.Surface2,
+    contentColor: androidx.compose.ui.graphics.Color = UltraTokens.Fg,
+    focusedContainerColor: androidx.compose.ui.graphics.Color = UltraTokens.Accent,
+    focusedContentColor: androidx.compose.ui.graphics.Color = androidx.compose.ui.graphics.Color.White,
+): androidx.tv.material3.ButtonColors = androidx.tv.material3.ButtonDefaults.colors(
+    containerColor = containerColor,
+    contentColor = contentColor,
+    focusedContainerColor = focusedContainerColor,
+    focusedContentColor = focusedContentColor,
+    pressedContainerColor = focusedContainerColor,
+    pressedContentColor = focusedContentColor,
+)
+
 object UltraType {
     // Editorial titles
     val HeroDisplay = TextStyle(

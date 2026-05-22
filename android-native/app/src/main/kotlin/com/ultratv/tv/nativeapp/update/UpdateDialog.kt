@@ -31,10 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.ui.theme.UltraFonts
 import com.ultratv.tv.nativeapp.ui.theme.UltraTokens
+import com.ultratv.tv.nativeapp.ui.theme.ultraButtonColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -63,14 +63,14 @@ fun UpdateDialog() {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0xC0000000)),
+            .background(Color(0xF0000000)),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             Modifier
                 .widthIn(min = 520.dp, max = 640.dp)
                 .clip(RoundedCornerShape(20.dp))
-                .background(UltraTokens.Surface3)
+                .background(Color(0xFF15151B))      // opaque, sits on top of the scrim
                 .border(1.dp, UltraTokens.Accent, RoundedCornerShape(20.dp))
                 .padding(28.dp),
         ) {
@@ -148,9 +148,11 @@ fun UpdateDialog() {
                         }
                     },
                     enabled = !downloading,
-                    colors = ButtonDefaults.colors(
+                    colors = ultraButtonColors(
                         containerColor = UltraTokens.Accent,
                         contentColor = Color.White,
+                        focusedContainerColor = Color.White,
+                        focusedContentColor = UltraTokens.Accent,
                     ),
                 ) {
                     Text(
@@ -159,13 +161,15 @@ fun UpdateDialog() {
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
-                Spacer(Modifier.width(0.dp))
                 Button(
                     onClick = { dismissed = true },
                     enabled = !downloading,
-                    colors = ButtonDefaults.colors(containerColor = UltraTokens.Surface2),
+                    colors = ultraButtonColors(
+                        containerColor = UltraTokens.Surface2,
+                        contentColor = UltraTokens.Fg2,
+                    ),
                 ) {
-                    Text("Plus tard", color = UltraTokens.Fg2, fontSize = 14.sp)
+                    Text("Plus tard", fontSize = 14.sp)
                 }
             }
         }

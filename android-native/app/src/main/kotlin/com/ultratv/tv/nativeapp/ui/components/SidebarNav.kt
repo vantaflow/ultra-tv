@@ -68,9 +68,14 @@ fun SidebarNav(navController: NavController) {
     var anyFocused by remember { mutableStateOf(false) }
     val width by animateDpAsState(
         targetValue = if (anyFocused) UltraTokens.SidebarExpanded else UltraTokens.SidebarCollapsed,
-        animationSpec = tween(durationMillis = 280),
+        animationSpec = tween(durationMillis = 220),
         label = "sidebar-width",
     )
+    // Gate the labels (and active-stripe) on the animated width crossing a
+    // midpoint so labels don't pop into a 92 dp container and reflow while
+    // the bar is still expanding — that was the flicker users hit when
+    // returning to the sidebar with the left D-pad.
+    val expanded = width >= 170.dp
 
     Column(
         Modifier
@@ -98,7 +103,7 @@ fun SidebarNav(navController: NavController) {
                     .background(Brush.linearGradient(listOf(UltraTokens.Accent, UltraTokens.Accent2))),
                 contentAlignment = Alignment.Center,
             ) { UltraIcon(UltraIcon.Play, size = 18.dp, color = Color.Black) }
-            if (anyFocused) {
+            if (expanded) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text("ULTRA", color = UltraTokens.Fg, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -113,7 +118,7 @@ fun SidebarNav(navController: NavController) {
                 icon = entry.icon,
                 label = entry.labelOf(strings),
                 selected = selected,
-                expanded = anyFocused,
+                expanded = expanded,
                 onClick = {
                     if (route != entry.route) {
                         navController.navigate(entry.route) {
@@ -139,7 +144,7 @@ fun SidebarNav(navController: NavController) {
                     .background(Brush.linearGradient(listOf(Color(0xFF3057B7), Color(0xFF6839B5)))),
                 contentAlignment = Alignment.Center,
             ) { Text("K", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
-            if (anyFocused) {
+            if (expanded) {
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text("Khalil", color = UltraTokens.Fg2, fontSize = 13.sp, fontWeight = FontWeight.Medium)
