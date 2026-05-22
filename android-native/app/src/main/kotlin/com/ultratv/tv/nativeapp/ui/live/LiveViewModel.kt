@@ -157,6 +157,16 @@ class LiveViewModel @Inject constructor(
     fun setQuery(q: String) { _query.value = q }
     fun selectCategory(remoteId: String) { _selectedCategory.value = remoteId }
 
+    /**
+     * Resolves the play URL for a channel without seeding the zap queue or
+     * sending the user to the full-screen player. Used by the right-hand
+     * mini-preview pane in Live TV.
+     */
+    suspend fun resolvePreviewUrl(channel: ChannelEntity): String {
+        if (!channel.streamUrl.startsWith("stalker://")) return channel.streamUrl
+        return provider.resolvePlayUrl(channel.id, channel.streamUrl)
+    }
+
     fun resolveAndPlay(channel: ChannelEntity, onReady: (url: String, title: String) -> Unit) {
         // Seed the zap queue with the list the user was browsing so the
         // player can D-pad UP/DOWN through it without going back.

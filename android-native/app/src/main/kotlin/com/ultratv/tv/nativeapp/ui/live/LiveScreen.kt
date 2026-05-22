@@ -83,10 +83,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
     Row(Modifier.fillMaxSize().padding(top = 76.dp)) {
-        // ---- Left pane: categories ----
+        // ---- Left pane: categories (200 dp — compact, focus-only) ----
         Column(
             modifier = Modifier
-                .width(230.dp)
+                .width(200.dp)
                 .fillMaxHeight()
                 .clipToBounds()
                 .padding(top = 20.dp, end = 0.dp),
@@ -126,10 +126,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 .background(UltraTokens.Line),
         )
 
-        // ---- Middle pane: channels in selected category ----
+        // ---- Middle pane: channels (420 dp — readable but compact) ----
         Column(
             modifier = Modifier
-                .width(470.dp)
+                .width(420.dp)
                 .fillMaxHeight()
                 .clipToBounds()
                 .padding(top = 20.dp, start = 0.dp),
@@ -183,6 +183,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                             active = i == activeIdx,
                             nowProgramme = nn?.first,
                             nextProgramme = nn?.second,
+                            onFocus = { activeIdx = i },
                         ) {
                             activeIdx = i
                             if (isLocked) pinPrompt = c
@@ -201,11 +202,12 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 .background(UltraTokens.Line),
         )
 
-        // ---- Right pane: live preview window + now/next ----
+        // ---- Right pane: live mini-player + now/next + Watch CTA ----
         val active = chans.getOrNull(activeIdx)
         if (active != null) {
             LivePreviewPane(
                 channel = active,
+                vm = vm,
                 nowProgramme = nowNext[active.id]?.first,
                 nextProgramme = nowNext[active.id]?.second,
                 onWatch = {
@@ -283,10 +285,14 @@ private fun ChannelRow(
     active: Boolean = false,
     nowProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity? = null,
     nextProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity? = null,
+    onFocus: () -> Unit = {},
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    // Fire focus callback so the preview pane can auto-tune to whatever the
+    // user is hovering, OTT-Navigator style.
+    LaunchedEffect(focused) { if (focused) onFocus() }
     val highlight = focused || active
     Card(
         onClick = onClick,
@@ -354,6 +360,7 @@ private fun ChannelRow(
 @Composable
 private fun LivePreviewPane(
     channel: ChannelEntity,
+    vm: LiveViewModel,
     nowProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
     nextProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
     onWatch: () -> Unit,
@@ -361,6 +368,37 @@ private fun LivePreviewPane(
     val nowTitle = nowProgramme?.title ?: "Programme en cours"
     val nextTitle = nextProgramme?.title ?: "À venir"
     val hue = channel.name.hashCode()
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // One mini-player kept alive while the screen is on. We swap its
+    // MediaItem with a debounce when the focused channel changes, so D-pad
+    // navigation doesn't hammer the network with stalker create_link calls.
+    val miniPlayer = remember {
+        androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
+            playWhenReady = true
+            volume = 0f // Silent — audio belongs to the full player.
+        }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose { miniPlayer.release() }
+    }
+    var resolvedUrl by remember { mutableStateOf<String?>(null) }
+    var loading by remember(channel.id) { mutableStateOf(true) }
+    LaunchedEffect(channel.id) {
+        loading = true
+        resolvedUrl = null
+        // 700 ms debounce: user is scrolling, don't hit the network on each
+        // row. resolvePreviewUrl swallows Stalker `create_link` calls when
+        // needed; for plain URLs it's a no-op.
+        kotlinx.coroutines.delay(700)
+        val url = runCatching { vm.resolvePreviewUrl(channel) }.getOrNull()
+        resolvedUrl = url
+        loading = false
+        if (url != null) {
+            miniPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(url))
+            miniPlayer.prepare()
+        }
+    }
 
     Column(
         Modifier
@@ -368,7 +406,7 @@ private fun LivePreviewPane(
             .padding(30.dp),
         verticalArrangement = Arrangement.spacedBy(22.dp),
     ) {
-        // "TV" preview window — 16:9, gradient backdrop, channel logo centered
+        // 16:9 preview window with the live mini-player
         Box(
             Modifier
                 .fillMaxWidth()
@@ -384,17 +422,29 @@ private fun LivePreviewPane(
                 )
                 .border(1.dp, UltraTokens.Line2, RoundedCornerShape(18.dp)),
         ) {
-            // Big centered channel logo
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                ChannelLogo(
-                    name = channel.name,
-                    logoUrl = channel.logo,
-                    short = null,
-                    hueSeed = hue,
-                    hd = null,
-                    size = 120.dp,
-                    showBadge = false,
-                )
+            // Mini-player surface
+            androidx.compose.ui.viewinterop.AndroidView(
+                modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(18.dp)),
+                factory = { ctx ->
+                    androidx.media3.ui.PlayerView(ctx).apply {
+                        useController = false
+                        player = miniPlayer
+                    }
+                },
+            )
+            // Fallback while loading or unresolved: big channel logo overlay.
+            if (resolvedUrl == null || loading) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    ChannelLogo(
+                        name = channel.name,
+                        logoUrl = channel.logo,
+                        short = null,
+                        hueSeed = hue,
+                        hd = null,
+                        size = 120.dp,
+                        showBadge = false,
+                    )
+                }
             }
 
             // Top overlay: LIVE chip + category badge
