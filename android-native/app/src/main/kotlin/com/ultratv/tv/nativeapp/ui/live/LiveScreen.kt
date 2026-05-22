@@ -289,8 +289,9 @@ private fun ChannelRow(
         onClick = onClick,
         interactionSource = interaction,
         shape = CardDefaults.shape(RoundedCornerShape(0.dp)),
-        colors = CardDefaults.colors(
+        colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
             containerColor = if (highlight) UltraTokens.AccentSoft else Color.Transparent,
+            focusedContainerColor = UltraTokens.AccentSoft,
         ),
     ) {
         Row(

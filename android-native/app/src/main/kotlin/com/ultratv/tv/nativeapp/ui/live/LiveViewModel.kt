@@ -53,20 +53,12 @@ class LiveViewModel @Inject constructor(
 
     private val epgDao = epgDaoArg
 
-    init {
-        viewModelScope.launch {
-            channels.collect { list ->
-                if (list.isEmpty()) { _nowNext.value = emptyMap(); return@collect }
-                refreshNowNext(list.map { it.id })
-            }
-        }
-        viewModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(60_000)
-                refreshNowNext(channels.value.map { it.id })
-            }
-        }
-    }
+    // NOTE: the init {} block lives at the *bottom* of the class so the
+    // properties it touches (channels, providers) are already constructed
+    // by the time it runs. viewModelScope uses Dispatchers.Main.immediate,
+    // which dispatches synchronously when the VM is created on the main
+    // thread — so anything referencing a not-yet-initialised property in
+    // an init block reads `null` and crashes (#LiveViewModel NPE).
 
     private suspend fun refreshNowNext(ids: List<Long>) {
         if (ids.isEmpty()) return
@@ -187,6 +179,24 @@ class LiveViewModel @Inject constructor(
                 onReady(resolved, channel.name)
             } finally {
                 _resolving.value = false
+            }
+        }
+    }
+
+    init {
+        // Run AFTER `channels` is initialised. viewModelScope is Main.immediate,
+        // so referencing channels in an init block at the top of the class read
+        // a null backing field and crashed.
+        viewModelScope.launch {
+            channels.collect { list ->
+                if (list.isEmpty()) { _nowNext.value = emptyMap(); return@collect }
+                refreshNowNext(list.map { it.id })
+            }
+        }
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(60_000)
+                refreshNowNext(channels.value.map { it.id })
             }
         }
     }

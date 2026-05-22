@@ -125,7 +125,7 @@ fun GuideScreen(vm: GuideViewModel = hiltViewModel()) {
                         }
                     },
                     shape = CardDefaults.shape(RoundedCornerShape(14.dp)),
-                    colors = CardDefaults.colors(
+                    colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
                         containerColor = if (isOpen) UltraTokens.AccentSoft else UltraTokens.Surface1,
                     ),
                     modifier = Modifier.then(

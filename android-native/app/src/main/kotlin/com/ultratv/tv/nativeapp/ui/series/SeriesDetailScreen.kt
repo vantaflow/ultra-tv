@@ -127,7 +127,7 @@ fun SeriesDetailScreen(
                             vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode)
                         },
                         shape = CardDefaults.shape(RoundedCornerShape(12.dp)),
-                        colors = CardDefaults.colors(containerColor = T.Surface1),
+                        colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(containerColor = T.Surface1),
                         modifier = Modifier.border(1.dp, T.Line, RoundedCornerShape(12.dp)),
                     ) {
                         Row(

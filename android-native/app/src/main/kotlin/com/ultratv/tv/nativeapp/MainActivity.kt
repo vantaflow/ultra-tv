@@ -82,8 +82,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
+        com.ultratv.tv.nativeapp.update.UpdateChecker.registerInstallReceiver(this)
         setContent { Root() }
         kickoffStartupTasks()
+        // Check for a new GitHub release in the background. The dialog only
+        // surfaces if there's actually a newer versionCode available.
+        lifecycleScope.launch {
+            com.ultratv.tv.nativeapp.update.UpdateChecker.checkForUpdate()
+        }
     }
 
     /**
@@ -165,7 +171,10 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
-        UltraTvTheme(theme = prefs.theme) { UltraTvAppRoot(prefs.sidebarPosition) }
+        UltraTvTheme(theme = prefs.theme) {
+            UltraTvAppRoot(prefs.sidebarPosition)
+            com.ultratv.tv.nativeapp.update.UpdateDialog()
+        }
     }
 }
 

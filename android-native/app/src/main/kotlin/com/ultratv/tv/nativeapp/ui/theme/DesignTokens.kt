@@ -73,6 +73,28 @@ object UltraFonts {
     val Serif: FontFamily = FontFamily.Serif
 }
 
+/**
+ * Card colors that play nice with our AMOLED theme. The TV CardDefaults use
+ * onSurface (≈ white) as the focused container, which gives a blinding white
+ * card on focus. Use this helper instead so focus reads as an accent-tinted
+ * surface with proper text contrast.
+ */
+@androidx.compose.runtime.Composable
+@androidx.tv.material3.ExperimentalTvMaterial3Api
+fun ultraCardColors(
+    containerColor: androidx.compose.ui.graphics.Color = UltraTokens.Surface1,
+    contentColor: androidx.compose.ui.graphics.Color = UltraTokens.Fg,
+    focusedContainerColor: androidx.compose.ui.graphics.Color = UltraTokens.AccentSoft,
+    focusedContentColor: androidx.compose.ui.graphics.Color = UltraTokens.Fg,
+): androidx.tv.material3.CardColors = androidx.tv.material3.CardDefaults.colors(
+    containerColor = containerColor,
+    contentColor = contentColor,
+    focusedContainerColor = focusedContainerColor,
+    focusedContentColor = focusedContentColor,
+    pressedContainerColor = focusedContainerColor,
+    pressedContentColor = focusedContentColor,
+)
+
 object UltraType {
     // Editorial titles
     val HeroDisplay = TextStyle(

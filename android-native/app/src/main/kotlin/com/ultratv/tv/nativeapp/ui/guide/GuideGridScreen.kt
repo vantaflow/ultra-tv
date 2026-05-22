@@ -277,7 +277,7 @@ private fun GuideRow(
             onClick = onPlay,
             modifier = Modifier.width(200.dp).fillMaxHeight().padding(end = 8.dp),
             shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
-            colors = CardDefaults.colors(containerColor = T.Surface1),
+            colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(containerColor = T.Surface1),
         ) {
             Row(
                 Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
@@ -328,8 +328,12 @@ private fun GuideRow(
                                 .fillMaxHeight(),
                             shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
                             colors = if (isLive)
-                                CardDefaults.colors(containerColor = T.AccentSoft)
-                            else CardDefaults.colors(containerColor = T.Surface1),
+                                com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
+                                    containerColor = T.AccentSoft,
+                                    focusedContainerColor = T.Accent,
+                                    focusedContentColor = androidx.compose.ui.graphics.Color.White,
+                                )
+                            else com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(containerColor = T.Surface1),
                         ) {
                             Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
                                 Text(
