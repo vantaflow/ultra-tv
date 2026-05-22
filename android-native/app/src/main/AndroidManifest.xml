@@ -44,6 +44,19 @@
             </intent-filter>
         </activity>
 
+        <!-- FileProvider for the auto-update flow: exposes our internal
+             filesDir/updates/*.apk as a content:// URI so the system installer
+             can read it across the package boundary. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updates"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/update_provider_paths" />
+        </provider>
+
         <!-- Disable WorkManager's default startup so our HiltAndroidApp can
              provide a Hilt-aware WorkerFactory via Configuration.Provider. -->
         <provider

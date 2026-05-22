@@ -41,6 +41,8 @@ Full editorial redesign — AMOLED-first, accent rouge `#FF3A2F`, typo **Instrum
 | **Settings** | Tabs sidebar 300 dp · section cards Surface1 + border · MAC card gradient accent · toggle, pills, color swatches |
 | **Onboarding** | Wizard 3 steps · stepper accent · option Cloud (recommandée) vs Manuel · QR code stub |
 
+Multi-View screen was removed in v1.0.0 — too few users, awkward focus on a single remote.
+
 ### Logo
 
 <p align="center">
@@ -125,9 +127,16 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🧱 **R8 / ProGuard release build** with resource shrinking — **18 MB debug → 4.9 MB release** (incl. Google Cast SDK) (latest APK shipped is the release variant)
 - 📑 **Paging Room** for Movies / Series flat-grid (pages of 60, only ~120 items in memory regardless of catalog size)
 
-### Distribution
-- 🇩 **Downloader code `5248504`** — sideload via the [Downloader app](https://www.aftvnews.com/downloader/) on any Android TV box
-- 🌐 GitHub Releases — latest APK at `releases/latest/download/UltraTV-debug.apk`
+### Distribution & updates
+- 🇩 **Downloader code `5248504`** — initial sideload via the [Downloader app](https://www.aftvnews.com/downloader/) on any Android TV box.
+- 🌐 GitHub Releases — latest APK at `releases/latest/download/UltraTV-debug.apk`.
+- 🔄 **In-app self-update** (v1.0.5+) — the app pings GitHub Releases on launch, compares versionCode, and pops a dialog with a progress bar that downloads + installs the new APK via PackageInstaller. First update prompts once for "Install unknown apps"; subsequent updates are one-tap. No Play Store, no third-party updater required.
+
+### Telemetry & crash reporting
+- 🛰️ **Cloudflare Worker ingest** — every crash + ad-hoc `RemoteLog.info/warn/error/debug(...)` event is POSTed directly to the worker. No local crash.txt; no ADB pulls.
+- 📒 **Crash dashboard** — `GET /crashes?token=…` returns an HTML page with expandable stack traces, device + version columns, 30-day rolling window.
+- 🪵 **Event dashboard** — `GET /logs?token=…` table with level colouring (debug / info / warn / error), 7-day rolling window.
+- 🔑 Token-gated via `env.CRASH_TOKEN` (fallback to `env.ADMIN_PASSWORD`). The app ships the URL + token baked in so every install reports automatically.
 
 ## Quick start
 
@@ -140,6 +149,8 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 5. Either:
    - Open **Settings** → tap **+ Xtream / + M3U URL / + M3U file / + Stalker portal** and fill in the form.
    - **Or** self-host the Cloudflare Worker, provision your MAC in its dashboard, then **Sync from cloud**.
+
+From v1.0.5 onwards you only need Downloader for the *first* install — the app auto-updates itself from GitHub Releases.
 
 ### Build from source
 
@@ -169,11 +180,14 @@ npm i -g wrangler
 
 wrangler kv:namespace create CONFIG             # paste id/preview_id into wrangler.toml
 wrangler kv:namespace create CONFIG --preview
-wrangler secret put ADMIN_PASSWORD              # type a strong password
+wrangler secret put ADMIN_PASSWORD              # strong password — dashboard login
+wrangler secret put CRASH_TOKEN                 # optional: rotate the crash-report token away from the admin one
 wrangler deploy
 ```
 
-The Worker URL printed by wrangler is what you paste in the app's Settings → **Change** next to the Worker URL field.
+The Worker URL printed by wrangler is what you paste in the app's Settings → **Change** next to the Worker URL field, and is also the host of the crash + event dashboards (`/crashes?token=…`, `/logs?token=…`).
+
+If you fork the project, swap the hard-coded `WORKER_URL` + `TOKEN` constants in `android-native/.../RemoteLog.kt` and `UpdateChecker.kt` so your installs report to *your* worker, not the upstream one.
 
 ## Architecture
 
@@ -195,22 +209,23 @@ android-native/
 │   │   └── config/             (DeviceMac, RemoteConfigImporter)
 │   ├── di/                     (Hilt modules: DB / Network)
 │   ├── nav/                    (Routes catalog)
+│   ├── RemoteLog.kt            (direct-to-Worker crash + event transport)
+│   ├── update/                 (UpdateChecker + UpdateDialog — GitHub Releases self-update)
 │   └── ui/
-│       ├── theme/              (Dark / AMOLED / Blue palettes)
-│       ├── components/         (SidebarNav, TopBarNav)
-│       ├── common/             (PosterCard, ContentRail, HeroBanner, …)
+│       ├── theme/              (DesignTokens, ultraCardColors, palettes: AMOLED / Dark / Blue)
+│       ├── components/         (SidebarNav, TopBarNav, UltraIcons — 28 stroke icons)
+│       ├── common/             (PosterCard, ContentRail, HeroBanner, ChannelLogo, ContinueWatchingTile, NowPlayingMini)
 │       ├── home/               (rails + MAC onboarding card)
-│       ├── live/               (Tivimate two-pane)
+│       ├── live/               (Tivimate 3-pane: categories | channels | preview window)
 │       ├── movies/             (Rails view + Detail)
 │       ├── series/             (Rails view + Detail with episodes)
-│       ├── guide/              (EPG)
-│       ├── search/             (cross-content)
+│       ├── guide/              (12 h × N timeline grid with NOW accent line)
+│       ├── search/             (on-screen keyboard + filter chips + grid)
 │       ├── favorites/
 │       ├── categories/         (Hide / Show + bulk)
-│       ├── multiview/          (2×2 simultaneous ExoPlayers)
 │       ├── player/             (Media3 PlayerView wrapper)
-│       └── settings/           (Tabs + AddProviderDialogs + PreferencesSection)
-└── cloudflare-config/          (Worker: KV-backed config per MAC + HTML dashboard)
+│       └── settings/           (editorial header + section cards + AddProviderDialogs)
+└── cloudflare-config/          (Worker: KV-backed config per MAC + crash & event dashboards)
 ```
 
 ## Roadmap
@@ -219,12 +234,16 @@ In active development / next iterations:
 
 - 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
 - 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
-- 🩺 **Crash reporting** (Sentry / Firebase Crashlytics opt-in)
+- 🧭 **Aggregated crash grouping** on the dashboard (currently one entry per occurrence; collapsing by stack fingerprint would scale better)
 
 Recently landed:
 
+- 🎨 **2026 editorial redesign** of every screen — AMOLED-first, accent `#FF3A2F`, Instrument Serif + Geist typo, new variant-C launcher icon. See the *New UI* section above.
+- 🛰️ **Remote crash + event reporting** to a self-hosted Cloudflare Worker (`POST /api/crash`, `POST /api/event`); HTML dashboards at `/crashes` and `/logs`. No more `crash.txt` hunting.
+- 🔄 **In-app GitHub-Releases auto-update** with a download progress bar + PackageInstaller commit. After v1.0.5 the Downloader code is only needed for the very first install.
+- 🩹 **LiveViewModel init-order NPE fix** that was crashing any nav to Live TV on some devices (Main.immediate dispatch + property declared after init).
 - 📥 **HLS-segment recording** for Live channels (m3u8 polling + .ts append).
-- 🌐 **Deep i18n EN / FR / ES / AR** across every screen — Home, Live, Movies/Series, Settings (incl. private dialogs and SAF toasts), Preferences, Categories, Onboarding wizard, Guide list + grid, Add-provider dialogs, parental PIN flow, MultiView, Recordings, Search, Player overlays (Aspect / Speed / Tracks / Stats / Sleep timer / Record-queued toast) plus the rail-title fallback. ~270 keys, RTL-aware.
+- 🌐 **Deep i18n EN / FR / ES / AR** across every screen — Home, Live, Movies/Series, Settings (incl. private dialogs and SAF toasts), Preferences, Categories, Onboarding wizard, Guide list + grid, Add-provider dialogs, parental PIN flow, Recordings, Search, Player overlays plus the rail-title fallback. ~270 keys, RTL-aware.
 - 👆 **Touch UX**: vertical-drag gesture overlays for system volume (right strip, `🔊 nn%`) and screen brightness (left strip, `☀ nn%`); **pull-to-refresh** on Home, Live TV, Movies, Series and the Guide grid. Both inert under D-pad, so TV remote behaviour is unchanged.
 
 ## Credits

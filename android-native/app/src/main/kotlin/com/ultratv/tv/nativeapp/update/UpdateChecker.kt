@@ -1,13 +1,10 @@
 package com.ultratv.tv.nativeapp.update
 
-import android.app.PendingIntent
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
-import android.content.pm.PackageInstaller
+import android.net.Uri
 import android.os.Build
-import android.util.Log
+import androidx.core.content.FileProvider
 import com.ultratv.tv.nativeapp.BuildConfig
 import com.ultratv.tv.nativeapp.RemoteLog
 import kotlinx.coroutines.Dispatchers
@@ -164,64 +161,28 @@ object UpdateChecker {
         return out
     }
 
+    /**
+     * Hands the downloaded APK to the system's standard install activity via a
+     * FileProvider content:// URI. This is the most compatible path across
+     * Android TV firmwares (Fire TV, Mecool, vivo boxes) — some of them reject
+     * PackageInstaller sessions from non-system apps with
+     * "cannot automatically move to internal storage". The OS installer prompts
+     * the user once (Allow this source) and handles everything itself.
+     */
     private fun installApk(ctx: Context, apk: File) {
-        val pi = ctx.packageManager.packageInstaller
-        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
-            setAppPackageName(ctx.packageName)
-            if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
+        val authority = "${ctx.packageName}.updates"
+        val uri: Uri = FileProvider.getUriForFile(ctx, authority, apk)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            // On Android 8+ the per-app "install unknown apps" toggle gates this.
+            // The system shows its own prompt if the user hasn't allowed it yet.
         }
-        val sessionId = pi.createSession(params)
-        try {
-            pi.openSession(sessionId).use { session ->
-                apk.inputStream().use { input ->
-                    session.openWrite("base.apk", 0, apk.length()).use { output ->
-                        input.copyTo(output)
-                        session.fsync(output)
-                    }
-                }
-                val intent = Intent(ctx, InstallReceiver::class.java).apply { action = INSTALL_ACTION }
-                val flags = if (Build.VERSION.SDK_INT >= 31)
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
-                else PendingIntent.FLAG_UPDATE_CURRENT
-                val pending = PendingIntent.getBroadcast(ctx, sessionId, intent, flags)
-                session.commit(pending.intentSender)
-            }
-        } catch (t: Throwable) {
-            pi.abandonSession(sessionId)
-            throw t
-        }
+        RemoteLog.info("update", "launching system installer for ${apk.name} (${apk.length()} B)")
+        ctx.startActivity(intent)
     }
 
-    const val INSTALL_ACTION = "com.ultratv.tv.nativeapp.INSTALL_RESULT"
-
-    /** Receives the install-session result so we can log the outcome. */
-    class InstallReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
-            val msg = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE).orEmpty()
-            when (status) {
-                PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                    // System needs the user to confirm — launch the confirm activity.
-                    val confirm = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
-                    confirm?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    if (confirm != null) {
-                        runCatching { context.startActivity(confirm) }
-                    }
-                    RemoteLog.info("update", "install requires user action")
-                }
-                PackageInstaller.STATUS_SUCCESS -> RemoteLog.info("update", "install success")
-                else -> {
-                    Log.w("update", "install failed $status $msg")
-                    RemoteLog.warn("update", "install failed status=$status $msg")
-                }
-            }
-        }
-    }
-
-    fun registerInstallReceiver(ctx: Context) {
-        runCatching {
-            val flags = if (Build.VERSION.SDK_INT >= 34) Context.RECEIVER_NOT_EXPORTED else 0
-            ctx.applicationContext.registerReceiver(InstallReceiver(), IntentFilter(INSTALL_ACTION), flags)
-        }
-    }
+    /** No-op kept for backwards compatibility with callers from v1.0.5. */
+    fun registerInstallReceiver(@Suppress("UNUSED_PARAMETER") ctx: Context) = Unit
 }
