@@ -65,7 +65,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🎬 **Xtream Codes** · **M3U URL** · **M3U file from local storage** · **Stalker Portal** with Live + VOD + series catalogues (MAC handshake + lazy `create_link` at play time, including movies)
 - 🔁 **Multi-provider** — add as many as you want, pick the default in Settings (★ Default badge)
 - 🚦 **De-duplication** — re-adding the same `(kind, url, username)` reuses the existing row instead of duplicating
-- 🛰️ **Cloud sync via Cloudflare Worker** — paste your device MAC into the dashboard, add providers there, "Sync from cloud" pulls them all
+- 🛰️ **Cloud sync via Cloudflare Worker** — paste your device MAC into the dashboard (login + password), add providers, then the app pulls them with one tap. App reads are anonymous (the MAC, hashed from `ANDROID_ID`, is the bearer); only dashboard mutations require the per-MAC password.
 - ⏱️ **Background sync via WorkManager** (every 6 / 12 / 24 h, or every launch)
 - 📈 **Live sync progress banner** pinned to the top of every screen during sync
 
@@ -238,6 +238,11 @@ In active development / next iterations:
 
 Recently landed:
 
+- 🔓 **Anonymous worker sync (v1.0.8)** — the app no longer needs the per-MAC password to pull its config. The dashboard `/login` still gates mutations.
+- 🎯 **Settings dialog focus (v1.0.8)** — text fields grab D-pad focus on dialog open and show an accent-tinted border so the cursor is visible.
+- 🔁 **Update dialog loop fix (v1.0.8)** — local + remote versions are now compared on the same packed-semver scale; no more "update available" popping after every install.
+- 🪟 **Auto-update via system installer (v1.0.6)** — switched from PackageInstaller sessions to `ACTION_VIEW` + FileProvider so the OS install activity handles the APK. Works on Fire TV, Mecool, vivo boxes that rejected the session path.
+- 🩹 **Focus visibility + sidebar flicker (v1.0.7)** — `inverseOnSurface` flipped to near-black so TV Button/Card focus reads as a white pill with dark text instead of white-on-white. Sidebar labels gate on the animated width so returning via the left D-pad doesn't reflow text.
 - 🎨 **2026 editorial redesign** of every screen — AMOLED-first, accent `#FF3A2F`, Instrument Serif + Geist typo, new variant-C launcher icon. See the *New UI* section above.
 - 🛰️ **Remote crash + event reporting** to a self-hosted Cloudflare Worker (`POST /api/crash`, `POST /api/event`); HTML dashboards at `/crashes` and `/logs`. No more `crash.txt` hunting.
 - 🔄 **In-app GitHub-Releases auto-update** with a download progress bar + PackageInstaller commit. After v1.0.5 the Downloader code is only needed for the very first install.
