@@ -215,6 +215,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                     if (isLocked) pinPrompt = active
                     else vm.resolveAndPlay(active, onPlay)
                 },
+                onPlayCatchup = { url, title -> onPlay(url, title) },
             )
         }
     }
@@ -364,6 +365,7 @@ private fun LivePreviewPane(
     nowProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
     nextProgramme: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
     onWatch: () -> Unit,
+    onPlayCatchup: (url: String, title: String) -> Unit = { _, _ -> },
 ) {
     val nowTitle = nowProgramme?.title ?: "Programme en cours"
     val nextTitle = nextProgramme?.title ?: "À venir"
@@ -503,7 +505,17 @@ private fun LivePreviewPane(
         LaunchedEffect(channel.id) {
             schedule = runCatching { vm.loadDaySchedule(channel.id) }.getOrDefault(emptyList())
         }
-        DaySchedule(channel = channel, items = schedule, onWatch = onWatch, modifier = Modifier.weight(1f))
+        DaySchedule(
+            channel = channel,
+            items = schedule,
+            onWatch = onWatch,
+            onCatchupPick = { prog ->
+                val url = com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(channel, prog)
+                if (url != null) onPlayCatchup(url, "${channel.name} — ${prog.title}")
+            },
+            onRemindPick = { prog -> vm.addReminder(channel, prog) },
+            modifier = Modifier.weight(1f),
+        )
 
         // D-pad hint bar pinned to the bottom of the column.
         Row(
@@ -529,6 +541,8 @@ private fun DaySchedule(
     channel: ChannelEntity,
     items: List<com.ultratv.tv.nativeapp.data.db.EpgEntity>,
     onWatch: () -> Unit,
+    onCatchupPick: (com.ultratv.tv.nativeapp.data.db.EpgEntity) -> Unit = { onWatch() },
+    onRemindPick: (com.ultratv.tv.nativeapp.data.db.EpgEntity) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val now = System.currentTimeMillis()
@@ -573,7 +587,14 @@ private fun DaySchedule(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             items(items, key = { it.id }) { prog ->
-                ScheduleRow(prog = prog, isCurrent = (prog.startMs <= now && prog.endMs > now), onClick = onWatch)
+                ScheduleRow(
+                    prog = prog,
+                    isCurrent = (prog.startMs <= now && prog.endMs > now),
+                    canCatchup = channel.catchupDays > 0 || !channel.catchupSource.isNullOrBlank(),
+                    onClick = onWatch,
+                    onCatchup = { onCatchupPick(prog) },
+                    onRemind = { onRemindPick(prog) },
+                )
             }
         }
     }
@@ -581,8 +602,16 @@ private fun DaySchedule(
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
-private fun ScheduleRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, isCurrent: Boolean, onClick: () -> Unit) {
+private fun ScheduleRow(
+    prog: com.ultratv.tv.nativeapp.data.db.EpgEntity,
+    isCurrent: Boolean,
+    canCatchup: Boolean = false,
+    onClick: () -> Unit,
+    onCatchup: () -> Unit = onClick,
+    onRemind: () -> Unit = {},
+) {
     val past = prog.endMs <= System.currentTimeMillis()
+    val future = prog.startMs > System.currentTimeMillis()
     val timeColor = when {
         isCurrent -> UltraTokens.Accent
         past -> UltraTokens.Fg4
@@ -623,7 +652,35 @@ private fun ScheduleRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, isCurr
                 fontWeight = if (isCurrent) FontWeight.Medium else FontWeight.Normal,
                 maxLines = 1,
             )
-            if (isCurrent) {
+            // Past programme + catchup support → small "Reprise" button that
+            // builds the catchup URL and starts the player.
+            if (past && canCatchup) {
+                Spacer(Modifier.weight(1f))
+                androidx.tv.material3.Card(
+                    onClick = onCatchup,
+                    shape = CardDefaults.shape(RoundedCornerShape(4.dp)),
+                    colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
+                        containerColor = UltraTokens.AccentSoft,
+                        focusedContainerColor = UltraTokens.Accent,
+                        focusedContentColor = Color.White,
+                    ),
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("▶", color = UltraTokens.Accent, fontSize = 11.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "REPRISE",
+                            color = UltraTokens.Accent,
+                            fontSize = 9.sp,
+                            letterSpacing = 0.6.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            } else if (isCurrent) {
                 Spacer(Modifier.weight(1f))
                 Box(
                     Modifier
@@ -638,6 +695,31 @@ private fun ScheduleRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, isCurr
                         letterSpacing = 0.6.sp,
                         fontWeight = FontWeight.Bold,
                     )
+                }
+            } else if (future) {
+                Spacer(Modifier.weight(1f))
+                androidx.tv.material3.Card(
+                    onClick = onRemind,
+                    shape = CardDefaults.shape(RoundedCornerShape(4.dp)),
+                    colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
+                        containerColor = Color.Transparent,
+                        focusedContainerColor = UltraTokens.AccentSoft,
+                    ),
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("⏰", fontSize = 11.sp)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            "RAPPEL",
+                            color = UltraTokens.Fg3,
+                            fontSize = 9.sp,
+                            letterSpacing = 0.6.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
             }
         }

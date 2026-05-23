@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Auto-update: download + install newer APK from GitHub Releases. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Reminders: AlarmManager.setExactAndAllowWhileIdle + notification. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:name=".UltraTvApp"
@@ -78,6 +82,14 @@
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name="com.ultratv.tv.nativeapp.data.reminders.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.ultratv.tv.nativeapp.REMINDER_FIRE" />
             </intent-filter>
         </receiver>
     </application>

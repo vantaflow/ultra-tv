@@ -15,8 +15,9 @@ import androidx.room.RoomDatabase
         EpgEntity::class,
         WatchHistoryEntity::class,
         RecordingEntity::class,
+        com.ultratv.tv.nativeapp.data.reminders.ReminderEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = false,
 )
 abstract class UltraDb : RoomDatabase() {
@@ -30,4 +31,5 @@ abstract class UltraDb : RoomDatabase() {
     abstract fun epgDao(): EpgDao
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun recordingDao(): RecordingDao
+    abstract fun reminderDao(): com.ultratv.tv.nativeapp.data.reminders.ReminderDao
 }

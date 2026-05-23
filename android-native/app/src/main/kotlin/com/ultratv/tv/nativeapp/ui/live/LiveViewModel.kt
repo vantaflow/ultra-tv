@@ -41,6 +41,7 @@ class LiveViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val epgDaoArg: com.ultratv.tv.nativeapp.data.db.EpgDao,
     private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
+    private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
 ) : ViewModel() {
 
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
@@ -53,6 +54,22 @@ class LiveViewModel @Inject constructor(
     val nowNext: StateFlow<Map<Long, Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>> = _nowNext.asStateFlow()
 
     private val epgDao = epgDaoArg
+
+    /** Adds a reminder for a future programme on the given channel. */
+    fun addReminder(channel: ChannelEntity, prog: com.ultratv.tv.nativeapp.data.db.EpgEntity) {
+        viewModelScope.launch {
+            reminders.add(
+                com.ultratv.tv.nativeapp.data.reminders.ReminderEntity(
+                    providerId = channel.providerId,
+                    channelRemoteId = channel.remoteId,
+                    channelName = channel.name,
+                    programmeTitle = prog.title,
+                    startMs = prog.startMs,
+                    endMs = prog.endMs,
+                ),
+            )
+        }
+    }
 
     // NOTE: the init {} block lives at the *bottom* of the class so the
     // properties it touches (channels, providers) are already constructed
