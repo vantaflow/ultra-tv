@@ -44,8 +44,10 @@ import coil.compose.AsyncImage
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.ui.common.prettyCategoryName
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Brush
 import com.ultratv.tv.nativeapp.ui.theme.UltraFonts
@@ -517,14 +519,16 @@ private fun LivePreviewPane(
             modifier = Modifier.weight(1f),
         )
 
-        // D-pad hint bar pinned to the bottom of the column.
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        // D-pad hint bar — flow horizontally with explicit no-wrap so on a
+        // cramped TV the chips don't break per character.
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            maxItemsInEachRow = 4,
         ) {
-            Hint("OK", "Lecture plein écran")
+            Hint("OK", "Lecture")
             Hint("▲▼", "Zap")
-            Hint("★", "Favori")
+            Hint("★", "Fav.")
         }
     }
 }
@@ -922,7 +926,10 @@ private fun ProgrammeCard(
 
 @Composable
 private fun Hint(key: String, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.widthIn(min = 80.dp),
+    ) {
         Box(
             Modifier
                 .clip(RoundedCornerShape(6.dp))
@@ -930,10 +937,24 @@ private fun Hint(key: String, label: String) {
                 .border(1.dp, UltraTokens.Line2, RoundedCornerShape(6.dp))
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         ) {
-            Text(key, color = UltraTokens.Fg2, fontSize = 11.sp, fontFamily = UltraFonts.Mono)
+            Text(
+                key,
+                color = UltraTokens.Fg2,
+                fontSize = 11.sp,
+                fontFamily = UltraFonts.Mono,
+                maxLines = 1,
+                softWrap = false,
+            )
         }
         Spacer(Modifier.width(6.dp))
-        Text(label, color = UltraTokens.Fg3, fontSize = 12.sp)
+        Text(
+            label,
+            color = UltraTokens.Fg3,
+            fontSize = 12.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
     }
 }
 

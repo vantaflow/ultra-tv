@@ -240,38 +240,58 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     }
 
     val player = remember {
-        val bufMs = playbackPrefs.bufferSeconds * 1000
+        // bufferSeconds = how much we want to *hold* in memory; the "start
+        // playback" threshold should always be very small so live TV starts
+        // immediately (the user's complaint: "rien ne se lit" — the player
+        // was waiting on 5 s of buffer before going READY).
+        val bufMs = (playbackPrefs.bufferSeconds * 1000).coerceAtLeast(5_000)
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                bufMs / 2,                          // minBufferMs
-                bufMs,                              // maxBufferMs
-                (bufMs / 6).coerceAtLeast(500),     // bufferForPlaybackMs
-                (bufMs / 3).coerceAtLeast(1_000),   // bufferForPlaybackAfterRebufferMs
+                /* minBufferMs                       = */ 5_000,
+                /* maxBufferMs                       = */ bufMs,
+                /* bufferForPlaybackMs               = */ 500,
+                /* bufferForPlaybackAfterRebufferMs  = */ 1_500,
             )
+            .setPrioritizeTimeOverSizeThresholds(true)
             .build()
-        // Pluggable DataSource: HTTP/HTTPS go through OkHttp by default, but
-        // we register a RtmpDataSource for `rtmp://` URLs so RTMP-only IPTV
-        // providers play without launching an external app.
+        // Pluggable DataSource: HTTP/HTTPS go through the default OkHttp
+        // pipeline, rtmp:// + rtmps:// URLs go through RtmpDataSource. The
+        // earlier v1.0.25 attempt only intercepted open() and let the rest
+        // of the lifecycle (read / close / getUri) dangle on a stale inner
+        // — that crashed HTTP playback. The RoutingDataSource below owns
+        // the backing instance for the whole open-read-close cycle.
         val httpFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-        val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpFactory)
-        val schemeAwareFactory = androidx.media3.datasource.DataSource.Factory {
-            // Compose: try RTMP first, fall back to the default HTTP/file/data
-            // factory. Media3's resolver checks `getScheme()` on the URI and
-            // routes accordingly, so we just delegate via a custom factory.
-            object : androidx.media3.datasource.DataSource by dataSourceFactory.createDataSource() {
+        val defaultFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpFactory)
+        val rtmpFactory = androidx.media3.datasource.rtmp.RtmpDataSource.Factory()
+        val routingFactory = androidx.media3.datasource.DataSource.Factory {
+            object : androidx.media3.datasource.DataSource {
+                private var inner: androidx.media3.datasource.DataSource? = null
+                private val listeners = mutableListOf<androidx.media3.datasource.TransferListener>()
                 override fun open(spec: androidx.media3.datasource.DataSpec): Long {
-                    val uri = spec.uri
-                    return if (uri.scheme.equals("rtmp", true) || uri.scheme.equals("rtmps", true)) {
-                        androidx.media3.datasource.rtmp.RtmpDataSource.Factory()
-                            .createDataSource().open(spec)
-                    } else {
-                        dataSourceFactory.createDataSource().open(spec)
-                    }
+                    val scheme = spec.uri.scheme?.lowercase()
+                    val backing = if (scheme == "rtmp" || scheme == "rtmps")
+                        rtmpFactory.createDataSource() else defaultFactory.createDataSource()
+                    listeners.forEach { backing.addTransferListener(it) }
+                    inner = backing
+                    return backing.open(spec)
                 }
+                override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
+                    inner?.read(buffer, offset, length) ?: -1
+                override fun getUri(): android.net.Uri? = inner?.uri
+                override fun close() {
+                    runCatching { inner?.close() }
+                    inner = null
+                }
+                override fun addTransferListener(transferListener: androidx.media3.datasource.TransferListener) {
+                    listeners += transferListener
+                    inner?.addTransferListener(transferListener)
+                }
+                override fun getResponseHeaders(): Map<String, List<String>> =
+                    inner?.responseHeaders ?: emptyMap()
             }
         }
         val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
-            .setDataSourceFactory(schemeAwareFactory)
+            .setDataSourceFactory(routingFactory)
         val renderers = androidx.media3.exoplayer.DefaultRenderersFactory(context).apply {
             // Hardware renderers first by default; flipping the pref pushes the
             // software decoder ahead so finicky streams (HEVC main10 on cheap
