@@ -494,54 +494,150 @@ private fun LivePreviewPane(
                             maxLines = 2,
                         )
                     }
-                    Spacer(Modifier.width(14.dp))
-                    androidx.tv.material3.Button(
-                        onClick = onWatch,
-                        colors = androidx.tv.material3.ButtonDefaults.colors(
-                            containerColor = UltraTokens.CtaBg,
-                            contentColor = UltraTokens.CtaFgOnCta,
-                        ),
-                        modifier = Modifier.border(3.dp, UltraTokens.Accent, RoundedCornerShape(12.dp)),
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            UltraIcon(UltraIcon.Play, size = 16.dp, color = UltraTokens.CtaFgOnCta)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Regarder", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
                 }
             }
         }
 
-        // Now + next cards
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            ProgrammeCard(
-                label = "EN COURS",
-                title = nowTitle,
-                sub = "Programme en cours",
-                accent = true,
-                modifier = Modifier.weight(1f),
-            )
-            ProgrammeCard(
-                label = "ENSUITE",
-                title = nextTitle,
-                sub = "À venir",
-                accent = false,
-                modifier = Modifier.weight(1f),
-            )
-        }
+        // TiviMate-style "today's schedule" : current programme card on top
+        // with a progress bar, then a vertical list of upcoming programmes.
+        TonightSchedule(
+            channel = channel,
+            now = nowProgramme,
+            next = nextProgramme,
+            onWatch = onWatch,
+        )
 
-        // Hints
+        Spacer(Modifier.weight(1f, fill = true))
+
+        // D-pad hint bar pinned to the bottom of the column.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Hint("OK", "Lecture")
+            Hint("OK", "Lecture plein écran")
             Hint("▲▼", "Zap")
             Hint("★", "Favori")
         }
     }
 }
+
+@Composable
+private fun TonightSchedule(
+    channel: ChannelEntity,
+    now: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
+    next: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
+    onWatch: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        // Current programme — biggest block, with a thin progress bar
+        // computed from now/end. Click = open full-screen player.
+        Card(
+            onClick = onWatch,
+            shape = CardDefaults.shape(RoundedCornerShape(14.dp)),
+            colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
+                containerColor = UltraTokens.AccentSoft,
+                focusedContainerColor = UltraTokens.Accent,
+                focusedContentColor = androidx.compose.ui.graphics.Color.White,
+            ),
+            modifier = Modifier.fillMaxWidth().border(1.dp, Color(0x4DFF3A2F), RoundedCornerShape(14.dp)),
+        ) {
+            Column(Modifier.padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "EN COURS",
+                        color = UltraTokens.Accent,
+                        fontSize = 10.sp,
+                        letterSpacing = 2.3.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        channel.name,
+                        color = UltraTokens.Fg3,
+                        fontSize = 12.sp,
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    now?.title ?: "Programme en cours",
+                    color = UltraTokens.Fg,
+                    fontFamily = UltraFonts.Serif,
+                    fontSize = 26.sp,
+                    lineHeight = 28.sp,
+                    maxLines = 2,
+                )
+                if (now != null) {
+                    Spacer(Modifier.height(8.dp))
+                    val nowMs = System.currentTimeMillis()
+                    val total = (now.endMs - now.startMs).coerceAtLeast(1)
+                    val elapsed = (nowMs - now.startMs).coerceIn(0, total)
+                    val pct = elapsed.toFloat() / total.toFloat()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            formatHm(now.startMs),
+                            color = UltraTokens.Fg3,
+                            fontSize = 11.sp,
+                            fontFamily = UltraFonts.Mono,
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(3.dp)
+                                .background(Color(0x33FFFFFF), RoundedCornerShape(2.dp)),
+                        ) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(pct)
+                                    .height(3.dp)
+                                    .background(UltraTokens.Accent, RoundedCornerShape(2.dp)),
+                            )
+                        }
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            formatHm(now.endMs),
+                            color = UltraTokens.Fg3,
+                            fontSize = 11.sp,
+                            fontFamily = UltraFonts.Mono,
+                        )
+                    }
+                }
+            }
+        }
+        // Upcoming entries: at minimum the "next" we already know about.
+        if (next != null) {
+            UpcomingRow(prog = next)
+        }
+    }
+}
+
+@Composable
+private fun UpcomingRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            formatHm(prog.startMs),
+            color = UltraTokens.Fg3,
+            fontSize = 12.sp,
+            fontFamily = UltraFonts.Mono,
+            modifier = Modifier.width(56.dp),
+        )
+        Text(
+            prog.title,
+            color = UltraTokens.Fg2,
+            fontSize = 14.sp,
+            maxLines = 1,
+        )
+    }
+}
+
+private val hmFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+private fun formatHm(ms: Long): String = hmFmt.format(java.util.Date(ms))
+
 
 @Composable
 private fun LiveChip() {

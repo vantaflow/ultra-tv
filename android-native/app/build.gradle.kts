@@ -17,8 +17,8 @@ android {
         applicationId = "com.ultratv.tv.nativeapp"
         minSdk = 23
         targetSdk = 35
-        versionCode = 25
-        versionName = "1.0.15"
+        versionCode = 26
+        versionName = "1.0.16"
         vectorDrawables { useSupportLibrary = true }
     }
 
