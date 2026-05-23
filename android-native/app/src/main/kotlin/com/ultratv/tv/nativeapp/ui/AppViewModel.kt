@@ -44,4 +44,5 @@ class AppViewModel @Inject constructor(
     }
     fun setWorkerBase(url: String) = viewModelScope.launch { store.setWorkerBase(url) }
     fun setLanguage(code: String) = viewModelScope.launch { store.setLanguage(code) }
+    fun setTelemetry(on: Boolean) = viewModelScope.launch { store.setTelemetry(on) }
 }

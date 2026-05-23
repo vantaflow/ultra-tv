@@ -36,7 +36,29 @@ class ParentalStore @Inject constructor(@ApplicationContext private val ctx: Con
     }
 
     suspend fun isSet(): Boolean = current() != null
-    suspend fun check(pin: String): Boolean = current()?.let { it == sha256(pin) } ?: true
+
+    /**
+     * Validate a typed PIN. Rate-limited: after 3 wrong attempts in a row we
+     * sleep an increasing amount (1s → 4s → 16s) before answering, defeating
+     * the trivial 10 000-combo brute force on a 4-digit PIN. State is in
+     * memory only — the lockout resets when the process restarts, which is
+     * fine because that requires physical access too.
+     */
+    suspend fun check(pin: String): Boolean {
+        val stored = current() ?: return true
+        // Throttle BEFORE the comparison so a flood of wrong PINs can't even
+        // keep the hash() loop busy.
+        if (failedAttempts >= 3) {
+            val penaltyMs = 1_000L shl ((failedAttempts - 3).coerceAtMost(4) * 2)
+            kotlinx.coroutines.delay(penaltyMs)
+        }
+        val ok = stored == sha256(pin)
+        if (ok) failedAttempts = 0
+        else failedAttempts++
+        return ok
+    }
+
+    @Volatile private var failedAttempts: Int = 0
 
     private suspend fun current(): String? = ctx.parentalDs.data.first()[PIN_HASH]
 

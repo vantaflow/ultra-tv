@@ -48,6 +48,11 @@ data class UserPrefs(
     /** Per-MAC password used when fetching config from the worker. Optional —
      *  empty for unprotected entries. Persists across launches; never logged. */
     val configPassword: String = "",
+    /** Telemetry opt-in. When false, RemoteLog drops every event/crash POST
+     *  silently. Defaults to true because the app surfaces this in Settings
+     *  and the diagnostic flow is what keeps the redesign honest; flipping
+     *  it off stops the dashboard cold for that install. */
+    val telemetryEnabled: Boolean = true,
 )
 
 @Singleton
@@ -69,6 +74,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
         val language = stringPreferencesKey("language")
         val configPassword = stringPreferencesKey("config_password")
+        val telemetry = booleanPreferencesKey("telemetry_enabled")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -89,6 +95,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
             language = p[Keys.language] ?: "system",
             configPassword = p[Keys.configPassword] ?: "",
+            telemetryEnabled = p[Keys.telemetry] ?: true,
         )
     }
 
@@ -108,6 +115,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
     suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
+    suspend fun setTelemetry(on: Boolean) = update { it[Keys.telemetry] = on }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }

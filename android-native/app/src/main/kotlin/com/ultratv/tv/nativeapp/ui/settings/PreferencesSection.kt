@@ -50,12 +50,16 @@ fun PreferencesSection(vm: AppViewModel = hiltViewModel()) {
             ChoiceChip(S.prefThemeBlue, on = p.theme == AppTheme.BLUE) { vm.setTheme(AppTheme.BLUE) }
         }
 
-        // Default player
-        PrefRow(label = S.prefDefaultPlayer) {
-            ChoiceChip(S.prefPlayerInternal, on = p.defaultPlayer == DefaultPlayer.INTERNAL) { vm.setDefaultPlayer(DefaultPlayer.INTERNAL) }
-            ChoiceChip(S.prefPlayerExternal, on = p.defaultPlayer == DefaultPlayer.EXTERNAL) { vm.setDefaultPlayer(DefaultPlayer.EXTERNAL) }
-        }
+        // External player option removed: everything plays through the
+        // bundled Media3 / ExoPlayer to keep the experience seamless. The
+        // pref is left in UserPreferences for backwards compat but no
+        // longer exposed in the UI.
 
+        SwitchRow(
+            title = "Diagnostics distants",
+            hint = "Envoie crashes + events au worker pour debug. Désactive pour stopper toute télémétrie sortante.",
+            value = p.telemetryEnabled,
+        ) { vm.setTelemetry(it) }
         SwitchRow(S.settingsAutoSync, S.prefAutoSyncHint, p.autoSyncOnLaunch) { vm.setAutoSync(it) }
         SwitchRow(S.prefShowChannelNumbers, S.prefShowChannelNumbersHint, p.showChannelNumbers) { vm.setShowChannelNumbers(it) }
         SwitchRow(S.prefHideAdult, S.prefHideAdultHint, p.hideAdultCategories) { vm.setHideAdult(it) }

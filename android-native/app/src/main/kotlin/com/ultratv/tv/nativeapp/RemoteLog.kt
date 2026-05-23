@@ -50,6 +50,27 @@ object RemoteLog {
     @Volatile private var contextInfo: ContextInfo? = null
     @Volatile private var appCtx: android.content.Context? = null
 
+    /** Mirrors UserPrefs.telemetryEnabled; toggled at runtime from Settings.
+     *  Defaults to true so the dashboard keeps catching crashes out of the box. */
+    @Volatile var telemetryEnabled: Boolean = true
+
+    /**
+     * Strip embedded credentials and stream URLs from any message bound for
+     * the dashboard. Xtream URLs ship the user/pass in the path so logging
+     * them verbatim leaks the subscription credentials.
+     */
+    private fun sanitize(input: String): String {
+        var out = input
+        // http(s)://host[:port]/<user>/<pass>/...   →   <provider>/…
+        out = out.replace(
+            Regex("""https?://[^\s/]+(/[^/\s]+){2,}"""),
+            "<provider>/…",
+        )
+        // Standalone "user:password@" / "?username=foo&password=bar"
+        out = out.replace(Regex("""(?i)(user(name)?|pass(word)?)=[^&\s]+"""), "$1=<redacted>")
+        return out.take(4000)
+    }
+
     data class ContextInfo(
         val mac: String,
         val versionName: String,
@@ -81,6 +102,7 @@ object RemoteLog {
 
     private fun flushPendingCrash() {
         val ctx = contextInfo ?: return
+        if (!telemetryEnabled) return
         val file = pendingCrashFile() ?: return
         if (!file.exists() || file.length() == 0L) return
         val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
@@ -92,7 +114,7 @@ object RemoteLog {
                 put("versionCode", ctx.versionCode)
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
-                put("stack", stack.take(60_000))
+                put("stack", sanitize(stack).take(60_000))
             }.toString()
             val req = Request.Builder()
                 .url("$WORKER_URL/api/crash")
@@ -108,12 +130,14 @@ object RemoteLog {
     /** Ship a non-fatal log/event. Returns immediately; HTTP happens off-thread. */
     fun event(tag: String, message: String, level: String = "info") {
         val ctx = contextInfo ?: return
+        if (!telemetryEnabled) return
+        val safeMessage = sanitize(message)
         scope.launch {
             runCatching {
                 val body = JSONObject().apply {
                     put("level", level)
                     put("tag", tag)
-                    put("message", message)
+                    put("message", safeMessage)
                     put("mac", ctx.mac)
                     put("version", ctx.versionName)
                     put("versionCode", ctx.versionCode)
@@ -144,14 +168,15 @@ object RemoteLog {
         val ctx = contextInfo ?: return
         val sw = java.io.StringWriter()
         error.printStackTrace(java.io.PrintWriter(sw))
-        val payload = "${thread.name}: ${error.javaClass.name}: ${error.message}\n$sw"
+        val payload = sanitize("${thread.name}: ${error.javaClass.name}: ${error.message}\n$sw")
 
         // 1. Persist locally so we can retry on next launch if the network leg
         //    doesn't complete in time. The crash.txt file is the source of
         //    truth — flushPendingCrash() deletes it on a successful upload.
         runCatching { pendingCrashFile()?.appendText(payload + "\n\n", Charsets.UTF_8) }
 
-        // 2. Best-effort live upload.
+        // 2. Best-effort live upload. Honour the user's telemetry toggle.
+        if (!telemetryEnabled) return
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)

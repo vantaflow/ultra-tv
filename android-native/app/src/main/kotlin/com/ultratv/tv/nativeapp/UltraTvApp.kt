@@ -10,6 +10,10 @@ import coil.memory.MemoryCache
 import coil.request.CachePolicy
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /**
  * Application root. Implements Coil's [ImageLoaderFactory] for app-wide image
@@ -24,6 +28,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
+    @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
+
+    private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
         .memoryCache {
@@ -59,6 +66,13 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             versionCode = pkg.versionCode,
         )
         RemoteLog.info("app", "onCreate")
+
+        // Mirror the telemetry toggle from DataStore into RemoteLog's volatile
+        // flag so disabling it from Settings takes effect immediately for
+        // every subsequent event/crash POST.
+        bgScope.launch {
+            prefsStore.flow.collect { p -> RemoteLog.telemetryEnabled = p.telemetryEnabled }
+        }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks
         // briefly (≤ 3 s) so the request actually leaves the device before the
