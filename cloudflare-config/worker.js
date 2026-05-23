@@ -119,6 +119,31 @@ async function authedMac(req, env) {
   return c ? await verifySession(c, env) : null;
 }
 
+/**
+ * Stateless CSRF token derived from the session cookie. We re-HMAC the
+ * session value with a "csrf" suffix and take the first 32 chars — same
+ * secret as session signing, so revoking the session invalidates the token.
+ * Returns null when there's no session.
+ */
+async function csrfFor(req, env) {
+  const sess = readCookie(req, COOKIE_NAME);
+  if (!sess) return null;
+  return (await hmac(sessionSecret(env), `${sess}.csrf`)).slice(0, 32);
+}
+
+/**
+ * Read the form body, then verify the embedded csrf field matches the token
+ * derived from the caller's session cookie. Returns the parsed FormData on
+ * success; on mismatch returns null so callers can short-circuit with 403.
+ */
+async function requireCsrf(req, env) {
+  const want = await csrfFor(req, env);
+  if (!want) return null;
+  const f = await req.formData();
+  return if_then_else(f.get("csrf") === want, f, null);
+}
+function if_then_else(cond, a, b) { return cond ? a : b; }
+
 function sessionCookie(value) {
   return `${COOKIE_NAME}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${SESSION_HOURS * 3600}`;
 }
@@ -522,7 +547,8 @@ export default {
 
     // Change own password.
     if (url.pathname === `/api/password/${encodeURIComponent(me)}` && req.method === "POST") {
-      const form = await req.formData();
+      const form = await requireCsrf(req, env);
+      if (!form) return json({ error: "csrf" }, { status: 403 });
       const password = (form.get("password") || "").toString();
       if (password && password.length < 4) return redirect("/?e=short");
       const cfg = await readConfig(env, me);
@@ -533,7 +559,8 @@ export default {
 
     // Add provider.
     if (url.pathname === `/api/provider/${encodeURIComponent(me)}` && req.method === "POST") {
-      const f = await req.formData();
+      const f = await requireCsrf(req, env);
+      if (!f) return json({ error: "csrf" }, { status: 403 });
       const kind = (f.get("kind") || "").toString().toUpperCase();
       const provider = { kind, name: (f.get("name") || "").toString() };
       if (kind === "XTREAM") {
@@ -558,6 +585,8 @@ export default {
     // Delete provider at index.
     const delProv = url.pathname.match(/^\/api\/provider\/([^/]+)\/(\d+)\/delete\/?$/);
     if (delProv && req.method === "POST") {
+      const f = await requireCsrf(req, env);
+      if (!f) return json({ error: "csrf" }, { status: 403 });
       const idx = parseInt(delProv[2], 10);
       const cfg = await readConfig(env, me);
       cfg.providers = (cfg.providers || []).filter((_, i) => i !== idx);
@@ -567,6 +596,8 @@ export default {
 
     // Delete the whole account.
     if (url.pathname === `/api/config/${encodeURIComponent(me)}/delete` && req.method === "POST") {
+      const f = await requireCsrf(req, env);
+      if (!f) return json({ error: "csrf" }, { status: 403 });
       await env.CONFIG.delete(me);
       return new Response("", { status: 302, headers: { location: "/login", "set-cookie": clearCookie() } });
     }
@@ -585,7 +616,8 @@ export default {
 
     if (url.pathname === "/" || url.pathname === "/dashboard") {
       const cfg = await readConfig(env, me);
-      return html(dashboardPage({ mac: me, cfg }));
+      const csrf = await csrfFor(req, env);
+      return html(dashboardPage({ mac: me, cfg, csrf }));
     }
 
     return new Response("Not found", { status: 404 });
@@ -684,8 +716,9 @@ function signupPage({ mac, err }) {
 </body></html>`;
 }
 
-function dashboardPage({ mac, cfg }) {
+function dashboardPage({ mac, cfg, csrf }) {
   const providers = (cfg && cfg.providers) || [];
+  const csrfInput = `<input type="hidden" name="csrf" value="${escape(csrf || "")}"/>`;
   const providerRows = providers.map((p, i) => `
     <div class="provider">
       <span class="kind">${escape(p.kind || "?")}</span>
@@ -694,6 +727,7 @@ function dashboardPage({ mac, cfg }) {
         <div class="muted">${escape(p.url || "")}${p.username ? " · " + escape(p.username) : ""}${p.mac ? " · MAC " + escape(p.mac) : ""}</div>
       </div>
       <form method="post" action="/api/provider/${encodeURIComponent(mac)}/${i}/delete" onsubmit="return confirm('Supprimer ce fournisseur ?')">
+        ${csrfInput}
         <button type="submit" class="danger">Supprimer</button>
       </form>
     </div>
@@ -727,6 +761,7 @@ function dashboardPage({ mac, cfg }) {
     </div>
 
     <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-xtream">
+      ${csrfInput}
       <input type="hidden" name="kind" value="XTREAM" />
       <label>Nom (optionnel)</label>
       <input name="name" placeholder="My Xtream" />
@@ -740,6 +775,7 @@ function dashboardPage({ mac, cfg }) {
     </form>
 
     <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-m3u" style="display:none;">
+      ${csrfInput}
       <input type="hidden" name="kind" value="M3U" />
       <label>Nom (optionnel)</label>
       <input name="name" placeholder="My M3U" />
@@ -749,6 +785,7 @@ function dashboardPage({ mac, cfg }) {
     </form>
 
     <form method="post" action="/api/provider/${encodeURIComponent(mac)}" id="form-stalker" style="display:none;">
+      ${csrfInput}
       <input type="hidden" name="kind" value="STALKER" />
       <label>Nom (optionnel)</label>
       <input name="name" placeholder="MAG portal" />
@@ -764,6 +801,7 @@ function dashboardPage({ mac, cfg }) {
     <h2 style="margin:0 0 8px 0; font-size:16px;">🔑 Mot de passe du compte</h2>
     <div class="muted" style="font-size:12px;">Le mot de passe est exigé par l'application Ultra TV (écran Réglages → Mot de passe de la config) pour récupérer cette configuration. Laisse vide pour le retirer (déconseillé).</div>
     <form method="post" action="/api/password/${encodeURIComponent(mac)}" style="display:flex; gap:8px; margin-top:8px;">
+      ${csrfInput}
       <input name="password" type="password" placeholder="Nouveau mot de passe (vide pour effacer)" />
       <button type="submit">Mettre à jour</button>
     </form>
@@ -773,6 +811,7 @@ function dashboardPage({ mac, cfg }) {
     <h2 style="margin:0 0 8px 0; font-size:16px;">Zone dangereuse</h2>
     <div class="muted" style="font-size:12px;">Supprime ton compte et toute sa config. L'application devra ré-importer une config (nouvelle inscription ou ajout manuel).</div>
     <form method="post" action="/api/config/${encodeURIComponent(mac)}/delete" onsubmit="return confirm('Supprimer définitivement ce compte et toute la config ?')" style="margin-top:8px;">
+      ${csrfInput}
       <button class="danger" type="submit">Supprimer mon compte</button>
     </form>
   </div>

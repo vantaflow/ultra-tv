@@ -17,9 +17,30 @@ android {
         applicationId = "com.ultratv.tv.nativeapp"
         minSdk = 23
         targetSdk = 35
-        versionCode = 29
-        versionName = "1.0.19"
+        versionCode = 30
+        versionName = "1.0.20"
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // Release signing — looks for env vars (ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD
+    // / ULTRA_KEY_ALIAS / ULTRA_KEY_PASSWORD) and an optional lineage file
+    // (ULTRA_LINEAGE) for APK Signature Scheme v3 key rotation. Falls back to
+    // the debug keystore so a checkout still produces a usable APK without
+    // any local secrets — see SECURITY.md for the rotation procedure.
+    signingConfigs {
+        create("release") {
+            val ksPath = System.getenv("ULTRA_KEYSTORE")
+            if (!ksPath.isNullOrBlank() && file(ksPath).exists()) {
+                storeFile = file(ksPath)
+                storePassword = System.getenv("ULTRA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ULTRA_KEY_ALIAS")
+                keyPassword = System.getenv("ULTRA_KEY_PASSWORD")
+                enableV1Signing = true
+                enableV2Signing = true
+                enableV3Signing = true
+                enableV4Signing = true
+            }
+        }
     }
 
     buildTypes {
@@ -32,11 +53,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Reuse the debug signing key + applicationId suffix so a release
-            // APK installs as an in-place upgrade for users currently on the
-            // debug build (Room/DataStore data is preserved across upgrades).
-            // Swap for a real upload key when publishing to Play.
-            signingConfig = signingConfigs.getByName("debug")
+            // Use the proper release keystore when ULTRA_KEYSTORE env var
+            // points to a real .jks; otherwise fall back to debug so a fresh
+            // checkout still produces an installable APK in CI / dev. Keep
+            // the `.debug` applicationId suffix while the rotation lineage
+            // isn't deployed so existing installs upgrade in place.
+            val releaseSigning = signingConfigs.getByName("release")
+            signingConfig = if (releaseSigning.storeFile != null) releaseSigning
+            else signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
         }
     }
@@ -60,6 +84,12 @@ android {
     }
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
+    sourceSets["test"].kotlin.srcDirs("src/test/kotlin")
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.isReturnDefaultValues = true
+    }
 
     // Lint Vital runs during assembleRelease and blocks on any "error" severity
     // issue. We're shipping a hobby APK with no Play track, and the errors it
@@ -128,4 +158,10 @@ dependencies {
     implementation(libs.okhttp.logging)
     implementation(libs.retrofit)
     implementation(libs.retrofit.kotlinx.serialization)
+
+    // Tests — runs on the local JVM with Robolectric for Android types we
+    // can't easily strip out (android.util.Base64).
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.json:json:20240303")
 }
