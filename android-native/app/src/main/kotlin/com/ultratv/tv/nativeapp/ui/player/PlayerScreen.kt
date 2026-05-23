@@ -12,8 +12,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -555,9 +557,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 Text(currentUrl.substringBefore('?').takeLast(60), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
         }
-        Row(
-            Modifier.align(Alignment.BottomEnd).padding(24.dp),
+        FlowRow(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .widthIn(max = 760.dp)
+                .padding(24.dp),
             horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+            maxItemsInEachRow = 4,
         ) {
             // Sleep timer menu — anchored bottom-right next to the external-player button.
             var sleepMenu by remember { mutableStateOf(false) }
