@@ -498,16 +498,12 @@ private fun LivePreviewPane(
             }
         }
 
-        // TiviMate-style "today's schedule" : current programme card on top
-        // with a progress bar, then a vertical list of upcoming programmes.
-        TonightSchedule(
-            channel = channel,
-            now = nowProgramme,
-            next = nextProgramme,
-            onWatch = onWatch,
-        )
-
-        Spacer(Modifier.weight(1f, fill = true))
+        // TiviMate-style full-day schedule of the focused channel.
+        var schedule by remember(channel.id) { mutableStateOf<List<com.ultratv.tv.nativeapp.data.db.EpgEntity>>(emptyList()) }
+        LaunchedEffect(channel.id) {
+            schedule = runCatching { vm.loadDaySchedule(channel.id) }.getOrDefault(emptyList())
+        }
+        DaySchedule(channel = channel, items = schedule, onWatch = onWatch, modifier = Modifier.weight(1f))
 
         // D-pad hint bar pinned to the bottom of the column.
         Row(
@@ -517,6 +513,132 @@ private fun LivePreviewPane(
             Hint("OK", "Lecture plein écran")
             Hint("▲▼", "Zap")
             Hint("★", "Favori")
+        }
+    }
+}
+
+/**
+ * Vertical full-day schedule for the focused channel — the TiviMate
+ * "tonight's schedule" column. Past programmes appear muted, the current
+ * one in accent, the rest with a subdued time + title. The whole column
+ * scrolls; the current programme auto-scrolls into view.
+ */
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun DaySchedule(
+    channel: ChannelEntity,
+    items: List<com.ultratv.tv.nativeapp.data.db.EpgEntity>,
+    onWatch: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val now = System.currentTimeMillis()
+    val currentIdx = items.indexOfFirst { it.startMs <= now && it.endMs > now }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(currentIdx, channel.id) {
+        if (currentIdx >= 0) {
+            // Scroll so the current programme sits roughly at the top third.
+            listState.animateScrollToItem(
+                index = currentIdx.coerceAtLeast(0),
+                scrollOffset = 0,
+            )
+        }
+    }
+
+    Column(modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "PROGRAMME DE LA JOURNÉE",
+                color = UltraTokens.Fg3,
+                fontSize = 10.sp,
+                letterSpacing = 2.3.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(channel.name, color = UltraTokens.Fg3, fontSize = 12.sp)
+        }
+        Spacer(Modifier.height(10.dp))
+
+        if (items.isEmpty()) {
+            Text(
+                "Pas d'EPG disponible pour cette chaîne.",
+                color = UltraTokens.Fg4,
+                fontSize = 13.sp,
+            )
+            return
+        }
+
+        androidx.compose.foundation.lazy.LazyColumn(
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            items(items, key = { it.id }) { prog ->
+                ScheduleRow(prog = prog, isCurrent = (prog.startMs <= now && prog.endMs > now), onClick = onWatch)
+            }
+        }
+    }
+}
+
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@Composable
+private fun ScheduleRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, isCurrent: Boolean, onClick: () -> Unit) {
+    val past = prog.endMs <= System.currentTimeMillis()
+    val timeColor = when {
+        isCurrent -> UltraTokens.Accent
+        past -> UltraTokens.Fg4
+        else -> UltraTokens.Fg3
+    }
+    val titleColor = when {
+        isCurrent -> UltraTokens.Fg
+        past -> UltraTokens.Fg4
+        else -> UltraTokens.Fg2
+    }
+    Card(
+        onClick = onClick,
+        shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
+        colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
+            containerColor = if (isCurrent) UltraTokens.AccentSoft else Color.Transparent,
+            focusedContainerColor = if (isCurrent) UltraTokens.Accent else UltraTokens.AccentSoft,
+            focusedContentColor = if (isCurrent) Color.White else UltraTokens.Fg,
+        ),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                formatHm(prog.startMs),
+                color = timeColor,
+                fontSize = 13.sp,
+                fontFamily = UltraFonts.Mono,
+                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                modifier = Modifier.width(72.dp),
+            )
+            Text(
+                prog.title,
+                color = titleColor,
+                fontSize = 14.sp,
+                fontWeight = if (isCurrent) FontWeight.Medium else FontWeight.Normal,
+                maxLines = 1,
+            )
+            if (isCurrent) {
+                Spacer(Modifier.weight(1f))
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(UltraTokens.Accent)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        "EN COURS",
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        letterSpacing = 0.6.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
         }
     }
 }

@@ -158,6 +158,27 @@ class LiveViewModel @Inject constructor(
     fun selectCategory(remoteId: String) { _selectedCategory.value = remoteId }
 
     /**
+     * Full programme list for the channel the user is hovering, used by the
+     * TiviMate-style "tonight" schedule column. We compute the window as
+     * yesterday 18:00 → tomorrow 04:00 so the list always shows a few past
+     * entries (matching the user's reference screenshot) plus the rest of
+     * today and the early hours of tomorrow.
+     */
+    suspend fun loadDaySchedule(channelId: Long): List<com.ultratv.tv.nativeapp.data.db.EpgEntity> {
+        val now = System.currentTimeMillis()
+        val cal = java.util.Calendar.getInstance().apply {
+            timeInMillis = now
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val startOfDay = cal.timeInMillis
+        val endOfTomorrow = startOfDay + 48 * 60 * 60 * 1000L
+        return epgDao.forChannelInRange(channelId, startOfDay, endOfTomorrow)
+    }
+
+    /**
      * Resolves the play URL for a channel without seeding the zap queue or
      * sending the user to the full-screen player. Used by the right-hand
      * mini-preview pane in Live TV.
