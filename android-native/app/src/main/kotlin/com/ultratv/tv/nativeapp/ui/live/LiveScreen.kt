@@ -544,10 +544,11 @@ private fun DaySchedule(
         }
     }
 
+    val s = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Column(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "PROGRAMME DE LA JOURNÉE",
+                s.liveDayScheduleEyebrow,
                 color = UltraTokens.Fg3,
                 fontSize = 10.sp,
                 letterSpacing = 2.3.sp,
@@ -560,7 +561,7 @@ private fun DaySchedule(
 
         if (items.isEmpty()) {
             Text(
-                "Pas d'EPG disponible pour cette chaîne.",
+                s.liveNoEpgForChannel,
                 color = UltraTokens.Fg4,
                 fontSize = 13.sp,
             )
@@ -631,7 +632,7 @@ private fun ScheduleRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, isCurr
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 ) {
                     Text(
-                        "EN COURS",
+                        com.ultratv.tv.nativeapp.i18n.LocalStrings.current.liveOnAirPill,
                         color = Color.White,
                         fontSize = 9.sp,
                         letterSpacing = 0.6.sp,
@@ -666,7 +667,7 @@ private fun TonightSchedule(
             Column(Modifier.padding(18.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "EN COURS",
+                        com.ultratv.tv.nativeapp.i18n.LocalStrings.current.liveOnAirPill,
                         color = UltraTokens.Accent,
                         fontSize = 10.sp,
                         letterSpacing = 2.3.sp,

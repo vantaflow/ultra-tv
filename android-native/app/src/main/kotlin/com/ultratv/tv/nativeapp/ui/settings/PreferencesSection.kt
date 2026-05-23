@@ -56,8 +56,8 @@ fun PreferencesSection(vm: AppViewModel = hiltViewModel()) {
         // longer exposed in the UI.
 
         SwitchRow(
-            title = "Diagnostics distants",
-            hint = "Envoie crashes + events au worker pour debug. Désactive pour stopper toute télémétrie sortante.",
+            title = S.settingsTelemetryTitle,
+            hint = S.settingsTelemetryHint,
             value = p.telemetryEnabled,
         ) { vm.setTelemetry(it) }
         SwitchRow(S.settingsAutoSync, S.prefAutoSyncHint, p.autoSyncOnLaunch) { vm.setAutoSync(it) }

@@ -363,7 +363,7 @@ private fun GuideRow(
                                         )
                                         androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
                                         Text(
-                                            "EN COURS",
+                                            com.ultratv.tv.nativeapp.i18n.LocalStrings.current.liveOnAirPill,
                                             color = T.Accent,
                                             fontSize = 9.sp,
                                             letterSpacing = 0.6.sp,

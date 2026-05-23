@@ -177,12 +177,12 @@ fun SettingsScreen(
                     scope.launch {
                         val info = com.ultratv.tv.nativeapp.update.UpdateChecker.checkForUpdate()
                         checking = false
-                        checkMsg = if (info != null) "Mise à jour ${info.versionName} disponible"
-                        else "Vous êtes à jour (v${com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME})"
+                        checkMsg = if (info != null) S.settingsUpdateAvailableTemplate.format(info.versionName)
+                        else S.settingsUpToDateTemplate.format(com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)
                     }
                 },
             ) {
-                Text(if (checking) "Vérification…" else "Vérifier les mises à jour", fontSize = 14.sp)
+                Text(if (checking) S.settingsCheckingForUpdates else S.settingsCheckForUpdates, fontSize = 14.sp)
             }
             checkMsg?.let { Text(it, color = T.Fg3, fontSize = 13.sp) }
             if (updateInfo != null) {
@@ -327,16 +327,16 @@ fun SettingsScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
             Text(
-                "Le fichier exporté contient tes credentials Xtream/Stalker en clair. Saisis un mot de passe pour chiffrer le backup en AES-GCM (recommandé).",
+                S.backupEncryptHint,
                 color = T.Fg3,
                 fontSize = 12.sp,
             )
             com.ultratv.tv.nativeapp.ui.settings.FormField(
-                label = "Mot de passe de chiffrement (optionnel)",
+                label = S.backupEncryptFieldLabel,
                 value = backupPwd,
                 onChange = { backupPwd = it },
                 password = true,
-                placeholder = "Laisser vide pour un export en clair",
+                placeholder = S.backupEncryptFieldPlaceholder,
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {

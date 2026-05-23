@@ -60,6 +60,7 @@ fun UpdateDialog() {
     var progress by remember(update.tag) { mutableFloatStateOf(0f) }
     var error by remember(update.tag) { mutableStateOf<String?>(null) }
 
+    val s = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Box(
         Modifier
             .fillMaxSize()
@@ -75,7 +76,7 @@ fun UpdateDialog() {
                 .padding(28.dp),
         ) {
             Text(
-                "MISE À JOUR DISPONIBLE",
+                s.updateAvailableEyebrow,
                 color = UltraTokens.Accent,
                 fontSize = 11.sp,
                 letterSpacing = 2.3.sp,
@@ -156,7 +157,7 @@ fun UpdateDialog() {
                     ),
                 ) {
                     Text(
-                        if (downloading) "Téléchargement…" else "Mettre à jour",
+                        if (downloading) s.updateDownloading else s.updateInstall,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -169,7 +170,7 @@ fun UpdateDialog() {
                         contentColor = UltraTokens.Fg2,
                     ),
                 ) {
-                    Text("Plus tard", fontSize = 14.sp)
+                    Text(s.updateLater, fontSize = 14.sp)
                 }
             }
         }
