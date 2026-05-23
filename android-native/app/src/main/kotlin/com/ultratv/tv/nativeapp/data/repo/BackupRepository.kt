@@ -60,8 +60,18 @@ class BackupRepository @Inject constructor(
 
     private val json = Json { prettyPrint = true; ignoreUnknownKeys = true }
 
-    /** Snapshot the current state into a JSON string. */
-    suspend fun export(): String {
+    /**
+     * Snapshot the current state into a JSON string. When [password] is
+     * non-null/non-empty, wraps the JSON in an AES-GCM envelope so the
+     * exported file can't reveal Xtream / Stalker credentials to anyone who
+     * later opens it.
+     */
+    suspend fun export(password: String? = null): String {
+        val plain = exportPlain()
+        return if (password.isNullOrEmpty()) plain else BackupCrypto.wrap(plain, password)
+    }
+
+    private suspend fun exportPlain(): String {
         val providers = providerDao.observeAll().first()
         // Provider key = (kind|baseUrl|username) — stable across re-installs, lets
         // us re-link favorites/history without relying on local ids.
@@ -99,9 +109,15 @@ class BackupRepository @Inject constructor(
         return json.encodeToString(Bundle.serializer(), bundle)
     }
 
-    /** Restore a backup. Returns RestoreResult with counters; throws on bad input. */
-    suspend fun import(text: String): RestoreResult {
-        val bundle = json.decodeFromString(Bundle.serializer(), text)
+    /**
+     * Restore a backup. If [password] is provided and [text] is an encrypted
+     * envelope, decrypt first; plain backups are passed through unchanged.
+     * Returns RestoreResult with counters; throws on bad input or wrong
+     * password (AEADBadTagException).
+     */
+    suspend fun import(text: String, password: String? = null): RestoreResult {
+        val plain = BackupCrypto.unwrap(text, password)
+        val bundle = json.decodeFromString(Bundle.serializer(), plain)
         require(bundle.version == CURRENT_VERSION) {
             "Unsupported backup version ${bundle.version}"
         }

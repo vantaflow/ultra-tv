@@ -68,6 +68,10 @@ fun SettingsScreen(
     // Backup export: SAF CreateDocument with a JSON mime hint. The VM has
     // already serialised the bundle to text via prepareBackup() before we
     // get here, so we just stream it to the picked URI.
+    // Backup encryption password — shared between export and restore so the
+    // user can also use it as the decryption hint when re-importing.
+    var backupPwd by remember { mutableStateOf("") }
+
     val saveBackup = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
         onResult = { uri ->
@@ -96,7 +100,12 @@ fun SettingsScreen(
                 if (txt.isNullOrBlank()) {
                     com.ultratv.tv.nativeapp.ui.common.Toaster.err(emptyFileMsg)
                 } else {
-                    vm.restoreBackup(txt, restoredTemplate, restoreFailedPrefix)
+                    vm.restoreBackup(
+                        text = txt,
+                        restoredTemplate = restoredTemplate,
+                        failedPrefix = restoreFailedPrefix,
+                        password = backupPwd.takeIf { it.isNotEmpty() },
+                    )
                 }
             }
         },
@@ -317,10 +326,23 @@ fun SettingsScreen(
                 S.settingsBackupHint,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp,
             )
+            Text(
+                "Le fichier exporté contient tes credentials Xtream/Stalker en clair. Saisis un mot de passe pour chiffrer le backup en AES-GCM (recommandé).",
+                color = T.Fg3,
+                fontSize = 12.sp,
+            )
+            com.ultratv.tv.nativeapp.ui.settings.FormField(
+                label = "Mot de passe de chiffrement (optionnel)",
+                value = backupPwd,
+                onChange = { backupPwd = it },
+                password = true,
+                placeholder = "Laisser vide pour un export en clair",
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
-                    vm.prepareBackup(backupReadyMsg)
-                    saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json")
+                    vm.prepareBackup(backupReadyMsg, password = backupPwd.takeIf { it.isNotEmpty() })
+                    val suffix = if (backupPwd.isNotEmpty()) "encrypted" else "plain"
+                    saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}-$suffix.json")
                 }) { Text(S.settingsBackupExport) }
                 Button(onClick = {
                     loadBackup.launch(arrayOf("application/json", "*/*"))

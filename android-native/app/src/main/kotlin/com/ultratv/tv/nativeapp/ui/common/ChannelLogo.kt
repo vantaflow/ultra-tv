@@ -106,31 +106,4 @@ private fun deriveShort(name: String): String {
     }
 }
 
-/**
- * Maps a hue (0-360°) to a (light, dark) Color pair simulating the prototype's
- * `oklch(60% 0.18 hue) → oklch(25% 0.12 hue)` gradient. We approximate with HSL
- * since Android's Color doesn't expose OKLCH directly, then dampen saturation
- * for the darker stop so the band reads as one tonal family.
- */
-private fun hueToOkLchPair(hue: Int): Pair<Color, Color> {
-    val light = hslToRgb(hue.toFloat(), 0.55f, 0.45f)
-    val dark  = hslToRgb(hue.toFloat(), 0.55f, 0.18f)
-    return Color(light) to Color(dark)
-}
-
-private fun hslToRgb(h: Float, s: Float, l: Float): Int {
-    val c = (1f - kotlin.math.abs(2 * l - 1f)) * s
-    val hp = h / 60f
-    val x = c * (1f - kotlin.math.abs(hp % 2f - 1f))
-    val (r1, g1, b1) = when (hp.toInt()) {
-        0 -> Triple(c, x, 0f)
-        1 -> Triple(x, c, 0f)
-        2 -> Triple(0f, c, x)
-        3 -> Triple(0f, x, c)
-        4 -> Triple(x, 0f, c)
-        else -> Triple(c, 0f, x)
-    }
-    val m = l - c / 2f
-    fun b(v: Float) = ((v + m) * 255f).toInt().coerceIn(0, 255)
-    return (0xFF shl 24) or (b(r1) shl 16) or (b(g1) shl 8) or b(b1)
-}
+private fun hueToOkLchPair(hue: Int): Pair<Color, Color> = HueGradient.pair(hue)

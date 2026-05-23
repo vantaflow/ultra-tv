@@ -33,9 +33,12 @@ class SettingsViewModel @Inject constructor(
     private val _backupText = MutableStateFlow<String?>(null)
     val backupText: StateFlow<String?> = _backupText.asStateFlow()
 
-    fun prepareBackup(readyMsg: String = "Backup ready — pick a file to save it.") {
+    fun prepareBackup(
+        readyMsg: String = "Backup ready — pick a file to save it.",
+        password: String? = null,
+    ) {
         viewModelScope.launch {
-            _backupText.value = backupRepo.export()
+            _backupText.value = backupRepo.export(password)
             com.ultratv.tv.nativeapp.ui.common.Toaster.ok(readyMsg)
         }
     }
@@ -50,10 +53,11 @@ class SettingsViewModel @Inject constructor(
         text: String,
         restoredTemplate: String = "Restored %1\$d provider(s), %2\$d fav, %3\$d watch entries",
         failedPrefix: String = "Restore failed: ",
+        password: String? = null,
     ) {
         viewModelScope.launch {
             try {
-                val r = backupRepo.import(text)
+                val r = backupRepo.import(text, password)
                 com.ultratv.tv.nativeapp.ui.common.Toaster.ok(
                     restoredTemplate.format(r.providers, r.favorites, r.historyEntries)
                 )

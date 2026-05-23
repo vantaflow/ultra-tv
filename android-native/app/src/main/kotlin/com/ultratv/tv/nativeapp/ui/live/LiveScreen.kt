@@ -855,20 +855,5 @@ private fun Hint(key: String, label: String) {
     }
 }
 
-private fun hueColor(seed: Int, sat: Float, light: Float): Color {
-    val h = ((seed % 360) + 360) % 360
-    val c = (1f - kotlin.math.abs(2 * light - 1f)) * sat
-    val hp = h / 60f
-    val x = c * (1f - kotlin.math.abs(hp % 2f - 1f))
-    val (r1, g1, b1) = when (hp.toInt()) {
-        0 -> Triple(c, x, 0f)
-        1 -> Triple(x, c, 0f)
-        2 -> Triple(0f, c, x)
-        3 -> Triple(0f, x, c)
-        4 -> Triple(x, 0f, c)
-        else -> Triple(c, 0f, x)
-    }
-    val m = light - c / 2f
-    fun b(v: Float) = ((v + m) * 255f).toInt().coerceIn(0, 255)
-    return Color(0xFF shl 24 or (b(r1) shl 16) or (b(g1) shl 8) or b(b1))
-}
+private fun hueColor(seed: Int, sat: Float, light: Float): Color =
+    com.ultratv.tv.nativeapp.ui.common.HueGradient.hsl(seed, sat, light)

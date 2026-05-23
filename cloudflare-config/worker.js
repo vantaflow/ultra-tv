@@ -445,13 +445,34 @@ export default {
       const mac = normaliseMac((f.get("mac") || "").toString());
       const password = (f.get("password") || "").toString();
       if (!mac) return redirect("/login?e=mac");
+      // Brute-force throttle: 5 failed attempts per MAC in any rolling 15-min
+      // window earn a 60-s lockout. Counter is stored under `lk:<mac>` in
+      // CONFIG KV with the lockout TTL — the same KV the rest of the worker
+      // already uses, no new binding needed.
+      const lockKey = `lk:${mac}`;
+      const lockRaw = await env.CONFIG.get(lockKey);
+      if (lockRaw) {
+        const lock = JSON.parse(lockRaw);
+        if (lock.locked && Date.now() < lock.until) {
+          return redirect("/login?e=locked");
+        }
+      }
       const cfg = await readConfig(env, mac);
-      // Unknown account → bounce to signup so the user can claim the MAC.
       if (!cfg.passwordHash && !cfg.providers?.length) return redirect(`/signup?mac=${encodeURIComponent(mac)}`);
-      // Legacy entry without password — block here; user must hit signup which
-      // sets one (and they can rotate from the dashboard afterwards).
       if (!cfg.passwordHash) return redirect(`/signup?mac=${encodeURIComponent(mac)}&e=claim`);
-      if (!(await passwordMatches(cfg, password))) return redirect("/login?e=pw");
+      if (!(await passwordMatches(cfg, password))) {
+        const prev = lockRaw ? JSON.parse(lockRaw) : { fails: 0 };
+        const fails = (prev.fails || 0) + 1;
+        const locked = fails >= 5;
+        await env.CONFIG.put(
+          lockKey,
+          JSON.stringify({ fails, locked, until: locked ? Date.now() + 60_000 : 0 }),
+          { expirationTtl: 15 * 60 },
+        );
+        return redirect(locked ? "/login?e=locked" : "/login?e=pw");
+      }
+      // Successful login clears the lockout counter.
+      await env.CONFIG.delete(lockKey);
       const sess = await makeSession(env, mac);
       return new Response("", { status: 302, headers: { location: "/", "set-cookie": sessionCookie(sess) } });
     }
@@ -609,6 +630,7 @@ button.danger { background:transparent; color:var(--danger); border:1px solid va
 const loginErrors = {
   mac: "Adresse MAC invalide (12 chiffres hex).",
   pw: "Mot de passe incorrect.",
+  locked: "Trop d'essais. Réessaie dans 60 s.",
 };
 const signupErrors = {
   mac: "Adresse MAC invalide (12 chiffres hex).",

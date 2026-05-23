@@ -16,7 +16,7 @@ import javax.inject.Singleton
 private val Context.userPrefsDs by preferencesDataStore(name = "user_prefs")
 
 enum class SidebarPosition { LEFT, TOP }
-enum class AppTheme { DARK, AMOLED, BLUE }
+enum class AppTheme { DARK, AMOLED, BLUE, LIGHT }
 enum class DefaultPlayer { INTERNAL, EXTERNAL }
 
 data class UserPrefs(

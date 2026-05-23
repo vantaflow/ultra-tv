@@ -167,25 +167,7 @@ fun ContinueWatchingTile(
 }
 
 private fun hueGradient(hue: Int): Pair<Color, Color> {
-    // Matches the prototype's `linear-gradient(150deg, oklch(38% 0.18 hue) 0%, oklch(15% 0.10 hue2) 75%)`
-    val light = hsl(hue.toFloat(), 0.6f, 0.38f)
-    val dark  = hsl(((hue + 30) % 360).toFloat(), 0.45f, 0.15f)
-    return Color(light) to Color(dark)
-}
-
-private fun hsl(h: Float, s: Float, l: Float): Int {
-    val c = (1f - kotlin.math.abs(2 * l - 1f)) * s
-    val hp = h / 60f
-    val x = c * (1f - kotlin.math.abs(hp % 2f - 1f))
-    val (r1, g1, b1) = when (hp.toInt()) {
-        0 -> Triple(c, x, 0f)
-        1 -> Triple(x, c, 0f)
-        2 -> Triple(0f, c, x)
-        3 -> Triple(0f, x, c)
-        4 -> Triple(x, 0f, c)
-        else -> Triple(c, 0f, x)
-    }
-    val m = l - c / 2f
-    fun b(v: Float) = ((v + m) * 255f).toInt().coerceIn(0, 255)
-    return (0xFF shl 24) or (b(r1) shl 16) or (b(g1) shl 8) or b(b1)
+    val light = HueGradient.hsl(hue, 0.6f, 0.38f)
+    val dark = HueGradient.hsl((hue + 30) % 360, 0.45f, 0.15f)
+    return light to dark
 }

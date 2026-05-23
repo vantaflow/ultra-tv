@@ -46,6 +46,22 @@ private val Dark = darkColorScheme(
     inverseOnSurface = Color(0xFF0A0A0D),
 )
 
+// Light scheme — cream / ink palette, mirrored from the prototype's
+// `body[data-theme="light"]` block. Same accent red, inverted neutrals.
+private val Light = lightColorScheme(
+    primary = UltraTokens.Accent,
+    onPrimary = Color.White,
+    background = Color(0xFFF4F3EF),
+    onBackground = Color(0xFF14110E),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF14110E),
+    surfaceVariant = Color(0xFFEBEAE5),
+    onSurfaceVariant = Color(0xFF3D3A36),
+    border = Color(0x1A14110E),
+    inverseSurface = Color(0xFF14110E),
+    inverseOnSurface = Color.White,
+)
+
 private val Blue = darkColorScheme(
     primary = UltraTokens.Accent,
     onPrimary = Color.White,
@@ -69,6 +85,7 @@ fun UltraTvTheme(theme: AppTheme = AppTheme.AMOLED, content: @Composable () -> U
         AppTheme.DARK -> Dark
         AppTheme.AMOLED -> Amoled
         AppTheme.BLUE -> Blue
+        AppTheme.LIGHT -> Light
     }
     MaterialTheme(colorScheme = scheme, content = content)
 }

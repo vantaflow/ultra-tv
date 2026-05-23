@@ -189,6 +189,4 @@ object UpdateChecker {
         ctx.startActivity(intent)
     }
 
-    /** No-op kept for backwards compatibility with callers from v1.0.5. */
-    fun registerInstallReceiver(@Suppress("UNUSED_PARAMETER") ctx: Context) = Unit
 }
