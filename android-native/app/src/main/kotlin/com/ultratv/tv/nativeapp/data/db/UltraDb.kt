@@ -16,7 +16,7 @@ import androidx.room.RoomDatabase
         WatchHistoryEntity::class,
         RecordingEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class UltraDb : RoomDatabase() {

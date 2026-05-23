@@ -758,8 +758,7 @@ private fun UpcomingRow(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity) {
     }
 }
 
-private val hmFmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-private fun formatHm(ms: Long): String = hmFmt.format(java.util.Date(ms))
+private fun formatHm(ms: Long): String = com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(ms)
 
 
 @Composable

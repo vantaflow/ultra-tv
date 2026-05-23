@@ -34,6 +34,14 @@ data class ChannelEntity(
     /** XMLTV channel id (`tvg-id` for M3U, `epg_channel_id` for Xtream). Used
      *  to match programmes loaded from a full xmltv feed. */
     val epgChannelId: String? = null,
+    /** When non-null, this channel supports catch-up replay. The string is the
+     *  M3U `catchup-source` URL template (placeholders: `${start}`, `${end}`,
+     *  `${duration}`, `${timestamp}`, `${utc}`, `{Y}/{m}/{d}/{H}/{M}/{S}`).
+     *  For Xtream providers we synthesise a template using the `tv_archive`
+     *  flag + the standard `…/streaming/timeshift.php` endpoint. */
+    val catchupSource: String? = null,
+    /** Days of catch-up window the provider exposes (Xtream tv_archive_duration). */
+    val catchupDays: Int = 0,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])

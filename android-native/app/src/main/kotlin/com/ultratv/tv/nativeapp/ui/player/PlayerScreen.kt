@@ -62,6 +62,7 @@ import com.ultratv.tv.nativeapp.data.repo.HistoryRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -81,7 +82,27 @@ class PlayerViewModel @Inject constructor(
     private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
     private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
+    private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
+    private val channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
 ) : ViewModel() {
+
+    /** Snapshot of the playback knobs the screen reads at construction time. */
+    suspend fun playbackPrefs(): com.ultratv.tv.nativeapp.data.prefs.UserPrefs =
+        prefs.flow.first()
+
+    /**
+     * Resolves a catchup URL for [prog] on the channel currently set in the
+     * PlaybackContext and starts playing it. Used by EPG rows in the past on
+     * channels that report catchup support.
+     */
+    fun playCatchup(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, onReady: (url: String, title: String) -> Unit) {
+        viewModelScope.launch {
+            val cur = current.value ?: return@launch
+            val ch = channelDao.byRemoteId(cur.providerId, cur.remoteId) ?: return@launch
+            val url = com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(ch, prog) ?: return@launch
+            onReady(url, "${ch.name} — ${prog.title}")
+        }
+    }
 
     val current: StateFlow<PlaybackContext.Item?> = playback.current
 
@@ -211,8 +232,37 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     var playbackSpeed by remember { mutableStateOf(1.0f) }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
+    // Snapshot prefs at composition. Stable for the lifetime of the screen —
+    // changing buffer / frame-rate / decoder takes effect on next launch
+    // (rebuilding the player on every recomposition would tear the stream).
+    val playbackPrefs = remember {
+        kotlinx.coroutines.runBlocking { vm.playbackPrefs() }
+    }
+
     val player = remember {
-        ExoPlayer.Builder(context).build().apply {
+        val bufMs = playbackPrefs.bufferSeconds * 1000
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                bufMs / 2,                          // minBufferMs
+                bufMs,                              // maxBufferMs
+                (bufMs / 6).coerceAtLeast(500),     // bufferForPlaybackMs
+                (bufMs / 3).coerceAtLeast(1_000),   // bufferForPlaybackAfterRebufferMs
+            )
+            .build()
+        val renderers = androidx.media3.exoplayer.DefaultRenderersFactory(context).apply {
+            // Hardware renderers first by default; flipping the pref pushes the
+            // software decoder ahead so finicky streams (HEVC main10 on cheap
+            // boxes, malformed HLS variant tags) fall back gracefully.
+            setExtensionRendererMode(
+                if (playbackPrefs.preferSoftwareDecoder)
+                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
+                else
+                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
+            )
+        }
+        ExoPlayer.Builder(context, renderers)
+            .setLoadControl(loadControl)
+            .build().apply {
             playWhenReady = true
             // Surface playback failures to the dashboard so we can see WHY a
             // stream silently never starts (codec, 403, DNS, etc).
@@ -223,6 +273,29 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                         "code=${error.errorCodeName} ${error.message ?: ""}",
                     )
                 }
+                override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
+                    if (!playbackPrefs.autoFrameRate) return
+                    val act = (context as? android.app.Activity) ?: return
+                    val fmt = currentTracks.groups
+                        .firstOrNull { it.type == androidx.media3.common.C.TRACK_TYPE_VIDEO }
+                        ?.let { g -> (0 until g.length).firstOrNull { g.isTrackSelected(it) }?.let { g.getTrackFormat(it) } }
+                    val fps = fmt?.frameRate ?: return
+                    if (fps <= 0f) return
+                    // Pick the display mode whose refresh is the closest integer
+                    // multiple of fps (so 24 fps → 24/48/72 Hz, 50 fps → 50/100 Hz).
+                    val display = act.windowManager.defaultDisplay ?: return
+                    val target = display.supportedModes.minByOrNull { m ->
+                        val multiple = (m.refreshRate / fps).coerceAtLeast(1f)
+                        kotlin.math.abs(m.refreshRate - fps * kotlin.math.round(multiple))
+                    } ?: return
+                    val lp = act.window.attributes
+                    if (lp.preferredDisplayModeId != target.modeId) {
+                        lp.preferredDisplayModeId = target.modeId
+                        act.window.attributes = lp
+                        com.ultratv.tv.nativeapp.RemoteLog.debug("player", "switched display to ${target.refreshRate}Hz for ${fps}fps")
+                    }
+                }
+
                 override fun onPlaybackStateChanged(state: Int) {
                     val name = when (state) {
                         androidx.media3.common.Player.STATE_IDLE -> "idle"

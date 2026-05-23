@@ -62,6 +62,11 @@ class M3uParser @Inject constructor(private val ok: OkHttpClient) {
                         )
                     }
                     val tvgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() }
+                    // Catchup metadata: providers may ship `catchup="default"` /
+                    // `catchup="append"` plus a `catchup-source` URL template
+                    // and `catchup-days` retention window.
+                    val catchupSrc = attrs["catchup-source"]?.takeIf { it.isNotBlank() }
+                    val catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
                     channels += ChannelEntity(
                         providerId = providerId,
                         remoteId = tvgId ?: "m3u-${seq++}",
@@ -70,6 +75,8 @@ class M3uParser @Inject constructor(private val ok: OkHttpClient) {
                         categoryId = group?.let { "g:$it" },
                         streamUrl = url,
                         epgChannelId = tvgId,
+                        catchupSource = catchupSrc,
+                        catchupDays = catchupDays,
                     )
                     i = j + 1
                     continue

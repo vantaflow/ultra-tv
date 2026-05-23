@@ -45,6 +45,11 @@ interface ChannelDao {
     @Query("SELECT * FROM channel WHERE id = :id")
     suspend fun byId(id: Long): ChannelEntity?
 
+    /** Lookup by (providerId, remoteId) — used by PlaybackContext to rehydrate
+     *  the channel after a navigation that only carried the persisted identifiers. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): ChannelEntity?
+
     @Query("SELECT * FROM channel WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<ChannelEntity>
 

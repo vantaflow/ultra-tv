@@ -71,7 +71,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // flag so disabling it from Settings takes effect immediately for
         // every subsequent event/crash POST.
         bgScope.launch {
-            prefsStore.flow.collect { p -> RemoteLog.telemetryEnabled = p.telemetryEnabled }
+            prefsStore.flow.collect { p ->
+                RemoteLog.telemetryEnabled = p.telemetryEnabled
+                com.ultratv.tv.nativeapp.ui.common.EpgClock.offsetMinutes = p.epgTimeOffsetMin
+            }
         }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks

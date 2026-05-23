@@ -53,6 +53,24 @@ data class UserPrefs(
      *  and the diagnostic flow is what keeps the redesign honest; flipping
      *  it off stops the dashboard cold for that install. */
     val telemetryEnabled: Boolean = true,
+
+    // Playback / TV-quality knobs — exposed in Settings.
+    /** Buffer target in seconds. Media3's default is 15 s, which is decent but
+     *  too tight for shaky IPTV providers. We expose 8/15/30/60 chips. */
+    val bufferSeconds: Int = 30,
+    /** Auto-switch the TV's refresh rate to match the stream's frame rate
+     *  (24/25/29.97/30/50/59.94/60). Avoids judder on motion. */
+    val autoFrameRate: Boolean = true,
+    /** Prefer the software (FFmpeg / libavcodec via system) decoder over the
+     *  hardware one. Useful for channels with codec quirks the hardware
+     *  refuses (e.g. HEVC main10 on cheap boxes). */
+    val preferSoftwareDecoder: Boolean = false,
+    /** EPG times shifted by ± N minutes. Some providers ship EPG at UTC while
+     *  channels stream in local time; this lets the user nudge it. */
+    val epgTimeOffsetMin: Int = 0,
+    /** Optional SAF tree URI for a folder of local channel logos that override
+     *  whatever the provider ships. Empty = no override. */
+    val localLogosFolderUri: String = "",
 )
 
 @Singleton
@@ -75,6 +93,11 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val language = stringPreferencesKey("language")
         val configPassword = stringPreferencesKey("config_password")
         val telemetry = booleanPreferencesKey("telemetry_enabled")
+        val bufferSec = intPreferencesKey("buffer_seconds")
+        val autoFrameRate = booleanPreferencesKey("auto_frame_rate")
+        val preferSwDec = booleanPreferencesKey("prefer_software_decoder")
+        val epgOffsetMin = intPreferencesKey("epg_offset_min")
+        val localLogosUri = stringPreferencesKey("local_logos_uri")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -96,6 +119,11 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             language = p[Keys.language] ?: "system",
             configPassword = p[Keys.configPassword] ?: "",
             telemetryEnabled = p[Keys.telemetry] ?: true,
+            bufferSeconds = p[Keys.bufferSec] ?: 30,
+            autoFrameRate = p[Keys.autoFrameRate] ?: true,
+            preferSoftwareDecoder = p[Keys.preferSwDec] ?: false,
+            epgTimeOffsetMin = p[Keys.epgOffsetMin] ?: 0,
+            localLogosFolderUri = p[Keys.localLogosUri] ?: "",
         )
     }
 
@@ -116,6 +144,11 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
     suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
     suspend fun setTelemetry(on: Boolean) = update { it[Keys.telemetry] = on }
+    suspend fun setBufferSeconds(v: Int) = update { it[Keys.bufferSec] = v.coerceIn(5, 300) }
+    suspend fun setAutoFrameRate(v: Boolean) = update { it[Keys.autoFrameRate] = v }
+    suspend fun setPreferSoftwareDecoder(v: Boolean) = update { it[Keys.preferSwDec] = v }
+    suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }
+    suspend fun setLocalLogosFolderUri(uri: String) = update { it[Keys.localLogosUri] = uri }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }

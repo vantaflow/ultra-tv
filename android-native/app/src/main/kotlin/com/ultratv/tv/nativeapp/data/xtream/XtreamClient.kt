@@ -50,6 +50,8 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
         val sid = o["stream_id"]?.str() ?: return@arrAt null
         val name = o["name"]?.str() ?: return@arrAt null
         val url = "${p.baseUrl}/live/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.ts"
+        val tvArchive = o["tv_archive"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
+        val archiveDuration = o["tv_archive_duration"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
         ChannelEntity(
             providerId = p.id,
             remoteId = sid,
@@ -61,6 +63,10 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
             // panels, the same value embedded in tv_archive_duration JSON. We
             // take the canonical field and fall back to None.
             epgChannelId = o["epg_channel_id"]?.str()?.takeIf { it.isNotBlank() },
+            // tv_archive == 1 means the provider keeps recordings; we synth
+            // the timeshift URL from Catchup.synthesizeXtreamTimeshift().
+            catchupSource = null,
+            catchupDays = if (tvArchive >= 1) archiveDuration.coerceAtLeast(1) else 0,
         )
     }
 

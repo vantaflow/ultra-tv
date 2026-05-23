@@ -61,6 +61,31 @@ fun PreferencesSection(vm: AppViewModel = hiltViewModel()) {
             value = p.telemetryEnabled,
         ) { vm.setTelemetry(it) }
         SwitchRow(S.settingsAutoSync, S.prefAutoSyncHint, p.autoSyncOnLaunch) { vm.setAutoSync(it) }
+
+        // Playback knobs added in v1.0.23
+        PrefRow(label = "Buffer size") {
+            listOf(8, 15, 30, 60).forEach { sec ->
+                ChoiceChip("${sec}s", on = p.bufferSeconds == sec) { vm.setBufferSeconds(sec) }
+            }
+        }
+        SwitchRow(
+            title = "Auto frame-rate",
+            hint = "Match the TV's refresh rate to the stream (24/25/30/50/60). Reduces judder on motion.",
+            value = p.autoFrameRate,
+        ) { vm.setAutoFrameRate(it) }
+        SwitchRow(
+            title = "Software decoder",
+            hint = "Use the bundled software decoder over the device's hardware decoder. Helps with HEVC main10 / quirky HLS variants.",
+            value = p.preferSoftwareDecoder,
+        ) { vm.setPreferSoftwareDecoder(it) }
+        PrefRow(label = "EPG time offset (min)") {
+            listOf(-120, -60, -30, 0, 30, 60, 120).forEach { off ->
+                ChoiceChip(
+                    label = if (off > 0) "+$off" else off.toString(),
+                    on = p.epgTimeOffsetMin == off,
+                ) { vm.setEpgTimeOffsetMin(off) }
+            }
+        }
         SwitchRow(S.prefShowChannelNumbers, S.prefShowChannelNumbersHint, p.showChannelNumbers) { vm.setShowChannelNumbers(it) }
         SwitchRow(S.prefHideAdult, S.prefHideAdultHint, p.hideAdultCategories) { vm.setHideAdult(it) }
         SwitchRow(S.prefResume, S.prefResumeHint, p.resumePlayback) { vm.setResumePlayback(it) }
