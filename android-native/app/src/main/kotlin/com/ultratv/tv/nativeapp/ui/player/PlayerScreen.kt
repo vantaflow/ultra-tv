@@ -249,6 +249,29 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 (bufMs / 3).coerceAtLeast(1_000),   // bufferForPlaybackAfterRebufferMs
             )
             .build()
+        // Pluggable DataSource: HTTP/HTTPS go through OkHttp by default, but
+        // we register a RtmpDataSource for `rtmp://` URLs so RTMP-only IPTV
+        // providers play without launching an external app.
+        val httpFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+        val dataSourceFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpFactory)
+        val schemeAwareFactory = androidx.media3.datasource.DataSource.Factory {
+            // Compose: try RTMP first, fall back to the default HTTP/file/data
+            // factory. Media3's resolver checks `getScheme()` on the URI and
+            // routes accordingly, so we just delegate via a custom factory.
+            object : androidx.media3.datasource.DataSource by dataSourceFactory.createDataSource() {
+                override fun open(spec: androidx.media3.datasource.DataSpec): Long {
+                    val uri = spec.uri
+                    return if (uri.scheme.equals("rtmp", true) || uri.scheme.equals("rtmps", true)) {
+                        androidx.media3.datasource.rtmp.RtmpDataSource.Factory()
+                            .createDataSource().open(spec)
+                    } else {
+                        dataSourceFactory.createDataSource().open(spec)
+                    }
+                }
+            }
+        }
+        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
+            .setDataSourceFactory(schemeAwareFactory)
         val renderers = androidx.media3.exoplayer.DefaultRenderersFactory(context).apply {
             // Hardware renderers first by default; flipping the pref pushes the
             // software decoder ahead so finicky streams (HEVC main10 on cheap
@@ -262,6 +285,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         }
         ExoPlayer.Builder(context, renderers)
             .setLoadControl(loadControl)
+            .setMediaSourceFactory(mediaSourceFactory)
             .build().apply {
             playWhenReady = true
             // Surface playback failures to the dashboard so we can see WHY a
