@@ -15,18 +15,24 @@ android {
         // Different applicationId during development so it can be installed
         // alongside the existing Capacitor build (com.ultratv.tv).
         applicationId = "com.ultratv.tv.nativeapp"
-        minSdk = 23
+        minSdk = 28
         targetSdk = 35
-        versionCode = 30
-        versionName = "1.0.20"
+        versionCode = 31
+        versionName = "1.0.21"
         vectorDrawables { useSupportLibrary = true }
     }
 
-    // Release signing — looks for env vars (ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD
-    // / ULTRA_KEY_ALIAS / ULTRA_KEY_PASSWORD) and an optional lineage file
-    // (ULTRA_LINEAGE) for APK Signature Scheme v3 key rotation. Falls back to
-    // the debug keystore so a checkout still produces a usable APK without
-    // any local secrets — see SECURITY.md for the rotation procedure.
+    // Release signing — reads ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD /
+    // ULTRA_KEY_ALIAS / ULTRA_KEY_PASSWORD env vars (with ULTRA_LINEAGE for the
+    // rotation lineage). Falls back to the debug keystore when env vars are
+    // missing so a fresh checkout still produces an installable APK in CI / dev.
+    // See SECURITY.md for the rotation procedure.
+    //
+    // AGP doesn't expose signingLineage in the DSL, so we hand-roll a
+    // post-build task `signRelease` that re-signs the produced APK with
+    // apksigner --lineage. The end result is an APK that carries the
+    // proof-of-rotation signing block, allowing it to install over the
+    // existing debug-key install without "INSTALL_FAILED_UPDATE_INCOMPATIBLE".
     signingConfigs {
         create("release") {
             val ksPath = System.getenv("ULTRA_KEYSTORE")
@@ -35,8 +41,13 @@ android {
                 storePassword = System.getenv("ULTRA_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ULTRA_KEY_ALIAS")
                 keyPassword = System.getenv("ULTRA_KEY_PASSWORD")
-                enableV1Signing = true
-                enableV2Signing = true
+                // Rotation lineage is only natively supported by APK Signature
+                // Scheme v3 (Android 9 / API 28+). Pre-9 devices would need
+                // the OLD signer for v1/v2 — which we don't ship — so we
+                // bumped minSdk to 28 and disable v1/v2. Modern Android TV
+                // boxes are all on 9+.
+                enableV1Signing = false
+                enableV2Signing = false
                 enableV3Signing = true
                 enableV4Signing = true
             }
@@ -53,14 +64,14 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            // Use the proper release keystore when ULTRA_KEYSTORE env var
-            // points to a real .jks; otherwise fall back to debug so a fresh
-            // checkout still produces an installable APK in CI / dev. Keep
-            // the `.debug` applicationId suffix while the rotation lineage
-            // isn't deployed so existing installs upgrade in place.
-            val releaseSigning = signingConfigs.getByName("release")
-            signingConfig = if (releaseSigning.storeFile != null) releaseSigning
-            else signingConfigs.getByName("debug")
+            // AGP always signs the release output with the debug keystore.
+            // The `resignRelease` Gradle task (further down) then re-signs
+            // the produced APK with the proper upload key and embeds the
+            // rotation lineage via apksigner. This roundabout works because
+            // apksigner can't re-sign an APK that already has v3 signatures
+            // from the new key with an added lineage — it needs the old
+            // (debug) key as the starting point.
+            signingConfig = signingConfigs.getByName("debug")
             applicationIdSuffix = ".debug"
         }
     }
@@ -164,4 +175,54 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("org.json:json:20240303")
+}
+
+/**
+ * Post-process release APK with apksigner --lineage so it installs in place
+ * over the existing debug-signed release. Only runs when the env vars are
+ * set; otherwise it's a no-op (CI / dev keep using the debug fallback).
+ */
+val resignRelease by tasks.registering {
+    dependsOn("assembleRelease")
+    doLast {
+        val ks = System.getenv("ULTRA_KEYSTORE") ?: return@doLast
+        val ksPwd = System.getenv("ULTRA_KEYSTORE_PASSWORD") ?: return@doLast
+        val alias = System.getenv("ULTRA_KEY_ALIAS") ?: return@doLast
+        val keyPwd = System.getenv("ULTRA_KEY_PASSWORD") ?: ksPwd
+        val lineage = System.getenv("ULTRA_LINEAGE") ?: return@doLast
+
+        val apk = file("build/outputs/apk/release/app-release.apk")
+        if (!apk.exists()) {
+            println("[resignRelease] APK not found at $apk")
+            return@doLast
+        }
+        // Locate apksigner — prefer the build-tools that match compileSdk.
+        val sdkRoot = System.getenv("ANDROID_HOME")
+            ?: System.getenv("ANDROID_SDK_ROOT")
+            ?: "${System.getProperty("user.home")}/Library/Android/sdk"
+        val buildTools = file("$sdkRoot/build-tools").listFiles()
+            ?.sortedByDescending { it.name }
+            ?.firstOrNull { File(it, "apksigner").canExecute() }
+            ?: error("[resignRelease] apksigner not found under $sdkRoot/build-tools")
+        val apksigner = "${buildTools.absolutePath}/apksigner"
+
+        val proc = ProcessBuilder(
+            apksigner, "sign",
+            "--ks", ks,
+            "--ks-key-alias", alias,
+            "--ks-pass", "pass:$ksPwd",
+            "--key-pass", "pass:$keyPwd",
+            "--lineage", lineage,
+            "--rotation-min-sdk-version", "28",
+            "--min-sdk-version", "28",
+            "--v1-signing-enabled", "false",
+            "--v2-signing-enabled", "false",
+            "--v3-signing-enabled", "true",
+            "--v4-signing-enabled", "true",
+            apk.absolutePath,
+        ).inheritIO().start()
+        val code = proc.waitFor()
+        check(code == 0) { "[resignRelease] apksigner exited with $code" }
+        println("[resignRelease] APK re-signed with rotation lineage → $apk")
+    }
 }
