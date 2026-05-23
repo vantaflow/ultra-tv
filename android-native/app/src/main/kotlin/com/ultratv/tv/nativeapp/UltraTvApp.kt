@@ -74,6 +74,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             prefsStore.flow.collect { p ->
                 RemoteLog.telemetryEnabled = p.telemetryEnabled
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.offsetMinutes = p.epgTimeOffsetMin
+                com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
         }
 

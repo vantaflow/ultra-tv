@@ -30,6 +30,13 @@ class SettingsViewModel @Inject constructor(
     private val backupRepo: com.ultratv.tv.nativeapp.data.repo.BackupRepository,
 ) : ViewModel() {
 
+    /** Mirrors UserPrefs.localLogosFolderUri for the Settings UI to display. */
+    val localLogosFolderUri: kotlinx.coroutines.flow.StateFlow<String> = prefs.flow
+        .map { it.localLogosFolderUri }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), "")
+
+    fun setLocalLogosFolderUri(uri: String) = viewModelScope.launch { prefs.setLocalLogosFolderUri(uri) }
+
     private val _backupText = MutableStateFlow<String?>(null)
     val backupText: StateFlow<String?> = _backupText.asStateFlow()
 

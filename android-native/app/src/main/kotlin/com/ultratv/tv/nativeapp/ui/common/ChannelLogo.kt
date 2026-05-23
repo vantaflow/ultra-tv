@@ -40,7 +40,13 @@ fun ChannelLogo(
     hd: String? = null,                // "HD" or "UHD"
     size: Dp = 44.dp,
     showBadge: Boolean = true,
+    epgChannelId: String? = null,
 ) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    // Override from local folder if the user picked one and a file matches.
+    val effectiveUrl = androidx.compose.runtime.remember(name, epgChannelId, com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri) {
+        com.ultratv.tv.nativeapp.data.repo.LocalLogos.resolveByName(ctx, epgChannelId, name)?.toString() ?: logoUrl
+    }
     val shortCode = (short ?: deriveShort(name)).take(2).uppercase()
     val hueDeg = ((hueSeed % 360) + 360) % 360
     val (lightColor, darkColor) = hueToOkLchPair(hueDeg)
@@ -62,8 +68,8 @@ fun ChannelLogo(
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (logoUrl != null) {
-            AsyncImage(model = logoUrl, contentDescription = name, modifier = Modifier.fillMaxSize())
+        if (effectiveUrl != null) {
+            AsyncImage(model = effectiveUrl, contentDescription = name, modifier = Modifier.fillMaxSize())
         } else {
             Text(
                 shortCode,

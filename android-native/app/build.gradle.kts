@@ -17,8 +17,8 @@ android {
         applicationId = "com.ultratv.tv.nativeapp"
         minSdk = 28
         targetSdk = 35
-        versionCode = 35
-        versionName = "1.0.25"
+        versionCode = 36
+        versionName = "1.0.26"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -145,6 +145,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
+    implementation("androidx.documentfile:documentfile:1.0.1")
     implementation(libs.mediarouter)
     implementation(libs.play.cast.framework)
 

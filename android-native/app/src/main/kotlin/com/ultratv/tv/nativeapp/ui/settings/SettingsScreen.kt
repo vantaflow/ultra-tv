@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -108,6 +109,19 @@ fun SettingsScreen(
                     )
                 }
             }
+        },
+    )
+
+    // SAF tree picker for local channel logos. Takes a persistable read perm
+    // so subsequent app launches can still read from the folder.
+    val pickLogosFolder = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { tree ->
+            if (tree == null) return@rememberLauncherForActivityResult
+            val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+            runCatching { ctx.contentResolver.takePersistableUriPermission(tree, flags) }
+            vm.setLocalLogosFolderUri(tree.toString())
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("Dossier logos enregistré")
         },
     )
 
@@ -347,6 +361,31 @@ fun SettingsScreen(
                 Button(onClick = {
                     loadBackup.launch(arrayOf("application/json", "*/*"))
                 }) { Text(S.settingsBackupImport) }
+            }
+        }
+
+        // ---- 4c. Local channel logos ----
+        SectionCard {
+            Text("Logos chaînes locaux", color = MaterialTheme.colorScheme.onBackground, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(
+                "Choisis un dossier (USB / interne) avec des PNG nommés d'après le tvg-id ou le nom de chaîne. " +
+                    "Les fichiers du dossier remplacent les logos du provider à l'affichage.",
+                color = T.Fg3,
+                fontSize = 12.sp,
+            )
+            val currentUri by vm.localLogosFolderUri.collectAsState()
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(onClick = { pickLogosFolder.launch(null) }) {
+                    Text(if (currentUri.isBlank()) "Choisir un dossier" else "Changer le dossier", fontSize = 14.sp)
+                }
+                if (currentUri.isNotBlank()) {
+                    Text(
+                        text = currentUri.takeLast(60).let { if (currentUri.length > 60) "…$it" else it },
+                        color = T.Fg3,
+                        fontSize = 11.sp,
+                        fontFamily = com.ultratv.tv.nativeapp.ui.theme.UltraFonts.Mono,
+                    )
+                }
             }
         }
 
