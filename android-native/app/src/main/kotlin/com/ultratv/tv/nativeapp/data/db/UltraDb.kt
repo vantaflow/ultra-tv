@@ -17,7 +17,7 @@ import androidx.room.RoomDatabase
         RecordingEntity::class,
         com.ultratv.tv.nativeapp.data.reminders.ReminderEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = false,
 )
 abstract class UltraDb : RoomDatabase() {

@@ -42,7 +42,51 @@ class LiveViewModel @Inject constructor(
     private val epgDaoArg: com.ultratv.tv.nativeapp.data.db.EpgDao,
     private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
     private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
+    private val channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
 ) : ViewModel() {
+
+    /**
+     * Swap [channel] with its neighbour at [delta] in the currently visible
+     * list, persisting both userPosition values. delta = -1 moves up, +1
+     * moves down. Cascades fresh positions to neighbours so the user can
+     * keep nudging a row without holes appearing.
+     */
+    fun moveChannel(channel: ChannelEntity, delta: Int) {
+        val list = channels.value
+        val idx = list.indexOfFirst { it.id == channel.id }.takeIf { it >= 0 } ?: return
+        val target = (idx + delta).coerceIn(0, list.size - 1)
+        if (target == idx) return
+        viewModelScope.launch {
+            // Re-assign positions across the affected slice so the user's new
+            // order survives subsequent inserts. 100 per slot leaves space for
+            // future fine-grained nudges without renumbering.
+            val moved = list.toMutableList().apply {
+                add(target, removeAt(idx))
+            }
+            moved.forEachIndexed { i, ch ->
+                channelDao.setPosition(ch.id, (i + 1) * 100)
+            }
+        }
+    }
+
+    /** Pin to top: set userPosition = 1 so the channel floats above the
+     *  alphabetical block. Pressing again resets to 0. Simpler than a full
+     *  reorder mode for users who just want their favourites on top. */
+    fun togglePin(channel: ChannelEntity) {
+        viewModelScope.launch {
+            channelDao.setPosition(channel.id, if (channel.userPosition == 0) 1 else 0)
+        }
+    }
+
+    /** Reset every channel of the active provider back to natural order. */
+    fun resetChannelOrder() {
+        viewModelScope.launch {
+            val pid = providers.value.firstOrNull { it.active }?.id
+                ?: providers.value.firstOrNull()?.id
+                ?: return@launch
+            channelDao.resetPositions(pid)
+        }
+    }
 
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())

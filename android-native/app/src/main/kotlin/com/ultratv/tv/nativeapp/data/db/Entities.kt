@@ -42,6 +42,10 @@ data class ChannelEntity(
     val catchupSource: String? = null,
     /** Days of catch-up window the provider exposes (Xtream tv_archive_duration). */
     val catchupDays: Int = 0,
+    /** User-defined display position. 0 = natural order (sort by name). >0
+     *  pushes the channel to that absolute slot in the Live list, allowing
+     *  the favourites + frequently-watched to bubble to the top. */
+    val userPosition: Int = 0,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])

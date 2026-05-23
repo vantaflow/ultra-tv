@@ -36,11 +36,29 @@ interface ProviderDao {
 
 @Dao
 interface ChannelDao {
-    @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    // userPosition first (0 = unset, sorted last via CASE), then alpha by name.
+    @Query("""
+        SELECT * FROM channel WHERE providerId = :pid
+        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
+                 userPosition,
+                 name COLLATE NOCASE ASC
+    """)
     fun observeForProvider(pid: Long): Flow<List<ChannelEntity>>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    @Query("""
+        SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat
+        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
+                 userPosition,
+                 name COLLATE NOCASE ASC
+    """)
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
+
+    /** Atomic position update. Swap two channels by calling twice in a transaction. */
+    @Query("UPDATE channel SET userPosition = :pos WHERE id = :id")
+    suspend fun setPosition(id: Long, pos: Int)
+
+    @Query("UPDATE channel SET userPosition = 0 WHERE providerId = :pid")
+    suspend fun resetPositions(pid: Long)
 
     @Query("SELECT * FROM channel WHERE id = :id")
     suspend fun byId(id: Long): ChannelEntity?
