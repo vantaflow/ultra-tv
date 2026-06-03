@@ -229,6 +229,9 @@ dependencies {
  */
 val resignRelease by tasks.registering {
     dependsOn("assembleRelease")
+    // The doLast block holds script-object references (file(), env lookups)
+    // that Gradle's configuration cache can't serialize — opt out explicitly.
+    notCompatibleWithConfigurationCache("hand-rolled apksigner exec")
     doLast {
         val ks = System.getenv("ULTRA_KEYSTORE") ?: return@doLast
         val ksPwd = System.getenv("ULTRA_KEYSTORE_PASSWORD") ?: return@doLast
