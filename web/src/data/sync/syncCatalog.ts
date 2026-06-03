@@ -26,6 +26,7 @@ import {
   seriesRepo,
   settingsRepo,
 } from "@data/db/repositories";
+import { buildCategoryFilter, filterCategoriesByWhitelist, MOVIE_ID_OFFSET, SERIES_ID_OFFSET } from "@data/sync/filterCategories";
 
 interface XtreamSeriesInfo {
   info?: {
@@ -164,7 +165,8 @@ export async function syncXtreamCatalog(
     groupTitle: null,
     categoryId: Number.parseInt(s.category_id, 10) || null,
     categoryName: null,
-    streamUrl: xtream.liveStreamUrl(creds, s.stream_id),
+    // M-3: do not persist credentialed URL — rebuilt at play time from streamId.
+    streamUrl: "",
     epgChannelId: s.epg_channel_id,
     number: s.num,
     isFavorite: false,
@@ -189,13 +191,11 @@ export async function syncXtreamCatalog(
   // Respect Settings → Categories whitelist. Null = include everything (first sync).
   const movieWhitelist = await settingsRepo.get<number[]>(`filters:${provider.id}:MOVIE`);
   const seriesWhitelist = await settingsRepo.get<number[]>(`filters:${provider.id}:SERIES`);
-  const movieFilter = movieWhitelist ? new Set(movieWhitelist.map((id) => id - 1_000_000)) : null;
-  const seriesFilter = seriesWhitelist ? new Set(seriesWhitelist.map((id) => id - 2_000_000)) : null;
+  const movieFilter = buildCategoryFilter(movieWhitelist, MOVIE_ID_OFFSET);
+  const seriesFilter = buildCategoryFilter(seriesWhitelist, SERIES_ID_OFFSET);
 
-  const targetedVodCats = movieFilter ? vodCats.filter((c) => movieFilter.has(Number.parseInt(c.category_id, 10))) : vodCats;
-  const targetedSeriesCats = seriesFilter ? vodCats : seriesCats;
-  const effectiveSeriesCats = seriesFilter ? seriesCats.filter((c) => seriesFilter.has(Number.parseInt(c.category_id, 10))) : seriesCats;
-  void targetedSeriesCats;
+  const targetedVodCats = filterCategoriesByWhitelist(vodCats, movieFilter);
+  const effectiveSeriesCats = filterCategoriesByWhitelist(seriesCats, seriesFilter);
 
   // Movies — per-category to keep response size manageable for large providers.
   let movieCursor = 0;
@@ -215,7 +215,8 @@ export async function syncXtreamCatalog(
           backdropUrl: null,
           categoryId: Number.parseInt(m.category_id, 10) + 1_000_000 || null,
           categoryName: cat.category_name,
-          streamUrl: xtream.vodStreamUrl(creds, m.stream_id, m.container_extension || "mp4"),
+          // M-3: rebuilt at play time from streamId + containerExtension.
+          streamUrl: "",
           containerExtension: m.container_extension || null,
           plot: null,
           cast: null,
@@ -325,7 +326,8 @@ export async function loadSeriesEpisodes(provider: Provider, seriesId: number): 
         title: e.title ?? `Episode ${e.episode_num ?? 0}`,
         episodeNumber: e.episode_num ?? 0,
         seasonNumber,
-        streamUrl: xtream.seriesEpisodeUrl(creds, Number.parseInt(e.id, 10), e.container_extension || "mp4"),
+        // M-3: rebuilt at play time from episodeId + containerExtension.
+        streamUrl: "",
         containerExtension: e.container_extension ?? null,
         coverUrl: e.info?.movie_image ?? null,
         plot: e.info?.plot ?? null,
