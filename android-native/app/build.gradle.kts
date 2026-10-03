@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -22,24 +24,26 @@ val appVersionCode: Int = run {
     parts[0] * 10_000 + parts[1] * 100 + parts[2]
 }
 
-// Remote-telemetry endpoint + token. Previously hardcoded as consts inside
-// RemoteLog.kt and baked into the APK. They are now BuildConfig fields so the
-// values can be overridden per build without touching source — via a Gradle
-// property (-PULTRA_LOG_URL=... / gradle.properties) or an environment variable
-// (ULTRA_LOG_URL / ULTRA_LOG_TOKEN). The defaults below are the historical
-// production values, so a plain local/CI build behaves exactly as before.
-// Rotate these in lock-step with the worker secret.
+// Remote-telemetry endpoint + token. BuildConfig fields, never hardcoded: the token
+// is read from (in order) a Gradle property, local.properties (git-ignored) or the
+// environment variable ULTRA_LOG_TOKEN. WITHOUT a token telemetry is simply
+// disabled (RemoteLog is a no-op) — the repo is public, a committed token would
+// give anyone access to the crash/log dashboards. The URL is not secret and keeps
+// its production default.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
 fun resolveBuildConfigValue(name: String, default: String): String =
     (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
+        ?: localProps.getProperty(name)?.takeIf { it.isNotBlank() }
         ?: System.getenv(name)?.takeIf { it.isNotBlank() }
         ?: default
 
 val ultraLogUrl = resolveBuildConfigValue(
     "ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev",
 )
-val ultraLogToken = resolveBuildConfigValue(
-    "ULTRA_LOG_TOKEN", "f-w31zHuqg0ntBPRSJtOVEXGB55B9uv5",
-)
+val ultraLogToken = resolveBuildConfigValue("ULTRA_LOG_TOKEN", "")
 
 android {
     namespace = "com.ultratv.tv.nativeapp"

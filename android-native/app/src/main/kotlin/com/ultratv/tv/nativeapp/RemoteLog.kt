@@ -58,6 +58,9 @@ object RemoteLog {
      *  Defaults to true so the dashboard keeps catching crashes out of the box. */
     @Volatile var telemetryEnabled: Boolean = true
 
+    /** Sans jeton (build public sans ULTRA_LOG_TOKEN) la télémétrie est désactivée. */
+    private val configured: Boolean get() = TOKEN.isNotBlank()
+
     /**
      * Strip embedded credentials and stream URLs from any message bound for
      * the dashboard. Xtream URLs ship the user/pass in the path so logging
@@ -95,7 +98,7 @@ object RemoteLog {
         // Try to ship anything that survived a previous crash. crashSync's
         // synchronous POST can be cut short by the dying process; this is the
         // safety net that runs from the next clean start.
-        scope.launch { flushPendingCrash() }
+        if (configured) scope.launch { flushPendingCrash() }
     }
 
     private fun pendingCrashFile(): java.io.File? {
@@ -106,7 +109,7 @@ object RemoteLog {
 
     private fun flushPendingCrash() {
         val ctx = contextInfo ?: return
-        if (!telemetryEnabled) return
+        if (!telemetryEnabled || !configured) return
         val file = pendingCrashFile() ?: return
         if (!file.exists() || file.length() == 0L) return
         val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
@@ -134,7 +137,7 @@ object RemoteLog {
     /** Ship a non-fatal log/event. Returns immediately; HTTP happens off-thread. */
     fun event(tag: String, message: String, level: String = "info") {
         val ctx = contextInfo ?: return
-        if (!telemetryEnabled) return
+        if (!telemetryEnabled || !configured) return
         val safeMessage = sanitize(message)
         scope.launch {
             runCatching {
@@ -180,7 +183,7 @@ object RemoteLog {
         runCatching { pendingCrashFile()?.appendText(payload + "\n\n", Charsets.UTF_8) }
 
         // 2. Best-effort live upload. Honour the user's telemetry toggle.
-        if (!telemetryEnabled) return
+        if (!telemetryEnabled || !configured) return
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)
