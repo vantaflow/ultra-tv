@@ -13,6 +13,7 @@ import com.ultratv.tv.nativeapp.data.parental.ParentalStore
 import com.ultratv.tv.nativeapp.data.stalker.StalkerClient
 import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -33,6 +34,7 @@ class ProviderRepository @Inject constructor(
     private val syncStatus: SyncStatusBus,
     private val xmltv: XmltvParser,
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
+    private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -105,11 +107,15 @@ class ProviderRepository @Inject constructor(
             val pinSet = parental.isSet()
             val cats = if (!pinSet) res.categories
             else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
-            categoryDao.deleteForProviderKind(p.id, "LIVE")
-            categoryDao.upsertAll(cats)
-            channelDao.deleteForProvider(p.id)
-            step("Saving ${res.channels.size} channels…", 90)
-            insertChunked(res.channels) { channelDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "LIVE")
+                categoryDao.upsertAll(cats)
+                channelDao.deleteForProvider(p.id)
+                step("Saving ${res.channels.size} channels…", 90)
+                insertChunked(res.channels) { channelDao.upsertAll(it) }
+            }
             step("Done — ${res.channels.size} channels", 100)
             return res.channels.size
         } finally {
@@ -152,31 +158,43 @@ class ProviderRepository @Inject constructor(
             val liveCats = stalker.fetchLiveCategories(p, s).let(::maybeLock)
             step("Fetching live channels…", 25)
             val chans = stalker.fetchLiveChannels(p, s)
-            categoryDao.deleteForProviderKind(p.id, "LIVE")
-            categoryDao.upsertAll(liveCats)
-            channelDao.deleteForProvider(p.id)
-            step("Saving ${chans.size} channels…", 40)
-            insertChunked(chans) { channelDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "LIVE")
+                categoryDao.upsertAll(liveCats)
+                channelDao.deleteForProvider(p.id)
+                step("Saving ${chans.size} channels…", 40)
+                insertChunked(chans) { channelDao.upsertAll(it) }
+            }
 
             step("Fetching VOD categories…", 55)
             val vodCats = stalker.fetchVodCategories(p, s).let(::maybeLock)
             step("Fetching VOD…", 65)
             val movies = stalker.fetchVodMovies(p, s)
-            categoryDao.deleteForProviderKind(p.id, "MOVIE")
-            categoryDao.upsertAll(vodCats)
-            movieDao.deleteForProvider(p.id)
-            step("Saving ${movies.size} movies…", 75)
-            insertChunked(movies) { movieDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "MOVIE")
+                categoryDao.upsertAll(vodCats)
+                movieDao.deleteForProvider(p.id)
+                step("Saving ${movies.size} movies…", 75)
+                insertChunked(movies) { movieDao.upsertAll(it) }
+            }
 
             step("Fetching series categories…", 85)
             val serCats = stalker.fetchSeriesCategories(p, s).let(::maybeLock)
             step("Fetching series…", 90)
             val series = stalker.fetchSeries(p, s)
-            categoryDao.deleteForProviderKind(p.id, "SERIES")
-            categoryDao.upsertAll(serCats)
-            seriesDao.deleteForProvider(p.id)
-            step("Saving ${series.size} series…", 95)
-            insertChunked(series) { seriesDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "SERIES")
+                categoryDao.upsertAll(serCats)
+                seriesDao.deleteForProvider(p.id)
+                step("Saving ${series.size} series…", 95)
+                insertChunked(series) { seriesDao.upsertAll(it) }
+            }
 
             step("Done — ${chans.size} live · ${movies.size} VOD · ${series.size} series", 100)
             return chans.size + movies.size + series.size
@@ -204,10 +222,7 @@ class ProviderRepository @Inject constructor(
         try {
             step("Fetching xmltv…", 10)
             // Build (xmltv channel id → local channel id) map for matching.
-            val all = channelDao.observeForProvider(providerId).first()
-            val map = all
-                .mapNotNull { ch -> ch.epgChannelId?.takeIf { it.isNotBlank() }?.let { it to ch.id } }
-                .toMap()
+            val map = channelDao.epgMapping(providerId).associate { it.epgChannelId to it.id }
             if (map.isEmpty()) {
                 step("No xmltv channel IDs available for this provider", 100)
                 return 0
@@ -215,8 +230,10 @@ class ProviderRepository @Inject constructor(
             step("Parsing xmltv (matching ${map.size} channels)…", 30)
             val programmes = xmltv.fetchAndParse(p, map)
             step("Saving ${programmes.size} programmes…", 75)
-            epgDao.deleteForProvider(p.id)
-            programmes.chunked(500).forEach { epgDao.upsertAll(it) }
+            db.withTransaction {
+                epgDao.deleteForProvider(p.id)
+                programmes.chunked(500).forEach { epgDao.upsertAll(it) }
+            }
             step("Done — ${programmes.size} programmes", 100)
             return programmes.size
         } catch (t: Throwable) {
@@ -316,31 +333,43 @@ class ProviderRepository @Inject constructor(
             val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
             step("Live channels…", 15)
             val chans = xtream.fetchLiveStreams(p)
-            categoryDao.deleteForProviderKind(p.id, "LIVE")
-            categoryDao.upsertAll(liveCats)
-            channelDao.deleteForProvider(p.id)
-            step("Saving ${chans.size} channels…", 25)
-            insertChunked(chans) { channelDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "LIVE")
+                categoryDao.upsertAll(liveCats)
+                channelDao.deleteForProvider(p.id)
+                step("Saving ${chans.size} channels…", 25)
+                insertChunked(chans) { channelDao.upsertAll(it) }
+            }
 
             step("Movie categories…", 35)
             val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
             step("Movies (${movCats.size} categories)…", 45)
             val movs = xtream.fetchVodStreams(p)
-            categoryDao.deleteForProviderKind(p.id, "MOVIE")
-            categoryDao.upsertAll(movCats)
-            movieDao.deleteForProvider(p.id)
-            step("Saving ${movs.size} movies…", 55)
-            insertChunked(movs) { movieDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "MOVIE")
+                categoryDao.upsertAll(movCats)
+                movieDao.deleteForProvider(p.id)
+                step("Saving ${movs.size} movies…", 55)
+                insertChunked(movs) { movieDao.upsertAll(it) }
+            }
 
             step("Series categories…", 70)
             val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
             step("Series…", 80)
             val series = xtream.fetchSeries(p)
-            categoryDao.deleteForProviderKind(p.id, "SERIES")
-            categoryDao.upsertAll(serCats)
-            seriesDao.deleteForProvider(p.id)
-            step("Saving ${series.size} series…", 95)
-            insertChunked(series) { seriesDao.upsertAll(it) }
+            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
+            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
+            db.withTransaction {
+                categoryDao.deleteForProviderKind(p.id, "SERIES")
+                categoryDao.upsertAll(serCats)
+                seriesDao.deleteForProvider(p.id)
+                step("Saving ${series.size} series…", 95)
+                insertChunked(series) { seriesDao.upsertAll(it) }
+            }
 
             step("Done — ${chans.size} live · ${movs.size} movies · ${series.size} series", 100)
             return chans.size + movs.size + series.size

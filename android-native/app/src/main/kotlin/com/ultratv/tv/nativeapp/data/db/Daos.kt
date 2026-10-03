@@ -45,6 +45,17 @@ interface ChannelDao {
     """)
     fun observeForProvider(pid: Long): Flow<List<ChannelEntity>>
 
+    /** Les [limit] premières chaînes seulement (rails de l'accueil) : charger les
+     *  40 000 lignes pour n'en garder que 30 saturait le CPU à chaque lot inséré. */
+    @Query("""
+        SELECT * FROM channel WHERE providerId = :pid
+        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
+                 userPosition,
+                 name COLLATE NOCASE ASC
+        LIMIT :limit
+    """)
+    fun observeTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat
         ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
@@ -52,6 +63,10 @@ interface ChannelDao {
                  name COLLATE NOCASE ASC
     """)
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
+
+    /** Seulement (id, epgChannelId) : évite de charger 40 000 entités complètes pour l'EPG. */
+    @Query("SELECT id, epgChannelId FROM channel WHERE providerId = :pid AND epgChannelId IS NOT NULL AND epgChannelId != ''")
+    suspend fun epgMapping(pid: Long): List<EpgMapping>
 
     /** Atomic position update. Swap two channels by calling twice in a transaction. */
     @Query("UPDATE channel SET userPosition = :pos WHERE id = :id")
@@ -86,6 +101,9 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
     fun observeForProvider(pid: Long): Flow<List<MovieEntity>>
 
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
+    fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
+
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
     fun observeForCategory(pid: Long, cat: String): Flow<List<MovieEntity>>
 
@@ -112,6 +130,9 @@ interface MovieDao {
 interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
     fun observeForProvider(pid: Long): Flow<List<SeriesEntity>>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
+    fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
     fun observeForCategory(pid: Long, cat: String): Flow<List<SeriesEntity>>
@@ -244,3 +265,5 @@ interface EpgDao {
     @Query("SELECT * FROM epg WHERE channelId = :cid AND endMs >= :fromMs AND startMs <= :toMs ORDER BY startMs")
     suspend fun forChannelInRange(cid: Long, fromMs: Long, toMs: Long): List<EpgEntity>
 }
+
+data class EpgMapping(val id: Long, val epgChannelId: String)

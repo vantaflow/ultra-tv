@@ -25,64 +25,59 @@ data class M3uResult(val channels: List<ChannelEntity>, val categories: List<Cat
 class M3uParser @Inject constructor(private val ok: OkHttpClient) {
 
     suspend fun fetch(url: String, providerId: Long): M3uResult = withContext(Dispatchers.IO) {
-        val body = ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+        // Lecture en flux : on ne matérialise ni le corps (jusqu'à plusieurs dizaines
+        // de Mo) ni la liste de toutes ses lignes, ce qui faisait grimper le tas
+        // d'une box à 1-2 Go jusqu'au GC en boucle.
+        ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
             if (!resp.isSuccessful) error("HTTP ${resp.code} fetching M3U")
-            resp.body?.string().orEmpty()
+            val body = resp.body ?: return@use M3uResult(emptyList(), emptyList())
+            body.charStream().buffered().use { parse(it, providerId) }
         }
-        parse(body, providerId)
     }
 
     private val attrRegex = Regex("""([\w-]+)="([^"]*)"""")
 
-    fun parse(text: String, providerId: Long): M3uResult {
-        val lines = text.lineSequence().map { it.trim() }.toList()
-        val channels = mutableListOf<ChannelEntity>()
+    fun parse(text: String, providerId: Long): M3uResult =
+        text.reader().buffered().use { parse(it, providerId) }
+
+    /** Parse ligne à ligne : un `#EXTINF` est associé à la prochaine ligne non-commentaire. */
+    fun parse(reader: java.io.BufferedReader, providerId: Long): M3uResult {
+        val channels = ArrayList<ChannelEntity>()
         val groupsSeen = LinkedHashMap<String, CategoryEntity>()
-
-        var i = 0
         var seq = 0
-        while (i < lines.size) {
-            val line = lines[i]
-            if (line.startsWith("#EXTINF")) {
-                // Parse attributes and the trailing display name.
-                val attrs = attrRegex.findAll(line).associate { it.groupValues[1] to it.groupValues[2] }
-                val displayName = line.substringAfterLast(',', "").trim().ifBlank { attrs["tvg-name"] ?: "Channel" }
-                val logo = attrs["tvg-logo"]
-                val group = attrs["group-title"]?.takeIf { it.isNotBlank() }
 
-                // Find the next non-comment line as the stream URL.
-                var j = i + 1
-                while (j < lines.size && lines[j].startsWith("#")) j++
-                val url = lines.getOrNull(j)?.takeIf { it.isNotBlank() && !it.startsWith("#") }
-                if (url != null) {
-                    if (group != null && group !in groupsSeen) {
-                        groupsSeen[group] = CategoryEntity(
-                            providerId = providerId, kind = "LIVE",
-                            remoteId = "g:$group", name = group,
-                        )
-                    }
-                    val tvgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() }
-                    // Catchup metadata: providers may ship `catchup="default"` /
-                    // `catchup="append"` plus a `catchup-source` URL template
-                    // and `catchup-days` retention window.
-                    val catchupSrc = attrs["catchup-source"]?.takeIf { it.isNotBlank() }
-                    val catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0
-                    channels += ChannelEntity(
-                        providerId = providerId,
-                        remoteId = tvgId ?: "m3u-${seq++}",
-                        name = displayName,
-                        logo = logo,
-                        categoryId = group?.let { "g:$it" },
-                        streamUrl = url,
-                        epgChannelId = tvgId,
-                        catchupSource = catchupSrc,
-                        catchupDays = catchupDays,
-                    )
-                    i = j + 1
-                    continue
-                }
+        var pending: String? = null   // dernière ligne #EXTINF en attente d'URL
+        while (true) {
+            val raw = reader.readLine() ?: break
+            val line = raw.trim()
+            if (line.isEmpty()) continue
+            if (line.startsWith("#EXTINF")) { pending = line; continue }
+            if (line.startsWith("#")) continue
+            val info = pending ?: continue
+            pending = null
+
+            val attrs = attrRegex.findAll(info).associate { it.groupValues[1] to it.groupValues[2] }
+            val displayName = info.substringAfterLast(',', "").trim().ifBlank { attrs["tvg-name"] ?: "Channel" }
+            val group = attrs["group-title"]?.takeIf { it.isNotBlank() }
+            if (group != null && group !in groupsSeen) {
+                groupsSeen[group] = CategoryEntity(
+                    providerId = providerId, kind = "LIVE",
+                    remoteId = "g:$group", name = group,
+                )
             }
-            i++
+            val tvgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() }
+            channels += ChannelEntity(
+                providerId = providerId,
+                remoteId = tvgId ?: "m3u-${seq++}",
+                name = displayName,
+                logo = attrs["tvg-logo"],
+                categoryId = group?.let { "g:$it" },
+                streamUrl = line,
+                epgChannelId = tvgId,
+                // Rattrapage : `catchup-source` + `catchup-days` (voir Catchup.kt).
+                catchupSource = attrs["catchup-source"]?.takeIf { it.isNotBlank() },
+                catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+            )
         }
         return M3uResult(channels, groupsSeen.values.toList())
     }

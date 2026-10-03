@@ -51,15 +51,15 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val featuredMovies: StateFlow<List<MovieEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.movies(id).map { l -> l.take(20) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topMovies(id, 20) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val featuredSeries: StateFlow<List<SeriesEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.seriesList(id).map { l -> l.take(20) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topSeries(id, 20) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val featuredChannels: StateFlow<List<ChannelEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.channels(id).map { l -> l.take(30) } }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topChannels(id, 30) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Sets the playback context from a history entry so the player can record proper context. */
