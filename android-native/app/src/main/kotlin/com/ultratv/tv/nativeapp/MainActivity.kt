@@ -16,6 +16,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
@@ -85,7 +86,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // SplashScreen API : affiche le thème de lancement tout de suite et évite
         // l'écran noir pendant l'init Hilt/Room.
-        androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
@@ -201,6 +202,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
+        com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
         UltraTvTheme(theme = prefs.theme) {
             // L'assistant de premier lancement REMPLACE l'application au lieu de
             // se superposer : avant, l'accueil restait composé derrière (premier
@@ -214,8 +216,15 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                     onOpenSettings = { /* user can re-enter Settings via sidebar */ },
                     vm = onboarding,
                 )
-                false -> UltraTvAppRoot(prefs.sidebarPosition)
+                false -> Box(
+                    Modifier.fillMaxSize().padding(
+                        horizontal = com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateLeftPadding(
+                            androidx.compose.ui.unit.LayoutDirection.Ltr,
+                        ),
+                    ),
+                ) { UltraTvAppRoot(prefs.sidebarPosition) }
             }
+        }
         }
     }
 }
@@ -246,34 +255,34 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         when {
             useBottomBar -> Column(Modifier.fillMaxSize()) {
-                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
+                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
                 Box(
                     Modifier
                         .weight(1f)
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(PaddingValues(horizontal = 12.dp, vertical = 8.dp)),
+                        .padding(PaddingValues(horizontal = 12.dp)),
                 ) { NavGraph(nav) }
                 BottomBarNav(navController = nav)
             }
             useTopBar -> Column(Modifier.fillMaxSize()) {
-                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
+                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
                 TopBarNav(navController = nav)
                 Box(
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(PaddingValues(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 16.dp)),
+                        .padding(PaddingValues(start = 24.dp, end = 24.dp)),
                 ) { NavGraph(nav) }
             }
             else -> Column(Modifier.fillMaxSize()) {
-                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner()
+                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
                 Row(Modifier.fillMaxSize()) {
                     SidebarNav(navController = nav)
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
-                            .padding(PaddingValues(start = 12.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)),
+                            .padding(PaddingValues(start = 12.dp, end = 24.dp)),
                     ) { NavGraph(nav) }
                 }
             }

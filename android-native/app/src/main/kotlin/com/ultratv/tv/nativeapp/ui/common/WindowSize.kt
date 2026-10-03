@@ -1,7 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.common
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalConfiguration
 
 /** Three-bucket form-factor used by the adaptive nav / layout switches. */
 enum class FormFactor { Compact, Medium, Expanded }
@@ -19,7 +18,9 @@ enum class FormFactor { Compact, Medium, Expanded }
  */
 @Composable
 fun rememberFormFactor(): FormFactor {
-    val w = LocalConfiguration.current.screenWidthDp
+    // Largeur en dp de l'interface (densité normalisée sur TV, voir ProvideUiScale).
+    val provided = LocalUiWidthDp.current
+    val w = if (provided > 0f) provided.toInt() else androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp
     return when {
         w < 600 -> FormFactor.Compact
         w < 840 -> FormFactor.Medium
