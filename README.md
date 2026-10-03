@@ -57,7 +57,7 @@ Logo "variant C" : dégradé rouge `#FF3A2F → #7A0E08`, trois ondes de diffusi
 
 Ultra TV is a **fully native** Android TV IPTV client. D-pad navigation is handled by Compose-TV's focus tree (no WebView bridges), playback uses Media3 / ExoPlayer for native codec support, and the whole catalog (channels, movies, series, EPG, history, favorites) lives in a local Room database. It speaks **Xtream Codes**, **M3U / M3U8** (URL or local file), and **Stalker Portal** out of the box.
 
-A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based remote-config dashboard so users can provision their providers from a web browser and have the TV pull them in one click.
+A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a remote-config dashboard so users can provision their providers from a web browser and have the TV pull them in one click. The TV is **paired** with the dashboard account by a short code (no shared secret in the APK, no anonymous reads) — see [cloudflare-config/README.md](cloudflare-config/README.md).
 
 ## Features
 
@@ -65,7 +65,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🎬 **Xtream Codes** · **M3U URL** · **M3U file from local storage** · **Stalker Portal** with Live + VOD + series catalogues (MAC handshake + lazy `create_link` at play time, including movies)
 - 🔁 **Multi-provider** — add as many as you want, pick the default in Settings (★ Default badge)
 - 🚦 **De-duplication** — re-adding the same `(kind, url, username)` reuses the existing row instead of duplicating
-- 🛰️ **Cloud sync via Cloudflare Worker** — paste your device MAC into the dashboard (login + password), add providers, then the app pulls them with one tap. App reads are anonymous (the MAC, hashed from `ANDROID_ID`, is the bearer); only dashboard mutations require the per-MAC password.
+- 🛰️ **Cloud sync via Cloudflare Worker** — create a dashboard account, press **Pair** in Settings, type the 8-character code shown on the TV into the dashboard, add providers, then the app pulls them with one tap. The TV holds a random 256-bit **device token** (stored hashed server-side, encrypted in the Android Keystore on the device, revocable from the dashboard). Provider credentials are encrypted at rest (AES-GCM) on the Worker. The MAC is a display label only, never a key.
 - ⏱️ **Background sync via WorkManager** (every 6 / 12 / 24 h, or every launch)
 - 📈 **Live sync progress banner** pinned to the top of every screen during sync
 
@@ -117,7 +117,7 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 ### Security
 - 🔐 **Parental PIN** (SHA-256, DataStore-backed) — auto-locks adult categories on each sync when a PIN is set
 - 🔒 **Per-channel lock** — Settings → Manage locked channels lets you flag individual channels; play prompts for the PIN
-- 🆔 **Stable per-device MAC** derived from `ANDROID_ID` (hashed) — never the real WiFi MAC
+- 🆔 **Stable per-device label** derived from `ANDROID_ID` (hashed) — shown in the dashboard next to your paired TV; **not a secret and not an access key**
 
 ### Performance
 - 🖼️ **Coil ImageLoader** with 25 %-heap memory + 256 MB disk cache (no re-downloads on scroll)
@@ -133,10 +133,10 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 - 🔄 **In-app self-update** (v1.0.5+) — the app pings GitHub Releases on launch, compares versionCode, and pops a dialog with a progress bar that downloads + installs the new APK via PackageInstaller. First update prompts once for "Install unknown apps"; subsequent updates are one-tap. No Play Store, no third-party updater required.
 
 ### Telemetry & crash reporting
-- 🛰️ **Cloudflare Worker ingest** — every crash + ad-hoc `RemoteLog.info/warn/error/debug(...)` event is POSTed directly to the worker. No local crash.txt; no ADB pulls.
-- 📒 **Crash dashboard** — `GET /crashes?token=…` returns an HTML page with expandable stack traces, device + version columns, 30-day rolling window.
-- 🪵 **Event dashboard** — `GET /logs?token=…` table with level colouring (debug / info / warn / error), 7-day rolling window.
-- 🔑 Token-gated via `env.CRASH_TOKEN` (fallback to `env.ADMIN_PASSWORD`). The app ships the URL + token baked in so every install reports automatically.
+- 🛰️ **Cloudflare Worker ingest** — every crash + ad-hoc `RemoteLog.info/warn/error/debug(...)` event is POSTed to the worker with the paired device's token (nothing is sent until the TV is paired). Credentials in URLs are scrubbed on the device **and** again on the server.
+- 📒 **Crash dashboard** — `GET /crashes` (HTTP Basic, password = `OPS_TOKEN`) returns an HTML page with stack traces, 30-day rolling window.
+- 🪵 **Event dashboard** — `GET /logs` (same secret) table with level colouring, 7-day rolling window.
+- 🔑 `OPS_TOKEN` is a **server-side Wrangler secret**, never shipped in the APK and never accepted in a query string. Ingestion is rate-limited and size-capped per device.
 
 ## Quick start
 
@@ -145,10 +145,10 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a MAC-based
 1. Install the **Downloader** app on your Android TV box from Google Play.
 2. Open Downloader, enter code **`5248504`**, press **Go**.
 3. Allow install from unknown sources when prompted; install the APK.
-4. On first launch, you'll see a **First-time setup** card with your device MAC.
+4. On first launch, you'll see a **First-time setup** card with your device label.
 5. Either:
    - Open **Settings** → tap **+ Xtream / + M3U URL / + M3U file / + Stalker portal** and fill in the form.
-   - **Or** self-host the Cloudflare Worker, provision your MAC in its dashboard, then **Sync from cloud**.
+   - **Or** self-host the Cloudflare Worker, create an account, **Pair** the TV with the code it displays, then **Sync from cloud**.
 
 From v1.0.5 onwards you only need Downloader for the *first* install — the app auto-updates itself from GitHub Releases.
 
@@ -176,18 +176,20 @@ For a smaller signed release build:
 
 ```bash
 cd cloudflare-config
-npm i -g wrangler
+npm ci
 
-wrangler kv:namespace create CONFIG             # paste id/preview_id into wrangler.toml
-wrangler kv:namespace create CONFIG --preview
-wrangler secret put ADMIN_PASSWORD              # strong password — dashboard login
-wrangler secret put CRASH_TOKEN                 # optional: rotate the crash-report token away from the admin one
-wrangler deploy
+wrangler kv namespace create CONFIG              # paste id/preview_id into wrangler.toml
+wrangler kv namespace create CONFIG --preview
+wrangler secret put SESSION_SECRET               # >= 32 random chars (openssl rand -base64 48)
+wrangler secret put PROVIDER_ENC_KEY             # AES-256 key (openssl rand -base64 32)
+wrangler secret put OPS_TOKEN                    # >= 32 chars: /crashes and /logs password
+npm test                                         # vitest, fake secrets
+wrangler deploy --dry-run                        # validate; drop --dry-run to really deploy
 ```
 
-The Worker URL printed by wrangler is what you paste in the app's Settings → **Change** next to the Worker URL field, and is also the host of the crash + event dashboards (`/crashes?token=…`, `/logs?token=…`).
+Full procedure, route table, pairing flow and **migration of existing data**: [cloudflare-config/README.md](cloudflare-config/README.md). The Worker URL is what you paste in the app's Settings → **Change**; it is also the host of the dashboards. The old `ADMIN_PASSWORD` / `CRASH_TOKEN` secrets are no longer read: the Worker refuses to start without the new ones.
 
-If you fork the project, swap the hard-coded `WORKER_URL` + `TOKEN` constants in `android-native/.../RemoteLog.kt` and `UpdateChecker.kt` so your installs report to *your* worker, not the upstream one.
+If you fork the project, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev` (or the `ULTRA_WORKER_URL` env var) so your installs talk to *your* worker. There is no token to swap any more: each device gets its own at pairing time. The hard-coded telemetry token of ≤ v1.0.30 must be considered **compromised** (see [SECURITY.md](SECURITY.md#worker-token-rotation-and-compromised-legacy-secrets)).
 
 ## Architecture
 
@@ -225,7 +227,7 @@ android-native/
 │       ├── categories/         (Hide / Show + bulk)
 │       ├── player/             (Media3 PlayerView wrapper)
 │       └── settings/           (editorial header + section cards + AddProviderDialogs)
-└── cloudflare-config/          (Worker: KV-backed config per MAC + crash & event dashboards)
+└── cloudflare-config/          (Worker: accounts + device pairing, encrypted providers, crash & event dashboards)
 ```
 
 ## Roadmap
@@ -238,7 +240,7 @@ In active development / next iterations:
 
 Recently landed:
 
-- 🔓 **Anonymous worker sync (v1.0.8)** — the app no longer needs the per-MAC password to pull its config. The dashboard `/login` still gates mutations.
+- 🔓 ~~Anonymous worker sync (v1.0.8)~~ — **removed**: reading config by MAC alone exposed provider credentials. Replaced by device pairing + revocable tokens.
 - 🎯 **Settings dialog focus (v1.0.8)** — text fields grab D-pad focus on dialog open and show an accent-tinted border so the cursor is visible.
 - 🔁 **Update dialog loop fix (v1.0.8)** — local + remote versions are now compared on the same packed-semver scale; no more "update available" popping after every install.
 - 🪟 **Auto-update via system installer (v1.0.6)** — switched from PackageInstaller sessions to `ACTION_VIEW` + FileProvider so the OS install activity handles the APK. Works on Fire TV, Mecool, vivo boxes that rejected the session path.
