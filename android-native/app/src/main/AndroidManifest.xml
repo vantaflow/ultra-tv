@@ -46,7 +46,7 @@
             android:supportsPictureInPicture="true"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density|fontScale"
             android:resizeableActivity="true"
-            android:theme="@style/Theme.UltraTv">
+            android:theme="@style/Theme.UltraTv.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

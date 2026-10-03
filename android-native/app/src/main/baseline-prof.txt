@@ -1,0 +1,24 @@
+# Baseline Profile écrit à la main (règles à jokers, format ART) : indique à ART de
+# compiler en AOT les chemins du démarrage et de la navigation D-pad au lieu de les
+# interpréter/JIT au premier lancement, ce qui pèse lourd sur un CPU de Chromecast.
+# À régénérer avec un module Macrobenchmark quand un appareil de référence est disponible.
+HSPLcom/ultratv/tv/nativeapp/UltraTvApp;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/MainActivity;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/MainActivityKt;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/RemoteLog;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/common/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/components/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/home/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/onboarding/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/live/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/theme/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/i18n/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/db/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/repo/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/prefs/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/security/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/di/**;->**(**)**
+Lcom/ultratv/tv/nativeapp/**;
+HSPLandroidx/compose/ui/focus/**;->**(**)**
+HSPLandroidx/compose/foundation/lazy/**;->**(**)**
+HSPLandroidx/tv/**;->**(**)**

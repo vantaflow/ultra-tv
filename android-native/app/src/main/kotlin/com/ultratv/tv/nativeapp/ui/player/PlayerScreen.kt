@@ -249,7 +249,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         // playback" threshold should always be very small so live TV starts
         // immediately (the user's complaint: "rien ne se lit" — the player
         // was waiting on 5 s of buffer before going READY).
+        val lowRam = com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(context)
+        // Entrée de gamme (1-2 Go) : tampon plafonné à 15 s / 16 Mo pour ne pas
+        // pousser le GC ni se faire tuer pendant la lecture.
         val bufMs = (playbackPrefs.bufferSeconds * 1000).coerceAtLeast(5_000)
+            .let { if (lowRam) it.coerceAtMost(15_000) else it }
         val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
             .setBufferDurationsMs(
                 /* minBufferMs                       = */ 5_000,
@@ -257,7 +261,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 /* bufferForPlaybackMs               = */ 500,
                 /* bufferForPlaybackAfterRebufferMs  = */ 1_500,
             )
-            .setPrioritizeTimeOverSizeThresholds(true)
+            .setPrioritizeTimeOverSizeThresholds(!lowRam)
+            .apply { if (lowRam) setTargetBufferBytes(16 * 1024 * 1024) }
             .build()
         // Pluggable DataSource: HTTP/HTTPS go through the default OkHttp
         // pipeline, rtmp:// + rtmps:// URLs go through RtmpDataSource. The
@@ -301,6 +306,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             // Hardware renderers first by default; flipping the pref pushes the
             // software decoder ahead so finicky streams (HEVC main10 on cheap
             // boxes, malformed HLS variant tags) fall back gracefully.
+            // Décodage matériel d'abord (MediaCodec) ; repli sur un autre décodeur si le
+            // premier échoue à l'initialisation plutôt qu'une erreur de lecture.
+            setEnableDecoderFallback(true)
             setExtensionRendererMode(
                 if (playbackPrefs.preferSoftwareDecoder)
                     androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER

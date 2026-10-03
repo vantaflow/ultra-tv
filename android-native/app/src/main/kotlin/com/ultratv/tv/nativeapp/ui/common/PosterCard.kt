@@ -53,8 +53,9 @@ fun PosterCard(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    val lowRam = LocalLowRam.current
     val scale by animateFloatAsState(
-        targetValue = if (focused) 1.08f else 1.0f,
+        targetValue = if (focused && !lowRam) 1.08f else 1.0f,
         animationSpec = tween(durationMillis = 280),
         label = "poster-scale",
     )

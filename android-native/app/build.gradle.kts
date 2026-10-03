@@ -181,6 +181,9 @@ dependencies {
     implementation(libs.compose.tv.material)
     debugImplementation(libs.compose.ui.tooling)
 
+    implementation("androidx.core:core-splashscreen:1.0.1")
+    // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime)
     implementation(libs.lifecycle.viewmodel)

@@ -8,4 +8,11 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
+
+    <!-- Thème de lancement (SplashScreen API) : fond immédiat, puis bascule sur Theme.UltraTv. -->
+    <style name="Theme.UltraTv.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/bg</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.UltraTv</item>
+    </style>
 </resources>

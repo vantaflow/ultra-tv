@@ -83,6 +83,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var playback: PlaybackContext
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // SplashScreen API : affiche le thème de lancement tout de suite et évite
+        // l'écran noir pendant l'init Hilt/Room.
+        androidx.core.splashscreen.SplashScreen.installSplashScreen(this)
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
@@ -93,6 +96,9 @@ class MainActivity : ComponentActivity() {
         // asking the user first. They still get the OS's "Install this app?"
         // prompt — that one can't be skipped without device-owner privileges.
         lifecycleScope.launch {
+            // Pas pendant le démarrage : on laisse l'interface devenir interactive d'abord
+            // (et l'invite système d'installation ne vole pas le focus au lancement).
+            kotlinx.coroutines.delay(30_000)
             val info = com.ultratv.tv.nativeapp.update.UpdateChecker.checkForUpdate()
                 ?: return@launch
             com.ultratv.tv.nativeapp.RemoteLog.info(
@@ -180,13 +186,18 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun Root(vm: AppViewModel = hiltViewModel()) {
     val prefs by vm.prefs.collectAsState()
+    val ctxForDevice = androidx.compose.ui.platform.LocalContext.current
     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(prefs.language)
     val strings = com.ultratv.tv.nativeapp.i18n.stringsFor(lang)
     val direction = if (lang == com.ultratv.tv.nativeapp.i18n.AppLang.Arabic)
         androidx.compose.ui.unit.LayoutDirection.Rtl
     else
         androidx.compose.ui.unit.LayoutDirection.Ltr
+    val lowRam = androidx.compose.runtime.remember {
+        com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(ctxForDevice)
+    }
     androidx.compose.runtime.CompositionLocalProvider(
+        com.ultratv.tv.nativeapp.ui.common.LocalLowRam provides lowRam,
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {

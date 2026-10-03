@@ -33,23 +33,29 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
-        .memoryCache {
-            MemoryCache.Builder(this)
-                .maxSizePercent(0.25)
-                .build()
-        }
-        .diskCache {
-            DiskCache.Builder()
-                .directory(cacheDir.resolve("image_cache"))
-                .maxSizeBytes(256L * 1024 * 1024)
-                .build()
-        }
-        .respectCacheHeaders(false)
-        .memoryCachePolicy(CachePolicy.ENABLED)
-        .diskCachePolicy(CachePolicy.ENABLED)
-        .crossfade(true)
-        .build()
+    override fun newImageLoader(): ImageLoader {
+        val low = com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(this)
+        return ImageLoader.Builder(this)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(if (low) 0.12 else 0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizeBytes(if (low) 96L * 1024 * 1024 else 256L * 1024 * 1024)
+                    .build()
+            }
+            .respectCacheHeaders(false)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            // Bitmaps matériels (GPU) : moins de RAM et décodage plus rapide.
+            .allowHardware(true)
+            // Pas de fondu sur l'entrée de gamme : c'est une animation par image chargée.
+            .crossfade(!low)
+            .build()
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -96,8 +102,14 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // for CastContext.getSharedInstance() it doesn't block. We swallow the
         // exception when Google Play Services are absent (some Android TV
         // builds strip them) — the player will just not show the Cast button.
-        runCatching {
-            com.google.android.gms.cast.framework.CastContext.getSharedInstance(this) { it.run() }
+        // En arrière-plan : l'initialisation de Play Services Cast coûte plusieurs
+        // dizaines de ms sur le thread principal au démarrage.
+        bgScope.launch {
+            runCatching {
+                com.google.android.gms.cast.framework.CastContext.getSharedInstance(
+                    this@UltraTvApp, java.util.concurrent.Executors.newSingleThreadExecutor(),
+                )
+            }
         }
     }
 
