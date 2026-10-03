@@ -140,51 +140,58 @@ object UpdateChecker {
     }
 
     /**
-     * If the release published a "<apk>.sha256" sibling asset, fetch the
-     * expected digest and compare it against the SHA-256 of the downloaded
-     * file; abort (delete + throw) on mismatch. When no checksum is published
-     * we proceed but log it — keeps older releases installable (backward
-     * compat). Signing is handled separately by the OS installer; this only
-     * guards against a corrupted / tampered download.
+     * Vérification SHA-256 OBLIGATOIRE : sans fichier `<apk>.sha256` publié sur la
+     * release, ou avec un condensat qui ne correspond pas, l'APK est supprimé et
+     * l'installation refusée (avant : « installing unverified »). Le condensat vient
+     * de la même release, donc cela protège contre une corruption/un téléchargement
+     * altéré, pas contre une release entièrement compromise : seule la signature de
+     * l'APK (vérifiée par Android à l'installation) couvre ce cas.
      */
     private fun verifyChecksum(apk: File, info: UpdateInfo) {
         val url = info.sha256Url
         if (url.isNullOrBlank()) {
-            RemoteLog.warn(TAG, "no sha256 asset for ${info.tag}; installing unverified")
-            return
+            apk.delete()
+            RemoteLog.error(TAG, "no sha256 asset for ${info.tag}; install refused")
+            error("no SHA-256 published for ${info.tag} — install refused")
         }
         val expected = runCatching {
             http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
                 check(resp.isSuccessful) { "sha256 fetch ${resp.code}" }
-                // Accept "<hex>" or "<hex>  filename" (sha256sum format).
-                resp.body?.string()?.trim()?.substringBefore(' ')?.lowercase().orEmpty()
+                parseExpectedDigest(resp.body?.string().orEmpty())
             }
         }.getOrElse {
-            // Couldn't retrieve the published checksum — fail closed: a release
-            // that ships a checksum is asserting integrity matters.
             apk.delete()
             error("checksum download failed for ${info.tag}: ${it.message}")
         }
-        if (expected.isBlank()) {
-            apk.delete()
-            error("empty checksum for ${info.tag}")
-        }
-        val actual = apk.inputStream().use { input ->
-            val md = java.security.MessageDigest.getInstance("SHA-256")
-            val buf = ByteArray(64 * 1024)
-            while (true) {
-                val n = input.read(buf)
-                if (n <= 0) break
-                md.update(buf, 0, n)
-            }
-            md.digest().joinToString("") { "%02x".format(it) }
-        }
-        if (!actual.equals(expected, ignoreCase = true)) {
+        val actual = sha256Hex(apk)
+        if (!digestMatches(expected, actual)) {
             apk.delete()
             RemoteLog.error(TAG, "checksum mismatch for ${info.tag}: expected=$expected actual=$actual")
             error("APK checksum mismatch — install aborted")
         }
         RemoteLog.info(TAG, "checksum verified for ${info.tag}")
+    }
+
+    /** Accepte `<hex>` ou `<hex>  fichier` (format sha256sum). Renvoie "" si illisible. */
+    internal fun parseExpectedDigest(text: String): String {
+        val token = text.trim().substringBefore(' ').substringBefore('\t').substringBefore('\n').lowercase()
+        return if (token.length == 64 && token.all { it in '0'..'9' || it in 'a'..'f' }) token else ""
+    }
+
+    internal fun digestMatches(expected: String, actual: String): Boolean =
+        expected.isNotBlank() && java.security.MessageDigest.isEqual(
+            expected.lowercase().toByteArray(), actual.lowercase().toByteArray(),
+        )
+
+    internal fun sha256Hex(file: File): String = file.inputStream().use { input ->
+        val md = java.security.MessageDigest.getInstance("SHA-256")
+        val buf = ByteArray(64 * 1024)
+        while (true) {
+            val n = input.read(buf)
+            if (n <= 0) break
+            md.update(buf, 0, n)
+        }
+        md.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun downloadApk(ctx: Context, info: UpdateInfo, onProgress: (Float) -> Unit): File {
