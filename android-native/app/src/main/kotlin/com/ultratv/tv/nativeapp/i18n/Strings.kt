@@ -305,6 +305,7 @@ data class Strings(
     // Common buttons (sous-classe : un data class à plus de 254 paramètres produit
     // un DEX invalide — « invalid arg count (0) in range invoke » — avec D8.)
     val common: CommonStrings,
+    val sync: SyncErrorStrings,
 ) {
     val live: String get() = common.live
     val movies: String get() = common.movies
@@ -321,6 +322,34 @@ data class Strings(
     val confirm: String get() = common.confirm
     val dismiss: String get() = common.dismiss
     val change: String get() = common.change
+}
+
+/** Messages d'échec de synchronisation d'une source (voir data/net/NetErrors). */
+data class SyncErrorStrings(
+    val hostNotFound: String,
+    val timeout: String,
+    val unreachable: String,
+    val unauthorized: String,
+    val notFound: String,
+    val providerBlocked: String,
+    val serverError: String,
+    val tls: String,
+    val other: String,
+    val fixSource: String,
+    val retry: String,
+    val title: String,
+) {
+    fun messageFor(kind: com.ultratv.tv.nativeapp.data.net.SyncErrorKind): String = when (kind) {
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.HOST_NOT_FOUND -> hostNotFound
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.TIMEOUT -> timeout
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.UNREACHABLE -> unreachable
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.UNAUTHORIZED -> unauthorized
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.NOT_FOUND -> notFound
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.PROVIDER_BLOCKED -> providerBlocked
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.SERVER_ERROR -> serverError
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.TLS -> tls
+        com.ultratv.tv.nativeapp.data.net.SyncErrorKind.OTHER -> other
+    }
 }
 
 /** Boutons communs, extraits de [Strings] pour rester sous la limite de 255 paramètres. */
@@ -583,6 +612,20 @@ private val EN = Strings(
     recordingStatusFailed = "Failed",
     recordingStatusCancelled = "Cancelled",
 
+    sync = SyncErrorStrings(
+        hostNotFound = "Server not found — check the address",
+        timeout = "The server is not responding",
+        unreachable = "Cannot reach the server",
+        unauthorized = "Credentials refused — check username and password",
+        notFound = "Address not found (404) — check the URL",
+        providerBlocked = "The provider does not allow this kind of access — try Xtream Codes instead of an M3U playlist",
+        serverError = "The provider server has a problem — try again later",
+        tls = "Secure connection failed (certificate)",
+        other = "Synchronisation failed",
+        fixSource = "Fix source",
+        retry = "Retry",
+        title = "Source unreachable",
+    ),
     common = CommonStrings(
         live = "Live TV", movies = "Movies", series = "Series", categories = "Categories",
         tvGuide = "TV Guide", favorites = "Favorites",
@@ -833,6 +876,20 @@ private val FR = Strings(
     recordingStatusFailed = "Échec",
     recordingStatusCancelled = "Annulé",
 
+    sync = SyncErrorStrings(
+        hostNotFound = "Serveur introuvable — vérifiez l'adresse",
+        timeout = "Le serveur ne répond pas",
+        unreachable = "Impossible de joindre le serveur",
+        unauthorized = "Identifiants refusés — vérifiez nom d'utilisateur et mot de passe",
+        notFound = "Adresse introuvable (404) — vérifiez l'URL",
+        providerBlocked = "Le fournisseur n'autorise pas ce type d'accès — utilisez Xtream Codes plutôt qu'une playlist M3U",
+        serverError = "Le serveur du fournisseur a un problème — réessayez plus tard",
+        tls = "Connexion sécurisée impossible (certificat)",
+        other = "La synchronisation a échoué",
+        fixSource = "Corriger la source",
+        retry = "Réessayer",
+        title = "Source injoignable",
+    ),
     common = CommonStrings(
         live = "TV en direct", movies = "Films", series = "Séries", categories = "Catégories",
         tvGuide = "Guide TV", favorites = "Favoris",
@@ -1083,6 +1140,20 @@ private val ES = Strings(
     recordingStatusFailed = "Falló",
     recordingStatusCancelled = "Cancelado",
 
+    sync = SyncErrorStrings(
+        hostNotFound = "Servidor no encontrado — revisa la dirección",
+        timeout = "El servidor no responde",
+        unreachable = "No se puede conectar con el servidor",
+        unauthorized = "Credenciales rechazadas — revisa usuario y contraseña",
+        notFound = "Dirección no encontrada (404) — revisa la URL",
+        providerBlocked = "El proveedor no permite este tipo de acceso — usa Xtream Codes en lugar de una lista M3U",
+        serverError = "El servidor del proveedor tiene un problema — inténtalo más tarde",
+        tls = "Falló la conexión segura (certificado)",
+        other = "Falló la sincronización",
+        fixSource = "Corregir fuente",
+        retry = "Reintentar",
+        title = "Fuente inaccesible",
+    ),
     common = CommonStrings(
         live = "TV en vivo", movies = "Películas", series = "Series", categories = "Categorías",
         tvGuide = "Guía TV", favorites = "Favoritos",
@@ -1333,6 +1404,20 @@ private val AR = Strings(
     recordingStatusFailed = "فشل",
     recordingStatusCancelled = "أُلغي",
 
+    sync = SyncErrorStrings(
+        hostNotFound = "الخادم غير موجود — تحقق من العنوان",
+        timeout = "الخادم لا يستجيب",
+        unreachable = "تعذر الوصول إلى الخادم",
+        unauthorized = "تم رفض بيانات الدخول — تحقق من الاسم وكلمة المرور",
+        notFound = "العنوان غير موجود (404) — تحقق من الرابط",
+        providerBlocked = "المزوّد لا يسمح بهذا النوع من الوصول — استخدم Xtream Codes بدل قائمة M3U",
+        serverError = "خادم المزوّد به مشكلة — حاول لاحقًا",
+        tls = "فشل الاتصال الآمن (الشهادة)",
+        other = "فشلت المزامنة",
+        fixSource = "تصحيح المصدر",
+        retry = "إعادة المحاولة",
+        title = "المصدر غير متاح",
+    ),
     common = CommonStrings(
         live = "البث المباشر", movies = "الأفلام", series = "المسلسلات", categories = "الفئات",
         tvGuide = "دليل التلفاز", favorites = "المفضلة",

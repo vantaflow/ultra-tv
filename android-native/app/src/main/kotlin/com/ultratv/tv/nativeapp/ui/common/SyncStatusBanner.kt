@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import com.ultratv.tv.nativeapp.data.repo.SyncStatusBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,8 +30,17 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 
 @HiltViewModel
-class SyncStatusViewModel @Inject constructor(bus: SyncStatusBus) : ViewModel() {
+class SyncStatusViewModel @Inject constructor(
+    private val bus: SyncStatusBus,
+    private val repo: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
+) : ViewModel() {
     val status = bus.status
+    val failure = bus.failure
+    fun dismissFailure() = bus.clearFailure()
+    fun retry(providerId: Long) {
+        bus.clearFailure(providerId)
+        viewModelScope.launch { runCatching { repo.syncAll(providerId) } }
+    }
 }
 
 /**
@@ -38,8 +49,32 @@ class SyncStatusViewModel @Inject constructor(bus: SyncStatusBus) : ViewModel() 
  */
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
-fun SyncStatusBanner(vm: SyncStatusViewModel = hiltViewModel()) {
+fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hiltViewModel()) {
     val status by vm.status.collectAsState()
+    val failure by vm.failure.collectAsState()
+    // L'application reste utilisable (base locale, favoris, réglages) : l'échec n'est
+    // qu'une bannière avec « Corriger la source » / « Réessayer », jamais un blocage.
+    val f = failure
+    if (f != null && status == null) {
+        val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current.sync
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Color(0xFF3A1014))
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("⚠", fontSize = 14.sp)
+            Text(
+                "${f.provider} · ${S.messageFor(f.kind)}",
+                color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                modifier = Modifier.weight(1f), maxLines = 2,
+            )
+            androidx.tv.material3.Button(onClick = { vm.retry(f.providerId) }) { Text(S.retry, fontSize = 12.sp) }
+            androidx.tv.material3.Button(onClick = { vm.dismissFailure(); onFixSource() }) { Text(S.fixSource, fontSize = 12.sp) }
+        }
+    }
     AnimatedVisibility(
         visible = status != null,
         enter = expandVertically(),

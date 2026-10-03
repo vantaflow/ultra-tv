@@ -126,7 +126,7 @@ class SettingsViewModel @Inject constructor(
             } catch (e: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter.WrongPasswordException) {
                 _message.value = "⚠ Wrong / missing config password — set it in Settings."
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -145,7 +145,7 @@ class SettingsViewModel @Inject constructor(
                 val errs = if (res.errors.isEmpty()) "" else "  ·  ${res.errors.size} error(s): ${res.errors.first()}"
                 _message.value = "Imported ${res.imported} provider(s)$errs"
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -184,7 +184,7 @@ class SettingsViewModel @Inject constructor(
                 val n = repo.syncAll(id) { _message.value = it }
                 _message.value = "Done — $n channels"
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -200,7 +200,7 @@ class SettingsViewModel @Inject constructor(
                 makeDefaultIfNone(id)
                 _message.value = "Imported — restart the Live tab to see channels."
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -217,7 +217,7 @@ class SettingsViewModel @Inject constructor(
                 val n = repo.syncAll(id) { _message.value = it }
                 _message.value = "Done — $n channels"
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -234,7 +234,7 @@ class SettingsViewModel @Inject constructor(
                 val n = repo.syncAll(id) { _message.value = it }
                 _message.value = "Done — $n channels"
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
@@ -248,7 +248,7 @@ class SettingsViewModel @Inject constructor(
                 val n = repo.syncAll(providerId) { _message.value = it }
                 _message.value = "Re-synced — $n channels"
             } catch (t: Throwable) {
-                _message.value = "Error: ${t.message}"
+                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
                 _syncing.value = false
             }
