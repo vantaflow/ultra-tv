@@ -77,13 +77,13 @@ class CatalogRepository @Inject constructor(
         episodeDao.upsertAll(eps)
     }
 
-    suspend fun search(pid: Long, query: String): SearchResults {
-        if (query.isBlank()) return SearchResults()
-        val q = query.trim()
+    /** Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. */
+    suspend fun search(pid: Long, query: String, limit: Int = 40): SearchResults {
+        val match = FtsQuery.of(query) ?: return SearchResults()
         return SearchResults(
-            channels = channelDao.search(pid, q),
-            movies = movieDao.search(pid, q),
-            series = seriesDao.search(pid, q),
+            channels = channelDao.searchFts(pid, match, limit),
+            movies = movieDao.searchFts(pid, match, limit),
+            series = seriesDao.searchFts(pid, match, limit),
         )
     }
 

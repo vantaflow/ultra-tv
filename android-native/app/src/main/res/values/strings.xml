@@ -4,4 +4,6 @@
     <string name="nav_home">Home</string>
     <string name="nav_live">Live TV</string>
     <string name="nav_settings">Settings</string>
+    <string name="sync_channel">Catalog sync</string>
+    <string name="sync_notification">Updating your channels…</string>
 </resources>

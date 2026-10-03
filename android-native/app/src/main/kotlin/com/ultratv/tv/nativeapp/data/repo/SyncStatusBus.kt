@@ -18,6 +18,9 @@ class SyncStatusBus @Inject constructor() {
         val provider: String,
         val step: String,
         val percent: Int? = null,        // null if unknown
+        /** Partie en cours + compteur : l'interface compose elle-même un libellé localisé. */
+        val part: com.ultratv.tv.nativeapp.data.db.SyncPart? = null,
+        val count: Int? = null,
     )
 
     private val _status = MutableStateFlow<Status?>(null)

@@ -27,6 +27,7 @@ object DatabaseModule {
             // registered here via .addMigrations(MIGRATION_10_11, ...). Do NOT
             // widen this destructive range — the exported schemas under
             // app/schemas let Room auto-generate / verify those migrations.
+            .addMigrations(com.ultratv.tv.nativeapp.data.db.MIGRATION_10_11)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
             .build()
 

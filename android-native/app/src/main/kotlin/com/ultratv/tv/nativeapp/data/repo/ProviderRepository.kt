@@ -8,6 +8,9 @@ import com.ultratv.tv.nativeapp.data.db.MovieDao
 import com.ultratv.tv.nativeapp.data.db.ProviderDao
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesDao
+import com.ultratv.tv.nativeapp.data.db.SyncPart
+import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
+import com.ultratv.tv.nativeapp.data.sync.SyncPolicy
 import com.ultratv.tv.nativeapp.data.m3u.M3uParser
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
 import com.ultratv.tv.nativeapp.data.stalker.StalkerClient
@@ -37,6 +40,7 @@ class ProviderRepository @Inject constructor(
     private val xmltv: XmltvParser,
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
     private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
+    private val prefs: UserPreferencesStore,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -224,25 +228,8 @@ class ProviderRepository @Inject constructor(
         }
         try {
             step("Fetching xmltv…", 10)
-            // Build (xmltv channel id → local channel id) map for matching.
-            val map = channelDao.epgMapping(providerId).associate { it.epgChannelId to it.id }
-            if (map.isEmpty()) {
-                step("No xmltv channel IDs available for this provider", 100)
-                return 0
-            }
-            step("Parsing xmltv (matching ${map.size} channels)…", 30)
-            var total = 0
-            xmltv.withProgrammes(p, map) { seq ->
-                // Flux XMLTV (80 Mo) consommé à la volée, fenêtre −2 h / +24 h, insertion par lots.
-                db.withTransaction {
-                    epgDao.deleteForProvider(p.id)
-                    for (batch in seq.chunked(INSERT_BATCH)) {
-                        epgDao.upsertAll(batch)
-                        total += batch.size
-                        step("EPG: $total programmes", null)
-                    }
-                }
-            }
+            val total = syncXmltvInternal(p) { c -> step("EPG: $c programmes", null) }
+            providerDao.markSynced(p.id, SyncPart.EPG, System.currentTimeMillis())
             step("Done — $total programmes", 100)
             return total
         } catch (t: Throwable) {
@@ -251,6 +238,25 @@ class ProviderRepository @Inject constructor(
         } finally {
             syncStatus.clear()
         }
+    }
+
+    /** Télécharge le XMLTV en flux (fenêtre −2 h / +24 h) et l'insère par lots. Les erreurs remontent. */
+    private suspend fun syncXmltvInternal(p: ProviderEntity, onCount: (Int) -> Unit): Int {
+        // Build (xmltv channel id → local channel id) map for matching.
+        val map = channelDao.epgMapping(p.id).associate { it.epgChannelId to it.id }
+        if (map.isEmpty()) return 0
+        var total = 0
+        xmltv.withProgrammes(p, map) { seq ->
+            db.withTransaction {
+                epgDao.deleteForProvider(p.id)
+                for (batch in seq.chunked(INSERT_BATCH)) {
+                    epgDao.upsertAll(batch)
+                    total += batch.size
+                    onCount(total)
+                }
+            }
+        }
+        return total
     }
 
     /**
@@ -315,17 +321,19 @@ class ProviderRepository @Inject constructor(
     }
 
     /**
-     * Pulls Live + VOD + Series catalogs. Returns total item count.
-     * Note: episodes are loaded on-demand when the user opens a series.
+     * Synchronise le catalogue de façon INCRÉMENTALE : seules les parties périmées (TTL, voir
+     * [SyncPolicy]) ou vides sont rechargées, le direct en premier (commité avant de toucher
+     * aux VOD, le temps que l'accueil et le Direct soient utilisables). [force] ignore les TTL.
+     * Renvoie le nombre d'éléments écrits.
      */
-    suspend fun syncAll(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+    suspend fun syncAll(providerId: Long, onProgress: (String) -> Unit = {}, force: Boolean = false): Int {
         val name = providerDao.byId(providerId)?.name ?: return 0
         // La synchro (minutes, des dizaines de Mo) tourne dans un scope propre au dépôt :
         // quitter l'écran qui l'a lancée (ViewModel détruit) ne l'annule plus.
         return syncScope.async {
             syncMutex.withLock {
                 try {
-                    syncAllInternal(providerId, onProgress).also { syncStatus.clearFailure(providerId) }
+                    syncAllInternal(providerId, onProgress, force).also { syncStatus.clearFailure(providerId) }
                 } catch (c: kotlinx.coroutines.CancellationException) {
                     throw c
                 } catch (t: Throwable) {
@@ -339,18 +347,31 @@ class ProviderRepository @Inject constructor(
     private val syncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     private val syncMutex = kotlinx.coroutines.sync.Mutex()
 
-    private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit): Int {
+    private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit, force: Boolean): Int {
         val p = providerDao.byId(providerId) ?: return 0
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)
-        if (p.kind == "M3U") return syncM3u(providerId, onProgress)
-        if (p.kind == "STALKER") return syncStalker(providerId, onProgress)
+        val now = System.currentTimeMillis()
+        val ttl = SyncPolicy.ttl(prefs.flow.first().syncIntervalHours)
+        val due = SyncPolicy.dueParts(p, now, ttl, channelDao.count(p.id), force)
+        if (due.isEmpty()) return 0
 
-        // Wrapper that pushes to both the user callback AND the global sync bus
-        // so a banner can show progress on any screen.
-        fun step(label: String, pct: Int? = null) {
+        if (p.kind == "M3U") return syncM3u(providerId, onProgress).also { providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis()) }
+        if (p.kind == "STALKER") return syncStalker(providerId, onProgress).also {
+            val t = System.currentTimeMillis()
+            for (part in listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES)) providerDao.markSynced(p.id, part, t)
+        }
+
+        // Pondération de la barre de progression : seules les parties dues comptent.
+        val weights = mapOf(SyncPart.LIVE to 20, SyncPart.VOD to 35, SyncPart.SERIES to 20, SyncPart.EPG to 25)
+        val total = due.sumOf { weights.getValue(it) }.toFloat()
+        var doneBefore = 0
+        fun pct(part: SyncPart, fraction: Float): Int =
+            ((doneBefore + weights.getValue(part) * fraction.coerceIn(0f, 1f)) / total * 100).toInt().coerceIn(0, 99)
+
+        fun step(part: SyncPart, label: String, count: Int?, fraction: Float) {
             onProgress(label)
-            syncStatus.set(SyncStatusBus.Status(provider = p.name, step = label, percent = pct))
+            syncStatus.set(SyncStatusBus.Status(provider = p.name, step = label, percent = pct(part, fraction), part = part, count = count))
         }
 
         val pinSet = parental.isSet()
@@ -358,61 +379,77 @@ class ProviderRepository @Inject constructor(
             if (!pinSet) cats
             else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
 
+        var written = 0
         try {
-            // 1) LIVE d'abord : prioritaire, commité avant de toucher aux VOD/séries pour que
-            //    l'accueil et le direct soient utilisables pendant que le reste se charge.
-            step("Live categories…", 5)
-            val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
-            var nChans = 0
-            xtream.withLiveStreams(p) { seq ->
-                // La connexion est déjà ouverte : un serveur injoignable a échoué plus haut,
-                // avant toute suppression. Suppression + insertion = UNE transaction.
-                db.withTransaction {
-                    categoryDao.deleteForProviderKind(p.id, "LIVE")
-                    categoryDao.upsertAll(liveCats)
-                    channelDao.deleteForProvider(p.id)
-                    for (batch in seq.chunked(INSERT_BATCH)) {
-                        channelDao.upsertAll(batch)
-                        nChans += batch.size
-                        step("Live channels: $nChans", 10 + (nChans / 2_000).coerceAtMost(20))
+            for (part in due) {
+                when (part) {
+                    SyncPart.LIVE -> {
+                        step(part, "Live categories…", null, 0f)
+                        val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
+                        var n = 0
+                        xtream.withLiveStreams(p) { seq ->
+                            // La connexion est déjà ouverte : un serveur injoignable a échoué plus haut,
+                            // avant toute suppression. Suppression + insertion = UNE transaction.
+                            db.withTransaction {
+                                categoryDao.deleteForProviderKind(p.id, "LIVE")
+                                categoryDao.upsertAll(liveCats)
+                                channelDao.deleteForProvider(p.id)
+                                for (batch in seq.chunked(INSERT_BATCH)) {
+                                    channelDao.upsertAll(batch)
+                                    n += batch.size
+                                    step(part, "Live channels: $n", n, n / 60_000f)
+                                }
+                            }
+                        }
+                        written += n
+                    }
+                    SyncPart.VOD -> {
+                        step(part, "Movie categories…", null, 0f)
+                        val cats = xtream.fetchVodCategories(p).let(::maybeLock)
+                        var n = 0
+                        xtream.withVodStreams(p) { seq ->
+                            db.withTransaction {
+                                categoryDao.deleteForProviderKind(p.id, "MOVIE")
+                                categoryDao.upsertAll(cats)
+                                movieDao.deleteForProvider(p.id)
+                                for (batch in seq.chunked(INSERT_BATCH)) {
+                                    movieDao.upsertAll(batch)
+                                    n += batch.size
+                                    step(part, "Movies: $n", n, n / 200_000f)
+                                }
+                            }
+                        }
+                        written += n
+                    }
+                    SyncPart.SERIES -> {
+                        step(part, "Series categories…", null, 0f)
+                        val cats = xtream.fetchSeriesCategories(p).let(::maybeLock)
+                        var n = 0
+                        xtream.withSeries(p) { seq ->
+                            db.withTransaction {
+                                categoryDao.deleteForProviderKind(p.id, "SERIES")
+                                categoryDao.upsertAll(cats)
+                                seriesDao.deleteForProvider(p.id)
+                                for (batch in seq.chunked(INSERT_BATCH)) {
+                                    seriesDao.upsertAll(batch)
+                                    n += batch.size
+                                    step(part, "Series: $n", n, n / 60_000f)
+                                }
+                            }
+                        }
+                        written += n
+                    }
+                    SyncPart.EPG -> {
+                        // Le guide ne doit jamais faire échouer le reste : erreur isolée, réessayée au TTL suivant.
+                        val ok = runCatching { syncXmltvInternal(p) { c -> step(part, "EPG: $c", c, c / 400_000f) } }
+                        if (ok.isFailure) { doneBefore += weights.getValue(part); continue }
                     }
                 }
+                providerDao.markSynced(p.id, part, System.currentTimeMillis())
+                doneBefore += weights.getValue(part)
             }
-
-            step("Movie categories…", 35)
-            val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
-            var nMovs = 0
-            xtream.withVodStreams(p) { seq ->
-                db.withTransaction {
-                    categoryDao.deleteForProviderKind(p.id, "MOVIE")
-                    categoryDao.upsertAll(movCats)
-                    movieDao.deleteForProvider(p.id)
-                    for (batch in seq.chunked(INSERT_BATCH)) {
-                        movieDao.upsertAll(batch)
-                        nMovs += batch.size
-                        step("Movies: $nMovs", 40 + (nMovs / 5_000).coerceAtMost(30))
-                    }
-                }
-            }
-
-            step("Series categories…", 75)
-            val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
-            var nSeries = 0
-            xtream.withSeries(p) { seq ->
-                db.withTransaction {
-                    categoryDao.deleteForProviderKind(p.id, "SERIES")
-                    categoryDao.upsertAll(serCats)
-                    seriesDao.deleteForProvider(p.id)
-                    for (batch in seq.chunked(INSERT_BATCH)) {
-                        seriesDao.upsertAll(batch)
-                        nSeries += batch.size
-                        step("Series: $nSeries", 80 + (nSeries / 5_000).coerceAtMost(15))
-                    }
-                }
-            }
-
-            step("Done — $nChans live · $nMovs movies · $nSeries series", 100)
-            return nChans + nMovs + nSeries
+            syncStatus.set(SyncStatusBus.Status(p.name, "Done", 100))
+            return written
         } finally {
             syncStatus.clear()
         }

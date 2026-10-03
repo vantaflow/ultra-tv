@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var providerRepo: ProviderRepository
     @Inject lateinit var historyRepo: HistoryRepository
     @Inject lateinit var playback: PlaybackContext
+    @Inject lateinit var syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // SplashScreen API : affiche le thème de lancement tout de suite et évite
@@ -153,17 +154,10 @@ class MainActivity : ComponentActivity() {
             // where we left off.
             SyncScheduler.schedule(this@MainActivity, prefs.syncIntervalHours)
 
-            if (prefs.autoSyncOnLaunch) {
-                val intervalMs = prefs.syncIntervalHours * 3600L * 1000L
-                val due = intervalMs == 0L || (System.currentTimeMillis() - prefs.lastSyncAtMs) >= intervalMs
-                if (due) {
-                    runCatching {
-                        val all = providerRepo.observeProviders().first()
-                        all.forEach { p -> runCatching { providerRepo.syncAll(p.id) } }
-                        prefsStore.setLastSyncAt(System.currentTimeMillis())
-                    }
-                }
-            }
+            // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
+            // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
+            val all = providerRepo.observeProviders().first()
+            all.forEach { p -> if (prefs.autoSyncOnLaunch || p.lastLiveSyncAt == 0L) syncCoordinator.request(p.id) }
 
             if (prefs.autoPlayLastOnLaunch) {
                 val firstProvider = providerRepo.observeProviders().first().firstOrNull()

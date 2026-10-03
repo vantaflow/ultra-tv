@@ -40,6 +40,7 @@ const val NOW_NEXT_CAP = 400
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LiveViewModel @Inject constructor(
+    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
@@ -172,7 +173,7 @@ class LiveViewModel @Inject constructor(
                 ?: providers.value.firstOrNull()?.id
                 ?: return@launch
             _refreshing.value = true
-            try { provider.syncAll(pid) } finally { _refreshing.value = false }
+            syncCoordinator.request(pid, force = true); _refreshing.value = false
         }
     }
 

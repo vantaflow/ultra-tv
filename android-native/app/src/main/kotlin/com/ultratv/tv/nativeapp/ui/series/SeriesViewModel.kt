@@ -32,6 +32,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SeriesListViewModel @Inject constructor(
+    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
@@ -50,7 +51,7 @@ class SeriesListViewModel @Inject constructor(
                 ?: providers.value.firstOrNull()?.id
                 ?: return@launch
             _refreshing.value = true
-            try { providerRepo.syncAll(pid) } finally { _refreshing.value = false }
+            syncCoordinator.request(pid, force = true); _refreshing.value = false
         }
     }
 

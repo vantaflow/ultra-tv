@@ -1,52 +1,133 @@
 package com.ultratv.tv.nativeapp.data.sync
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
+import android.os.Build
+import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.ForegroundInfo
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
+import com.ultratv.tv.nativeapp.data.net.NetErrors
+import com.ultratv.tv.nativeapp.data.net.SyncErrorKind
 import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
- * Periodically refreshes provider catalogs in the background. Scheduled by
- * [SyncScheduler.schedule] based on the user's `syncIntervalHours` preference;
- * cancelled when the user picks "Every launch" (interval = 0).
- *
- * The worker:
- *   - Only runs on a network. Wi-Fi-or-cellular by default; we don't gate on
- *     Wi-Fi since some users only have cellular on their TV box.
- *   - Calls `providerRepo.syncAll(p.id)` for every configured provider in turn.
- *   - Records the timestamp into prefs so the in-app "auto-sync on launch"
- *     check skips when WorkManager has already refreshed recently.
+ * Synchro du catalogue en arrière-plan (WorkManager) :
+ *   - `providerId >= 0` : une source (déclenchée à l'ajout, au lancement ou par « Actualiser ») ;
+ *   - `providerId = -1` : toutes les sources (travail périodique).
+ * Elle est promue en service de premier plan (dataSync) : le catalogue pèse des dizaines de Mo
+ * et prend des minutes sur une box d'entrée de gamme, le système ne doit pas tuer le processus.
+ * La progression est publiée sur le SyncStatusBus (bannière « Synchronisation… »).
  */
 @HiltWorker
 class SyncWorker @AssistedInject constructor(
-    @Assisted appContext: Context,
+    @Assisted private val appContext: Context,
     @Assisted params: WorkerParameters,
     private val providerRepo: ProviderRepository,
     private val prefs: UserPreferencesStore,
 ) : CoroutineWorker(appContext, params) {
 
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(appContext)
+
     override suspend fun doWork(): Result {
+        val id = inputData.getLong(KEY_PROVIDER, ALL)
+        val force = inputData.getBoolean(KEY_FORCE, false)
+        // Foreground best-effort : sur certaines box le démarrage d'un service de premier plan
+        // depuis l'arrière-plan est refusé ; la synchro continue alors en tâche normale.
+        runCatching { setForeground(foregroundInfo(appContext)) }
         return try {
-            val providers = providerRepo.observeProviders().first()
-            providers.forEach { p -> runCatching { providerRepo.syncAll(p.id) } }
+            val ids = if (id >= 0) listOf(id) else providerRepo.observeProviders().first().map { it.id }
+            var failure: Throwable? = null
+            ids.forEach { pid -> runCatching { providerRepo.syncAll(pid, force = force) }.onFailure { failure = it } }
             prefs.setLastSyncAt(System.currentTimeMillis())
-            Result.success()
+            val f = failure
+            when {
+                f == null -> Result.success()
+                // Mauvais identifiants / serveur introuvable : réessayer ne sert à rien, la bannière
+                // « Corriger la source » est déjà affichée.
+                NetErrors.classify(f).let {
+                    it == SyncErrorKind.UNAUTHORIZED || it == SyncErrorKind.HOST_NOT_FOUND || it == SyncErrorKind.NOT_FOUND ||
+                        it == SyncErrorKind.PROVIDER_BLOCKED || it == SyncErrorKind.TLS
+                } -> Result.failure()
+                runAttemptCount < 3 -> Result.retry()
+                else -> Result.failure()
+            }
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
         } catch (t: Throwable) {
-            // Retry on transient failures (network, server timeout); WorkManager
-            // applies exponential backoff up to its limit.
-            Result.retry()
+            if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
+    }
+
+    companion object {
+        const val KEY_PROVIDER = "providerId"
+        const val KEY_FORCE = "force"
+        const val ALL = -1L
+        private const val CHANNEL_ID = "sync"
+        private const val NOTIF_ID = 4101
+
+        private fun foregroundInfo(ctx: Context): ForegroundInfo {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, ctx.getString(com.ultratv.tv.nativeapp.R.string.sync_channel), NotificationManager.IMPORTANCE_LOW),
+                )
+            }
+            val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_notify_sync)
+                .setContentTitle(ctx.getString(com.ultratv.tv.nativeapp.R.string.sync_notification))
+                .setOngoing(true)
+                .setProgress(0, 0, true)
+                .build()
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ForegroundInfo(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else ForegroundInfo(NOTIF_ID, n)
+        }
+    }
+}
+
+/** Point d'entrée UNIQUE pour lancer une synchro : jamais depuis un ViewModel, toujours via WorkManager. */
+@Singleton
+class SyncCoordinator @Inject constructor(@ApplicationContext private val ctx: Context) {
+    /**
+     * Met en file la synchro d'une source. Un seul travail par source (KEEP) : relancer pendant
+     * qu'elle tourne ne duplique rien. [force] ignore les TTL (« Actualiser »).
+     */
+    fun request(providerId: Long, force: Boolean = false) {
+        val req = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(workDataOf(SyncWorker.KEY_PROVIDER to providerId, SyncWorker.KEY_FORCE to force))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork("sync-$providerId", ExistingWorkPolicy.KEEP, req)
+    }
+
+    /** Une source de plus à synchroniser maintenant, TTL ignorés (première synchro). */
+    fun requestAll(force: Boolean = false) {
+        val req = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(workDataOf(SyncWorker.KEY_PROVIDER to SyncWorker.ALL, SyncWorker.KEY_FORCE to force))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork("sync-all", ExistingWorkPolicy.KEEP, req)
     }
 }
 

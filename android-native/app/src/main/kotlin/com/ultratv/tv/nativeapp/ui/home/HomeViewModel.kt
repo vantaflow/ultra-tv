@@ -28,6 +28,7 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
+    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val history: HistoryRepository,
@@ -89,7 +90,7 @@ class HomeViewModel @Inject constructor(
                 ?: providers.value.firstOrNull()?.id
                 ?: return@launch
             _refreshing.value = true
-            try { provider.syncAll(id) } finally { _refreshing.value = false }
+            syncCoordinator.request(id, force = true); _refreshing.value = false
         }
     }
 }

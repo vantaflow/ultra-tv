@@ -33,6 +33,7 @@ data class MovieRail(val category: CategoryEntity?, val items: List<MovieEntity>
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class MoviesViewModel @Inject constructor(
+    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val providerRepo: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
@@ -49,7 +50,7 @@ class MoviesViewModel @Inject constructor(
                 ?: providers.value.firstOrNull()?.id
                 ?: return@launch
             _refreshing.value = true
-            try { providerRepo.syncAll(pid) } finally { _refreshing.value = false }
+            syncCoordinator.request(pid, force = true); _refreshing.value = false
         }
     }
 

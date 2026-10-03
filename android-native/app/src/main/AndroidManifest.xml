@@ -16,6 +16,10 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Synchro du catalogue (plusieurs minutes, dizaines de Mo) : WorkManager la promeut en
+         service de premier plan « dataSync » pour que le système ne tue pas le processus. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- IPTV cleartext tradeoff: many Xtream/Stalker portals are HTTP-only
          (plain http:// portal + stream URLs), so cleartext traffic must stay
@@ -79,6 +83,11 @@
                 android:value="androidx.startup"
                 tools:node="remove" />
         </provider>
+
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
 
         <receiver
             android:name=".BootReceiver"

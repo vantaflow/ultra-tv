@@ -32,14 +32,14 @@ import androidx.tv.material3.Text
 @HiltViewModel
 class SyncStatusViewModel @Inject constructor(
     private val bus: SyncStatusBus,
-    private val repo: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
+    private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
 ) : ViewModel() {
     val status = bus.status
     val failure = bus.failure
     fun dismissFailure() = bus.clearFailure()
     fun retry(providerId: Long) {
         bus.clearFailure(providerId)
-        viewModelScope.launch { runCatching { repo.syncAll(providerId) } }
+        sync.request(providerId, force = true)
     }
 }
 

@@ -34,6 +34,7 @@ class RemoteConfigImporter @Inject constructor(
     private val ok: OkHttpClient,
     private val provider: ProviderRepository,
     private val cloudSource: CloudConfigSource,
+    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
 ) {
     @Serializable
     private data class ConfigRoot(val providers: List<ProviderSpec> = emptyList())
@@ -93,7 +94,7 @@ class RemoteConfigImporter @Inject constructor(
                         else -> { errors += "$label: unknown kind '${p.kind}'"; return@forEachIndexed }
                     }
                     onProgress("[$label] syncing…")
-                    provider.syncAll(id) { onProgress("[$label] $it") }
+                    syncCoordinator.request(id, force = true)
                     ok++
                 } catch (t: Throwable) {
                     errors += "$label: ${t.message}"

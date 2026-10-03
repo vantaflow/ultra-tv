@@ -43,6 +43,22 @@ interface ProviderRawDao {
 
     @Query("UPDATE provider SET active = 1 WHERE id = :id")
     suspend fun activate(id: Long)
+
+    @Query("UPDATE provider SET lastLiveSyncAt = :t WHERE id = :id")
+    suspend fun setLiveSyncAt(id: Long, t: Long)
+
+    @Query("UPDATE provider SET lastVodSyncAt = :t WHERE id = :id")
+    suspend fun setVodSyncAt(id: Long, t: Long)
+
+    @Query("UPDATE provider SET lastSeriesSyncAt = :t WHERE id = :id")
+    suspend fun setSeriesSyncAt(id: Long, t: Long)
+
+    @Query("UPDATE provider SET lastEpgSyncAt = :t WHERE id = :id")
+    suspend fun setEpgSyncAt(id: Long, t: Long)
+
+    /** Remet les horodatages à zéro : la prochaine synchro recharge tout (« Actualiser »). */
+    @Query("UPDATE provider SET lastLiveSyncAt = 0, lastVodSyncAt = 0, lastSeriesSyncAt = 0, lastEpgSyncAt = 0 WHERE id = :id")
+    suspend fun resetSyncAt(id: Long)
 }
 
 /**
@@ -65,6 +81,13 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
     suspend fun delete(id: Long) = raw.delete(id)
     suspend fun deactivateAll() = raw.deactivateAll()
     suspend fun activate(id: Long) = raw.activate(id)
+    suspend fun markSynced(id: Long, part: SyncPart, t: Long) = when (part) {
+        SyncPart.LIVE -> raw.setLiveSyncAt(id, t)
+        SyncPart.VOD -> raw.setVodSyncAt(id, t)
+        SyncPart.SERIES -> raw.setSeriesSyncAt(id, t)
+        SyncPart.EPG -> raw.setEpgSyncAt(id, t)
+    }
+    suspend fun resetSyncAt(id: Long) = raw.resetSyncAt(id)
     suspend fun rawPasswords(): List<RawPassword> = raw.rawPasswords()
     suspend fun setRawPassword(id: Long, value: String) = raw.setRawPassword(id, value)
 }
@@ -74,9 +97,7 @@ interface ChannelDao {
     // userPosition first (0 = unset, sorted last via CASE), then alpha by name.
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid
-        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
-                 userPosition,
-                 name COLLATE NOCASE ASC
+        ORDER BY sortKey
     """)
     fun observeForProvider(pid: Long): Flow<List<ChannelEntity>>
 
@@ -84,18 +105,14 @@ interface ChannelDao {
      *  40 000 lignes pour n'en garder que 30 saturait le CPU à chaque lot inséré. */
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid
-        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
-                 userPosition,
-                 name COLLATE NOCASE ASC
+        ORDER BY sortKey
         LIMIT :limit
     """)
     fun observeTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat
-        ORDER BY CASE WHEN userPosition = 0 THEN 1 ELSE 0 END,
-                 userPosition,
-                 name COLLATE NOCASE ASC
+        ORDER BY sortKey
     """)
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
 
@@ -132,20 +149,44 @@ interface ChannelDao {
 
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
+
+    /** Pagination Room : seules les lignes visibles (+ marge) sont chargées, l'ordre vient de l'index. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY sortKey")
+    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
+    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId = :pid ORDER BY c.sortKey
+    """)
+    fun pagedFavorites(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
+    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM channel WHERE providerId = :pid GROUP BY categoryId")
+    fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
+
+    @Query("""
+        SELECT c.* FROM channel c JOIN channel_fts ON c.id = channel_fts.docid
+        WHERE channel_fts MATCH :match AND c.providerId = :pid LIMIT :limit
+    """)
+    suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
 }
 
 @Dao
 interface MovieDao {
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey")
     fun observeForProvider(pid: Long): Flow<List<MovieEntity>>
 
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<MovieEntity>>
 
     @Query("SELECT * FROM movie WHERE id = :id")
@@ -154,11 +195,20 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<MovieEntity>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey")
     fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, MovieEntity>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM movie WHERE providerId = :pid GROUP BY categoryId")
+    fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
+
+    @Query("""
+        SELECT m.* FROM movie m JOIN movie_fts ON m.id = movie_fts.docid
+        WHERE movie_fts MATCH :match AND m.providerId = :pid LIMIT :limit
+    """)
+    suspend fun searchFts(pid: Long, match: String, limit: Int): List<MovieEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
@@ -169,16 +219,16 @@ interface MovieDao {
 
 @Dao
 interface SeriesDao {
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey")
     fun observeForProvider(pid: Long): Flow<List<SeriesEntity>>
 
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<SeriesEntity>>
 
     @Query("SELECT * FROM series WHERE id = :id")
@@ -187,11 +237,20 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<SeriesEntity>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey")
     fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, SeriesEntity>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM series WHERE providerId = :pid GROUP BY categoryId")
+    fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
+
+    @Query("""
+        SELECT s.* FROM series s JOIN series_fts ON s.id = series_fts.docid
+        WHERE series_fts MATCH :match AND s.providerId = :pid LIMIT :limit
+    """)
+    suspend fun searchFts(pid: Long, match: String, limit: Int): List<SeriesEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<SeriesEntity>)
@@ -309,6 +368,11 @@ interface EpgDao {
     @Query("SELECT * FROM epg WHERE channelId = :cid AND endMs >= :fromMs AND startMs <= :toMs ORDER BY startMs")
     suspend fun forChannelInRange(cid: Long, fromMs: Long, toMs: Long): List<EpgEntity>
 }
+
+data class CategoryCount(val categoryId: String?, val n: Int)
+
+/** Parties du catalogue synchronisées (et horodatées) indépendamment. */
+enum class SyncPart { LIVE, VOD, SERIES, EPG }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
 

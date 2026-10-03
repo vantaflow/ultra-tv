@@ -16,8 +16,11 @@ import androidx.room.RoomDatabase
         WatchHistoryEntity::class,
         RecordingEntity::class,
         com.ultratv.tv.nativeapp.data.reminders.ReminderEntity::class,
+        ChannelFts::class,
+        MovieFts::class,
+        SeriesFts::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {

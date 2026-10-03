@@ -1,8 +1,20 @@
 package com.ultratv.tv.nativeapp.data.db
 
 import androidx.room.Entity
+import androidx.room.Fts4
+import androidx.room.FtsOptions
 import androidx.room.Index
 import androidx.room.PrimaryKey
+
+/**
+ * Clé de tri stockée (et indexée) : minuscules sans les décorations de tête (« ## », « ★ »…).
+ * Permet un ORDER BY servi par l'index (pagination instantanée sur 180 000 lignes) au lieu
+ * d'un tri complet par page.
+ */
+fun sortKeyOf(name: String): String {
+    val trimmed = name.trimStart { !it.isLetterOrDigit() }.ifEmpty { name }
+    return trimmed.lowercase(java.util.Locale.ROOT)
+}
 
 @Entity(tableName = "provider")
 data class ProviderEntity(
@@ -13,13 +25,18 @@ data class ProviderEntity(
     val username: String,
     val password: String,
     val active: Boolean = true,
+    /** Dernière synchro réussie de chaque partie du catalogue (0 = jamais) : TTL incrémental. */
+    val lastLiveSyncAt: Long = 0,
+    val lastVodSyncAt: Long = 0,
+    val lastSeriesSyncAt: Long = 0,
+    val lastEpgSyncAt: Long = 0,
 )
 
 @Entity(
     tableName = "channel",
     indices = [
-        Index("providerId"),
-        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "sortKey"]),
+        Index(value = ["providerId", "categoryId", "sortKey"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -46,6 +63,7 @@ data class ChannelEntity(
      *  pushes the channel to that absolute slot in the Live list, allowing
      *  the favourites + frequently-watched to bubble to the top. */
     val userPosition: Int = 0,
+    val sortKey: String = sortKeyOf(name),
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])
@@ -61,8 +79,8 @@ data class CategoryEntity(
 @Entity(
     tableName = "movie",
     indices = [
-        Index("providerId"),
-        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "sortKey"]),
+        Index(value = ["providerId", "categoryId", "sortKey"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -78,13 +96,14 @@ data class MovieEntity(
     val year: Int?,
     val rating: Double?,
     val plot: String?,
+    val sortKey: String = sortKeyOf(name),
 )
 
 @Entity(
     tableName = "series",
     indices = [
-        Index("providerId"),
-        Index(value = ["providerId", "categoryId"]),
+        Index(value = ["providerId", "sortKey"]),
+        Index(value = ["providerId", "categoryId", "sortKey"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -98,6 +117,7 @@ data class SeriesEntity(
     val year: Int?,
     val rating: Double?,
     val plot: String?,
+    val sortKey: String = sortKeyOf(name),
 )
 
 @Entity(
@@ -173,3 +193,16 @@ data class EpgEntity(
     val startMs: Long,
     val endMs: Long,
 )
+
+/** Index plein texte (FTS4, unicode61 : accents, arabe, cyrillique) — recherche instantanée. */
+@Fts4(contentEntity = ChannelEntity::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "channel_fts")
+data class ChannelFts(val name: String)
+
+@Fts4(contentEntity = MovieEntity::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "movie_fts")
+data class MovieFts(val name: String)
+
+@Fts4(contentEntity = SeriesEntity::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
+@Entity(tableName = "series_fts")
+data class SeriesFts(val name: String)

@@ -38,6 +38,7 @@ class SettingsViewModel @Inject constructor(
     private val backupRepo: com.ultratv.tv.nativeapp.data.repo.BackupRepository,
     private val cloudPairing: com.ultratv.tv.nativeapp.data.config.CloudPairing,
     private val deviceTokens: com.ultratv.tv.nativeapp.data.config.DeviceTokenStore,
+    private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
 ) : ViewModel() {
 
     /** Mirrors UserPrefs.localLogosFolderUri for the Settings UI to display. */
@@ -249,9 +250,9 @@ class SettingsViewModel @Inject constructor(
             try {
                 val id = repo.addXtream(name, baseUrl, username, password)
                 makeDefaultIfNone(id)
-                _message.value = "Syncing live channels…"
-                val n = repo.syncAll(id) { _message.value = it }
-                _message.value = "Done — $n channels"
+                // Synchro confiée à WorkManager : la progression s'affiche via le SyncStatusBus.
+                sync.request(id, force = true)
+                _message.value = "Syncing…"
             } catch (t: Throwable) {
                 _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
@@ -283,8 +284,8 @@ class SettingsViewModel @Inject constructor(
             try {
                 val id = repo.addStalker(name, portalUrl, mac)
                 makeDefaultIfNone(id)
-                val n = repo.syncAll(id) { _message.value = it }
-                _message.value = "Done — $n channels"
+                sync.request(id, force = true)
+                _message.value = "Syncing…"
             } catch (t: Throwable) {
                 _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
@@ -300,8 +301,8 @@ class SettingsViewModel @Inject constructor(
             try {
                 val id = repo.addM3u(name, url)
                 makeDefaultIfNone(id)
-                val n = repo.syncAll(id) { _message.value = it }
-                _message.value = "Done — $n channels"
+                sync.request(id, force = true)
+                _message.value = "Syncing…"
             } catch (t: Throwable) {
                 _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
@@ -314,8 +315,8 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _syncing.value = true
             try {
-                val n = repo.syncAll(providerId) { _message.value = it }
-                _message.value = "Re-synced — $n channels"
+                sync.request(providerId, force = true)
+                _message.value = "Syncing…"
             } catch (t: Throwable) {
                 _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
             } finally {
