@@ -300,7 +300,7 @@ private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Uni
         Spacer(Modifier.width(96.design))
         // Maquette à la lettre : section flex 1 de 760/1080 de haut ; rendu statique (une simple
         // rotation graphicsLayer, négligeable même sur une box d'entrée de gamme).
-        Box(Modifier.weight(1f).height(380.design)) { PreviewGrid(W.previewTiles, Modifier.fillMaxSize()) }
+        Box(Modifier.weight(1f).height(760.design)) { PreviewGrid(W.previewTiles, Modifier.fillMaxSize()) }
     }
 }
 
@@ -330,22 +330,22 @@ private fun PreviewGrid(raw: String, modifier: Modifier) {
     // Fond alterné de la maquette, dans l'ordre : S, M, S, M, accent, S, S, M, S.
     val tones = listOf(0, 1, 0, 1, 2, 0, 0, 1, 0)
     Column(
-        modifier.graphicsLayer { rotationZ = -6f; translationX = 30.dp.toPx(); alpha = 0.95f },
-        verticalArrangement = Arrangement.spacedBy(12.design),
+        modifier.graphicsLayer { rotationZ = -6f; translationX = 60.design.toPx(); alpha = 0.95f },
+        verticalArrangement = Arrangement.spacedBy(24.design),
     ) {
         for (r in 0 until 3) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.design)) {
                 for (c in 0 until 3) {
                     val i = r * 3 + c
                     val (t, sub) = tiles.getOrElse(i) { "" to "" }
                     Column(
-                        Modifier.weight(1f).height(110.design).clip(RoundedCornerShape(10.design))
+                        Modifier.weight(1f).height(220.design).clip(RoundedCornerShape(20.design))
                             .background(when (tones[i]) { 2 -> Ux.Accent; 1 -> Ux.Surface2; else -> Ux.Surface })
-                            .padding(10.design),
-                        verticalArrangement = Arrangement.spacedBy(4.design, Alignment.Bottom),
+                            .padding(20.design),
+                        verticalArrangement = Arrangement.spacedBy(8.design, Alignment.Bottom),
                     ) {
-                        if (i == 0) Box(Modifier.width(32.design).height(4.design).clip(RoundedCornerShape(2.design)).background(Ux.Accent))
-                        if (i == 4) DIcon(Icons.Play, 20.design, Ux.White, fill = true)
+                        if (i == 0) Box(Modifier.width(64.design).height(8.design).clip(RoundedCornerShape(4.design)).background(Ux.Accent))
+                        if (i == 4) DIcon(Icons.Play, 40.design, Ux.White, fill = true)
                         Text(t, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx,
                             color = Ux.White, maxLines = 1)
                         if (sub.isNotEmpty()) Text(sub, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
