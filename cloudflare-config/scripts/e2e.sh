@@ -13,7 +13,7 @@ ko()   { echo "  FAIL  $1  ($2)"; fail=$((fail+1)); }
 expect_code() { # nom attendu obtenu
   if [ "$2" = "$3" ]; then ok "$1 -> $3"; else ko "$1" "attendu $2, obtenu $3"; fi
 }
-ipn=0; ip() { ipn=$((ipn+1)); echo "198.51.100.$ipn"; }   # chaque scénario a sa propre IP (wrangler dev n'en fournit pas)
+ip() { echo "203.$((RANDOM % 250 + 1)).$((RANDOM % 250 + 1)).$((RANDOM % 250 + 1))"; }   # IP aléatoire par scénario (wrangler dev n'en fournit pas)
 code() { curl -s -o /dev/null -w '%{http_code}' "$@"; }
 PW='correct-horse-battery'
 LOGIN="e2e-$RANDOM$RANDOM"
