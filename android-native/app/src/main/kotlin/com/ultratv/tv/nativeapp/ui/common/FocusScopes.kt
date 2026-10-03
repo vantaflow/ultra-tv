@@ -17,6 +17,13 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import kotlinx.coroutines.delay
 
 /** Signal « la navigation vient de la barre latérale / du bandeau du haut ». */
@@ -108,3 +115,22 @@ fun ModalFocusScope(
 
 private const val INITIAL_FOCUS_ATTEMPTS = 30
 private const val INITIAL_FOCUS_RETRY_MS = 100L
+
+/**
+ * D-pad HAUT/BAS quittent TOUJOURS un champ texte vers le champ précédent/suivant, clavier
+ * visible ou non (sinon le champ consomme la touche et le focus reste bloqué : l'URL se
+ * retrouvait saisie dans le champ Nom). GAUCHE/DROITE restent au curseur.
+ */
+fun Modifier.leaveOnVerticalDpad(): Modifier = composed {
+    val fm = androidx.compose.ui.platform.LocalFocusManager.current
+    onPreviewKeyEvent { ev ->
+        val vertical = ev.key == Key.DirectionDown || ev.key == Key.DirectionUp
+        if (!vertical) false
+        else {
+            if (ev.type == KeyEventType.KeyDown) {
+                fm.moveFocus(if (ev.key == Key.DirectionDown) FocusDirection.Down else FocusDirection.Up)
+            }
+            true
+        }
+    }
+}

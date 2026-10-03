@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.categories
 
+import com.ultratv.tv.nativeapp.ui.common.leaveOnVerticalDpad
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -151,7 +152,7 @@ fun CategoriesScreen(vm: CategoriesViewModel = hiltViewModel()) {
                 singleLine = true,
                 textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground, fontSize = 16.sp),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().leaveOnVerticalDpad(),
                 decorationBox = { inner ->
                     if (search.isEmpty()) Text(
                         S.categoriesFilterHint,

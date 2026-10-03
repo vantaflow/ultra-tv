@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.parental
 
+import com.ultratv.tv.nativeapp.ui.common.leaveOnVerticalDpad
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -125,10 +126,11 @@ private fun PinField(value: String, onChange: (String) -> Unit, hint: String) {
             .padding(12.dp),
     ) {
         BasicTextField(
+            modifier = androidx.compose.ui.Modifier.leaveOnVerticalDpad(),
             value = value,
             onValueChange = onChange,
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             visualTransformation = PasswordVisualTransformation(),
             textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
