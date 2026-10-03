@@ -302,7 +302,29 @@ data class Strings(
     val recordingStatusFailed: String,
     val recordingStatusCancelled: String,
 
-    // Common buttons
+    // Common buttons (sous-classe : un data class à plus de 254 paramètres produit
+    // un DEX invalide — « invalid arg count (0) in range invoke » — avec D8.)
+    val common: CommonStrings,
+) {
+    val live: String get() = common.live
+    val movies: String get() = common.movies
+    val series: String get() = common.series
+    val categories: String get() = common.categories
+    val tvGuide: String get() = common.tvGuide
+    val favorites: String get() = common.favorites
+    val play: String get() = common.play
+    val resume: String get() = common.resume
+    val cancel: String get() = common.cancel
+    val close: String get() = common.close
+    val save: String get() = common.save
+    val delete: String get() = common.delete
+    val confirm: String get() = common.confirm
+    val dismiss: String get() = common.dismiss
+    val change: String get() = common.change
+}
+
+/** Boutons communs, extraits de [Strings] pour rester sous la limite de 255 paramètres. */
+data class CommonStrings(
     val live: String,
     val movies: String,
     val series: String,
@@ -561,11 +583,13 @@ private val EN = Strings(
     recordingStatusFailed = "Failed",
     recordingStatusCancelled = "Cancelled",
 
-    live = "Live TV", movies = "Movies", series = "Series", categories = "Categories",
-    tvGuide = "TV Guide", favorites = "Favorites",
-    play = "Play", resume = "Resume", cancel = "Cancel", close = "Close",
-    save = "Save", delete = "Delete", confirm = "Confirm",
-    dismiss = "Dismiss", change = "Change",
+    common = CommonStrings(
+        live = "Live TV", movies = "Movies", series = "Series", categories = "Categories",
+        tvGuide = "TV Guide", favorites = "Favorites",
+        play = "Play", resume = "Resume", cancel = "Cancel", close = "Close",
+        save = "Save", delete = "Delete", confirm = "Confirm",
+        dismiss = "Dismiss", change = "Change",
+    ),
 )
 
 private val FR = Strings(
@@ -809,11 +833,13 @@ private val FR = Strings(
     recordingStatusFailed = "Échec",
     recordingStatusCancelled = "Annulé",
 
-    live = "TV en direct", movies = "Films", series = "Séries", categories = "Catégories",
-    tvGuide = "Guide TV", favorites = "Favoris",
-    play = "Lecture", resume = "Reprendre", cancel = "Annuler", close = "Fermer",
-    save = "Enregistrer", delete = "Supprimer", confirm = "Confirmer",
-    dismiss = "Retirer", change = "Modifier",
+    common = CommonStrings(
+        live = "TV en direct", movies = "Films", series = "Séries", categories = "Catégories",
+        tvGuide = "Guide TV", favorites = "Favoris",
+        play = "Lecture", resume = "Reprendre", cancel = "Annuler", close = "Fermer",
+        save = "Enregistrer", delete = "Supprimer", confirm = "Confirmer",
+        dismiss = "Retirer", change = "Modifier",
+    ),
 )
 
 private val ES = Strings(
@@ -1057,11 +1083,13 @@ private val ES = Strings(
     recordingStatusFailed = "Falló",
     recordingStatusCancelled = "Cancelado",
 
-    live = "TV en vivo", movies = "Películas", series = "Series", categories = "Categorías",
-    tvGuide = "Guía TV", favorites = "Favoritos",
-    play = "Reproducir", resume = "Reanudar", cancel = "Cancelar", close = "Cerrar",
-    save = "Guardar", delete = "Eliminar", confirm = "Confirmar",
-    dismiss = "Descartar", change = "Cambiar",
+    common = CommonStrings(
+        live = "TV en vivo", movies = "Películas", series = "Series", categories = "Categorías",
+        tvGuide = "Guía TV", favorites = "Favoritos",
+        play = "Reproducir", resume = "Reanudar", cancel = "Cancelar", close = "Cerrar",
+        save = "Guardar", delete = "Eliminar", confirm = "Confirmar",
+        dismiss = "Descartar", change = "Cambiar",
+    ),
 )
 
 private val AR = Strings(
@@ -1305,11 +1333,13 @@ private val AR = Strings(
     recordingStatusFailed = "فشل",
     recordingStatusCancelled = "أُلغي",
 
-    live = "البث المباشر", movies = "الأفلام", series = "المسلسلات", categories = "الفئات",
-    tvGuide = "دليل التلفاز", favorites = "المفضلة",
-    play = "تشغيل", resume = "استئناف", cancel = "إلغاء", close = "إغلاق",
-    save = "حفظ", delete = "حذف", confirm = "تأكيد",
-    dismiss = "إهمال", change = "تغيير",
+    common = CommonStrings(
+        live = "البث المباشر", movies = "الأفلام", series = "المسلسلات", categories = "الفئات",
+        tvGuide = "دليل التلفاز", favorites = "المفضلة",
+        play = "تشغيل", resume = "استئناف", cancel = "إلغاء", close = "إغلاق",
+        save = "حفظ", delete = "حذف", confirm = "تأكيد",
+        dismiss = "إهمال", change = "تغيير",
+    ),
 )
 
 @Composable
