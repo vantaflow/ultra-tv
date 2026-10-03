@@ -141,6 +141,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                 if (!ack.get()) {
                     val mainTrace = android.os.Looper.getMainLooper().thread.stackTrace
                         .joinToString("\n") { "  at $it" }
+                    // Aussi en local : sans jeton de télémétrie, la trace du thread principal
+                    // n'irait nulle part et l'ANR resterait inexplicable.
+                    android.util.Log.w("UltraANR", "main thread blocked >= 5 s\n$mainTrace")
                     RemoteLog.error(
                         "anr",
                         "main thread blocked ≥ 5 s\n$mainTrace",
