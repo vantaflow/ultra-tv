@@ -19,6 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -37,6 +40,7 @@ import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.categories.CategoriesScreen
 import com.ultratv.tv.nativeapp.ui.common.FormFactor
+import com.ultratv.tv.nativeapp.ui.common.ScreenFocusHost
 import com.ultratv.tv.nativeapp.ui.common.rememberFormFactor
 import com.ultratv.tv.nativeapp.ui.components.BottomBarNav
 import com.ultratv.tv.nativeapp.ui.components.SidebarNav
@@ -187,12 +191,20 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
         UltraTvTheme(theme = prefs.theme) {
-            UltraTvAppRoot(prefs.sidebarPosition)
-            // First-run wizard renders itself as a full-screen overlay only
-            // when no provider is configured AND the user hasn't dismissed it.
-            com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
-                onOpenSettings = { /* user can re-enter Settings via sidebar */ },
-            )
+            // L'assistant de premier lancement REMPLACE l'application au lieu de
+            // se superposer : avant, l'accueil restait composé derrière (premier
+            // focalisable = barre latérale), donc la télécommande pilotait un
+            // écran invisible et « Suivant » ne recevait jamais le focus.
+            val onboarding: com.ultratv.tv.nativeapp.ui.onboarding.OnboardingViewModel = hiltViewModel()
+            val showOnboarding by onboarding.show.collectAsState()
+            when (showOnboarding) {
+                null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                true -> com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
+                    onOpenSettings = { /* user can re-enter Settings via sidebar */ },
+                    vm = onboarding,
+                )
+                false -> UltraTvAppRoot(prefs.sidebarPosition)
+            }
         }
     }
 }
@@ -270,8 +282,18 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             RemoteLog.info("nav", "→ ${entry.destination.route ?: "(unknown)"}")
         }
     }
-    NavHost(navController = nav, startDestination = Routes.HOME) {
-        composable(Routes.HOME) {
+    NavHost(
+        navController = nav,
+        startDestination = Routes.HOME,
+        // Pas de fondu de 700 ms entre écrans : sur un CPU de Chromecast c'est
+        // du travail de composition en double, et pendant la transition le focus
+        // pouvait atterrir dans l'écran sortant.
+        enterTransition = { EnterTransition.None },
+        exitTransition = { ExitTransition.None },
+        popEnterTransition = { EnterTransition.None },
+        popExitTransition = { ExitTransition.None },
+    ) {
+        screen(Routes.HOME) {
             HomeScreen(
                 onGoLive = { nav.navigate(Routes.LIVE) },
                 onGoMovies = { nav.navigate(Routes.MOVIES) },
@@ -282,13 +304,13 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
         }
-        composable(Routes.LIVE) {
+        screen(Routes.LIVE) {
             LiveScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
-        composable(Routes.MOVIES) {
+        screen(Routes.MOVIES) {
             MoviesScreen(onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
         }
-        composable(
+        screen(
             Routes.MOVIE_DETAIL,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
         ) { entry ->
@@ -298,10 +320,10 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
             )
         }
-        composable(Routes.SERIES) {
+        screen(Routes.SERIES) {
             SeriesScreen(onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
         }
-        composable(
+        screen(
             Routes.SERIES_DETAIL,
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
         ) { entry ->
@@ -311,32 +333,32 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onPlayEpisode = { url, title -> nav.navigate(Routes.player(url, title)) },
             )
         }
-        composable(Routes.SEARCH) {
+        screen(Routes.SEARCH) {
             SearchScreen(
                 onOpenChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
         }
-        composable(Routes.GUIDE) {
+        screen(Routes.GUIDE) {
             GuideGridScreen(
                 onPlayChannel = { ch -> nav.navigate(Routes.player(ch.streamUrl, ch.name)) },
             )
         }
-        composable("categories") { CategoriesScreen() }
-        composable("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen() }
-        composable("recordings") {
+        screen("categories") { CategoriesScreen() }
+        screen("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen() }
+        screen("recordings") {
             com.ultratv.tv.nativeapp.ui.recordings.RecordingsScreen(
                 onPlayLocal = { url, title -> nav.navigate(Routes.player(url, title)) },
             )
         }
-        composable(Routes.FAVORITES) {
+        screen(Routes.FAVORITES) {
             FavoritesScreen(
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
         }
-        composable(Routes.SETTINGS) { SettingsScreen(onNavigate = { route -> nav.navigate(route) }) }
+        screen(Routes.SETTINGS) { SettingsScreen(onNavigate = { route -> nav.navigate(route) }) }
         composable(
             route = Routes.PLAYER,
             arguments = listOf(
@@ -350,5 +372,17 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             val title = java.net.URLDecoder.decode(rawTitle, "UTF-8")
             PlayerScreen(url = url, title = title, onBack = { nav.popBackStack() })
         }
+    }
+}
+
+
+/** `composable` + focus D-pad initial et restauration (voir [ScreenFocusHost]). */
+private fun NavGraphBuilder.screen(
+    route: String,
+    arguments: List<androidx.navigation.NamedNavArgument> = emptyList(),
+    content: @Composable (androidx.navigation.NavBackStackEntry) -> Unit,
+) {
+    composable(route, arguments = arguments) { entry ->
+        ScreenFocusHost { content(entry) }
     }
 }

@@ -121,6 +121,7 @@ fun SidebarNav(navController: NavController) {
                 expanded = expanded,
                 onClick = {
                     if (route != entry.route) {
+                        com.ultratv.tv.nativeapp.ui.common.NavFocusHint.markNavDriven()
                         navController.navigate(entry.route) {
                             popUpTo(navController.graph.startDestinationId) { saveState = true }
                             launchSingleTop = true

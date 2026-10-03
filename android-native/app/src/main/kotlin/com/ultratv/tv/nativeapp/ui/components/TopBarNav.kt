@@ -88,6 +88,7 @@ fun TopBarNav(navController: NavController) {
                     selected = selected,
                     onClick = {
                         if (route != item.route) {
+                            com.ultratv.tv.nativeapp.ui.common.NavFocusHint.markNavDriven()
                             navController.navigate(item.route) {
                                 popUpTo(navController.graph.startDestinationId) { saveState = true }
                                 launchSingleTop = true

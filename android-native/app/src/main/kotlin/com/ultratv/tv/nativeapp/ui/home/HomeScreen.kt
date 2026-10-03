@@ -292,9 +292,9 @@ private fun ContinueActions(
     onCancel: () -> Unit,
 ) {
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
+    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
+        onBack = onCancel,
+        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
     ) {
         Column(
             modifier = Modifier

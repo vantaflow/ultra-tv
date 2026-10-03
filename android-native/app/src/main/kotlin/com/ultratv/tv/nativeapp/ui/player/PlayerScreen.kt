@@ -742,9 +742,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
 private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
     val tracks = player.currentTracks
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    androidx.compose.foundation.layout.Box(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
+    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
+        onBack = onDismiss,
+        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
     ) {
         Column(
             modifier = Modifier

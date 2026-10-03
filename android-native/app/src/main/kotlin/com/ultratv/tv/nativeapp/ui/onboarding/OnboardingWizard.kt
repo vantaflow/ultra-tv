@@ -20,6 +20,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +55,10 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import javax.inject.Inject
 
+/** Règle d'affichage de l'assistant : première ouverture ET aucune playlist. */
+internal fun shouldShowOnboarding(hasSeenOnboarding: Boolean, providerCount: Int): Boolean =
+    !hasSeenOnboarding && providerCount == 0
+
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
     private val prefs: UserPreferencesStore,
@@ -59,10 +68,15 @@ class OnboardingViewModel @Inject constructor(
 
     val mac: String = deviceMac.mac
 
-    val show: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(
+    /**
+     * `null` tant que DataStore et Room n'ont pas répondu : l'appelant n'affiche
+     * alors ni l'assistant ni l'application, pour ne pas faire clignoter l'un
+     * avant l'autre (et ne pas composer l'écran d'accueil derrière l'assistant).
+     */
+    val show: StateFlow<Boolean?> = kotlinx.coroutines.flow.combine(
         prefs.flow, provider.observeProviders(),
-    ) { p, ps -> !p.hasSeenOnboarding && ps.isEmpty() }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    ) { p, ps -> shouldShowOnboarding(p.hasSeenOnboarding, ps.size) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun dismiss() {
         viewModelScope.launch { prefs.markOnboardingSeen() }
@@ -75,10 +89,9 @@ fun OnboardingWizard(
     onOpenSettings: () -> Unit,
     vm: OnboardingViewModel = hiltViewModel(),
 ) {
-    val show by vm.show.collectAsState()
-    if (!show) return
-
     var step by remember { mutableIntStateOf(0) }
+    // BACK remonte d'une étape au lieu de quitter l'application en plein assistant.
+    androidx.activity.compose.BackHandler(enabled = step > 0) { step -= 1 }
     val total = 3
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
 
@@ -181,6 +194,15 @@ fun OnboardingWizard(
     }
 }
 
+/** Donne le focus D-pad au composant dès son affichage (bouton principal d'une étape). */
+@Composable
+private fun Modifier.autoFocus(): Modifier {
+    val requester = remember { FocusRequester() }
+    var focused by remember { mutableStateOf(false) }
+    RequestInitialFocus(requester, hasFocus = { focused })
+    return this.focusRequester(requester).onFocusChanged { focused = it.isFocused }
+}
+
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 private fun WelcomeStep(
@@ -223,7 +245,7 @@ private fun WelcomeStep(
                     containerColor = UltraTokens.CtaBg,
                     contentColor = UltraTokens.CtaFgOnCta,
                 ),
-                modifier = Modifier.border(3.dp, UltraTokens.Accent, RoundedCornerShape(14.dp)),
+                modifier = Modifier.autoFocus().border(3.dp, UltraTokens.Accent, RoundedCornerShape(14.dp)),
             ) { Text(S.wizardNext + "  →", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) }
             Button(
                 onClick = onSkip,
@@ -400,7 +422,7 @@ private fun ProviderStep(
                     containerColor = UltraTokens.CtaBg,
                     contentColor = UltraTokens.CtaFgOnCta,
                 ),
-                modifier = Modifier.border(3.dp, UltraTokens.Accent, RoundedCornerShape(12.dp)),
+                modifier = Modifier.autoFocus().border(3.dp, UltraTokens.Accent, RoundedCornerShape(12.dp)),
             ) { Text(S.wizardNext + "  →", fontWeight = FontWeight.SemiBold) }
         }
     }
@@ -470,6 +492,7 @@ private fun DoneStep(
                         containerColor = UltraTokens.Accent,
                         contentColor = Color.White,
                     ),
+                    modifier = Modifier.autoFocus(),
                 ) { Text(S.wizardAddProviderCta + "  →", fontWeight = FontWeight.SemiBold) }
             }
         }

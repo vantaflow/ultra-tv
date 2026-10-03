@@ -36,6 +36,7 @@ import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 
 /**
  * Full-screen modal scrim hosting a form. Lets us keep the Settings list above
@@ -52,11 +53,9 @@ fun AddProviderDialog(
     canSubmit: Boolean,
     content: @Composable () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f)),
-        contentAlignment = Alignment.Center,
+    ModalFocusScope(
+        onBack = onDismiss,
+        modifier = Modifier.background(Color.Black.copy(alpha = 0.72f)),
     ) {
         Column(
             modifier = Modifier

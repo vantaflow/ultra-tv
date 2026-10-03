@@ -59,11 +59,9 @@ fun PinPromptDialog(
     var error by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.7f)),
-        contentAlignment = Alignment.Center,
+    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
+        onBack = onCancel,
+        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
     ) {
         Column(
             modifier = Modifier
