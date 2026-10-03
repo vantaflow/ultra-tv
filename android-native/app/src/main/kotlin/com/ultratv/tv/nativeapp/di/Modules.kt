@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.ultratv.tv.nativeapp.data.db.CategoryDao
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
-import com.ultratv.tv.nativeapp.data.db.ProviderDao
 import com.ultratv.tv.nativeapp.data.db.UltraDb
 import dagger.Module
 import dagger.Provides
@@ -31,7 +30,7 @@ object DatabaseModule {
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
             .build()
 
-    @Provides fun provideProviderDao(db: UltraDb): ProviderDao = db.providerDao()
+    @Provides fun provideProviderRawDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.ProviderRawDao = db.providerDao()
     @Provides fun provideChannelDao(db: UltraDb): ChannelDao = db.channelDao()
     @Provides fun provideMovieDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.MovieDao = db.movieDao()
     @Provides fun provideSeriesDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.SeriesDao = db.seriesDao()

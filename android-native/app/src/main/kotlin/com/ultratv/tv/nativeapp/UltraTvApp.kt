@@ -28,6 +28,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
+    @Inject lateinit var secretsMigrator: com.ultratv.tv.nativeapp.data.security.ProviderSecretsMigrator
     @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -77,6 +78,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                 com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
         }
+
+        // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
+        bgScope.launch { runCatching { secretsMigrator.migrate() } }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks
         // briefly (≤ 3 s) so the request actually leaves the device before the

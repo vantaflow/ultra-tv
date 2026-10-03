@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {
-    abstract fun providerDao(): ProviderDao
+    abstract fun providerDao(): ProviderRawDao
     abstract fun channelDao(): ChannelDao
     abstract fun movieDao(): MovieDao
     abstract fun seriesDao(): SeriesDao

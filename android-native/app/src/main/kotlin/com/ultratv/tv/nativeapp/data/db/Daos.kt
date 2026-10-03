@@ -5,10 +5,14 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.ultratv.tv.nativeapp.data.security.SecretBox
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import javax.inject.Singleton
 
 @Dao
-interface ProviderDao {
+interface ProviderRawDao {
     @Query("SELECT * FROM provider ORDER BY id ASC")
     fun observeAll(): Flow<List<ProviderEntity>>
 
@@ -27,11 +31,42 @@ interface ProviderDao {
     @Query("DELETE FROM provider WHERE id = :id")
     suspend fun delete(id: Long)
 
+    /** Lecture BRUTE pour la migration de chiffrement (voir ProviderSecretsMigrator). */
+    @Query("SELECT id, password AS raw FROM provider")
+    suspend fun rawPasswords(): List<RawPassword>
+
+    @Query("UPDATE provider SET password = :raw WHERE id = :id")
+    suspend fun setRawPassword(id: Long, raw: String)
+
     @Query("UPDATE provider SET active = 0")
     suspend fun deactivateAll()
 
     @Query("UPDATE provider SET active = 1 WHERE id = :id")
     suspend fun activate(id: Long)
+}
+
+/**
+ * Façade de [ProviderRawDao] qui chiffre le mot de passe à l'écriture et le
+ * déchiffre à la lecture (AES-GCM / Keystore, voir [SecretBox]). Même API que
+ * l'ancien DAO : les appelants ne voient que des mots de passe en clair en mémoire,
+ * jamais sur disque. (Un TypeConverter String→String est refusé par Room.)
+ */
+@Singleton
+class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
+    private fun ProviderEntity.dec() = copy(password = SecretBox.shared.decrypt(password))
+    private fun ProviderEntity.enc() = copy(password = SecretBox.shared.encrypt(password))
+
+    fun observeAll(): Flow<List<ProviderEntity>> = raw.observeAll().map { l -> l.map { it.dec() } }
+    suspend fun firstActive(): ProviderEntity? = raw.firstActive()?.dec()
+    suspend fun findByIdentity(kind: String, baseUrl: String, username: String): ProviderEntity? =
+        raw.findByIdentity(kind, baseUrl, username)?.dec()
+    suspend fun byId(id: Long): ProviderEntity? = raw.byId(id)?.dec()
+    suspend fun upsert(p: ProviderEntity): Long = raw.upsert(p.enc())
+    suspend fun delete(id: Long) = raw.delete(id)
+    suspend fun deactivateAll() = raw.deactivateAll()
+    suspend fun activate(id: Long) = raw.activate(id)
+    suspend fun rawPasswords(): List<RawPassword> = raw.rawPasswords()
+    suspend fun setRawPassword(id: Long, value: String) = raw.setRawPassword(id, value)
 }
 
 @Dao
@@ -267,3 +302,5 @@ interface EpgDao {
 }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
+
+data class RawPassword(val id: Long, val raw: String)
