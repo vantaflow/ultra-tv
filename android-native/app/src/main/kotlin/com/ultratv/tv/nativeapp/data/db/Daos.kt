@@ -129,12 +129,18 @@ interface ChannelDao {
 
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     suspend fun count(pid: Long): Int
+
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
+    fun observeCount(pid: Long): Flow<Int>
 }
 
 @Dao
 interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
     fun observeForProvider(pid: Long): Flow<List<MovieEntity>>
+
+    @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid")
+    fun observeCount(pid: Long): Flow<Int>
 
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
@@ -165,6 +171,9 @@ interface MovieDao {
 interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC")
     fun observeForProvider(pid: Long): Flow<List<SeriesEntity>>
+
+    @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid")
+    fun observeCount(pid: Long): Flow<Int>
 
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY name COLLATE NOCASE ASC LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>
