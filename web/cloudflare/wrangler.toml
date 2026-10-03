@@ -1,11 +1,15 @@
 name = "ultratv-proxy"
 main = "worker.js"
-compatibility_date = "2025-01-01"
+compatibility_date = "2025-09-01"
 
-# REQUIRED: allow-list of upstream hosts. Comma-separated, no spaces around commas.
-# The Worker is default-deny: if ALLOWED_HOSTS is unset or empty it returns 403
-# for every request (so it can't be abused as an open proxy). You MUST configure
-# it before the proxy will forward anything.
-# Set via dashboard, the [vars] block below, or:  wrangler secret put ALLOWED_HOSTS
+# Proxy de la version web historique. REFUSE TOUT tant que ALLOWED_HOSTS n'est pas défini.
+#
+#   ALLOWED_HOSTS    noms d'hôte IPTV autorisés, séparés par des virgules (obligatoire)
+#   ALLOWED_ORIGINS  origines web autorisées à l'appeler depuis un navigateur
+#                    (ex. https://ultra-tv.example.com). Absent = pas de CORS.
+#
 # [vars]
-# ALLOWED_HOSTS = "example.com,iptv.foo.tv"
+# ALLOWED_HOSTS = "iptv.example.com,cdn.example.com"
+# ALLOWED_ORIGINS = "https://ultra-tv.example.com"
+#
+# Les IP privées / loopback / metadata sont refusées même si elles figurent dans la liste.
