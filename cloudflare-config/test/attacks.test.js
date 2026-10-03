@@ -318,4 +318,10 @@ describe("migration depuis l'ancien format", () => {
     expect(r2.migrated).toBe(0);
     expect(r1).toHaveProperty("done");
   });
+  it("signup_macHeriteeNonMigree_refuseAuxTiers", async () => {
+    await env.CONFIG.put("de:ad:be:ef:00:09", JSON.stringify({ salt: "s", passwordHash: "h", providers: [] }));
+    const r = await call("/signup", { method: "POST", ip: freshIp(), form: { login: "DE:AD:BE:EF:00:09", password: strongPw, confirm: strongPw } });
+    expect(r.headers.get("location")).toContain("e=taken");
+    expect(cookieFrom(r)).toBeNull();
+  });
 });
