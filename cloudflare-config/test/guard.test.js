@@ -114,3 +114,18 @@ describe("appairage", () => {
     expect((await g.pairPoll(secretHash)).status).toBe("unknown");
   });
 });
+
+describe("unicité", () => {
+  it("claim_premierAppelSeul_puisRelease", async () => {
+    const g = stub("acct:" + uniq());
+    expect(await g.claim()).toBe(true);
+    expect(await g.claim()).toBe(false);
+    await g.release();
+    expect(await g.claim()).toBe(true);
+  });
+  it("claim_parallele_unSeulGagnant", async () => {
+    const g = stub("acct:" + uniq());
+    const r = await Promise.all(Array.from({ length: 10 }, () => g.claim()));
+    expect(r.filter(Boolean)).toHaveLength(1);
+  });
+});

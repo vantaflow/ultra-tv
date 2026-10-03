@@ -20,6 +20,18 @@ export class Guard extends DurableObject {
     await this.ctx.storage.deleteAll();
   }
 
+  // ---- unicité (création de compte) -----------------------------------------
+  /** Vrai pour le premier appelant uniquement ; permanent jusqu'à release(). */
+  async claim() {
+    if (await this.ctx.storage.get("claimed")) return false;
+    await this.ctx.storage.put("claimed", true);
+    return true;
+  }
+
+  async release() {
+    await this.ctx.storage.delete("claimed");
+  }
+
   // ---- fenêtre fixe --------------------------------------------------------
   async hit(limit, windowSec) {
     const now = Date.now();
