@@ -24,78 +24,87 @@ import javax.inject.Singleton
  * a matching xmltv `channel="..."` — unmapped channels are skipped silently.
  */
 @Singleton
-class XmltvParser @Inject constructor(private val ok: OkHttpClient) {
+class XmltvParser @Inject constructor(okBase: OkHttpClient) {
 
-    suspend fun fetchAndParse(
+    // Flux de 80 Mo : pas de délai d'appel global, 10 s de connexion, 30 s d'inactivité.
+    private val ok: OkHttpClient = okBase.newBuilder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    /**
+     * Ouvre le flux XMLTV et passe à [block] une séquence PARESSEUSE de programmes
+     * (filtrés par [window] et par chaînes présentes). Rien n'est accumulé : le
+     * appelant insère par lots au fil de l'eau, la mémoire reste plate pour 80 Mo de XML.
+     */
+    suspend fun <R> withProgrammes(
         p: ProviderEntity,
         channelXmltvIdToLocalId: Map<String, Long>,
         window: LongRange = defaultWindow(),
-    ): List<EpgEntity> = withContext(Dispatchers.IO) {
+        block: suspend (Sequence<EpgEntity>) -> R,
+    ): R = withContext(Dispatchers.IO) {
         val url = "${p.baseUrl}/xmltv.php?username=${java.net.URLEncoder.encode(p.username, "UTF-8")}" +
             "&password=${java.net.URLEncoder.encode(p.password, "UTF-8")}"
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-            if (!resp.isSuccessful) error("HTTP ${resp.code} fetching xmltv")
-            val stream = resp.body?.byteStream() ?: error("Empty xmltv body")
-            parse(stream, channelXmltvIdToLocalId, window)
+            if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
+            val stream = resp.body?.byteStream()?.buffered() ?: error("Empty xmltv body")
+            block(programmes(stream, channelXmltvIdToLocalId, window))
         }
     }
 
-    /**
-     * @param window ne garde que les programmes qui chevauchent [window] (millisecondes) :
-     *   un flux XMLTV complet contient des centaines de milliers de lignes dont l'écran
-     *   n'affichera jamais que quelques heures ; tout garder gonflait la RAM et la base.
-     */
+    /** Variante en liste, pour les tests et les petits flux. */
     fun parse(
         input: InputStream,
         channelMap: Map<String, Long>,
         window: LongRange = Long.MIN_VALUE..Long.MAX_VALUE,
-    ): List<EpgEntity> {
+    ): List<EpgEntity> = programmes(input, channelMap, window).toList()
+
+    /**
+     * @param window ne garde que les programmes qui chevauchent [window] (millisecondes).
+     */
+    fun programmes(
+        input: InputStream,
+        channelMap: Map<String, Long>,
+        window: LongRange = Long.MIN_VALUE..Long.MAX_VALUE,
+    ): Sequence<EpgEntity> = sequence {
         val parser = Xml.newPullParser()
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         parser.setInput(input, null)
 
-        val out = mutableListOf<EpgEntity>()
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG && parser.name == "programme") {
                 val xmltvCh = parser.getAttributeValue(null, "channel")
                 val channelId = if (xmltvCh != null) channelMap[xmltvCh] else null
-                if (channelId == null) {
+                val start = parseDate(parser.getAttributeValue(null, "start"))
+                val stop = parseDate(parser.getAttributeValue(null, "stop"))
+                val inWindow = start != null && stop != null && stop > start &&
+                    stop >= window.first && start <= window.last
+                if (channelId == null || !inWindow) {
                     skipToEndTag(parser, "programme")
                 } else {
-                    val start = parseDate(parser.getAttributeValue(null, "start"))
-                    val stop = parseDate(parser.getAttributeValue(null, "stop"))
                     var title: String? = null
                     var desc: String? = null
-                    // Walk children until we close the programme.
                     while (true) {
                         val e = parser.next()
                         if (e == XmlPullParser.END_TAG && parser.name == "programme") break
                         if (e == XmlPullParser.START_TAG) {
                             when (parser.name) {
                                 "title" -> title = readText(parser)
-                                "desc" -> if (desc == null) desc = readText(parser)
+                                "desc" -> if (desc == null) desc = readText(parser).take(MAX_DESC)
                                 else -> skipToEndTag(parser, parser.name)
                             }
                         }
                         if (e == XmlPullParser.END_DOCUMENT) break
                     }
-                    if (title != null && start != null && stop != null && stop > start &&
-                        stop >= window.first && start <= window.last
-                    ) {
-                        out += EpgEntity(
-                            channelId = channelId,
-                            title = title,
-                            description = desc,
-                            startMs = start,
-                            endMs = stop,
-                        )
+                    if (title != null) {
+                        yield(EpgEntity(channelId = channelId, title = title, description = desc, startMs = start!!, endMs = stop!!))
                     }
                 }
             }
             event = parser.next()
         }
-        return out
     }
 
     private fun readText(parser: XmlPullParser): String {
@@ -109,22 +118,31 @@ class XmltvParser @Inject constructor(private val ok: OkHttpClient) {
         return sb.toString().trim()
     }
 
-    private fun skipToEndTag(parser: XmlPullParser, tag: String) {
+    /**
+     * Saute l'élément courant (son START_TAG vient d'être lu) jusqu'à sa balise fermante.
+     * Avant : seules les fermetures portant le même nom décrémentaient la profondeur, donc
+     * sauter un `<programme>` (avec ses `<title>`...) avalait aussi les programmes suivants.
+     */
+    private fun skipToEndTag(parser: XmlPullParser, @Suppress("UNUSED_PARAMETER") tag: String) {
         var depth = 1
         while (depth > 0) {
-            val e = parser.next()
-            if (e == XmlPullParser.END_DOCUMENT) return
-            if (e == XmlPullParser.START_TAG) depth++
-            if (e == XmlPullParser.END_TAG && parser.name == tag) depth--
+            when (parser.next()) {
+                XmlPullParser.END_DOCUMENT -> return
+                XmlPullParser.START_TAG -> depth++
+                XmlPullParser.END_TAG -> depth--
+            }
         }
     }
 
     private fun parseDate(raw: String?): Long? = parseXmltvDate(raw)
 
     companion object {
-        /** Fenêtre utile : de 6 h dans le passé (rattrapage court) à 7 jours dans le futur. */
+        private const val MAX_DESC = 400
+
+        /** Fenêtre utile : de −2 h à +24 h. Un flux de 80 Mo couvre des jours pour des dizaines de
+         *  milliers de chaînes ; l'écran n'en montre qu'un sous-ensemble horaire. */
         fun defaultWindow(nowMs: Long = System.currentTimeMillis()): LongRange =
-            (nowMs - 6 * 3_600_000L)..(nowMs + 7 * 24 * 3_600_000L)
+            (nowMs - 2 * 3_600_000L)..(nowMs + 24 * 3_600_000L)
     }
 }
 

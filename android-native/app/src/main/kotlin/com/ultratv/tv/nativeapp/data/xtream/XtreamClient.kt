@@ -9,7 +9,10 @@ import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.DecodeSequenceMode
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeToSequence
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -17,6 +20,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import com.ultratv.tv.nativeapp.data.net.HttpStatusException
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
@@ -35,7 +39,15 @@ import javax.inject.Singleton
  *   Episode: {base}/series/{user}/{pass}/{episode_id}.{container_extension}
  */
 @Singleton
-class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
+class XtreamClient @Inject constructor(okBase: OkHttpClient) {
+    // Catalogues de 20 à 70 Mo : pas de délai global d'appel (le téléchargement peut
+    // légitimement durer des minutes), mais connexion 10 s et 30 s d'inactivité en lecture.
+    private val ok: OkHttpClient = okBase.newBuilder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     // ---- Live ----
@@ -46,25 +58,29 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
         CategoryEntity(providerId = p.id, kind = "LIVE", remoteId = rid, name = name)
     }
 
-    suspend fun fetchLiveStreams(p: ProviderEntity): List<ChannelEntity> = arrAt(p, "get_live_streams") { o ->
-        val sid = o["stream_id"]?.str() ?: return@arrAt null
-        val name = o["name"]?.str() ?: return@arrAt null
+    /**
+     * Flux des chaînes en lecture incrémentale : la réponse (20 Mo+) n'est JAMAIS
+     * matérialisée en String ni en arbre JSON. [block] consomme la séquence paresseuse
+     * (insertion Room par lots) ; la connexion est ouverte AVANT, donc un serveur
+     * injoignable échoue avant toute suppression de données locales.
+     */
+    suspend fun <R> withLiveStreams(p: ProviderEntity, block: suspend (Sequence<ChannelEntity>) -> R): R =
+        withStream(p, "get_live_streams", ::liveOf, block)
+
+    private fun liveOf(p: ProviderEntity, o: JsonObject): ChannelEntity? {
+        val sid = o["stream_id"]?.str() ?: return null
+        val name = o["name"]?.str() ?: return null
         val url = "${p.baseUrl}/live/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.ts"
         val tvArchive = o["tv_archive"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
         val archiveDuration = o["tv_archive_duration"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
-        ChannelEntity(
+        return ChannelEntity(
             providerId = p.id,
             remoteId = sid,
             name = name,
             logo = o["stream_icon"]?.str(),
             categoryId = o["category_id"]?.str(),
             streamUrl = url,
-            // Xtream exposes the xmltv ID either as epg_channel_id or, on some
-            // panels, the same value embedded in tv_archive_duration JSON. We
-            // take the canonical field and fall back to None.
             epgChannelId = o["epg_channel_id"]?.str()?.takeIf { it.isNotBlank() },
-            // tv_archive == 1 means the provider keeps recordings; we synth
-            // the timeshift URL from Catchup.synthesizeXtreamTimeshift().
             catchupSource = null,
             catchupDays = if (tvArchive >= 1) archiveDuration.coerceAtLeast(1) else 0,
         )
@@ -78,12 +94,15 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
         CategoryEntity(providerId = p.id, kind = "MOVIE", remoteId = rid, name = name)
     }
 
-    suspend fun fetchVodStreams(p: ProviderEntity): List<MovieEntity> = arrAt(p, "get_vod_streams") { o ->
-        val sid = o["stream_id"]?.str() ?: return@arrAt null
-        val name = o["name"]?.str() ?: return@arrAt null
+    suspend fun <R> withVodStreams(p: ProviderEntity, block: suspend (Sequence<MovieEntity>) -> R): R =
+        withStream(p, "get_vod_streams", ::vodOf, block)
+
+    private fun vodOf(p: ProviderEntity, o: JsonObject): MovieEntity? {
+        val sid = o["stream_id"]?.str() ?: return null
+        val name = o["name"]?.str() ?: return null
         val cont = o["container_extension"]?.str() ?: "mp4"
         val url = "${p.baseUrl}/movie/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.$cont"
-        MovieEntity(
+        return MovieEntity(
             providerId = p.id,
             remoteId = sid,
             name = name,
@@ -105,10 +124,13 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
         CategoryEntity(providerId = p.id, kind = "SERIES", remoteId = rid, name = name)
     }
 
-    suspend fun fetchSeries(p: ProviderEntity): List<SeriesEntity> = arrAt(p, "get_series") { o ->
-        val rid = o["series_id"]?.str() ?: return@arrAt null
-        val name = o["name"]?.str() ?: return@arrAt null
-        SeriesEntity(
+    suspend fun <R> withSeries(p: ProviderEntity, block: suspend (Sequence<SeriesEntity>) -> R): R =
+        withStream(p, "get_series", ::seriesOf, block)
+
+    private fun seriesOf(p: ProviderEntity, o: JsonObject): SeriesEntity? {
+        val rid = o["series_id"]?.str() ?: return null
+        val name = o["name"]?.str() ?: return null
+        return SeriesEntity(
             providerId = p.id,
             remoteId = rid,
             name = name,
@@ -172,17 +194,35 @@ class XtreamClient @Inject constructor(private val ok: OkHttpClient) {
 
     // ---- Helpers ----
 
-    private suspend inline fun <T : Any> arrAt(p: ProviderEntity, action: String, transform: (JsonObject) -> T?): List<T> = runCatching {
-        val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action")
-        val arr = json.parseToJsonElement(body) as? JsonArray ?: return@runCatching emptyList<T>()
-        arr.mapNotNull { (it as? JsonObject)?.let(transform) }
-    }.getOrDefault(emptyList())
+    /** Petite liste (catégories) : les erreurs réseau REMONTENT (avant : avalées => catalogue vidé). */
+    private suspend inline fun <T : Any> arrAt(p: ProviderEntity, action: String, crossinline transform: (JsonObject) -> T?): List<T> =
+        withStream(p, action, { _, o -> transform(o) }) { seq -> seq.toList() }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private suspend fun <T : Any, R> withStream(
+        p: ProviderEntity,
+        action: String,
+        transform: (ProviderEntity, JsonObject) -> T?,
+        block: suspend (Sequence<T>) -> R,
+    ): R = withContext(Dispatchers.IO) {
+        val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action"
+        ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+            if (!resp.isSuccessful) throw HttpStatusException(resp.code)
+            val input = resp.body?.byteStream()?.buffered() ?: return@use block(emptySequence())
+            // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
+            val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
+                .mapNotNull { transform(p, it) }
+            block(items)
+        }
+    }
 
     private fun JsonElement.str(): String? = (this as? JsonPrimitive)?.contentOrNull
 
+    /** Petites réponses JSON (détail d'une série, EPG court d'une chaîne). */
     private suspend fun get(url: String): String = withContext(Dispatchers.IO) {
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-            if (!resp.isSuccessful) error("HTTP ${resp.code} $url")
+            // Pas d'URL dans le message : elle contient identifiant et mot de passe.
+            if (!resp.isSuccessful) throw HttpStatusException(resp.code)
             resp.body?.string().orEmpty()
         }
     }

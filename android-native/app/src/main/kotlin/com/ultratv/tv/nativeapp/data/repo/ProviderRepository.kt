@@ -14,6 +14,8 @@ import com.ultratv.tv.nativeapp.data.stalker.StalkerClient
 import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import androidx.room.withTransaction
+import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -42,6 +44,7 @@ class ProviderRepository @Inject constructor(
     // large lists (50k+ channels on big playlists) cause memory + I/O spikes;
     // chunking keeps RAM flat and lets the UI repaint between batches.
     private val INSERT_CHUNK = 500
+    private val INSERT_BATCH = 1_000
 
     private suspend inline fun <T> insertChunked(items: List<T>, crossinline block: suspend (List<T>) -> Unit) {
         if (items.isEmpty()) return
@@ -228,14 +231,20 @@ class ProviderRepository @Inject constructor(
                 return 0
             }
             step("Parsing xmltv (matching ${map.size} channels)…", 30)
-            val programmes = xmltv.fetchAndParse(p, map)
-            step("Saving ${programmes.size} programmes…", 75)
-            db.withTransaction {
-                epgDao.deleteForProvider(p.id)
-                programmes.chunked(500).forEach { epgDao.upsertAll(it) }
+            var total = 0
+            xmltv.withProgrammes(p, map) { seq ->
+                // Flux XMLTV (80 Mo) consommé à la volée, fenêtre −2 h / +24 h, insertion par lots.
+                db.withTransaction {
+                    epgDao.deleteForProvider(p.id)
+                    for (batch in seq.chunked(INSERT_BATCH)) {
+                        epgDao.upsertAll(batch)
+                        total += batch.size
+                        step("EPG: $total programmes", null)
+                    }
+                }
             }
-            step("Done — ${programmes.size} programmes", 100)
-            return programmes.size
+            step("Done — $total programmes", 100)
+            return total
         } catch (t: Throwable) {
             syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed: ${t.message}", null))
             return 0
@@ -310,6 +319,27 @@ class ProviderRepository @Inject constructor(
      * Note: episodes are loaded on-demand when the user opens a series.
      */
     suspend fun syncAll(providerId: Long, onProgress: (String) -> Unit = {}): Int {
+        val name = providerDao.byId(providerId)?.name ?: return 0
+        // La synchro (minutes, des dizaines de Mo) tourne dans un scope propre au dépôt :
+        // quitter l'écran qui l'a lancée (ViewModel détruit) ne l'annule plus.
+        return syncScope.async {
+            syncMutex.withLock {
+                try {
+                    syncAllInternal(providerId, onProgress).also { syncStatus.clearFailure(providerId) }
+                } catch (c: kotlinx.coroutines.CancellationException) {
+                    throw c
+                } catch (t: Throwable) {
+                    syncStatus.fail(SyncStatusBus.Failure(providerId, name, com.ultratv.tv.nativeapp.data.net.NetErrors.classify(t)))
+                    throw t
+                }
+            }
+        }.await()
+    }
+
+    private val syncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private val syncMutex = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit): Int {
         val p = providerDao.byId(providerId) ?: return 0
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)
@@ -329,50 +359,60 @@ class ProviderRepository @Inject constructor(
             else cats.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
 
         try {
+            // 1) LIVE d'abord : prioritaire, commité avant de toucher aux VOD/séries pour que
+            //    l'accueil et le direct soient utilisables pendant que le reste se charge.
             step("Live categories…", 5)
             val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
-            step("Live channels…", 15)
-            val chans = xtream.fetchLiveStreams(p)
-            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
-            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
-            db.withTransaction {
-                categoryDao.deleteForProviderKind(p.id, "LIVE")
-                categoryDao.upsertAll(liveCats)
-                channelDao.deleteForProvider(p.id)
-                step("Saving ${chans.size} channels…", 25)
-                insertChunked(chans) { channelDao.upsertAll(it) }
+            var nChans = 0
+            xtream.withLiveStreams(p) { seq ->
+                // La connexion est déjà ouverte : un serveur injoignable a échoué plus haut,
+                // avant toute suppression. Suppression + insertion = UNE transaction.
+                db.withTransaction {
+                    categoryDao.deleteForProviderKind(p.id, "LIVE")
+                    categoryDao.upsertAll(liveCats)
+                    channelDao.deleteForProvider(p.id)
+                    for (batch in seq.chunked(INSERT_BATCH)) {
+                        channelDao.upsertAll(batch)
+                        nChans += batch.size
+                        step("Live channels: $nChans", 10 + (nChans / 2_000).coerceAtMost(20))
+                    }
+                }
             }
 
             step("Movie categories…", 35)
             val movCats = xtream.fetchVodCategories(p).let(::maybeLock)
-            step("Movies (${movCats.size} categories)…", 45)
-            val movs = xtream.fetchVodStreams(p)
-            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
-            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
-            db.withTransaction {
-                categoryDao.deleteForProviderKind(p.id, "MOVIE")
-                categoryDao.upsertAll(movCats)
-                movieDao.deleteForProvider(p.id)
-                step("Saving ${movs.size} movies…", 55)
-                insertChunked(movs) { movieDao.upsertAll(it) }
+            var nMovs = 0
+            xtream.withVodStreams(p) { seq ->
+                db.withTransaction {
+                    categoryDao.deleteForProviderKind(p.id, "MOVIE")
+                    categoryDao.upsertAll(movCats)
+                    movieDao.deleteForProvider(p.id)
+                    for (batch in seq.chunked(INSERT_BATCH)) {
+                        movieDao.upsertAll(batch)
+                        nMovs += batch.size
+                        step("Movies: $nMovs", 40 + (nMovs / 5_000).coerceAtMost(30))
+                    }
+                }
             }
 
-            step("Series categories…", 70)
+            step("Series categories…", 75)
             val serCats = xtream.fetchSeriesCategories(p).let(::maybeLock)
-            step("Series…", 80)
-            val series = xtream.fetchSeries(p)
-            // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
-            // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
-            db.withTransaction {
-                categoryDao.deleteForProviderKind(p.id, "SERIES")
-                categoryDao.upsertAll(serCats)
-                seriesDao.deleteForProvider(p.id)
-                step("Saving ${series.size} series…", 95)
-                insertChunked(series) { seriesDao.upsertAll(it) }
+            var nSeries = 0
+            xtream.withSeries(p) { seq ->
+                db.withTransaction {
+                    categoryDao.deleteForProviderKind(p.id, "SERIES")
+                    categoryDao.upsertAll(serCats)
+                    seriesDao.deleteForProvider(p.id)
+                    for (batch in seq.chunked(INSERT_BATCH)) {
+                        seriesDao.upsertAll(batch)
+                        nSeries += batch.size
+                        step("Series: $nSeries", 80 + (nSeries / 5_000).coerceAtMost(15))
+                    }
+                }
             }
 
-            step("Done — ${chans.size} live · ${movs.size} movies · ${series.size} series", 100)
-            return chans.size + movs.size + series.size
+            step("Done — $nChans live · $nMovs movies · $nSeries series", 100)
+            return nChans + nMovs + nSeries
         } finally {
             syncStatus.clear()
         }

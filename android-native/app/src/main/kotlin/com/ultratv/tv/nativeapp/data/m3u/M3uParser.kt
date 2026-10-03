@@ -22,14 +22,20 @@ data class M3uResult(val channels: List<ChannelEntity>, val categories: List<Cat
  * channels for Phase 4 (movies/series in M3U lack a standard schema).
  */
 @Singleton
-class M3uParser @Inject constructor(private val ok: OkHttpClient) {
+class M3uParser @Inject constructor(okBase: OkHttpClient) {
+    private val ok: OkHttpClient = okBase.newBuilder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
 
     suspend fun fetch(url: String, providerId: Long): M3uResult = withContext(Dispatchers.IO) {
         // Lecture en flux : on ne matérialise ni le corps (jusqu'à plusieurs dizaines
         // de Mo) ni la liste de toutes ses lignes, ce qui faisait grimper le tas
         // d'une box à 1-2 Go jusqu'au GC en boucle.
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-            if (!resp.isSuccessful) error("HTTP ${resp.code} fetching M3U")
+            if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
             val body = resp.body ?: return@use M3uResult(emptyList(), emptyList())
             body.charStream().buffered().use { parse(it, providerId) }
         }

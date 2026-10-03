@@ -31,6 +31,12 @@ import javax.inject.Inject
  */
 const val CATEGORY_ALL = "__all__"
 
+/** Nombre max de chaînes affichées dans la vue « Toutes ». */
+const val ALL_CHANNELS_CAP = 1_500
+
+/** Chaînes dont on charge le « en cours / suivant » (celles que l'écran peut montrer). */
+const val NOW_NEXT_CAP = 400
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class LiveViewModel @Inject constructor(
@@ -199,7 +205,10 @@ class LiveViewModel @Inject constructor(
             if (pid == null) flowOf(emptyList())
             else {
                 val base = if (cat == CATEGORY_ALL) {
-                    catalog.channels(pid).map { list ->
+                    // « Toutes les chaînes » plafonné : sur une source à 55 000 chaînes, charger
+                    // la table entière (et interroger l'EPG de chacune) saturait RAM et CPU.
+                    // Les catégories (filtre SQL) restent complètes ; la recherche couvre tout.
+                    catalog.topChannels(pid, ALL_CHANNELS_CAP).map { list ->
                         list.filter { ch ->
                             val cid = ch.categoryId ?: return@filter true
                             hiddenStore.keyFor("LIVE", pid, cid) !in hidden
@@ -290,13 +299,13 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch {
             channels.collect { list ->
                 if (list.isEmpty()) { _nowNext.value = emptyMap(); return@collect }
-                refreshNowNext(list.map { it.id })
+                refreshNowNext(list.take(NOW_NEXT_CAP).map { it.id })
             }
         }
         viewModelScope.launch {
             while (true) {
                 kotlinx.coroutines.delay(60_000)
-                refreshNowNext(channels.value.map { it.id })
+                refreshNowNext(channels.value.take(NOW_NEXT_CAP).map { it.id })
             }
         }
     }

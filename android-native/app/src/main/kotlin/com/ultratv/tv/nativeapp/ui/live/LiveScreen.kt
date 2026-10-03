@@ -377,6 +377,10 @@ private fun LivePreviewPane(
     // One mini-player kept alive while the screen is on. We swap its
     // MediaItem with a debounce when the focused channel changes, so D-pad
     // navigation doesn't hammer the network with stalker create_link calls.
+    // Aperçu vidéo : UN flux de plus. Désactivé sur l'entrée de gamme (deuxième décodeur
+    // matériel) ; sinon débounce long pour ne pas ouvrir un flux à chaque ligne survolée —
+    // beaucoup de fournisseurs n'autorisent qu'UNE connexion (max_connections = 1).
+    val previewEnabled = !com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current
     val miniPlayer = remember {
         androidx.media3.exoplayer.ExoPlayer.Builder(context).build().apply {
             playWhenReady = true
@@ -386,6 +390,12 @@ private fun LivePreviewPane(
     androidx.compose.runtime.DisposableEffect(Unit) {
         onDispose { miniPlayer.release() }
     }
+    // Ferme le flux d'aperçu AVANT d'ouvrir le lecteur plein écran (max_connections = 1).
+    val watchFullScreen: () -> Unit = {
+        miniPlayer.stop()
+        miniPlayer.clearMediaItems()
+        onWatch()
+    }
     var resolvedUrl by remember { mutableStateOf<String?>(null) }
     var loading by remember(channel.id) { mutableStateOf(true) }
     LaunchedEffect(channel.id) {
@@ -394,11 +404,11 @@ private fun LivePreviewPane(
         // 700 ms debounce: user is scrolling, don't hit the network on each
         // row. resolvePreviewUrl swallows Stalker `create_link` calls when
         // needed; for plain URLs it's a no-op.
-        kotlinx.coroutines.delay(700)
+        kotlinx.coroutines.delay(1_500)
         val url = runCatching { vm.resolvePreviewUrl(channel) }.getOrNull()
         resolvedUrl = url
         loading = false
-        if (url != null) {
+        if (url != null && previewEnabled) {
             miniPlayer.setMediaItem(androidx.media3.common.MediaItem.fromUri(url))
             miniPlayer.prepare()
         }
@@ -510,7 +520,7 @@ private fun LivePreviewPane(
         DaySchedule(
             channel = channel,
             items = schedule,
-            onWatch = onWatch,
+            onWatch = watchFullScreen,
             onCatchupPick = { prog ->
                 val url = com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(channel, prog)
                 if (url != null) onPlayCatchup(url, "${channel.name} — ${prog.title}")
