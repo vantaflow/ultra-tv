@@ -86,3 +86,7 @@ android-native/build/
 ultra-tv-secrets/
 release-signing.env
 *.lineage
+
+# Secrets locaux wrangler
+.dev.vars
+.dev.vars.*
