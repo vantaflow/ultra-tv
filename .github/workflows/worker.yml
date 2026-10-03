@@ -1,0 +1,67 @@
+name: Worker (tests + dry-run)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "cloudflare-config/**"
+      - "web/cloudflare/**"
+      - ".github/workflows/worker.yml"
+  pull_request:
+    paths:
+      - "cloudflare-config/**"
+      - "web/cloudflare/**"
+      - ".github/workflows/worker.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests vitest + wrangler dry-run
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudflare-config
+    steps:
+      # Chaque `uses:` est épinglé sur un SHA de commit de 40 caractères (tag en commentaire).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: cloudflare-config/package-lock.json
+
+      - name: Vérifier que tous les uses sont épinglés sur un SHA
+        working-directory: .
+        run: |
+          bad=$(grep -nE '^\s*-?\s*uses:' .github/workflows/worker.yml | grep -vE '@[0-9a-f]{40}( |$)' || true)
+          if [ -n "$bad" ]; then echo "uses non épinglés :"; echo "$bad"; exit 1; fi
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      # Secrets factices injectés par vitest.config.js : aucun secret réel en CI.
+      - name: Tests (Worker de configuration + proxy web)
+        run: npm test
+
+      # --dry-run : bundle et validation de la configuration, AUCUN déploiement.
+      - name: Dry-run du Worker de configuration
+        run: npx wrangler deploy --dry-run --outdir .wrangler/dry-run
+
+      - name: Dry-run du proxy web
+        run: npx wrangler deploy --dry-run --config ../web/cloudflare/wrangler.toml --outdir .wrangler/dry-run-proxy
+
+      - name: Aucun secret ou jeton en dur dans le Worker
+        working-directory: .
+        run: |
+          if grep -rnE '(ADMIN_PASSWORD|X-Crash-Token)' cloudflare-config/src; then
+            echo "Référence à un ancien secret dans le Worker"; exit 1
+          fi

@@ -9,28 +9,44 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import com.ultratv.tv.nativeapp.data.config.DeviceTokenStore
+import com.ultratv.tv.nativeapp.data.config.WorkerUrl
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * RemoteLog — fire-and-forget HTTP transport for crashes and ad-hoc events.
+ * RemoteLog — transport HTTP « tire et oublie » pour les crashs et événements.
  *
- * Direct POSTs, no local buffer file: crashes go to /api/crash inside the
- * UncaughtExceptionHandler with a short timeout (the process is dying — we
- * can't afford to block the OS death dialog); events go to /api/event via a
- * background scope.
+ * Authentification : jeton d'APPAREIL (Authorization: Bearer) obtenu par
+ * appairage et rangé dans le Keystore. Plus aucun jeton partagé dans l'APK : un
+ * secret embarqué dans un binaire public n'est pas un secret. Tant que
+ * l'appareil n'est pas appairé, rien n'est envoyé ; les crashs restent dans
+ * crash.txt et partent au premier démarrage suivant l'appairage.
  *
- * Endpoint + token come from BuildConfig (BuildConfig.LOG_URL / LOG_TOKEN),
- * populated by Gradle from the ULTRA_LOG_URL / ULTRA_LOG_TOKEN property or env
- * var, falling back to the historical production values (see app/build.gradle.kts).
- * They are still embedded in the APK so every install reports without setup —
- * BuildConfig just lets us override them at build time instead of editing
- * source. Rotate them in lock-step with the worker secret.
+ * L'URL du Worker est configurable (Réglages, ou ULTRA_WORKER_URL au build) ;
+ * HTTPS est exigé hors build debug. Tout texte est nettoyé par [LogSanitizer]
+ * avant envoi (identifiants Xtream, jetons).
  */
 object RemoteLog {
 
-    private val WORKER_URL = BuildConfig.LOG_URL
-    private val TOKEN      = BuildConfig.LOG_TOKEN
+    /** URL choisie par l'utilisateur dans les Réglages ; vide = valeur du build. */
+    @Volatile var workerUrlOverride: String = ""
+
+    private fun workerBase(): String? =
+        WorkerUrl.normalize(workerUrlOverride.ifBlank { BuildConfig.WORKER_URL }, allowCleartext = BuildConfig.DEBUG)
+
+    @Volatile private var tokenStore: DeviceTokenStore? = null
+
+    /** Requête authentifiée, ou null si l'appareil n'est pas appairé / URL invalide. */
+    private fun authedRequest(path: String, body: String): Request? {
+        val base = workerBase() ?: return null
+        val token = tokenStore?.token() ?: return null
+        return Request.Builder()
+            .url("$base$path")
+            .header("Authorization", "Bearer $token")
+            .post(body.toRequestBody(JSON))
+            .build()
+    }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -58,25 +74,7 @@ object RemoteLog {
      *  Defaults to true so the dashboard keeps catching crashes out of the box. */
     @Volatile var telemetryEnabled: Boolean = true
 
-    /** Sans jeton (build public sans ULTRA_LOG_TOKEN) la télémétrie est désactivée. */
-    private val configured: Boolean get() = TOKEN.isNotBlank()
-
-    /**
-     * Strip embedded credentials and stream URLs from any message bound for
-     * the dashboard. Xtream URLs ship the user/pass in the path so logging
-     * them verbatim leaks the subscription credentials.
-     */
-    private fun sanitize(input: String): String {
-        var out = input
-        // http(s)://host[:port]/<user>/<pass>/...   →   <provider>/…
-        out = out.replace(
-            Regex("""https?://[^\s/]+(/[^/\s]+){2,}"""),
-            "<provider>/…",
-        )
-        // Standalone "user:password@" / "?username=foo&password=bar"
-        out = out.replace(Regex("""(?i)(user(name)?|pass(word)?)=[^&\s]+"""), "$1=<redacted>")
-        return out.take(4000)
-    }
+    private fun sanitize(input: String): String = LogSanitizer.sanitize(input)
 
     data class ContextInfo(
         val mac: String,
@@ -88,6 +86,7 @@ object RemoteLog {
 
     fun init(ctx: android.content.Context, mac: String, versionName: String, versionCode: Int) {
         appCtx = ctx.applicationContext
+        tokenStore = DeviceTokenStore(ctx.applicationContext)
         contextInfo = ContextInfo(
             mac = mac,
             versionName = versionName,
@@ -98,7 +97,7 @@ object RemoteLog {
         // Try to ship anything that survived a previous crash. crashSync's
         // synchronous POST can be cut short by the dying process; this is the
         // safety net that runs from the next clean start.
-        if (configured) scope.launch { flushPendingCrash() }
+        scope.launch { flushPendingCrash() }
     }
 
     private fun pendingCrashFile(): java.io.File? {
@@ -109,7 +108,7 @@ object RemoteLog {
 
     private fun flushPendingCrash() {
         val ctx = contextInfo ?: return
-        if (!telemetryEnabled || !configured) return
+        if (!telemetryEnabled) return
         val file = pendingCrashFile() ?: return
         if (!file.exists() || file.length() == 0L) return
         val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
@@ -123,11 +122,7 @@ object RemoteLog {
                 put("androidSdk", ctx.androidSdk)
                 put("stack", sanitize(stack).take(60_000))
             }.toString()
-            val req = Request.Builder()
-                .url("$WORKER_URL/api/crash")
-                .header("X-Crash-Token", TOKEN)
-                .post(body.toRequestBody(JSON))
-                .build()
+            val req = authedRequest("/api/crash", body) ?: return@runCatching
             eventClient.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) file.delete()
             }
@@ -137,7 +132,7 @@ object RemoteLog {
     /** Ship a non-fatal log/event. Returns immediately; HTTP happens off-thread. */
     fun event(tag: String, message: String, level: String = "info") {
         val ctx = contextInfo ?: return
-        if (!telemetryEnabled || !configured) return
+        if (!telemetryEnabled) return
         val safeMessage = sanitize(message)
         scope.launch {
             runCatching {
@@ -150,11 +145,7 @@ object RemoteLog {
                     put("versionCode", ctx.versionCode)
                     put("device", ctx.device)
                 }.toString()
-                val req = Request.Builder()
-                    .url("$WORKER_URL/api/event")
-                    .header("X-Crash-Token", TOKEN)
-                    .post(body.toRequestBody(JSON))
-                    .build()
+                val req = authedRequest("/api/event", body) ?: return@runCatching
                 eventClient.newCall(req).execute().close()
             }
         }
@@ -183,7 +174,7 @@ object RemoteLog {
         runCatching { pendingCrashFile()?.appendText(payload + "\n\n", Charsets.UTF_8) }
 
         // 2. Best-effort live upload. Honour the user's telemetry toggle.
-        if (!telemetryEnabled || !configured) return
+        if (!telemetryEnabled) return
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)
@@ -193,11 +184,7 @@ object RemoteLog {
                 put("androidSdk", ctx.androidSdk)
                 put("stack", payload)
             }.toString()
-            val req = Request.Builder()
-                .url("$WORKER_URL/api/crash")
-                .header("X-Crash-Token", TOKEN)
-                .post(body.toRequestBody(JSON))
-                .build()
+            val req = authedRequest("/api/crash", body) ?: return@runCatching
             crashClient.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) pendingCrashFile()?.delete()
             }

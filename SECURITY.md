@@ -7,7 +7,7 @@ TV box + your Cloudflare Worker), so the primary threats are:
 
 1. **Credential leakage** — IPTV provider credentials shouldn't escape the
    device or the worker's KV.
-2. **Brute force** — neither the local PIN nor the worker's per-MAC password
+2. **Brute force** — neither the local PIN nor the worker's account password
    should be cheaply guessable.
 3. **Supply chain** — a malicious update shouldn't be installable over a
    legitimate one.
@@ -22,17 +22,57 @@ TV box + your Cloudflare Worker), so the primary threats are:
   supported with a warning that creds ship in clear.
 - **PIN brute-force throttle** — three wrong attempts in a row trigger a
   growing delay (1 s → 4 s → 16 s) before the comparison runs.
-- **Worker `/login` rate-limit** — five wrong attempts per MAC in any 15-min
-  rolling window earn a 60-s lockout, stored under `lk:<mac>` in CONFIG KV
-  with a 15-min TTL.
-- **Telemetry sanitiser** — every event/crash message is stripped of
-  `http(s)://host/<user>/<pass>/…` paths and `?username=/?password=` query
-  params before any worker POST.
+- **Worker authentication (v2)** — no anonymous reads. The TV is paired with a
+  dashboard account through a short single-use code and receives a random
+  256-bit device token (stored hashed on the Worker, encrypted with the Android
+  Keystore on the device, revocable and rotatable). The MAC is a display label,
+  never a key. See `cloudflare-config/README.md`.
+- **Provider credentials encrypted on the Worker** — AES-256-GCM, key held in a
+  Wrangler secret (`PROVIDER_ENC_KEY`), account id bound as AAD, key rotation
+  supported.
+- **Dashboard passwords** — PBKDF2-SHA256 (100 000 iterations, the Workers
+  platform maximum), random salt, constant-time comparison. Per-IP and per-account
+  rate limits with progressive lockout (Durable Object, strongly consistent).
+- **Web hardening** — CSP with nonce (no `unsafe-inline`), HSTS, `X-Frame-Options:
+  DENY`, `__Host-` SameSite=Strict session cookie, session-bound CSRF token plus
+  `Origin` check, no open CORS.
+- **Crash/log dashboards** — protected by the server-side secret `OPS_TOKEN`
+  (never in the APK, never in a query string). Ingestion needs a paired device
+  token and is rate-limited and size-capped.
+- **Telemetry sanitiser** — the app *and* the Worker strip `?username=/?password=/
+  ?token=`, `user:pass@host`, `/live/<user>/<pass>/…` and Bearer tokens before
+  anything is stored.
+- **Web proxy (`web/cloudflare`)** — default-deny host allow-list, http(s) only,
+  private/loopback/metadata IPs refused even if allow-listed, redirects
+  re-validated hop by hop, GET/HEAD only, CORS limited to `ALLOWED_ORIGINS`.
 - **Telemetry opt-out** — Settings → Diagnostics distants toggle. Default
   ON for debug; flip OFF stops every event + crash POST silently.
 - **Provider credentials at rest** — Room DB lives in app-private storage
   (`/data/data/<pkg>/files/`) which is unreadable by other apps on
   non-rooted devices.
+
+## Worker token rotation and compromised legacy secrets
+
+**The telemetry token that was hard-coded in `android-native/app/build.gradle.kts`
+(versions up to 1.0.30, public Git history and every released APK) must be
+considered compromised.** Anyone could read the crash and log dashboards of all
+users and inject fake events. Removing it from the source does not un-publish it:
+
+1. Deploy the new Worker (it no longer reads `CRASH_TOKEN` / `ADMIN_PASSWORD`, so
+   the leaked token stops working immediately).
+2. Set fresh secrets: `SESSION_SECRET`, `PROVIDER_ENC_KEY`, `OPS_TOKEN`.
+3. Run the migration (`cloudflare-config/README.md`, « Migration des données
+   existantes »): unprotected legacy entries and legacy logs are deleted,
+   protected accounts are re-encrypted.
+4. Treat every IPTV credential that was stored in the old format as **exposed**
+   (it was readable without authentication unless `protectReads` was on): ask
+   users to change their password at their IPTV provider.
+5. Old APKs keep working for local playback but their cloud sync and telemetry
+   receive `401`/`410`: users update and pair their TV.
+
+Routine rotation: device token (revoke in the dashboard, or automatic rotation after
+90 days), `OPS_TOKEN` / `SESSION_SECRET` (`wrangler secret put`), `PROVIDER_ENC_KEY`
+(with `PROVIDER_ENC_KEY_PREVIOUS`, see the Worker README).
 
 ## Release signing — rotating from debug key
 
@@ -85,10 +125,11 @@ again unless you rotate again.
 
 ## Backlog — known but not yet fixed
 
-- **CSRF tokens on worker forms** — `/api/provider/:mac`, `/api/password/:mac`
-  and the delete endpoints are cookie-authed with `SameSite=Lax`, which
-  blocks the obvious cross-site POST attack but not all of them. Adding a
-  per-session token (`csrf` cookie + hidden form field) is on the TODO.
+- **Credentials on the device** — provider passwords still live in clear in the
+  Room database (`allowBackup="true"`); out of scope of the Worker work, tracked
+  in the general audit.
+- **Onboarding texts** still describe the old « provision your MAC » flow; the
+  pairing dialog in Settings is the supported path.
 - **Cert pinning on IPTV providers** — provider URLs are arbitrary; we
   validate the system trust anchors but don't pin per-host. Acceptable
   given the model (user-supplied URLs).

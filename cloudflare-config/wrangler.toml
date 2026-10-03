@@ -1,22 +1,28 @@
 name = "ultratv-config"
-main = "worker.js"
-compatibility_date = "2025-01-01"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
 
-# Create the namespace once via:
-#   wrangler kv:namespace create CONFIG
-# then paste the returned id below (and a preview_id for `wrangler dev`).
+# Namespace KV : comptes, appareils appairés, crashs et journaux.
+#   wrangler kv namespace create CONFIG   (+ --preview pour `wrangler dev`)
 [[kv_namespaces]]
 binding = "CONFIG"
 id = "4d450f36e3e34ddf9520e53bf6c241ea"
 preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
 
-# Admin password is provisioned as a secret via `wrangler secret put ADMIN_PASSWORD`,
-# never committed to this file. The deployed Worker reads it from env.ADMIN_PASSWORD.
-#
-# Crash reporting:
-#   - Apps POST /api/crash with header X-Crash-Token: <token>.
-#   - The token is env.CRASH_TOKEN (falls back to env.ADMIN_PASSWORD if not set).
-#   - View collected crashes at GET /crashes?token=<token> (HTML dashboard,
-#     30-day rolling TTL stored in CONFIG KV under `crash:*`).
-#   - Apps use the per-account configPassword as the token, so each user only
-#     uploads crashes to their own worker.
+# Durable Object : limites de débit, verrouillages et codes d'appairage.
+# Il faut une cohérence forte (KV est éventuellement cohérent : un compteur
+# d'échecs y serait contournable en parallèle).
+[[durable_objects.bindings]]
+name = "GUARD"
+class_name = "Guard"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Guard"]
+
+# SECRETS (jamais dans ce fichier) — `wrangler secret put <NOM>` :
+#   SESSION_SECRET      signature des cookies de session (>= 32 caractères)
+#   PROVIDER_ENC_KEY    clé AES-256 en base64 (openssl rand -base64 32)
+#   OPS_TOKEN           mot de passe des tableaux de bord /crashes et /logs
+#   ADMIN_TOKEN         (optionnel) jeton de l'endpoint de migration
+#   PROVIDER_ENC_KEY_PREVIOUS  (optionnel) ancienne clé pendant une rotation

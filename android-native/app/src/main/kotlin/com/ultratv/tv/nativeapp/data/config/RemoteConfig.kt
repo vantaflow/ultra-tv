@@ -33,6 +33,7 @@ import javax.inject.Singleton
 class RemoteConfigImporter @Inject constructor(
     private val ok: OkHttpClient,
     private val provider: ProviderRepository,
+    private val cloudSource: CloudConfigSource,
 ) {
     @Serializable
     private data class ConfigRoot(val providers: List<ProviderSpec> = emptyList())
@@ -50,35 +51,32 @@ class RemoteConfigImporter @Inject constructor(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true; coerceInputValues = true }
 
     /**
-     * Pulls config for the device's pseudo-MAC from the configured Cloudflare
-     * Worker. The Worker URL is the deployment root (e.g.
-     * "https://ultratv-config.your-worker.workers.dev"); we append the API
-     * path ourselves.
+     * Récupère la configuration de cet appareil auprès du Worker avec son jeton
+     * d'appareil (obtenu par appairage). La MAC n'est plus envoyée : ce n'est
+     * qu'une étiquette d'affichage, jamais une clé d'accès.
+     *
+     * @throws NotPairedException aucun jeton stocké ; l'UI doit lancer l'appairage
+     * @throws TokenRejectedException le Worker a révoqué ce jeton (déjà effacé localement)
      */
-    suspend fun importByMac(
-        workerBase: String,
-        mac: String,
-        password: String = "",
-        onProgress: (String) -> Unit = {},
-    ): ImportResult {
-        val base = workerBase.trimEnd('/')
-        val pwdParam = if (password.isNotBlank()) "?password=${java.net.URLEncoder.encode(password, "UTF-8")}" else ""
-        return importFromUrl("$base/api/config/$mac$pwdParam", onProgress)
+    suspend fun importFromCloud(workerBase: String, onProgress: (String) -> Unit = {}): ImportResult {
+        onProgress("Fetching config…")
+        return importJson(cloudSource.fetch(workerBase), onProgress)
     }
 
-    /** HTTP 401 from the worker means the per-MAC password is missing/wrong. */
-    class WrongPasswordException(msg: String) : RuntimeException(msg)
-
-    suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): ImportResult =
-        withContext(Dispatchers.IO) {
+    /** Import depuis une URL JSON quelconque fournie par l'utilisateur (gist, serveur perso). */
+    suspend fun importFromUrl(url: String, onProgress: (String) -> Unit = {}): ImportResult {
+        val body = withContext(Dispatchers.IO) {
             onProgress("Fetching config…")
-            val body = ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-                if (resp.code == 401) {
-                    throw WrongPasswordException("Config password missing or wrong for this MAC")
-                }
+            ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
                 if (!resp.isSuccessful) error("HTTP ${resp.code} — config URL unreachable")
                 resp.body?.string().orEmpty()
             }
+        }
+        return importJson(body, onProgress)
+    }
+
+    private suspend fun importJson(body: String, onProgress: (String) -> Unit): ImportResult =
+        withContext(Dispatchers.IO) {
             val cfg = runCatching { json.decodeFromString(ConfigRoot.serializer(), body) }
                 .getOrElse { error("Invalid JSON: ${it.message}") }
 

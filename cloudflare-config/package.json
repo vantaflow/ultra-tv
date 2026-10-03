@@ -1,0 +1,15 @@
+{
+  "name": "ultratv-config-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "dev": "wrangler dev",
+    "check": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.147.0"
+  }
+}

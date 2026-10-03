@@ -24,26 +24,25 @@ val appVersionCode: Int = run {
     parts[0] * 10_000 + parts[1] * 100 + parts[2]
 }
 
-// Remote-telemetry endpoint + token. BuildConfig fields, never hardcoded: the token
-// is read from (in order) a Gradle property, local.properties (git-ignored) or the
-// environment variable ULTRA_LOG_TOKEN. WITHOUT a token telemetry is simply
-// disabled (RemoteLog is a no-op) — the repo is public, a committed token would
-// give anyone access to the crash/log dashboards. The URL is not secret and keeps
-// its production default.
 val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
+// URL du Worker (configuration cloud + télémétrie). Ce n'est PAS un secret : le
+// Worker authentifie chaque appareil par un jeton obtenu à l'appairage. Il n'existe
+// donc plus de jeton de télémétrie embarqué dans l'APK. Surcharge au build :
+//   -PULTRA_WORKER_URL=https://mon-worker.exemple.workers.dev   ou variable d'environnement.
+// Les anciens ULTRA_LOG_URL sont acceptés en repli ; ULTRA_LOG_TOKEN est ignoré.
 fun resolveBuildConfigValue(name: String, default: String): String =
     (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
         ?: localProps.getProperty(name)?.takeIf { it.isNotBlank() }
         ?: System.getenv(name)?.takeIf { it.isNotBlank() }
         ?: default
 
-val ultraLogUrl = resolveBuildConfigValue(
-    "ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev",
+val ultraWorkerUrl = resolveBuildConfigValue(
+    "ULTRA_WORKER_URL",
+    resolveBuildConfigValue("ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev"),
 )
-val ultraLogToken = resolveBuildConfigValue("ULTRA_LOG_TOKEN", "")
 
 android {
     namespace = "com.ultratv.tv.nativeapp"
@@ -59,10 +58,8 @@ android {
         versionName = appVersionName
         vectorDrawables { useSupportLibrary = true }
 
-        // Telemetry transport config — see resolveBuildConfigValue() above.
-        // Consumed by RemoteLog. String values must be wrapped in escaped quotes.
-        buildConfigField("String", "LOG_URL", "\"$ultraLogUrl\"")
-        buildConfigField("String", "LOG_TOKEN", "\"$ultraLogToken\"")
+        // URL par défaut du Worker — voir resolveBuildConfigValue() ci-dessus.
+        buildConfigField("String", "WORKER_URL", "\"$ultraWorkerUrl\"")
     }
 
     // Release signing — reads ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD /
@@ -231,6 +228,7 @@ dependencies {
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 /**

@@ -65,18 +65,4 @@ jobs:
           chmod +x gradlew
           ./gradlew compileDebugKotlin testDebugUnitTest --console=plain --stacktrace
 
-  worker:
-    name: Cloudflare workers (syntax)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Syntax check worker scripts
-        run: |
-          node --check cloudflare-config/worker.js
-          node --check web/cloudflare/worker.js
+  # Le Worker est testé par .github/workflows/worker.yml (vitest + wrangler dry-run).
