@@ -40,7 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER, WORKER, CONFIG_PASSWORD }
+private enum class OpenDialog { NONE, XTREAM, M3U_URL, STALKER, WORKER }
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
@@ -59,7 +59,6 @@ fun SettingsScreen(
     val savedMsg = S.toastBackupSaved
     val saveFailedMsg = S.toastSaveFailed
     val emptyFileMsg = S.toastEmptyFile
-    val configPwdSavedMsg = S.toastConfigPasswordSaved
     val backupReadyMsg = S.toastBackupReady
     val restoredTemplate = S.toastRestoredTemplate
     val restoreFailedPrefix = S.toastRestoreFailed
@@ -149,7 +148,8 @@ fun SettingsScreen(
     // Worker URL is now stored in DataStore (per-device), never hard-coded.
     // Each user provisions their own worker and pastes its URL here once.
     val workerBase by vm.workerBaseUrl.collectAsState()
-    val configPwd by vm.configPassword.collectAsState()
+    val paired by vm.paired.collectAsState()
+    val pairingUi by vm.pairing.collectAsState()
 
     val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
     val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
@@ -240,19 +240,20 @@ fun SettingsScreen(
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    S.settingsConfigPasswordLabel + if (configPwd.isBlank()) S.settingsConfigPasswordNone
-                    else "•".repeat(configPwd.length.coerceAtMost(20)),
-                    color = if (configPwd.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onBackground,
+                    if (paired) "Paired with the dashboard ✓" else "Not paired — pair this TV with your dashboard account",
+                    color = if (paired) MaterialTheme.colorScheme.onBackground
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 13.sp,
                     modifier = Modifier.weight(1f),
                 )
-                Button(onClick = { openDialog = OpenDialog.CONFIG_PASSWORD }) {
-                    Text(if (configPwd.isBlank()) S.settingsSet else S.change)
+                if (paired) {
+                    Button(onClick = { vm.unpair() }) { Text("Unpair") }
+                } else {
+                    Button(onClick = { vm.startPairing() }, enabled = workerBase.isNotBlank()) { Text("Pair") }
                 }
             }
             Button(
-                onClick = { vm.importByMac(workerBase.trim()) },
+                onClick = { vm.syncFromCloud() },
                 enabled = !syncing && workerBase.isNotBlank(),
             ) { Text(if (syncing) S.settingsSyncing else S.settingsSyncFromCloud, fontSize = 15.sp) }
         }
@@ -430,43 +431,10 @@ fun SettingsScreen(
                 vm.saveWorkerBase(url); openDialog = OpenDialog.NONE
             },
         )
-        OpenDialog.CONFIG_PASSWORD -> ConfigPasswordDialog(
-            initial = configPwd,
-            onDismiss = { openDialog = OpenDialog.NONE },
-            onSubmit = { pwd ->
-                vm.saveConfigPassword(pwd); openDialog = OpenDialog.NONE
-                com.ultratv.tv.nativeapp.ui.common.Toaster.ok(configPwdSavedMsg)
-            },
-        )
         OpenDialog.NONE -> Unit
     }
-}
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
-@Composable
-private fun ConfigPasswordDialog(initial: String, onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
-    var pwd by remember { mutableStateOf(initial) }
-    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    AddProviderDialog(
-        title = S.settingsConfigPwdDialogTitle,
-        onDismiss = onDismiss,
-        onSubmit = { onSubmit(pwd) },
-        canSubmit = true,
-    ) {
-        Text(
-            S.settingsConfigPwdDialogHint,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 12.sp,
-        )
-        FormField(
-            label = S.settingsConfigPwdFieldLabel,
-            value = pwd,
-            onChange = { pwd = it },
-            placeholder = S.settingsConfigPwdFieldPlaceholder,
-            password = true,
-            autoFocus = true,
-        )
-    }
+    CloudPairingDialog(state = pairingUi, onCancel = { vm.cancelPairing() }, onRetry = { vm.startPairing() })
 }
 
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)

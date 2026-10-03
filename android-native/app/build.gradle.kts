@@ -22,23 +22,19 @@ val appVersionCode: Int = run {
     parts[0] * 10_000 + parts[1] * 100 + parts[2]
 }
 
-// Remote-telemetry endpoint + token. Previously hardcoded as consts inside
-// RemoteLog.kt and baked into the APK. They are now BuildConfig fields so the
-// values can be overridden per build without touching source — via a Gradle
-// property (-PULTRA_LOG_URL=... / gradle.properties) or an environment variable
-// (ULTRA_LOG_URL / ULTRA_LOG_TOKEN). The defaults below are the historical
-// production values, so a plain local/CI build behaves exactly as before.
-// Rotate these in lock-step with the worker secret.
+// URL du Worker (configuration cloud + télémétrie). Ce n'est PAS un secret : le
+// Worker authentifie chaque appareil par un jeton obtenu à l'appairage. Il n'existe
+// donc plus de jeton de télémétrie embarqué dans l'APK. Surcharge au build :
+//   -PULTRA_WORKER_URL=https://mon-worker.exemple.workers.dev   ou variable d'environnement.
+// Les anciens ULTRA_LOG_URL sont acceptés en repli ; ULTRA_LOG_TOKEN est ignoré.
 fun resolveBuildConfigValue(name: String, default: String): String =
     (project.findProperty(name) as String?)?.takeIf { it.isNotBlank() }
         ?: System.getenv(name)?.takeIf { it.isNotBlank() }
         ?: default
 
-val ultraLogUrl = resolveBuildConfigValue(
-    "ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev",
-)
-val ultraLogToken = resolveBuildConfigValue(
-    "ULTRA_LOG_TOKEN", "f-w31zHuqg0ntBPRSJtOVEXGB55B9uv5",
+val ultraWorkerUrl = resolveBuildConfigValue(
+    "ULTRA_WORKER_URL",
+    resolveBuildConfigValue("ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev"),
 )
 
 android {
@@ -55,10 +51,8 @@ android {
         versionName = appVersionName
         vectorDrawables { useSupportLibrary = true }
 
-        // Telemetry transport config — see resolveBuildConfigValue() above.
-        // Consumed by RemoteLog. String values must be wrapped in escaped quotes.
-        buildConfigField("String", "LOG_URL", "\"$ultraLogUrl\"")
-        buildConfigField("String", "LOG_TOKEN", "\"$ultraLogToken\"")
+        // URL par défaut du Worker — voir resolveBuildConfigValue() ci-dessus.
+        buildConfigField("String", "WORKER_URL", "\"$ultraWorkerUrl\"")
     }
 
     // Release signing — reads ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD /
@@ -220,6 +214,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("org.json:json:20240303")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 /**

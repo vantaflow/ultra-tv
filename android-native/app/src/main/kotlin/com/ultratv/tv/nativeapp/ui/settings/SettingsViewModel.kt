@@ -15,6 +15,14 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** État de l'écran d'appairage affiché sur la TV. */
+sealed interface PairingUi {
+    data object Idle : PairingUi
+    data object Requesting : PairingUi
+    data class ShowCode(val code: String, val workerBase: String) : PairingUi
+    data class Failed(val message: String) : PairingUi
+}
+
 data class SettingsState(
     val providers: List<ProviderEntity> = emptyList(),
     val syncing: Boolean = false,
@@ -28,6 +36,8 @@ class SettingsViewModel @Inject constructor(
     private val deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac,
     private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val backupRepo: com.ultratv.tv.nativeapp.data.repo.BackupRepository,
+    private val cloudPairing: com.ultratv.tv.nativeapp.data.config.CloudPairing,
+    private val deviceTokens: com.ultratv.tv.nativeapp.data.config.DeviceTokenStore,
 ) : ViewModel() {
 
     /** Mirrors UserPrefs.localLogosFolderUri for the Settings UI to display. */
@@ -77,54 +87,113 @@ class SettingsViewModel @Inject constructor(
     val deviceMacAddress: String = deviceMac.mac
 
     /**
-     * Effective Worker URL: user override (DataStore) takes precedence over
-     * the project default below. Each user can still self-host their own
-     * worker and paste its URL in Settings.
+     * Effective Worker URL: user override (DataStore) takes precedence over the
+     * build default (BuildConfig.WORKER_URL, itself overridable with
+     * -PULTRA_WORKER_URL). Each user can self-host their own Worker.
      */
     val workerBaseUrl: StateFlow<String> = prefs.flow
         .map { it.workerBaseUrl.ifBlank { DEFAULT_WORKER_URL } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_WORKER_URL)
 
     companion object {
-        // Default project-hosted Cloudflare Worker. Anyone using this default
-        // shares the same KV namespace (rows are scoped per MAC, so it's
-        // technically isolated, but the admin password can read everything —
-        // self-host for full privacy).
-        const val DEFAULT_WORKER_URL = "https://ultratv-config.khalilbenaz.workers.dev"
+        /** URL par défaut injectée au build ; ce n'est pas un secret (le Worker authentifie par jeton). */
+        val DEFAULT_WORKER_URL: String = com.ultratv.tv.nativeapp.BuildConfig.WORKER_URL
     }
+
+    /** HTTPS exigé (HTTP seulement en debug) : le jeton et les identifiants transitent par cette URL. */
+    private fun validWorkerUrl(raw: String): String? =
+        com.ultratv.tv.nativeapp.data.config.WorkerUrl.normalize(raw, allowCleartext = com.ultratv.tv.nativeapp.BuildConfig.DEBUG)
 
     fun saveWorkerBase(url: String) {
-        viewModelScope.launch { prefs.setWorkerBase(url) }
+        val normalized = validWorkerUrl(url)
+        if (normalized == null) {
+            com.ultratv.tv.nativeapp.ui.common.Toaster.err("Worker URL must start with https://")
+            return
+        }
+        viewModelScope.launch {
+            if (normalized != validWorkerUrl(workerBaseUrl.value)) {
+                // Un jeton n'est valable que pour le Worker qui l'a délivré.
+                deviceTokens.clear(); _paired.value = false
+            }
+            prefs.setWorkerBase(normalized)
+            com.ultratv.tv.nativeapp.RemoteLog.workerUrlOverride = normalized
+        }
     }
 
-    val configPassword: StateFlow<String> = prefs.flow
-        .map { it.configPassword }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+    // ---- Appairage avec le tableau de bord ----
 
-    fun saveConfigPassword(pwd: String) {
-        viewModelScope.launch { prefs.setConfigPassword(pwd) }
+    private val _paired = MutableStateFlow(deviceTokens.isPaired)
+    /** Vrai quand un jeton d'appareil est stocké (Keystore). */
+    val paired: StateFlow<Boolean> = _paired.asStateFlow()
+
+    private val _pairing = MutableStateFlow<PairingUi>(PairingUi.Idle)
+    val pairing: StateFlow<PairingUi> = _pairing.asStateFlow()
+    private var pairingJob: kotlinx.coroutines.Job? = null
+
+    /** Demande un code, l'affiche, attend la saisie dans le tableau de bord, puis synchronise. */
+    fun startPairing() {
+        val base = validWorkerUrl(workerBaseUrl.value)
+        if (base == null) {
+            _message.value = "Set a valid https:// Worker URL first."
+            return
+        }
+        pairingJob?.cancel()
+        _pairing.value = PairingUi.Requesting
+        pairingJob = viewModelScope.launch {
+            cloudPairing.run(base, deviceMac.mac).collect { ev ->
+                when (ev) {
+                    is com.ultratv.tv.nativeapp.data.config.PairingEvent.CodeReady ->
+                        _pairing.value = PairingUi.ShowCode(ev.code, base)
+                    com.ultratv.tv.nativeapp.data.config.PairingEvent.Paired -> {
+                        _paired.value = true
+                        _pairing.value = PairingUi.Idle
+                        syncFromCloud()
+                    }
+                    com.ultratv.tv.nativeapp.data.config.PairingEvent.Expired ->
+                        _pairing.value = PairingUi.Failed("The code expired. Try again.")
+                    is com.ultratv.tv.nativeapp.data.config.PairingEvent.Failed ->
+                        _pairing.value = PairingUi.Failed(ev.message)
+                }
+            }
+        }
     }
 
-    fun importByMac(workerBase: String) {
+    fun cancelPairing() {
+        pairingJob?.cancel()
+        _pairing.value = PairingUi.Idle
+    }
+
+    /** Oublie le jeton local. Pour le révoquer côté serveur, supprimer l'appareil dans le tableau de bord. */
+    fun unpair() {
+        deviceTokens.clear()
+        _paired.value = false
+        _message.value = "Device unpaired. Revoke it in the dashboard too if you lost it."
+    }
+
+    /** Récupère la configuration de cet appareil avec son jeton ; sans jeton, lance l'appairage. */
+    fun syncFromCloud() {
+        if (!deviceTokens.isPaired) { startPairing(); return }
         viewModelScope.launch {
             _syncing.value = true
-            _message.value = "Asking dashboard for config matching ${deviceMac.mac}…"
+            _message.value = "Asking the dashboard for this device's config…"
             try {
-                val res = remoteConfig.importByMac(
-                    workerBase, deviceMac.mac, configPassword.value,
-                ) { _message.value = it }
+                val workerBase = validWorkerUrl(workerBaseUrl.value) ?: error("Invalid Worker URL (https:// required)")
+                val res = remoteConfig.importFromCloud(workerBase) { _message.value = it }
                 // Ensure something becomes default so the UI has a provider to use.
                 if (res.imported > 0 && repo.firstActive() == null) {
                     repo.observeProviders().first().firstOrNull()?.id?.let { repo.setDefault(it) }
                 }
                 _message.value = when {
                     res.imported == 0 && res.errors.isEmpty() ->
-                        "Dashboard knows no config for this MAC. Go to ${workerBase.trimEnd('/')} and provision ${deviceMac.mac}."
+                        "The dashboard has no provider for this device yet. Add one at $workerBase."
                     res.errors.isEmpty() -> "Imported ${res.imported} provider(s) ✓"
                     else -> "Imported ${res.imported} provider(s) · ${res.errors.size} error(s): ${res.errors.first()}"
                 }
-            } catch (e: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter.WrongPasswordException) {
-                _message.value = "⚠ Wrong / missing config password — set it in Settings."
+            } catch (e: com.ultratv.tv.nativeapp.data.config.TokenRejectedException) {
+                _paired.value = false
+                _message.value = "⚠ This device was revoked or unpaired. Pair it again."
+            } catch (e: com.ultratv.tv.nativeapp.data.config.RateLimitedException) {
+                _message.value = "Too many requests — retry in ${e.retryAfterSec}s."
             } catch (t: Throwable) {
                 _message.value = "Error: ${t.message}"
             } finally {

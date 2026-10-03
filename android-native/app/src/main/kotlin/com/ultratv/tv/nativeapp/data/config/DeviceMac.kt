@@ -20,6 +20,11 @@ import javax.inject.Singleton
  *   - private (admin must enter it on the dashboard to provision)
  *
  * No PII or hardware MAC is ever sent off-device.
+ *
+ * IMPORTANT : cette valeur n'est qu'une ÉTIQUETTE D'AFFICHAGE (libellé de l'appareil
+ * dans le tableau de bord). Elle n'est ni secrète ni une clé d'accès : l'accès à la
+ * configuration cloud se fait avec un jeton d'appareil obtenu par appairage
+ * ([CloudPairing]). Ne jamais s'en servir pour authentifier quoi que ce soit.
  */
 @Singleton
 class DeviceMac @Inject constructor(@ApplicationContext private val ctx: Context) {
