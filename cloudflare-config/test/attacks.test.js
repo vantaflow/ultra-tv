@@ -198,7 +198,7 @@ describe("XSS, CSRF, en-têtes", () => {
       const r = await call(p, { ip: freshIp() });
       expect(r.headers.get("x-content-type-options")).toBe("nosniff");
       expect(r.headers.get("strict-transport-security")).toContain("max-age=");
-      expect(r.headers.get("referrer-policy")).toBe("no-referrer");
+      expect(r.headers.get("referrer-policy")).toBe("same-origin");
       expect(r.headers.get("cache-control")).toContain("no-store");
       expect(r.headers.get("x-frame-options")).toBe("DENY");
     }
@@ -323,5 +323,18 @@ describe("migration depuis l'ancien format", () => {
     const r = await call("/signup", { method: "POST", ip: freshIp(), form: { login: "DE:AD:BE:EF:00:09", password: strongPw, confirm: strongPw } });
     expect(r.headers.get("location")).toContain("e=taken");
     expect(cookieFrom(r)).toBeNull();
+  });
+});
+
+describe("Origin « null » (Firefox, Safari)", () => {
+  it("accepte un POST same-origin avec Origin: null si Sec-Fetch-Site vaut same-origin", async () => {
+    const { sameOrigin } = await import("../src/http.js");
+    const req = new Request("https://w.example/signup", { method: "POST", headers: { origin: "null", "sec-fetch-site": "same-origin" } });
+    expect(sameOrigin(req)).toBe(true);
+  });
+  it("refuse Origin: null sans Sec-Fetch-Site ou venant d'un autre site", async () => {
+    const { sameOrigin } = await import("../src/http.js");
+    expect(sameOrigin(new Request("https://w.example/signup", { method: "POST", headers: { origin: "null" } }))).toBe(false);
+    expect(sameOrigin(new Request("https://w.example/signup", { method: "POST", headers: { origin: "null", "sec-fetch-site": "cross-site" } }))).toBe(false);
   });
 });

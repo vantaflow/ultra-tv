@@ -5,7 +5,7 @@ export class ConfigError extends Error {}
 
 export const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
-  "referrer-policy": "no-referrer",
+  "referrer-policy": "same-origin",
   "strict-transport-security": "max-age=63072000; includeSubDomains",
   "x-frame-options": "DENY",
   "cache-control": "no-store",
@@ -110,8 +110,11 @@ export async function readForm(req, max = 16 * 1024) {
  */
 export function sameOrigin(req) {
   const origin = req.headers.get("origin");
-  if (origin) return origin === new URL(req.url).origin;
   const site = req.headers.get("sec-fetch-site");
+  // Firefox et Safari envoient « Origin: null » sur un POST de formulaire quand la page est servie en
+  // no-referrer : on s'en remet alors à Sec-Fetch-Site, que le navigateur fixe et qu'un site tiers ne peut pas falsifier.
+  if (origin === "null") return site === "same-origin";
+  if (origin) return origin === new URL(req.url).origin;
   return !site || site === "same-origin" || site === "none";
 }
 
