@@ -14,9 +14,17 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         for (col in listOf("lastLiveSyncAt", "lastVodSyncAt", "lastSeriesSyncAt", "lastEpgSyncAt")) {
             db.execSQL("ALTER TABLE `provider` ADD COLUMN `$col` INTEGER NOT NULL DEFAULT 0")
         }
+        db.execSQL("ALTER TABLE `episode` ADD COLUMN `image` TEXT")
         for (t in listOf("channel", "movie", "series")) {
             db.execSQL("ALTER TABLE `$t` ADD COLUMN `sortKey` TEXT NOT NULL DEFAULT ''")
-            db.execSQL("UPDATE `$t` SET `sortKey` = lower(`name`)")
+            db.execSQL("ALTER TABLE `$t` ADD COLUMN `title` TEXT NOT NULL DEFAULT ''")
+            db.execSQL("UPDATE `$t` SET `title` = `name`, `sortKey` = lower(`name`)")
+            if (t != "channel") {
+                db.execSQL("ALTER TABLE `$t` ADD COLUMN `backdrop` TEXT")
+                db.execSQL("ALTER TABLE `$t` ADD COLUMN `genre` TEXT")
+                db.execSQL("ALTER TABLE `$t` ADD COLUMN `cast` TEXT")
+            }
+            if (t == "movie") db.execSQL("ALTER TABLE `movie` ADD COLUMN `duration` TEXT")
             db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId`")
             db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId_categoryId`")
             db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_sortKey` ON `$t` (`providerId`, `sortKey`)")

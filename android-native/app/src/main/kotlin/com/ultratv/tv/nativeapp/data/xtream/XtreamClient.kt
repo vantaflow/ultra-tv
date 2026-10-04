@@ -102,6 +102,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         val name = o["name"]?.str() ?: return null
         val cont = o["container_extension"]?.str() ?: "mp4"
         val url = "${p.baseUrl}/movie/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.$cont"
+        val cleaned = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name)
         return MovieEntity(
             providerId = p.id,
             remoteId = sid,
@@ -110,9 +111,27 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             categoryId = o["category_id"]?.str(),
             streamUrl = url,
             container = cont,
-            year = o["releaseDate"]?.str()?.take(4)?.toIntOrNull() ?: o["year"]?.str()?.toIntOrNull(),
-            rating = o["rating"]?.str()?.toDoubleOrNull(),
+            year = o["releaseDate"]?.str()?.take(4)?.toIntOrNull() ?: o["year"]?.str()?.toIntOrNull() ?: cleaned.year,
+            rating = normalizeRating(o["rating"]?.str()?.toDoubleOrNull()),
             plot = null,
+            title = cleaned.title,
+        )
+    }
+
+    /** Détails d'un film (get_vod_info) : synopsis, distribution, genre, durée, image paysage. */
+    data class VodInfo(val plot: String?, val cast: String?, val genre: String?, val duration: String?, val backdrop: String?, val poster: String?)
+
+    suspend fun fetchVodInfo(p: ProviderEntity, remoteId: String): VodInfo? {
+        val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_vod_info&vod_id=$remoteId")
+        val info = (runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull()?.get("info") as? JsonObject) ?: return null
+        fun s(k: String) = info[k]?.str()?.takeIf { it.isNotBlank() }
+        return VodInfo(
+            plot = s("plot") ?: s("description"),
+            cast = s("cast") ?: s("actors"),
+            genre = s("genre"),
+            duration = s("duration"),
+            backdrop = (info["backdrop_path"] as? JsonArray)?.firstOrNull()?.str()?.takeIf { it.isNotBlank() } ?: s("backdrop"),
+            poster = s("movie_image") ?: s("cover_big"),
         )
     }
 
@@ -130,15 +149,20 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     private fun seriesOf(p: ProviderEntity, o: JsonObject): SeriesEntity? {
         val rid = o["series_id"]?.str() ?: return null
         val name = o["name"]?.str() ?: return null
+        val cleaned = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name)
         return SeriesEntity(
             providerId = p.id,
             remoteId = rid,
             name = name,
             poster = o["cover"]?.str(),
             categoryId = o["category_id"]?.str(),
-            year = o["releaseDate"]?.str()?.take(4)?.toIntOrNull(),
-            rating = o["rating"]?.str()?.toDoubleOrNull(),
-            plot = o["plot"]?.str(),
+            year = (o["releaseDate"]?.str() ?: o["release_date"]?.str())?.take(4)?.toIntOrNull() ?: cleaned.year,
+            rating = normalizeRating(o["rating"]?.str()?.toDoubleOrNull()),
+            plot = o["plot"]?.str()?.takeIf { it.isNotBlank() },
+            title = cleaned.title,
+            backdrop = (o["backdrop_path"] as? JsonArray)?.firstOrNull()?.str()?.takeIf { it.isNotBlank() },
+            genre = o["genre"]?.str()?.takeIf { it.isNotBlank() },
+            cast = o["cast"]?.str()?.takeIf { it.isNotBlank() },
         )
     }
 
@@ -167,6 +191,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
                     streamUrl = url,
                     container = cont,
                     plot = (o["info"] as? JsonObject)?.get("plot")?.str(),
+                    image = (o["info"] as? JsonObject)?.get("movie_image")?.str()?.takeIf { it.isNotBlank() },
                 )
             }
         }
@@ -214,6 +239,14 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
                 .mapNotNull { transform(p, it) }
             block(items)
         }
+    }
+
+    /** Note sur 10 ; les fournisseurs envoient parfois 0, une note sur 100 ou n'importe quoi (608) : sinon rien. */
+    private fun normalizeRating(r: Double?): Double? = when {
+        r == null || r <= 0.0 -> null
+        r <= 10.0 -> r
+        r <= 100.0 -> r / 10.0
+        else -> null
     }
 
     private fun JsonElement.str(): String? = (this as? JsonPrimitive)?.contentOrNull

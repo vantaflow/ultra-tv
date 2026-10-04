@@ -2,95 +2,123 @@ package com.ultratv.tv.nativeapp.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.ultratv.tv.nativeapp.data.config.DeviceMac
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
-import com.ultratv.tv.nativeapp.data.db.MovieEntity
+import com.ultratv.tv.nativeapp.data.db.EpgDao
+import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
-import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.HistoryRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.repo.SyncStatusBus
+import com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Élément « À la une » : uniquement des métadonnées RÉELLES de la source (jamais inventées). */
+data class HeroItem(
+    val kind: Kind,
+    val id: Long,
+    val title: String,
+    val year: Int?,
+    val genre: String?,
+    val rating: Double?,
+    /** Image PAYSAGE si la source en fournit une (backdrop), sinon null. */
+    val backdrop: String?,
+    val poster: String?,
+) { enum class Kind { SERIES, MOVIE } }
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
-    private val provider: ProviderRepository,
+    private val syncCoordinator: SyncCoordinator,
+    provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val history: HistoryRepository,
-    private val deviceMac: DeviceMac,
     private val playback: PlaybackContext,
+    private val epgDao: EpgDao,
+    bus: SyncStatusBus,
 ) : ViewModel() {
-
-    val mac: String = deviceMac.mac
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val pid = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }
+    /** `null` tant que Room n'a pas répondu (évite de montrer « aucune source » une fraction de seconde). */
+    val providersLoaded: StateFlow<Boolean> = provider.observeProviders().map { true }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val syncStatus = bus.status
+
+    private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
     val continueWatching: StateFlow<List<WatchHistoryEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id) }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val recentlyWatched: StateFlow<List<WatchHistoryEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recent(id, 20) }
+    /** « À la une » : la série la mieux notée avec image paysage, à défaut le film le mieux noté. */
+    val hero: StateFlow<HeroItem?> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(null)
+        else combine(catalog.heroSeries(id), catalog.heroMovie(id)) { s, m ->
+            when {
+                s != null -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop, s.poster)
+                m != null -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop, m.poster)
+                else -> null
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
+    val favoriteChannels: StateFlow<List<ChannelEntity>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 12) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val featuredMovies: StateFlow<List<MovieEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topMovies(id, 20) }
+    private val fallbackChannels: Flow<List<ChannelEntity>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.channelsWithLogo(id, 12) }
+
+    val channels: StateFlow<List<ChannelEntity>> = combine(favoriteChannels, fallbackChannels) { fav, other -> fav.ifEmpty { other } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val featuredSeries: StateFlow<List<SeriesEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topSeries(id, 20) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val showingFavorites: StateFlow<Boolean> = favoriteChannels.map { it.isNotEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val featuredChannels: StateFlow<List<ChannelEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topChannels(id, 30) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    /** Programme en cours par chaîne affichée, rafraîchi toutes les minutes. */
+    val nowPlaying: StateFlow<Map<Long, EpgEntity>> = channels.flatMapLatest { chans ->
+        flow {
+            while (true) {
+                val now = System.currentTimeMillis()
+                val rows = if (chans.isEmpty()) emptyList() else epgDao.rangeForChannels(chans.map { it.id }, now, now + 60_000)
+                emit(rows.filter { it.startMs <= now && it.endMs > now }.associateBy { it.channelId })
+                delay(60_000)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Sets the playback context from a history entry so the player can record proper context. */
     fun playFromHistory(h: WatchHistoryEntity) {
         playback.set(PlaybackContext.Item(
-            providerId = h.providerId,
-            kind = h.kind,
-            remoteId = h.remoteId,
-            title = h.title,
-            poster = h.poster,
-            streamUrl = h.streamUrl,
-            parentRemoteId = h.parentRemoteId,
+            providerId = h.providerId, kind = h.kind, remoteId = h.remoteId, title = h.title,
+            poster = h.poster, streamUrl = h.streamUrl, parentRemoteId = h.parentRemoteId,
         ))
     }
 
-    /** Removes an entry from history (used by "Dismiss" on Continue watching). */
-    fun dismiss(h: WatchHistoryEntity) {
-        viewModelScope.launch { history.remove(h.providerId, h.kind, h.remoteId) }
-    }
-
-    private val _refreshing = kotlinx.coroutines.flow.MutableStateFlow(false)
-    val refreshing: StateFlow<Boolean> = _refreshing
+    fun dismiss(h: WatchHistoryEntity) { viewModelScope.launch { history.remove(h.providerId, h.kind, h.remoteId) } }
 
     fun refresh() {
-        viewModelScope.launch {
-            val id = providers.value.firstOrNull { it.active }?.id
-                ?: providers.value.firstOrNull()?.id
-                ?: return@launch
-            _refreshing.value = true
-            syncCoordinator.request(id, force = true); _refreshing.value = false
-        }
+        val id = providers.value.firstOrNull { it.active }?.id ?: providers.value.firstOrNull()?.id ?: return
+        syncCoordinator.request(id, force = true)
     }
 }

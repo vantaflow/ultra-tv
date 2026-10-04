@@ -150,6 +150,17 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
+    /** Rail d'accueil sans favoris : des chaînes avec logo, par ordre alphabétique (hors décorations). */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' ORDER BY sortKey LIMIT :limit")
+    fun observeTopWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId = :pid ORDER BY c.sortKey LIMIT :limit
+    """)
+    fun observeFavoritesTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
     /** Pagination Room : seules les lignes visibles (+ marge) sont chargées, l'ordre vient de l'index. */
     @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY sortKey")
     fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
@@ -183,6 +194,10 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
+    /** Film « à la une » : le mieux noté qui a une affiche. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT 1")
+    fun observeHero(pid: Long): Flow<MovieEntity?>
+
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
 
@@ -200,6 +215,9 @@ interface MovieDao {
 
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("UPDATE movie SET plot = :plot, cast = :cast, genre = :genre, duration = :duration, backdrop = :backdrop WHERE id = :id")
+    suspend fun updateDetails(id: Long, plot: String?, cast: String?, genre: String?, duration: String?, backdrop: String?)
 
     @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM movie WHERE providerId = :pid GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
@@ -224,6 +242,10 @@ interface SeriesDao {
 
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
+
+    /** Série « à la une » : la mieux notée qui a une image paysage (backdrop_path). */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT 1")
+    fun observeHero(pid: Long): Flow<SeriesEntity?>
 
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>

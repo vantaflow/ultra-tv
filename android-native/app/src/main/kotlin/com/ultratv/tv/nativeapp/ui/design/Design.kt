@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -98,6 +100,7 @@ fun FocusSurface(
     bg: Color = Ux.Surface,
     focusedScale: Float = 1.06f,
     ringWidth: Dp = 6.design,
+    focusedBg: Color = Ux.White,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -110,7 +113,7 @@ fun FocusSurface(
             }
             .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
-            .background(if (focused) Ux.White else bg)
+            .background(if (focused) focusedBg else bg)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),
     ) { content(focused) }
 }
@@ -175,5 +178,61 @@ fun KeyHint(key: String?, label: String, chevron: Boolean = false) {
         }
         Spacer(Modifier.width(12.design))
         Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx)
+    }
+}
+
+/** Pastille « EN DIRECT » : fond accent, rayon 8, 20 px 700, interlettrage 0,12 em (maquettes Accueil/Direct/Lecteur). */
+@Composable
+fun LiveBadge(text: String, bg: Color = Ux.Accent) {
+    Box(Modifier.clip(RoundedCornerShape(8.design)).background(bg).padding(horizontal = 14.design, vertical = 6.design)) {
+        Text(text, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, letterSpacing = 2.4.sp, maxLines = 1)
+    }
+}
+
+/**
+ * Bouton pilule des maquettes : repos = fond [bg], focus = blanc / texte noir / ×1,06 / anneau accent.
+ * Hauteur, marge et corps du texte sont ceux de la maquette (Regarder : 76 / 40 / 28 ; secondaire : 76 / 36 / 26).
+ */
+@Composable
+fun PillButton(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    heightPx: Int = 76,
+    hPadPx: Int = 36,
+    fontPx: Int = 26,
+    weight: FontWeight = FontWeight.SemiBold,
+    bg: Color = Ux.Surface2,
+    iconPath: String? = null,
+    iconFill: Boolean = false,
+    ringWidth: Dp = 6.design,
+) {
+    FocusSurface(
+        onClick = onClick,
+        shape = RoundedCornerShape((heightPx / 2).design),
+        bg = bg,
+        ringWidth = ringWidth,
+        modifier = modifier.height(heightPx.design),
+    ) { f ->
+        Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.design), verticalAlignment = Alignment.CenterVertically) {
+            val ink = if (f) Ux.TextOnLight else Ux.Text
+            if (iconPath != null) {
+                DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
+                Spacer(Modifier.width(14.design))
+            }
+            Text(label, color = ink, fontFamily = Manrope, fontWeight = weight, fontSize = fontPx.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+        }
+    }
+}
+
+@Composable
+fun SectionTitle(text: String, sizePx: Int = 32) =
+    Text(text, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = sizePx.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+
+/** Barre de progression fine (hauteur [heightPx], fond [track], remplissage accent). */
+@Composable
+fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, heightPx: Int = 6, track: Color = Color.Transparent) {
+    Box(modifier.height(heightPx.design).background(track)) {
+        Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).background(Ux.Accent))
     }
 }

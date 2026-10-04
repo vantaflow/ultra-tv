@@ -73,6 +73,8 @@ import javax.inject.Inject
 object StartupNav {
     data class Pending(val url: String, val title: String)
     val pending = MutableStateFlow<Pending?>(null)
+    /** Route à ouvrir une fois l'application affichée (ex. « Regarder le direct » depuis le chargement). */
+    val pendingRoute = MutableStateFlow<String?>(null)
 }
 
 @AndroidEntryPoint
@@ -211,7 +213,21 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                     onOpenSettings = { /* user can re-enter Settings via sidebar */ },
                     vm = onboarding,
                 )
-                false -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition) }
+                false -> {
+                    val first: com.ultratv.tv.nativeapp.ui.sync.FirstSyncViewModel = hiltViewModel()
+                    val firstState by first.state.collectAsState()
+                    val ui = firstState?.ui
+                    when {
+                        firstState == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        ui != null -> com.ultratv.tv.nativeapp.ui.sync.FirstSyncScreen(
+                            ui,
+                            onWatchLive = { StartupNav.pendingRoute.value = Routes.LIVE; first.leaveToLive() },
+                            onRetry = { first.retry(ui.providerId) },
+                            onFixSource = { StartupNav.pendingRoute.value = Routes.SETTINGS; first.dismiss() },
+                        )
+                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition) }
+                    }
+                }
             }
         }
         }
@@ -231,6 +247,12 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     // One-shot: as soon as we have a NavController, consume any pending
     // auto-play request set during startup.
     val pending by StartupNav.pending.collectAsState()
+    val pendingRoute by StartupNav.pendingRoute.collectAsState()
+    LaunchedEffect(pendingRoute) {
+        val r = pendingRoute ?: return@LaunchedEffect
+        nav.navigate(r)
+        StartupNav.pendingRoute.value = null
+    }
     LaunchedEffect(pending) {
         val p = pending ?: return@LaunchedEffect
         nav.navigate(Routes.player(p.url, p.title))
@@ -310,6 +332,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onGoMovies = { nav.navigate(Routes.MOVIES) },
                 onGoSeries = { nav.navigate(Routes.SERIES) },
                 onGoSettings = { nav.navigate(Routes.SETTINGS) },
+                onGoGuide = { nav.navigate(Routes.GUIDE) },
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },

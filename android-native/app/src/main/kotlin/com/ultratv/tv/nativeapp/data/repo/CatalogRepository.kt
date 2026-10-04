@@ -38,6 +38,10 @@ class CatalogRepository @Inject constructor(
     private val xtream: XtreamClient,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
 ) {
+    fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
+    fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
+    fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
+    fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeFavoritesTop(pid, limit)
     fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
     fun topChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTop(pid, limit)
     fun topMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTop(pid, limit)

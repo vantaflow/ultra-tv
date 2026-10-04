@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -83,6 +84,8 @@ fun SidebarNav(navController: NavController) {
     val route = current?.destination?.route ?: "home"
     val S = LocalStrings.current
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    val syncVm: com.ultratv.tv.nativeapp.ui.common.SyncStatusViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val pill by syncVm.pill.collectAsState()
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
     val target = (if (expanded) RAIL_EXPANDED_PX else RAIL_COLLAPSED_PX).design
@@ -151,6 +154,19 @@ fun SidebarNav(navController: NavController) {
                                     )
                                 }
                             }
+                        }
+                    }
+                }
+                val p = pill
+                if (p != null) {
+                    Spacer(Modifier.height(20.design))
+                    Row(Modifier.padding(start = if (expanded) 4.design else 0.design), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
+                            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.spx, color = Ux.Text, maxLines = 1)
+                        }
+                        if (expanded) {
+                            Spacer(Modifier.width(16.design))
+                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1)
                         }
                     }
                 }

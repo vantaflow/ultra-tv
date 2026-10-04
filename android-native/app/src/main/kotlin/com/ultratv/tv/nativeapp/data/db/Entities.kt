@@ -63,7 +63,9 @@ data class ChannelEntity(
      *  pushes the channel to that absolute slot in the Live list, allowing
      *  the favourites + frequently-watched to bubble to the top. */
     val userPosition: Int = 0,
-    val sortKey: String = sortKeyOf(name),
+    /** Nom d'affichage nettoyé (préfixes de langue, qualité…) ; [name] reste le nom brut, base de la recherche. */
+    val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name, live = true).title,
+    val sortKey: String = sortKeyOf(title),
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])
@@ -96,7 +98,13 @@ data class MovieEntity(
     val year: Int?,
     val rating: Double?,
     val plot: String?,
-    val sortKey: String = sortKeyOf(name),
+    val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name).title,
+    val sortKey: String = sortKeyOf(title),
+    /** Image PAYSAGE (hero, fiche) : seulement si la source en fournit une (get_vod_info). */
+    val backdrop: String? = null,
+    val genre: String? = null,
+    val cast: String? = null,
+    val duration: String? = null,
 )
 
 @Entity(
@@ -117,7 +125,11 @@ data class SeriesEntity(
     val year: Int?,
     val rating: Double?,
     val plot: String?,
-    val sortKey: String = sortKeyOf(name),
+    val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name).title,
+    val sortKey: String = sortKeyOf(title),
+    val backdrop: String? = null,
+    val genre: String? = null,
+    val cast: String? = null,
 )
 
 @Entity(
@@ -134,6 +146,7 @@ data class EpisodeEntity(
     val streamUrl: String,
     val container: String?,
     val plot: String?,
+    val image: String? = null,
 )
 
 @Entity(

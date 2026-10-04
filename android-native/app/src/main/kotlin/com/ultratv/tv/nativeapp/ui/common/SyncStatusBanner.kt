@@ -23,6 +23,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.stateIn
 import com.ultratv.tv.nativeapp.data.repo.SyncStatusBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -35,6 +37,10 @@ class SyncStatusViewModel @Inject constructor(
     private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
 ) : ViewModel() {
     val status = bus.status
+    /** Pastille du rail : au plus 2 mises à jour par seconde. */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    val pill: kotlinx.coroutines.flow.StateFlow<SyncStatusBus.Status?> = bus.status.let { f -> kotlinx.coroutines.flow.flow { f.sample(500).collect { emit(it) } } }
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), null)
     val failure = bus.failure
     fun dismissFailure() = bus.clearFailure()
     fun retry(providerId: Long) {
@@ -73,34 +79,6 @@ fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hil
             )
             androidx.tv.material3.Button(onClick = { vm.retry(f.providerId) }) { Text(S.retry, fontSize = 12.sp) }
             androidx.tv.material3.Button(onClick = { vm.dismissFailure(); onFixSource() }) { Text(S.fixSource, fontSize = 12.sp) }
-        }
-    }
-    AnimatedVisibility(
-        visible = status != null,
-        enter = expandVertically(),
-        exit = shrinkVertically(),
-    ) {
-        val s = status ?: return@AnimatedVisibility
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("🔄", fontSize = 13.sp)
-                Text(s.provider, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text(s.step, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp)
-                s.percent?.let { Text("· $it%", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
-            }
-            if (s.percent != null) {
-                LinearProgressIndicator(
-                    progress = { (s.percent / 100f).coerceIn(0f, 1f) },
-                    modifier = Modifier.fillMaxWidth().height(3.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
     }
 }
