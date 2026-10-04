@@ -12,4 +12,12 @@ class TimeshiftChannelsTest {
         val chans = listOf(EpgTitle(1, "TF1", "TF1.fr"), EpgTitle(2, "TF1", "TF1.fr"), EpgTitle(3, "TF1 +1", null), EpgTitle(4, "W9 +1", null))
         assertEquals(mapOf(1L to listOf(3L to 1)), TimeshiftChannels.plan(chans, mapOf("TF1.fr" to 1L)))
     }
+    @Test fun plan_memeNomSansIdentifiant_rattacheSansDecalage() {
+        val chans = listOf(EpgTitle(1, "TF1", "TF1.fr", "FR"), EpgTitle(5, "TF1", null, "FR"), EpgTitle(6, "TF1 +1", null, "FR"))
+        assertEquals(mapOf(1L to listOf(5L to 0, 6L to 1)), TimeshiftChannels.plan(chans, mapOf("TF1.fr" to 1L)))
+    }
+    @Test fun plan_paysDifferent_prefereLeMemePays() {
+        val chans = listOf(EpgTitle(1, "RTL", "RTL.be", "BE"), EpgTitle(2, "RTL", "RTL.de", "DE"), EpgTitle(3, "RTL", null, "DE"))
+        assertEquals(mapOf(2L to listOf(3L to 0)), TimeshiftChannels.plan(chans, mapOf("RTL.be" to 1L, "RTL.de" to 2L)))
+    }
 }

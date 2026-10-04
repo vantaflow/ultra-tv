@@ -180,7 +180,8 @@ class CatalogRepository @Inject constructor(
         if (p.kind != "XTREAM") return 0
         var rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
         // Chaîne décalée sans programme propre : celui de la chaîne de base, décalé de N heures.
-        if (rows.isEmpty()) TimeshiftChannels.parse(ch.title)?.let { (base, h) ->
+        // Sinon, même chaîne sous le même nom dans une autre catégorie (seule l'une porte souvent l'identifiant EPG).
+        if (rows.isEmpty()) (TimeshiftChannels.parse(ch.title) ?: (ch.title.trim() to 0)).let { (base, h) ->
             val shift = h * 3_600_000L
             val now = System.currentTimeMillis()
             val baseIds = channelDao.idsByTitle(p.id, base).filter { it != ch.id }

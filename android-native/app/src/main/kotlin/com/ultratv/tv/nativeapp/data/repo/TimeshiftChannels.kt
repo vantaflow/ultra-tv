@@ -18,15 +18,23 @@ object TimeshiftChannels {
     }
 
     /**
-     * Chaînes décalées SANS identifiant EPG, rattachées au canal porteur du programme de leur chaîne de base.
-     * [primaryOf] : identifiant EPG → canal qui reçoit les programmes. Résultat : canal porteur → (canal décalé, heures).
+     * Chaînes SANS identifiant EPG rattachées au programme d'une chaîne qui en a un :
+     * même nom (« TF1 » de la catégorie HEVC ↔ « TF1 » de la catégorie VIP RAW), ou chaîne décalée « TF1 +1 » (+N heures).
+     * Même pays d'abord, puis nom seul. [primaryOf] : identifiant EPG → canal qui reçoit les programmes.
+     * Résultat : canal porteur → (canal rattaché, décalage en heures).
      */
     fun plan(channels: List<EpgTitle>, primaryOf: Map<String, Long>): Map<Long, List<Pair<Long, Int>>> {
-        val baseByTitle = channels.filter { !it.epgChannelId.isNullOrBlank() }
-            .groupBy { it.title.trim().uppercase() }
-            .mapValues { (_, l) -> primaryOf[l.first().epgChannelId!!] }
+        val withEpg = channels.filter { !it.epgChannelId.isNullOrBlank() }
+        fun key(country: String?, title: String) = (country?.uppercase() ?: "") + "|" + title.trim().uppercase()
+        val byCountryTitle = withEpg.groupBy { key(it.country, it.title) }.mapValues { (_, l) -> primaryOf[l.first().epgChannelId!!] }
+        val byTitle = withEpg.groupBy { it.title.trim().uppercase() }.mapValues { (_, l) -> primaryOf[l.first().epgChannelId!!] }
         return channels.filter { it.epgChannelId.isNullOrBlank() }
-            .mapNotNull { c -> parse(c.title)?.let { (base, h) -> baseByTitle[base.uppercase()]?.let { primary -> primary to (c.id to h) } } }
+            .mapNotNull { c ->
+                val (base, h) = parse(c.title) ?: (c.title.trim() to 0)
+                if (base.count { it.isLetterOrDigit() } < 2) return@mapNotNull null
+                val primary = (if (c.country != null) byCountryTitle[key(c.country, base)] else null) ?: byTitle[base.uppercase()]
+                primary?.takeIf { it != c.id }?.let { it to (c.id to h) }
+            }
             .groupBy({ it.first }, { it.second })
     }
 }

@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.15] — 2026-10-04 (Android TV)
+
+### Corrections
+- Guide : une chaîne sans identifiant EPG reprend le programme de la chaîne du même nom (même pays d'abord) qui en a un — ex. les catégories HEVC, Général, Cinéma dont seule la catégorie VIP RAW porte les identifiants.
+
 ## [1.2.14] — 2026-10-04 (Android TV)
 
 ### Nouveautés

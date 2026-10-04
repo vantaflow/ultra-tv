@@ -125,7 +125,7 @@ interface ChannelDao {
     suspend fun epgMapping(pid: Long): List<EpgMapping>
 
     /** (id, titre, identifiant EPG) de toutes les chaînes : rattache « TF1 +1 » au programme de « TF1 ». */
-    @Query("SELECT id, title, epgChannelId FROM channel WHERE providerId = :pid AND isSeparator = 0")
+    @Query("SELECT id, title, epgChannelId, country FROM channel WHERE providerId = :pid AND isSeparator = 0")
     suspend fun epgTitles(pid: Long): List<EpgTitle>
 
     @Query("SELECT id FROM channel WHERE providerId = :pid AND title = :title AND isSeparator = 0")
@@ -579,7 +579,7 @@ data class CategoryCount(val categoryId: String?, val n: Int, val sections: Int 
 enum class SyncPart { LIVE, VOD, SERIES, EPG }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
-data class EpgTitle(val id: Long, val title: String, val epgChannelId: String?)
+data class EpgTitle(val id: Long, val title: String, val epgChannelId: String?, val country: String? = null)
 
 data class RawPassword(val id: Long, val raw: String)
 
