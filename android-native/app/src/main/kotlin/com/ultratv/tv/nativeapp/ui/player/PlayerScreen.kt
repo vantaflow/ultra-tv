@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -119,6 +121,7 @@ class PlayerViewModel @Inject constructor(
     private val prefs: UserPreferencesStore,
     private val channelDao: ChannelDao,
     private val adaptive: AdaptiveProfile,
+    private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
 ) : ViewModel() {
@@ -174,22 +177,54 @@ class PlayerViewModel @Inject constructor(
         val now: EpgEntity?, val next: EpgEntity?, val isCurrent: Boolean,
     )
 
-    val queue: StateFlow<List<DrawerEntry>> = zapQueue.state.map { s ->
-        if (s == null) emptyList()
-        else {
-            val now = System.currentTimeMillis()
-            val rows = s.channels.map { it.id }.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 4 * 60 * 60_000) }.groupBy { it.channelId }
-            s.channels.mapIndexed { idx, c ->
-                val list = rows[c.id].orEmpty()
-                DrawerEntry(c, list.firstOrNull { it.startMs <= now && it.endMs > now }, list.firstOrNull { it.startMs > now }, idx == s.index)
-            }
+    private suspend fun entriesFor(channels: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>, currentId: Long?): List<DrawerEntry> {
+        val now = System.currentTimeMillis()
+        val rows = channels.map { it.id }.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 4 * 60 * 60_000) }.groupBy { it.channelId }
+        return channels.map { c ->
+            val list = rows[c.id].orEmpty()
+            DrawerEntry(c, list.firstOrNull { it.startMs <= now && it.endMs > now }, list.firstOrNull { it.startMs > now }, c.id == currentId)
         }
+    }
+
+    /** File de zapping courante (la liste que l'utilisateur parcourait avant d'ouvrir le lecteur). */
+    private val queueEntries: StateFlow<List<DrawerEntry>> = zapQueue.state.map { s ->
+        if (s == null) emptyList() else entriesFor(s.channels, s.channels.getOrNull(s.index)?.id)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Catégorie parcourue dans le tiroir (null = la file de zapping courante). */
+    private val browsedCategory = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private val browsedEntries = kotlinx.coroutines.flow.MutableStateFlow<List<DrawerEntry>?>(null)
+
+    val queue: StateFlow<List<DrawerEntry>> = kotlinx.coroutines.flow.combine(queueEntries, browsedEntries, playback.current) { q, b, cur ->
+        if (b == null) q else b.map { it.copy(isCurrent = it.channel.remoteId == cur?.remoteId) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Catégories LIVE actives (colonne de gauche du tiroir). */
+    val categories: StateFlow<List<com.ultratv.tv.nativeapp.data.repo.CategoryRow>> = playback.current.flatMapLatest { item ->
+        if (item == null) flowOf(emptyList()) else categoryManager.observe(item.providerId, "LIVE", "")
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val activeCategory: StateFlow<String?> = browsedCategory
+
+    /** Charge les chaînes d'une catégorie dans le tiroir (sans zapper). */
+    fun browse(categoryId: String) {
+        val pid = playback.current.value?.providerId ?: return
+        browsedCategory.value = categoryId
+        viewModelScope.launch { browsedEntries.value = entriesFor(channelDao.windowCategory(pid, categoryId, 300, 0).filter { !it.junk && !it.isSeparator }, null) }
+    }
+
+    fun resetBrowse() { browsedCategory.value = null; browsedEntries.value = null }
+
     suspend fun zapTo(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
-        val s = zapQueue.state.value ?: return null
-        if (s.channels.none { it.id == channel.id }) return null
-        zapQueue.set(s.channels, channel)
+        val browsed = browsedEntries.value
+        if (browsed != null) {
+            // Chaîne choisie dans une autre catégorie : la file de zapping devient cette catégorie.
+            zapQueue.set(browsed.map { it.channel }, channel)
+        } else {
+            val s = zapQueue.state.value ?: return null
+            if (s.channels.none { it.id == channel.id }) return null
+            zapQueue.set(s.channels, channel)
+        }
         val resolved = provider.resolvePlayUrl(channel.id, channel.streamUrl)
         setLive(channel, resolved)
         return resolved
@@ -217,6 +252,9 @@ class PlayerViewModel @Inject constructor(
 }
 
 private enum class Panel { None, Options, Tracks }
+
+/** Onglets du panneau de réglages (maquette LecteurReglages). */
+private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
 
 /**
  * Lecteur (maquette Lecteur.dc.html). La surcouche est la même quel que soit le moteur (Media3 / LibVLC) :
@@ -337,7 +375,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
             onClose = onBack,
         )
 
-        if (overlayVisible && state.phase != Phase.ERROR) {
+        if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) {
             Header(item, title, vm, clock, isLive, D)
             Footer(
                 isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
@@ -349,18 +387,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         }
         if (statsOpen) StatsCard(session, D, Modifier.align(Alignment.TopEnd).padding(top = 220.design, end = 96.design))
         if (drawerOpen && isLive) LiveDrawer(vm = vm, onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it }; drawerOpen = false } }, onDismiss = { drawerOpen = false })
-        when (panel) {
-            Panel.Options -> OptionsPanel(
-                p = p, vm = vm, state = state, aspect = aspect, speed = speed, isLive = isLive, statsOpen = statsOpen, sleepActive = sleepDeadline > 0, D = D,
-                onAspect = { aspect = it }, onSpeed = { speed = it }, onStats = { statsOpen = !statsOpen },
-                onSleep = { min -> sleepDeadline = if (min > 0) System.currentTimeMillis() + min * 60_000L else 0L },
-                onSwitch = { c -> session.switchTo(c) }, onBuffer = { b -> session.setBufferPreset(b) },
-                onExternal = { runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(currentUrl), "video/*"); flags = Intent.FLAG_ACTIVITY_NEW_TASK }, S.recordingsOpenWith)) } },
-                onClose = { panel = Panel.None },
-            )
-            Panel.Tracks -> TracksPanel(session, D, onClose = { panel = Panel.None })
-            Panel.None -> Unit
-        }
+        if (panel != Panel.None) PlayerSidePanel(
+            initial = if (panel == Panel.Tracks) SideTab.TRACKS else SideTab.PLAYER,
+            title = item?.title ?: title, p = p, vm = vm, session = session, state = state, aspect = aspect, speed = speed, isLive = isLive, statsOpen = statsOpen, sleepActive = sleepDeadline > 0, D = D,
+            onAspect = { aspect = it }, onSpeed = { speed = it }, onStats = { statsOpen = !statsOpen },
+            onSleep = { min -> sleepDeadline = if (min > 0) System.currentTimeMillis() + min * 60_000L else 0L },
+            onSwitch = { c -> session.switchTo(c) }, onBuffer = { b -> session.setBufferPreset(b) },
+            onExternal = { runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(currentUrl), "video/*"); flags = Intent.FLAG_ACTIVITY_NEW_TASK }, S.recordingsOpenWith)) } },
+            onClose = { panel = Panel.None },
+        )
     }
 }
 
@@ -531,70 +566,135 @@ private fun StatsCard(session: PlaybackSession, D: DesignStrings, modifier: Modi
 
 private fun Int.sp() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)
 
-// ───────────────────────── Panneaux ─────────────────────────
+// ───────────────────────── Panneau de réglages (maquette LecteurReglages) ─────────────────────────
 
+/** Ligne d'option de 64 px : repos #141418 ; choisie = fond #1C1C21 + liseré accent ; focus = blanc + anneau (encre en thème clair, mais le lecteur reste sombre). */
 @Composable
-private fun ChipRow(label: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.design)) {
-        Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
-        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
-            options.forEachIndexed { i, (text, sel) ->
-                FocusSurface(onClick = { onPick(i) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 5.design, modifier = Modifier.height(52.design)) { f ->
-                    Box(Modifier.padding(horizontal = 24.design).height(52.design), contentAlignment = Alignment.Center) {
-                        Text(text, color = if (sel || f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 21.spx, maxLines = 1)
-                    }
-                }
+private fun OptionRow(label: String, hint: String?, selected: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) Ux.Surface else Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(64.design)) { f ->
+        Box(Modifier.fillMaxSize().then(if (selected && !f) Modifier.border(2.design, Ux.Accent, RoundedCornerShape(16.design)) else Modifier)) {
+            Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(label, color = if (f) Ux.TextOnLight else if (selected) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (!hint.isNullOrEmpty()) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
             }
         }
     }
 }
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun OptionsPanel(
-    p: UserPrefs, vm: PlayerViewModel, state: com.ultratv.tv.nativeapp.ui.player.engine.SessionState, aspect: AspectMode, speed: Float, isLive: Boolean, statsOpen: Boolean, sleepActive: Boolean, D: DesignStrings,
-    onAspect: (AspectMode) -> Unit, onSpeed: (Float) -> Unit, onStats: () -> Unit, onSleep: (Int) -> Unit, onSwitch: (Combo) -> Unit, onBuffer: (BufferPreset) -> Unit, onExternal: () -> Unit, onClose: () -> Unit,
+private fun OptionGroup(title: String, content: @Composable () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        Text(title.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
+        Column(verticalArrangement = Arrangement.spacedBy(8.design)) { content() }
+    }
+}
+
+@Composable
+private fun PlayerSidePanel(
+    initial: SideTab, title: String, p: UserPrefs, vm: PlayerViewModel, session: PlaybackSession, state: com.ultratv.tv.nativeapp.ui.player.engine.SessionState,
+    aspect: AspectMode, speed: Float, isLive: Boolean, statsOpen: Boolean, sleepActive: Boolean, D: DesignStrings,
+    onAspect: (AspectMode) -> Unit, onSpeed: (Float) -> Unit, onStats: () -> Unit, onSleep: (Int) -> Unit, onSwitch: (Combo) -> Unit, onBuffer: (BufferPreset) -> Unit,
+    onExternal: () -> Unit, onClose: () -> Unit,
 ) {
-    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim), contentAlignment = Alignment.CenterEnd) {
-        Column(
-            Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
-        ) {
-            Text(D.pPlayer, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
-            ChipRow(D.engine, listOf(D.auto to (p.playerEngine == "auto"), D.engineExo to (p.playerEngine == "exo"), D.engineVlc to (p.playerEngine == "vlc"))) { i ->
-                val v = listOf("auto", "exo", "vlc")[i]; vm.setEngine(v)
-                if (v != "auto") onSwitch(Combo(if (v == "vlc") EngineKind.VLC else EngineKind.EXO, state.combo.decoder))
-            }
-            ChipRow(D.decoding, listOf(D.auto to (p.decoderMode == "auto"), D.hardware to (p.decoderMode == "hw"), D.software to (p.decoderMode == "sw"))) { i ->
-                val v = listOf("auto", "hw", "sw")[i]; vm.setDecoder(v)
-                onSwitch(Combo(state.combo.engine, listOf(DecoderMode.AUTO, DecoderMode.HARDWARE, DecoderMode.SOFTWARE)[i]))
-            }
-            ChipRow(D.bufferMemory, listOf(BufferPreset.AUTO to D.auto, BufferPreset.LOW_LATENCY to D.bufLow, BufferPreset.BALANCED to D.bufBalanced, BufferPreset.STABLE to D.bufStable).map { it.second to (state.bufferPreset == it.first) }) { i ->
-                onBuffer(listOf(BufferPreset.AUTO, BufferPreset.LOW_LATENCY, BufferPreset.BALANCED, BufferPreset.STABLE)[i])
-            }
-            ChipRow(D.pDisplay, listOf(D.aspectFit to (aspect == AspectMode.FIT), D.aspectFill to (aspect == AspectMode.FILL), D.aspectZoom to (aspect == AspectMode.ZOOM), "16:9" to (aspect == AspectMode.R16_9), "4:3" to (aspect == AspectMode.R4_3))) { onAspect(AspectMode.entries[it]) }
-            if (!isLive) ChipRow(D.speed, listOf(0.5f, 1f, 1.25f, 1.5f, 2f).map { "${it}x" to (speed == it) }) { onSpeed(listOf(0.5f, 1f, 1.25f, 1.5f, 2f)[it]) }
-            ChipRow(D.sleepTimer, listOf("15 min" to false, "30 min" to false, "1 h" to false, "2 h" to false, D.off to !sleepActive)) { onSleep(listOf(15, 30, 60, 120, 0)[it]) }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
-                PillButton(D.statsLabel + if (statsOpen) " ✓" else "", onStats, bg = Ux.Surface)
-                PillButton(LocalStrings.current.playerExternal, onExternal, bg = Ux.Surface)
-                PillButton(D.close, onClose, bg = Ux.Surface)
-            }
-        }
-    }
-}
-
-@Composable
-private fun TracksPanel(session: PlaybackSession, D: DesignStrings, onClose: () -> Unit) {
+    var tab by remember { mutableStateOf(initial) }
     val e = session.engine
     val audio = remember { e?.audioTracks().orEmpty() }
     val subs = remember { e?.subtitleTracks().orEmpty() }
-    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim), contentAlignment = Alignment.CenterEnd) {
-        Column(Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
-            Text(D.pTracks, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
-            ChipRow(D.audio, audio.map { it.label to it.selected }.ifEmpty { listOf("—" to false) }) { i -> audio.getOrNull(i)?.let { e?.selectAudio(it.id) }; onClose() }
-            ChipRow(D.subtitles, listOf(D.off to subs.none { it.selected }) + subs.map { it.label to it.selected }) { i -> if (i == 0) e?.selectSubtitle(null) else subs.getOrNull(i - 1)?.let { e?.selectSubtitle(it.id) }; onClose() }
-            PillButton(D.close, onClose, bg = Ux.Surface)
+    val labels = listOf(SideTab.TRACKS to D.pTracks, SideTab.DISPLAY to D.pDisplay, SideTab.PLAYER to D.pPlayer, SideTab.STATS to D.statsShort)
+    ModalFocusScope(onBack = onClose, modifier = Modifier.background(androidx.compose.ui.graphics.Color.Transparent), contentAlignment = Alignment.CenterEnd) {
+        Column(
+            Modifier.fillMaxHeight().width(640.design).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
+            verticalArrangement = Arrangement.spacedBy(22.design),
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                labels.forEach { (t, l) ->
+                    val sel = t == tab
+                    FocusSurface(onClick = { tab = t }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(52.design)) { f ->
+                        Box(Modifier.height(52.design).padding(horizontal = 18.design), contentAlignment = Alignment.Center) {
+                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
+                        }
+                    }
+                }
+            }
+            Text(D.forThisChannel(title), color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(22.design)) {
+                when (tab) {
+                    SideTab.TRACKS -> {
+                        OptionGroup(D.audio) {
+                            if (audio.isEmpty()) OptionRow("—", null, false) {}
+                            audio.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectAudio(t.id); onClose() } }
+                        }
+                        OptionGroup(D.subtitles) {
+                            OptionRow(D.off, null, subs.none { it.selected }) { e?.selectSubtitle(null); onClose() }
+                            subs.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectSubtitle(t.id); onClose() } }
+                        }
+                    }
+                    SideTab.DISPLAY -> {
+                        OptionGroup(D.pDisplay) {
+                            listOf(AspectMode.FIT to D.aspectFit, AspectMode.FILL to D.aspectFill, AspectMode.ZOOM to D.aspectZoom, AspectMode.R16_9 to "16:9", AspectMode.R4_3 to "4:3")
+                                .forEach { (m, l) -> OptionRow(l, null, aspect == m) { onAspect(m) } }
+                        }
+                        if (!isLive) OptionGroup(D.speed) { listOf(0.5f, 1f, 1.25f, 1.5f, 2f).forEach { v -> OptionRow("${v}x", null, speed == v) { onSpeed(v) } } }
+                        OptionGroup(D.sleepTimer) {
+                            listOf(15 to "15 min", 30 to "30 min", 60 to "1 h", 120 to "2 h").forEach { (m, l) -> OptionRow(l, null, false) { onSleep(m) } }
+                            OptionRow(D.off, null, !sleepActive) { onSleep(0) }
+                        }
+                    }
+                    SideTab.PLAYER -> {
+                        val engineName = if (state.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc
+                        OptionGroup(D.engine) {
+                            OptionRow(D.auto, if (p.playerEngine == "auto") engineName else null, p.playerEngine == "auto") { vm.setEngine("auto") }
+                            OptionRow(D.engineExo, null, p.playerEngine == "exo") { vm.setEngine("exo"); onSwitch(Combo(EngineKind.EXO, state.combo.decoder)) }
+                            OptionRow(D.engineVlc, D.vlcHint, p.playerEngine == "vlc") { vm.setEngine("vlc"); onSwitch(Combo(EngineKind.VLC, state.combo.decoder)) }
+                        }
+                        OptionGroup(D.decoding) {
+                            OptionRow(D.auto, if (p.decoderMode == "auto") (if (state.combo.decoder == DecoderMode.SOFTWARE) D.software else D.hardware) else null, p.decoderMode == "auto") { vm.setDecoder("auto"); onSwitch(Combo(state.combo.engine, DecoderMode.AUTO)) }
+                            OptionRow(D.hardware, null, p.decoderMode == "hw") { vm.setDecoder("hw"); onSwitch(Combo(state.combo.engine, DecoderMode.HARDWARE)) }
+                            OptionRow(D.software, D.softwareHint, p.decoderMode == "sw") { vm.setDecoder("sw"); onSwitch(Combo(state.combo.engine, DecoderMode.SOFTWARE)) }
+                        }
+                        OptionGroup(D.bufferMemory) {
+                            listOf(BufferPreset.AUTO to D.auto, BufferPreset.LOW_LATENCY to D.bufLow, BufferPreset.BALANCED to D.bufBalanced, BufferPreset.STABLE to D.bufStable)
+                                .forEach { (b, l) -> OptionRow(l, null, state.bufferPreset == b) { onBuffer(b) } }
+                        }
+                        OptionRow(LocalStrings.current.playerExternal, null, false, onExternal)
+                    }
+                    SideTab.STATS -> {
+                        OptionRow(D.statsLabel + " · " + D.onVideo, null, statsOpen, onStats)
+                        StatsRows(session, D)
+                    }
+                }
+            }
+            val backToAuto: () -> Unit = {
+                vm.setEngine("auto"); vm.setDecoder("auto"); onBuffer(BufferPreset.AUTO)
+                onSwitch(Combo(state.combo.engine, DecoderMode.AUTO))
+            }
+            if (tab == SideTab.PLAYER) PillButton(D.backToAuto, onClick = backToAuto, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+            else PillButton(D.close, onClose, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+        }
+    }
+}
+
+@Composable
+private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
+    var s by remember { mutableStateOf(session.engine?.stats()) }
+    LaunchedEffect(Unit) { while (true) { s = session.engine?.stats(); delay(1_000) } }
+    val st by session.state.collectAsState()
+    val x = s
+    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        listOf(
+            D.engine to (if (st.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc),
+            D.decoding to (if (x?.hardwareDecoding == true) D.hardware else D.software),
+            D.statResolution to (x?.resolution ?: "—") + (x?.frameRate?.let { " · %.0f".format(it) } ?: ""),
+            D.statCodec to (x?.videoCodec ?: "—"),
+            D.statAudio to (x?.audioCodec ?: "—") + (x?.audioChannels?.let { " · ${it}ch" } ?: ""),
+            D.bufferMemory to (x?.bufferedSeconds?.let { "$it s" } ?: "—"),
+            D.statBitrate to (x?.videoBitrateKbps?.let { "%.1f Mb/s".format(it / 1000.0) } ?: "—"),
+            D.statDropped to (x?.droppedFrames?.toString() ?: "—"),
+        ).forEach { (k, v) ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
+                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 19.spx, maxLines = 1)
+            }
         }
     }
 }

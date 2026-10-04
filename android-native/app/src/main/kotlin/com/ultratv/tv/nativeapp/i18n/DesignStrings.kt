@@ -106,6 +106,24 @@ class DesignStrings(val lang: AppLang) {
     val emptyFavTitle get() = t("No favorites yet", "Aucun favori pour l’instant", "Aún no hay favoritos", "لا توجد مفضلات بعد")
     val emptyFavBody get() = t("Long-press OK on a channel, a movie or a series to add it here.", "Appuyez longuement sur OK sur une chaîne, un film ou une série pour l’ajouter ici.", "Mantén pulsado OK en un canal, película o serie para añadirlo aquí.", "اضغط مطولًا على OK على قناة أو فيلم أو مسلسل لإضافته هنا.")
 
+    // Panneau du lecteur
+    fun forThisChannel(name: String) = when (lang) { AppLang.French -> "Pour cette lecture · $name"; AppLang.Spanish -> "Para esta reproducción · $name"; AppLang.Arabic -> "لهذا التشغيل · $name"; else -> "For this playback · $name" }
+    val backToAuto get() = t("Back to automatic", "Revenir en automatique", "Volver a automático", "العودة إلى التلقائي")
+    val statsShort get() = t("Stats", "Stats", "Stats", "إحصاءات")
+    val vlcHint get() = t("difficult formats", "formats difficiles", "formatos difíciles", "صيغ صعبة")
+    val softwareHint get() = t("more compatible", "plus compatible", "más compatible", "أكثر توافقًا")
+    val onVideo get() = t("on video", "sur la vidéo", "sobre el vídeo", "على الفيديو")
+    val statResolution get() = t("Resolution", "Résolution", "Resolución", "الدقة")
+    val statCodec get() = t("Video codec", "Codec vidéo", "Códec de vídeo", "ترميز الفيديو")
+    val statAudio get() = t("Audio", "Audio", "Audio", "الصوت")
+    val statBitrate get() = t("Bitrate", "Débit", "Tasa de bits", "معدل البت")
+    val statDropped get() = t("Dropped frames", "Images perdues", "Fotogramas perdidos", "الإطارات المفقودة")
+
+    val categoriesLabel get() = t("CATEGORIES", "CATÉGORIES", "CATEGORÍAS", "الفئات")
+    val selectedChannel get() = t("SELECTED CHANNEL", "CHAÎNE SÉLECTIONNÉE", "CANAL SELECCIONADO", "القناة المحددة")
+    val onAirPill get() = t("ON AIR", "EN COURS", "EN CURSO", "قيد البث")
+    val drawerHint get() = t("OK zap · ▲▼ browse · ◀ categories · ‹ close", "OK zapper · ▲▼ parcourir · ◀ catégories · ‹ fermer", "OK cambiar · ▲▼ explorar · ◀ categorías · ‹ cerrar", "OK للتبديل · ▲▼ تصفح · ◀ الفئات · ‹ إغلاق")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
@@ -299,7 +317,6 @@ class DesignStrings(val lang: AppLang) {
     val autoFps get() = t("Match screen refresh rate", "Fréquence d’écran adaptée à la vidéo", "Adaptar la frecuencia de pantalla", "مطابقة معدل تحديث الشاشة")
     val on get() = t("On", "Activé", "Activado", "مفعّل")
     val offState get() = t("Off", "Désactivé", "Desactivado", "معطّل")
-    val backToAuto get() = t("Back to automatic", "Revenir en automatique", "Volver a automático", "العودة إلى التلقائي")
     val appLanguage get() = t("App language", "Langue de l’application", "Idioma de la aplicación", "لغة التطبيق")
     val contentLanguages get() = t("Content languages", "Langues des contenus", "Idiomas del contenido", "لغات المحتوى")
     val langQuestion get() = t("Which languages do you watch?", "Dans quelles langues regardez-vous ?", "¿En qué idiomas ve contenido?", "بأي لغات تشاهد؟")
