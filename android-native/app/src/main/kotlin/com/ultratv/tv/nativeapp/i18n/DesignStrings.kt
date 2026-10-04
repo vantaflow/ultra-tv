@@ -38,6 +38,7 @@ class DesignStrings(val lang: AppLang) {
 
     // Recherche
     val keySpace get() = t("Space", "Espace", "Espacio", "مسافة")
+    val keyVoice get() = t("Voice", "Voix", "Voz", "صوت")
     val keyDelete get() = t("Delete", "Suppr.", "Borrar", "حذف")
     val searchStart get() = t("Start typing to search channels, movies and series.", "Commencez à taper pour chercher chaînes, films et séries.", "Empieza a escribir para buscar canales, películas y series.", "ابدأ الكتابة للبحث عن القنوات والأفلام والمسلسلات.")
     fun searchChannels(n: Int) = when (lang) { AppLang.French -> "CHAÎNES · $n"; AppLang.Spanish -> "CANALES · $n"; AppLang.Arabic -> "القنوات · $n"; else -> "CHANNELS · $n" }
