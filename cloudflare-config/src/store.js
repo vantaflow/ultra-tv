@@ -104,7 +104,7 @@ export async function rotateDevice(env, acct, device) {
 
 // ---- validation des fournisseurs -------------------------------------------
 
-const KINDS = ["XTREAM", "M3U", "STALKER"];
+const KINDS = ["XTREAM", "M3U"];   // Stalker retiré en 1.1.1 (jamais validé)
 
 function cleanLine(v, max) {
   // eslint-disable-next-line no-control-regex
@@ -133,10 +133,6 @@ export function parseProvider(form) {
     p.username = cleanLine(form.get("username"), 256);
     p.password = cleanLine(form.get("password"), 256);
     if (!p.username || !p.password) return { error: "creds" };
-  } else if (kind === "STALKER") {
-    const mac = normalizeLogin(form.get("mac"));
-    if (!mac || !isMacLogin(mac)) return { error: "mac" };
-    p.mac = mac.toUpperCase();
   }
   return { provider: p };
 }

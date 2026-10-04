@@ -112,7 +112,7 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
     || (ok && DASH_MSG.ok[ok] && `<div class="notice ok">${e(DASH_MSG.ok[ok])}</div>`) || "";
   const script = `<script nonce="${n}">
 document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventListener('submit',function(ev){if(!confirm(f.dataset.confirm))ev.preventDefault();});});
-var ids=['xtream','m3u','stalker'];
+var ids=['xtream','m3u'];
 document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){
  ids.forEach(function(k){document.getElementById('form-'+k).hidden=(k!==b.dataset.tab);});
  document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x===b);});});});
@@ -132,17 +132,13 @@ ${msg}
 ${devRows || `<div class="muted small">Aucun appareil.</div>`}</div>
 <div class="panel"><h2>Fournisseurs (${providers.length})</h2>${provRows || `<div class="muted small">Aucun fournisseur.</div>`}
 <h2 class="mt">Ajouter un fournisseur</h2>
-<div class="tabs"><button type="button" class="on" data-tab="xtream">Xtream Codes</button><button type="button" data-tab="m3u">M3U URL</button><button type="button" data-tab="stalker">Stalker</button></div>
+<div class="tabs"><button type="button" class="on" data-tab="xtream">Xtream Codes</button><button type="button" data-tab="m3u">M3U URL</button></div>
 <form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
 <label>Nom</label><input name="name" maxlength="64"/><label>URL du serveur</label><input name="url" required maxlength="2048" placeholder="http://provider.com:8080"/>
 <label>Utilisateur</label><input name="username" required maxlength="256" autocomplete="off"/><label>Mot de passe</label><input name="password" type="password" required maxlength="256" autocomplete="off"/>
 <div class="row"><button type="submit">Ajouter</button></div></form>
 <form method="post" action="/providers" id="form-m3u" hidden>${csrfInput}<input type="hidden" name="kind" value="M3U"/>
 <label>Nom</label><input name="name" maxlength="64"/><label>URL de la playlist</label><input name="url" required maxlength="2048"/>
-<div class="row"><button type="submit">Ajouter</button></div></form>
-<form method="post" action="/providers" id="form-stalker" hidden>${csrfInput}<input type="hidden" name="kind" value="STALKER"/>
-<label>Nom</label><input name="name" maxlength="64"/><label>URL du portail</label><input name="url" required maxlength="2048"/>
-<label>MAC du portail</label><input name="mac" required maxlength="17" placeholder="00:1A:79:XX:XX:XX"/>
 <div class="row"><button type="submit">Ajouter</button></div></form>
 <p class="muted small">Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</p></div>
 <div class="panel"><h2>Mot de passe</h2>
