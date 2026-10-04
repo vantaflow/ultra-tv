@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -81,6 +82,8 @@ data class PosterItem(val id: Long, val title: String, val poster: String?, val 
 
 data class CategoryChip(val remoteId: String, val name: String)
 
+private const val ROW_SIZE = 20
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class CatalogGridViewModel @Inject constructor(
@@ -121,6 +124,13 @@ class CatalogGridViewModel @Inject constructor(
     val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = combine(pid, kind) { p, k -> p to k }
         .flatMapLatest { (p, k) -> if (p == null) flowOf(emptyList()) else if (k == CatalogKind.MOVIES) movieDao.observeLangCounts(p) else seriesDao.observeLangCounts(p) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Rangée d'une catégorie pour la vue « Tous » (les 20 plus récents). */
+    fun rowItems(cat: String): Flow<List<PosterItem>> = combine(pid, kind) { p, k -> p to k }.flatMapLatest { (p, k) ->
+        if (p == null) flowOf(emptyList())
+        else if (k == CatalogKind.MOVIES) movieDao.observeRow(p, cat, ROW_SIZE).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        else seriesDao.observeRow(p, cat, ROW_SIZE).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+    }
 
     val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> arrayOf<Any?>(p, k, c, lv) }
         .distinctUntilChanged()
@@ -170,6 +180,11 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
+        // « Tous » : une rangée par catégorie (comme Netflix), « Voir tout » ouvre la grille de la catégorie.
+        if (selected == null && chips.isNotEmpty()) {
+            CategoryRows(vm, chips, touch, onOpen)
+            return@Column
+        }
         if (items.itemCount == 0) {
             if (chips.isEmpty() && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard()) return@Column
             Text(if (kind == CatalogKind.MOVIES) D.noMovies else D.noSeries, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
@@ -192,6 +207,42 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             }
         }
     }
+    }
+}
+
+@Composable
+private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, touch: Boolean, onOpen: (Long) -> Unit) {
+    val D = LocalDs.current
+    val first = remember { FocusRequester() }
+    var firstFocused by remember { mutableStateOf(false) }
+    RequestInitialFocus(first, hasFocus = { firstFocused }, key = chips.firstOrNull()?.remoteId)
+    androidx.compose.foundation.lazy.LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 36.design),
+        contentPadding = PaddingValues(bottom = if (touch) 16.dp else 54.design),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        items(chips.size, key = { chips[it].remoteId }, contentType = { "row" }) { idx ->
+            val c = chips[idx]
+            val list by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState(initial = emptyList())
+            Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
+                Text(c.name, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(end = if (touch) 16.dp else 96.design)) {
+                    items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
+                        val it = list[i]
+                        val m = Modifier.width(if (touch) 120.dp else 200.design)
+                        PosterCell(it, if (idx == 0 && i == 0) m.focusRequester(first).onFocusChanged { f -> firstFocused = f.isFocused } else m) { onOpen(it.id) }
+                    }
+                    if (list.size >= ROW_SIZE) item(key = "more-${c.remoteId}") {
+                        FocusSurface(onClick = { vm.select(c.remoteId) }, shape = RoundedCornerShape(18.design), bg = Ux.Surface,
+                            modifier = Modifier.width(if (touch) 120.dp else 200.design).height(if (touch) 180.dp else 300.design)) { f ->
+                            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(D.seeAll, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 14.sp else 24.spx)
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
