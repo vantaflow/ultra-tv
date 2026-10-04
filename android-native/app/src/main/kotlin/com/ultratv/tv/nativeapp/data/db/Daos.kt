@@ -357,6 +357,12 @@ interface CategoryDao {
     @Query("UPDATE category SET locked = :locked WHERE id = :id")
     suspend fun setLocked(id: Long, locked: Boolean)
 
+    @Query("SELECT kind AS kind, enabled AS enabled, COUNT(*) AS n FROM category WHERE providerId = :pid GROUP BY kind, enabled")
+    fun observeEnabledCounts(pid: Long): Flow<List<EnabledCount>>
+
+    @Query("SELECT lang AS lang, COUNT(*) AS n FROM category WHERE providerId = :pid GROUP BY lang")
+    fun observeLangCounts(pid: Long): Flow<List<LangCount>>
+
     @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind")
     suspend fun forProviderKind(pid: Long, kind: String): List<CategoryEntity>
 
@@ -458,6 +464,10 @@ interface EpgDao {
     @Query("SELECT * FROM epg WHERE channelId = :cid AND endMs >= :fromMs AND startMs <= :toMs ORDER BY startMs")
     suspend fun forChannelInRange(cid: Long, fromMs: Long, toMs: Long): List<EpgEntity>
 }
+
+data class LangCount(val lang: String, val n: Int)
+
+data class EnabledCount(val kind: String, val enabled: Boolean, val n: Int)
 
 data class CategoryCount(val categoryId: String?, val n: Int, val sections: Int = 0)
 

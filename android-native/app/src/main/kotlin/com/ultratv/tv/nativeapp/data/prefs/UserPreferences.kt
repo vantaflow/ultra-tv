@@ -87,6 +87,15 @@ data class UserPrefs(
     val languages: String = "",
     val includeMulti: Boolean = true,
     val includeUnknownLang: Boolean = true,
+    // ── Synchronisation ──
+    /** "auto" | "launch" | "scheduled" | "manual" */
+    val syncMode: String = "auto",
+    val syncHour: Int = 3,
+    val syncLive: Boolean = true,
+    val syncEpg: Boolean = true,
+    val syncVod: Boolean = true,
+    val syncSeries: Boolean = true,
+    val syncUnmeteredOnly: Boolean = true,
 )
 
 @Singleton
@@ -123,6 +132,13 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val bufRebuffer = intPreferencesKey("buf_rebuffer_sec")
         val bufMb = intPreferencesKey("buf_max_mb")
         val languages = stringPreferencesKey("languages")
+        val syncMode = stringPreferencesKey("sync_mode")
+        val syncHour = intPreferencesKey("sync_hour")
+        val syncLive = booleanPreferencesKey("sync_live")
+        val syncEpg = booleanPreferencesKey("sync_epg")
+        val syncVod = booleanPreferencesKey("sync_vod")
+        val syncSeries = booleanPreferencesKey("sync_series")
+        val syncUnmetered = booleanPreferencesKey("sync_unmetered_only")
         val includeMulti = booleanPreferencesKey("include_multi")
         val includeUnknown = booleanPreferencesKey("include_unknown_lang")
     }
@@ -157,6 +173,8 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             bufferPreset = p[Keys.bufferPreset] ?: "auto",
             bufMinSec = p[Keys.bufMin] ?: 5, bufMaxSec = p[Keys.bufMax] ?: 30, bufStartSec = p[Keys.bufStart] ?: 2,
             bufRebufferSec = p[Keys.bufRebuffer] ?: 3, bufMaxMb = p[Keys.bufMb] ?: 32,
+            syncMode = p[Keys.syncMode] ?: "auto", syncHour = p[Keys.syncHour] ?: 3, syncLive = p[Keys.syncLive] ?: true, syncEpg = p[Keys.syncEpg] ?: true,
+            syncVod = p[Keys.syncVod] ?: true, syncSeries = p[Keys.syncSeries] ?: true, syncUnmeteredOnly = p[Keys.syncUnmetered] ?: true,
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, includeUnknownLang = p[Keys.includeUnknown] ?: true,
         )
     }
@@ -187,6 +205,12 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setLanguages(csv: String) = update { it[Keys.languages] = csv }
     suspend fun setIncludeMulti(v: Boolean) = update { it[Keys.includeMulti] = v }
     suspend fun setIncludeUnknownLang(v: Boolean) = update { it[Keys.includeUnknown] = v }
+    suspend fun setSyncMode(v: String) = update { it[Keys.syncMode] = v }
+    suspend fun setSyncHour(v: Int) = update { it[Keys.syncHour] = v.coerceIn(0, 23) }
+    suspend fun setSyncPart(part: String, on: Boolean) = update {
+        when (part) { "live" -> it[Keys.syncLive] = on; "epg" -> it[Keys.syncEpg] = on; "vod" -> it[Keys.syncVod] = on; "series" -> it[Keys.syncSeries] = on }
+    }
+    suspend fun setSyncUnmeteredOnly(v: Boolean) = update { it[Keys.syncUnmetered] = v }
     suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
     suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
     suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }

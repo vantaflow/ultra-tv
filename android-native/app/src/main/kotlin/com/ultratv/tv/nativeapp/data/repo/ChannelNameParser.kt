@@ -84,7 +84,7 @@ object ChannelNameParser {
 
     data class CategoryLabel(val label: String, val badge: String?, val quality: Int)
 
-    private val regions = mapOf("AFRI" to "AFR", "AFRICA" to "AFR", "ASIA" to "ASIA", "EURO" to "EU", "LATAM" to "LATAM", "MENA" to "MENA")
+    private val regions = mapOf("AFRI" to "AFR", "ASIA" to "ASIA", "EURO" to "EU", "LATAM" to "LATAM", "MENA" to "MENA")
     private val trailingSuper = Regex("\\s*[\u00B2\u00B3\u00B9]\\s*$")
 
     /** Nom de catégorie affichable : exposants normalisés, préfixe pays/région -> badge, marqueurs de qualité retirés. */
@@ -95,7 +95,11 @@ object ChannelNameParser {
         var badge = p.country
         if (badge == null) {
             val first = label.substringBefore(' ').uppercase()
-            regions[first]?.let { badge = it; label = label.substringAfter(' ', label).trim().ifEmpty { label } }
+            regions[first]?.let { b ->
+                val rest = label.substringAfter(' ', "").trim()
+                // On ne retire le mot-région que s'il reste un vrai libellé (au moins 2 lettres).
+                if (rest.count { it.isLetter() } >= 2) { badge = b; label = rest }
+            }
         }
         label = label.replace(trailingSuper, "").replace(Regex("\\s{2,}"), " ").trim()
         return CategoryLabel(label.ifBlank { n }, badge, p.quality)

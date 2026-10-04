@@ -354,8 +354,12 @@ class ProviderRepository @Inject constructor(
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)
         val now = System.currentTimeMillis()
-        val ttl = SyncPolicy.ttl(prefs.flow.first().syncIntervalHours)
-        val due = SyncPolicy.dueParts(p, now, ttl, channelDao.count(p.id), force)
+        val u = prefs.flow.first()
+        val a = adaptive.state.value
+        val ttl = SyncPolicy.ttl(if (u.syncMode == "launch") 1 else u.syncIntervalHours)
+        val enabledParts = buildSet { if (u.syncLive) add(SyncPart.LIVE); if (u.syncEpg) add(SyncPart.EPG); if (u.syncVod) add(SyncPart.VOD); if (u.syncSeries) add(SyncPart.SERIES) }
+        val heavyOk = !(u.syncUnmeteredOnly && a.net.metered)
+        val due = SyncPolicy.dueParts(p, now, ttl, channelDao.count(p.id), force || u.syncMode == "launch", enabledParts, heavyOk)
         if (due.isEmpty()) return 0
 
         if (p.kind == "M3U") return syncM3u(providerId, onProgress).also { providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis()) }
@@ -546,5 +550,32 @@ class ProviderRepository @Inject constructor(
             kotlinx.coroutines.delay(delayMs); delayMs *= 2
         }
         return block()
+    }
+
+    /**
+     * Télécharge uniquement les catégories données (réactivation d'une catégorie) : une requête ciblée par catégorie
+     * si le serveur filtre, sinon une synchro globale de la partie concernée.
+     */
+    suspend fun syncCategoriesNow(providerId: Long, kind: String, ids: List<String>) {
+        val p = providerDao.byId(providerId) ?: return
+        if (p.kind != "XTREAM" || ids.isEmpty()) return
+        val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
+        syncMutex.withLock {
+            syncStatus.set(SyncStatusBus.Status(p.name, "Categories", 0, part, 0))
+            try {
+                if (p.categoryFilter == 0) { syncAllInternal(providerId, {}, force = true); return@withLock }
+                var n = 0
+                val cats = categoryDao.forProviderKind(p.id, kind).associateBy { it.remoteId }
+                val langOf: (String) -> String = { cats[it]?.lang.orEmpty() }
+                for ((i, id) in ids.withIndex()) {
+                    n += when (kind) {
+                        "LIVE" -> { val sp = livePart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        "MOVIE" -> { val sp = vodPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        else -> { val sp = seriesPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                    }
+                    syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
+                }
+            } finally { syncStatus.clear() }
+        }
     }
 }

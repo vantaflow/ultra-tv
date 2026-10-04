@@ -1,7 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.parental
 
 import com.ultratv.tv.nativeapp.ui.common.leaveOnVerticalDpad
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,12 +36,9 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 
 /**
- * Reusable parental-PIN prompt. Invokes [onUnlocked] when the user enters the
- * correct PIN, [onCancel] otherwise. Falls through (calls onUnlocked) when no
- * PIN is configured — locking content without a PIN to unlock it would brick
- * playback.
+ * Invite de code parental (maquette Parental.dc.html). Appelle [onUnlocked] si le code est correct, [onCancel] sinon.
+ * Sans code configuré on déverrouille directement : verrouiller sans moyen de déverrouiller bloquerait la lecture.
  */
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 fun PinPromptDialog(
     title: String? = null,
@@ -53,66 +49,14 @@ fun PinPromptDialog(
     val pinSet by vm.pinSet.collectAsState()
     LaunchedEffect(pinSet) { if (!pinSet) onUnlocked() }
     if (!pinSet) return
-
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    val resolvedTitle = title ?: S.parentalLockedTitle
-    var pin by remember { mutableStateOf("") }
-    var error by remember { mutableStateOf(false) }
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    var attempt by remember { mutableStateOf(0) }
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-
-    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
-        onBack = onCancel,
-        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
-    ) {
-        Column(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(resolvedTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(
-                S.parentalEnterPin,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp,
-            )
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(12.dp),
-            ) {
-                BasicTextField(
-                    modifier = androidx.compose.ui.Modifier.leaveOnVerticalDpad(),
-                    value = pin,
-                    onValueChange = {
-                        pin = it.filter { c -> c.isDigit() }.take(4)
-                        error = false
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-                    visualTransformation = PasswordVisualTransformation(),
-                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold),
-                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    decorationBox = { inner ->
-                        if (pin.isEmpty()) Text("PIN", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 18.sp)
-                        inner()
-                    },
-                )
-            }
-            if (error) Text(S.parentalWrongPin, color = androidx.compose.ui.graphics.Color(0xFFFF6B6B), fontSize = 13.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            if (vm.check(pin)) onUnlocked()
-                            else { error = true; pin = "" }
-                        }
-                    },
-                    enabled = pin.length == 4,
-                ) { Text(S.parentalUnlock) }
-                Button(onClick = onCancel) { Text(S.cancel) }
-            }
-        }
-    }
+    PinPad(
+        title = D.lockedTitle, subtitle = D.lockedSubtitle.format(title.orEmpty()),
+        onComplete = { pin -> scope.launch { if (vm.check(pin)) onUnlocked() else { error = S.parentalWrongPin; attempt++ } } },
+        onCancel = onCancel, error = error, resetKey = attempt,
+    )
 }

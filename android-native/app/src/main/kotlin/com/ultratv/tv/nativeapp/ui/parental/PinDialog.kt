@@ -59,6 +59,7 @@ class ParentalViewModel @Inject constructor(
     suspend fun check(pin: String): Boolean = store.check(pin)
 }
 
+/** Lignes « Contrôle parental » des Réglages (style valeur + chevron). */
 @Composable
 fun ParentalSection(
     vm: ParentalViewModel = hiltViewModel(),
@@ -67,77 +68,28 @@ fun ParentalSection(
     val set by vm.pinSet.collectAsState()
     var dialog by remember { mutableStateOf(false) }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            if (set) S.parentalPinEnabled else S.parentalPinNotSet,
-            color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 15.sp,
-            modifier = Modifier.padding(top = 10.dp),
-        )
-        Button(onClick = { dialog = true }) { Text(if (set) S.parentalChangePin else S.parentalSetPin) }
-        if (set) Button(onClick = { vm.setPin("") {} }) { Text(S.parentalClearPin) }
-        Button(onClick = onManageLockedChannels) { Text(S.parentalManageLocked) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalChangePin.takeIf { set } ?: S.parentalSetPin, if (set) S.parentalPinEnabled else S.parentalPinNotSet) { dialog = true }
+        if (set) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { vm.setPin("") {} }
+        com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalManageLocked, "", onClick = onManageLockedChannels)
     }
-    if (dialog) {
-        PinSetDialog(onCancel = { dialog = false }, onConfirm = { pin ->
-            vm.setPin(pin) { dialog = false }
-        })
-    }
+    if (dialog) PinSetDialog(onCancel = { dialog = false }, onConfirm = { pin -> vm.setPin(pin) { dialog = false } })
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+/** Création du code : saisie puis confirmation sur le pavé de la maquette. */
 @Composable
 private fun PinSetDialog(onCancel: () -> Unit, onConfirm: (String) -> Unit) {
-    var p1 by remember { mutableStateOf("") }
-    var p2 by remember { mutableStateOf("") }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
-        onBack = onCancel,
-        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
-    ) {
-        Column(
-            Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(S.parentalSetTitle, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            PinField(value = p1, onChange = { p1 = it.filter { c -> c.isDigit() }.take(4) }, hint = S.parentalPinHint)
-            PinField(value = p2, onChange = { p2 = it.filter { c -> c.isDigit() }.take(4) }, hint = S.parentalConfirmHint)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = onCancel) { Text(S.cancel) }
-                Button(
-                    onClick = { if (p1.length == 4 && p1 == p2) onConfirm(p1) },
-                    enabled = p1.length == 4 && p1 == p2,
-                ) { Text(S.save) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PinField(value: String, onChange: (String) -> Unit, hint: String) {
-    Box(
-        Modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.background)
-            .padding(12.dp),
-    ) {
-        BasicTextField(
-            modifier = androidx.compose.ui.Modifier.leaveOnVerticalDpad(),
-            value = value,
-            onValueChange = onChange,
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword, imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            visualTransformation = PasswordVisualTransformation(),
-            textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground, fontSize = 22.sp, fontWeight = FontWeight.Bold),
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            decorationBox = { inner ->
-                if (value.isEmpty()) Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
-                inner()
-            },
-        )
-    }
+    var first by remember { mutableStateOf<String?>(null) }
+    var attempt by remember { mutableStateOf(0) }
+    var error by remember { mutableStateOf<String?>(null) }
+    PinPad(
+        title = S.parentalSetTitle, subtitle = if (first == null) S.parentalPinHint else S.parentalConfirmHint,
+        onComplete = { pin ->
+            val f = first
+            if (f == null) { first = pin; error = null; attempt++ }
+            else if (f == pin) onConfirm(pin) else { first = null; error = S.parentalWrongPin; attempt++ }
+        },
+        onCancel = onCancel, error = error, resetKey = attempt,
+    )
 }

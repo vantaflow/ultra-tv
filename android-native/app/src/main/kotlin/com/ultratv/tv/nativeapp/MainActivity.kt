@@ -74,6 +74,8 @@ object StartupNav {
     val pending = MutableStateFlow<Pending?>(null)
     /** Route à ouvrir une fois l'application affichée (ex. « Regarder le direct » depuis le chargement). */
     val pendingRoute = MutableStateFlow<String?>(null)
+    /** Débogage uniquement : rubrique de Réglages à ouvrir. */
+    val debugRub = MutableStateFlow<Int?>(null)
 }
 
 @AndroidEntryPoint
@@ -92,6 +94,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
+        handleDebugIntent(intent)
         setContent { Root() }
         kickoffStartupTasks()
         // Auto-update flow: query GitHub Releases on launch and, if a newer
@@ -118,6 +121,18 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        handleDebugIntent(intent)
+    }
+
+    /** Build debug seulement : `am start --es debug_route settings --ei debug_rub 1` ouvre un écran précis (captures, tests). */
+    private fun handleDebugIntent(intent: android.content.Intent?) {
+        if (!BuildConfig.DEBUG || intent == null) return
+        intent.getStringExtra("debug_route")?.let { StartupNav.pendingRoute.value = it }
+        if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
     }
 
     /**
@@ -158,7 +173,9 @@ class MainActivity : ComponentActivity() {
             // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
             // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
             val all = providerRepo.observeProviders().first()
-            all.forEach { p -> if (prefs.autoSyncOnLaunch || p.lastLiveSyncAt == 0L) syncCoordinator.request(p.id) }
+            // Mode : auto (TTL selon l'appareil/le réseau) · à chaque lancement · planifiée (travail périodique) · manuelle.
+            all.forEach { p -> if (p.lastLiveSyncAt == 0L || (prefs.syncMode != "manual" && prefs.syncMode != "scheduled" && prefs.autoSyncOnLaunch)) syncCoordinator.request(p.id) }
+            if (prefs.syncMode == "scheduled") SyncScheduler.scheduleDaily(this@MainActivity, prefs.syncHour, prefs.syncUnmeteredOnly) else if (prefs.syncMode != "auto") SyncScheduler.schedule(this@MainActivity, 0)
 
             if (prefs.autoPlayLastOnLaunch) {
                 val firstProvider = providerRepo.observeProviders().first().firstOrNull()
@@ -382,7 +399,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onPlayChannel = { ch -> nav.navigate(Routes.player(ch.streamUrl, ch.name)) },
             )
         }
-        screen("categories") { CategoriesScreen() }
+        screen("categories") { CategoriesScreen(onBack = { nav.popBackStack() }) }
+        screen("diagnostic") { com.ultratv.tv.nativeapp.ui.settings.DiagnosticScreen() }
         screen("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen() }
         screen("recordings") {
             com.ultratv.tv.nativeapp.ui.recordings.RecordingsScreen(

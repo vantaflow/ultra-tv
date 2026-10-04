@@ -31,6 +31,8 @@ object SyncPolicy {
         ttl: Ttl,
         liveCount: Int,
         force: Boolean,
+        enabled: Set<SyncPart> = SyncPart.entries.toSet(),
+        heavyAllowed: Boolean = true,
     ): List<SyncPart> {
         fun stale(last: Long, ttlMs: Long) = last <= 0L || now - last >= ttlMs || now < last
         val parts = mutableListOf<SyncPart>()
@@ -47,6 +49,7 @@ object SyncPolicy {
                 if (force || stale(p.lastEpgSyncAt, ttl.epgMs)) parts += SyncPart.EPG
             }
         }
-        return parts
+        // Contenus désactivés par l'utilisateur ; VOD / séries / guide seulement si le réseau le permet (non facturé) sauf demande explicite.
+        return parts.filter { it in enabled && (heavyAllowed || force || it == SyncPart.LIVE) }
     }
 }

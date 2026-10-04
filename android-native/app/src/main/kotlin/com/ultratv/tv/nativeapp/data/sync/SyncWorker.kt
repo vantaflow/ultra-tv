@@ -51,10 +51,15 @@ class SyncWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val id = inputData.getLong(KEY_PROVIDER, ALL)
         val force = inputData.getBoolean(KEY_FORCE, false)
+        val catKind = inputData.getString(KEY_CAT_KIND)
         // Foreground best-effort : sur certaines box le démarrage d'un service de premier plan
         // depuis l'arrière-plan est refusé ; la synchro continue alors en tâche normale.
         runCatching { setForeground(foregroundInfo(appContext)) }
         return try {
+            if (catKind != null && id >= 0) {
+                providerRepo.syncCategoriesNow(id, catKind, inputData.getString(KEY_CAT_IDS).orEmpty().split('\u0001').filter { it.isNotEmpty() })
+                return Result.success()
+            }
             val ids = if (id >= 0) listOf(id) else providerRepo.observeProviders().first().map { it.id }
             var failure: Throwable? = null
             ids.forEach { pid -> runCatching { providerRepo.syncAll(pid, force = force) }.onFailure { failure = it } }
@@ -81,6 +86,8 @@ class SyncWorker @AssistedInject constructor(
     companion object {
         const val KEY_PROVIDER = "providerId"
         const val KEY_FORCE = "force"
+        const val KEY_CAT_KIND = "catKind"
+        const val KEY_CAT_IDS = "catIds"
         const val ALL = -1L
         private const val CHANNEL_ID = "sync"
         private const val NOTIF_ID = 4101
@@ -121,6 +128,15 @@ class SyncCoordinator @Inject constructor(@ApplicationContext private val ctx: C
         WorkManager.getInstance(ctx).enqueueUniqueWork("sync-$providerId", ExistingWorkPolicy.KEEP, req)
     }
 
+    /** Télécharge seulement ces catégories (réactivation) : requêtes ciblées si le serveur filtre. */
+    fun requestCategories(providerId: Long, kind: String, ids: List<String>) {
+        val req = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(workDataOf(SyncWorker.KEY_PROVIDER to providerId, SyncWorker.KEY_CAT_KIND to kind, SyncWorker.KEY_CAT_IDS to ids.joinToString("\u0001")))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(ctx).enqueue(req)
+    }
+
     /** Une source de plus à synchroniser maintenant, TTL ignorés (première synchro). */
     fun requestAll(force: Boolean = false) {
         val req = OneTimeWorkRequestBuilder<SyncWorker>()
@@ -132,6 +148,25 @@ class SyncCoordinator @Inject constructor(@ApplicationContext private val ctx: C
 }
 
 object SyncScheduler {
+    private const val DAILY = "ultratv-daily-sync"
+
+    /** Synchro quotidienne à [hour] h (réseau, batterie non faible, appareil au repos ; non facturé si demandé). */
+    fun scheduleDaily(context: Context, hour: Int, unmeteredOnly: Boolean) {
+        val now = java.util.Calendar.getInstance()
+        val next = (now.clone() as java.util.Calendar).apply {
+            set(java.util.Calendar.HOUR_OF_DAY, hour); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0)
+            if (before(now)) add(java.util.Calendar.DAY_OF_YEAR, 1)
+        }
+        val delay = next.timeInMillis - now.timeInMillis
+        val req = PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
+            .setInitialDelay(delay, TimeUnit.MILLISECONDS)
+            .setConstraints(Constraints.Builder()
+                .setRequiredNetworkType(if (unmeteredOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+                .setRequiresBatteryNotLow(true).setRequiresDeviceIdle(false).build())
+            .build()
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(DAILY, ExistingPeriodicWorkPolicy.UPDATE, req)
+    }
+
     private const val UNIQUE_NAME = "ultratv-bg-sync"
 
     /** (Re-)schedules background sync. Pass 0 to cancel. */
