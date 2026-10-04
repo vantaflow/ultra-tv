@@ -70,7 +70,7 @@ Au premier lancement : choisissez le type de source, saisissez-la, puis cochez v
 
 ### Appairage cloud par code
 
-Pour ne pas saisir d'identifiants à la télécommande : Réglages › Sources › **Appairer**. La télévision affiche un code à 8 caractères ; saisissez-le dans le tableau de bord de votre [Worker](#worker-cloudflare), ajoutez vos sources, puis « Synchroniser depuis le cloud ». L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore sur l'appareil, révocable). L'adresse MAC n'est qu'une étiquette, jamais une clé.
+Pour ne pas saisir d'identifiants à la télécommande : Réglages › Sources › **Synchroniser depuis le cloud**. La télévision affiche un code ; saisissez-le dans le tableau de bord de votre [Worker](#worker-cloudflare), ajoutez vos sources, puis « Importer ma configuration depuis le cloud ». L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore sur l'appareil, révocable). L'adresse MAC n'est qu'une étiquette, jamais une clé.
 
 ## Sécurité
 
