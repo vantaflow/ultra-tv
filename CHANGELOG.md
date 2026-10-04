@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.5] — 2026-10-04
+
+### Nouveautés
+- **TV, lecteur en direct** : OK ouvre la liste des chaînes (focus sur la chaîne regardée) ; ▲▼ zappent toujours ; Info/Menu affichent les commandes.
+- **Tableau de bord** : « Importer une image du QR » (capture ou photo, ou Ctrl/Cmd+V) pour appairer depuis un ordinateur sans caméra ; décodage local, rien n'est envoyé.
+
 ## [1.2.4] — 2026-10-04
 
 ### Corrections
