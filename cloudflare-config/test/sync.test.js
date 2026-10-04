@@ -35,6 +35,7 @@ describe("synchro : version / ETag", () => {
     const { tv, phone } = await twoDevices();
     const b = await (await cfg(tv)).json();
     expect(b.self).toBe(tv.deviceId);
+    expect(b.devices.find((d) => d.isCurrent).id).toBe(tv.deviceId);
     expect(b.devices.map((d) => d.name).sort()).toEqual(["TV salon", "Téléphone"]);
     expect(b.devices.every((d) => !("hash" in d))).toBe(true);
     expect(phone.deviceId).not.toBe(tv.deviceId);
@@ -53,7 +54,7 @@ describe("affectations", () => {
     const r = await putProv(phone, m3u("Privée"));
     expect(r.status).toBe(201);
     const b = await r.json();
-    expect(b.provider.assign).toEqual([phone.deviceId]);
+    expect(b.provider.sharedWith).toEqual([phone.deviceId]);
     expect(await names(phone)).toEqual(["Privée"]);
     expect(await names(tv)).toEqual([]);
   });
@@ -136,7 +137,7 @@ describe("affectations", () => {
     const { acct, tv } = await twoDevices();
     await addProvider(acct, m3u("Ancienne"));
     const p = (await (await cfg(tv)).json()).providers[0];
-    expect(p.assign).toBe("all");
+    expect(p.sharedWith).toBe("all");
   });
   it("revocation_retireLAppareilDesAffectations_etBloqueLeJeton", async () => {
     const { acct, tv, phone } = await twoDevices();
@@ -145,7 +146,7 @@ describe("affectations", () => {
     expect(revoke.status).toBe(302);
     expect((await cfg(tv)).status).toBe(401);
     const p = (await (await cfg(phone)).json()).providers[0];
-    expect(p.assign).toEqual([phone.deviceId]);
+    expect(p.sharedWith).toEqual([phone.deviceId]);
   });
 });
 
@@ -231,6 +232,12 @@ describe("appareils : nom et tableau de bord", () => {
     expect(html).toContain("Ajouté depuis Pixel de Lilou");
     expect(html).toContain('name="all"');
     expect(html).toContain("Renommer");
+  });
+  it("PATCH_api_device_et_PUT_providers_alias", async () => {
+    const { phone } = await twoDevices();
+    expect((await call("/api/device", { method: "PATCH", ip: freshIp(), headers: bearer(phone.token), json: { name: "Pixel" } })).status).toBe(200);
+    const r = await call("/api/device/providers", { method: "PUT", ip: freshIp(), headers: bearer(phone.token), json: m3u("Via PUT") });
+    expect(r.status).toBe(201);
   });
   it("renomme_nomVideOuObjet_400", async () => {
     const { phone } = await twoDevices();

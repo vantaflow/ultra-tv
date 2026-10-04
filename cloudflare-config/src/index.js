@@ -85,10 +85,10 @@ async function route(req, env) {
   if (path === "/api/pair/poll" && m === "POST") return pairPoll(req, env);
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
-  if (path === "/api/device/providers" && m === "POST") return devicePutProvider(req, env);
+  if (path === "/api/device/providers" && (m === "POST" || m === "PUT")) return devicePutProvider(req, env);
   const delProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})$/);
   if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
-  if (path === "/api/device/self" && m === "POST") return deviceRename(req, env);
+  if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
@@ -382,7 +382,7 @@ async function deviceConfig(req, env) {
   if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
   // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
   const providers = (await loadProviders(env, auth.acct)).filter((p) => isVisibleTo(p, auth.device.id));
-  const devices = (auth.acct.devices || []).map((d) => ({ id: d.id, name: d.name, label: d.label || "" }));
+  const devices = (auth.acct.devices || []).map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
   return json(
     { version, self: auth.device.id, devices, providers: providers.map(syncProvider) },
     200, { etag, "cache-control": "no-store" },

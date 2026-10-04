@@ -39,10 +39,10 @@ Un appareil ne reçoit, ne modifie et ne supprime QUE les fournisseurs qui lui s
 
 | Route (jeton d'appareil) | Rôle |
 |---|---|
-| `GET /api/config` | `{version, self, devices[], providers[]}` filtré par affectation ; `ETag: "v<version>"`, `If-None-Match` → `304`. |
-| `POST /api/device/providers` | Crée (privé à l'appareil, sauf `shareWith: "all" \| [deviceIds]`) ou met à jour (`id`). Même validation que le tableau de bord, chiffrement AES-GCM, 30 écritures / 10 min / appareil. |
+| `GET /api/config` | `{version, self, devices[{id,name,model,lastSeen,isCurrent}], providers[{…, sharedWith, originDeviceId, updatedAt}]}` filtré par affectation ; `ETag: "v<version>"`, `If-None-Match` → `304`. |
+| `POST` ou `PUT /api/device/providers` | Crée (privé à l'appareil, sauf `shareWith: "all" \| [deviceIds]`) ou met à jour (`id`). Même validation que le tableau de bord, chiffrement AES-GCM, 30 écritures / 10 min / appareil. |
 | `DELETE /api/device/providers/<id>` | Retire l'appareil de l'affectation (supprime la source si plus personne) ; `?all=1` la supprime du compte. |
-| `POST /api/device/self` | `{name}` : renomme l'appareil. |
+| `PATCH /api/device` (ou `POST /api/device/self`) | `{name}` : renomme l'appareil. |
 
 Tableau de bord : matrice fournisseurs × appareils (cases + « Tous »), appareils renommables, origine et date de chaque fournisseur. Révoquer un appareil le retire des listes explicites.
 Limite connue : les écritures sont des lecture-modification-écriture KV ; deux écritures simultanées de deux appareils sur le même compte peuvent s'écraser (rare, la version monte et l'appareil resynchronise).

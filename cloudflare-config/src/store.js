@@ -154,7 +154,7 @@ export function publicProvider({ id: _id, ...rest }) {
 /** Forme de synchro : AVEC l'identifiant stable (clé de fusion côté appareil). */
 export function syncProvider(p) {
   return {
-    assign: p.assign === undefined ? "all" : p.assign,
+    sharedWith: p.assign === undefined ? "all" : p.assign,
     id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "", mac: p.mac || "",
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
   };
