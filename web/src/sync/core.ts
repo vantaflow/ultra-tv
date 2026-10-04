@@ -2,7 +2,7 @@
 // bloquer l'interface, même avec 55 000 chaînes, 180 000 films et 48 000 séries.
 // Lecture en flux (net/json.ts) + écriture par lots dans IndexedDB.
 
-import { db } from "@/db/db";
+import { clearCatalog, db, nextCid } from "@/db/db";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
 import { parseChannelName, parseCategoryName } from "@/lib/channelName";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
@@ -90,41 +90,53 @@ export interface SyncOptions {
   transport: Transport;
   onProgress: ProgressFn;
   signal?: AbortSignal;
+  /** Conserve les catégories activées/désactivées à la main (au lieu de les recalculer depuis les langues). */
+  preserveFlags?: boolean;
 }
 
-export async function runSync({ source, transport: t, onProgress, signal }: SyncOptions): Promise<{ live: number; movie: number; series: number }> {
-  const sourceId = source.id!;
+/** Contexte d'une synchro : `cid` est la NOUVELLE génération de catalogue écrite par cette exécution. */
+interface Ctx {
+  source: Source;
+  cid: number;
+  firstGeneration: boolean;
+  counts: { live: number; movie: number; series: number };
+  flags: Map<string, 0 | 1> | null;
+  report: ReportFn;
+}
+
+export async function runSync({ source, transport: t, onProgress, signal, preserveFlags }: SyncOptions): Promise<{ live: number; movie: number; series: number }> {
+  const oldCid = source.cid;
+  const cid = await nextCid();
   const counts = { live: 0, movie: 0, series: 0 };
   const th = new Throttle(onProgress);
-  const report = (phase: SyncProgress["phase"], ratio: number, force = false) => th.push({ phase, ratio, counts: { ...counts } }, force);
+  const report: ReportFn = (phase, ratio, force = false) => th.push({ phase, ratio, counts: { ...counts } }, force);
+
+  let flags: Map<string, 0 | 1> | null = null;
+  if (preserveFlags && oldCid) {
+    flags = new Map();
+    await db.categories.where("[sourceId+kind]").between([oldCid, ""], [oldCid, "\uffff"]).each((c) => { flags!.set(`${c.kind}:${c.extId}`, c.enabled); });
+  }
+  const ctx: Ctx = { source, cid, firstGeneration: oldCid === 0, counts, flags, report };
 
   report("categories", 0, true);
-  await clearForResync(sourceId);
-
-  if (source.type === "m3u") {
-    await syncM3u(source, t, counts, report, signal);
-  } else {
-    await syncXtream(source, t, counts, report, signal);
+  try {
+    if (source.type === "m3u") await syncM3u(ctx, t, signal);
+    else await syncXtream(ctx, t, signal);
+    assertNotAborted(signal);
+  } catch (e) {
+    // Échec ou annulation : la nouvelle génération est jetée, l'ancienne reste intacte.
+    await clearCatalog(cid).catch(() => undefined);
+    throw e;
   }
-  assertNotAborted(signal);
-  await db.sources.update(sourceId, { counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
+  await db.sources.update(source.id!, { cid, counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
+  if (oldCid) await clearCatalog(oldCid);
   report("done", 1, true);
   return counts;
 }
 
-async function clearForResync(sourceId: number) {
-  await db.transaction("rw", [db.categories, db.channels, db.movies, db.series], async () => {
-    await db.categories.where("[sourceId+kind]").between([sourceId, ""], [sourceId, "￿"]).delete();
-    await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-    await db.movies.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-    await db.series.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-  });
-}
-
 type ReportFn = (phase: SyncProgress["phase"], ratio: number, force?: boolean) => void;
 
-async function syncXtream(source: Source, t: Transport, counts: { live: number; movie: number; series: number }, report: ReportFn, signal?: AbortSignal) {
-  const sourceId = source.id!;
+async function syncXtream({ source, cid: sourceId, counts, report, flags, firstGeneration }: Ctx, t: Transport, signal?: AbortSignal) {
   const c = credsOf(source);
   const langs = source.langs;
 
@@ -138,9 +150,12 @@ async function syncXtream(source: Source, t: Transport, counts: { live: number; 
     ...mapCategories("movie", sourceId, vodCats, langs),
     ...mapCategories("series", sourceId, serCats, langs),
   ];
+  if (flags) for (const cat of cats) { const f = flags.get(`${cat.kind}:${cat.extId}`); if (f !== undefined) cat.enabled = f; }
   const enabled: Record<Kind, Set<string>> = { live: new Set(), movie: new Set(), series: new Set() };
   const catCount: Record<string, number> = {};
   for (const cat of cats) if (cat.enabled) enabled[cat.kind].add(cat.extId);
+  // Catégories écrites tout de suite (compteurs mis à jour en fin de synchro) : le direct est utilisable dès la fin de sa phase.
+  const catIds = await db.categories.bulkAdd(cats, { allKeys: true });
   assertNotAborted(signal);
 
   // Catégories enfants d'un bloc de catalogue : un flux sans catégorie connue est rattaché à "" (affiché dans « Tout »).
@@ -167,6 +182,8 @@ async function syncXtream(source: Source, t: Transport, counts: { live: number; 
     report("live", Math.min(0.99, liveOrd / approxLive));
   });
   counts.live = (await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).filter((r) => r.sep === 0).count());
+  // Première synchro : on bascule dès maintenant pour permettre de regarder le direct pendant que films et séries arrivent.
+  if (firstGeneration) await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } });
   report("live", 1, true);
 
   // --- Films ---
@@ -215,8 +232,12 @@ async function syncXtream(source: Source, t: Transport, counts: { live: number; 
   counts.series = serOrd;
   report("series", 1, true);
 
-  for (const cat of cats) cat.count = catCount[`${cat.kind}:${cat.extId}`] ?? 0;
-  await db.categories.bulkAdd(cats);
+  await db.transaction("rw", db.categories, async () => {
+    for (let i = 0; i < cats.length; i++) {
+      const n = catCount[`${cats[i]!.kind}:${cats[i]!.extId}`] ?? 0;
+      if (n) await db.categories.update(catIds[i]!, { count: n });
+    }
+  });
 }
 
 /**
@@ -247,8 +268,7 @@ async function streamIntoDb<T>(
   }
 }
 
-async function syncM3u(source: Source, t: Transport, counts: { live: number; movie: number; series: number }, report: ReportFn, signal?: AbortSignal) {
-  const sourceId = source.id!;
+async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {
   report("live", 0, true);
   const res = await transportFetch(t, source.m3uUrl, { signal, userAgent: source.userAgent, referer: source.referer });
   const entries = parseM3u(await res.text());

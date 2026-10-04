@@ -83,7 +83,8 @@ export function scanXmltv(
 }
 
 export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal, onProgress?: (ratio: number) => void): Promise<number> {
-  const sourceId = source.id!;
+  const sourceId = source.cid;
+  if (!sourceId) return 0;
   const url = source.epgUrl || (source.type === "xtream" ? xmltvUrl(credsOf(source)) : "");
   if (!url) return 0;
 

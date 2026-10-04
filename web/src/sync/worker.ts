@@ -8,7 +8,7 @@ import { detectLanguages, runSync, testConnection } from "./core";
 import { syncEpg } from "./epg";
 
 export type WorkerRequest =
-  | { id: number; type: "sync"; source: Source; transport: Transport; epg: boolean }
+  | { id: number; type: "sync"; source: Source; transport: Transport; epg: boolean; preserveFlags?: boolean }
   | { id: number; type: "epg"; source: Source; transport: Transport }
   | { id: number; type: "detect"; source: Source; transport: Transport }
   | { id: number; type: "test"; source: Source; transport: Transport }
@@ -46,12 +46,14 @@ self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
       case "sync": {
         await db.sources.update(req.source.id!, { state: "syncing", error: undefined });
         const counts = await runSync({
-          source: req.source, transport: req.transport, signal: ctrl.signal,
+          source: req.source, transport: req.transport, signal: ctrl.signal, preserveFlags: req.preserveFlags,
           onProgress: (progress) => post({ id: req.id, type: "progress", progress }),
         });
         if (req.epg) {
           post({ id: req.id, type: "progress", progress: { phase: "epg", ratio: 0, counts } });
-          try { await syncEpg(req.source, req.transport, ctrl.signal, (ratio) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts } })); }
+          const fresh = await db.sources.get(req.source.id!);
+          const withCid = { ...req.source, cid: fresh?.cid ?? req.source.cid };
+          try { await syncEpg(withCid, req.transport, ctrl.signal, (ratio) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts } })); }
           catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; /* le guide est facultatif */ }
         }
         post({ id: req.id, type: "result", value: counts });

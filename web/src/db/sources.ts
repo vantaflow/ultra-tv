@@ -1,6 +1,6 @@
 // Sources : les identifiants sont chiffrés au repos (voir net/secrets.ts) et déchiffrés à la lecture.
 
-import { db } from "./db";
+import { clearCatalog, db } from "./db";
 import type { Source } from "./types";
 import { decryptSecret, encryptSecret } from "@/net/secrets";
 
@@ -13,7 +13,7 @@ async function seal(s: Source): Promise<Source> {
 
 export const emptySource = (): Source => ({
   name: "", type: "xtream", server: "", username: "", password: "", m3uUrl: "", epgUrl: "", userAgent: "", referer: "",
-  langs: null, createdAt: Date.now(), lastSyncAt: 0, counts: { live: 0, movie: 0, series: 0 }, expDate: null, maxConnections: 1, state: "new",
+  cid: 0, langs: null, createdAt: Date.now(), lastSyncAt: 0, counts: { live: 0, movie: 0, series: 0 }, expDate: null, maxConnections: 1, state: "new",
 });
 
 export async function listSources(): Promise<Source[]> {
@@ -28,15 +28,9 @@ export async function saveSource(s: Source): Promise<number> {
   return db.sources.put(await seal(s));
 }
 export async function deleteSource(id: number): Promise<void> {
-  const tables = [db.sources, db.categories, db.channels, db.movies, db.series, db.programs, db.favorites, db.history];
-  await db.transaction("rw", tables, async () => {
-    await db.categories.where("[sourceId+kind]").between([id, ""], [id, "￿"]).delete();
-    await db.channels.where("[sourceId+ord]").between([id, -1], [id, Infinity]).delete();
-    await db.movies.where("[sourceId+ord]").between([id, -1], [id, Infinity]).delete();
-    await db.series.where("[sourceId+ord]").between([id, -1], [id, Infinity]).delete();
-    await db.programs.where("[sourceId+end]").between([id, 0], [id, Infinity]).delete();
-    await db.favorites.where("[sourceId+kind]").between([id, ""], [id, "￿"]).delete();
-    await db.history.where("[sourceId+kind]").between([id, ""], [id, "￿"]).delete();
-    await db.sources.delete(id);
-  });
+  const src = await db.sources.get(id);
+  if (src?.cid) await clearCatalog(src.cid);
+  await db.favorites.where("addedAt").above(-1).filter((f) => f.sourceId === id).delete();
+  await db.history.where("updatedAt").above(-1).filter((h) => h.sourceId === id).delete();
+  await db.sources.delete(id);
 }

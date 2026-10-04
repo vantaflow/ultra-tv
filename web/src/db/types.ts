@@ -18,6 +18,12 @@ export interface Source {
   epgUrl: string;
   userAgent: string;
   referer: string;
+  /**
+   * Génération de catalogue courante. Les lignes de catalogue (catégories, chaînes, films, séries, guide)
+   * portent ce numéro dans leur champ `sourceId` : une nouvelle synchro écrit une nouvelle génération,
+   * puis bascule `cid` d'un coup — l'interface ne voit jamais un catalogue à moitié vidé. 0 = aucun.
+   */
+  cid: number;
   /** Langues (codes pays) à synchroniser ; null = toutes. */
   langs: string[] | null;
   createdAt: number;
@@ -32,6 +38,7 @@ export interface Source {
 
 export interface CategoryRow {
   id?: number;
+  /** Génération de catalogue (voir Source.cid). */
   sourceId: number;
   kind: Kind;
   extId: string;
@@ -110,6 +117,8 @@ export interface ProgramRow {
 
 export interface FavoriteRow {
   key: string;
+  profile: string;
+  /** Identifiant réel de la source (et non la génération de catalogue). */
   sourceId: number;
   kind: Kind;
   refId: number;
@@ -120,6 +129,7 @@ export interface FavoriteRow {
 
 export interface HistoryRow {
   key: string;
+  profile: string;
   sourceId: number;
   kind: Kind;
   refId: number;

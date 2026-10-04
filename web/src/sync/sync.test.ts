@@ -59,6 +59,8 @@ describe("synchronisation Xtream", () => {
     const p: string[] = [];
     const counts = await runSync({ source: src(), transport: { mode: "direct" }, onProgress: (x) => p.push(x.phase) });
     expect(counts).toEqual({ live: 3, movie: 50, series: 1 });
+    const cid = (await db.sources.get(1))!.cid;
+    expect(cid).toBeGreaterThan(0);
     expect(new Set(p)).toContain("done");
     const ch = await db.channels.orderBy("[sourceId+ord]").toArray();
     expect(ch[0]).toMatchObject({ sep: 1, display: "FR SPORT" });
@@ -70,11 +72,24 @@ describe("synchronisation Xtream", () => {
   });
 
   it("ne synchronise que les langues choisies", async () => {
-    const counts = await runSync({ source: { ...src(), langs: ["FR"] }, transport: { mode: "direct" }, onProgress: () => undefined });
+    const before = (await db.sources.get(1))!;
+    const counts = await runSync({ source: { ...before, langs: ["FR"] }, transport: { mode: "direct" }, onProgress: () => undefined });
     expect(counts.live).toBe(1);
     expect(counts.movie).toBe(25);
-    const cs = await db.categories.where("[sourceId+kind]").equals([1, "live"]).toArray();
+    const after = (await db.sources.get(1))!;
+    expect(after.cid).not.toBe(before.cid);
+    // l'ancienne génération a été supprimée, la nouvelle est complète
+    expect(await db.channels.where("[sourceId+ord]").between([before.cid, -1], [before.cid, Infinity]).count()).toBe(0);
+    const cs = await db.categories.where("[sourceId+kind]").equals([after.cid, "live"]).toArray();
     expect(cs.filter((c) => c.enabled).map((c) => c.badge)).toEqual(["FR"]);
+  });
+
+  it("conserve les catégories choisies à la main", async () => {
+    const cur = (await db.sources.get(1))!;
+    const cat = await db.categories.where("[sourceId+kind+extId]").equals([cur.cid, "movie", "2"]).first();
+    await db.categories.update(cat!.id!, { enabled: 1 });
+    const counts = await runSync({ source: { ...cur, langs: ["FR"] }, transport: { mode: "direct" }, onProgress: () => undefined, preserveFlags: true });
+    expect(counts.movie).toBe(50);
   });
 
   it("rejette de mauvais identifiants", async () => {

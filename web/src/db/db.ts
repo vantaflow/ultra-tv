@@ -22,11 +22,11 @@ export class UltraTvDb extends Dexie {
       sources: "++id",
       categories: "++id, [sourceId+kind], [sourceId+kind+extId]",
       channels: "++id, [sourceId+ord], [sourceId+catExt+ord], [sourceId+epg], [sourceId+streamId]",
-      movies: "++id, [sourceId+ord], [sourceId+catExt+ord], [sourceId+added], [sourceId+streamId]",
-      series: "++id, [sourceId+ord], [sourceId+catExt+ord], [sourceId+added], [sourceId+seriesId]",
+      movies: "++id, [sourceId+ord], [sourceId+catExt+ord], [sourceId+added], [sourceId+catExt+added], [sourceId+rating], [sourceId+streamId]",
+      series: "++id, [sourceId+ord], [sourceId+catExt+ord], [sourceId+added], [sourceId+catExt+added], [sourceId+rating], [sourceId+seriesId]",
       programs: "++id, [sourceId+epg+start], [sourceId+end]",
-      favorites: "&key, [sourceId+kind], addedAt",
-      history: "&key, [sourceId+kind], updatedAt",
+      favorites: "&key, [profile+sourceId+kind], addedAt",
+      history: "&key, [profile+sourceId], updatedAt",
       details: "&key",
       settings: "&key",
     });
@@ -41,13 +41,23 @@ export async function getSetting<T>(key: string, fallback: T): Promise<T> {
 }
 export const setSetting = (key: string, value: unknown) => db.settings.put({ key, value });
 
-/** Supprime tout le catalogue d'une source (les favoris et l'historique sont conservés). */
-export async function clearCatalog(sourceId: number): Promise<void> {
-  await db.transaction("rw", [db.categories, db.channels, db.movies, db.series, db.programs], async () => {
-    await db.categories.where("[sourceId+kind]").between([sourceId, ""], [sourceId, "￿"]).delete();
-    await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-    await db.movies.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-    await db.series.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).delete();
-    await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).delete();
+const R = (cid: number): [[number, number], [number, number]] => [[cid, -1], [cid, Infinity]];
+
+/** Supprime une génération de catalogue (les favoris et l'historique sont conservés). */
+export async function clearCatalog(cid: number): Promise<void> {
+  if (!cid) return;
+  await db.categories.where("[sourceId+kind]").between([cid, ""], [cid, "\uffff"]).delete();
+  await db.channels.where("[sourceId+ord]").between(...R(cid)).delete();
+  await db.movies.where("[sourceId+ord]").between(...R(cid)).delete();
+  await db.series.where("[sourceId+ord]").between(...R(cid)).delete();
+  await db.programs.where("[sourceId+end]").between([cid, 0], [cid, Infinity]).delete();
+}
+
+/** Prochain numéro de génération de catalogue (compteur global). */
+export async function nextCid(): Promise<number> {
+  return db.transaction("rw", db.settings, async () => {
+    const n = ((await db.settings.get("cid.counter"))?.value as number | undefined) ?? 0;
+    await db.settings.put({ key: "cid.counter", value: n + 1 });
+    return n + 1;
   });
 }
