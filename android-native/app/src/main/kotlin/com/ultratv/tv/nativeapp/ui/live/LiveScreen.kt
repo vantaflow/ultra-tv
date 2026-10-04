@@ -77,6 +77,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val nowNext by vm.nowNext.collectAsState()
     val favs by vm.favoriteIds.collectAsState()
     val channels = vm.channels.collectAsLazyPagingItems()
+    val langView by vm.langView.collectAsState()
+    val langCounts by vm.langCounts.collectAsState()
+    var langPanel by remember { mutableStateOf(false) }
     var pinPrompt by remember { mutableStateOf<ChannelEntity?>(null) }
     var actionsFor by remember { mutableStateOf<ChannelEntity?>(null) }
     var focusedChannel by remember { mutableStateOf<ChannelEntity?>(null) }
@@ -120,8 +123,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             Text(
                 D.categoryHeader(name, current?.count ?: 0) + (current?.sections?.takeIf { it > 0 }?.let { " · " + D.sections(it) } ?: ""),
                 color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(bottom = 12.design),
+                modifier = Modifier.padding(bottom = 4.design),
             )
+            com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true }, modifier = Modifier.padding(bottom = 8.design))
             ChannelList(channels, locked, favs, nowNext, selected, vm,
                 onFocusChannel = { focusedChannel = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onPlay) },
@@ -138,6 +142,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         )
     }
 
+    if (langPanel) com.ultratv.tv.nativeapp.ui.common.LangViewPanel(langCounts, langView, onToggle = { vm.toggleLang(it) }, onClear = { vm.clearLangView() }, onDismiss = { langPanel = false })
     pinPrompt?.let { ch ->
         com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
             title = ch.title,
@@ -292,6 +297,8 @@ private fun ChannelRow(
                 Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
+            com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
+            Spacer(Modifier.width(8.design))
             QualityBadge(c.quality, f)
         }
     }

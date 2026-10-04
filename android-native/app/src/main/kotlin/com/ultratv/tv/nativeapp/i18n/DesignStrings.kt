@@ -124,6 +124,14 @@ class DesignStrings(val lang: AppLang) {
     val onAirPill get() = t("ON AIR", "EN COURS", "EN CURSO", "قيد البث")
     val drawerHint get() = t("OK zap · ▲▼ browse · ◀ categories · ‹ close", "OK zapper · ▲▼ parcourir · ◀ catégories · ‹ fermer", "OK cambiar · ▲▼ explorar · ◀ categorías · ‹ cerrar", "OK للتبديل · ▲▼ تصفح · ◀ الفئات · ‹ إغلاق")
 
+    // Filtre de langue de la vue
+    val langAll get() = t("All", "Toutes", "Todos", "الكل")
+    fun langPill(v: String) = when (lang) { AppLang.French -> "Langues : $v"; AppLang.Spanish -> "Idiomas: $v"; AppLang.Arabic -> "اللغات: $v"; else -> "Languages: $v" }
+    val langMulti get() = t("Multilingual", "Multilingue", "Multilingüe", "متعدد اللغات")
+    val langUndetermined get() = t("Undetermined", "Non déterminé", "Sin determinar", "غير محدد")
+    val langPanelTitle get() = t("Languages", "Langues", "Idiomas", "اللغات")
+    val langPanelHint get() = t("Temporary filter for this screen only. Your content languages in Settings are not changed.", "Filtre temporaire de cet écran uniquement. Vos langues de contenu dans les Réglages ne changent pas.", "Filtro temporal solo para esta pantalla. Tus idiomas en Ajustes no cambian.", "مرشح مؤقت لهذه الشاشة فقط. لا تتغير لغات المحتوى في الإعدادات.")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

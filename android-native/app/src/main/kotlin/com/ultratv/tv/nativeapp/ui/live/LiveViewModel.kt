@@ -99,19 +99,28 @@ class LiveViewModel @Inject constructor(
     val selectedCategory: StateFlow<String> = combine(_selected, categories) { sel, cats -> sel ?: pickLanding(cats, landing.getString("last", null)) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CATEGORY_ALL)
 
+    /** Filtre de langue TEMPORAIRE de la vue (oublié à la fermeture de l'écran) + langues présentes avec leurs effectifs. */
+    private val _langView = MutableStateFlow(com.ultratv.tv.nativeapp.data.repo.LangView.ALL)
+    val langView: StateFlow<com.ultratv.tv.nativeapp.data.repo.LangView> = _langView
+    fun toggleLang(code: String) { _langView.value = _langView.value.toggle(code) }
+    fun clearLangView() { _langView.value = com.ultratv.tv.nativeapp.data.repo.LangView.ALL }
+    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else channelDao.observeLangCounts(id) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden) { id, cat, hidden -> Triple(id, cat, hidden) }
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView) { id, cat, hidden, lv -> arrayOf(id, cat, hidden, lv) }
         .distinctUntilChanged()
-        .flatMapLatest { (id, cat, hidden) ->
+        .flatMapLatest { arr ->
+            @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
             if (id == null) flowOf(PagingData.empty())
             else Pager(PagingConfig(pageSize = 40, prefetchDistance = 24, initialLoadSize = 60, enablePlaceholders = false)) {
                 when {
-                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id)
+                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id, lv.useLang, lv.langs)
                     cat == CATEGORY_ALL -> {
                         val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
-                        if (hiddenIds.isEmpty()) channelDao.pagedAll(id) else channelDao.pagedAllExcluding(id, hiddenIds)
+                        if (hiddenIds.isEmpty()) channelDao.pagedAll(id, lv.useLang, lv.langs) else channelDao.pagedAllExcluding(id, hiddenIds, lv.useLang, lv.langs)
                     }
-                    else -> channelDao.pagedForCategory(id, cat)
+                    else -> channelDao.pagedForCategory(id, cat, lv.useLang, lv.langs)
                 }
             }.flow
         }
@@ -196,7 +205,7 @@ class LiveViewModel @Inject constructor(
                         channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
                     }
                 }
-                zapQueue.set(window.ifEmpty { listOf(channel) }, channel)
+                zapQueue.set(_langView.value.filter(window) { it.lang }.ifEmpty { listOf(channel) }, channel)
                 val url = if (channel.streamUrl.startsWith("stalker://")) provider.resolvePlayUrl(channel.id, channel.streamUrl) else channel.streamUrl
                 playback.set(PlaybackContext.Item(channel.providerId, "LIVE", channel.remoteId, channel.title, channel.logo, url))
                 onReady(url, channel.title)

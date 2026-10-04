@@ -171,15 +171,18 @@ interface ChannelDao {
     """)
     fun observeFavoritesTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
+    @Query("SELECT lang AS lang, COUNT(*) AS n FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 GROUP BY lang")
+    fun observeLangCounts(pid: Long): Flow<List<LangCount>>
+
     /** Pagination Room : seules les lignes visibles (+ marge) sont chargées, l'ordre vient de l'index. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 ORDER BY num, sortKey")
-    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, sortKey")
+    fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 ORDER BY num, sortKey")
-    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, ChannelEntity>
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, sortKey")
+    fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND (categoryId IS NULL OR categoryId NOT IN (:hidden)) ORDER BY num, sortKey")
-    fun pagedAllExcluding(pid: Long, hidden: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND (categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, sortKey")
+    fun pagedAllExcluding(pid: Long, hidden: List<String>, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Chaînes qui ONT un programme dans la fenêtre [from, to] (lignes de la grille du guide). */
     @Query("""
@@ -216,9 +219,9 @@ interface ChannelDao {
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY c.num, c.sortKey
     """)
-    fun pagedFavorites(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+    fun pagedFavorites(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
     @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
@@ -255,14 +258,17 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<MovieEntity>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey")
-    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, MovieEntity>
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY sortKey")
+    fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
-    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, MovieEntity>
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY sortKey")
+    fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
 
     @Query("UPDATE movie SET plot = :plot, cast = :cast, genre = :genre, duration = :duration, backdrop = :backdrop WHERE id = :id")
     suspend fun updateDetails(id: Long, plot: String?, cast: String?, genre: String?, duration: String?, backdrop: String?)
+
+    @Query("SELECT lang AS lang, COUNT(*) AS n FROM movie WHERE providerId = :pid GROUP BY lang")
+    fun observeLangCounts(pid: Long): Flow<List<LangCount>>
 
     @Query("SELECT categoryId AS categoryId, COUNT(*) AS n, 0 AS sections FROM movie WHERE providerId = :pid GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
@@ -314,11 +320,14 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
     suspend fun search(pid: Long, q: String): List<SeriesEntity>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey")
-    fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, SeriesEntity>
+    @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY sortKey")
+    fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>
 
-    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
-    fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, SeriesEntity>
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY sortKey")
+    fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT lang AS lang, COUNT(*) AS n FROM series WHERE providerId = :pid GROUP BY lang")
+    fun observeLangCounts(pid: Long): Flow<List<LangCount>>
 
     @Query("SELECT categoryId AS categoryId, COUNT(*) AS n, 0 AS sections FROM series WHERE providerId = :pid GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>

@@ -1,7 +1,9 @@
 package com.ultratv.tv.nativeapp.ui.catalog
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -73,7 +75,7 @@ import javax.inject.Inject
 enum class CatalogKind { MOVIES, SERIES }
 
 /** Carte de la grille : seulement des champs RÉELS de la source. */
-data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?)
+data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "")
 
 data class CategoryChip(val remoteId: String, val name: String)
 
@@ -110,16 +112,25 @@ class CatalogGridViewModel @Inject constructor(
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected) { p, k, c -> Triple(p, k, c) }
+    private val _langView = kotlinx.coroutines.flow.MutableStateFlow(com.ultratv.tv.nativeapp.data.repo.LangView.ALL)
+    val langView: StateFlow<com.ultratv.tv.nativeapp.data.repo.LangView> = _langView
+    fun toggleLang(code: String) { _langView.value = _langView.value.toggle(code) }
+    fun clearLangView() { _langView.value = com.ultratv.tv.nativeapp.data.repo.LangView.ALL }
+    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = combine(pid, kind) { p, k -> p to k }
+        .flatMapLatest { (p, k) -> if (p == null) flowOf(emptyList()) else if (k == CatalogKind.MOVIES) movieDao.observeLangCounts(p) else seriesDao.observeLangCounts(p) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> arrayOf<Any?>(p, k, c, lv) }
         .distinctUntilChanged()
-        .flatMapLatest { (p, k, cat) ->
+        .flatMapLatest { arr ->
+            @Suppress("UNCHECKED_CAST") val p = arr[0] as Long?; val k = arr[1] as CatalogKind; val cat = arr[2] as String?; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
             if (p == null) flowOf(PagingData.empty())
             else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (cat == null) movieDao.pagedAll(p) else movieDao.pagedForCategory(p, cat)
-            }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+                if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
+            }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
             else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (cat == null) seriesDao.pagedAll(p) else seriesDao.pagedForCategory(p, cat)
-            }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+                if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
+            }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
         }.cachedIn(viewModelScope)
 }
 
@@ -135,10 +146,17 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val chips by vm.chips.collectAsState()
     val selected by vm.selected.collectAsState()
     val items = vm.items.collectAsLazyPagingItems()
+    val langView by vm.langView.collectAsState()
+    val langCounts by vm.langCounts.collectAsState()
+    var langPanel by remember { mutableStateOf(false) }
     val title = if (kind == CatalogKind.MOVIES) D.moviesTitle else D.seriesTitle
 
     Column(Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design), verticalArrangement = Arrangement.spacedBy(32.design)) {
-        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1)
+            com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true })
+        }
+        if (langPanel) com.ultratv.tv.nativeapp.ui.common.LangViewPanel(langCounts, langView, onToggle = { vm.toggleLang(it) }, onClear = { vm.clearLangView() }, onDismiss = { langPanel = false })
         LazyRow(horizontalArrangement = Arrangement.spacedBy(14.design)) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
@@ -180,7 +198,10 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Unit) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {
-            PosterImage(item.poster, item.title, Modifier.fillMaxSize(), radius = 18)
+            Box(Modifier.fillMaxSize()) {
+                PosterImage(item.poster, item.title, Modifier.fillMaxSize(), radius = 18)
+                com.ultratv.tv.nativeapp.ui.common.LangBadge(item.lang, modifier = Modifier.align(Alignment.TopStart).padding(10.design))
+            }
         }
         Text(item.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         val meta = listOfNotNull(item.year?.toString(), item.rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
