@@ -42,6 +42,11 @@ class DesignStrings(val lang: AppLang) {
     fun searchChannels(n: Int) = when (lang) { AppLang.French -> "CHAÎNES · $n"; AppLang.Spanish -> "CANALES · $n"; AppLang.Arabic -> "القنوات · $n"; else -> "CHANNELS · $n" }
     fun searchVod(n: Int) = when (lang) { AppLang.French -> "FILMS ET SÉRIES · $n"; AppLang.Spanish -> "PELÍCULAS Y SERIES · $n"; AppLang.Arabic -> "الأفلام والمسلسلات · $n"; else -> "MOVIES AND SERIES · $n" }
 
+    // Favoris
+    val channelsWord get() = t("Channels", "Chaînes", "Canales", "القنوات")
+    fun favTab(label: String, n: Int) = "$label · $n"
+    val favHint get() = t("Long-press OK: remove from favorites", "Appui long sur OK : retirer des favoris", "Pulsación larga en OK: quitar de favoritos", "اضغط مطولًا على OK لإزالة من المفضلة")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

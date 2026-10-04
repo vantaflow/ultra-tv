@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -107,6 +108,17 @@ fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?
                     }
                 }
             }
+        }
+    }
+}
+
+/** Affiche 2:3 de taille imposée par la colonne (jamais par l'image) + titre sur une ligne. */
+@Composable
+fun VodCard(title: String, poster: String?, modifier: Modifier, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
+        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+            PosterImage(poster, title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 16)
+            Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }

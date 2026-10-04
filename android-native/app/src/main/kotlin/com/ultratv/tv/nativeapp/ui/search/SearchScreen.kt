@@ -233,13 +233,3 @@ private fun ChannelCard(c: ChannelEntity, modifier: Modifier, onClick: () -> Uni
     }
 }
 
-/** Affiche 2:3 de taille imposée par la colonne (jamais par l'image) + titre sur une ligne. */
-@Composable
-private fun VodCard(title: String, poster: String?, modifier: Modifier, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedBg = androidx.compose.ui.graphics.Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
-        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-            PosterImage(poster, title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 16)
-            Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
