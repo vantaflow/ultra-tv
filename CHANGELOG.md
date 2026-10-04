@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.8] — 2026-10-04 (Android TV)
+
+### Nouveautés
+- Accueil : derniers films et séries ajoutés, dernières chaînes regardées.
+- Recherche : programmes du Guide TV (« Au programme »), une entrée par œuvre (doublons retirés).
+- Affiches manquantes complétées par TMDB (via le Worker).
+
+### Corrections
+- Catégories : ordre conservé pendant une synchro, activer/désactiver/tout activer immédiats, « Chargement… » au lieu de « 0 chaîne » avant téléchargement, écran fluide pendant une synchro.
+- Plus de filtre ni d'étiquette de langue (Direct, Films/Séries, Catégories).
+- Menu : le focus va sur la page ouverte (et non sur Rechercher).
+- « Qui regarde ? » : Retour garde le profil courant au lieu de quitter l'application.
+
 ## [Bureau 1.2.11] — 2026-10-04
 
 ### Corrections
