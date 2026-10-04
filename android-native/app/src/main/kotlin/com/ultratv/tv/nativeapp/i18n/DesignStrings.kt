@@ -26,6 +26,15 @@ class DesignStrings(val lang: AppLang) {
     val castTitle get() = t("Cast", "Distribution", "Reparto", "طاقم التمثيل")
     fun resumeAt(time: String) = when (lang) { AppLang.French -> "Reprendre à $time"; AppLang.Spanish -> "Reanudar en $time"; AppLang.Arabic -> "استئناف من $time"; else -> "Resume at $time" }
 
+    fun seasonLabel(n: Int) = when (lang) { AppLang.French -> "Saison $n"; AppLang.Spanish -> "Temporada $n"; AppLang.Arabic -> "الموسم $n"; else -> "Season $n" }
+    fun seasonsCount(n: Int) = when (lang) { AppLang.French -> if (n <= 1) "$n saison" else "$n saisons"; AppLang.Spanish -> if (n == 1) "$n temporada" else "$n temporadas"; AppLang.Arabic -> "$n مواسم"; else -> if (n == 1) "$n season" else "$n seasons" }
+    fun episodeTag(s: Int, e: Int) = when (lang) { AppLang.French -> "S$s É$e"; else -> "S$s E$e" }
+    fun episodeShort(e: Int) = if (lang == AppLang.French) "É$e" else "E$e"
+    fun resumeEpisode(s: Int, e: Int) = when (lang) { AppLang.French -> "Reprendre ${episodeTag(s, e)}"; AppLang.Spanish -> "Reanudar ${episodeTag(s, e)}"; AppLang.Arabic -> "استئناف ${episodeTag(s, e)}"; else -> "Resume ${episodeTag(s, e)}" }
+    fun playEpisodeLabel(s: Int, e: Int) = when (lang) { AppLang.French -> "Lecture ${episodeTag(s, e)}"; AppLang.Spanish -> "Ver ${episodeTag(s, e)}"; AppLang.Arabic -> "تشغيل ${episodeTag(s, e)}"; else -> "Play ${episodeTag(s, e)}" }
+    val watchedLabel get() = t("watched", "vu", "visto", "تمت المشاهدة")
+    fun remainingMin(m: Int) = when (lang) { AppLang.French -> "reste $m min"; AppLang.Spanish -> "quedan $m min"; AppLang.Arabic -> "متبقّي $m د"; else -> "$m min left" }
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

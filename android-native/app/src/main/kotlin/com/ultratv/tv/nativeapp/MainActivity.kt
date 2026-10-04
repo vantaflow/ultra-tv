@@ -387,6 +387,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             SeriesDetailScreen(
                 seriesId = id,
                 onPlayEpisode = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onBack = { nav.popBackStack() },
             )
         }
         screen(Routes.SEARCH) {

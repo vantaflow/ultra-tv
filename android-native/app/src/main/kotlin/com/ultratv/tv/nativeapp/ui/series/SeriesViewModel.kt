@@ -35,7 +35,15 @@ class SeriesDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
     private val provider: ProviderRepository,
+    private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
 ) : ViewModel() {
+
+    /** Historique des épisodes de cette série, le plus récent d'abord (progression + « Reprendre »). */
+    @kotlinx.coroutines.ExperimentalCoroutinesApi
+    val watched: StateFlow<List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>> by lazy {
+        _series.flatMapLatest { s -> if (s == null) flowOf(emptyList()) else history.episodesOf(s.providerId, s.remoteId) }
+            .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
+    }
 
     /** Same logic as MovieDetailViewModel.play: resolve stalker:// first so the
      *  player gets a directly-playable URL. */

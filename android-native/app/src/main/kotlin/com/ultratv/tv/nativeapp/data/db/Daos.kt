@@ -414,6 +414,10 @@ interface WatchHistoryDao {
     @Query("SELECT * FROM watch_history WHERE providerId = :pid AND positionMs > 0 AND (durationMs = 0 OR positionMs < durationMs - 60000) ORDER BY watchedAt DESC LIMIT :limit")
     fun observeContinueWatching(pid: Long, limit: Int = 20): Flow<List<WatchHistoryEntity>>
 
+    /** Progression des épisodes d'une série (fiche série : barre de progression, « Reprendre »). */
+    @Query("SELECT * FROM watch_history WHERE providerId = :pid AND kind = 'EPISODE' AND parentRemoteId = :parent ORDER BY watchedAt DESC")
+    fun observeEpisodesOf(pid: Long, parent: String): Flow<List<WatchHistoryEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(h: WatchHistoryEntity)
 

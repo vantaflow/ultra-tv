@@ -19,6 +19,9 @@ class HistoryRepository @Inject constructor(
     fun continueWatching(pid: Long, limit: Int = 20): Flow<List<WatchHistoryEntity>> =
         dao.observeContinueWatching(pid, limit)
 
+    fun episodesOf(pid: Long, seriesRemoteId: String): Flow<List<WatchHistoryEntity>> =
+        dao.observeEpisodesOf(pid, seriesRemoteId)
+
     suspend fun record(
         providerId: Long,
         kind: String,
