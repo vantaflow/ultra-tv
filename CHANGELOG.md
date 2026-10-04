@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.14] — 2026-10-04 (Android TV)
+
+### Nouveautés
+- Chaînes décalées (« TF1 +1 », « M6 +2 ») : programme de la chaîne de base décalé d'autant d'heures, dans le guide comme dans le Direct.
+
 ## [1.2.13] — 2026-10-04 (Android TV)
 
 ### Corrections

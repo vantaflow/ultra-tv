@@ -178,7 +178,18 @@ class CatalogRepository @Inject constructor(
         val ch = channelDao.byId(channelId) ?: return 0
         val p = providerDao.byId(ch.providerId) ?: return 0
         if (p.kind != "XTREAM") return 0
-        val rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
+        var rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
+        // Chaîne décalée sans programme propre : celui de la chaîne de base, décalé de N heures.
+        if (rows.isEmpty()) TimeshiftChannels.parse(ch.title)?.let { (base, h) ->
+            val shift = h * 3_600_000L
+            val now = System.currentTimeMillis()
+            val baseIds = channelDao.idsByTitle(p.id, base).filter { it != ch.id }
+            for (bid in baseIds) {
+                var src = epgDao.rangeForChannels(listOf(bid), now - shift - 30 * 60_000, now + 6 * 3_600_000L)
+                if (src.isEmpty()) { refreshShortEpg(bid); src = epgDao.rangeForChannels(listOf(bid), now - shift - 30 * 60_000, now + 6 * 3_600_000L) }
+                if (src.isNotEmpty()) { rows = src.map { it.copy(id = 0, channelId = ch.id, startMs = it.startMs + shift, endMs = it.endMs + shift) }; break }
+            }
+        }
         if (rows.isNotEmpty()) { epgDao.deleteForChannel(ch.id); epgDao.upsertAll(rows) }
         return rows.size
     }

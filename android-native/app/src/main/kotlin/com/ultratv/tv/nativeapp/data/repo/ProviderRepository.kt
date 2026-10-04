@@ -172,13 +172,18 @@ class ProviderRepository @Inject constructor(
         val byEpg = channelDao.epgMapping(p.id).groupBy({ it.epgChannelId }, { it.id })
         val map = byEpg.mapValues { it.value.first() }
         val siblings = byEpg.values.filter { it.size > 1 }.associate { it.first() to it.drop(1) }
+        // « TF1 +1 » sans identifiant EPG : programme de TF1 décalé d'une heure.
+        val shifted = TimeshiftChannels.plan(channelDao.epgTitles(p.id), map)
         if (map.isEmpty()) return 0
         var total = 0
         xmltv.withProgrammes(p, map) { seq ->
             db.withTransaction {
                 epgDao.deleteForProvider(p.id)
                 for (raw in seq.chunked(INSERT_BATCH)) {
-                    val batch = if (siblings.isEmpty()) raw else raw.flatMap { e -> listOf(e) + siblings[e.channelId].orEmpty().map { id -> e.copy(id = 0, channelId = id) } }
+                    val batch = if (siblings.isEmpty() && shifted.isEmpty()) raw else raw.flatMap { e ->
+                        listOf(e) + siblings[e.channelId].orEmpty().map { id -> e.copy(id = 0, channelId = id) } +
+                            shifted[e.channelId].orEmpty().map { (id, h) -> e.copy(id = 0, channelId = id, startMs = e.startMs + h * 3_600_000L, endMs = e.endMs + h * 3_600_000L) }
+                    }
                     epgDao.upsertAll(batch)
                     total += batch.size
                     onCount(total)
