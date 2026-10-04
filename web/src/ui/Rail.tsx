@@ -10,7 +10,6 @@ const ITEMS: { to: string; icon: IconName; label: Key; match: string }[] = [
   { to: "/guide", icon: "guide", label: "nav.guide", match: "/guide" },
   { to: "/movies", icon: "movies", label: "nav.movies", match: "/movie" },
   { to: "/series", icon: "series", label: "nav.series", match: "/serie" },
-  { to: "/search", icon: "search", label: "nav.search", match: "/search" },
   { to: "/favorites", icon: "heart", label: "nav.favorites", match: "/favorites" },
   { to: "/settings", icon: "settings", label: "nav.settings", match: "/settings" },
 ];
@@ -26,6 +25,9 @@ export function Rail() {
   return (
     <nav className="rail" aria-label={t("app.name")}>
       <AppMark />
+      <NavLink to="/search" className={`rail-search${isActive("/search") ? " active" : ""}`} title={`${t("nav.search")} (Ctrl/⌘ K)`} aria-label={t("nav.search")}>
+        <Icon name="search" />
+      </NavLink>
       <nav aria-label="Navigation principale">
         {ITEMS.map((i) => (
           <NavLink key={i.to} to={i.to} className={`rail-item${isActive(i.match) ? " active" : ""}`} title={t(i.label)}>

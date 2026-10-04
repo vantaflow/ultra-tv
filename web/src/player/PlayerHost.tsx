@@ -233,6 +233,8 @@ export function PlayerHost() {
       const tg = usePlayer.getState().target;
       if (m === "closed" || !tg) return;
       const el = e.target as HTMLElement | null;
+      // Recherche (Ctrl/⌘ + K ou « / ») : on quitte le plein écran ; l'application navigue vers la recherche.
+      if (m === "full" && (((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !e.metaKey && !e.ctrlKey && !(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA"))))) { void leaveFull(); return; }
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const isLive = tg.kind === "live" && !tg.replay;
