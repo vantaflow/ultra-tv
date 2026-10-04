@@ -71,6 +71,7 @@ import com.ultratv.tv.nativeapp.i18n.recNoSpace
 import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
 import com.ultratv.tv.nativeapp.i18n.remindSet
+import com.ultratv.tv.nativeapp.i18n.replayTag
 import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
