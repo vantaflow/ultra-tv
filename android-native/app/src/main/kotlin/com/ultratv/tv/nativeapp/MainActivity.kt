@@ -249,7 +249,12 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
             // écran invisible et « Suivant » ne recevait jamais le focus.
             val onboarding: com.ultratv.tv.nativeapp.ui.onboarding.OnboardingViewModel = hiltViewModel()
             val showOnboarding by onboarding.show.collectAsState()
-            when (showOnboarding) {
+            val profileGate: com.ultratv.tv.nativeapp.ui.profile.ProfileGateViewModel = hiltViewModel()
+            val askProfile by profileGate.needsSelection.collectAsState()
+            when {
+                askProfile == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                askProfile == true && showOnboarding == false -> com.ultratv.tv.nativeapp.ui.profile.WhoIsWatchingScreen()
+                else -> when (showOnboarding) {
                 null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 true -> com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
                     onOpenSettings = { /* user can re-enter Settings via sidebar */ },
@@ -269,6 +274,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                         )
                         else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition) }
                     }
+                }
                 }
             }
         }

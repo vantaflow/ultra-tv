@@ -19,6 +19,7 @@ import com.ultratv.tv.nativeapp.data.db.SeriesDao
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flatMapLatest
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -40,11 +41,13 @@ class CatalogRepository @Inject constructor(
     private val vodInfoDao: VodInfoDao,
     private val xtream: XtreamClient,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
     fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
     fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
-    fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeFavoritesTop(pid, limit)
+    fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
+        profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
     fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
     fun topChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTop(pid, limit)
     fun topMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTop(pid, limit)
@@ -127,14 +130,18 @@ class CatalogRepository @Inject constructor(
     }
 
     fun favoritesByKind(pid: Long, kind: String): Flow<List<FavoriteEntity>> =
-        favoriteDao.observeForKind(pid, kind)
+        profiles.currentId.flatMapLatest { favoriteDao.observeForKind(it, pid, kind) }
+
+    fun favoriteCount(pid: Long, kind: String): Flow<Int> =
+        profiles.currentId.flatMapLatest { favoriteDao.observeCount(it, pid, kind) }
 
     fun isFavorite(pid: Long, kind: String, rid: String): Flow<Boolean> =
-        favoriteDao.observeIsFavorite(pid, kind, rid)
+        profiles.currentId.flatMapLatest { favoriteDao.observeIsFavorite(it, pid, kind, rid) }
 
     suspend fun setFavorite(pid: Long, kind: String, rid: String, on: Boolean) {
-        if (on) favoriteDao.add(FavoriteEntity(pid, kind, rid))
-        else favoriteDao.remove(pid, kind, rid)
+        val prof = profiles.currentIdNow
+        if (on) favoriteDao.add(FavoriteEntity(pid, kind, rid, prof))
+        else favoriteDao.remove(prof, pid, kind, rid)
     }
 
     suspend fun setCategoryLocked(catId: Long, locked: Boolean) =

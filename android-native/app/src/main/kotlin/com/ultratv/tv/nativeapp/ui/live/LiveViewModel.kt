@@ -11,7 +11,6 @@ import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.EpgDao
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
-import com.ultratv.tv.nativeapp.data.db.FavoriteDao
 import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
 import com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
@@ -61,7 +60,7 @@ class LiveViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
-    private val favoriteDao: FavoriteDao,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val syncCoordinator: SyncCoordinator,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
@@ -87,7 +86,7 @@ class LiveViewModel @Inject constructor(
             else combine(
                 catalog.categories(id, "LIVE"),
                 channelDao.observeCategoryCounts(id),
-                favoriteDao.observeCount(id, "LIVE"),
+                catalog.favoriteCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
                 val byId = counts.associate { it.categoryId to it.n }
                 val secById = counts.associate { it.categoryId to it.sections }
@@ -111,14 +110,14 @@ class LiveViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView) { id, cat, hidden, lv -> arrayOf(id, cat, hidden, lv) }
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId) { id, cat, hidden, lv, prof -> arrayOf(id, cat, hidden, lv, prof) }
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
             if (id == null) flowOf(PagingData.empty())
             else Pager(PagingConfig(pageSize = 40, prefetchDistance = 24, initialLoadSize = 60, enablePlaceholders = false)) {
                 when {
-                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id, lv.useLang, lv.langs)
+                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
                     cat == CATEGORY_ALL -> {
                         val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
                         if (hiddenIds.isEmpty()) channelDao.pagedAll(id, lv.useLang, lv.langs) else channelDao.pagedAllExcluding(id, hiddenIds, lv.useLang, lv.langs)
@@ -214,7 +213,7 @@ class LiveViewModel @Inject constructor(
                 val channel = if (exact) channel0 else preferredVariant(channel0)
                 val cat = selectedCategory.value
                 val window = when (cat) {
-                    CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId)
+                    CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId, profiles.currentIdNow)
                     CATEGORY_ALL -> {
                         val rank = channelDao.rankAll(channel.providerId, channel.num, channel.sortKey)
                         channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))

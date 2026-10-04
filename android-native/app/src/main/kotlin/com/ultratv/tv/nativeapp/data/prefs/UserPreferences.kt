@@ -112,7 +112,10 @@ data class UserPrefs(
 )
 
 @Singleton
-class UserPreferencesStore @Inject constructor(@ApplicationContext private val ctx: Context) {
+class UserPreferencesStore @Inject constructor(
+    @ApplicationContext private val ctx: Context,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+) {
     private object Keys {
         val sidebar = stringPreferencesKey("sidebar_position")
         val theme = stringPreferencesKey("theme")
@@ -157,7 +160,12 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val includeUnknown = booleanPreferencesKey("include_unknown_lang")
     }
 
-    val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
+    /** Préférences EFFECTIVES : globales, surchargées par celles du profil courant (voir ProfilePrefs). */
+    val flow: Flow<UserPrefs> = kotlinx.coroutines.flow.combine(globalFlow(), profiles.currentPrefs, profiles.current) { g, pp, prof ->
+        pp.applyTo(g, isKids = prof?.isKids == true)
+    }
+
+    private fun globalFlow(): Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
         UserPrefs(
             sidebarPosition = enumValueOf<SidebarPosition>(p[Keys.sidebar] ?: SidebarPosition.LEFT.name),
             theme = AppTheme.parse(p[Keys.theme]),
@@ -193,16 +201,16 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         )
     }
 
-    suspend fun setSidebar(pos: SidebarPosition) = update { it[Keys.sidebar] = pos.name }
-    suspend fun setTheme(t: AppTheme) = update { it[Keys.theme] = t.name }
+    suspend fun setSidebar(pos: SidebarPosition) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SIDEBAR, pos.name)
+    suspend fun setTheme(t: AppTheme) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.THEME, t.name)
     suspend fun setDefaultPlayer(p: DefaultPlayer) = update { it[Keys.player] = p.name }
     suspend fun setAutoSync(v: Boolean) = update { it[Keys.autoSync] = v }
-    suspend fun setShowChannelNumbers(v: Boolean) = update { it[Keys.channelNums] = v }
-    suspend fun setHideAdult(v: Boolean) = update { it[Keys.hideAdult] = v }
-    suspend fun setResumePlayback(v: Boolean) = update { it[Keys.resume] = v }
-    suspend fun setAutoPlayNext(v: Boolean) = update { it[Keys.autoPlayNext] = v }
+    suspend fun setShowChannelNumbers(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.CHANNEL_NUMBERS, v.toString())
+    suspend fun setHideAdult(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.HIDE_ADULT, v.toString())
+    suspend fun setResumePlayback(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.RESUME, v.toString())
+    suspend fun setAutoPlayNext(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.AUTOPLAY_NEXT, v.toString())
     suspend fun setLaunchAtBoot(v: Boolean) = update { it[Keys.launchAtBoot] = v }
-    suspend fun setAutoPlayLast(v: Boolean) = update { it[Keys.autoPlayLast] = v }
+    suspend fun setAutoPlayLast(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.AUTOPLAY_LAST, v.toString())
     suspend fun setSyncInterval(hours: Int) = update { it[Keys.syncInterval] = hours }
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }

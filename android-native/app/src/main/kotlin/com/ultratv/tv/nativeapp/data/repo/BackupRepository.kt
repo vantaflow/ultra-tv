@@ -27,6 +27,7 @@ class BackupRepository @Inject constructor(
     private val providerDao: ProviderDao,
     private val favoriteDao: FavoriteDao,
     private val historyDao: WatchHistoryDao,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
     @Serializable
     data class Bundle(
@@ -81,13 +82,13 @@ class BackupRepository @Inject constructor(
         val favs = mutableListOf<Favorite>()
         val hist = mutableListOf<History>()
         for (p in providers) {
-            favoriteDao.observeForKind(p.id, "MOVIE").first().forEach {
+            favoriteDao.observeForKind(profiles.currentIdNow, p.id, "MOVIE").first().forEach {
                 favs += Favorite(keyFor(p), it.kind, it.remoteId)
             }
-            favoriteDao.observeForKind(p.id, "SERIES").first().forEach {
+            favoriteDao.observeForKind(profiles.currentIdNow, p.id, "SERIES").first().forEach {
                 favs += Favorite(keyFor(p), it.kind, it.remoteId)
             }
-            historyDao.observeRecent(p.id, 200).first().forEach { h ->
+            historyDao.observeRecent(profiles.currentIdNow, p.id, 200).first().forEach { h ->
                 val key = idToKey[h.providerId] ?: return@forEach
                 hist += History(
                     providerKey = key,
@@ -139,7 +140,7 @@ class BackupRepository @Inject constructor(
         for (f in bundle.favorites) {
             val pid = newIds[f.providerKey]
             if (pid == null) continue
-            favoriteDao.add(FavoriteEntity(providerId = pid, kind = f.kind, remoteId = f.remoteId))
+            favoriteDao.add(FavoriteEntity(providerId = pid, kind = f.kind, remoteId = f.remoteId, profileId = profiles.currentIdNow))
             favs++
         }
         var hist = 0
@@ -152,6 +153,7 @@ class BackupRepository @Inject constructor(
                     title = h.title, poster = h.poster, streamUrl = h.streamUrl,
                     positionMs = h.positionMs, durationMs = h.durationMs,
                     watchedAt = h.watchedAt, parentRemoteId = h.parentRemoteId,
+                    profileId = profiles.currentIdNow,
                 )
             )
             hist++

@@ -25,6 +25,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -46,6 +47,7 @@ class GoogleTvSync @Inject constructor(
     private val history: WatchHistoryDao,
     private val favorites: FavoriteDao,
     private val channels: ChannelDao,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
@@ -53,17 +55,20 @@ class GoogleTvSync @Inject constructor(
 
     private val activeProvider = providers.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
+    /** (profil courant, source active) : Watch Next et la chaîne Favoris suivent le profil, pas seulement la source. */
+    private val scope_ = combine(profiles.currentId, activeProvider) { prof, pid -> prof to pid }.distinctUntilChanged()
+
     fun start(scope: CoroutineScope) {
         if (!isTv || started) return
         started = true
         scope.launch {
-            activeProvider.flatMapLatest { pid -> if (pid == null) flowOf(emptyList()) else history.observeRecent(pid, 40) }
+            scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else history.observeRecent(prof, pid, 40) }
                 .debounce(3_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it)) } }
         }
         scope.launch {
-            activeProvider.flatMapLatest { pid ->
+            scope_.flatMapLatest { (prof, pid) ->
                 if (pid == null) flowOf(emptyList())
-                else favorites.observeForKind(pid, "LIVE").map { favs -> channels.byRemoteIds(pid, favs.map { it.remoteId }) }
+                else favorites.observeForKind(prof, pid, "LIVE").map { favs -> channels.byRemoteIds(pid, favs.map { it.remoteId }) }
             }.debounce(3_000).collect { runCatching { syncFavoritesChannel(FavoritesChannelPlan.select(it)) } }
         }
     }
@@ -72,9 +77,10 @@ class GoogleTvSync @Inject constructor(
     suspend fun syncOnce() {
         if (!isTv) return
         val pid = activeProvider.first() ?: return
-        runCatching { syncWatchNext(WatchNextPlan.select(history.observeRecent(pid, 40).first())) }
+        val prof = profiles.currentIdNow
+        runCatching { syncWatchNext(WatchNextPlan.select(history.observeRecent(prof, pid, 40).first())) }
         runCatching {
-            val favs = favorites.observeForKind(pid, "LIVE").first()
+            val favs = favorites.observeForKind(prof, pid, "LIVE").first()
             syncFavoritesChannel(FavoritesChannelPlan.select(channels.byRemoteIds(pid, favs.map { it.remoteId })))
         }
     }

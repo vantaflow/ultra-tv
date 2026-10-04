@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -171,15 +172,21 @@ fun SidebarNav(navController: NavController) {
                     }
                 }
                 Spacer(Modifier.height(40.design))
-                Row(Modifier.padding(start = if (expanded) 4.design else 0.design), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface2), contentAlignment = Alignment.Center) {
-                        Text("K", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text)
-                    }
-                    if (expanded) {
-                        Spacer(Modifier.width(16.design))
-                        Column(verticalArrangement = Arrangement.spacedBy(2.design)) {
-                            Text(D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
-                            Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
+                val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                val prof by profileVm.current.collectAsState()
+                FocusSurface(
+                    onClick = { profileVm.requestSwitch() }, shape = RoundedCornerShape(if (expanded) 18.design else 28.design), bg = Color.Transparent,
+                    focusedScale = if (expanded) 1.04f else 1.06f, ringWidth = 5.design,
+                    modifier = Modifier.then(if (expanded) Modifier.fillMaxWidth() else Modifier.size(64.design)).testTag("rail-profile"),
+                ) { focused ->
+                    Row(Modifier.padding(start = if (expanded) 4.design else 4.design, top = 4.design), verticalAlignment = Alignment.CenterVertically) {
+                        com.ultratv.tv.nativeapp.ui.profile.ProfileAvatar(prof?.initial ?: "K", prof?.color ?: 0xFF26262D.toInt(), 56)
+                        if (expanded) {
+                            Spacer(Modifier.width(16.design))
+                            Column(verticalArrangement = Arrangement.spacedBy(2.design)) {
+                                Text(prof?.name ?: D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1)
+                                Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 18.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1)
+                            }
                         }
                     }
                 }

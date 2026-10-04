@@ -148,6 +148,8 @@ android {
 
     sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
     sourceSets["test"].kotlin.srcDirs("src/test/kotlin")
+    // Schémas exportés visibles de MigrationTestHelper (Robolectric lit les assets du build debug) ; absents du release.
+    sourceSets["debug"].assets.srcDir("$projectDir/schemas")
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -239,6 +241,10 @@ dependencies {
     // can't easily strip out (android.util.Base64).
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")
+    // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
+    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.json:json:20240303")
     // Tests d'UI Compose exécutés sur la JVM via Robolectric (createComposeRule / createAndroidComposeRule).
     testImplementation(platform(libs.compose.bom))

@@ -108,7 +108,13 @@ private class FakeApi(var enabled: Boolean = true, var fail: Boolean = false) : 
 @org.robolectric.annotation.Config(sdk = [34])
 class TmdbRepositoryTest {
     private val movie = MovieEntity(providerId = 1, remoteId = "r", name = "Inception (2010)", poster = null, categoryId = null, streamUrl = "u", container = null, year = null, rating = null, plot = null)
-    private fun repo(api: TmdbApi, dao: TmdbDao) = TmdbRepository(api, dao, UserPreferencesStore(RuntimeEnvironment.getApplication()))
+    private fun repo(api: TmdbApi, dao: TmdbDao): TmdbRepository {
+        val app = RuntimeEnvironment.getApplication()
+        val db = androidx.room.Room.inMemoryDatabaseBuilder(app, com.ultratv.tv.nativeapp.data.db.UltraDb::class.java).allowMainThreadQueries().build()
+        kotlinx.coroutines.runBlocking { db.profileDao().insert(com.ultratv.tv.nativeapp.data.profile.ProfileEntity(name = "Principal", color = 1, initial = "P")) }
+        val profiles = com.ultratv.tv.nativeapp.data.profile.ProfileRepository(db.profileDao(), com.ultratv.tv.nativeapp.data.profile.InMemoryProfileStateStore(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
+        return TmdbRepository(api, dao, UserPreferencesStore(app, profiles))
+    }
 
     @Test fun nonAppaire_desactive_aucuneRequete_etRienEnCache() = runBlocking {
         val api = FakeApi(enabled = false); val dao = FakeDao()
