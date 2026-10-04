@@ -11,6 +11,11 @@ fun prettyCategoryName(raw: String): String {
     if (raw.isBlank()) return raw
     // Trim leading/trailing decorative chars: # = - * _ < > | and whitespace.
     val parsed = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parseCategory(raw).label
-    val trimmed = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.stripDecorations(parsed).trim { it.isWhitespace() || it in "#=-*_<>|·•‧" }
-    return trimmed.ifBlank { raw }
+    // Symboles décoratifs (☼ ☀ ✦ …) puis séparateurs résiduels en bord de nom (« AFRICA / », « DSTV | »).
+    val noSymbols = parsed.filterNot { Character.getType(it) == Character.OTHER_SYMBOL.toInt() || it in "☼☀★☆" }
+    val trimmed = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.stripDecorations(noSymbols).trim { it.isWhitespace() || it in "#=-*_<>|·•‧/\\:;,~" }
+    // Le parseur retire les « + » de bord comme décoration : on rend celui qui est collé à un mot (« CANAL+ »).
+    val core = raw.filterNot { Character.getType(it) == Character.OTHER_SYMBOL.toInt() || it in "☼☀★☆" }.trim { it.isWhitespace() || it in "#=-*_<>|·•‧/\\:;,~" }
+    val keepPlus = core.length >= 2 && core.endsWith('+') && core[core.length - 2].isLetterOrDigit() && !trimmed.endsWith('+')
+    return (if (keepPlus) "$trimmed+" else trimmed).ifBlank { raw }
 }
