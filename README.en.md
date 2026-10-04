@@ -105,6 +105,13 @@ Manage devices and sources from a browser: **<https://ultratv-config.khalilbenaz
   <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
 </p>
 
+Pair in one scan: the TV shows a QR, the phone camera opens the pairing page with the code already filled in. The code can also be typed by hand, with or without the dash.
+
+<p align="center">
+  <img src="docs/screenshots/cloud/pair-qr.png" alt="Pairing confirmation with the code pre-filled" width="30%" />
+  <img src="docs/screenshots/cloud/mobile.png" alt="Dashboard on a phone, light theme" width="30%" />
+</p>
+
 ### Multi-device sync
 
 - **Same provider everywhere**: a provider added in the dashboard is received by every device on the account.

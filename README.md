@@ -105,6 +105,13 @@ Gérez appareils et sources depuis un navigateur : **<https://ultratv-config.kha
   <img src="docs/screenshots/cloud/sharing.png" alt="Partage des sources par appareil" width="48%" />
 </p>
 
+Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvre la page d'appairage avec le code déjà rempli. Le code se saisit aussi à la main, avec ou sans tiret.
+
+<p align="center">
+  <img src="docs/screenshots/cloud/pair-qr.png" alt="Confirmation d'appairage avec le code pré-rempli" width="30%" />
+  <img src="docs/screenshots/cloud/mobile.png" alt="Tableau de bord sur téléphone, thème clair" width="30%" />
+</p>
+
 ### Synchronisation multi-appareils
 
 - **Même fournisseur partout** : un fournisseur ajouté dans le tableau de bord est reçu par tous les appareils du compte.

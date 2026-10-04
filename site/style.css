@@ -49,5 +49,5 @@ summary{cursor:pointer;font-weight:700;color:var(--text)}
 details p{margin:10px 0 0}
 footer{padding:32px 0 56px;border-top:1px solid var(--line);color:var(--text2);font-size:.92rem}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn:hover{transform:none}}
-.phones{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.shot.portrait{border-radius:14px}
+.phones{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.phones.duo{grid-template-columns:repeat(2,1fr);max-width:520px;justify-self:center;width:100%}.shot.portrait{border-radius:14px}
 @media (max-width:520px){.phones{gap:6px}}
