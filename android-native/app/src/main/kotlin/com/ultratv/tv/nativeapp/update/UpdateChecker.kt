@@ -45,6 +45,9 @@ object UpdateChecker {
         /** Download URL of the sibling "<apk>.sha256" asset, if the release
          *  publishes one. Null → no integrity check available (backward compat). */
         val sha256Url: String? = null,
+        /** APK choisi (par ABI ou universel) et, pour un APK par ABI, l'URL de SHA256SUMS.txt (vérification obligatoire). */
+        val apkName: String = APK_NAME,
+        val sumsUrl: String? = null,
     )
 
     private val _state = MutableStateFlow<UpdateInfo?>(null)
@@ -88,26 +91,20 @@ object UpdateChecker {
                     RemoteLog.debug(TAG, "up to date (local=$localCode remote=$remoteCode)")
                     return@use null
                 }
-                val assets = json.optJSONArray("assets")
-                var apkUrl: String? = null
-                var sha256Url: String? = null
-                if (assets != null) {
-                    for (i in 0 until assets.length()) {
-                        val a = assets.getJSONObject(i)
-                        val name = a.optString("name")
-                        if (name.equals(APK_NAME, ignoreCase = true)) {
-                            apkUrl = a.optString("browser_download_url")
-                        } else if (name.equals("$APK_NAME.sha256", ignoreCase = true)) {
-                            // Sibling checksum asset (e.g. "UltraTV-debug.apk.sha256").
-                            sha256Url = a.optString("browser_download_url")
-                        }
+                val assetsJson = json.optJSONArray("assets")
+                val assets = buildList {
+                    if (assetsJson != null) for (i in 0 until assetsJson.length()) {
+                        val a = assetsJson.getJSONObject(i)
+                        add(UpdateAssets.Asset(a.optString("name"), a.optString("browser_download_url")))
                     }
                 }
-                if (apkUrl.isNullOrBlank()) {
-                    RemoteLog.warn(TAG, "no $APK_NAME asset on $tag")
+                // APK adapté au processeur (plus léger) s'il est publié, sinon l'universel historique.
+                val choice = UpdateAssets.choose(assets, verName, Build.SUPPORTED_ABIS.toList())
+                if (choice == null || choice.apkUrl.isBlank()) {
+                    RemoteLog.warn(TAG, "no installable APK asset on $tag")
                     return@use null
                 }
-                val info = UpdateInfo(tag, verName, remoteCode, apkUrl!!, notes, sha256Url)
+                val info = UpdateInfo(tag, verName, remoteCode, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl)
                 _state.value = info
                 RemoteLog.info(TAG, "update available: $tag (code $remoteCode)")
                 info
@@ -148,7 +145,7 @@ object UpdateChecker {
      * l'APK (vérifiée par Android à l'installation) couvre ce cas.
      */
     private fun verifyChecksum(apk: File, info: UpdateInfo) {
-        val url = info.sha256Url
+        val url = info.sumsUrl ?: info.sha256Url
         if (url.isNullOrBlank()) {
             apk.delete()
             RemoteLog.error(TAG, "no sha256 asset for ${info.tag}; install refused")
@@ -157,7 +154,8 @@ object UpdateChecker {
         val expected = runCatching {
             http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
                 check(resp.isSuccessful) { "sha256 fetch ${resp.code}" }
-                parseExpectedDigest(resp.body?.string().orEmpty())
+                val text = resp.body?.string().orEmpty()
+                if (info.sumsUrl != null) UpdateAssets.digestFor(text, info.apkName) else parseExpectedDigest(text)
             }
         }.getOrElse {
             apk.delete()
