@@ -82,7 +82,8 @@ class FirstSyncViewModel @Inject constructor(
         val p = ps.firstOrNull { it.active } ?: ps.firstOrNull() ?: return@combine Resolved(null)
         val parts = requiredParts(p.kind)
         val allDone = parts.all { isDone(p, it) }
-        if (gone || (allDone && fail == null)) return@combine Resolved(null)
+        // Première synchro déjà faite : un échec de rafraîchissement n'est qu'une bannière fine (données locales intactes).
+        if (gone || allDone) return@combine Resolved(null)
         // M3U local : tout est importé d'un coup, jamais d'écran de chargement.
         if (p.kind == "M3U_LOCAL") return@combine Resolved(null)
         val failure = fail?.takeIf { it.providerId == p.id }?.kind

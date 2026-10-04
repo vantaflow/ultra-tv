@@ -162,6 +162,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
         if (items.itemCount == 0) {
+            if (chips.isEmpty() && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard()) return@Column
             Text(if (kind == CatalogKind.MOVIES) D.noMovies else D.noSeries, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
             return@Column
         }

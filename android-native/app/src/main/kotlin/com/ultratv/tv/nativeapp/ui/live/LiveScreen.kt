@@ -94,6 +94,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         if (!userMoved && channels.itemCount > 0) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
     }
     val current = cats.firstOrNull { it.id == selected }
+    // Aucune chaîne en local : « hors ligne » / « erreur de source » en carte pleine (sinon l'écran vide habituel).
+    val noLocalData = cats.none { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }
+    if (noLocalData && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard(Modifier.padding(start = 72.design))) return
 
     Row(Modifier.fillMaxSize()) {
         // ── Catégories (340) ──

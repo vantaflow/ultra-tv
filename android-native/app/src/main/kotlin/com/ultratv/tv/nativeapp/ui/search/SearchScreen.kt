@@ -118,6 +118,18 @@ fun SearchScreen(
     val dbgQ by com.ultratv.tv.nativeapp.StartupNav.debugQuery.collectAsState()
     androidx.compose.runtime.LaunchedEffect(dbgQ) { dbgQ?.let { vm.setQuery(it); com.ultratv.tv.nativeapp.StartupNav.debugQuery.value = null } }
 
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val voiceIntent = remember {
+        android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            .putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+    }
+    // Masquée si aucun service de reconnaissance vocale n'est installé.
+    val voiceAvailable = remember { runCatching { voiceIntent.resolveActivity(ctx.packageManager) != null }.getOrDefault(false) }
+    val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()) { res ->
+        res.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { vm.setQuery(it.trim()) }
+    }
+
     Row(Modifier.fillMaxSize().background(Ux.Bg)) {
         // ===== Gauche : saisie + clavier (620 px) =====
         Column(
@@ -143,6 +155,7 @@ fun SearchScreen(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                if (voiceAvailable) Key(D.keyVoice, Modifier.weight(1f), small = true, onClick = { runCatching { voiceLauncher.launch(voiceIntent) } })
                 Key(D.keySpace, Modifier.weight(1f), small = true, onClick = { vm.append(' ') })
                 Key(D.keyDelete, Modifier.weight(1f), small = true, onClick = { vm.backspace() })
                 Key(S.searchClear, Modifier.weight(1f), small = true, onClick = { vm.clear() })

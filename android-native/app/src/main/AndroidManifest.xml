@@ -29,6 +29,11 @@
          for that policy. The android:usesCleartextTraffic flag was removed as
          redundant — when android:networkSecurityConfig is present it governs
          cleartext, and keeping both risks the two drifting out of sync. -->
+    <!-- Touche « Voix » de la recherche : on ne l'affiche que si un service de reconnaissance existe. -->
+    <queries>
+        <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+    </queries>
+
     <application
         android:name=".UltraTvApp"
         android:allowBackup="false"
