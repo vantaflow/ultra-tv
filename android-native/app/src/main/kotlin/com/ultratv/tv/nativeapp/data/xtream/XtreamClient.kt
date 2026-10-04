@@ -251,8 +251,22 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
 
     // ---- EPG ----
 
+    /** Décalage horaire du serveur (heure locale du serveur − UTC), mis en cache 6 h par source. */
+    private val serverOffsets = java.util.concurrent.ConcurrentHashMap<Long, Pair<Long, Long>>()
+
+    private suspend fun serverOffsetMs(p: ProviderEntity): Long {
+        serverOffsets[p.id]?.let { (at, off) -> if (System.currentTimeMillis() - at < 6 * 3_600_000L) return off }
+        val off = runCatching {
+            val root = json.parseToJsonElement(get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}")) as? JsonObject
+            root?.let { ShortEpgTime.serverOffsetMs(it) }
+        }.getOrNull() ?: 0L
+        serverOffsets[p.id] = System.currentTimeMillis() to off
+        return off
+    }
+
     /** Short EPG (next ~5 programmes) for a single channel. */
     suspend fun fetchShortEpg(p: ProviderEntity, channelRemoteId: String, channelLocalId: Long): List<EpgEntity> {
+        val offset = serverOffsetMs(p)
         val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_short_epg&stream_id=$channelRemoteId")
         val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return emptyList()
         val listings = root["epg_listings"] as? JsonArray ?: return emptyList()
@@ -260,10 +274,8 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             val o = el as? JsonObject ?: return@mapNotNull null
             val title = decodeBase64(o["title"]?.str()) ?: return@mapNotNull null
             val desc = decodeBase64(o["description"]?.str())
-            val start = o["start_timestamp"]?.str()?.toLongOrNull()?.times(1000)
-                ?: o["start"]?.str()?.let { parseDate(it) } ?: return@mapNotNull null
-            val end = o["stop_timestamp"]?.str()?.toLongOrNull()?.times(1000)
-                ?: o["end"]?.str()?.let { parseDate(it) } ?: (start + 30 * 60_000)
+            val start = ShortEpgTime.resolve(o["start_timestamp"]?.str()?.toLongOrNull()?.times(1000), o["start"]?.str(), offset) ?: return@mapNotNull null
+            val end = ShortEpgTime.resolve(o["stop_timestamp"]?.str()?.toLongOrNull()?.times(1000), o["end"]?.str() ?: o["stop"]?.str(), offset) ?: (start + 30 * 60_000)
             EpgEntity(channelId = channelLocalId, title = title, description = desc, startMs = start, endMs = end)
         }
     }
@@ -355,3 +367,33 @@ internal class ControlCharFilter(input: java.io.InputStream) : java.io.FilterInp
 }
 
 internal fun stripControlChars(s: String): String = if (s.none { it.code < 32 || it.code == 127 }) s else s.map { if (it.code < 32 || it.code == 127) ' ' else it }.joinToString("")
+
+/**
+ * Horaires du programme court Xtream. Beaucoup de serveurs donnent `start` à l'heure LOCALE du serveur et un
+ * `start_timestamp` calculé à partir de cette même heure comme si elle était UTC : les programmes étaient décalés
+ * (2 h pour un serveur à Paris l'été). Le décalage réel se déduit de `server_info` (`time_now` local vs `timestamp_now`).
+ */
+internal object ShortEpgTime {
+    private fun parseUtc(s: String): Long? = runCatching {
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US).apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }.parse(s.trim())?.time
+    }.getOrNull()
+
+    /** Heure locale du serveur − UTC, arrondie au quart d'heure ; null si `server_info` est incomplet. */
+    fun serverOffsetMs(root: JsonObject): Long? {
+        val si = root["server_info"] as? JsonObject ?: return null
+        val ts = (si["timestamp_now"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.toLongOrNull() ?: return null
+        val local = (si["time_now"] as? kotlinx.serialization.json.JsonPrimitive)?.content?.let { parseUtc(it) } ?: return null
+        val q = 15 * 60_000L
+        return Math.round((local - ts * 1000).toDouble() / q) * q
+    }
+
+    /** Instant UTC d'une borne : horodatage s'il est cohérent, sinon heure locale du serveur corrigée du décalage. */
+    fun resolve(timestampMs: Long?, localText: String?, offsetMs: Long): Long? {
+        val local = localText?.let { parseUtc(it) }
+        if (timestampMs != null) {
+            // Horodatage = heure locale lue comme UTC (serveur bogué) : on corrige ; sinon il fait foi.
+            return if (local != null && offsetMs != 0L && kotlin.math.abs(timestampMs - local) < 60_000L) timestampMs - offsetMs else timestampMs
+        }
+        return local?.minus(offsetMs)
+    }
+}

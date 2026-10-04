@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.13] — 2026-10-04 (Android TV)
+
+### Corrections
+- Guide : tous les flux d'une même chaîne (HD, 4K, UHD…) reçoivent son programme (avant : un seul).
+- Programme court du fournisseur : horaires corrigés du fuseau du serveur (décalage de 2 h avec un serveur à Paris).
+
 ## [1.2.12] — 2026-10-04 (Android TV)
 
 ### Corrections

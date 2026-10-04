@@ -167,13 +167,18 @@ class ProviderRepository @Inject constructor(
     /** Télécharge le XMLTV en flux (fenêtre −2 h / +24 h) et l'insère par lots. Les erreurs remontent. */
     private suspend fun syncXmltvInternal(p: ProviderEntity, onCount: (Int) -> Unit): Int {
         // Build (xmltv channel id → local channel id) map for matching.
-        val map = channelDao.epgMapping(p.id).associate { it.epgChannelId to it.id }
+        // Plusieurs flux d'une même chaîne (HD, 4K, UHD…) partagent souvent le même identifiant EPG : TOUS reçoivent
+        // le programme (avant : seul le dernier, les autres restaient « sans information »).
+        val byEpg = channelDao.epgMapping(p.id).groupBy({ it.epgChannelId }, { it.id })
+        val map = byEpg.mapValues { it.value.first() }
+        val siblings = byEpg.values.filter { it.size > 1 }.associate { it.first() to it.drop(1) }
         if (map.isEmpty()) return 0
         var total = 0
         xmltv.withProgrammes(p, map) { seq ->
             db.withTransaction {
                 epgDao.deleteForProvider(p.id)
-                for (batch in seq.chunked(INSERT_BATCH)) {
+                for (raw in seq.chunked(INSERT_BATCH)) {
+                    val batch = if (siblings.isEmpty()) raw else raw.flatMap { e -> listOf(e) + siblings[e.channelId].orEmpty().map { id -> e.copy(id = 0, channelId = id) } }
                     epgDao.upsertAll(batch)
                     total += batch.size
                     onCount(total)
