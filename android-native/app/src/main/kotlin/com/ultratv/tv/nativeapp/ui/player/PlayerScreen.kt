@@ -251,7 +251,7 @@ class PlayerViewModel @Inject constructor(
     fun setDecoder(v: String) { viewModelScope.launch { prefs.setDecoderMode(v) } }
 }
 
-private enum class Panel { None, Options, Tracks }
+private enum class Panel { None, Options, Tracks, Subtitles }
 
 /** Onglets du panneau de réglages (maquette LecteurReglages). */
 private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
@@ -287,12 +287,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var sleepDeadline by remember { mutableLongStateOf(0L) }
     val latestPrefs by androidx.compose.runtime.rememberUpdatedState(p)
 
+    // [B2·sous-titres] style, langues préférées (DataStore) et recherche en ligne.
+    val subVm: com.ultratv.tv.nativeapp.ui.player.subtitles.SubtitleViewModel = hiltViewModel()
     val container = remember { FrameLayout(context).apply { setBackgroundColor(android.graphics.Color.BLACK) } }
     val session = remember {
         PlaybackSession(
             ctx = context, scope = scope, container = container,
             settings = { vm.resolved(latestPrefs) }, memory = vm.memory, network = vm.network,
             isLive = isLive, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
+            subtitles = { subVm.current },
         )
     }
     val state by session.state.collectAsState()
@@ -343,6 +346,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(currentUrl) {
         val it = vm.current.value
         val resume = vm.prepareResume()
+        subVm.ensureLoaded()
         if (tsActive && !ts.isLocalUrl(currentUrl)) { ts.deactivate(); tsActive = false; tsSnap = null }   // [B2·timeshift] autre chaîne : le relais lâche la connexion d'abord
         session.start(currentUrl, it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)
     }
@@ -466,7 +470,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
-                sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true },
+                sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true }, subLabel = X.subsPill, onSubs = { panel = Panel.Subtitles },
                 replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null,
                 onReplay = {
                     val rp = replayProg
@@ -490,7 +494,20 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         )
         if (statsOpen) StatsCard(session, D, Modifier.align(Alignment.TopEnd).padding(top = 220.design, end = 96.design))
         if (drawerOpen && isLive) LiveDrawer(vm = vm, onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it }; drawerOpen = false } }, onDismiss = { drawerOpen = false })
-        if (panel != Panel.None) PlayerSidePanel(
+        if (panel == Panel.Subtitles) {
+            val eng = session.engine
+            var subTracks by remember { mutableStateOf(eng?.subtitleTracks().orEmpty()) }
+            var needsRestart by remember { mutableStateOf(false) }
+            val closeSubs = { panel = Panel.None; if (needsRestart) session.retry() }     // VLC : le style se fixe à la création du moteur
+            com.ultratv.tv.nativeapp.ui.player.subtitles.SubtitlePanel(
+                X, subVm, subTracks, delaySupported = eng?.kind == EngineKind.VLC, isMovie = item?.kind == "MOVIE", movieTitle = item?.title ?: title,
+                onSelectTrack = { id -> eng?.selectSubtitle(id); subTracks = subTracks.map { it.copy(selected = it.id == id) } },
+                onStyle = { st -> if (eng?.applySubtitleStyle(st) == false) needsRestart = true; eng?.setSubtitleDelay(st.delayMs) },
+                onDownloaded = { path -> if (eng?.addExternalSubtitle(path) == true) Toaster.ok(X.subtitleAdded) },
+                onClose = closeSubs,
+            )
+        }
+        if (panel == Panel.Options || panel == Panel.Tracks) PlayerSidePanel(
             initial = if (panel == Panel.Tracks) SideTab.TRACKS else SideTab.PLAYER,
             title = item?.title ?: title, p = p, vm = vm, session = session, state = state, aspect = aspect, speed = speed, isLive = isLive, statsOpen = statsOpen, sleepActive = sleepDeadline > 0, D = D,
             onAspect = { aspect = it }, onSpeed = { speed = it }, onStats = { statsOpen = !statsOpen },
@@ -534,7 +551,7 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
 private fun Footer(
     isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
     onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
-    sleepLabel: String, onSleepPill: () -> Unit, replayLabel: String?, onReplay: () -> Unit,
+    sleepLabel: String, onSleepPill: () -> Unit, subLabel: String, onSubs: () -> Unit, replayLabel: String?, onReplay: () -> Unit,
 ) {
     val now = System.currentTimeMillis()
     val frac: Float; val startLabel: String; val endLabel: String
@@ -566,16 +583,22 @@ private fun Footer(
                 PauseButton(playing, pauseFocus, onToggle)
                 if (!isLive) RoundButton(72, "M13 5l7 7-7 7M4 5l7 7-7 7", onClick = { onSeek(10_000) })
             }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.design)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks)
                 OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions)
                 OptionPill(D.pDisplay, "M3 5h18v14H3zM8 9h8v6H8z", onOptions)
-                if (isLive && replayLabel != null) OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay)
-                OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill)
                 if (isLive) {
                     OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord)
                     OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels)
                 }
+            }
+            // [B2] pilules du lot : Replay, Sous-titres, Veille (sur une 2e ligne pour ne pas déborder de l'écran).
+            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                if (isLive && replayLabel != null) OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay)
+                OptionPill(subLabel, "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6", onSubs)
+                OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill)
+            }
             }
         }
     }

@@ -35,6 +35,7 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
             "--http-user-agent=${config.userAgent}", "--codec=all",
         )
         if (config.decoder != DecoderMode.HARDWARE) opts += "--no-mediacodec-dr"
+        opts += com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyleMapper.toVlcOptions(config.subtitleStyle)
         libVlc = LibVLC(ctx, opts)
         mp = MediaPlayer(libVlc)
         mp.attachViews(layout, null, false, false)
@@ -42,13 +43,33 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
             when (e.type) {
                 MediaPlayer.Event.Buffering -> _events.tryEmit(if (e.buffering >= 100f) EngineEvent.Ready else EngineEvent.Buffering)
                 MediaPlayer.Event.Playing -> _events.tryEmit(EngineEvent.Ready)
-                MediaPlayer.Event.Vout -> if (e.voutCount > 0 && !firstFrame) { firstFrame = true; _events.tryEmit(EngineEvent.FirstFrame) }
+                MediaPlayer.Event.Vout -> if (e.voutCount > 0 && !firstFrame) { firstFrame = true; _events.tryEmit(EngineEvent.FirstFrame); autoSelectTracks() }
                 MediaPlayer.Event.EndReached -> _events.tryEmit(EngineEvent.Ended)
                 // LibVLC n'expose pas de code : on classe selon qu'une image est déjà passée.
                 MediaPlayer.Event.EncounteredError -> _events.tryEmit(EngineEvent.Error(if (firstFrame) PlayErrorKind.NETWORK else PlayErrorKind.FORMAT))
             }
         }
     }
+
+    /** Choix automatique audio / sous-titres selon les listes de langues préférées + décalage enregistré. */
+    private fun autoSelectTracks() {
+        val picker = com.ultratv.tv.nativeapp.data.subtitles.TrackLanguagePicker
+        if (config.preferredAudio.isNotEmpty()) {
+            val tracks = mp.audioTracks.orEmpty().filter { it.id >= 0 }
+            if (tracks.size > 1) picker.pick(tracks.map { it.id.toString() to it.name }, config.preferredAudio)?.let { mp.audioTrack = it.toInt() }
+        }
+        if (config.preferredText.isNotEmpty()) {
+            val tracks = mp.spuTracks.orEmpty().filter { it.id >= 0 }
+            picker.pick(tracks.map { it.id.toString() to it.name }, config.preferredText)?.let { mp.spuTrack = it.toInt() }
+        }
+        if (config.subtitleStyle.delayMs != 0) setSubtitleDelay(config.subtitleStyle.delayMs)
+    }
+
+    /** Les options `--freetype-*` se fixent à la création de LibVLC : appliquées au prochain démarrage du moteur. */
+    override fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean = false
+    override fun setSubtitleDelay(ms: Int): Boolean { mp.setSpuDelay(ms * 1000L); return true }
+    override fun addExternalSubtitle(path: String): Boolean =
+        mp.addSlave(org.videolan.libvlc.interfaces.IMedia.Slave.Type.Subtitle, Uri.fromFile(java.io.File(path)), true)
 
     override fun load(url: String, startPositionMs: Long) {
         firstFrame = false

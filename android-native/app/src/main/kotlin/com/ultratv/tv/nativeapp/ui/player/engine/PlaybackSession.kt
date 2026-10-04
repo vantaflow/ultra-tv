@@ -46,6 +46,8 @@ class PlaybackSession(
     private val isLive: Boolean,
     private val autoFrameRate: Boolean,
     private val userAgent: String,
+    /** Style des sous-titres et langues préférées au moment du lancement du moteur. */
+    private val subtitles: () -> com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings = { com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings() },
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
 ) {
     private val _state = MutableStateFlow(SessionState())
@@ -99,7 +101,8 @@ class PlaybackSession(
         val preset = presetOverride
         val buffer = if (preset != null) BufferPlanner.resolve(preset, CustomBuffer(), s.heapClassMb, s.lowRam) else s.buffer
         _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
-        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent)
+        val sub = subtitles()
+        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, sub.languages.audio, sub.languages.text)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))

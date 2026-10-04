@@ -26,6 +26,57 @@ class PlayerExtraStrings(val lang: AppLang) {
     val fromStart get() = t("From the start", "Depuis le début", "Desde el principio", "من البداية")
     val backToLive get() = t("Back to live", "Revenir au direct", "Volver al directo", "العودة إلى البث المباشر")
 
+    // Sous-titres
+    val subsPill get() = t("Subtitles", "Sous-titres", "Subtítulos", "الترجمة")
+    val subtitlesTitle get() = t("Subtitles", "Sous-titres", "Subtítulos", "الترجمة")
+    val previewText get() = t("Subtitle preview\nwith your settings", "Aperçu des sous-titres\navec vos réglages", "Vista previa de subtítulos\ncon tus ajustes", "معاينة الترجمة\nبإعداداتك")
+    val off get() = t("Off", "Désactivés", "Desactivados", "متوقفة")
+    val track get() = t("Track", "Piste", "Pista", "المسار")
+    val size get() = t("Size", "Taille", "Tamaño", "الحجم")
+    val color get() = t("Colour", "Couleur", "Color", "اللون")
+    val background get() = t("Background", "Fond", "Fondo", "الخلفية")
+    val outline get() = t("Outline", "Contour", "Contorno", "الحدود")
+    val position get() = t("Position", "Position", "Posición", "الموضع")
+    val delay get() = t("Offset", "Décalage", "Desfase", "التأخير")
+    val delayVlcOnly get() = t("VLC only", "VLC uniquement", "Solo VLC", "VLC فقط")
+    val audioLangs get() = t("Audio languages", "Langues audio", "Idiomas de audio", "لغات الصوت")
+    val textLangs get() = t("Subtitle languages", "Langues sous-titres", "Idiomas de subtítulos", "لغات الترجمة")
+    val langOrderHint get() = t("Pick in order of preference", "Choisir dans l'ordre de préférence", "Elige por orden de preferencia", "اختر بترتيب التفضيل")
+    val searchOnline get() = t("Search subtitles online", "Chercher des sous-titres en ligne", "Buscar subtítulos en línea", "البحث عن ترجمات")
+    val searchNeedsProxy get() = t("Pair this device with your Worker to enable it", "Appairez l'appareil à votre Worker pour l'activer", "Vincula el dispositivo a tu Worker para activarlo", "اربط الجهاز بالـ Worker لتفعيله")
+    val searchMoviesOnly get() = t("Available for movies only", "Disponible pour les films uniquement", "Solo para películas", "متاح للأفلام فقط")
+    val searching get() = t("Searching…", "Recherche…", "Buscando…", "جارٍ البحث…")
+    val noSubtitleFound get() = t("No subtitles found", "Aucun sous-titre trouvé", "No se encontraron subtítulos", "لا توجد ترجمات")
+    val subtitleAdded get() = t("Subtitles added", "Sous-titres ajoutés", "Subtítulos añadidos", "تمت إضافة الترجمة")
+    val back get() = t("Back", "Retour", "Atrás", "رجوع")
+    fun sizeName(v: com.ultratv.tv.nativeapp.data.subtitles.SubSize) = when (v) {
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.SMALL -> t("Small", "Petite", "Pequeño", "صغير")
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.MEDIUM -> t("Medium", "Moyenne", "Mediano", "متوسط")
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.LARGE -> t("Large", "Grande", "Grande", "كبير")
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.XLARGE -> t("Extra large", "Très grande", "Muy grande", "كبير جدًا")
+    }
+    fun colorName(v: com.ultratv.tv.nativeapp.data.subtitles.SubColor) = when (v) {
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.WHITE -> t("White", "Blanc", "Blanco", "أبيض")
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.YELLOW -> t("Yellow", "Jaune", "Amarillo", "أصفر")
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.CYAN -> t("Cyan", "Cyan", "Cian", "سماوي")
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.GREEN -> t("Green", "Vert", "Verde", "أخضر")
+    }
+    fun backgroundName(v: com.ultratv.tv.nativeapp.data.subtitles.SubBackground) = when (v) {
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.NONE -> t("None", "Aucun", "Ninguno", "بلا")
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.SEMI -> t("Semi-transparent", "Semi-transparent", "Semitransparente", "شبه شفاف")
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.OPAQUE -> t("Opaque", "Opaque", "Opaco", "معتم")
+    }
+    fun outlineName(v: com.ultratv.tv.nativeapp.data.subtitles.SubOutline) = when (v) {
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.NONE -> t("None", "Aucun", "Ninguno", "بلا")
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THIN -> t("Thin", "Fin", "Fino", "رفيع")
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THICK -> t("Thick", "Épais", "Grueso", "سميك")
+    }
+    fun positionName(v: com.ultratv.tv.nativeapp.data.subtitles.SubPosition) = when (v) {
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.BOTTOM -> t("Bottom", "Bas", "Abajo", "أسفل")
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.RAISED -> t("Raised", "Relevé", "Elevado", "مرتفع")
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.HIGH -> t("High", "Haut", "Alto", "عالٍ")
+    }
+
     // Pause du direct
     val delayed get() = t("TIME-SHIFTED", "EN DIFFÉRÉ", "EN DIFERIDO", "مؤجّل")
     val directMark get() = t("LIVE", "DIRECT", "DIRECTO", "مباشر")
