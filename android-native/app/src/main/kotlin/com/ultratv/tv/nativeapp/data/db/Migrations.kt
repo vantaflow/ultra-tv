@@ -69,3 +69,15 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         )
     }
 }
+
+/**
+ * 12 → 13 : enregistrements programmés depuis le guide (fenêtre voulue + nom de chaîne).
+ * Migration DÉDIÉE au lot B1 ; aucune donnée existante n'est touchée.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `scheduledStartMs` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `scheduledEndMs` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `channelName` TEXT")
+    }
+}

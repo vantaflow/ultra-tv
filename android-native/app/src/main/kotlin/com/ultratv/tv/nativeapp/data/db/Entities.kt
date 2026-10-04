@@ -214,12 +214,16 @@ data class RecordingEntity(
     val title: String,
     val sourceUrl: String,
     val filePath: String,       // absolute path under context.getExternalFilesDir
-    val status: String,         // "queued" | "running" | "done" | "failed" (retryable) | "error" (terminal) | "cancelled"
+    val status: String,         // "scheduled" | "queued" | "running" | "done" | "failed" (retryable) | "error" (terminal) | "cancelled"
     val downloadedBytes: Long = 0,
     val totalBytes: Long = 0,
     val createdAt: Long = System.currentTimeMillis(),
     val completedAt: Long? = null,
     val errorMessage: String? = null,
+    /** Enregistrement programmé (status = "scheduled") : fenêtre voulue, en ms epoch ; 0 = non programmé. */
+    val scheduledStartMs: Long = 0,
+    val scheduledEndMs: Long = 0,
+    val channelName: String? = null,
 )
 
 @Entity(

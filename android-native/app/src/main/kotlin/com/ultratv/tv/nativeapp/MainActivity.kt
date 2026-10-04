@@ -88,6 +88,9 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var historyRepo: HistoryRepository
     @Inject lateinit var playback: PlaybackContext
     @Inject lateinit var syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
+    @Inject lateinit var deepLinks: com.ultratv.tv.nativeapp.nav.DeepLinkHandler
+    @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
+    @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // SplashScreen API : affiche le thème de lancement tout de suite et évite
@@ -97,6 +100,12 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
         handleDebugIntent(intent)
+        handleDeepLink(intent)
+        // Ré-arme rappels et enregistrements programmés (alarmes perdues après une mise à jour ou un arrêt forcé).
+        lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { remindersScheduler.rescheduleAll() }
+            runCatching { recordingScheduler.rearmAll() }
+        }
         setContent { Root() }
         kickoffStartupTasks()
         // Auto-update flow: query GitHub Releases on launch and, if a newer
@@ -128,6 +137,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         handleDebugIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    /** Lien profond `ultratv://…` (notification de rappel, Google TV) : résolu dans le catalogue local. */
+    private fun handleDeepLink(intent: android.content.Intent?) {
+        val link = com.ultratv.tv.nativeapp.nav.DeepLink.parse(intent?.data?.toString()) ?: return
+        lifecycleScope.launch { runCatching { deepLinks.handle(link) } }
     }
 
     /** Build debug seulement : `am start --es debug_route settings --ei debug_rub 1` ouvre un écran précis (captures, tests). */
@@ -319,6 +335,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         }
         com.ultratv.tv.nativeapp.ui.common.OverlayLayer(overlays)
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
+        com.ultratv.tv.nativeapp.ui.common.ReminderBannerHost()
         }
       }
     }
@@ -398,6 +415,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
         screen(Routes.GUIDE) {
             GuideGridScreen(
                 onPlayChannel = { ch -> nav.navigate(Routes.player(ch.streamUrl, ch.name)) },
+                onPlayUrl = { url, title -> nav.navigate(Routes.player(url, title)) },
             )
         }
         screen("categories") { CategoriesScreen(onBack = { nav.popBackStack() }) }

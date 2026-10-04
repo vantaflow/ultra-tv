@@ -23,12 +23,17 @@ import javax.inject.Inject
 class BootReceiver : BroadcastReceiver() {
 
     @Inject lateinit var prefs: UserPreferencesStore
+    @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
+    @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != "android.intent.action.QUICKBOOT_POWERON") return
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Les alarmes ne survivent pas à un redémarrage : on ré-arme rappels et enregistrements.
+                runCatching { remindersScheduler.rescheduleAll() }
+                runCatching { recordingScheduler.rearmAll() }
                 val launch = prefs.flow.first().launchAtBoot
                 if (launch) {
                     val start = Intent(context, MainActivity::class.java).apply {

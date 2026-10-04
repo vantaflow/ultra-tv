@@ -452,6 +452,24 @@ interface RecordingDao {
 
     @Query("DELETE FROM recording WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM recording WHERE status = 'scheduled' AND scheduledEndMs > :nowMs ORDER BY scheduledStartMs")
+    suspend fun scheduledPending(nowMs: Long): List<RecordingEntity>
+
+    @Query("UPDATE recording SET status = 'failed', errorMessage = 'missed' WHERE status = 'scheduled' AND scheduledEndMs < :nowMs")
+    suspend fun expireMissed(nowMs: Long)
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'scheduled' AND providerId = :pid AND remoteId = :rid AND scheduledStartMs = :startMs")
+    suspend fun countScheduled(pid: Long, rid: String, startMs: Long): Int
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'running'")
+    fun observeRunningCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'running'")
+    suspend fun runningCount(): Int
+
+    @Query("UPDATE recording SET status = :status, errorMessage = :err WHERE id = :id")
+    suspend fun setStatus(id: Long, status: String, err: String?)
 }
 
 @Dao

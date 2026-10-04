@@ -21,7 +21,7 @@ import androidx.room.RoomDatabase
         SeriesFts::class,
         VodInfoEntity::class,
     ],
-    version = 12,
+    version = 13,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {

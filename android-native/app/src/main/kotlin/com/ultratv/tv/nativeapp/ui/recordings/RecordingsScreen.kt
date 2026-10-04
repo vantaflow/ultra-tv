@@ -39,6 +39,7 @@ import com.ultratv.tv.nativeapp.data.db.RecordingEntity
 import com.ultratv.tv.nativeapp.data.recording.RecordingRepository
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.recScheduledBadge
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.*
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,12 +54,30 @@ import javax.inject.Inject
 @HiltViewModel
 class RecordingsViewModel @Inject constructor(
     private val repo: RecordingRepository,
+    private val scheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
 ) : ViewModel() {
     val items: StateFlow<List<RecordingEntity>> = repo.observeAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun remove(id: Long) {
         viewModelScope.launch { repo.delete(id) }
+    }
+
+    /** « Arrêter » : conserve ce qui est déjà enregistré. */
+    fun stop(id: Long) {
+        viewModelScope.launch { repo.stop(id) }
+    }
+
+    /** « Annuler » un enregistrement programmé : désarme l'alarme et supprime la ligne. */
+    fun cancelScheduled(id: Long) {
+        viewModelScope.launch { scheduler.cancel(id) }
+    }
+
+    /** Action de la ligne selon son état : arrêter (en cours), annuler (programmé), supprimer (échec). */
+    fun act(r: RecordingEntity) = when (r.status) {
+        "running" -> stop(r.id)
+        "scheduled" -> cancelScheduled(r.id)
+        else -> remove(r.id)
     }
 }
 
@@ -73,7 +92,8 @@ fun RecordingsScreen(
     val S = LocalStrings.current
     val D = LocalDs.current
     val ctx = LocalContext.current
-    val active = list.filter { it.status != "done" }
+    // En cours d'abord, puis les programmés par heure de début, puis le reste (file, échecs).
+    val active = list.filter { it.status != "done" }.sortedWith(compareBy({ rank(it.status) }, { it.scheduledStartMs }))
     val done = list.filter { it.status == "done" }
     val used = list.sumOf { if (it.status == "done") it.totalBytes.coerceAtLeast(it.downloadedBytes) else it.downloadedBytes }
     val free = remember(list) { runCatching { StatFs((ctx.getExternalFilesDir(null) ?: ctx.filesDir).path).availableBytes }.getOrDefault(0L) }
@@ -126,9 +146,11 @@ fun RecordingsScreen(
 @Composable
 private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strings, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onAction: () -> Unit) {
     val running = r.status == "running"
+    val scheduled = r.status == "scheduled"
     val failed = r.status == "failed" || r.status == "error"
     val fraction = if (r.totalBytes > 0) (r.downloadedBytes.toFloat() / r.totalBytes).coerceIn(0f, 1f) else 0f
     val meta = when {
+        scheduled -> scheduledMeta(r)
         running -> "${(fraction * 100).toInt()} % · ${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)}"
         failed -> S.recordingStatusFailed        // jamais le message brut : il peut contenir une URL de flux
         r.status == "cancelled" -> S.recordingStatusCancelled
@@ -140,7 +162,7 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
                 Modifier.width(92.design).height(44.design).clip(RoundedCornerShape(10.design)).background(if (running) Ux.Accent else if (failed) Ux.Muted2 else Ux.Surface2),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (running) D.recBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
+                Text(if (running) D.recBadge else if (scheduled) D.recScheduledBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.design)) {
                 Text(r.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -150,6 +172,17 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
             Text(if (running) D.recStop else if (failed) S.delete else D.recCancel, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
         }
     }
+}
+
+private fun rank(status: String) = when (status) { "running" -> 0; "queued" -> 1; "scheduled" -> 2; else -> 3 }
+
+/** « 20:30 – 22:30 · Chaîne » avec la date quand ce n'est pas aujourd'hui. */
+private fun scheduledMeta(r: RecordingEntity): String {
+    val start = Date(r.scheduledStartMs)
+    val sameDay = DateFormat.getDateInstance(DateFormat.SHORT).format(start) == DateFormat.getDateInstance(DateFormat.SHORT).format(Date())
+    val tf = DateFormat.getTimeInstance(DateFormat.SHORT)
+    val day = if (sameDay) "" else DateFormat.getDateInstance(DateFormat.MEDIUM).format(start) + " "
+    return day + tf.format(start) + " – " + tf.format(Date(r.scheduledEndMs)) + (r.channelName?.let { " · $it" } ?: "")
 }
 
 /** Taille lisible (Ko / Mo / Go) sans dépendre de la locale pour l'unité. */

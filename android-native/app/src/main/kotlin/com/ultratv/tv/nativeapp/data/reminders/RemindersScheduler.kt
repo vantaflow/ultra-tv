@@ -60,12 +60,7 @@ class RemindersScheduler @Inject constructor(
 
     private fun schedule(r: ReminderEntity) {
         val triggerAt = (r.startMs - 60_000L).coerceAtLeast(System.currentTimeMillis() + 1_000)
-        val canExact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || am.canScheduleExactAlarms()
-        if (canExact) {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingFor(r))
-        } else {
-            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingFor(r))
-        }
+        ExactAlarm.set(am, triggerAt, pendingFor(r))
     }
 
     private fun pendingFor(r: ReminderEntity): PendingIntent {
@@ -75,14 +70,20 @@ class RemindersScheduler @Inject constructor(
             putExtra(EXTRA_TITLE, r.programmeTitle)
             putExtra(EXTRA_CHANNEL, r.channelName)
             putExtra(EXTRA_START, r.startMs)
+            putExtra(EXTRA_PROVIDER, r.providerId)
+            putExtra(EXTRA_CHANNEL_REMOTE, r.channelRemoteId)
         }
         val flags = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
             PendingIntent.FLAG_IMMUTABLE else 0) or PendingIntent.FLAG_UPDATE_CURRENT
         return PendingIntent.getBroadcast(ctx, r.id.toInt(), intent, flags)
     }
 
-    fun postFireNotification(id: Long, channel: String, title: String) {
-        val openApp = ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
+    fun postFireNotification(id: Long, channel: String, title: String, providerId: Long = -1, channelRemoteId: String = "") {
+        // Toucher la notification ouvre directement la chaîne (lien profond) ; à défaut, l'application.
+        val openApp = if (providerId >= 0 && channelRemoteId.isNotEmpty())
+            Intent(Intent.ACTION_VIEW, android.net.Uri.parse(com.ultratv.tv.nativeapp.nav.DeepLink.live(providerId, channelRemoteId)))
+                .setPackage(ctx.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        else ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)
         val tap = if (openApp != null) PendingIntent.getActivity(
             ctx, id.toInt(), openApp,
             (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_IMMUTABLE else 0) or
@@ -108,6 +109,8 @@ class RemindersScheduler @Inject constructor(
         const val EXTRA_TITLE = "title"
         const val EXTRA_CHANNEL = "channel"
         const val EXTRA_START = "start"
+        const val EXTRA_PROVIDER = "provider"
+        const val EXTRA_CHANNEL_REMOTE = "channel_remote"
     }
 }
 
@@ -125,7 +128,11 @@ class ReminderReceiver : BroadcastReceiver() {
         val id = intent.getLongExtra(RemindersScheduler.EXTRA_ID, -1L)
         val title = intent.getStringExtra(RemindersScheduler.EXTRA_TITLE).orEmpty()
         val channel = intent.getStringExtra(RemindersScheduler.EXTRA_CHANNEL).orEmpty()
-        scheduler.postFireNotification(id, channel, title)
+        val providerId = intent.getLongExtra(RemindersScheduler.EXTRA_PROVIDER, -1L)
+        val remote = intent.getStringExtra(RemindersScheduler.EXTRA_CHANNEL_REMOTE).orEmpty()
+        scheduler.postFireNotification(id, channel, title, providerId, remote)
+        // Application au premier plan : bannière « Commence dans 1 min · Regarder ».
+        ReminderBus.emit(ReminderEvent(providerId, remote, channel, title, intent.getLongExtra(RemindersScheduler.EXTRA_START, 0L)))
         // Async cleanup — goAsync() keeps the process alive while we delete the
         // row. Use a job scoped to this receiver (SupervisorJob + IO) instead of
         // GlobalScope so the work is structured and always finishes the pending

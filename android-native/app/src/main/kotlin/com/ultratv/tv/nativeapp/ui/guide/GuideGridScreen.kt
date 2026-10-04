@@ -60,7 +60,16 @@ import com.ultratv.tv.nativeapp.data.db.EpgDao
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.recording.ConnectionPolicy
+import com.ultratv.tv.nativeapp.data.recording.ConnectionWarning
+import com.ultratv.tv.nativeapp.data.recording.ScheduleResult
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.recNoSpace
+import com.ultratv.tv.nativeapp.i18n.recNothing
+import com.ultratv.tv.nativeapp.i18n.recScheduled
+import com.ultratv.tv.nativeapp.i18n.remindSet
+import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -137,7 +146,17 @@ class GuideGridViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val epgDao: EpgDao,
     private val reminders: RemindersScheduler,
+    private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
+    recDao: com.ultratv.tv.nativeapp.data.db.RecordingDao,
 ) : ViewModel() {
+    /** Un enregistrement en cours occupe la (seule) connexion : le dialogue et « Regarder » le signalent. */
+    val recordingRunning: StateFlow<Boolean> = recDao.observeRunningCount().map { it > 0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    fun record(channel: ChannelEntity, prog: EpgEntity, wholeSeries: Boolean, onResult: (com.ultratv.tv.nativeapp.data.recording.ScheduleResult) -> Unit) {
+        viewModelScope.launch { onResult(recScheduler.schedule(channel, prog, wholeSeries)) }
+    }
+
     private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
     private val _windowStart = MutableStateFlow(guideWindowStart(System.currentTimeMillis(), 0))
@@ -184,7 +203,7 @@ class GuideGridViewModel @Inject constructor(
 
 /** Guide TV (maquette Guide.dc.html) : colonne chaînes de 260, 6 créneaux de 30 min, ligne accent = maintenant. */
 @Composable
-fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewModel = hiltViewModel()) {
+fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: String, title: String) -> Unit = { _, _ -> }, vm: GuideGridViewModel = hiltViewModel()) {
     val D = LocalDs.current
     val channels = vm.channels.collectAsLazyPagingItems()
     val programmes by vm.programmes.collectAsState()
@@ -194,6 +213,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
     var focusedProg by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    val recordingRunning by vm.recordingRunning.collectAsState()
 
     Column(
         Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design)
@@ -251,7 +272,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
                         GuideRow(
                             c, programmes[c.id].orEmpty(), windowStart, gridW,
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                            onPlay = { onPlayChannel(c) }, onRemind = { vm.addReminder(c, it) }, onFocusProg = { p -> focusedProg = c to p },
+                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg = c to p },
                         )
                     } else Spacer(Modifier.height(84.design))
                 }
@@ -261,6 +282,32 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
             if (nowFrac in 0f..1f) Box(Modifier.offset(x = 260.design + gridW * nowFrac).width(3.design).fillMaxHeight().background(Ux.Accent))
         }
         focusedProg?.let { (ch, pr) -> InfoPanel(ch, pr) }
+    }
+    actionTarget?.let { (ch, pr) ->
+        val nowMs = System.currentTimeMillis()
+        val replayUrl = remember(ch.id, pr.id) { com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(ch, pr, nowMs) }
+        ProgramActionsDialog(
+            channel = ch, prog = pr, state = programActionState(pr, replayUrl, nowMs), D = D, recordingRunning = recordingRunning,
+            onReplay = { actionTarget = null; replayUrl?.let { onPlayUrl(it, pr.title) } },
+            onWatch = {
+                actionTarget = null
+                // Lecture et enregistrement se partagent la connexion : on prévient avant de la prendre.
+                if (ConnectionPolicy.onPlayRequested(recordingRunning) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
+                onPlayChannel(ch)
+            },
+            onRemind = { actionTarget = null; vm.addReminder(ch, pr); Toaster.ok(D.remindSet) },
+            onRecord = { series ->
+                actionTarget = null
+                vm.record(ch, pr, series) { r ->
+                    when (r) {
+                        is ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
+                        ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
+                        ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
+                    }
+                }
+            },
+            onDismiss = { actionTarget = null },
+        )
     }
 }
 
@@ -298,7 +345,7 @@ private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp,
-    firstModifier: Modifier, onPlay: () -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
+    firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
 ) {
     val nowMs = System.currentTimeMillis()
     Row(Modifier.fillMaxWidth().height(84.design)) {
@@ -316,7 +363,7 @@ private fun GuideRow(
                 val isNow = p.startMs <= nowMs && p.endMs > nowMs
                 val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
                 FocusSurface(
-                    onClick = onPlay,
+                    onClick = { onSelect(p) },
                     onLongClick = { if (p.startMs > nowMs) onRemind(p) },
                     shape = RoundedCornerShape(14.design),
                     bg = if (isNow) Ux.Surface2 else Ux.SurfaceDeep,
