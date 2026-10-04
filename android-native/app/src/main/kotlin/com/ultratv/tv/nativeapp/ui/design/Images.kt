@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.ultratv.tv.nativeapp.data.tmdb.PosterResolver
+import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.common.design
 
@@ -58,6 +60,7 @@ fun SlotImage(
     background: Color = Ux.Surface2,
     innerPadding: Dp = 0.design,
     initialsSize: Int = 22,
+    onFail: (() -> Unit)? = null,
 ) {
     val lowRam = LocalLowRam.current
     var loaded by remember(url) { mutableStateOf(false) }
@@ -79,16 +82,35 @@ fun SlotImage(
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
                 onSuccess = { loaded = true },
-                onError = { loaded = false },
+                onError = { loaded = false; onFail?.invoke() },
             )
         }
     }
 }
 
-/** Affiche 2:3 (Films, Séries, Recherche) : `Crop`, coins arrondis. L'appelant impose largeur et aspectRatio. */
+/** Type d'œuvre des affiches affichées par les écrans enfants (grilles Films / Séries) : active le repli TMDB sans toucher aux cellules. */
+val LocalPosterKind = androidx.compose.runtime.compositionLocalOf<TmdbKind?> { null }
+
+/**
+ * Affiche 2:3 (Films, Séries, Recherche) : `Crop`, coins arrondis. L'appelant impose largeur et aspectRatio.
+ * Si [kind] est connu (paramètre ou [LocalPosterKind]) et que l'affiche manque ou ne charge pas, elle est
+ * cherchée sur TMDB (cache persistant, hors fil principal, appareil appairé seulement).
+ */
 @Composable
-fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18) =
-    SlotImage(url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface, initialsSize = 36)
+fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18, kind: TmdbKind? = LocalPosterKind.current, year: Int? = null) {
+    var fallback by remember(url, name) { mutableStateOf<String?>(null) }
+    var failed by remember(url) { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    if (kind != null && (url.isNullOrBlank() || failed) && name.isNotBlank()) {
+        androidx.compose.runtime.LaunchedEffect(url, name, kind, failed) {
+            fallback = runCatching { PosterResolver.from(ctx).resolve(kind, name, year) }.getOrNull()
+        }
+    }
+    SlotImage(
+        fallback ?: url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface, initialsSize = 36,
+        onFail = if (kind != null && fallback == null) ({ failed = true }) else null,
+    )
+}
 
 /** Vignette 16:9 (Reprendre, épisodes) : `Crop`. */
 @Composable

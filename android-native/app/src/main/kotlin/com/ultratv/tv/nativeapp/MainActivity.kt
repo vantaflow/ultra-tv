@@ -493,7 +493,9 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             LiveScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
         screen(Routes.MOVIES) {
-            com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE) {
+                com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
+            }
         }
         screen(
             Routes.MOVIE_DETAIL,
@@ -507,7 +509,9 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             )
         }
         screen(Routes.SERIES) {
-            com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV) {
+                com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
+            }
         }
         screen(
             Routes.SERIES_DETAIL,

@@ -114,10 +114,10 @@ fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?
 
 /** Affiche 2:3 de taille imposée par la colonne (jamais par l'image) + titre sur une ligne. */
 @Composable
-fun VodCard(title: String, poster: String?, modifier: Modifier, onClick: () -> Unit) {
+fun VodCard(title: String, poster: String?, modifier: Modifier, kind: com.ultratv.tv.nativeapp.data.tmdb.TmdbKind? = null, year: Int? = null, onClick: () -> Unit) {
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
         Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-            PosterImage(poster, title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 16)
+            PosterImage(poster, title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 16, kind = kind, year = year)
             Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

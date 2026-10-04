@@ -25,6 +25,8 @@ interface TmdbApi {
     fun isEnabled(): Boolean
     suspend fun searchId(kind: TmdbKind, query: TmdbQuery, lang: String): Int?
     suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails?
+    /** `poster_path` du meilleur résultat de recherche (affiche de repli) ; null si rien. */
+    suspend fun searchPoster(kind: TmdbKind, query: TmdbQuery, lang: String): String? = null
 }
 
 /** Client du proxy TMDB du Worker (/api/tmdb/…) : jeton d'appareil en Bearer, pas de redirection suivie. */
@@ -57,6 +59,12 @@ class TmdbHttpApi @Inject constructor(
         val yearParam = query.year?.let { (if (kind == TmdbKind.MOVIE) "&year=" else "&first_air_date_year=") + it } ?: ""
         val body = get("search/${kind.path}?query=${enc(query.title)}$yearParam&language=$lang") ?: return null
         return TmdbParser.searchBest(body, query.year)
+    }
+
+    override suspend fun searchPoster(kind: TmdbKind, query: TmdbQuery, lang: String): String? {
+        val yearParam = query.year?.let { (if (kind == TmdbKind.MOVIE) "&year=" else "&first_air_date_year=") + it } ?: ""
+        val body = get("search/${kind.path}?query=${enc(query.title)}$yearParam&language=$lang") ?: return null
+        return TmdbParser.searchBestPoster(body, query.year)
     }
 
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? =

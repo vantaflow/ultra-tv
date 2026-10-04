@@ -61,5 +61,7 @@ interface TmdbDao {
 object TmdbImages {
     private const val BASE = "https://image.tmdb.org/t/p/"
     fun poster(path: String) = BASE + "w500" + path
+    /** Affiche de repli (grilles, recherche) : plus légère que [poster]. */
+    fun poster342(path: String) = BASE + "w342" + path
     fun backdrop(path: String) = BASE + "w1280" + path
 }

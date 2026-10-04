@@ -42,6 +42,8 @@ class DesignStrings(val lang: AppLang) {
     val keyDelete get() = t("Delete", "Suppr.", "Borrar", "حذف")
     val searchStart get() = t("Start typing to search channels, movies and series.", "Commencez à taper pour chercher chaînes, films et séries.", "Empieza a escribir para buscar canales, películas y series.", "ابدأ الكتابة للبحث عن القنوات والأفلام والمسلسلات.")
     fun searchChannels(n: Int) = when (lang) { AppLang.French -> "CHAÎNES · $n"; AppLang.Spanish -> "CANALES · $n"; AppLang.Arabic -> "القنوات · $n"; else -> "CHANNELS · $n" }
+    fun searchPrograms(n: Int) = when (lang) { AppLang.French -> "AU PROGRAMME · $n"; AppLang.Spanish -> "EN PROGRAMACIÓN · $n"; AppLang.Arabic -> "على البرنامج · $n"; else -> "ON THE SCHEDULE · $n" }
+    val programNow get() = t("On now", "En cours", "En curso", "جارٍ الآن")
     fun searchVod(n: Int) = when (lang) { AppLang.French -> "FILMS ET SÉRIES · $n"; AppLang.Spanish -> "PELÍCULAS Y SERIES · $n"; AppLang.Arabic -> "الأفلام والمسلسلات · $n"; else -> "MOVIES AND SERIES · $n" }
 
     // Favoris
