@@ -453,12 +453,19 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const cur = usePlayer((s) => s.target);
   const curRef = useRef<HTMLButtonElement | null>(null);
   // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
-  useEffect(() => { void channelsCol(cid, cat).filter((c) => !c.sep).limit(5000).toArray().then(setRows); }, [cid, cat]);
+  // Catégorie de la chaîne en cours si aucune n'a été choisie (lancée depuis l'accueil, la recherche…).
+  const effCat = cat ?? cur?.channel?.catExt ?? null;
+  const [catLabel, setCatLabel] = useState<string | null>(null);
+  useEffect(() => { void channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray().then(setRows); }, [cid, effCat]);
+  useEffect(() => {
+    if (effCat == null) { setCatLabel(null); return; }
+    void db.categories.where("[sourceId+kind]").equals([cid, "live"]).filter((c) => c.extId === effCat).first().then((c) => setCatLabel(c?.label ?? null));
+  }, [cid, effCat]);
   // À l'ouverture : centré sur la chaîne regardée, qui a le focus (Entrée = rester, ↑↓ = parcourir).
   useEffect(() => { const el = curRef.current; if (el) { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); } }, [rows.length]);
   return (
     <aside className="pside" aria-label={t("player.channels")}>
-      <div className="grp-t">{t("player.channels").toUpperCase()}</div>
+      <div className="grp-t">{(catLabel ?? t("player.channels")).toUpperCase()} · {rows.length}</div>
       {rows.map((c) => {
         const on = cur?.refId === c.streamId;
         return (

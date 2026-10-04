@@ -32,7 +32,8 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     const { target, zapCat, mode } = get();
     if (!target || target.kind !== "live" || !target.channel) return;
     const ord = target.channel.ord;
-    const col = channelsCol(target.cid, zapCat);
+    // Zapping dans la catégorie de la chaîne en cours (même lancée depuis l'accueil ou la recherche).
+    const col = channelsCol(target.cid, zapCat ?? target.channel.catExt ?? null);
     const next = dir > 0
       ? await col.clone().filter((c) => c.ord > ord && !c.sep).first()
       : await col.clone().reverse().filter((c) => c.ord < ord && !c.sep).first();
