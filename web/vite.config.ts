@@ -1,36 +1,27 @@
-import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
 export default defineConfig({
-  // Inject the build timestamp as a global constant so the diag panel can show
-  // which build the device is running — invaluable when there's no adb access.
-  define: {
-    __BUILD_STAMP__: JSON.stringify(new Date().toISOString().slice(0, 16).replace("T", " ")),
-  },
   plugins: [react()],
-  resolve: {
-    alias: {
-      "@domain": fileURLToPath(new URL("./src/domain", import.meta.url)),
-      "@data": fileURLToPath(new URL("./src/data", import.meta.url)),
-      "@player": fileURLToPath(new URL("./src/player", import.meta.url)),
-      "@app": fileURLToPath(new URL("./src/app", import.meta.url)),
-    },
-  },
+  // Chemins relatifs : l'appli est servie telle quelle depuis app://, un hébergement
+  // statique ou un sous-dossier.
+  base: "./",
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
+  worker: { format: "es" },
   server: { port: 5173, host: true },
   build: {
-    chunkSizeWarningLimit: 800,
+    chunkSizeWarningLimit: 900,
     rollupOptions: {
       output: {
-        // Split heavy player libs into their own chunks so users that never play
-        // a DASH stream don't have to download shaka-player.
         manualChunks: {
           hls: ["hls.js"],
-          shaka: ["shaka-player"],
+          mpegts: ["mpegts.js"],
           react: ["react", "react-dom", "react-router-dom"],
           dexie: ["dexie", "dexie-react-hooks"],
         },
       },
     },
   },
+  test: { environment: "node", include: ["src/**/*.test.ts"] },
 });

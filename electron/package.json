@@ -1,46 +1,103 @@
 {
   "name": "ultratv-desktop",
   "version": "0.1.0",
-  "description": "Ultra TV desktop wrapper — Electron shell around the web app with native codecs.",
+  "description": "Ultra TV desktop - Electron shell around the web app.",
+  "author": "Ultra TV",
+  "license": "MIT",
+  "homepage": "https://github.com/khalilbenaz/ultra-tv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/khalilbenaz/ultra-tv.git"
+  },
   "main": "main.cjs",
   "scripts": {
-    "build:web": "cd ../web && npm run build",
+    "test": "node --test test/",
     "dev": "cross-env SV_DEV=1 electron .",
-    "package:mac": "npm run build:web && electron-builder --mac",
-    "package:win": "npm run build:web && electron-builder --win",
-    "package:linux": "npm run build:web && electron-builder --linux",
-    "icons": "electron-icon-builder --input=../docs/redesign/logo.svg --output=./build --flatten"
+    "start": "electron .",
+    "build:web": "cd ../web && npm run build",
+    "prepare:web": "node scripts/prepare-web.mjs",
+    "icons": "node scripts/make-icons.mjs",
+    "package:mac": "npm run prepare:web && electron-builder --mac dmg zip --universal --publish never",
+    "package:win": "npm run prepare:web && electron-builder --win nsis --x64 --publish never",
+    "package:linux": "npm run prepare:web && electron-builder --linux AppImage --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "cross-env": "^7.0.3",
-    "electron": "github:castlabs/electron-releases#v33.4.11+wvcus",
-    "electron-builder": "^25.1.8",
-    "electron-icon-builder": "^2.0.1"
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "png2icons": "^2.0.1"
   },
   "build": {
     "appId": "com.ultratv.desktop",
     "productName": "Ultra TV",
+    "copyright": "Ultra TV",
+    "artifactName": "UltraTV-${version}-${os}-${arch}.${ext}",
+    "asar": true,
     "files": [
       "main.cjs",
       "preload.cjs",
-      "../web/dist/**/*"
+      "proxy.cjs",
+      "appfiles.cjs",
+      "secrets.cjs",
+      "updates.cjs",
+      "web-dist/**/*",
+      "package.json"
     ],
-    "extraMetadata": { "main": "main.cjs" },
     "directories": {
       "buildResources": "build",
       "output": "release"
     },
-    "asar": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "khalilbenaz",
+        "repo": "ultra-tv",
+        "releaseType": "draft"
+      }
+    ],
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "onlyLoadAppFromAsar": true,
+      "grantFileProtocolExtraPrivileges": false
+    },
     "mac": {
       "category": "public.app-category.entertainment",
-      "target": ["dmg", "zip"]
+      "target": [
+        { "target": "dmg", "arch": ["universal"] },
+        { "target": "zip", "arch": ["universal"] }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "icon": "build/icon.icns"
+    },
+    "dmg": {
+      "title": "Ultra TV ${version}"
     },
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
     },
     "linux": {
-      "target": ["AppImage", "deb"],
-      "category": "AudioVideo"
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] }
+      ],
+      "category": "AudioVideo",
+      "icon": "build/icon.png"
     }
   }
 }
