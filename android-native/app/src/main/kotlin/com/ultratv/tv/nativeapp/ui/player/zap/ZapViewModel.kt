@@ -102,7 +102,7 @@ class ZapViewModel @Inject constructor(
     }
 
     private suspend fun switchTo(target: ChannelEntity) {
-        val url = provider.resolvePlayUrl(target.id, target.streamUrl)
+        val url = target.streamUrl
         playback.set(PlaybackContext.Item(
             providerId = target.providerId, kind = "LIVE", remoteId = target.remoteId, title = target.title, poster = target.logo, streamUrl = url,
             badge = TitleCleaner.prefixBadge(target.name, TitleCleaner.clean(target.name, live = true).title),

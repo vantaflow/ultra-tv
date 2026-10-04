@@ -39,8 +39,8 @@ data class FirstSyncUi(
 /** Parties à afficher selon le type de source (M3U : le direct seul ; Xtream : tout). */
 fun requiredParts(kind: String): List<SyncPart> = when (kind) {
     "M3U", "M3U_LOCAL" -> listOf(SyncPart.LIVE)
-    "STALKER" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES)
-    else -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES, SyncPart.EPG)
+    "XTREAM" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES, SyncPart.EPG)
+    else -> emptyList()   // type de source hérité non pris en charge (ex. Stalker, retiré en 1.1.1) : rien à attendre
 }
 
 fun isDone(p: ProviderEntity, part: SyncPart): Boolean = when (part) {
@@ -101,7 +101,7 @@ class FirstSyncViewModel @Inject constructor(
                 isDone(p, part) -> StepState.DONE
                 failure != null && part == firstUndone -> StepState.ERROR
                 st?.part == part -> StepState.ACTIVE
-                // M3U / Stalker n'annoncent pas de partie : la première non terminée est active.
+                // M3U n'annonce pas de partie : la première non terminée est active.
                 st != null && st.part == null && part == firstUndone -> StepState.ACTIVE
                 else -> StepState.WAIT
             }

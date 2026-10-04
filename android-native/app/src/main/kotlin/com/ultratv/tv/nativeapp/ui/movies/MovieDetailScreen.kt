@@ -97,15 +97,10 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    /** Queue a VOD download for this movie. Resolves stalker:// first if
-     *  needed so the worker downloads the actual stream URL, not the
-     *  unplayable cmd. */
+    /** Queue a VOD download for this movie. */
     fun record(m: MovieEntity, queuedMsg: String = "Recording queued — see Recordings screen") {
         viewModelScope.launch {
-            val url = if (m.streamUrl.startsWith("stalker://"))
-                provider.resolveStalkerUrl(m.providerId, m.streamUrl)
-            else m.streamUrl
-            recordings.enqueue(m.providerId, "MOVIE", m.remoteId, m.name, url)
+            recordings.enqueue(m.providerId, "MOVIE", m.remoteId, m.name, m.streamUrl)
             com.ultratv.tv.nativeapp.ui.common.Toaster.ok(queuedMsg)
         }
     }
@@ -135,28 +130,13 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Resolves any `stalker://…` URL to a playable one, sets PlaybackContext
-     * with the resolved URL, then invokes onReady. Non-Stalker URLs are
-     * forwarded directly.
-     */
+    /** Enregistre le contexte de lecture puis appelle [onReady] avec l'URL du film. */
     fun play(m: MovieEntity, onReady: (url: String, title: String) -> Unit) {
-        if (!m.streamUrl.startsWith("stalker://")) {
-            playback.set(PlaybackContext.Item(
-                providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
-                title = m.name, poster = m.poster, streamUrl = m.streamUrl,
-            ))
-            onReady(m.streamUrl, m.name)
-            return
-        }
-        viewModelScope.launch {
-            val resolved = provider.resolveStalkerUrl(m.providerId, m.streamUrl)
-            playback.set(PlaybackContext.Item(
-                providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
-                title = m.name, poster = m.poster, streamUrl = resolved,
-            ))
-            onReady(resolved, m.name)
-        }
+        playback.set(PlaybackContext.Item(
+            providerId = m.providerId, kind = "MOVIE", remoteId = m.remoteId,
+            title = m.name, poster = m.poster, streamUrl = m.streamUrl,
+        ))
+        onReady(m.streamUrl, m.name)
     }
 }
 

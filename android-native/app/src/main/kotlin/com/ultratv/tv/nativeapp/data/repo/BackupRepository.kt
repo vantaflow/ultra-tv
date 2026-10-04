@@ -64,7 +64,7 @@ class BackupRepository @Inject constructor(
     /**
      * Snapshot the current state into a JSON string. When [password] is
      * non-null/non-empty, wraps the JSON in an AES-GCM envelope so the
-     * exported file can't reveal Xtream / Stalker credentials to anyone who
+     * exported file can't reveal Xtream credentials to anyone who
      * later opens it.
      */
     suspend fun export(password: String? = null): String {

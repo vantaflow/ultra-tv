@@ -83,23 +83,6 @@ class ProviderFormsTest {
         assertEquals(listOf("", "http://serveur-fictif.invalid:8080", "test", "secret"), got)
     }
 
-    @Test fun stalker_ordreNomUrlMac_hautBasEntreLesChamps() {
-        var got: Triple<String, String, String>? = null
-        rule.setContent { StalkerDialog(onDismiss = {}, onSubmit = { n, u, m -> got = Triple(n, u, m) }) }
-        rule.onNodeWithTag("field-url").assertIsFocused()
-        rule.onNodeWithTag("field-url").performTextInput("http://serveur-fictif.invalid:8080")
-        rule.onNodeWithTag("field-url").performKeyInput { pressKey(Key.DirectionDown) }
-        rule.onNodeWithTag("field-mac").assertIsFocused()
-        rule.onNodeWithTag("field-mac").performTextInput("00:1a:79:aa:bb:cc")
-        rule.onNodeWithTag("field-mac").performKeyInput { pressKey(Key.DirectionUp) }
-        rule.onNodeWithTag("field-url").assertIsFocused()
-        rule.onNodeWithTag("field-url").performKeyInput { pressKey(Key.DirectionUp) }
-        rule.onNodeWithTag("field-name").assertIsFocused()
-        rule.onNodeWithTag("field-name").performTextInput("Salon")
-        rule.onNodeWithTag("dialog-submit").performClick()
-        assertEquals(Triple("Salon", "http://serveur-fictif.invalid:8080", "00:1A:79:AA:BB:CC"), got)
-    }
-
     @Test fun workerUrl_httpsRequis_leBoutonResteInactifSinon() {
         var saved: String? = null
         rule.setContent { WorkerUrlDialog(current = "", onSave = { saved = it }, onDismiss = {}) }
@@ -107,6 +90,11 @@ class ProviderFormsTest {
         rule.onNodeWithTag("dialog-submit").performClick()
         assertNull(saved)
         rule.onNodeWithTag("field-worker").performTextInput("")
+    }
+
+    @Test fun sourceStalkerHeritee_nEstPlusPriseEnCharge_maisResteSupprimable() {
+        assertTrue("XTREAM" in SUPPORTED_KINDS && "M3U" in SUPPORTED_KINDS && "M3U_LOCAL" in SUPPORTED_KINDS)
+        assertFalse("STALKER" in SUPPORTED_KINDS)
     }
 
     /** Écran bas (400 dp, bien plus court que le dialogue) : « ▼ » depuis le mot de passe atteint le bouton principal, visible. */

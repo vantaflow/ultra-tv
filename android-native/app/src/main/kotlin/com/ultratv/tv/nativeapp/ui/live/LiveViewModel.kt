@@ -224,7 +224,7 @@ class LiveViewModel @Inject constructor(
                     }
                 }
                 zapQueue.set(_langView.value.filter(window) { it.lang }.map { if (it.id == channel0.id) channel else it }.ifEmpty { listOf(channel) }, channel)
-                val url = if (channel.streamUrl.startsWith("stalker://")) provider.resolvePlayUrl(channel.id, channel.streamUrl) else channel.streamUrl
+                val url = channel.streamUrl
                 playback.set(PlaybackContext.Item(channel.providerId, "LIVE", channel.remoteId, channel.title, channel.logo, url))
                 onReady(url, channel.title)
             } finally { _resolving.value = false }

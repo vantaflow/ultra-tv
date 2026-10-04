@@ -288,23 +288,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun addStalkerAndSync(name: String, portalUrl: String, mac: String) {
-        viewModelScope.launch {
-            _syncing.value = true
-            _message.value = "Adding Stalker portal…"
-            try {
-                val id = repo.addStalker(name, portalUrl, mac)
-                makeDefaultIfNone(id)
-                sync.request(id, force = true)
-                _message.value = "Syncing…"
-            } catch (t: Throwable) {
-                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
-            } finally {
-                _syncing.value = false
-            }
-        }
-    }
-
     fun addM3uAndSync(name: String, url: String) {
         viewModelScope.launch {
             _syncing.value = true

@@ -39,10 +39,7 @@ object SyncPolicy {
         when (p.kind) {
             "M3U_LOCAL" -> return emptyList()
             "M3U" -> if (force || liveCount == 0 || stale(p.lastLiveSyncAt, ttl.liveMs)) parts += SyncPart.LIVE
-            "STALKER" -> {
-                if (force || liveCount == 0 || stale(p.lastLiveSyncAt, ttl.liveMs)) parts += SyncPart.LIVE
-            }
-            else -> {
+            "XTREAM" -> {
                 if (force || liveCount == 0 || stale(p.lastLiveSyncAt, ttl.liveMs)) parts += SyncPart.LIVE
                 if (force || stale(p.lastVodSyncAt, ttl.vodMs)) parts += SyncPart.VOD
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES

@@ -26,7 +26,7 @@ class RecordingRepository @Inject constructor(
 
     /**
      * Queues a recording: writes the row, enqueues the worker. Caller passes the
-     * already-resolved URL (Stalker/Xtream have done their thing). File goes
+     * already-resolved URL (Xtream a déjà résolu l'URL). File goes
      * under app-private external storage so no permission is required.
      */
     suspend fun enqueue(

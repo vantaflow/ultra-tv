@@ -168,7 +168,7 @@ class PlayerViewModel @Inject constructor(
     /** Chaîne suivante / précédente de la file de zapping (live) ; renvoie la nouvelle URL ou null. */
     suspend fun zap(forward: Boolean): String? {
         val target = (if (forward) zapQueue.next() else zapQueue.previous()) ?: return null
-        val resolved = provider.resolvePlayUrl(target.id, target.streamUrl)
+        val resolved = target.streamUrl
         setLive(target, resolved)
         return resolved
     }
@@ -226,7 +226,7 @@ class PlayerViewModel @Inject constructor(
             if (s.channels.none { it.id == channel.id }) return null
             zapQueue.set(s.channels, channel)
         }
-        val resolved = provider.resolvePlayUrl(channel.id, channel.streamUrl)
+        val resolved = channel.streamUrl
         setLive(channel, resolved)
         return resolved
     }

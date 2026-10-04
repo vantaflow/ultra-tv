@@ -40,7 +40,6 @@ class CatalogRepository @Inject constructor(
     private val epgDao: EpgDao,
     private val vodInfoDao: VodInfoDao,
     private val xtream: XtreamClient,
-    private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
     fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
@@ -69,7 +68,7 @@ class CatalogRepository @Inject constructor(
     /**
      * Lazily syncs episodes when the user opens a series detail. Dispatches
      * to the right client based on provider kind — Xtream uses `get_series_info`
-     * (per-season episode map), Stalker uses `get_ordered_list` (flat list).
+     * (per-season episode map).
      * M3U has no concept of series and is silently skipped.
      */
     suspend fun loadEpisodes(seriesId: Long) {
@@ -80,10 +79,6 @@ class CatalogRepository @Inject constructor(
                 val d = xtream.fetchSeriesDetail(p, s.remoteId, s.id) ?: return
                 seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
                 d.episodes
-            }
-            "STALKER" -> {
-                val session = runCatching { stalker.handshake(p) }.getOrNull() ?: return
-                stalker.fetchSeriesEpisodes(p, session, s.remoteId, s.id)
             }
             else -> return
         }

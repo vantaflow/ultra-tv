@@ -127,7 +127,7 @@ Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp
 }
 
 private fun kindLabel(W: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) {
-    "XTREAM" -> W.kindXtream; "M3U" -> W.kindM3u; "M3U_LOCAL" -> W.kindM3uFile; "STALKER" -> W.kindStalker; else -> ""
+    "XTREAM" -> W.kindXtream; "M3U" -> W.kindM3u; "M3U_LOCAL" -> W.kindM3uFile; else -> ""
 }
 
 private fun countText(D: DesignStrings, part: SyncPart, n: String) = when (part) {

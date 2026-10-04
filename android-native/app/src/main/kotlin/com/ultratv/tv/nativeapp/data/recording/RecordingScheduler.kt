@@ -117,8 +117,7 @@ class RecordingScheduler @Inject constructor(
             notify(id, r.title, msg)
             Toaster.show(msg)
         }
-        val url = provider.resolveStalkerUrl(r.providerId, r.sourceUrl)
-        dao.upsert(r.copy(sourceUrl = url, status = "queued"))
+        dao.upsert(r.copy(status = "queued"))
         repo.enqueueWork(id, remaining)
     }
 

@@ -71,7 +71,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, WORKER, SOURCE_ACTIONS, WORKER_URL }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -127,7 +127,10 @@ private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 /** « scheme://hôte » seulement : jamais le chemin (qui peut contenir des identifiants). */
 internal fun hostOnly(baseUrl: String): String = runCatching { java.net.URI(baseUrl).let { "${it.scheme}://${it.host}" } }.getOrDefault("")
 
-private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; "STALKER" -> S.kindStalker; else -> kind }
+/** Types de source pris en charge ; un type hérité (ex. Stalker, retiré en 1.1.1) reste affichable et supprimable. */
+internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL")
+
+private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; else -> null }
 
 // ───────────────────────── Sources ─────────────────────────
 
@@ -176,12 +179,12 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(22.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->
                 Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(60.design).clip(RoundedCornerShape(16.design)).background(if (p.active) Ux.Accent else Ux.Surface2), contentAlignment = Alignment.Center) {
-                        DIcon(when (p.kind) { "XTREAM" -> Icons.Monitor; "STALKER" -> Icons.Globe; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, Ux.White)
+                        DIcon(when (p.kind) { "XTREAM" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, Ux.White)
                     }
                     Spacer(Modifier.width(24.design))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                         Text(p.name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val meta = listOfNotNull(kindName(S.wiz, p.kind), if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
+                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: D.unsupportedSource, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
                         Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
@@ -211,14 +214,13 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.STALKER to S.wiz.cardStalker), null,
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
-        OpenDialog.STALKER -> StalkerDialog({ dialog = OpenDialog.NONE }) { n, u, m -> vm.addStalkerAndSync(n, u, m); dialog = OpenDialog.NONE }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
-            ChoiceDialog(p.name, listOf("default" to D.setDefault, "sync" to D.syncNow, "delete" to D.deleteSource), null,
+            ChoiceDialog(p.name, if (p.kind in SUPPORTED_KINDS) listOf("default" to D.setDefault, "sync" to D.syncNow, "delete" to D.deleteSource) else listOf("delete" to D.deleteSource), if (p.kind in SUPPORTED_KINDS) null else D.unsupportedSourceHint,
                 onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id) }; dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         }
         else -> Unit

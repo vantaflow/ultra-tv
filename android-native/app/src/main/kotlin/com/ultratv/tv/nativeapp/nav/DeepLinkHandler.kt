@@ -38,7 +38,7 @@ class DeepLinkHandler @Inject constructor(
 
     private suspend fun playMovie(providerId: Long, remoteId: String): Boolean {
         val m = movieDao.byRemoteId(providerId, remoteId) ?: return false
-        val url = provider.resolveStalkerUrl(m.providerId, m.streamUrl)
+        val url = m.streamUrl
         playback.set(PlaybackContext.Item(m.providerId, "MOVIE", m.remoteId, m.name, m.poster, url))
         StartupNav.pending.value = StartupNav.Pending(url, m.name)
         return true
@@ -47,7 +47,7 @@ class DeepLinkHandler @Inject constructor(
     private suspend fun playEpisode(providerId: Long, remoteId: String): Boolean {
         val e = episodeDao.byRemoteId(providerId, remoteId) ?: return false
         val series = seriesDao.byId(e.seriesId)
-        val url = provider.resolveStalkerUrl(providerId, e.streamUrl)
+        val url = e.streamUrl
         playback.set(PlaybackContext.Item(providerId, "EPISODE", e.remoteId, e.title, e.image ?: series?.poster, url, parentRemoteId = series?.remoteId))
         StartupNav.pending.value = StartupNav.Pending(url, e.title)
         return true
@@ -55,7 +55,7 @@ class DeepLinkHandler @Inject constructor(
 
     suspend fun playLive(providerId: Long, remoteId: String): Boolean {
         val channel = channelDao.byRemoteId(providerId, remoteId) ?: return false
-        val url = provider.resolvePlayUrl(channel.id, channel.streamUrl)
+        val url = channel.streamUrl
         zapQueue.set(listOf(channel), channel)
         playback.set(PlaybackContext.Item(channel.providerId, "LIVE", channel.remoteId, channel.title, channel.logo, url))
         StartupNav.pending.value = StartupNav.Pending(url, channel.title)

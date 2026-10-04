@@ -46,28 +46,19 @@ class SeriesDetailViewModel @Inject constructor(
             .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), emptyList())
     }
 
-    /** Same logic as MovieDetailViewModel.play: resolve stalker:// first so the
-     *  player gets a directly-playable URL. */
+    /** Même logique que MovieDetailViewModel.play. */
     fun playEpisode(
         seriesName: String, seriesRemoteId: String, providerId: Long, episode: EpisodeEntity,
         onReady: (url: String, title: String) -> Unit,
     ) {
         val tag = "S${"%02d".format(episode.season)}E${"%02d".format(episode.episode)}"
         val title = "$seriesName · $tag · ${episode.title}"
-        fun register(url: String) {
-            playback.set(PlaybackContext.Item(
-                providerId = providerId, kind = "EPISODE", remoteId = episode.remoteId,
-                title = title, poster = null, streamUrl = url,
-                parentRemoteId = seriesRemoteId,
-            ))
-        }
-        if (!episode.streamUrl.startsWith("stalker://")) {
-            register(episode.streamUrl); onReady(episode.streamUrl, title); return
-        }
-        viewModelScope.launch {
-            val resolved = provider.resolveStalkerUrl(providerId, episode.streamUrl)
-            register(resolved); onReady(resolved, title)
-        }
+        playback.set(PlaybackContext.Item(
+            providerId = providerId, kind = "EPISODE", remoteId = episode.remoteId,
+            title = title, poster = null, streamUrl = episode.streamUrl,
+            parentRemoteId = seriesRemoteId,
+        ))
+        onReady(episode.streamUrl, title)
     }
 
     private val _series = MutableStateFlow<SeriesEntity?>(null)

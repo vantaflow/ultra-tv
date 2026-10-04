@@ -23,7 +23,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
-    <!-- IPTV cleartext tradeoff: many Xtream/Stalker portals are HTTP-only
+    <!-- IPTV cleartext tradeoff: many Xtream hosts are HTTP-only
          (plain http:// portal + stream URLs), so cleartext traffic must stay
          permitted. @xml/network_security_config is the single source of truth
          for that policy. The android:usesCleartextTraffic flag was removed as

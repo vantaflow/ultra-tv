@@ -57,9 +57,15 @@ class SyncPolicyTest {
         assertEquals(emptyList<SyncPart>(), SyncPolicy.dueParts(p, now, ttl, liveCount = 0, force = true))
     }
 
-    @Test fun dueParts_m3uEtStalker_seulLeDirect() {
+    @Test fun dueParts_m3u_seulLeDirect() {
         assertEquals(listOf(SyncPart.LIVE), SyncPolicy.dueParts(xtream().copy(kind = "M3U"), now, ttl, 0, false))
-        assertEquals(listOf(SyncPart.LIVE), SyncPolicy.dueParts(xtream().copy(kind = "STALKER"), now, ttl, 0, false))
+    }
+
+    /** Source Stalker enregistrée avant la 1.1.1 : plus synchronisée, ne plante pas, et la première synchro n'attend rien. */
+    @Test fun dueParts_sourceStalkerHeritee_aucuneSynchro() {
+        val legacy = xtream().copy(kind = "STALKER")
+        assertEquals(emptyList<SyncPart>(), SyncPolicy.dueParts(legacy, now, ttl, 0, true))
+        assertEquals(emptyList<SyncPart>(), com.ultratv.tv.nativeapp.ui.sync.requiredParts("STALKER"))
     }
 
     @Test fun ttl_intervalleUtilisateur_s_applique_au_direct() {

@@ -10,7 +10,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Chiffrement AES-256-GCM des secrets stockés (mots de passe Xtream/Stalker).
+ * Chiffrement AES-256-GCM des secrets stockés (mots de passe Xtream).
  * La clé vit dans l'Android Keystore : elle n'est ni exportable ni incluse dans
  * une sauvegarde, donc un dump de la base ne révèle plus les mots de passe.
  *

@@ -66,7 +66,6 @@ import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 import com.ultratv.tv.nativeapp.ui.settings.M3uDialog
 import com.ultratv.tv.nativeapp.ui.settings.SettingsViewModel
-import com.ultratv.tv.nativeapp.ui.settings.StalkerDialog
 import com.ultratv.tv.nativeapp.ui.settings.XtreamDialog
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -134,7 +133,7 @@ class OnboardingViewModel @Inject constructor(
 }
 
 private enum class Step { Welcome, Source, Languages, Ready }
-private enum class Form { None, Xtream, M3uUrl, Stalker }
+private enum class Form { None, Xtream, M3uUrl }
 
 @Composable
 fun OnboardingWizard(
@@ -302,7 +301,6 @@ private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Uni
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
                 Bullet(Icons.Monitor, W.bulletXtream)
                 Bullet(Icons.List, W.bulletM3u)
-                Bullet(Icons.Globe, W.bulletStalker)
             }
             Row(Modifier.padding(top = 8.design), verticalAlignment = Alignment.CenterVertically) {
                 PrimaryCta(W.start, Icons.Arrow, fillIcon = false, onClick = onStart)
@@ -409,7 +407,6 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             SourceCard(Modifier.weight(1f), Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first = true) { form = Form.Xtream }
             SourceCard(Modifier.weight(1f), Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
             SourceCard(Modifier.weight(1f), Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
-            SourceCard(Modifier.weight(1f), Icons.Globe, W.cardStalker, W.cardStalkerDesc) { form = Form.Stalker }
         }
         Spacer(Modifier.height(40.design))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -425,10 +422,6 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         Form.M3uUrl -> M3uDialog(
             onDismiss = { form = Form.None },
             onSubmit = { n, u -> settingsVm.addM3uAndSync(n, u); form = Form.None; onAdded() },
-        )
-        Form.Stalker -> StalkerDialog(
-            onDismiss = { form = Form.None },
-            onSubmit = { n, u, mac -> settingsVm.addStalkerAndSync(n, u, mac); form = Form.None; onAdded() },
         )
         Form.None -> Unit
     }
@@ -502,7 +495,7 @@ private fun SummaryCard(W: WizardStrings, s: SourceSummary?, percent: Int?, load
         Text(W.yourSource, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.2.sp, color = Ux.Text3)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Surface2), contentAlignment = Alignment.Center) {
-                DIcon(when (s?.kind) { "XTREAM" -> Icons.Monitor; "STALKER" -> Icons.Globe; "M3U_LOCAL" -> Icons.File; else -> Icons.Link }, 34.design, Ux.Text)
+                DIcon(when (s?.kind) { "XTREAM" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.Link }, 34.design, Ux.Text)
             }
             Spacer(Modifier.width(20.design))
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
@@ -533,7 +526,6 @@ private fun kindLabel(W: WizardStrings, kind: String?) = when (kind) {
     "XTREAM" -> W.kindXtream
     "M3U" -> W.kindM3u
     "M3U_LOCAL" -> W.kindM3uFile
-    "STALKER" -> W.kindStalker
     else -> ""
 }
 

@@ -305,28 +305,3 @@ fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Un
             error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
     }
 }
-
-@Composable
-fun StalkerDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, mac: String) -> Unit) {
-    var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
-    var mac by remember { mutableStateOf("") }
-    val S = LocalStrings.current
-    val D = LocalDs.current
-    val urlOk = url.isBlank() || isValidHttpUrl(url)
-    AddProviderDialog(
-        title = "Stalker / MAG",
-        subtitle = D.formSubStalker,
-        icon = Icons.Globe,
-        onDismiss = onDismiss,
-        onSubmit = { onSubmit(name, url.trim(), mac) },
-        canSubmit = isValidHttpUrl(url) && mac.length in 12..17,
-    ) {
-        FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
-        FormField(S.fieldPortalUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
-            placeholder = "http://hote:8080", autoFocus = true, required = true,
-            error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
-        FormField(S.fieldDeviceMac, mac, { mac = it.uppercase() }, last = true, required = true,
-            placeholder = "00:1A:79:XX:XX:XX", testTag = "field-mac")
-    }
-}

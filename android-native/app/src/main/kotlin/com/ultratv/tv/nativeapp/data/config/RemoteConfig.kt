@@ -20,9 +20,7 @@ import javax.inject.Singleton
  *     "providers": [
  *       { "kind": "XTREAM",  "name": "My Xtream",  "url": "http://host:80",
  *         "username": "user", "password": "pass" },
- *       { "kind": "M3U",     "name": "My M3U",     "url": "https://.../list.m3u" },
- *       { "kind": "STALKER", "name": "MAG portal", "url": "http://host:8080",
- *         "mac": "00:1A:79:XX:XX:XX" }
+ *       { "kind": "M3U",     "name": "My M3U",     "url": "https://.../list.m3u" }
  *     ]
  *   }
  *
@@ -90,7 +88,6 @@ class RemoteConfigImporter @Inject constructor(
                     val id = when (p.kind.uppercase()) {
                         "XTREAM" -> provider.addXtream(p.name, p.url, p.username, p.password)
                         "M3U" -> provider.addM3u(p.name, p.url)
-                        "STALKER" -> provider.addStalker(p.name, p.url, p.mac)
                         else -> { errors += "$label: unknown kind '${p.kind}'"; return@forEachIndexed }
                     }
                     onProgress("[$label] syncing…")

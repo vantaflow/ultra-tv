@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
     <!--
-      IPTV providers (Xtream Codes, Stalker portals, naked M3U hosts) commonly
+      IPTV providers (Xtream Codes, naked M3U hosts) commonly
       ship HTTP-only endpoints, so we keep cleartext allowed by default.
 
       The GitHub Releases auto-update flow and the Cloudflare Worker telemetry
