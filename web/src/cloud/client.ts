@@ -5,6 +5,7 @@
 //   POST /api/device/rotate Bearer                  -> {token, deviceId}
 //   POST /api/device/providers Bearer               -> ajoute / met à jour un fournisseur du compte
 //   DELETE /api/device/providers/:id Bearer
+//   PATCH /api/device {name} Bearer                  -> renomme l'appareil courant
 // HTTPS obligatoire, aucune redirection suivie (un 30x vers http:// ferait fuiter le jeton).
 // Dans Electron, les requêtes sont faites par le processus principal (`window.ultratv.cloudRequest`).
 
@@ -98,7 +99,7 @@ export interface CloudProvider {
   /** Affectations (quand le Worker les expose) : « all » ou identifiants d'appareils. */
   sharedWith?: string[] | "all";
 }
-export interface CloudDevice { id: string; name: string; current?: boolean }
+export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
 export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string }
 
 export type ConfigResult = { unchanged: true } | { unchanged: false; config: CloudConfig; etag: string };
@@ -153,6 +154,15 @@ export async function putProvider(base: string, token: string, input: ProviderIn
   const o = parse<{ provider?: CloudProvider }>(r);
   if (!o.provider?.id) throw new CloudError("bad-response", r.status);
   return o.provider;
+}
+
+/** Renomme l'appareil courant dans le compte (le tableau de bord et les autres appareils le voient). */
+export async function renameDevice(base: string, token: string, name: string): Promise<void> {
+  const r = await http({ url: `${base}/api/device`, method: "PATCH", headers: auth(token, { "content-type": "application/json" }), body: json({ name }) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) throw new NotFoundError();
+  if (r.status < 200 || r.status >= 300) throw new CloudError("rename", r.status);
 }
 
 export async function deleteProvider(base: string, token: string, id: string): Promise<void> {

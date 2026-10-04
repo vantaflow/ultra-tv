@@ -18,14 +18,16 @@ export interface FakeWorker {
     rateLimitNextPoll: boolean;
     shareWithSupported: boolean;
     lastPut?: unknown;
-    devices: { id: string; name: string }[];
+    devices: { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }[];
+    lastRename?: string;
+    hasRename: boolean;
   };
 }
 
 export async function startFakeWorker(): Promise<FakeWorker> {
   const w: FakeWorker = {
     base: "", providers: [], version: 1, token: "tok-1", close: () => undefined, confirm: () => undefined,
-    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, devices: [{ id: "d1", name: "Ce Mac" }, { id: "d2", name: "Box salon" }] },
+    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
   };
   let confirmed = false;
   w.confirm = () => { confirmed = true; };
@@ -52,6 +54,16 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         const etag = `"v${w.version}"`;
         if (req.headers["if-none-match"] === etag) return send(304, undefined, { etag });
         return send(200, { version: w.version, devices: w.state.devices, providers: w.providers }, { etag });
+      }
+      if (url.pathname === "/api/device" && req.method === "PATCH") {
+        if (!bearer) return send(401);
+        if (!w.state.hasRename) return send(404);
+        if (typeof body.name !== "string" || !body.name.trim()) return send(400, { error: "invalid", field: "name" });
+        w.state.lastRename = body.name;
+        const me = w.state.devices.find((d) => d.isCurrent);
+        if (me) me.name = body.name;
+        w.version++;
+        return send(200, { name: body.name });
       }
       if (url.pathname === "/api/device/rotate" && req.method === "POST") return bearer ? send(200, { token: "tok-2", deviceId: "dev-1" }) : send(401);
       if (url.pathname === "/api/device/providers" && req.method === "POST") {

@@ -12,7 +12,7 @@ import { detectSourceLanguages } from "@/sync/client";
 import { OTHER_LANG } from "@/sync/core";
 import {
   DEFAULT_WORKER, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
-  deleteProvider, fetchConfig, normalizeWorkerUrl, putProvider, rotateToken,
+  deleteProvider, fetchConfig, normalizeWorkerUrl, putProvider, renameDevice, rotateToken,
   type CloudDevice, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
@@ -70,10 +70,15 @@ export async function saveWorker(raw: string, allowLoopback = false): Promise<bo
   return true;
 }
 
-export async function saveDeviceName(name: string): Promise<void> {
+export async function saveDeviceName(name: string, remote = true): Promise<void> {
   const n = name.trim().slice(0, 64) || defaultDeviceName();
   await setSetting(K.deviceName, n);
   patch({ deviceName: n });
+  // Renommage dans le compte (PATCH /api/device) : sans effet si le Worker ne l'a pas encore.
+  if (remote && useCloud.getState().paired) {
+    const token = await getToken();
+    if (token) try { await renameDevice(useCloud.getState().worker, token, n); await setSetting(K.etag, ""); } catch { /* local seulement */ }
+  }
 }
 
 export async function storeToken(token: string, deviceId: string): Promise<void> {
@@ -142,7 +147,9 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     const devs = res.config.devices;
     await setSetting(K.devices, devs);
     patch({ devices: devs });
-    if (res.config.deviceName) await saveDeviceName(res.config.deviceName);
+    const me = Array.isArray(devs) ? devs.find((d) => d.isCurrent) : undefined;
+    if (me) { await saveDeviceName(me.name, false); if (me.id) { await setSetting(K.deviceId, me.id); patch({ deviceId: me.id }); } }
+    else if (res.config.deviceName) await saveDeviceName(res.config.deviceName, false);
     return await applyProviders(res.config.providers, !!awaitSync);
   } catch (e) {
     if (e instanceof TokenRejectedError) {

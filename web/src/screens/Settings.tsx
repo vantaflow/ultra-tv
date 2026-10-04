@@ -147,7 +147,7 @@ function ShareModal({ source, onClose }: { source: Source; onClose: () => void }
       </div>
       {!all && list.map((d) => (
         <label key={d.id} className="pref" style={{ cursor: "pointer" }}>
-          <span>{d.name}{d.id === deviceId ? ` (${t("cloud.thisDevice")})` : ""}</span>
+          <span>{d.name}{d.isCurrent || d.id === deviceId ? ` (${t("cloud.thisDevice")})` : ""}</span>
           <input type="checkbox" checked={sel.has(d.id)} onChange={(e) => setSel((c) => { const n = new Set(c); if (e.target.checked) n.add(d.id); else n.delete(d.id); return n; })} />
         </label>
       ))}
@@ -194,7 +194,10 @@ function CloudPane() {
           {msg && <div className="alert" role="status">{msg}</div>}
           <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { n: c.devices })}</div>
           {Array.isArray(c.devices) && c.devices.map((d) => (
-            <div key={d.id} className="pref"><span>{d.name}</span>{d.id === c.deviceId && <span className="cbadge">{t("cloud.thisDevice")}</span>}</div>
+            <div key={d.id} className="pref">
+              <span><span>{d.name}</span>{(d.model || d.lastSeen) && <span className="d" style={{ display: "block" }}>{[d.model, d.lastSeen ? new Date(d.lastSeen).toLocaleString(lang) : null].filter(Boolean).join(" · ")}</span>}</span>
+              {(d.isCurrent || d.id === c.deviceId) && <span className="cbadge">{t("cloud.thisDevice")}</span>}
+            </div>
           ))}
           <div><button className="btn danger" onClick={async () => { if (confirm(t("cloud.unpairConfirm"))) await unpair(); }}>{t("cloud.unpair")}</button></div>
         </>

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  InvalidFieldError, NotFoundError, TokenRejectedError, fetchConfig, groupPairingCode, normalizeWorkerUrl,
+  InvalidFieldError, NotFoundError, renameDevice, TokenRejectedError, fetchConfig, groupPairingCode, normalizeWorkerUrl,
   pollPairing, putProvider, rotateToken, runPairing, setCloudHttp, startPairing, type PairingEvent,
 } from "./client";
 import { startFakeWorker, type FakeWorker } from "./fakeWorker";
@@ -83,6 +83,20 @@ describe("configuration", () => {
   });
   it("rotation du jeton", async () => {
     expect(await rotateToken(w.base, w.token)).toEqual({ token: "tok-2", deviceId: "dev-1" });
+  });
+});
+
+describe("appareils", () => {
+  it("lit la liste des appareils (isCurrent) et renomme l'appareil courant", async () => {
+    const r = await fetchConfig(w.base, w.token);
+    if (r.unchanged) throw new Error("attendu : configuration");
+    const devs = r.config.devices as { name: string; isCurrent?: boolean; model?: string }[];
+    expect(devs.find((d) => d.isCurrent)).toMatchObject({ name: "Ce Mac", model: "MacBook" });
+    await renameDevice(w.base, w.token, "Mon Mac");
+    expect(w.state.lastRename).toBe("Mon Mac");
+    w.state.hasRename = false;
+    await expect(renameDevice(w.base, w.token, "x")).rejects.toBeInstanceOf(NotFoundError);
+    w.state.hasRename = true;
   });
 });
 

@@ -18,7 +18,7 @@ import { usePrefs } from "@/state/prefs";
 import { emptySource, listSources, saveSource } from "@/db/sources";
 import { setCloudHttp } from "./client";
 import { startFakeWorker, type FakeWorker } from "./fakeWorker";
-import { applyProviders, loadCloud, saveWorker, shareSource, storeToken, syncCloud, unpair, useCloud } from "./service";
+import { applyProviders, loadCloud, saveDeviceName, saveWorker, shareSource, storeToken, syncCloud, unpair, useCloud } from "./service";
 
 let w: FakeWorker;
 beforeAll(async () => {
@@ -109,6 +109,19 @@ describe("partage d'une source locale", () => {
     const s = await saveSource({ ...emptySource(), name: "F", type: "m3u", m3uUrl: "file:liste.m3u" });
     const src = (await listSources()).find((x) => x.id === s)!;
     expect(await shareSource(src, "all")).toEqual({ ok: false, reason: "unsupported" });
+  });
+});
+
+describe("nom de l'appareil", () => {
+  it("le renommage est envoyé au compte, et le nom du compte revient à la synchro", async () => {
+    await saveDeviceName("Mac du bureau");
+    expect(w.state.lastRename).toBe("Mac du bureau");
+    expect(useCloud.getState().deviceName).toBe("Mac du bureau");
+    w.state.devices[0]!.name = "Renommé depuis le tableau de bord";
+    w.version++;
+    await syncCloud({ force: true, awaitSync: true });
+    expect(useCloud.getState().deviceName).toBe("Renommé depuis le tableau de bord");
+    expect(useCloud.getState().deviceId).toBe("dev-1");
   });
 });
 
