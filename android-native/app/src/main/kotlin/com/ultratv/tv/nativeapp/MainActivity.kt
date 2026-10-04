@@ -157,6 +157,10 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("debug_theme")?.let { StartupNav.debugTheme.value = it }
         com.ultratv.tv.nativeapp.ui.common.DebugConnectivity.forceOffline = intent.getBooleanExtra("debug_offline", false)
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
+        // Mesures (debug) : moteur (auto|exo|vlc), décodage (auto|hw|sw) et préréglage de tampon.
+        intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch { prefsStore.setPlayerEngine(v) } }
+        intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch { prefsStore.setDecoderMode(v) } }
+        intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch { prefsStore.setBufferPreset(v) } }
     }
 
     /**
