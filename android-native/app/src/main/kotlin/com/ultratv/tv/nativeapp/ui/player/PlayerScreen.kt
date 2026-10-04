@@ -1,888 +1,596 @@
 package com.ultratv.tv.nativeapp.ui.player
 
-import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.border
-import android.media.AudioManager
 import android.net.Uri
-import android.view.ViewGroup
-import android.view.WindowManager
-import android.app.Activity
+import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.focusable
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import androidx.media3.common.util.UnstableApi
+import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
+import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
+import com.ultratv.tv.nativeapp.adaptive.PlaybackResolver
+import com.ultratv.tv.nativeapp.adaptive.ResolvedPlayback
+import com.ultratv.tv.nativeapp.data.db.ChannelDao
+import com.ultratv.tv.nativeapp.data.db.EpgDao
+import com.ultratv.tv.nativeapp.data.db.EpgEntity
+import com.ultratv.tv.nativeapp.data.prefs.UserPrefs
+import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
+import com.ultratv.tv.nativeapp.data.recording.RecordingRepository
 import com.ultratv.tv.nativeapp.data.repo.HistoryRepository
+import com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
+import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
+import com.ultratv.tv.nativeapp.i18n.DesignStrings
+import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.ui.common.EpgClock
+import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
+import com.ultratv.tv.nativeapp.ui.common.Toaster
+import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.ui.design.DIcon
+import com.ultratv.tv.nativeapp.ui.design.FocusSurface
+import com.ultratv.tv.nativeapp.ui.design.LiveBadge
+import com.ultratv.tv.nativeapp.ui.design.LogoBox
+import com.ultratv.tv.nativeapp.ui.design.Manrope
+import com.ultratv.tv.nativeapp.ui.design.PillButton
+import com.ultratv.tv.nativeapp.ui.design.Sora
+import com.ultratv.tv.nativeapp.ui.design.Ux
+import com.ultratv.tv.nativeapp.ui.design.spx
+import com.ultratv.tv.nativeapp.ui.player.engine.AspectMode
+import com.ultratv.tv.nativeapp.ui.player.engine.BufferPreset
+import com.ultratv.tv.nativeapp.ui.player.engine.ChannelPlaybackMemory
+import com.ultratv.tv.nativeapp.ui.player.engine.Combo
+import com.ultratv.tv.nativeapp.ui.player.engine.DecoderMode
+import com.ultratv.tv.nativeapp.ui.player.engine.EngineKind
+import com.ultratv.tv.nativeapp.ui.player.engine.Notice
+import com.ultratv.tv.nativeapp.ui.player.engine.Phase
+import com.ultratv.tv.nativeapp.ui.player.engine.PlayErrorKind
+import com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession
+import com.ultratv.tv.nativeapp.ui.player.engine.PrefsChannelPlaybackMemory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import androidx.tv.material3.Button
-import androidx.tv.material3.Text
 import javax.inject.Inject
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val history: HistoryRepository,
-    private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
-    private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
-    private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
-    private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
-    private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
-    private val channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
+    private val zapQueue: LivePlaybackQueue,
+    private val provider: ProviderRepository,
+    private val epgDao: EpgDao,
+    private val recordings: RecordingRepository,
+    private val prefs: UserPreferencesStore,
+    private val channelDao: ChannelDao,
+    private val adaptive: AdaptiveProfile,
+    val memory: PrefsChannelPlaybackMemory,
+    val network: NetworkMonitor,
 ) : ViewModel() {
 
-    /** Snapshot of the playback knobs the screen reads at construction time. */
-    suspend fun playbackPrefs(): com.ultratv.tv.nativeapp.data.prefs.UserPrefs =
-        prefs.flow.first()
+    val prefsFlow: Flow<UserPrefs> = prefs.flow
+    suspend fun playbackPrefs(): UserPrefs = prefs.flow.first()
 
-    /**
-     * Resolves a catchup URL for [prog] on the channel currently set in the
-     * PlaybackContext and starts playing it. Used by EPG rows in the past on
-     * channels that report catchup support.
-     */
-    fun playCatchup(prog: com.ultratv.tv.nativeapp.data.db.EpgEntity, onReady: (url: String, title: String) -> Unit) {
-        viewModelScope.launch {
-            val cur = current.value ?: return@launch
-            val ch = channelDao.byRemoteId(cur.providerId, cur.remoteId) ?: return@launch
-            val url = com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(ch, prog) ?: return@launch
-            onReady(url, "${ch.name} — ${prog.title}")
-        }
-    }
+    /** Réglages EFFECTIFS : les choix manuels de l'utilisateur l'emportent sur l'automatique. */
+    fun resolved(p: UserPrefs): ResolvedPlayback = PlaybackResolver.resolve(adaptive.state.value.auto, p, adaptive.heapClassMb)
+    val adaptiveState get() = adaptive.state
 
     val current: StateFlow<PlaybackContext.Item?> = playback.current
 
-    /** Queues a Live channel recording for `maxMinutes`. HLS m3u8 → segment
-     *  recorder; non-HLS live → single HTTP body grab (won't capture more than
-     *  what the server already buffered). */
+    /** Programme en cours de la chaîne regardée (guide), rafraîchi toutes les 20 s. */
+    val nowProgramme: StateFlow<EpgEntity?> = playback.current.flatMapLatest { item ->
+        if (item == null || item.kind != "LIVE") flowOf(null)
+        else flow<EpgEntity?> {
+            while (true) {
+                val ch = channelDao.byRemoteId(item.providerId, item.remoteId)
+                val now = System.currentTimeMillis()
+                emit(ch?.let { epgDao.rangeForChannels(listOf(it.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now } })
+                delay(20_000)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     fun recordLive(maxMinutes: Int = 120, toastTemplate: String = "Recording queued (max %1\$d min)") {
         val c = playback.current.value ?: return
         if (c.kind != "LIVE") return
         viewModelScope.launch {
             recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, maxMinutes)
-            com.ultratv.tv.nativeapp.ui.common.Toaster.ok(toastTemplate.format(maxMinutes))
+            Toaster.ok(toastTemplate.format(maxMinutes))
         }
     }
 
-    /** Resolves the next/previous channel in the active zap queue (Live only)
-     *  and updates [PlaybackContext] so the player swaps stream URL. Returns
-     *  the new URL or null when there's nothing queued. */
+    private fun setLive(target: com.ultratv.tv.nativeapp.data.db.ChannelEntity, url: String) {
+        playback.set(PlaybackContext.Item(
+            providerId = target.providerId, kind = "LIVE", remoteId = target.remoteId, title = target.title, poster = target.logo, streamUrl = url,
+            badge = TitleCleaner.prefixBadge(target.name, TitleCleaner.clean(target.name, live = true).title),
+        ))
+    }
+
+    /** Chaîne suivante / précédente de la file de zapping (live) ; renvoie la nouvelle URL ou null. */
     suspend fun zap(forward: Boolean): String? {
         val target = (if (forward) zapQueue.next() else zapQueue.previous()) ?: return null
         val resolved = provider.resolvePlayUrl(target.id, target.streamUrl)
-        playback.set(PlaybackContext.Item(
-            providerId = target.providerId, kind = "LIVE", remoteId = target.remoteId,
-            title = target.name, poster = target.logo, streamUrl = resolved,
-        ))
+        setLive(target, resolved)
         return resolved
     }
 
-    /** Channel list + now/next for each channel in the active zap queue.
-     *  Used by the OK-triggered drawer overlay. */
     data class DrawerEntry(
         val channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity,
-        val now: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
-        val next: com.ultratv.tv.nativeapp.data.db.EpgEntity?,
-        val isCurrent: Boolean,
+        val now: EpgEntity?, val next: EpgEntity?, val isCurrent: Boolean,
     )
 
     val queue: StateFlow<List<DrawerEntry>> = zapQueue.state.map { s ->
         if (s == null) emptyList()
         else {
-            val ids = s.channels.map { it.id }
             val now = System.currentTimeMillis()
-            // SQLite IN-list cap: 999 host params. Chunk to be safe with big playlists.
-            val rows = ids.chunked(500).flatMap { chunk ->
-                epgDao.rangeForChannels(chunk, now - 30 * 60_000, now + 4 * 60 * 60_000)
-            }
-            val byCh = rows.groupBy { it.channelId }
+            val rows = s.channels.map { it.id }.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 4 * 60 * 60_000) }.groupBy { it.channelId }
             s.channels.mapIndexed { idx, c ->
-                val list = byCh[c.id].orEmpty()
-                DrawerEntry(
-                    channel = c,
-                    now = list.firstOrNull { it.startMs <= now && it.endMs > now },
-                    next = list.firstOrNull { it.startMs > now },
-                    isCurrent = idx == s.index,
-                )
+                val list = rows[c.id].orEmpty()
+                DrawerEntry(c, list.firstOrNull { it.startMs <= now && it.endMs > now }, list.firstOrNull { it.startMs > now }, idx == s.index)
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Zap directly to a specific channel (drawer pick). Same flow as zap(). */
     suspend fun zapTo(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
         val s = zapQueue.state.value ?: return null
-        val idx = s.channels.indexOfFirst { it.id == channel.id }
-        if (idx < 0) return null
-        // Reuse setter to update index.
+        if (s.channels.none { it.id == channel.id }) return null
         zapQueue.set(s.channels, channel)
         val resolved = provider.resolvePlayUrl(channel.id, channel.streamUrl)
-        playback.set(PlaybackContext.Item(
-            providerId = channel.providerId, kind = "LIVE", remoteId = channel.remoteId,
-            title = channel.name, poster = channel.logo, streamUrl = resolved,
-        ))
+        setLive(channel, resolved)
         return resolved
     }
 
-    /**
-     * Reads the last persisted position for the current item and returns the
-     * offset (ms) the player should seek to once the source is ready. Live
-     * channels never resume — they snap to the live edge instead, so this
-     * returns 0 for them. Suspends so the caller can await the DB read and
-     * seek with the actual value (the old fire-and-forget version raced the
-     * seekTo() and never moved the playhead).
-     */
     suspend fun prepareResume(): Long {
         val c = playback.current.value ?: return 0L
         if (c.kind == "LIVE") return 0L
         return history.resumePositionMs(c.providerId, c.kind, c.remoteId)
     }
 
-    /** Persists the current playback position. Called periodically + on dispose. */
     fun recordProgress(positionMs: Long, durationMs: Long) {
         val c = playback.current.value ?: return
-        if (positionMs < 5_000 && c.kind != "LIVE") return    // ignore noise from the first 5s
+        if (positionMs < 5_000 && c.kind != "LIVE") return
         viewModelScope.launch {
             history.record(
-                providerId = c.providerId,
-                kind = c.kind,
-                remoteId = c.remoteId,
-                title = c.title,
-                poster = c.poster,
-                streamUrl = c.streamUrl,
-                positionMs = if (c.kind == "LIVE") 0 else positionMs,
-                durationMs = if (c.kind == "LIVE") 0 else durationMs,
-                parentRemoteId = c.parentRemoteId,
+                providerId = c.providerId, kind = c.kind, remoteId = c.remoteId, title = c.title, poster = c.poster, streamUrl = c.streamUrl,
+                positionMs = if (c.kind == "LIVE") 0 else positionMs, durationMs = if (c.kind == "LIVE") 0 else durationMs, parentRemoteId = c.parentRemoteId,
             )
         }
     }
+
+    fun setEngine(v: String) { viewModelScope.launch { prefs.setPlayerEngine(v) } }
+    fun setDecoder(v: String) { viewModelScope.launch { prefs.setDecoderMode(v) } }
 }
 
-@OptIn(androidx.media3.common.util.UnstableApi::class)
+private enum class Panel { None, Options, Tracks }
+
+/**
+ * Lecteur (maquette Lecteur.dc.html). La surcouche est la même quel que soit le moteur (Media3 / LibVLC) :
+ * en-tête (badge EN DIRECT, chaîne, programme, heure), pied (progression, pause 96 px focalisée, pilules).
+ * Elle disparaît après 5 s d'inactivité. Aucune URL n'est jamais affichée, ni dans l'interface ni dans les messages d'erreur.
+ */
+@OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    BackHandler { onBack() }
-    val playbackItem by vm.current.collectAsState()
-    val isLive = playbackItem?.kind == "LIVE"
+    val D = LocalDs.current
+    val S = LocalStrings.current
+    val item by vm.current.collectAsState()
+    val isLive = item?.kind == "LIVE"
+    val prefs by vm.prefsFlow.collectAsState(initial = null)
+    val p = prefs ?: run { Box(Modifier.fillMaxSize().background(Color.Black)); return }
+
     var currentUrl by remember { mutableStateOf(url) }
-    var currentTitle by remember { mutableStateOf(title) }
-    var tracksOpen by remember { mutableStateOf(false) }
+    var panel by remember { mutableStateOf(Panel.None) }
     var drawerOpen by remember { mutableStateOf(false) }
-    var displayMenu by remember { mutableStateOf(false) }
-    var aspectMode by remember { mutableStateOf(AspectMode.Fit) }
-    var playbackSpeed by remember { mutableStateOf(1.0f) }
-    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-
-    // Load prefs off the main thread. runBlocking here blocked the main thread
-    // on a DataStore read during composition (ANR risk). produceState starts
-    // null and emits the real values once the first read completes; we show a
-    // black placeholder until then so the player is built exactly once with the
-    // resolved prefs (keeping it stable for the screen's lifetime — changing
-    // buffer / frame-rate / decoder still only takes effect on next launch).
-    val loadedPrefs by androidx.compose.runtime.produceState<com.ultratv.tv.nativeapp.data.prefs.UserPrefs?>(
-        initialValue = null,
-    ) {
-        value = vm.playbackPrefs()
-    }
-    val playbackPrefs = loadedPrefs ?: run {
-        Box(Modifier.fillMaxSize().background(Color.Black))
-        return
-    }
-
-    val player = remember {
-        // bufferSeconds = how much we want to *hold* in memory; the "start
-        // playback" threshold should always be very small so live TV starts
-        // immediately (the user's complaint: "rien ne se lit" — the player
-        // was waiting on 5 s of buffer before going READY).
-        val lowRam = com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(context)
-        // Entrée de gamme (1-2 Go) : tampon plafonné à 15 s / 16 Mo pour ne pas
-        // pousser le GC ni se faire tuer pendant la lecture.
-        val bufMs = (playbackPrefs.bufferSeconds * 1000).coerceAtLeast(5_000)
-            .let { if (lowRam) it.coerceAtMost(15_000) else it }
-        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                /* minBufferMs                       = */ 5_000,
-                /* maxBufferMs                       = */ bufMs,
-                /* bufferForPlaybackMs               = */ 500,
-                /* bufferForPlaybackAfterRebufferMs  = */ 1_500,
-            )
-            .setPrioritizeTimeOverSizeThresholds(!lowRam)
-            .apply { if (lowRam) setTargetBufferBytes(16 * 1024 * 1024) }
-            .build()
-        // Pluggable DataSource: HTTP/HTTPS go through the default OkHttp
-        // pipeline, rtmp:// + rtmps:// URLs go through RtmpDataSource. The
-        // earlier v1.0.25 attempt only intercepted open() and let the rest
-        // of the lifecycle (read / close / getUri) dangle on a stale inner
-        // — that crashed HTTP playback. The RoutingDataSource below owns
-        // the backing instance for the whole open-read-close cycle.
-        val httpFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
-        val defaultFactory = androidx.media3.datasource.DefaultDataSource.Factory(context, httpFactory)
-        val rtmpFactory = androidx.media3.datasource.rtmp.RtmpDataSource.Factory()
-        val routingFactory = androidx.media3.datasource.DataSource.Factory {
-            object : androidx.media3.datasource.DataSource {
-                private var inner: androidx.media3.datasource.DataSource? = null
-                private val listeners = mutableListOf<androidx.media3.datasource.TransferListener>()
-                override fun open(spec: androidx.media3.datasource.DataSpec): Long {
-                    val scheme = spec.uri.scheme?.lowercase()
-                    val backing = if (scheme == "rtmp" || scheme == "rtmps")
-                        rtmpFactory.createDataSource() else defaultFactory.createDataSource()
-                    listeners.forEach { backing.addTransferListener(it) }
-                    inner = backing
-                    return backing.open(spec)
-                }
-                override fun read(buffer: ByteArray, offset: Int, length: Int): Int =
-                    inner?.read(buffer, offset, length) ?: -1
-                override fun getUri(): android.net.Uri? = inner?.uri
-                override fun close() {
-                    runCatching { inner?.close() }
-                    inner = null
-                }
-                override fun addTransferListener(transferListener: androidx.media3.datasource.TransferListener) {
-                    listeners += transferListener
-                    inner?.addTransferListener(transferListener)
-                }
-                override fun getResponseHeaders(): Map<String, List<String>> =
-                    inner?.responseHeaders ?: emptyMap()
-            }
-        }
-        val mediaSourceFactory = androidx.media3.exoplayer.source.DefaultMediaSourceFactory(context)
-            .setDataSourceFactory(routingFactory)
-        val renderers = androidx.media3.exoplayer.DefaultRenderersFactory(context).apply {
-            // Hardware renderers first by default; flipping the pref pushes the
-            // software decoder ahead so finicky streams (HEVC main10 on cheap
-            // boxes, malformed HLS variant tags) fall back gracefully.
-            // Décodage matériel d'abord (MediaCodec) ; repli sur un autre décodeur si le
-            // premier échoue à l'initialisation plutôt qu'une erreur de lecture.
-            setEnableDecoderFallback(true)
-            setExtensionRendererMode(
-                if (playbackPrefs.preferSoftwareDecoder)
-                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER
-                else
-                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON
-            )
-        }
-        ExoPlayer.Builder(context, renderers)
-            .setLoadControl(loadControl)
-            .setMediaSourceFactory(mediaSourceFactory)
-            .build().apply {
-            playWhenReady = true
-            // Surface playback failures to the dashboard so we can see WHY a
-            // stream silently never starts (codec, 403, DNS, etc).
-            addListener(object : androidx.media3.common.Player.Listener {
-                override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                    com.ultratv.tv.nativeapp.RemoteLog.error(
-                        "player",
-                        "code=${error.errorCodeName} ${error.message ?: ""}",
-                    )
-                }
-                override fun onVideoSizeChanged(videoSize: androidx.media3.common.VideoSize) {
-                    if (!playbackPrefs.autoFrameRate) return
-                    val act = (context as? android.app.Activity) ?: return
-                    val fmt = currentTracks.groups
-                        .firstOrNull { it.type == androidx.media3.common.C.TRACK_TYPE_VIDEO }
-                        ?.let { g -> (0 until g.length).firstOrNull { g.isTrackSelected(it) }?.let { g.getTrackFormat(it) } }
-                    val fps = fmt?.frameRate ?: return
-                    if (fps <= 0f) return
-                    // Pick the display mode whose refresh is the closest integer
-                    // multiple of fps (so 24 fps → 24/48/72 Hz, 50 fps → 50/100 Hz).
-                    val display = act.windowManager.defaultDisplay ?: return
-                    val target = display.supportedModes.minByOrNull { m ->
-                        val multiple = (m.refreshRate / fps).coerceAtLeast(1f)
-                        kotlin.math.abs(m.refreshRate - fps * kotlin.math.round(multiple))
-                    } ?: return
-                    val lp = act.window.attributes
-                    if (lp.preferredDisplayModeId != target.modeId) {
-                        lp.preferredDisplayModeId = target.modeId
-                        act.window.attributes = lp
-                        com.ultratv.tv.nativeapp.RemoteLog.debug("player", "switched display to ${target.refreshRate}Hz for ${fps}fps")
-                    }
-                }
-
-                override fun onPlaybackStateChanged(state: Int) {
-                    val name = when (state) {
-                        androidx.media3.common.Player.STATE_IDLE -> "idle"
-                        androidx.media3.common.Player.STATE_BUFFERING -> "buffering"
-                        androidx.media3.common.Player.STATE_READY -> "ready"
-                        androidx.media3.common.Player.STATE_ENDED -> "ended"
-                        else -> "?"
-                    }
-                    com.ultratv.tv.nativeapp.RemoteLog.debug("player", "state=$name")
-                }
-            })
-        }
-    }
-
-    // Stream-stats overlay: tracks codec/resolution/bitrate while playing.
+    var overlayVisible by remember { mutableStateOf(true) }
+    var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    var aspect by remember { mutableStateOf(AspectMode.FIT) }
+    var speed by remember { mutableStateOf(1f) }
     var statsOpen by remember { mutableStateOf(false) }
-    var stats by remember { mutableStateOf(StreamStats()) }
-    LaunchedEffect(statsOpen) {
-        if (!statsOpen) return@LaunchedEffect
-        while (true) {
-            stats = StreamStats.read(player)
-            delay(1_000)
-        }
-    }
+    var sleepDeadline by remember { mutableLongStateOf(0L) }
+    val latestPrefs by androidx.compose.runtime.rememberUpdatedState(p)
 
-    // Sleep-timer: when > 0, stops playback at the given timestamp. The
-    // LaunchedEffect below polls every 5s and pauses + closes the screen
-    // when the deadline is reached.
-    var sleepDeadlineMs by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(sleepDeadlineMs) {
-        if (sleepDeadlineMs <= 0L) return@LaunchedEffect
-        while (System.currentTimeMillis() < sleepDeadlineMs) delay(5_000)
-        player.pause()
-        com.ultratv.tv.nativeapp.ui.common.Toaster.show(S.sleepReached)
-        onBack()
+    val container = remember { FrameLayout(context).apply { setBackgroundColor(android.graphics.Color.BLACK) } }
+    val session = remember {
+        PlaybackSession(
+            ctx = context, scope = scope, container = container,
+            settings = { vm.resolved(latestPrefs) }, memory = vm.memory, network = vm.network,
+            isLive = isLive, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
+        )
+    }
+    val state by session.state.collectAsState()
+    DisposableEffect(Unit) {
+        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release() }
+    }
+    LaunchedEffect(Unit) {
+        session.notices.collect { n ->
+            Toaster.show(when (n) { Notice.USING_VLC -> D.noticeVlc; Notice.USING_EXO -> D.noticeExo; Notice.USING_SOFTWARE -> D.noticeSoftware; Notice.RETRYING -> D.noticeRetry })
+        }
     }
     LaunchedEffect(currentUrl) {
-        if (currentUrl.isNotBlank()) {
-            player.setMediaItem(MediaItem.fromUri(currentUrl))
-            player.prepare()
-            // Seek to last persisted position if VOD/episode has one. Awaits the
-            // DB read so the seek uses the real value (was racing before).
-            val resume = vm.prepareResume()
-            // Skip stale "near-end" positions so credits don't auto-replay.
-            if (resume > 5_000) {
-                player.seekTo(resume)
-            }
-            player.play()
-        }
+        val it = vm.current.value
+        val resume = vm.prepareResume()
+        session.start(currentUrl, it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)
     }
-    LaunchedEffect(playbackSpeed) {
-        player.playbackParameters = androidx.media3.common.PlaybackParameters(playbackSpeed)
+    // Progression enregistrée toutes les 10 s (« Reprendre la lecture »).
+    LaunchedEffect(Unit) { while (true) { delay(10_000); session.engine?.let { e -> if (e.durationMs > 0) vm.recordProgress(e.positionMs, e.durationMs) } } }
+    // Minuterie de sommeil.
+    LaunchedEffect(sleepDeadline) {
+        if (sleepDeadline <= 0L) return@LaunchedEffect
+        while (System.currentTimeMillis() < sleepDeadline) delay(5_000)
+        session.engine?.pause(); onBack()
     }
-
-    // Periodically record playback position so "Continue watching" works even
-    // if the user closes the app mid-playback (no onDispose fires for kills).
-    LaunchedEffect(player) {
+    // Position / durée / horloge (500 ms) ; masquage de la surcouche après 5 s sans action.
+    var pos by remember { mutableLongStateOf(0L) }
+    var dur by remember { mutableLongStateOf(-1L) }
+    var playing by remember { mutableStateOf(true) }
+    var clock by remember { mutableStateOf(EpgClock.hm(System.currentTimeMillis())) }
+    LaunchedEffect(Unit) {
         while (true) {
-            delay(10_000)   // every 10s
-            if (player.duration > 0) {
-                vm.recordProgress(player.currentPosition, player.duration)
-            }
+            session.engine?.let { pos = it.positionMs; dur = it.durationMs; playing = it.isPlaying }
+            clock = EpgClock.hm(System.currentTimeMillis())
+            if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > 5_000) overlayVisible = false
+            delay(500)
         }
     }
+    LaunchedEffect(aspect) { session.engine?.setAspect(aspect) }
+    LaunchedEffect(speed) { session.engine?.setSpeed(speed) }
+    LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            vm.recordProgress(player.currentPosition, player.duration.coerceAtLeast(0))
-            player.release()
+    fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
+    BackHandler {
+        when {
+            panel != Panel.None -> panel = Panel.None
+            drawerOpen -> drawerOpen = false
+            overlayVisible && state.phase == Phase.PLAYING -> overlayVisible = false
+            else -> onBack()
         }
     }
+    val rootFocus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { rootFocus.requestFocus() }
+    val pauseFocus = remember { FocusRequester() }
+    LaunchedEffect(overlayVisible) { if (overlayVisible && panel == Panel.None) runCatching { pauseFocus.requestFocus() } }
 
-    // D-pad UP/DOWN = channel zap on Live. The PlayerView eats LEFT/RIGHT for
-    // seek when useController = true, which is what we want for VOD.
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
     Box(
-        Modifier
-            .fillMaxSize()
-            .background(Color.Black)
-            .focusRequester(focusRequester)
-            .focusable()
-            .onKeyEvent { ev ->
-                if (!isLive || ev.type != KeyEventType.KeyDown) return@onKeyEvent false
+        Modifier.fillMaxSize().background(Color.Black).focusRequester(rootFocus).androidx_focusable()
+            .onPreviewKeyEvent { ev ->
+                if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
+                touch()
+                if (!hidden) return@onPreviewKeyEvent false
                 when (ev.key) {
-                    Key.DirectionUp -> {
-                        scope.launch {
-                            vm.zap(forward = false)?.let {
-                                currentUrl = it
-                                currentTitle = vm.current.value?.title ?: currentTitle
-                            }
-                        }
-                        true
-                    }
-                    Key.DirectionDown -> {
-                        scope.launch {
-                            vm.zap(forward = true)?.let {
-                                currentUrl = it
-                                currentTitle = vm.current.value?.title ?: currentTitle
-                            }
-                        }
-                        true
-                    }
-                    Key.Enter, Key.DirectionCenter -> {
-                        drawerOpen = !drawerOpen
-                        true
-                    }
-                    else -> false
+                    Key.DirectionUp -> if (isLive) { scope.launch { vm.zap(false)?.let { currentUrl = it } }; true } else false
+                    Key.DirectionDown -> if (isLive) { scope.launch { vm.zap(true)?.let { currentUrl = it } }; true } else false
+                    Key.DirectionLeft -> if (!isLive) { session.engine?.let { it.seekTo((it.positionMs - 10_000).coerceAtLeast(0)) }; true } else false
+                    Key.DirectionRight -> if (!isLive) { session.engine?.let { it.seekTo(it.positionMs + 10_000) }; true } else false
+                    else -> true      // OK / autres : on affiche seulement la surcouche
                 }
             },
     ) {
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    this.player = player
-                    useController = true
-                    setShowFastForwardButton(!isLive)
-                    setShowRewindButton(!isLive)
-                    setShowNextButton(false)
-                    setShowPreviousButton(false)
-                    controllerShowTimeoutMs = if (isLive) 1500 else 3000
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                }
-            },
-            update = { v -> v.resizeMode = aspectMode.resizeMode },
-            modifier = Modifier.fillMaxSize(),
+        AndroidView(factory = { container }, modifier = Modifier.fillMaxSize())
+
+        // Chargement : visuel de la chaîne avec anneau de progression.
+        if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
+        if (state.phase == Phase.ERROR) ErrorPanel(
+            kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
+            onRetry = { session.retry() },
+            onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } },
+            onClose = onBack,
         )
 
-        // Vertical-drag gestures for touch users: right strip = volume,
-        // left strip = brightness. The strips are narrow (120 dp) so the
-        // central PlayerView still receives tap-to-toggle-controls. On
-        // TV the D-pad never produces drag events, so this is inert there.
-        val audio = remember { context.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
-        val activity = remember(context) { context as? Activity }
-        val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC) }
-        var volume by remember { mutableIntStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC)) }
-        var brightness by remember {
-            mutableFloatStateOf(
-                activity?.window?.attributes?.screenBrightness?.takeIf { it >= 0f } ?: 0.5f
+        if (overlayVisible && state.phase != Phase.ERROR) {
+            Header(item, title, vm, clock, isLive, D)
+            Footer(
+                isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
+                onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
+                onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
+                onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
+                onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
             )
         }
-        var gestureLabel by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(gestureLabel) {
-            if (gestureLabel != null) { delay(900); gestureLabel = null }
-        }
-        // Right strip: volume
-        var volAccum by remember { mutableFloatStateOf(0f) }
-        Box(
-            Modifier.align(Alignment.CenterEnd).width(120.dp).fillMaxHeight()
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { volAccum = 0f },
-                    ) { _, dragAmount ->
-                        volAccum += -dragAmount
-                        val step = (volAccum / 60f).toInt()
-                        if (step != 0) {
-                            volume = (volume + step).coerceIn(0, maxVol)
-                            volAccum -= step * 60f
-                            audio.setStreamVolume(AudioManager.STREAM_MUSIC, volume, 0)
-                            gestureLabel = "🔊 ${(volume * 100 / maxVol)}%"
-                        }
-                    }
-                },
-        )
-        // Left strip: brightness
-        var brAccum by remember { mutableFloatStateOf(0f) }
-        Box(
-            Modifier.align(Alignment.CenterStart).width(120.dp).fillMaxHeight()
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragStart = { brAccum = 0f },
-                    ) { _, dragAmount ->
-                        brAccum += -dragAmount
-                        val deltaPct = (brAccum / 8f).toInt()
-                        if (deltaPct != 0) {
-                            brightness = (brightness + deltaPct / 100f).coerceIn(0.05f, 1f)
-                            brAccum -= deltaPct * 8f
-                            activity?.window?.let { w ->
-                                val attrs = w.attributes as WindowManager.LayoutParams
-                                attrs.screenBrightness = brightness
-                                w.attributes = attrs
-                            }
-                            gestureLabel = "☀ ${(brightness * 100).toInt()}%"
-                        }
-                    }
-                },
-        )
-        // Transient indicator
-        gestureLabel?.let { lbl ->
-            Box(
-                Modifier
-                    .align(Alignment.Center)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xCC000000))
-                    .padding(horizontal = 20.dp, vertical = 14.dp),
-            ) {
-                Text(lbl, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-
-        Row(Modifier.align(Alignment.TopStart).padding(24.dp)) {
-            Column {
-                Text(currentTitle, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                if (isLive) {
-                    Text(
-                        "▲ ▼ to zap channels",
-                        color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp,
-                    )
-                }
-            }
-        }
-        FlowRow(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .widthIn(max = 760.dp)
-                .padding(24.dp),
-            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-            maxItemsInEachRow = 4,
-        ) {
-            // Sleep timer menu — anchored bottom-right next to the external-player button.
-            var sleepMenu by remember { mutableStateOf(false) }
-            Button(onClick = { sleepMenu = !sleepMenu }) {
-                Text(
-                    if (sleepDeadlineMs > 0L) {
-                        val mins = ((sleepDeadlineMs - System.currentTimeMillis()) / 60_000L).coerceAtLeast(0L)
-                        "💤 ${mins}min"
-                    } else "💤 " + S.sleepLabel
-                )
-            }
-            if (sleepMenu) {
-                Column(
-                    modifier = Modifier
-                        .padding(top = 8.dp)
-                        .background(Color(0xCC000000), androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
-                        .padding(10.dp),
-                ) {
-                    SleepOption(S.sleepMin15) { sleepDeadlineMs = System.currentTimeMillis() + 15 * 60_000; sleepMenu = false }
-                    SleepOption(S.sleepMin30) { sleepDeadlineMs = System.currentTimeMillis() + 30 * 60_000; sleepMenu = false }
-                    SleepOption(S.sleep1h) { sleepDeadlineMs = System.currentTimeMillis() + 60 * 60_000; sleepMenu = false }
-                    SleepOption(S.sleep2h) { sleepDeadlineMs = System.currentTimeMillis() + 120 * 60_000; sleepMenu = false }
-                    if (sleepDeadlineMs > 0L) {
-                        SleepOption(S.sleepCancel) { sleepDeadlineMs = 0L; sleepMenu = false }
-                    }
-                }
-            }
-            if (!isLive) {
-                Button(onClick = { tracksOpen = true }) { Text("🎚 ${S.playerTracks}") }
-            }
-            if (isLive) {
-                Button(onClick = { vm.recordLive(120, S.recordingQueuedTemplate) }) { Text("⏺ ${S.playerRecord} (2h)") }
-            }
-            Button(onClick = { displayMenu = !displayMenu }) { Text("📐 ${S.playerDisplay}") }
-            // Cast picker — only shown if the Cast SDK initialised successfully
-            // (Play Services present). We use the framework's MediaRouteButton
-            // wrapped in an AndroidView so the system Cast UI takes over.
-            val castInited = remember {
-                runCatching { com.google.android.gms.cast.framework.CastContext.getSharedInstance(context) }.isSuccess
-            }
-            if (castInited) {
-                // MediaRouteButton wired by CastButtonFactory — opens the
-                // framework's chooser dialog when the user clicks it.
-                AndroidView(
-                    factory = { ctx ->
-                        androidx.mediarouter.app.MediaRouteButton(ctx).also { btn ->
-                            runCatching {
-                                com.google.android.gms.cast.framework.CastButtonFactory
-                                    .setUpMediaRouteButton(ctx.applicationContext, btn)
-                            }
-                        }
-                    },
-                    modifier = Modifier.padding(start = 4.dp),
-                )
-            }
-            Button(onClick = { statsOpen = !statsOpen }) {
-                Text("📊 " + S.playerStats)
-            }
-            Button(onClick = {
-                runCatching {
-                    val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(Uri.parse(url), "video/*")
-                        putExtra("title", title)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    context.startActivity(Intent.createChooser(intent, S.recordingsOpenWith))
-                }
-            }) { Text(S.playerExternal) }
-        }
-        if (displayMenu) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 24.dp, bottom = 70.dp)
-                    .background(Color(0xCC000000), RoundedCornerShape(10.dp))
-                    .padding(10.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
-            ) {
-                Text(S.playerAspect, color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                AspectMode.entries.forEach { mode ->
-                    Button(
-                        onClick = { aspectMode = mode; displayMenu = false },
-                        colors = if (mode == aspectMode) androidx.tv.material3.ButtonDefaults.colors()
-                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text(mode.label, fontSize = 12.sp) }
-                }
-                if (!isLive) {
-                    Text(S.playerSpeed, color = Color(0xFF66B3FF), fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
-                    listOf(0.5f, 1.0f, 1.25f, 1.5f, 2.0f).forEach { sp ->
-                        Button(
-                            onClick = { playbackSpeed = sp; displayMenu = false },
-                            colors = if (sp == playbackSpeed) androidx.tv.material3.ButtonDefaults.colors()
-                            else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-                        ) { Text("${sp}x", fontSize = 12.sp) }
-                    }
-                }
-            }
-        }
-        if (drawerOpen && isLive) {
-            LiveDrawer(
-                vm = vm,
-                onPick = { ch ->
-                    scope.launch {
-                        vm.zapTo(ch)?.let {
-                            currentUrl = it
-                            currentTitle = vm.current.value?.title ?: currentTitle
-                        }
-                        drawerOpen = false
-                    }
-                },
-                onDismiss = { drawerOpen = false },
+        if (statsOpen) StatsCard(session, D, Modifier.align(Alignment.TopEnd).padding(top = 220.design, end = 96.design))
+        if (drawerOpen && isLive) LiveDrawer(vm = vm, onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it }; drawerOpen = false } }, onDismiss = { drawerOpen = false })
+        when (panel) {
+            Panel.Options -> OptionsPanel(
+                p = p, vm = vm, state = state, aspect = aspect, speed = speed, isLive = isLive, statsOpen = statsOpen, sleepActive = sleepDeadline > 0, D = D,
+                onAspect = { aspect = it }, onSpeed = { speed = it }, onStats = { statsOpen = !statsOpen },
+                onSleep = { min -> sleepDeadline = if (min > 0) System.currentTimeMillis() + min * 60_000L else 0L },
+                onSwitch = { c -> session.switchTo(c) }, onBuffer = { b -> session.setBufferPreset(b) },
+                onExternal = { runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(currentUrl), "video/*"); flags = Intent.FLAG_ACTIVITY_NEW_TASK }, S.recordingsOpenWith)) } },
+                onClose = { panel = Panel.None },
             )
-        }
-        if (tracksOpen) {
-            TracksDialog(player = player, onDismiss = { tracksOpen = false })
-        }
-        if (statsOpen) {
-            val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 110.dp, end = 60.dp)
-                    .width(280.dp)
-                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                    .background(Color(0xB3000000))
-                    .border(1.dp, T.Line2, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
-                    .padding(16.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
-            ) {
-                androidx.compose.foundation.layout.Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "STREAM STATS",
-                        color = T.Fg3,
-                        fontSize = 10.sp,
-                        letterSpacing = 2.3.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-                        androidx.compose.foundation.layout.Box(
-                            Modifier
-                                .width(6.dp)
-                                .height(6.dp)
-                                .background(T.Ok, androidx.compose.foundation.shape.CircleShape),
-                        )
-                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
-                        Text("sain", color = T.Ok, fontSize = 11.sp)
-                    }
-                }
-                androidx.compose.foundation.layout.Spacer(Modifier.height(8.dp))
-                StatRow(S.statResolution, stats.resolution)
-                StatRow(S.statVideoCodec, stats.videoCodec)
-                StatRow(S.statFrameRate, stats.frameRate)
-                StatRow(S.statVideoBitrate, stats.videoBitrate)
-                StatRow(S.statAudioCodec, stats.audioCodec)
-                StatRow(S.statAudioChannels, stats.audioChannels)
-                StatRow(S.statBuffered, stats.bufferedAhead)
-                StatRow(S.statDroppedFrames, stats.droppedFrames)
-            }
+            Panel.Tracks -> TracksPanel(session, D, onClose = { panel = Panel.None })
+            Panel.None -> Unit
         }
     }
 }
 
-/** Subtitle + audio track picker for VOD playback. Reads the current Tracks
- *  object from the player and writes back a TrackSelectionOverride when the
- *  user picks a track. */
-@OptIn(androidx.media3.common.util.UnstableApi::class, androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+private fun Modifier.androidx_focusable() = this.focusable()
+
+// ───────────────────────── Surcouche ─────────────────────────
+
 @Composable
-private fun TracksDialog(player: ExoPlayer, onDismiss: () -> Unit) {
-    val tracks = player.currentTracks
-    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(
-        onBack = onDismiss,
-        modifier = Modifier.background(Color.Black.copy(alpha = 0.7f)),
+private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings) {
+    val programme by vm.nowProgramme.collectAsState()
+    Row(
+        Modifier.fillMaxWidth().height(200.design).background(Color(0xD10A0A0C)).padding(horizontal = 96.design, vertical = 54.design),
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(
-            modifier = Modifier
-                .widthIn(min = 360.dp, max = 560.dp)
-                .clip(RoundedCornerShape(14.dp))
-                .background(androidx.tv.material3.MaterialTheme.colorScheme.surface)
-                .padding(20.dp),
-            verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp),
-        ) {
-            androidx.tv.material3.Text(
-                "🎚 " + S.playerTracks,
-                color = androidx.tv.material3.MaterialTheme.colorScheme.onBackground,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
+        Column(verticalArrangement = Arrangement.spacedBy(8.design), modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
+                if (isLive) LiveBadge(D.live)
+                val name = item?.title ?: fallbackTitle
+                Text(name, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                item?.badge?.let { b -> Text(b, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design)) }
+            }
+            Text(
+                if (isLive) (programme?.title ?: item?.title ?: fallbackTitle) else (item?.title ?: fallbackTitle),
+                color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, lineHeight = 48.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
-            // Audio tracks
-            val audioGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_AUDIO }
-            androidx.tv.material3.Text(S.playerAudioTemplate.format(audioGroups.sumOf { it.length }), color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            audioGroups.forEach { group ->
-                for (i in 0 until group.length) {
-                    val fmt = group.getTrackFormat(i)
-                    val label = listOfNotNull(
-                        fmt.label,
-                        fmt.language,
-                        fmt.sampleMimeType?.removePrefix("audio/"),
-                        fmt.channelCount.takeIf { it > 0 }?.let { "${it}ch" },
-                    ).joinToString(" · ").ifBlank { "Track ${i + 1}" }
-                    androidx.tv.material3.Button(
-                        onClick = {
-                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                                .setOverrideForType(androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i))
-                                .build()
-                            onDismiss()
-                        },
-                        colors = if (group.isTrackSelected(i)) androidx.tv.material3.ButtonDefaults.colors()
-                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-                    ) { androidx.tv.material3.Text(label, fontSize = 13.sp) }
-                }
-            }
-            // Subtitle tracks
-            val subGroups = tracks.groups.filter { it.type == androidx.media3.common.C.TRACK_TYPE_TEXT }
-            androidx.tv.material3.Text(S.playerSubtitlesTemplate.format(subGroups.sumOf { it.length }), color = androidx.tv.material3.MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            androidx.tv.material3.Button(
-                onClick = {
-                    player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                        .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, true)
-                        .build()
-                    onDismiss()
-                },
-                colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-            ) { androidx.tv.material3.Text(S.playerOff, fontSize = 13.sp) }
-            subGroups.forEach { group ->
-                for (i in 0 until group.length) {
-                    val fmt = group.getTrackFormat(i)
-                    val label = listOfNotNull(fmt.label, fmt.language).joinToString(" · ").ifBlank { "Subtitle ${i + 1}" }
-                    androidx.tv.material3.Button(
-                        onClick = {
-                            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
-                                .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, false)
-                                .setOverrideForType(androidx.media3.common.TrackSelectionOverride(group.mediaTrackGroup, i))
-                                .build()
-                            onDismiss()
-                        },
-                        colors = if (group.isTrackSelected(i)) androidx.tv.material3.ButtonDefaults.colors()
-                        else androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.surfaceVariant),
-                    ) { androidx.tv.material3.Text(label, fontSize = 13.sp) }
-                }
-            }
-            androidx.tv.material3.Button(
-                onClick = onDismiss,
-                colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = androidx.tv.material3.MaterialTheme.colorScheme.background),
-            ) { androidx.tv.material3.Text(S.close) }
         }
+        Text(clock, color = Color(0xFFE4E4E7), fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 36.spx, maxLines = 1)
     }
 }
 
 @Composable
-private fun StatRow(label: String, value: String) {
-    androidx.compose.foundation.layout.Row(
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-    ) {
-        Text(label, color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp, modifier = Modifier.width(90.dp))
-        Text(value, color = Color.White, fontSize = 11.sp)
-    }
-}
-
-/** PlayerView.resizeMode mapping. RESIZE_MODE_* values are ints exposed by
- *  androidx.media3.ui.AspectRatioFrameLayout. */
-private enum class AspectMode(val label: String, val resizeMode: Int) {
-    Fit("Fit", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT),
-    Fill("Fill", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FILL),
-    Zoom("Zoom", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
-    FixedWidth("16:9", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_WIDTH),
-    FixedHeight("4:3", androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIXED_HEIGHT),
-}
-
-private data class StreamStats(
-    val resolution: String = "—",
-    val videoCodec: String = "—",
-    val frameRate: String = "—",
-    val videoBitrate: String = "—",
-    val audioCodec: String = "—",
-    val audioChannels: String = "—",
-    val bufferedAhead: String = "—",
-    val droppedFrames: String = "—",
+private fun Footer(
+    isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
+    onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
 ) {
-    companion object {
-        @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-        fun read(player: ExoPlayer): StreamStats {
-            val v = player.videoFormat
-            val a = player.audioFormat
-            val bufferedMs = (player.bufferedPosition - player.currentPosition).coerceAtLeast(0)
-            return StreamStats(
-                resolution = v?.let { "${it.width}×${it.height}" } ?: "—",
-                videoCodec = v?.sampleMimeType?.removePrefix("video/") ?: "—",
-                frameRate = v?.frameRate?.takeIf { it > 0 }?.let { "%.1f fps".format(it) } ?: "—",
-                videoBitrate = v?.bitrate?.takeIf { it > 0 }?.let { "${it / 1000} kbps" } ?: "—",
-                audioCodec = a?.sampleMimeType?.removePrefix("audio/") ?: "—",
-                audioChannels = a?.channelCount?.toString() ?: "—",
-                bufferedAhead = "${bufferedMs / 1000}s",
-                droppedFrames = "n/a",
-            )
+    val now = System.currentTimeMillis()
+    val frac: Float; val startLabel: String; val endLabel: String
+    if (isLive) {
+        val s = programme?.startMs; val e = programme?.endMs
+        frac = if (s != null && e != null && e > s) ((now - s).toFloat() / (e - s)).coerceIn(0f, 1f) else 0f
+        startLabel = s?.let { EpgClock.hm(it) }.orEmpty(); endLabel = e?.let { EpgClock.hm(it) }.orEmpty()
+    } else {
+        frac = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
+        startLabel = fmt(pos); endLabel = if (dur > 0) fmt(dur) else ""
+    }
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
+    Column(
+        Modifier.fillMaxWidth().background(Color(0xE00A0A0C)).padding(start = 96.design, end = 96.design, top = 40.design, bottom = 54.design),
+        verticalArrangement = Arrangement.spacedBy(28.design),
+    ) {
+        if (startLabel.isNotEmpty() || endLabel.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
+            Text(startLabel, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).height(28.design)) {
+                Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Line))
+                Box(Modifier.align(Alignment.CenterStart).fillMaxWidth(frac).height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Accent))
+                Box(Modifier.align(Alignment.CenterStart).offset(x = maxWidth * frac - 14.design).size(28.design).clip(CircleShape).background(Color.White))
+            }
+            Text(endLabel, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
+                if (!isLive) RoundButton(72, "M11 5L4 12l7 7M20 5l-7 7 7 7", onClick = { onSeek(-10_000) })
+                PauseButton(playing, pauseFocus, onToggle)
+                if (!isLive) RoundButton(72, "M13 5l7 7-7 7M4 5l7 7-7 7", onClick = { onSeek(10_000) })
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks)
+                OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions)
+                OptionPill(D.pDisplay, "M3 5h18v14H3zM8 9h8v6H8z", onOptions)
+                if (isLive) {
+                    OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord)
+                    OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels)
+                }
+            }
+        }
+    }
+    }
+}
+
+private fun fmt(ms: Long): String { val s = ms / 1000; val h = s / 3600; val m = s % 3600 / 60; val sec = s % 60; return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec) }
+
+@Composable
+private fun RoundButton(sizePx: Int, icon: String, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Surface2, modifier = Modifier.size(sizePx.design)) { f ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { DIcon(icon, 30.design, if (f) Ux.TextOnLight else Ux.Text) }
+    }
+}
+
+@Composable
+private fun PauseButton(playing: Boolean, focus: FocusRequester, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.White, modifier = Modifier.size(96.design).focusRequester(focus)) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (playing) DIcon("M7 4h3.5v16H7zM13.5 4H17v16h-3.5z", 36.design, Ux.TextOnLight, fill = true) else DIcon("M7 4v16l13-8z", 36.design, Ux.TextOnLight, fill = true)
         }
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
-private fun SleepOption(label: String, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        modifier = Modifier.padding(vertical = 2.dp),
-    ) { Text(label, fontSize = 13.sp) }
+private fun OptionPill(label: String, icon: String, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(32.design), bg = Ux.Surface2, ringWidth = 5.design, modifier = Modifier.height(64.design)) { f ->
+        Row(Modifier.padding(horizontal = 28.design).height(64.design), verticalAlignment = Alignment.CenterVertically) {
+            DIcon(icon, 24.design, if (f) Ux.TextOnLight else Ux.Text)
+            Spacer(Modifier.width(12.design))
+            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun LoadingVisual(logo: String?, name: String) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(32.design)) {
+            LogoBox(logo, name, Modifier.width(320.design).height(200.design), radius = 24, pad = 24, bg = Ux.Surface)
+            androidx.compose.material3.CircularProgressIndicator(color = Ux.Accent, strokeWidth = 5.design, modifier = Modifier.size(64.design))
+        }
+    }
+}
+
+@Composable
+private fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
+    val (title, hint) = when (kind) {
+        PlayErrorKind.REFUSED -> D.errRefused to D.errRefusedHint
+        PlayErrorKind.NETWORK -> D.errNetwork to null
+        PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null
+        PlayErrorKind.NOT_FOUND -> D.errNotFound to null
+        else -> D.errNoResponse to null
+    }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    Box(Modifier.fillMaxSize().background(Color(0xE60A0A0C)), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(28.design), modifier = Modifier.widthIn(max = 1000.design)) {
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            hint?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2) }
+            Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
+                PillButton(LocalDs.current.retry, onRetry, bg = Ux.White, weight = FontWeight.Bold, modifier = Modifier.focusRequester(first))
+                if (canNext) PillButton(D.nextChannel, onNext)
+                PillButton(D.close, onClose)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatsCard(session: PlaybackSession, D: DesignStrings, modifier: Modifier) {
+    var s by remember { mutableStateOf(session.engine?.stats()) }
+    LaunchedEffect(Unit) { while (true) { s = session.engine?.stats(); delay(1_000) } }
+    val st by session.state.collectAsState()
+    Column(modifier.width(520.design).clip(RoundedCornerShape(20.design)).background(Color(0xE60F0F12)).padding(28.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
+        Text(D.statsLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
+        val x = s
+        fun row(k: String, v: String?) { }
+        listOf(
+            D.engine to (if (st.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc),
+            D.decoding to (if (x?.hardwareDecoding == true) D.hardware else D.software),
+            "↔" to (x?.resolution ?: "—"), "▶" to (x?.videoCodec ?: "—") + (x?.frameRate?.let { " · %.0f fps".format(it) } ?: ""),
+            "♪" to (x?.audioCodec ?: "—") + (x?.audioChannels?.let { " · ${it}ch" } ?: ""),
+            D.bufferMemory to (x?.bufferedSeconds?.let { "$it s" } ?: "—"),
+            "kbps" to (x?.videoBitrateKbps?.toString() ?: "—"), "⚠" to (x?.droppedFrames?.toString() ?: "—"),
+        ).forEach { (k, v) ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
+            }
+        }
+    }
+}
+
+private fun Int.sp() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)
+
+// ───────────────────────── Panneaux ─────────────────────────
+
+@Composable
+private fun ChipRow(label: String, options: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.design)) {
+        Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
+        androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
+            options.forEachIndexed { i, (text, sel) ->
+                FocusSurface(onClick = { onPick(i) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.White else Ux.Surface, ringWidth = 5.design, modifier = Modifier.height(52.design)) { f ->
+                    Box(Modifier.padding(horizontal = 24.design).height(52.design), contentAlignment = Alignment.Center) {
+                        Text(text, color = if (sel || f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 21.spx, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun OptionsPanel(
+    p: UserPrefs, vm: PlayerViewModel, state: com.ultratv.tv.nativeapp.ui.player.engine.SessionState, aspect: AspectMode, speed: Float, isLive: Boolean, statsOpen: Boolean, sleepActive: Boolean, D: DesignStrings,
+    onAspect: (AspectMode) -> Unit, onSpeed: (Float) -> Unit, onStats: () -> Unit, onSleep: (Int) -> Unit, onSwitch: (Combo) -> Unit, onBuffer: (BufferPreset) -> Unit, onExternal: () -> Unit, onClose: () -> Unit,
+) {
+    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Color(0xB80A0A0C)), contentAlignment = Alignment.CenterEnd) {
+        Column(
+            Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design),
+            verticalArrangement = Arrangement.spacedBy(28.design),
+        ) {
+            Text(D.pPlayer, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
+            ChipRow(D.engine, listOf(D.auto to (p.playerEngine == "auto"), D.engineExo to (p.playerEngine == "exo"), D.engineVlc to (p.playerEngine == "vlc"))) { i ->
+                val v = listOf("auto", "exo", "vlc")[i]; vm.setEngine(v)
+                if (v != "auto") onSwitch(Combo(if (v == "vlc") EngineKind.VLC else EngineKind.EXO, state.combo.decoder))
+            }
+            ChipRow(D.decoding, listOf(D.auto to (p.decoderMode == "auto"), D.hardware to (p.decoderMode == "hw"), D.software to (p.decoderMode == "sw"))) { i ->
+                val v = listOf("auto", "hw", "sw")[i]; vm.setDecoder(v)
+                onSwitch(Combo(state.combo.engine, listOf(DecoderMode.AUTO, DecoderMode.HARDWARE, DecoderMode.SOFTWARE)[i]))
+            }
+            ChipRow(D.bufferMemory, listOf(BufferPreset.AUTO to D.auto, BufferPreset.LOW_LATENCY to D.bufLow, BufferPreset.BALANCED to D.bufBalanced, BufferPreset.STABLE to D.bufStable).map { it.second to (state.bufferPreset == it.first) }) { i ->
+                onBuffer(listOf(BufferPreset.AUTO, BufferPreset.LOW_LATENCY, BufferPreset.BALANCED, BufferPreset.STABLE)[i])
+            }
+            ChipRow(D.pDisplay, listOf(D.aspectFit to (aspect == AspectMode.FIT), D.aspectFill to (aspect == AspectMode.FILL), D.aspectZoom to (aspect == AspectMode.ZOOM), "16:9" to (aspect == AspectMode.R16_9), "4:3" to (aspect == AspectMode.R4_3))) { onAspect(AspectMode.entries[it]) }
+            if (!isLive) ChipRow(D.speed, listOf(0.5f, 1f, 1.25f, 1.5f, 2f).map { "${it}x" to (speed == it) }) { onSpeed(listOf(0.5f, 1f, 1.25f, 1.5f, 2f)[it]) }
+            ChipRow(D.sleepTimer, listOf("15 min" to false, "30 min" to false, "1 h" to false, "2 h" to false, D.off to !sleepActive)) { onSleep(listOf(15, 30, 60, 120, 0)[it]) }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                PillButton(D.statsLabel + if (statsOpen) " ✓" else "", onStats, bg = Ux.Surface)
+                PillButton(LocalStrings.current.playerExternal, onExternal, bg = Ux.Surface)
+                PillButton(D.close, onClose, bg = Ux.Surface)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TracksPanel(session: PlaybackSession, D: DesignStrings, onClose: () -> Unit) {
+    val e = session.engine
+    val audio = remember { e?.audioTracks().orEmpty() }
+    val subs = remember { e?.subtitleTracks().orEmpty() }
+    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Color(0xB80A0A0C)), contentAlignment = Alignment.CenterEnd) {
+        Column(Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
+            Text(D.pTracks, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
+            ChipRow(D.audio, audio.map { it.label to it.selected }.ifEmpty { listOf("—" to false) }) { i -> audio.getOrNull(i)?.let { e?.selectAudio(it.id) }; onClose() }
+            ChipRow(D.subtitles, listOf(D.off to subs.none { it.selected }) + subs.map { it.label to it.selected }) { i -> if (i == 0) e?.selectSubtitle(null) else subs.getOrNull(i - 1)?.let { e?.selectSubtitle(it.id) }; onClose() }
+            PillButton(D.close, onClose, bg = Ux.Surface)
+        }
+    }
 }

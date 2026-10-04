@@ -24,6 +24,8 @@ class PlaybackContext @Inject constructor() {
         val poster: String?,
         val streamUrl: String,
         val parentRemoteId: String? = null,
+        /** Pays / langue du fournisseur extrait du nom (« AU »…), pour un badge discret. */
+        val badge: String? = null,
     )
 
     private val _current = MutableStateFlow<Item?>(null)

@@ -116,6 +116,18 @@ android {
         }
     }
 
+    // LibVLC pèse ~80 Mo toutes architectures confondues : en release on découpe par ABI
+    // (Chromecast HD = armeabi-v7a 32 bits, la plupart des box = arm64-v8a, x86_64 = émulateur).
+    // Le debug reste un APK universel pour l'installation directe.
+    splits {
+        abi {
+            isEnable = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -215,6 +227,9 @@ dependencies {
     implementation(libs.paging.runtime)
     implementation(libs.paging.compose)
     implementation(libs.room.paging)
+    // Deuxième moteur de lecture (MPEG-TS difficiles, AC3/E-AC3/DTS, MKV exotiques) et décodeurs audio logiciels FFmpeg pour Media3.
+    implementation(libs.libvlc)
+    implementation(libs.media3.ffmpeg.decoder)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)

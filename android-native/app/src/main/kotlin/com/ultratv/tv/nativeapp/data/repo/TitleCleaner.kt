@@ -23,6 +23,13 @@ object TitleCleaner {
     private fun isDecoration(c: Char): Boolean =
         c.code in 0x02B0..0x02FF || c.code in 0x2070..0x209F || c.code in 0x1D2C..0x1DBF || c == '◉' || c == '★' || c == '☆' || c == '•' || c == '●' || c == '⚽'
 
+    /** Préfixe de pays/langue retiré par [clean] (« AU: 10 BOLD » → « AU »), s'il ressemble à un code de 2 à 3 lettres. */
+    fun prefixBadge(raw: String, cleaned: String): String? {
+        val i = raw.indexOf(cleaned)
+        if (i <= 0) return null
+        return Regex("[A-Z]{2,3}").find(raw.substring(0, i))?.value
+    }
+
     /** Retire lettres modificatrices / symboles décoratifs (« ᴿᴬᵂ », « ◉ », « ³⁸⁴⁰ᴾ »). */
     fun stripDecorations(s: String): String = s.filterNot(::isDecoration).replace(Regex("""\s{2,}"""), " ").trim()
 
