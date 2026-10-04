@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
+  <title>Ultra TV — bannière Android TV</title>
+  <rect width="320" height="180" fill="#D91E2B"/>
+  <g transform="translate(30 50) scale(0.156)">
+    <rect width="512" height="512" rx="116" fill="#0A0A0C"/>
+    <rect x="96" y="120" width="320" height="216" rx="40" fill="none" stroke="#F5F5F7" stroke-width="28"/>
+    <path d="M224 188v80l70-40z" fill="#D91E2B"/>
+    <path d="M196 392h120" stroke="#F5F5F7" stroke-width="28" stroke-linecap="round"/>
+  </g>
+  <text x="122" y="102" font-family="Sora, Arial, sans-serif" font-weight="800" font-size="34" fill="#FFFFFF">ULTRA<tspan fill="#FFE4E6" font-weight="600"> TV</tspan></text>
+</svg>

@@ -186,13 +186,21 @@ object Icons {
     const val Settings = "M4 6h16M4 12h16M4 18h16M8 4v4M16 10v4M10 16v4"
 }
 
-/** Logo carré accent avec triangle de lecture (maquette : 56 px, rayon 14). */
+/** Logo Ultra TV (icône « écran » : fond #0A0A0C, écran blanc, lecture rouge, pied), dessiné en vectoriel sur la grille 512 de l'icône. */
 @Composable
 fun LogoMark(sizePx: Int = 56) {
-    Box(
-        Modifier.size(sizePx.design).clip(RoundedCornerShape((sizePx / 4).design)).background(Ux.Accent),
-        contentAlignment = Alignment.Center,
-    ) { DIcon(Icons.Play, (sizePx * 0.43f).toInt().design, Ux.White, fill = true) }
+    androidx.compose.foundation.Canvas(Modifier.size(sizePx.design)) {
+        val k = size.width / 512f
+        val bg = Color(0xFF0A0A0C); val fg = Color(0xFFF5F5F7); val red = Color(0xFFD91E2B)
+        drawRoundRect(bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(116f * k))
+        drawRoundRect(
+            fg, topLeft = androidx.compose.ui.geometry.Offset(96f * k, 120f * k), size = androidx.compose.ui.geometry.Size(320f * k, 216f * k),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f * k), style = androidx.compose.ui.graphics.drawscope.Stroke(28f * k),
+        )
+        val play = androidx.compose.ui.graphics.Path().apply { moveTo(224f * k, 188f * k); lineTo(224f * k, 268f * k); lineTo(294f * k, 228f * k); close() }
+        drawPath(play, red)
+        drawLine(fg, androidx.compose.ui.geometry.Offset(196f * k, 392f * k), androidx.compose.ui.geometry.Offset(316f * k, 392f * k), strokeWidth = 28f * k, cap = androidx.compose.ui.graphics.StrokeCap.Round)
+    }
 }
 
 /** Pastille d'aide télécommande : « OK Valider », « ‹ Retour »… */

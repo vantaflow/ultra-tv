@@ -1,1 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ultra TV"><rect width="64" height="64" rx="16" fill="#d91e2b"/><path d="M25 19v26l22-13z" fill="#fff"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <title>Ultra TV</title>
+  <rect width="512" height="512" rx="116" fill="#0A0A0C"/>
+  <rect x="96" y="120" width="320" height="216" rx="40" fill="none" stroke="#F5F5F7" stroke-width="28"/>
+  <path d="M224 188v80l70-40z" fill="#D91E2B"/>
+  <path d="M196 392h120" stroke="#F5F5F7" stroke-width="28" stroke-linecap="round"/>
+</svg>

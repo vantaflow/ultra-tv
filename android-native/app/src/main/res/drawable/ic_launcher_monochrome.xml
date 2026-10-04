@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ultra TV — couche monochrome (icônes thématiques, Android 13+) : même géométrie, une seule teinte. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:translateX="21" android:translateY="21" android:scaleX="0.12890625" android:scaleY="0.12890625">
+        <path
+            android:pathData="M136,120H376A40,40 0 0 1 416,160V296A40,40 0 0 1 376,336H136A40,40 0 0 1 96,296V160A40,40 0 0 1 136,120Z"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="28"
+            android:fillColor="#00000000"/>
+        <path
+            android:pathData="M224,188v80l70,-40z"
+            android:fillColor="#FF000000"/>
+        <path
+            android:pathData="M196,392h120"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="28"
+            android:strokeLineCap="round"/>
+    </group>
+</vector>
