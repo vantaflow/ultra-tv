@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.3] — 2026-10-04
+
+### Performances (TV)
+- Retour au niveau de la 1.1.1 mesuré sur émulateur bas de gamme (CPU du fil principal à moins de 8 %, démarrage identique, mémoire 113 → 102 Mo) : mode tactile lu sans suivi par chaque élément, rail qui ne se recompose plus à chaque image de son animation, profil de démarrage étendu aux nouveaux écrans.
+
+### Corrections
+- Grille Films/Séries : la note sous l'affiche n'est plus rognée.
+
 ## [1.2.2] — 2026-10-04
 
 ### Corrections
