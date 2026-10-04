@@ -27,7 +27,7 @@ object DatabaseModule {
             // registered here via .addMigrations(MIGRATION_10_11, ...). Do NOT
             // widen this destructive range — the exported schemas under
             // app/schemas let Room auto-generate / verify those migrations.
-            .addMigrations(com.ultratv.tv.nativeapp.data.db.MIGRATION_10_11, com.ultratv.tv.nativeapp.data.db.MIGRATION_11_12, com.ultratv.tv.nativeapp.data.db.MIGRATION_12_13)
+            .addMigrations(com.ultratv.tv.nativeapp.data.db.MIGRATION_10_11, com.ultratv.tv.nativeapp.data.db.MIGRATION_11_12, com.ultratv.tv.nativeapp.data.db.MIGRATION_12_13, com.ultratv.tv.nativeapp.data.db.MIGRATION_13_14)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
             .build()
 
@@ -42,6 +42,7 @@ object DatabaseModule {
     @Provides fun provideWatchHistoryDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.WatchHistoryDao = db.watchHistoryDao()
     @Provides fun provideRecordingDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.RecordingDao = db.recordingDao()
     @Provides fun provideVodInfoDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.VodInfoDao = db.vodInfoDao()
+    @Provides fun provideTmdbDao(db: UltraDb): com.ultratv.tv.nativeapp.data.tmdb.TmdbDao = db.tmdbDao()
     @Provides fun provideReminderDao(db: UltraDb): com.ultratv.tv.nativeapp.data.reminders.ReminderDao = db.reminderDao()
 }
 

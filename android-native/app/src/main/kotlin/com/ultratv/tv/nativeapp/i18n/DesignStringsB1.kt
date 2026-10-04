@@ -40,3 +40,12 @@ val DesignStrings.recNoSpace get() = t("Not enough free space to record this", "
 val DesignStrings.recNothing get() = t("This programme is already scheduled or over", "Ce programme est déjà programmé ou terminé", "Este programa ya está programado o terminó", "هذا البرنامج مجدول بالفعل أو انتهى")
 val DesignStrings.recScheduledBadge get() = t("SCHED.", "PROG.", "PROG.", "مجدول")
 val DesignStrings.recConnectionBusy get() = t("A recording is in progress on your only connection", "Un enregistrement est en cours sur votre seule connexion", "Hay una grabación en curso en su única conexión", "هناك تسجيل جارٍ على اتصالك الوحيد")
+
+// Fiches enrichies TMDB
+val DesignStrings.trailerLabel get() = t("Trailer", "Bande-annonce", "Tráiler", "الإعلان")
+val DesignStrings.tmdbAttribution get() = t(
+    "This product uses the TMDB API but is not endorsed or certified by TMDB.",
+    "Ce produit utilise l’API TMDB mais n’est ni approuvé ni certifié par TMDB.",
+    "Este producto utiliza la API de TMDB pero no está avalado ni certificado por TMDB.",
+    "يستخدم هذا المنتج واجهة TMDB لكنه غير معتمد أو مصدّق من TMDB.",
+)

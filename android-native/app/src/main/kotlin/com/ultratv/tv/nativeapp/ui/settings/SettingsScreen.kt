@@ -45,6 +45,7 @@ import com.ultratv.tv.nativeapp.data.prefs.SidebarPosition
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.tmdbAttribution
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
@@ -446,6 +447,8 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         }
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
         SwitchPrefRow(D.telemetry, p.telemetryEnabled) { app.setTelemetry(it) }
+        // Attribution exigée par les conditions d'utilisation de l'API TMDB.
+        androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 26.spx, maxLines = 3, modifier = Modifier.padding(top = 14.design))
     }
     com.ultratv.tv.nativeapp.update.UpdateDialog()
 }
