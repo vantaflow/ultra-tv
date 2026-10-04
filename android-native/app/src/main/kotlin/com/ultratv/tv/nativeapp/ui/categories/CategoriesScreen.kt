@@ -188,7 +188,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
  * OK ouvre la saisie, « Terminé » (IME) la referme.
  */
 @Composable
-private fun FilterField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier) {
+internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier) {
     var editing by remember { mutableStateOf(false) }
     val requester = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(editing) { if (editing) runCatching { requester.requestFocus() } }

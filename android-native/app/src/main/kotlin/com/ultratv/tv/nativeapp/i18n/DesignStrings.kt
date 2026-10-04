@@ -58,6 +58,13 @@ class DesignStrings(val lang: AppLang) {
     val recStop get() = t("Stop", "Arrêter", "Detener", "إيقاف")
     val recCancel get() = t("Cancel", "Annuler", "Cancelar", "إلغاء")
 
+    // Chaînes verrouillées
+    val lockedSwitch get() = t("Locked", "Verrouillée", "Bloqueado", "مقفلة")
+    val lockedOnly get() = t("LOCKED CHANNELS", "CHAÎNES VERROUILLÉES", "CANALES BLOQUEADOS", "القنوات المقفلة")
+    val lockedNone get() = t("No locked channel. Search for a channel above to lock it.", "Aucune chaîne verrouillée. Cherchez une chaîne ci-dessus pour la verrouiller.", "Ningún canal bloqueado. Busca un canal arriba para bloquearlo.", "لا توجد قنوات مقفلة. ابحث عن قناة أعلاه لقفلها.")
+    fun lockedCountLine(n: Int) = when (lang) { AppLang.French -> if (n <= 1) "$n chaîne verrouillée" else "$n chaînes verrouillées"; AppLang.Spanish -> "$n canales bloqueados"; AppLang.Arabic -> "$n قناة مقفلة"; else -> if (n == 1) "$n locked channel" else "$n locked channels" }
+    fun searchResultsCount(n: Int) = when (lang) { AppLang.French -> "RÉSULTATS · $n"; AppLang.Spanish -> "RESULTADOS · $n"; AppLang.Arabic -> "النتائج · $n"; else -> "RESULTS · $n" }
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

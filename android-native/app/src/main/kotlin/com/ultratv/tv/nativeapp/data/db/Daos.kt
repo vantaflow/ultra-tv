@@ -209,6 +209,10 @@ interface ChannelDao {
     """)
     suspend fun favoritesList(pid: Long): List<ChannelEntity>
 
+    /** Chaînes précises d'une source (écran « Chaînes verrouillées » : seulement celles qu'on a verrouillées). */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId IN (:ids) ORDER BY sortKey")
+    suspend fun byRemoteIds(pid: Long, ids: List<String>): List<ChannelEntity>
+
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId

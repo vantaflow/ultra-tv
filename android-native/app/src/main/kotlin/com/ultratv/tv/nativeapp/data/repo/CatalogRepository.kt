@@ -91,6 +91,14 @@ class CatalogRepository @Inject constructor(
         )
     }
 
+    suspend fun channelsByRemoteIds(pid: Long, ids: List<String>): List<ChannelEntity> =
+        ids.chunked(500).flatMap { channelDao.byRemoteIds(pid, it) }
+
+    suspend fun searchChannels(pid: Long, query: String, limit: Int = 60): List<ChannelEntity> {
+        val match = FtsQuery.of(query) ?: return emptyList()
+        return channelDao.searchFts(pid, match, limit)
+    }
+
     fun favoritesByKind(pid: Long, kind: String): Flow<List<FavoriteEntity>> =
         favoriteDao.observeForKind(pid, kind)
 

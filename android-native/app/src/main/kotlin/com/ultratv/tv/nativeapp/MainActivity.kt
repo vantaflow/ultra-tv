@@ -410,7 +410,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
         }
         screen("categories") { CategoriesScreen(onBack = { nav.popBackStack() }) }
         screen("diagnostic") { com.ultratv.tv.nativeapp.ui.settings.DiagnosticScreen() }
-        screen("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen() }
+        screen("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen(onBack = { nav.popBackStack() }) }
         screen("recordings") {
             com.ultratv.tv.nativeapp.ui.recordings.RecordingsScreen(
                 onPlayLocal = { url, title -> nav.navigate(Routes.player(url, title)) },
