@@ -102,9 +102,9 @@ class CategoriesViewModel @Inject constructor(
 
     private suspend fun providerId(): Long? = providerList.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }
 
-    fun toggle(r: CategoryRow) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, listOf(r.remoteId), !r.enabled) } } }
+    fun toggle(r: CategoryRow) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, listOf(r.remoteId), !r.enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } }
     /** « Tout activer » / « Tout désactiver » : s'applique au résultat FILTRÉ (ex. filtrer « AR » puis tout désactiver). */
-    fun setAll(enabled: Boolean) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, rows.value.map { r -> r.remoteId }, enabled) } } }
+    fun setAll(enabled: Boolean) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, rows.value.map { r -> r.remoteId }, enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } }
     fun saveOrder(ids: List<String>) { viewModelScope.launch { providerId()?.let { manager.saveOrder(it, kind.value, ids) } } }
     val filterUnsupported: StateFlow<Boolean> = providerList.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.categoryFilter == 0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }

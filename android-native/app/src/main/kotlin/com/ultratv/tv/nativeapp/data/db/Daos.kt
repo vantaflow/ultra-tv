@@ -382,6 +382,16 @@ interface EpisodeDao {
 
 @Dao
 interface CategoryDao {
+    /** Catégories désactivées d'une source (« type|identifiant fournisseur ») : réglages partagés entre appareils. */
+    @Query("SELECT kind || '|' || remoteId FROM category WHERE providerId = :pid AND enabled = 0")
+    fun observeDisabledKeys(pid: Long): Flow<List<String>>
+
+    @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind")
+    suspend fun remoteIds(pid: Long, kind: String): List<String>
+
+    @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind AND enabled = 0")
+    suspend fun disabledIds(pid: Long, kind: String): List<String>
+
     @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind ORDER BY name")
     fun observeForProviderKind(pid: Long, kind: String): Flow<List<CategoryEntity>>
 

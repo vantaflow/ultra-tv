@@ -270,6 +270,8 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             }
             PrefRow(C.syncNow, "", hint = status) { vm.syncFromCloud() }
             PrefRow(C.thisDevice, cloud.selfName, hint = C.deviceNameHint) { dialog = OpenDialog.RENAME_DEVICE }
+            val up by panes.state.collectAsState()
+            SwitchPrefRow(C.syncDisplayPrefs, up.syncDisplayPrefs, hint = C.syncDisplayPrefsHint) { panes.setSyncDisplayPrefs(it) }
             if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
             if (connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
         } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }

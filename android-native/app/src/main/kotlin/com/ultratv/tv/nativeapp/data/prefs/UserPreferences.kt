@@ -64,6 +64,8 @@ data class UserPrefs(
      *  and the diagnostic flow is what keeps the redesign honest; flipping
      *  it off stops the dashboard cold for that install. */
     val telemetryEnabled: Boolean = true,
+    /** Partage des langues et catégories affichées avec les autres appareils du compte cloud. */
+    val syncDisplayPrefs: Boolean = true,
 
     // Playback / TV-quality knobs — exposed in Settings.
     /** Buffer target in seconds. Media3's default is 15 s, which is decent but
@@ -134,6 +136,7 @@ class UserPreferencesStore @Inject constructor(
         val language = stringPreferencesKey("language")
         val configPassword = stringPreferencesKey("config_password")
         val telemetry = booleanPreferencesKey("telemetry_enabled")
+        val syncDisplayPrefs = booleanPreferencesKey("sync_display_prefs")
         val bufferSec = intPreferencesKey("buffer_seconds")
         val autoFrameRate = booleanPreferencesKey("auto_frame_rate")
         val preferSwDec = booleanPreferencesKey("prefer_software_decoder")
@@ -184,6 +187,7 @@ class UserPreferencesStore @Inject constructor(
             language = p[Keys.language] ?: "system",
             configPassword = p[Keys.configPassword] ?: "",
             telemetryEnabled = p[Keys.telemetry] ?: true,
+            syncDisplayPrefs = p[Keys.syncDisplayPrefs] ?: true,
             bufferSeconds = p[Keys.bufferSec] ?: 30,
             autoFrameRate = p[Keys.autoFrameRate] ?: true,
             preferSoftwareDecoder = p[Keys.preferSwDec] ?: false,
@@ -218,6 +222,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
     suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
     suspend fun setTelemetry(on: Boolean) = update { it[Keys.telemetry] = on }
+    suspend fun setSyncDisplayPrefs(on: Boolean) = update { it[Keys.syncDisplayPrefs] = on }
     suspend fun setBufferSeconds(v: Int) = update { it[Keys.bufferSec] = v.coerceIn(5, 300) }
     suspend fun setAutoFrameRate(v: Boolean) = update { it[Keys.autoFrameRate] = v }
     suspend fun setPreferSoftwareDecoder(v: Boolean) = update { it[Keys.preferSwDec] = v }

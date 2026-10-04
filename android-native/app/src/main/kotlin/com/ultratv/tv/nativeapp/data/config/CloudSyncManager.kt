@@ -9,6 +9,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
@@ -47,6 +51,8 @@ class CloudSyncManager @Inject constructor(
     private val db: UltraDb,
     private val limits: ProviderLimitsStore,
     private val sync: SyncCoordinator,
+    private val categories: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
+    private val statusBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(CloudSyncState(lastSyncAt = links.lastSyncAt, devices = links.devices(), selfId = links.selfId()))
@@ -110,6 +116,103 @@ class CloudSyncManager @Inject constructor(
 
     sealed interface Result { data object Done : Result; data object NotPaired : Result; data object Failed : Result }
 
+    private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var watching = false
+
+    /** À appeler une fois au démarrage : publie (anti-rebond 1,5 s) les changements faits par l'utilisateur. */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    fun watchDisplayPrefs() {
+        if (watching) return
+        watching = true
+        // Fin d'une synchro de catalogue : applique les réglages reçus qui attendaient des catégories.
+        prefsScope.launch {
+            statusBus.status.map { it != null }.distinctUntilChanged().collect { running ->
+                if (running) return@collect
+                for (cid in links.pendingPrefsIds()) runCatching {
+                    val localId = links.localIdOf(cid) ?: run { links.setPendingPrefs(cid, null); null } ?: return@runCatching
+                    val remote = DisplayPrefs.parse(org.json.JSONObject(links.pendingPrefs(cid) ?: return@runCatching)) ?: return@runCatching
+                    if (remote.updatedAt > links.prefsAt(cid)) applyRemote(localId, cid, remote, isActive = repo.firstActive()?.id == localId)
+                    else links.setPendingPrefs(cid, null)
+                }
+            }
+        }
+        prefsScope.launch {
+            DisplayPrefsEvents.changes.debounce(1_500).collect { pid ->
+                val id = if (pid == DisplayPrefsEvents.ACTIVE) repo.firstActive()?.id else pid
+                if (id != null) publishPrefs(id)
+            }
+        }
+    }
+
+    // ── Réglages d'affichage partagés (langues + catégories désactivées) ──────────────────────────────
+
+    /** État local d'une source, au format du protocole. */
+    private suspend fun localPrefs(localId: Long): LocalDisplayPrefs {
+        val p = prefs.flow.first()
+        val selected = p.languages.split(',').map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
+        val dao = db.categoryDao()
+        val disabled = DisplayPrefs.KINDS.keys.associateWith { k -> dao.disabledIds(localId, k).toSet() }
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled)
+    }
+
+    /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
+    private suspend fun applyPrefs(cfg: CloudConfig) {
+        if (!prefs.flow.first().syncDisplayPrefs) return
+        val active = repo.firstActive()?.id
+        for (c in cfg.providers) {
+            val remote = c.prefs ?: continue
+            val localId = links.localIdOf(c.id) ?: continue
+            if (remote.updatedAt <= links.prefsAt(c.id)) continue
+            applyRemote(localId, c.id, remote, isActive = localId == active)
+        }
+    }
+
+    private suspend fun applyRemote(localId: Long, cloudId: String, remote: CloudPrefs, isActive: Boolean) {
+        val dao = db.categoryDao()
+        // Catalogue pas encore chargé (appairage tout neuf) : on garde ces réglages et on les applique à la fin de la synchro.
+        if (DisplayPrefs.KINDS.keys.all { dao.remoteIds(localId, it).isEmpty() }) {
+            links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote))
+            return
+        }
+        links.setPendingPrefs(cloudId, null)
+        // Même chemin que l'écran Catégories : désactiver retire le contenu, réactiver recharge ces catégories.
+        for ((kind, key) in DisplayPrefs.KINDS) {
+            val off = remote.disabled[key].orEmpty().toSet()
+            val all = dao.remoteIds(localId, kind)
+            if (all.isEmpty()) continue
+            val wasOff = dao.disabledIds(localId, kind).toSet()
+            categories.setEnabled(localId, kind, all.filter { it in off && it !in wasOff }, false)
+            categories.setEnabled(localId, kind, all.filter { it !in off && it in wasOff }, true)
+        }
+        // Les langues sont un réglage du profil : appliquées pour la source affichée.
+        if (isActive) {
+            val (sel, multi, unknown) = DisplayPrefs.langsFromCloud(remote.langs)
+            prefs.setLanguages(sel.sorted().joinToString(","))
+            prefs.setIncludeMulti(multi)
+            prefs.setIncludeUnknownLang(unknown)
+        }
+        links.setPrefs(cloudId, remote.updatedAt, DisplayPrefs.fingerprint(DisplayPrefs.toCloud(localPrefs(localId), 0)))
+    }
+
+    /**
+     * Publie les réglages de la source affichée s'ils ont changé depuis la dernière version appliquée/publiée.
+     * Appelé (avec anti-rebond) quand les catégories ou les langues changent. Ne lève jamais.
+     */
+    suspend fun publishPrefs(localId: Long) {
+        runCatching {
+            if (!tokens.isPaired || !prefs.flow.first().syncDisplayPrefs) return
+            val cloudId = links.cloudIdOf(localId) ?: return
+            val now = System.currentTimeMillis()
+            val local = DisplayPrefs.toCloud(localPrefs(localId), now)
+            val print = DisplayPrefs.fingerprint(local)
+            if (print == links.prefsPrint(cloudId) || DisplayPrefs.tooLarge(local)) return
+            val base = workerBase() ?: return
+            val winner = source.withToken(base) { t -> client.putPrefs(base, t, cloudId, DisplayPrefs.toJson(local)) }
+            if (winner == null) links.setPrefs(cloudId, now, print)
+            else applyRemote(localId, cloudId, winner, isActive = repo.firstActive()?.id == localId)
+        }
+    }
+
     private data class Summary(val added: Int, val updated: Int, val removed: Int, val pending: List<PendingRemoval>)
 
     private suspend fun apply(cfg: CloudConfig): Summary {
@@ -149,6 +252,7 @@ class CloudSyncManager @Inject constructor(
         }
         // Partage affiché : mis à jour pour les sources liées déjà à jour.
         cfg.providers.forEach { c -> links.localIdOf(c.id)?.let { lid -> links.link(lid, c.id, links.appliedName(c.id) ?: c.name, c.sharedWith(deviceCount)) } }
+        runCatching { applyPrefs(cfg) }
         return Summary(added, updated, removed, pending)
     }
 

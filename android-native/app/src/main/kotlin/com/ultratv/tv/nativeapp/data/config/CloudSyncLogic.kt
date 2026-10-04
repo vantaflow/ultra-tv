@@ -32,6 +32,8 @@ data class CloudProvider(
     val assign: List<String>?,
     val originName: String,
     val updatedAt: Long,
+    /** Réglages d'affichage partagés (langues, catégories désactivées) ; null si jamais publiés. */
+    val prefs: CloudPrefs? = null,
 ) {
     /** Nombre d'appareils qui reçoivent cette source. */
     fun sharedWith(deviceCount: Int): Int = assign?.size ?: deviceCount
@@ -89,6 +91,7 @@ object CloudSyncLogic {
                 username = p.optString("username"), password = p.optString("password"), mac = p.optString("mac"),
                 assign = if (a is JSONArray) (0 until a.length()).map { a.optString(it) } else null,
                 originName = p.optString("originName"), updatedAt = p.optLong("updatedAt"),
+                prefs = DisplayPrefs.parse(p.optJSONObject("prefs")),
             )
         }.filter { it.id.isNotBlank() }
         return CloudConfig(o.optLong("version"), o.optString("self").ifBlank { null } ?: selfFromDevices, devices, providers)

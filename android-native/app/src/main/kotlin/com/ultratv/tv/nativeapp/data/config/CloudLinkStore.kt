@@ -29,6 +29,16 @@ class CloudLinkStore @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().remove("link_$localId").apply { if (cid != null) { remove("name_$cid"); remove("shared_$cid") } }.apply()
     }
 
+    /** Réglages d'affichage : horodatage de la dernière version appliquée/publiée et son empreinte (anti ping-pong). */
+    fun prefsAt(cloudId: String): Long = sp.getLong("prefs_at_$cloudId", 0L)
+    fun prefsPrint(cloudId: String): String? = sp.getString("prefs_fp_$cloudId", null)
+    fun setPrefs(cloudId: String, at: Long, print: String) { sp.edit().putLong("prefs_at_$cloudId", at).putString("prefs_fp_$cloudId", print).apply() }
+
+    /** Réglages reçus pas encore appliqués (catalogue de la source pas encore chargé). */
+    fun pendingPrefs(cloudId: String): String? = sp.getString("prefs_pending_$cloudId", null)
+    fun setPendingPrefs(cloudId: String, json: String?) { sp.edit().apply { if (json == null) remove("prefs_pending_$cloudId") else putString("prefs_pending_$cloudId", json) }.apply() }
+    fun pendingPrefsIds(): List<String> = sp.getAll().keys.filter { it.startsWith("prefs_pending_") }.map { it.removePrefix("prefs_pending_") }
+
     fun etag(): String? = sp.getString("etag", null)
     fun setEtag(v: String?) { sp.edit().putString("etag", v).apply() }
     /** Oublie la version connue : la prochaine synchro relit tout (appairage, changement de Worker). */

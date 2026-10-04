@@ -48,6 +48,22 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
+    /**
+     * Publie les réglages d'affichage d'une source. Renvoie `null` si acceptés, ou les réglages GAGNANTS du cloud
+     * (HTTP 409 : une version plus récente existe déjà). 404 = source plus visible : ignoré.
+     */
+    suspend fun putPrefs(base: String, token: String, cloudId: String, body: String): CloudPrefs? = withContext(Dispatchers.IO) {
+        require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }
+        val req = Request.Builder().url("$base/api/device/providers/$cloudId/prefs").header("Authorization", "Bearer $token").put(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            if (r.code == 404) return@use null
+            if (r.code == 409) return@use DisplayPrefs.parse(runCatching { org.json.JSONObject(r.body?.string().orEmpty()).optJSONObject("prefs") }.getOrNull())
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while sharing display settings")
+            null
+        }
+    }
+
     /** Retire cet appareil de la source (`everywhere` = la supprime du compte). 404 = déjà retirée. */
     suspend fun delete(base: String, token: String, cloudId: String, everywhere: Boolean = false) = withContext(Dispatchers.IO) {
         require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }

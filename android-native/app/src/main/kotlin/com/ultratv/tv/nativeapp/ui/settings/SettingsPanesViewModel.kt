@@ -84,8 +84,9 @@ class SettingsPanesViewModel @Inject constructor(
     fun setDecoder(v: String) = viewModelScope.launch { prefs.setDecoderMode(v) }
     fun setBufferPreset(v: String) = viewModelScope.launch { prefs.setBufferPreset(v) }
     fun backToAuto() = viewModelScope.launch { prefs.resetPlaybackToAuto() }
-    fun setLanguages(csv: String) = viewModelScope.launch { prefs.setLanguages(csv) }
+    fun setLanguages(csv: String) = viewModelScope.launch { prefs.setLanguages(csv); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
     fun setPreferredQuality(v: String) = viewModelScope.launch { prefs.setPreferredQuality(v) }
-    fun setIncludeMulti(v: Boolean) = viewModelScope.launch { prefs.setIncludeMulti(v) }
-    fun setIncludeUnknown(v: Boolean) = viewModelScope.launch { prefs.setIncludeUnknownLang(v) }
+    fun setSyncDisplayPrefs(v: Boolean) = viewModelScope.launch { prefs.setSyncDisplayPrefs(v); if (v) com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
+    fun setIncludeMulti(v: Boolean) = viewModelScope.launch { prefs.setIncludeMulti(v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
+    fun setIncludeUnknown(v: Boolean) = viewModelScope.launch { prefs.setIncludeUnknownLang(v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
 }

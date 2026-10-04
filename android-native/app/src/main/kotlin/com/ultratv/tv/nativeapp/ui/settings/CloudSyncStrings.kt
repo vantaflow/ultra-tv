@@ -32,6 +32,8 @@ class CloudSyncStrings(private val lang: AppLang) {
     val shareTitle get() = t("Share with…", "Partager avec…", "Compartir con…", "مشاركة مع…")
     val allDevices get() = t("All devices", "Tous les appareils", "Todos los dispositivos", "كل الأجهزة")
     val thisOne get() = t("this device", "cet appareil", "este dispositivo", "هذا الجهاز")
+    val syncDisplayPrefs get() = t("Sync categories and languages", "Synchroniser catégories et langues", "Sincronizar categorías e idiomas", "مزامنة الفئات واللغات")
+    val syncDisplayPrefsHint get() = t("Categories you hide and the languages you choose apply on all your devices", "Les catégories masquées et les langues choisies s’appliquent sur tous vos appareils", "Las categorías ocultas y los idiomas elegidos se aplican en todos tus dispositivos", "تُطبَّق الفئات المخفية واللغات المختارة على جميع أجهزتك")
     val confirm get() = t("Share", "Partager", "Compartir", "مشاركة")
     val offerTitle get() = t("Share this source with your other devices?", "Partager cette source avec vos autres appareils ?", "¿Compartir esta fuente con tus otros dispositivos?", "مشاركة هذا المصدر مع أجهزتك الأخرى؟")
     val offerBody get() = t("It stays on this device only unless you choose.", "Elle reste sur cet appareil tant que vous ne choisissez pas.", "Se queda solo en este dispositivo salvo que elijas.", "تبقى على هذا الجهاز ما لم تختر غير ذلك.")
