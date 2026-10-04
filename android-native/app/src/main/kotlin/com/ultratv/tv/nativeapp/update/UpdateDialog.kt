@@ -41,26 +41,39 @@ fun UpdateDialog() {
     var downloading by remember(update.tag) { mutableStateOf(false) }
     var progress by remember(update.tag) { mutableFloatStateOf(0f) }
     var failed by remember(update.tag) { mutableStateOf(false) }
+    var mismatch by remember(update.tag) { mutableStateOf(false) }
+    var launched by remember(update.tag) { mutableStateOf(false) }
+    var job by remember(update.tag) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    // « Plus tard » et Retour ferment TOUJOURS, même pendant le téléchargement (annulé) :
+    // avant, la carte restait bloquée sur « Téléchargement… » si l'installation n'aboutissait pas.
+    val close: () -> Unit = { job?.cancel(); downloading = false; dismissed = true }
     val s = LocalStrings.current
     val D = LocalDs.current
 
-    ModalFocusScope(onBack = { if (!downloading) dismissed = true }, modifier = Modifier.background(com.ultratv.tv.nativeapp.ui.design.Ux.Scrim)) {
+    ModalFocusScope(onBack = close, modifier = Modifier.background(com.ultratv.tv.nativeapp.ui.design.Ux.Scrim)) {
         StateCard(
             title = D.updateTitle(update.versionName),
-            body = if (failed) D.updateFailed else update.notes.ifBlank { D.updateDefaultBody },
+            body = when {
+                mismatch -> D.updateSignatureMismatch
+                failed -> D.updateFailed
+                launched -> D.updateLaunched
+                else -> D.updateDefaultBody
+            },
             iconPath = StateIcons.Download,
             primaryLabel = if (downloading) s.updateDownloading else s.updateInstall,
             onPrimary = {
-                if (downloading) return@StateCard
-                downloading = true; failed = false
-                scope.launch {
+                if (downloading || mismatch) return@StateCard
+                downloading = true; failed = false; launched = false
+                job = scope.launch {
                     runCatching {
                         withContext(Dispatchers.IO) { UpdateChecker.downloadAndInstall(ctx, update) { p -> progress = p } }
-                    }.onFailure { failed = true; downloading = false }
+                    }.onSuccess { launched = true }
+                     .onFailure { e -> if (e is kotlinx.coroutines.CancellationException) throw e; if (e is SignatureMismatchException) mismatch = true else failed = true }
+                    downloading = false
                 }
             },
             secondaryLabel = s.updateLater,
-            onSecondary = { if (!downloading) dismissed = true },
+            onSecondary = close,
             progress = if (downloading) progress else null,
             modifier = Modifier.width(820.design),
         )

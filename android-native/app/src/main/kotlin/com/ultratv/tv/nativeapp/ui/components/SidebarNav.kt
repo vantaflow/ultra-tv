@@ -43,7 +43,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.tv.material3.Text
-import com.ultratv.tv.nativeapp.ui.common.NavFocusHint
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
@@ -91,6 +90,12 @@ fun SidebarNav(navController: NavController) {
     val pill by syncVm.pill.collectAsState()
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    // Sortie du menu vers le contenu (à droite, à gauche en arabe).
+    val leaveRail: () -> Unit = {
+        focusManager.moveFocus(if (rtl) androidx.compose.ui.focus.FocusDirection.Left else androidx.compose.ui.focus.FocusDirection.Right)
+    }
     val target = (if (expanded) RAIL_EXPANDED_PX else RAIL_COLLAPSED_PX).design
     // Animations réduites (réglage système) ou low-RAM : bascule instantanée, sans état intermédiaire.
     val ctx = androidx.compose.ui.platform.LocalContext.current
@@ -165,14 +170,16 @@ fun SidebarNav(navController: NavController) {
                         val h = 64
                         FocusSurface(
                             onClick = {
+                                // Choisir une page REFERME le menu : le nouvel écran prend le focus
+                                // (focus initial normal, pas de markNavDriven). Page déjà affichée :
+                                // on rend simplement le focus au contenu.
                                 if (route != item.route) {
-                                    NavFocusHint.markNavDriven()
                                     navController.navigate(item.route) {
                                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                                         launchSingleTop = true
                                         restoreState = true
                                     }
-                                }
+                                } else leaveRail()
                             },
                             shape = RoundedCornerShape(16.design),
                             bg = if (active) Ux.Accent else Color.Transparent,

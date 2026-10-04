@@ -132,6 +132,7 @@ object UpdateChecker {
         withContext(Dispatchers.IO) {
             val apk = downloadApk(ctx, info, onProgress)
             verifyChecksum(apk, info)
+            if (!sameSigner(ctx, apk)) throw SignatureMismatchException()
             installApk(ctx, apk)
         }
     }
@@ -228,6 +229,28 @@ object UpdateChecker {
      * "cannot automatically move to internal storage". The OS installer prompts
      * the user once (Allow this source) and handles everything itself.
      */
+    /**
+     * Android refuse une mise à jour signée par une autre clé (« conflit avec un package
+     * existant ») sans que l'app en soit informée. On compare AVANT de lancer l'installateur :
+     * en cas d'écart, l'invite explique qu'il faut désinstaller puis réinstaller (une seule fois).
+     * Dans le doute (certificats illisibles), on laisse l'installateur système trancher.
+     */
+    internal fun sameSigner(ctx: Context, apk: File): Boolean = runCatching {
+        val pm = ctx.packageManager
+        @Suppress("DEPRECATION")
+        val flags = if (android.os.Build.VERSION.SDK_INT >= 28) android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES else android.content.pm.PackageManager.GET_SIGNATURES
+        val archive = pm.getPackageArchiveInfo(apk.absolutePath, flags) ?: return@runCatching true
+        val installed = pm.getPackageInfo(ctx.packageName, flags)
+        fun certs(pi: android.content.pm.PackageInfo): Set<String> {
+            @Suppress("DEPRECATION")
+            val sigs = if (android.os.Build.VERSION.SDK_INT >= 28) pi.signingInfo?.let { si -> if (si.hasMultipleSigners()) si.apkContentsSigners else si.signingCertificateHistory } else pi.signatures
+            return sigs.orEmpty().map { java.security.MessageDigest.getInstance("SHA-256").digest(it.toByteArray()).joinToString("") { b -> "%02x".format(java.util.Locale.ROOT, b) } }.toSet()
+        }
+        val a = certs(archive); val i = certs(installed)
+        // Rotation de clé (lineage v3) : l'historique du nouvel APK contient l'ancienne clé.
+        a.isEmpty() || i.isEmpty() || a.intersect(i).isNotEmpty()
+    }.getOrDefault(true)
+
     private fun installApk(ctx: Context, apk: File) {
         val authority = "${ctx.packageName}.updates"
         val uri: Uri = FileProvider.getUriForFile(ctx, authority, apk)
@@ -243,3 +266,6 @@ object UpdateChecker {
     }
 
 }
+
+/** La mise à jour est signée par une autre clé : il faut désinstaller puis réinstaller. */
+class SignatureMismatchException : IllegalStateException("update signed with a different key")

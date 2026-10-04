@@ -116,7 +116,9 @@ jobs:
           # APK par processeur, plus légers (armeabi-v7a = Chromecast HD).
           for abi in armeabi-v7a arm64-v8a x86_64; do
             f=$(ls "$OUT"/*-"$abi"-release.apk 2>/dev/null | head -1)
-            [ -n "$f" ] && cp "$f" "dist/UltraTV-$V-$abi.apk"
+            # + nom STABLE (sans version) : releases/latest/download/UltraTV-<abi>.apk
+            # reste valide d'une version à l'autre (lien Downloader, liens courts).
+            [ -n "$f" ] && cp "$f" "dist/UltraTV-$V-$abi.apk" && cp "$f" "dist/UltraTV-$abi.apk"
           done
           cd dist
           sha256sum UltraTV-debug.apk | awk '{print $1}' > UltraTV-debug.apk.sha256

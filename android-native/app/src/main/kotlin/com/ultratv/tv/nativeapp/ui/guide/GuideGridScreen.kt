@@ -253,10 +253,11 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             .onPreviewKeyEvent { e ->
                 if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
                 val dir = if (e.key == Key.DirectionRight) FocusDirection.Right else FocusDirection.Left
-                if (inGrid && !focus.moveFocus(dir)) {
-                    vm.setWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
-                    true
-                } else true
+                // Hors de la grille (jours, en-tête) : navigation normale — avant, la touche était
+                // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
+                if (!inGrid) return@onPreviewKeyEvent false
+                if (!focus.moveFocus(dir)) vm.setWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
+                true
             },
         verticalArrangement = Arrangement.spacedBy(28.design),
     ) {
