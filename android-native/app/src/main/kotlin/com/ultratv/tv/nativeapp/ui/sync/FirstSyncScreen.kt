@@ -21,6 +21,10 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +63,12 @@ import java.text.NumberFormat
 fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Unit, onFixSource: () -> Unit) {
     val D = LocalDs.current
     val S = LocalStrings.current
-    Column(Modifier.fillMaxSize().background(Ux.Bg).padding(horizontal = 96.design, vertical = 54.design)) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val compact = touch && com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current < 600f
+    Column(
+        Modifier.fillMaxSize().background(Ux.Bg)
+            .then(if (touch) Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).padding(horizontal = 20.dp, vertical = 12.dp) else Modifier.padding(horizontal = 96.design, vertical = 54.design)),
+    ) {
         Row(Modifier.fillMaxWidth().height(72.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LogoMark()
@@ -77,16 +86,16 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
             }
         }
 
-        Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(120.design)) {
-            Column(Modifier.responsiveWidth(820), verticalArrangement = Arrangement.spacedBy(44.design)) {
+        val mainCol: @Composable (Modifier) -> Unit = { mainModifier ->
+            Column(mainModifier, verticalArrangement = Arrangement.spacedBy(if (touch) 24.dp else 44.design)) {
                 Column(verticalArrangement = Arrangement.spacedBy(18.design)) {
                     Text(D.firstSync, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, maxLines = 1)
-                    Text(D.preparing, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 72.spx, lineHeight = 76.spx, letterSpacing = (-1).spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    Text(D.preparingBody, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, lineHeight = 42.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(D.preparing, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 30.sp else 72.spx, lineHeight = if (touch) 34.sp else 76.spx, letterSpacing = (-1).spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(D.preparingBody, color = Ux.Text2, fontFamily = Manrope, fontSize = if (touch) 15.sp else 30.spx, lineHeight = if (touch) 22.sp else 42.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-                        Text("${ui.percent} %", color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, maxLines = 1)
+                        Text("${ui.percent} %", color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 32.sp else 64.spx, maxLines = 1)
                         ui.etaSeconds?.let { Text(D.etaAbout.format(etaText(D, it)), color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1) }
                     }
                     Box(Modifier.fillMaxWidth().height(14.design).clip(RoundedCornerShape(7.design)).background(Ux.Surface2)) {
@@ -111,16 +120,17 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
                     }
                 }
             }
-
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.design)) {
-                ui.steps.forEach { StepCard(it, D) }
-            }
         }
-
+        val stepsCol: @Composable (Modifier) -> Unit = { m -> Column(m, verticalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 16.design)) { ui.steps.forEach { StepCard(it, D) } } }
+        if (compact) Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            mainCol(Modifier.fillMaxWidth()); stepsCol(Modifier.fillMaxWidth())
+        } else Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (touch) 40.dp else 120.design)) {
+            mainCol(Modifier.responsiveWidth(820)); stepsCol(Modifier.weight(1f))
+        }
         Row(Modifier.fillMaxWidth().height(48.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text(D.nextOpenInstant, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(24.design))
-            KeyHint("OK", D.hintWatch)
+            if (!touch) KeyHint("OK", D.hintWatch)
         }
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -102,6 +103,18 @@ class MobileNavTest {
         host(NavLayout.SIDE_RAIL)
         for (label in listOf("Accueil", "Direct", "Guide", "Films", "Séries", "Recherche", "Favoris", "Enregistrements", "Réglages")) rule.onNodeWithText(label).assertExists()
         assertFalse(rule.onAllNodesWithTextCount("Plus") > 0)
+    }
+
+    @Test fun focusSurface_tv_gardeSaTailleEtNAjouteAucuneCibleMinimale() {
+        rule.setContent {
+            CompositionLocalProvider(LocalTouch provides false) {
+                FocusSurface(onClick = {}, modifier = Modifier.testTag("petit").size(20.dp)) { }
+            }
+        }
+        rule.onNodeWithTag("petit").assertHeightIsAtLeast(20.dp)
+        val b = rule.onNodeWithTag("petit").getUnclippedBoundsInRoot()
+        val h = b.bottom - b.top
+        assertTrue("sur TV la surface garde 20 dp (pas de cible tactile), mesuré $h", h < 48.dp)
     }
 
     @Test fun focusSurface_tactile_cibleDAuMoins48dp() {

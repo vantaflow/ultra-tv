@@ -21,6 +21,11 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -150,11 +155,13 @@ fun OnboardingWizard(
     BackHandler(enabled = step != Step.Welcome) {
         step = when (step) { Step.Ready -> Step.Source; Step.Languages -> Step.Source; else -> Step.Welcome }
     }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Column(
-        Modifier.fillMaxSize().background(Ux.Bg).padding(horizontal = 96.design, vertical = 54.design),
+        Modifier.fillMaxSize().background(Ux.Bg)
+            .then(if (touch) Modifier.windowInsetsPadding(WindowInsets.safeDrawing).padding(horizontal = 20.dp, vertical = 12.dp) else Modifier.padding(horizontal = 96.design, vertical = 54.design)),
     ) {
         Header(W, step)
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (touch) Alignment.TopStart else Alignment.CenterStart) {
             when (step) {
                 Step.Welcome -> WelcomeStep(W, onStart = { step = Step.Source }, onSkip = { vm.dismiss() })
                 Step.Source -> SourceStep(W, onAdded = { step = Step.Ready }, onXtreamAdded = { id -> pendingProvider = id; step = Step.Languages }, onLater = { vm.dismiss() })
@@ -166,7 +173,7 @@ fun OnboardingWizard(
                 )
             }
         }
-        Footer(W, step)
+        if (!touch) Footer(W, step)
     }
 }
 
@@ -194,13 +201,14 @@ private fun Header(W: WizardStrings, step: Step) {
 @Composable
 private fun Stepper(W: WizardStrings, step: Step) {
     val labels = listOf(W.stepWelcome, W.stepSource, W.stepReady)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Row(verticalAlignment = Alignment.CenterVertically) {
         labels.forEachIndexed { i, label ->
             val ord = when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 }
             val past = i < ord
             val current = i == ord
             if (i > 0) {
-                Box(Modifier.padding(horizontal = 10.design).width(56.design).height(2.design)
+                Box(Modifier.padding(horizontal = 10.design).width(if (touch) 20.dp else 56.design).height(2.design)
                     .background(if (i <= (when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 })) Ux.Accent else Ux.Line))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -217,9 +225,11 @@ private fun Stepper(W: WizardStrings, step: Step) {
                     else Text("${i + 1}", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx,
                         color = if (current) Ux.Text else Ux.Text3)
                 }
-                Spacer(Modifier.width(12.design))
-                Text(label, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx,
-                    color = if (current) Ux.Text else Ux.Text3)
+                if (!touch || current) {
+                    Spacer(Modifier.width(12.design))
+                    Text(label, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = if (touch) 13.sp else 22.spx,
+                        color = if (current) Ux.Text else Ux.Text3, maxLines = 1)
+                }
             }
         }
     }
@@ -283,6 +293,19 @@ internal fun fitTitleSizePx(text: String, basePx: Int = 84, maxWidthPx: Int = 11
 
 @Composable
 private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Unit) {
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        TouchStepColumn {
+            Eyebrow(W.stepLabel.format(1))
+            Text(W.welcomeTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 34.sp, color = Ux.Text)
+            Text(W.welcomeTagline, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = Ux.Text2)
+            // Xtream Codes, lien M3U, fichier M3U : les trois seuls types de source.
+            Bullet(Icons.Monitor, W.bulletXtream)
+            Bullet(Icons.List, W.bulletM3u)
+            TouchCta(W.start, true, onStart)
+            TouchCta(W.skip, false, onSkip)
+        }
+        return
+    }
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.responsiveWidth(900), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
@@ -395,7 +418,17 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     }
 
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        TouchStepColumn {
+            Eyebrow(W.stepLabel.format(2))
+            Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, color = Ux.Text)
+            Text(W.sourceSubtitle, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, color = Ux.Text2)
+            TouchSourceCard(Icons.Monitor, W.cardXtream, W.cardXtreamDesc) { form = Form.Xtream }
+            TouchSourceCard(Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
+            TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
+            TouchCta(W.later, false, onLater)
+        }
+    } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
             Eyebrow(W.stepLabel.format(2))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold,
@@ -465,6 +498,19 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     val summary by vm.summary.collectAsState()
     val status by vm.syncStatus.collectAsState()
     val failure by vm.failure.collectAsState()
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        TouchStepColumn {
+            Box(Modifier.size(56.dp).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(Icons.Check, 28.dp, Ux.White, strokeWidth = 2.5f) }
+            Eyebrow(W.stepLabel.format(3))
+            Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Ux.Text)
+            val f = failure
+            Text(if (f != null) LocalStrings.current.sync.messageFor(f.kind) else W.readyBody, fontFamily = Manrope, fontSize = 16.sp, lineHeight = 24.sp, color = if (f != null) Ux.Err else Ux.Text2)
+            SummaryCard(W, summary, status?.percent, status != null, Modifier.fillMaxWidth())
+            TouchCta(W.watchTv, true, onWatch)
+            TouchCta(if (failure != null) LocalStrings.current.sync.fixSource else W.addAnother, false, onAddAnother)
+        }
+        return
+    }
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.responsiveWidth(920), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Box(Modifier.size(112.design).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) {
@@ -558,16 +604,17 @@ private fun LanguagesStep(pid: Long, vm: OnboardingViewModel, onDone: () -> Unit
         val sys = java.util.Locale.getDefault().language
         selected = if (found.any { it.first == sys }) setOf(sys) else emptySet()
     }
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-        Text(D.langQuestion, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, color = Ux.Text, maxLines = 1)
+    val touchLang = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    Column(if (touchLang) Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier.fillMaxSize(), verticalArrangement = if (touchLang) Arrangement.Top else Arrangement.Center) {
+        Text(D.langQuestion, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touchLang) 28.sp else 64.spx, color = Ux.Text, maxLines = 1)
         Spacer(Modifier.height(16.design))
-        Text(D.langHelp, fontFamily = Manrope, fontSize = 28.spx, color = Ux.Text2)
+        Text(D.langHelp, fontFamily = Manrope, fontSize = if (touchLang) 15.sp else 28.spx, color = Ux.Text2)
         Spacer(Modifier.height(40.design))
         val l = langs
         if (l == null) {
             Text(D.langLoading, fontFamily = Manrope, fontSize = 28.spx, color = Ux.Text3)
         } else {
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(20.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(if (touchLang) 10.dp else 20.design), verticalArrangement = Arrangement.spacedBy(if (touchLang) 10.dp else 20.design)) {
                 LangTile(D.allLanguages, "", selected.isEmpty()) { selected = emptySet() }
                 l.take(12).forEach { (code, n) ->
                     LangTile(java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()).replaceFirstChar { it.uppercase() }, "$n", code in selected) {
@@ -583,13 +630,45 @@ private fun LanguagesStep(pid: Long, vm: OnboardingViewModel, onDone: () -> Unit
 
 @Composable
 private fun LangTile(label: String, count: String, on: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = if (on) Ux.Surface2 else Ux.Surface, modifier = Modifier.width(260.design).height(112.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = if (on) Ux.Surface2 else Ux.Surface, modifier = (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier.width(150.dp).height(64.dp) else Modifier.width(260.design).height(112.design))) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, color = if (f) Ux.TextOnLight else Ux.Text)
                 if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 22.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
             }
             if (on) DIcon(Icons.Check, 32.design, if (f) Ux.TextOnLight else Ux.Accent, strokeWidth = 2.5f)
+        }
+    }
+}
+
+
+// ───────────────────────── Tactile ─────────────────────────
+
+/** Colonne d'une étape au toucher : défile, espacement de 16 dp, aucune mise en page TV. */
+@Composable
+private fun TouchStepColumn(content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(top = 12.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(16.dp), content = content)
+}
+
+/** Bouton plein largeur : principal (blanc / encre, 52 dp) ou secondaire (48 dp). */
+@Composable
+private fun TouchCta(label: String, primary: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(26.dp), bg = if (primary) Ux.Cta else Ux.Surface, modifier = Modifier.fillMaxWidth().height(if (primary) 52.dp else 48.dp)) { _ ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(label, fontFamily = Manrope, fontWeight = if (primary) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (primary) 16.sp else 15.sp, color = if (primary) Ux.TextOnLight else Ux.Text, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun TouchSourceCard(icon: String, title: String, desc: String, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.dp), bg = Ux.Surface, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp)) { _ ->
+        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(Ux.Surface2), contentAlignment = Alignment.Center) { DIcon(icon, 24.dp, Ux.Text) }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(title, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Ux.Text)
+                Text(desc, fontFamily = Manrope, fontSize = 13.sp, lineHeight = 18.sp, color = Ux.Text3)
+            }
         }
     }
 }
