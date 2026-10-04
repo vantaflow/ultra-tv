@@ -101,3 +101,18 @@ describe("parsePairQr", () => {
     expect(parsePairQr("A".repeat(5000), ORIGIN)).toBeNull();
   });
 });
+
+describe("scripts du tableau de bord", () => {
+  it("scriptsInline_syntaxeValide_etImportImagePresent", async () => {
+    const acct = await newAccount();
+    for (const path of ["/", "/pair?code=ABCDEFGH"]) {
+      const html = await (await call(path, { cookie: acct.cookie, ip: acct.ip })).text();
+      const scripts = [...html.matchAll(/<script nonce="[^"]+">([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+      expect(scripts.some((s) => s.includes("scan-file"))).toBe(true);
+      // Une erreur de syntaxe (échappement perdu dans un gabarit) cassait silencieusement scan + import.
+      for (const s of scripts) expect(() => new Function(s)).not.toThrow();
+      expect(html).toContain('id="scan-file"');
+      expect(html).toContain('accept="image/*"');
+    }
+  });
+});
