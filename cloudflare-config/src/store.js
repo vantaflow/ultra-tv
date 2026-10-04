@@ -150,6 +150,8 @@ export function publicProvider({ id: _id, ...rest }) {
 /** Forme de synchro : AVEC l'identifiant stable (clé de fusion côté appareil). */
 export function syncProvider(p) {
   return {
+    // Réglages d'affichage partagés (langues, catégories désactivées), null si jamais publiés.
+    prefs: p.prefs || null,
     sharedWith: p.assign === undefined ? "all" : p.assign,
     id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
@@ -215,3 +217,36 @@ export async function renameDevice(env, acct, deviceId, rawName) {
 
 /** Types encore pris en charge : un ancien fournisseur d'un autre type n'est plus envoyé aux appareils. */
 export const isSupportedKind = (p) => KINDS.includes(p.kind);
+
+
+/** Plafonds des réglages partagés d'une source (une source réelle compte ~1 000 catégories par type). */
+export const PREFS_MAX_IDS = 5000;
+export const PREFS_KINDS = ["live", "movie", "series"];
+
+/**
+ * Réglages d'affichage partagés d'une source, envoyés par un appareil :
+ * `{ langs: string[] | null, disabled: { live: string[], movie: string[], series: string[] }, updatedAt: number }`.
+ * Les identifiants de catégorie sont ceux du fournisseur (identiques sur tous les appareils).
+ */
+export function parsePrefs(body, now = Date.now()) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "body" };
+  let langs;
+  if (body.langs === null) langs = null;
+  else if (Array.isArray(body.langs) && body.langs.length <= 64 && body.langs.every((l) => typeof l === "string" && /^[a-z0-9_-]{1,16}$/i.test(l))) {
+    langs = [...new Set(body.langs.map((l) => l.toLowerCase()))];
+  } else return { error: "langs" };
+  const d = body.disabled;
+  if (!d || typeof d !== "object" || Array.isArray(d)) return { error: "disabled" };
+  const disabled = {};
+  for (const k of PREFS_KINDS) {
+    const a = d[k] ?? [];
+    if (!Array.isArray(a) || a.length > PREFS_MAX_IDS) return { error: `disabled.${k}` };
+    // eslint-disable-next-line no-control-regex
+    if (!a.every((x) => typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x))) return { error: `disabled.${k}` };
+    disabled[k] = [...new Set(a)];
+  }
+  const updatedAt = Number(body.updatedAt);
+  if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
+  // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
+  return { prefs: { langs, disabled, updatedAt: Math.min(Math.floor(updatedAt), now + 60_000) } };
+}

@@ -23,7 +23,7 @@ import {
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
-  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider,
+  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES,
 } from "./store.js";
@@ -114,6 +114,8 @@ async function route(req, env) {
   if (path === "/api/device/providers" && (m === "POST" || m === "PUT")) return devicePutProvider(req, env);
   const delProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})$/);
   if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
+  const prefsProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/prefs$/);
+  if (prefsProv && m === "PUT") return devicePutPrefs(req, env, prefsProv[1]);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -474,7 +476,7 @@ async function devicePutProvider(req, env) {
     // Inconnu OU non affecté à cet appareil : même réponse (on ne révèle pas l'existence d'une source d'un autre appareil).
     if (i < 0 || !isVisibleTo(providers[i], auth.device.id)) return json({ error: "not_found" }, 404);
     const old = providers[i];
-    providers[i] = { ...r.provider, id: old.id, createdAt: old.createdAt, originDeviceId: old.originDeviceId, originName: old.originName, assign: assign ?? assignmentOf(old) };
+    providers[i] = { ...r.provider, id: old.id, createdAt: old.createdAt, originDeviceId: old.originDeviceId, originName: old.originName, assign: assign ?? assignmentOf(old), ...(old.prefs ? { prefs: old.prefs } : {}) };
     status = 200; savedId = old.id;
   } else {
     if (providers.length >= MAX_PROVIDERS) return json({ error: "limit" }, 409);
@@ -486,6 +488,36 @@ async function devicePutProvider(req, env) {
   await saveProviders(env, acct, providers);
   await putAccount(env, acct);
   return json({ version: acct.cfgVersion, provider: syncProvider(providers.find((p) => p.id === savedId)) }, status);
+  });
+}
+
+const PREFS_BODY_MAX = 192 * 1024;
+
+/**
+ * Publie les réglages d'affichage partagés d'une source (langues, catégories désactivées).
+ * Le plus récent gagne : un envoi plus ancien que la version stockée renvoie 409 avec la version gagnante.
+ */
+async function devicePutPrefs(req, env, id) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pprefs:ip:${clientIp(req)}`, 240, 600, true))
+    || (await limited(env, `pprefs:dev:${auth.device.id}`, 60, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, PREFS_BODY_MAX);
+  if (body.error) return body.error;
+  const r = parsePrefs(body.value);
+  if (r.error) return json({ error: "invalid", field: r.error }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+    const providers = await loadProviders(env, acct);
+    const i = providers.findIndex((p) => p.id === id);
+    if (i < 0 || !isVisibleTo(providers[i], auth.device.id)) return json({ error: "not_found" }, 404);
+    const cur = providers[i].prefs;
+    if (cur && cur.updatedAt > r.prefs.updatedAt) return json({ error: "stale", prefs: cur }, 409);
+    providers[i] = { ...providers[i], prefs: { ...r.prefs, by: auth.device.id } };
+    await saveProviders(env, acct, providers);
+    await putAccount(env, acct);
+    return json({ version: acct.cfgVersion, prefs: providers[i].prefs });
   });
 }
 
