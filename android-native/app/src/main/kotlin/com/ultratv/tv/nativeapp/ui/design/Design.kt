@@ -97,6 +97,7 @@ fun FocusSurface(
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(28.design),
     bg: Color = Ux.Surface,
     focusedScale: Float = 1.06f,
+    ringWidth: Dp = 6.design,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -107,7 +108,7 @@ fun FocusSurface(
                 val s = if (focused) focusedScale else 1f
                 scaleX = s; scaleY = s
             }
-            .then(if (focused) Modifier.border(6.design, Ux.Accent, shape) else Modifier)
+            .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) Ux.White else bg)
             .clickable(interactionSource = interaction, indication = null, onClick = onClick),

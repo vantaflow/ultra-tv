@@ -194,6 +194,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
     androidx.compose.runtime.CompositionLocalProvider(
         com.ultratv.tv.nativeapp.ui.common.LocalLowRam provides lowRam,
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
+        com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
@@ -210,13 +211,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                     onOpenSettings = { /* user can re-enter Settings via sidebar */ },
                     vm = onboarding,
                 )
-                false -> Box(
-                    Modifier.fillMaxSize().padding(
-                        horizontal = com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateLeftPadding(
-                            androidx.compose.ui.unit.LayoutDirection.Ltr,
-                        ),
-                    ),
-                ) { UltraTvAppRoot(prefs.sidebarPosition) }
+                false -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition) }
             }
         }
         }
@@ -270,14 +265,16 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
             }
             else -> Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
-                Row(Modifier.fillMaxSize()) {
-                    SidebarNav(navController = nav)
+                // Le contenu est décalé de la largeur REPLIÉE du rail ; le rail déplié passe par-dessus
+                // (même Box) sans jamais décaler ni re-mesurer le contenu.
+                Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
-                            .padding(PaddingValues(start = 12.dp, end = 24.dp)),
+                            .padding(start = com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp }),
                     ) { NavGraph(nav) }
+                    SidebarNav(navController = nav)
                 }
             }
         }
