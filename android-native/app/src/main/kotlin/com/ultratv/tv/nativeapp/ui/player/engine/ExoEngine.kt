@@ -84,6 +84,34 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             })
         }
         playerView.player = player
+        playerView.subtitleView?.apply { setApplyEmbeddedStyles(false); setApplyEmbeddedFontSizes(false) }
+        applySubtitleStyle(config.subtitleStyle)
+        // Choix automatique des pistes : listes ordonnées de langues préférées (la première disponible l'emporte).
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setPreferredAudioLanguages(*config.preferredAudio.toTypedArray())
+            .setPreferredTextLanguages(*config.preferredText.toTypedArray())
+            .build()
+    }
+
+    override fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean {
+        val c = com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyleMapper.toCaption(style)
+        playerView.subtitleView?.apply {
+            setStyle(androidx.media3.ui.CaptionStyleCompat(c.foregroundArgb, c.backgroundArgb, android.graphics.Color.TRANSPARENT, c.edgeType, c.edgeArgb, null))
+            setFractionalTextSize(c.textSizeFraction)
+            setBottomPaddingFraction(c.bottomPaddingFraction)
+        }
+        return true
+    }
+
+    override fun addExternalSubtitle(path: String): Boolean {
+        val cur = player.currentMediaItem ?: return false
+        val sub = MediaItem.SubtitleConfiguration.Builder(android.net.Uri.fromFile(java.io.File(path)))
+            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP).setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build()
+        val pos = player.currentPosition
+        player.setMediaItem(cur.buildUpon().setSubtitleConfigurations(listOf(sub)).build(), pos)
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon().setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false).build()
+        player.prepare()
+        return true
     }
 
     override fun load(url: String, startPositionMs: Long) {

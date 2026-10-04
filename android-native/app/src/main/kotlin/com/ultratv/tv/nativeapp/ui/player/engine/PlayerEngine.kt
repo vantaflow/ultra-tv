@@ -52,6 +52,11 @@ data class EngineConfig(
     val isLive: Boolean,
     val autoFrameRate: Boolean,
     val userAgent: String,
+    /** Apparence des sous-titres (lot B2). */
+    val subtitleStyle: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle = com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle.DEFAULT,
+    /** Langues préférées, ordonnées (codes ISO 639-1) : choix automatique de la piste audio / sous-titres. */
+    val preferredAudio: List<String> = emptyList(),
+    val preferredText: List<String> = emptyList(),
 )
 
 /**
@@ -87,5 +92,12 @@ interface PlayerEngine {
     /** Plafonne la qualité (adaptation au réseau et à l'écran) — sans effet sur les moteurs qui ne le permettent pas. */
     fun limitQuality(maxHeight: Int, maxBitrateBps: Int?)
     fun stats(): EngineStats
+
+    /** Applique le style de sous-titres. Vrai = pris en compte tout de suite ; faux = au prochain démarrage du moteur. */
+    fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean = false
+    /** Décale les sous-titres ; faux si le moteur ne sait pas (Media3). */
+    fun setSubtitleDelay(ms: Int): Boolean = false
+    /** Ajoute un fichier de sous-titres (SRT) à la lecture en cours et l'active ; faux si non pris en charge. */
+    fun addExternalSubtitle(path: String): Boolean = false
     fun release()
 }
