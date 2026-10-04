@@ -20,7 +20,7 @@ import { createBatcher, fromPrefs, shouldApply, toPrefs } from "./prefs";
 
 const K = {
   worker: "cloud.worker", token: "cloud.token", deviceId: "cloud.deviceId", tokenAt: "cloud.tokenAt", etag: "cloud.etag",
-  lastSync: "cloud.lastSync", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices", prefsSync: "cloud.prefsSync",
+  lastSync: "cloud.lastSync", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices", prefsSync: "cloud.prefsSync", prefsBoot: "cloud.prefsBoot",
 } as const;
 const ROTATE_AFTER_MS = 90 * 86400_000;
 export const SYNC_EVERY_MS = 6 * 3600_000;
@@ -140,13 +140,16 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     if (Date.now() - (await getSetting<number>(K.tokenAt, 0)) > ROTATE_AFTER_MS) {
       try { const r = await rotateToken(worker, token); await storeToken(r.token, r.deviceId); token = r.token; } catch (e) { if (e instanceof TokenRejectedError) throw e; /* on réessaiera */ }
     }
-    const etag = force ? "" : await getSetting<string>(K.etag, "");
+    // Première synchro avec cette fonction : lecture complète (même si rien n'a changé) pour amorcer/appliquer les réglages.
+    const booted = await getSetting<boolean>(K.prefsBoot, false);
+    const etag = force || !booted ? "" : await getSetting<string>(K.etag, "");
     const res = await fetchConfig(worker, token, etag);
     const now = Date.now();
     await setSetting(K.lastSync, now);
     patch({ lastSyncAt: now });
     if (res.unchanged) return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true };
     await setSetting(K.etag, res.etag);
+    await setSetting(K.prefsBoot, true);
     const devs = res.config.devices;
     await setSetting(K.devices, devs);
     patch({ devices: devs });
@@ -236,7 +239,12 @@ export async function applyRemotePrefs(remote: CloudProvider[], force: Set<numbe
   const rows = await listSources();
   for (const p of remote) {
     const s = rows.find((x) => x.cloudId === p.id);
-    if (!s || !p.prefs || pendingPublish.has(s.id!)) continue;
+    if (!s || pendingPublish.has(s.id!)) continue;
+    if (!p.prefs) {
+      // Amorçage : le compte n'a rien pour cette source, l'état local (déjà personnalisé) devient la valeur par défaut des autres appareils.
+      if (s.cid) await publishPrefs(s.id!);
+      continue;
+    }
     if (!force.has(s.id!) && !shouldApply(p.prefs, await getPrefsAt(p.id))) continue;
     if (await applyPrefsTo(s, p.prefs)) resync.push(s.id!);
   }

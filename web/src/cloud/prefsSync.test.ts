@@ -83,6 +83,26 @@ describe("publication", () => {
   });
 });
 
+describe("amorçage", () => {
+  it("compte sans réglages : l'état local personnalisé est publié (une fois)", async () => {
+    await db.categories.filter((c) => c.extId === "30").modify({ enabled: 0 });
+    expect(await applyRemotePrefs([{ ...w.providers[0]!, prefs: null }])).toEqual([]);
+    expect(w.state.putCount).toBe(1);
+    expect(w.providers[0]!.prefs).toMatchObject({ langs: ["fr"], disabled: { live: [], movie: [], series: ["30"] } });
+  });
+  it("compte déjà renseigné et jamais publié ici : le cloud est appliqué, pas écrasé", async () => {
+    w.providers[0]!.prefs = { langs: null, disabled: { live: ["10"], movie: [], series: [] }, updatedAt: 777, by: "d2" };
+    expect(await applyRemotePrefs([w.providers[0]!])).toEqual([sid]);
+    expect(w.state.putCount).toBe(0);
+    expect((await enabledOf())["live:10"]).toBe(0);
+  });
+  it("préférence désactivée : pas d'amorçage", async () => {
+    await setPrefsSync(false);
+    await applyRemotePrefs([{ ...w.providers[0]!, prefs: null }]);
+    expect(w.state.putCount).toBe(0);
+  });
+});
+
 describe("réception", () => {
   const remote = (updatedAt: number) => [{ ...w.providers[0]!, prefs: { langs: ["fr"], disabled: { live: ["10"], movie: ["20"], series: [] }, updatedAt, by: "d2" } }];
   it("applique les réglages plus récents, sans republier (pas de ping-pong), et demande une relecture", async () => {
