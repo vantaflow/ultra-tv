@@ -6,6 +6,9 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.fillMaxSize
@@ -70,9 +73,20 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
             LocalDensity provides scaled,
             LocalSafeArea provides safe,
             LocalUiWidthDp provides wDp,
+            // Mode tactile (téléphone / tablette) : tout ce qui n'est pas une TV. Jamais recalculé ailleurs.
+            com.ultratv.tv.nativeapp.ui.mobile.LocalTouch provides !tv,
+            com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides hDp,
         ) { content() }
     }
 }
 
 /** Convertit une cote de la maquette 1920×1080 en dp de l'interface normalisée (540 dp de haut). */
 val Int.design: Dp get() = (this / 2f).dp
+
+/**
+ * Largeur « de maquette » TV (px de 1920) qui, au toucher, devient « toute la largeur disponible plafonnée à cette cote » :
+ * un panneau de 820 px (410 dp) ne doit pas déborder d'un téléphone de 360 dp. Sur TV : largeur fixe, comme avant.
+ */
+@androidx.compose.runtime.Composable
+fun androidx.compose.ui.Modifier.responsiveWidth(px: Int): androidx.compose.ui.Modifier =
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) this.fillMaxWidth().widthIn(max = px.design) else this.width(px.design)

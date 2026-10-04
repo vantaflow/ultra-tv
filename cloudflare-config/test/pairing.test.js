@@ -33,8 +33,9 @@ describe("parcours normal : compte, appairage, fournisseur, lecture", () => {
     const cfg = await call("/api/config", { ip: tvIp, headers: bearer(token) });
     expect(cfg.status).toBe(200);
     expect(cfg.headers.get("access-control-allow-origin")).toBeNull();
-    expect((await cfg.json()).providers).toEqual([
-      { kind: "XTREAM", name: "Factice", url: "http://fake.invalid:8080", username: "demo", password: "demo-pass", mac: "" },
+    // Les champs de synchro (id, affectation, origine, dates) s'ajoutent ; les anciens champs restent identiques.
+    expect((await cfg.json()).providers).toMatchObject([
+      { kind: "XTREAM", name: "Factice", url: "http://fake.invalid:8080", username: "demo", password: "demo-pass", sharedWith: "all" },
     ]);
     // le tableau de bord liste l'appareil
     const dash = await (await call("/", { ip: acct.ip, cookie: acct.cookie })).text();

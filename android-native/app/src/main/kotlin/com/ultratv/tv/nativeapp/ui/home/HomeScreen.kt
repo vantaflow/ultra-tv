@@ -76,6 +76,8 @@ fun HomeScreen(
     onGoSettings: () -> Unit,
     onGoCloud: () -> Unit = {},
     onGoGuide: () -> Unit = {},
+    onGoSearch: () -> Unit = {},
+    onGoFavorites: () -> Unit = {},
     onPlay: (url: String, title: String) -> Unit = { _, _ -> },
     onOpenMovie: (Long) -> Unit = {},
     onOpenSeries: (Long) -> Unit = {},
@@ -90,6 +92,18 @@ fun HomeScreen(
     val favorites by vm.showingFavorites.collectAsState()
     val nowPlaying by vm.nowPlaying.collectAsState()
     val sync by vm.syncStatus.collectAsState()
+
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
+        val prof by profileVm.current.collectAsState()
+        com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
+            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, sync?.percent, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
+            onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites,
+            onPlay = onPlay, onPlayHistory = { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) },
+            onOpenHero = { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) },
+        )
+        return
+    }
 
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 72.design, top = 54.design, bottom = 54.design),

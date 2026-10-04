@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.settings
 
 import androidx.compose.ui.focus.focusRequester
 import com.ultratv.tv.nativeapp.i18n.locale
+import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +24,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import com.ultratv.tv.nativeapp.ui.mobile.openInBrowser
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,7 +76,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -85,12 +89,56 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val D = LocalDs.current
     var rub by rememberSaveable { mutableStateOf(0) }
     val dbg by com.ultratv.tv.nativeapp.StartupNav.debugRub.collectAsState()
+    var showPane by rememberSaveable { mutableStateOf(false) }
+    val pairRequested by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(pairRequested) { if (pairRequested) { rub = Rub.SOURCES.ordinal; showPane = true } }
     val rubFocus = remember { List(Rub.entries.size) { androidx.compose.ui.focus.FocusRequester() } }
     // Débogage (captures) : ouvre la rubrique demandée ET y place le focus (la rubrique suit le focus), une fois le focus initial posé.
     androidx.compose.runtime.LaunchedEffect(dbg) {
-        dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
+        dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; showPane = true; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
     }
     val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubAbout)
+    val pane: @Composable () -> Unit = {
+            when (Rub.entries[rub]) {
+                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
+                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
+                Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
+                Rub.DISPLAY -> DisplayPane(vm, panes, app)
+                Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
+                Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
+                Rub.LANGUAGES -> LanguagesPane(panes, app)
+                Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
+                Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
+            }
+    }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val compact = touch && com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current < 600f
+    if (compact) {
+        // Téléphone : liste de rubriques, puis la rubrique choisie en plein écran (Retour système = retour à la liste).
+        androidx.activity.compose.BackHandler(enabled = showPane) { showPane = false }
+        if (!showPane) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
+            Rub.entries.forEachIndexed { i, r ->
+                FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(56.dp)) { _ ->
+                    Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        DIcon(r.icon, 22.dp, Ux.Text2)
+                        Text(labels[i], color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        DIcon("M9 6l6 6-6 6", 18.dp, Ux.Text3, strokeWidth = 2.5f)
+                    }
+                }
+            }
+        } else Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.a11yBack, Ux.Surface, Ux.Text, { showPane = false })
+                Text(labels[rub], color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { pane() }
+        }
+        return
+    }
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(460.design).fillMaxHeight().padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
@@ -112,17 +160,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         }
         Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
-            when (Rub.entries[rub]) {
-                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
-                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
-                Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
-                Rub.DISPLAY -> DisplayPane(vm, panes, app)
-                Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
-                Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
-                Rub.LANGUAGES -> LanguagesPane(panes, app)
-                Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
-                Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
-            }
+            pane()
         }
     }
 }
@@ -155,6 +193,11 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf(OpenDialog.NONE) }
     var selected by remember { mutableStateOf<ProviderEntity?>(null) }
+    val C = rememberCloudStrings()
+    val cloud by vm.cloud.collectAsState()
+    val offer by vm.offerShare.collectAsState()
+    var connWarn by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(cloud, providers) { connWarn = vm.connectionWarning() }
     var backupPwd by remember { mutableStateOf("") }
 
     val saveBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -192,7 +235,13 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
                     Spacer(Modifier.width(24.design))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                         Text(p.name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: D.unsupportedSource, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
+                        val cloudTag = when {
+                            p.kind != "XTREAM" && p.kind != "M3U" -> null
+                            vm.cloudIdOf(p.id) != null -> C.cloudShared(vm.sharedWith(p.id).coerceAtLeast(1))
+                            paired -> C.localPrivate
+                            else -> null
+                        }
+                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: D.unsupportedSource, cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
                         Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
@@ -212,9 +261,21 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         if (paired) PrefRow(D.paired, D.unpair, hint = hostOnly(workerBase)) { vm.unpair() }
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
-        PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
+        if (paired) {
+            val minutes = if (cloud.lastSyncAt > 0) (System.currentTimeMillis() - cloud.lastSyncAt) / 60_000 else -1L
+            val status = when {
+                cloud.failed -> C.syncFailed
+                minutes >= 0 -> C.syncedWithCloud + " · " + C.ago(minutes) + (if (cloud.deviceCount > 0) " · " + C.devicesCount(cloud.deviceCount) else "")
+                else -> C.notSynced
+            }
+            PrefRow(C.syncNow, "", hint = status) { vm.syncFromCloud() }
+            PrefRow(C.thisDevice, cloud.selfName, hint = C.deviceNameHint) { dialog = OpenDialog.RENAME_DEVICE }
+            if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
+            if (connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
+        } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
-        // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
+        if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(workerBase).substringAfter("://")) { ctx.openInBrowser(workerBase) }
+        else // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
             com.ultratv.tv.nativeapp.ui.design.QrCode(workerBase.trimEnd('/'), 132.design)
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
@@ -231,18 +292,40 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to D.cardCloud), null,
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud)), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
-            ChoiceDialog(p.name, if (p.kind in SUPPORTED_KINDS) listOf("default" to D.setDefault, "sync" to D.syncNow, "delete" to D.deleteSource) else listOf("delete" to D.deleteSource), if (p.kind in SUPPORTED_KINDS) null else D.unsupportedSourceHint,
-                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id) }; dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+            val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U")
+            val linked = vm.cloudIdOf(p.id) != null
+            val supported = p.kind in SUPPORTED_KINDS
+            val opts = buildList {
+                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow) }
+                if (supported && shareable && !linked) add("share" to C.shareSource)
+                if (supported && shareable && linked) { add("share" to C.editSharing); add("stop" to C.stopSharing) }
+                add("delete" to D.deleteSource)
+            }
+            ChoiceDialog(p.name, opts, if (supported) null else D.unsupportedSourceHint,
+                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = if (k == "share") OpenDialog.SHARE else OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         }
+        OpenDialog.SHARE -> selected?.let { p ->
+            ShareDevicesDialog(cloud.devices, cloud.selfId, null, onConfirm = { sel -> vm.share(p.id, sel); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+        }
+        OpenDialog.RENAME_DEVICE -> RenameDeviceDialog(cloud.selfName, onSave = { vm.renameThisDevice(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         else -> Unit
     }
+    // Après l'ajout d'une source sur un appareil appairé : proposition (jamais d'envoi automatique).
+    offer?.let { id ->
+        OfferShareDialog(onShare = { vm.dismissOffer(); scope.launch { selected = vm.providerById(id) }; dialog = OpenDialog.SHARE }, onLater = { vm.dismissOffer() })
+    }
+    // Sources retirées du cloud pour cet appareil, avec des favoris ou enregistrements : confirmation.
+    if (cloud.pending.isNotEmpty()) RemovalDialog(cloud.pending, onRemove = { vm.confirmRemovals(it) }, onKeep = { vm.keepLocal(it) })
+    // Accueil vide (tactile) : « Depuis le cloud » ouvre directement l'appairage.
+    val wantPairing by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(wantPairing) { if (wantPairing) { com.ultratv.tv.nativeapp.StartupNav.startPairing.value = false; vm.startPairing() } }
     CloudPairingDialog(pairingUi, onCancel = { vm.cancelPairing() }, onRetry = { vm.startPairing() })
 }
 
@@ -427,7 +510,7 @@ fun LanguagePickerDialog(languages: List<Pair<String, Int>>, selected: Set<Strin
     val fallback = listOf("fr", "en", "ar", "es", "de", "pt", "it", "tr", "nl", "el").map { it to 0 }
     val items = languages.ifEmpty { fallback }
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
-        Column(Modifier.width(760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+        Column(Modifier.responsiveWidth(760).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.contentLanguages, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, modifier = Modifier.padding(bottom = 8.design))
             androidx.compose.foundation.lazy.LazyColumn(Modifier.height(600.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item { LangRow(D.allLanguages, "", selected.isEmpty()) { onChange(emptySet()) } }

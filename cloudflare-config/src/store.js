@@ -43,6 +43,8 @@ export async function loadProviders(env, acct) {
 
 export async function saveProviders(env, acct, providers) {
   acct.providersEnc = await encryptJson(keysFromEnv(env), providers, acct.login);
+  // Version monotone du jeu de fournisseurs : sert d'ETag aux appareils (synchro incrémentale).
+  acct.cfgVersion = (acct.cfgVersion || 0) + 1;
 }
 
 export async function deleteAccount(env, acct) {
@@ -120,14 +122,17 @@ function validUrl(raw) {
 }
 
 /** Renvoie {provider} ou {error: <code>}. Le serveur ne contacte jamais ces URL (pas de SSRF). */
-export function parseProvider(form) {
+export function parseProvider(form, origin = null) {
   const kind = String(form.get("kind") || "").toUpperCase();
   if (!KINDS.includes(kind)) return { error: "kind" };
   const url = validUrl(form.get("url"));
   if (!url) return { error: "url" };
   const p = {
     id: [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join(""),
-    kind, name: cleanLine(form.get("name"), 64) || kind, url, username: "", password: "", mac: "",
+    kind, name: cleanLine(form.get("name"), 64) || kind, url, username: "", password: "",
+    createdAt: Date.now(), updatedAt: Date.now(),
+    // Appareil d'origine (ou « dashboard ») : affiché dans le tableau de bord.
+    originDeviceId: origin?.deviceId || "", originName: cleanLine(origin?.name || "", 64),
   };
   if (kind === "XTREAM") {
     p.username = cleanLine(form.get("username"), 256);
@@ -142,8 +147,71 @@ export function publicProvider({ id: _id, ...rest }) {
   return rest;
 }
 
+/** Forme de synchro : AVEC l'identifiant stable (clé de fusion côté appareil). */
+export function syncProvider(p) {
+  return {
+    sharedWith: p.assign === undefined ? "all" : p.assign,
+    id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
+    originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
+  };
+}
+
+/**
+ * Corps JSON d'un appareil → validation identique au tableau de bord. Les champs doivent être des chaînes
+ * (un objet ou un tableau serait converti en « [object Object] » et passerait la validation).
+ */
+export function parseDeviceProvider(body, origin) {
+  const FIELDS = ["kind", "name", "url", "username", "password"]; // `mac` est ignoré en entrée
+  for (const k of FIELDS) {
+    if (body[k] !== undefined && typeof body[k] !== "string") return { error: k };
+  }
+  return parseProvider({ get: (k) => body[k] }, origin);
+}
+
 /** URL affichable : schéma + hôte seulement (le chemin et la requête peuvent contenir des identifiants). */
 export function displayUrl(raw) {
   try { const u = new URL(raw); return `${u.protocol}//${u.host}`; }
   catch { return ""; }
 }
+
+// ---- affectations (quel appareil reçoit quel fournisseur) ---------------------
+
+/** Fournisseur sans champ `assign` (données antérieures) = « tous les appareils ». */
+export const assignmentOf = (p) => (p.assign === undefined || p.assign === "all" ? "all" : Array.isArray(p.assign) ? p.assign : "all");
+
+export function isVisibleTo(p, deviceId) {
+  const a = assignmentOf(p);
+  return a === "all" || a.includes(deviceId);
+}
+
+/**
+ * Valide une affectation : "all" ou un tableau NON vide d'identifiants d'appareils de CE compte.
+ * Un identifiant inconnu (autre compte, forgé) est refusé, jamais ignoré silencieusement.
+ */
+export function parseAssign(value, acct) {
+  if (value === "all") return { assign: "all" };
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_DEVICES) return { error: "assign" };
+  const known = new Set((acct.devices || []).map((d) => d.id));
+  const out = [];
+  for (const id of value) {
+    if (typeof id !== "string" || !known.has(id)) return { error: "assign" };
+    if (!out.includes(id)) out.push(id);
+  }
+  return { assign: out };
+}
+
+/** Révocation : l'appareil disparaît des listes explicites (une liste vidée reste, invisible des appareils, à réaffecter). */
+export function dropDeviceFromAssignments(providers, deviceId) {
+  return providers.map((p) => (Array.isArray(p.assign) ? { ...p, assign: p.assign.filter((id) => id !== deviceId) } : p));
+}
+
+export async function renameDevice(env, acct, deviceId, rawName) {
+  const name = cleanLine(rawName, 40);
+  if (!name || !(acct.devices || []).some((d) => d.id === deviceId)) return false;
+  acct.devices = acct.devices.map((d) => (d.id === deviceId ? { ...d, name } : d));
+  await putAccount(env, acct);
+  return true;
+}
+
+/** Types encore pris en charge : un ancien fournisseur d'un autre type n'est plus envoyé aux appareils. */
+export const isSupportedKind = (p) => KINDS.includes(p.kind);

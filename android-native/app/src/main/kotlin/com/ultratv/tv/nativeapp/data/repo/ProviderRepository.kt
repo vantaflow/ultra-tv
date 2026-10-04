@@ -207,6 +207,16 @@ class ProviderRepository @Inject constructor(
      * so setting default = id atomically switches the whole app to that
      * provider's catalog.
      */
+    /**
+     * Met à jour une source reçue du cloud (le cloud gagne pour l'adresse et les identifiants). Les préférences locales
+     * (source par défaut, favoris, langues) sont conservées ; le catalogue est relu à la prochaine synchro.
+     */
+    suspend fun updateFromCloud(id: Long, name: String?, url: String, username: String, password: String) {
+        val p = providerDao.byId(id) ?: return
+        providerDao.upsert(p.copy(name = name ?: p.name, baseUrl = url.trim().trimEnd('/'), username = username, password = password))
+        providerDao.resetSyncAt(id)
+    }
+
     suspend fun setDefault(id: Long) {
         providerDao.deactivateAll()
         providerDao.activate(id)

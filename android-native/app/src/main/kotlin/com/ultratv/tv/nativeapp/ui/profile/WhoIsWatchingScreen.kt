@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -67,16 +71,19 @@ fun WhoIsWatchingContent(
 ) {
     val S = ProfileStrings(LocalDs.current.lang)
     val focus = remember { FocusRequester() }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     LaunchedEffect(profiles.size, focusId) {
+        if (touch) return@LaunchedEffect
         androidx.compose.runtime.withFrameNanos { }
         runCatching { focus.requestFocus() }
     }
     Column(
-        Modifier.fillMaxSize().background(Ux.Bg).padding(horizontal = 96.design, vertical = 54.design),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(64.design, Alignment.CenterVertically),
+        Modifier.fillMaxSize().background(Ux.Bg)
+            .then(if (touch) Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp, vertical = 24.dp) else Modifier.padding(horizontal = 96.design, vertical = 54.design)),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(if (touch) 32.dp else 64.design, Alignment.CenterVertically),
     ) {
-        Text(S.whoWatching, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 72.spx, maxLines = 1)
-        Row(horizontalArrangement = Arrangement.spacedBy(48.design)) {
+        Text(S.whoWatching, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 72.spx, maxLines = 2, textAlign = TextAlign.Center)
+        @Composable fun tiles() {
             val target = profiles.firstOrNull { it.id == focusId } ?: profiles.firstOrNull()
             profiles.forEach { p ->
                 ProfileTile(
@@ -88,6 +95,8 @@ fun WhoIsWatchingContent(
             }
             if (onAdd != null) ProfileTile("+", 0xFF26262D.toInt(), S.add, "", Modifier.testTag("profile-add"), onAdd)
         }
+        if (touch) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(16.dp)) { tiles() }
+        else Row(horizontalArrangement = Arrangement.spacedBy(48.design)) { tiles() }
         if (onManage != null) PillButton(S.manage, onManage, heightPx = 64, hPadPx = 32, fontPx = 22, bg = Ux.Surface)
     }
 }

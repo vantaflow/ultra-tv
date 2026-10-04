@@ -427,6 +427,10 @@ interface FavoriteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun add(f: FavoriteEntity)
 
+    /** Favoris (tous profils) qui dépendent d'une source : sert à confirmer son retrait. */
+    @Query("SELECT COUNT(*) FROM favorite WHERE providerId = :pid")
+    suspend fun countForProvider(pid: Long): Int
+
     @Query("DELETE FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid")
     suspend fun remove(profileId: Long, pid: Long, kind: String, rid: String)
 }
@@ -467,6 +471,9 @@ interface RecordingDao {
 
     @Query("SELECT * FROM recording WHERE id = :id")
     suspend fun byId(id: Long): RecordingEntity?
+
+    @Query("SELECT COUNT(*) FROM recording WHERE providerId = :pid")
+    suspend fun countForProvider(pid: Long): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(r: RecordingEntity): Long

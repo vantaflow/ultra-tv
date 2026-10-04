@@ -33,6 +33,12 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,9 +102,52 @@ fun AddProviderDialog(
 ) {
     val S = LocalStrings.current
     val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val submitFocus = remember { FocusRequester() }
     val attempted = remember { mutableStateOf(false) }
+    val submit = { if (canSubmit) onSubmit() else attempted.value = true }
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
+        if (touch) {
+            // Tactile : en-tête et champs DÉFILENT, les boutons restent épinglés en bas, au-dessus du clavier système (imePadding via les insets).
+            CompositionLocalProvider(LocalSubmitAttempted provides attempted, LocalFormSubmit provides submit) {
+            Column(
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(vertical = 8.dp)
+                    .fillMaxWidth(0.94f).widthIn(max = 560.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Ux.SurfaceDeep),
+            ) {
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(icon, 22.dp, Ux.White, strokeWidth = 2f) }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 13.sp, color = Ux.Text3, maxLines = 2)
+                        }
+                    }
+                    content()
+                    Spacer(Modifier.height(4.dp))
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(24.dp), bg = Ux.Surface2, modifier = Modifier.height(48.dp).testTag("dialog-cancel")) { _ ->
+                        Box(Modifier.height(48.dp).padding(horizontal = 20.dp), contentAlignment = Alignment.Center) { Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Ux.Text) }
+                    }
+                    FocusSurface(onClick = submit, shape = RoundedCornerShape(24.dp), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(48.dp).weight(1f, fill = false).testTag("dialog-submit")) { _ ->
+                        Box(Modifier.height(48.dp).padding(horizontal = 22.dp), contentAlignment = Alignment.Center) {
+                            Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, color = if (canSubmit) Ux.TextOnLight else Ux.Muted)
+                        }
+                    }
+                }
+            }
+            }
+        } else {
         // Le dialogue tient TOUJOURS dans l'écran (hauteur moins marges de sécurité) : le contenu défile,
         // l'en-tête et les boutons restent épinglés, donc visibles et focalisables quelle que soit l'échelle de police.
         // Clavier à l'écran : la fenêtre n'est pas redimensionnée (elle est seulement « panoramiquée »), donc le dialogue se limite
@@ -141,7 +190,7 @@ fun AddProviderDialog(
                                 Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
                             }
                         }
-                        FocusSurface(onClick = { if (canSubmit) onSubmit() else attempted.value = true }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).focusRequester(submitFocus).testTag("dialog-submit")) { f ->
+                        FocusSurface(onClick = submit, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).focusRequester(submitFocus).testTag("dialog-submit")) { f ->
                             Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
                                 Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
                                     color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
@@ -156,6 +205,7 @@ fun AddProviderDialog(
                 }
             }
             }
+        }
         }
     }
 }
@@ -180,6 +230,8 @@ private fun rememberImeHeight(): androidx.compose.ui.unit.Dp {
 private val LocalSubmitAttempted = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
 private val LocalFieldFocused = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
 private val LocalSubmitFocus = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
+/** Validation depuis le clavier (« OK / Terminé ») : même chemin que le bouton d'envoi. */
+val LocalFormSubmit = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
 
 /**
  * Champ texte de formulaire. D-pad haut/bas le quittent toujours ([leaveOnVerticalDpad]) ;
@@ -209,6 +261,7 @@ fun FormField(
     val fieldFocusedState = LocalFieldFocused.current
     androidx.compose.runtime.DisposableEffect(focused) { if (focused) fieldFocusedState?.value = true; onDispose { if (focused) fieldFocusedState?.value = false } }
     val submit = LocalSubmitFocus.current
+    val formSubmit = LocalFormSubmit.current
     // « Visité puis quitté vide » : l'erreur ne s'affiche JAMAIS à l'ouverture, seulement après un passage dans le champ.
     var settled by remember { mutableStateOf(false) }
     var touched by remember { mutableStateOf(false) }
@@ -222,12 +275,13 @@ fun FormField(
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
     val shownError = error ?: if (required && value.isBlank() && !focused && (touched || attempted)) D.fieldRequired else null
-    Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.fillMaxWidth()) {
-        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design), modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx)
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(72.design)
+                .height(if (touch) 52.dp else 72.design)
                 .clip(RoundedCornerShape(18.design))
                 .background(Ux.Surface)
                 .then(
@@ -244,7 +298,7 @@ fun FormField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = 24.spx),
+                textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = if (touch) 16.sp else 24.spx),
                 cursorBrush = SolidColor(Ux.Accent),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
@@ -254,7 +308,7 @@ fun FormField(
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { fm.moveFocus(FocusDirection.Down) },
-                    onDone = { if (submit != null) runCatching { submit.requestFocus() } else fm.moveFocus(FocusDirection.Down) },   // « Ajouter »
+                    onDone = { if (formSubmit != null) formSubmit() else if (submit != null) runCatching { submit.requestFocus() } else fm.moveFocus(FocusDirection.Down) },   // « OK / Terminé » valide le formulaire
                 ),
                 interactionSource = interaction,
                 modifier = Modifier
@@ -271,14 +325,14 @@ fun FormField(
                     .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
                 decorationBox = { inner ->
                     if (value.isEmpty() && placeholder != null) {
-                        Text(placeholder, color = Ux.Muted, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
+                        Text(placeholder, color = Ux.Muted, fontFamily = Manrope, fontSize = if (touch) 16.sp else 24.spx, maxLines = 1)
                     }
                     inner()
                 },
             )
         }
         if (shownError != null) {
-            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx)
+            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx)
         }
     }
 }

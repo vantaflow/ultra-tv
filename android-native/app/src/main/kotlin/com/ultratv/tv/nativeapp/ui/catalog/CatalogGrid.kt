@@ -16,6 +16,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -151,13 +153,22 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     var langPanel by remember { mutableStateOf(false) }
     val title = if (kind == CatalogKind.MOVIES) D.moviesTitle else D.seriesTitle
 
-    Column(Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design), verticalArrangement = Arrangement.spacedBy(32.design)) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current
+    com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh {
+    Column(
+        Modifier.fillMaxSize().then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)),
+        verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 32.design),
+    ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1)
-            com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true })
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 48.spx, maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true })
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
         }
         if (langPanel) com.ultratv.tv.nativeapp.ui.common.LangViewPanel(langCounts, langView, onToggle = { vm.toggleLang(it) }, onClear = { vm.clearLangView() }, onDismiss = { langPanel = false })
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(14.design)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
@@ -170,10 +181,10 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
         var firstFocused by remember { mutableStateOf(false) }
         RequestInitialFocus(first, hasFocus = { firstFocused }, key = selected)
         LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            horizontalArrangement = Arrangement.spacedBy(28.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
-            contentPadding = PaddingValues(top = 12.design, bottom = 54.design),
+            columns = GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f)) else 7),
+            horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 28.design),
+            verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 28.design),
+            contentPadding = PaddingValues(top = if (touch) 4.dp else 12.design, bottom = if (touch) 16.dp else 54.design),
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(count = items.itemCount, key = items.itemKey { it.id }, contentType = { "poster" }) { i ->
@@ -183,13 +194,15 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             }
         }
     }
+    }
 }
 
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
-        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
-            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(if (touch) 20.dp else 28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(if (touch) 40.dp else 56.design)) { f ->
+        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = if (touch) 16.dp else 28.design).height(if (touch) 40.dp else 56.design), contentAlignment = Alignment.Center) {
+            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (touch) 13.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -197,16 +210,17 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 /** Affiche 2:3 (focus : ×1,06 + anneau), titre 22 gras sur 1 ligne, année · note 18. */
 @Composable
 private fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Unit) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.design)) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {
             Box(Modifier.fillMaxSize()) {
                 PosterImage(item.poster, item.title, Modifier.fillMaxSize(), radius = 18)
                 com.ultratv.tv.nativeapp.ui.common.LangBadge(item.lang, modifier = Modifier.align(Alignment.TopStart).padding(10.design))
             }
         }
-        Text(item.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(item.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         val meta = listOfNotNull(item.year?.toString(), item.rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
-        Text(meta, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(22.design))
+        Text(meta, color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(if (touch) 16.dp else 22.design))
     }
 }
 

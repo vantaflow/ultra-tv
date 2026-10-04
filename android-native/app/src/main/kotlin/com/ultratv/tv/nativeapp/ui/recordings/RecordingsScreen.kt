@@ -21,6 +21,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -100,18 +102,32 @@ fun RecordingsScreen(
     val free = remember(list) { runCatching { StatFs((ctx.getExternalFilesDir(null) ?: ctx.filesDir).path).availableBytes }.getOrDefault(0L) }
     val total = used + free
 
-    Column(Modifier.fillMaxSize().background(Ux.Bg).padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-            SectionTitle(S.recordingsTitle, 48)
-            Column(Modifier.width(520.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current
+    Column(
+        Modifier.fillMaxSize().background(Ux.Bg).then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design)),
+        verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 28.design),
+    ) {
+        @Composable fun meter() {
+            Column(if (touch) Modifier.fillMaxWidth() else Modifier.width(520.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(D.storageUsed, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
-                    Text(D.storageOf(formatBytes(used), formatBytes(total)), color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                    Text(D.storageUsed, color = Ux.Text2, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, maxLines = 1)
+                    Text(D.storageOf(formatBytes(used), formatBytes(total)), color = Ux.Text2, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, maxLines = 1)
                 }
                 Box(Modifier.fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Surface2)) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(if (total > 0) (used.toFloat() / total).coerceIn(0f, 1f) else 0f).background(Ux.Text))
                 }
             }
+        }
+        if (touch) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(S.recordingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
+            meter()
+        } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionTitle(S.recordingsTitle, 48)
+            meter()
         }
         if (list.isEmpty()) {
             Text(S.recordingsEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx)
@@ -125,7 +141,7 @@ fun RecordingsScreen(
         }
         if (done.isNotEmpty()) {
             GroupLabel(D.recDone)
-            LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.design), verticalArrangement = Arrangement.spacedBy(24.design)) {
+            LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f), 160f) else 4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 24.design)) {
                 items(done, key = { it.id }) { r ->
                     FocusSurface(
                         onClick = { onPlayLocal("file://${r.filePath}", r.title) }, onLongClick = { vm.remove(r.id) },

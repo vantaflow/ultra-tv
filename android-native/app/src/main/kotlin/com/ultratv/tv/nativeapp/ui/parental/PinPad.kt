@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.parental
 
+import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -80,7 +81,7 @@ fun PinPad(
             }
         },
     ) {
-        Column(Modifier.width(720.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(36.design)) {
+        Column(Modifier.responsiveWidth(720), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(36.design)) {
             Box(Modifier.size(96.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
                 DIcon("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z", 44.design, Ux.Text)
             }

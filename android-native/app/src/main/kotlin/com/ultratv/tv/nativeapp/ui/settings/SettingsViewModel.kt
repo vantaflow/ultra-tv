@@ -39,7 +39,37 @@ class SettingsViewModel @Inject constructor(
     private val cloudPairing: com.ultratv.tv.nativeapp.data.config.CloudPairing,
     private val deviceTokens: com.ultratv.tv.nativeapp.data.config.DeviceTokenStore,
     private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
+    private val cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager,
 ) : ViewModel() {
+
+    // ---- Synchro cloud multi-appareils ----
+
+    val cloud: StateFlow<com.ultratv.tv.nativeapp.data.config.CloudSyncState> = cloudSync.state
+
+    /** Source locale qui vient d'être ajoutée sur un appareil appairé : on propose de la partager (jamais automatiquement). */
+    private val _offerShare = MutableStateFlow<Long?>(null)
+    val offerShare: StateFlow<Long?> = _offerShare.asStateFlow()
+    fun dismissOffer() { _offerShare.value = null }
+    private fun offerIfPaired(id: Long) { if (deviceTokens.isPaired) _offerShare.value = id }
+
+    suspend fun providerById(id: Long) = repo.byId(id)
+    fun cloudIdOf(localId: Long): String? = cloudSync.cloudIdOf(localId)
+    fun sharedWith(localId: Long): Int = cloudSync.sharedWith(localId)
+    suspend fun connectionWarning(): Boolean = cloudSync.connectionWarning()
+
+    /** Partage ([shareWith] = null : tous les appareils). */
+    fun share(localId: Long, shareWith: List<String>?) {
+        viewModelScope.launch {
+            val ok = cloudSync.share(localId, shareWith)
+            if (ok) cloudSync.sync(force = true)
+            _message.value = if (ok) "Shared ✓" else "Sharing failed"
+        }
+    }
+
+    fun stopSharing(localId: Long) { viewModelScope.launch { cloudSync.stopSharing(localId) } }
+    fun renameThisDevice(name: String) { viewModelScope.launch { if (cloudSync.renameThisDevice(name)) cloudSync.sync(force = true) } }
+    fun confirmRemovals(ids: Set<Long>) { viewModelScope.launch { cloudSync.confirmRemovals(ids) } }
+    fun keepLocal(ids: Set<Long>) { viewModelScope.launch { cloudSync.keepLocal(ids) } }
 
     /** Mirrors UserPrefs.localLogosFolderUri for the Settings UI to display. */
     val localLogosFolderUri: kotlinx.coroutines.flow.StateFlow<String> = prefs.flow
@@ -114,7 +144,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             if (normalized != validWorkerUrl(workerBaseUrl.value)) {
                 // Un jeton n'est valable que pour le Worker qui l'a délivré.
-                deviceTokens.clear(); _paired.value = false
+                deviceTokens.clear(); cloudSync.forget(); _paired.value = false
             }
             prefs.setWorkerBase(normalized)
             com.ultratv.tv.nativeapp.RemoteLog.workerUrlOverride = normalized
@@ -141,7 +171,7 @@ class SettingsViewModel @Inject constructor(
         pairingJob?.cancel()
         _pairing.value = PairingUi.Requesting
         pairingJob = viewModelScope.launch {
-            cloudPairing.run(base, deviceMac.mac).collect { ev ->
+            cloudPairing.run(base, android.os.Build.MODEL ?: deviceMac.mac).collect { ev ->
                 when (ev) {
                     is com.ultratv.tv.nativeapp.data.config.PairingEvent.CodeReady ->
                         _pairing.value = PairingUi.ShowCode(ev.code, base, com.ultratv.tv.nativeapp.data.config.PairingLabel.of(deviceMac.mac))
@@ -167,6 +197,7 @@ class SettingsViewModel @Inject constructor(
     /** Oublie le jeton local. Pour le révoquer côté serveur, supprimer l'appareil dans le tableau de bord. */
     fun unpair() {
         deviceTokens.clear()
+        cloudSync.forget()
         _paired.value = false
         _message.value = "Device unpaired. Revoke it in the dashboard too if you lost it."
     }
@@ -178,17 +209,14 @@ class SettingsViewModel @Inject constructor(
             _syncing.value = true
             _message.value = "Asking the dashboard for this device's config…"
             try {
-                val workerBase = validWorkerUrl(workerBaseUrl.value) ?: error("Invalid Worker URL (https:// required)")
-                val res = remoteConfig.importFromCloud(workerBase) { _message.value = it }
-                // Ensure something becomes default so the UI has a provider to use.
-                if (res.imported > 0 && repo.firstActive() == null) {
-                    repo.observeProviders().first().firstOrNull()?.id?.let { repo.setDefault(it) }
-                }
-                _message.value = when {
-                    res.imported == 0 && res.errors.isEmpty() ->
-                        "The dashboard has no provider for this device yet. Add one at $workerBase."
-                    res.errors.isEmpty() -> "Imported ${res.imported} provider(s) ✓"
-                    else -> "Imported ${res.imported} provider(s) · ${res.errors.size} error(s): ${res.errors.first()}"
+                validWorkerUrl(workerBaseUrl.value) ?: error("Invalid Worker URL (https:// required)")
+                when (cloudSync.sync(force = true)) {
+                    com.ultratv.tv.nativeapp.data.config.CloudSyncManager.Result.NotPaired -> { _paired.value = false; _message.value = "⚠ This device was revoked or unpaired. Pair it again." }
+                    com.ultratv.tv.nativeapp.data.config.CloudSyncManager.Result.Failed -> _message.value = ""  // l'échec est présenté par la bannière globale
+                    com.ultratv.tv.nativeapp.data.config.CloudSyncManager.Result.Done -> {
+                        val st = cloudSync.state.value
+                        _message.value = "Synchronized with the cloud ✓ (+${st.added} ~${st.updated} -${st.removed})"
+                    }
                 }
             } catch (e: com.ultratv.tv.nativeapp.data.config.TokenRejectedException) {
                 _paired.value = false
@@ -248,6 +276,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val id = repo.addXtream(name, baseUrl, username, password)
             makeDefaultIfNone(id)
+            offerIfPaired(id)
             onDone(id)
         }
     }
@@ -261,6 +290,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 val id = repo.addXtream(name, baseUrl, username, password)
                 makeDefaultIfNone(id)
+                offerIfPaired(id)
                 // Synchro confiée à WorkManager : la progression s'affiche via le SyncStatusBus.
                 sync.request(id, force = true)
                 _message.value = "Syncing…"
@@ -295,6 +325,7 @@ class SettingsViewModel @Inject constructor(
             try {
                 val id = repo.addM3u(name, url)
                 makeDefaultIfNone(id)
+                offerIfPaired(id)
                 sync.request(id, force = true)
                 _message.value = "Syncing…"
             } catch (t: Throwable) {

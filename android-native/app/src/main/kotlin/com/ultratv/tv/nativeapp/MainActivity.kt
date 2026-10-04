@@ -10,10 +10,15 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -41,10 +46,7 @@ import com.ultratv.tv.nativeapp.data.sync.SyncScheduler
 import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.categories.CategoriesScreen
-import com.ultratv.tv.nativeapp.ui.common.FormFactor
 import com.ultratv.tv.nativeapp.ui.common.ScreenFocusHost
-import com.ultratv.tv.nativeapp.ui.common.rememberFormFactor
-import com.ultratv.tv.nativeapp.ui.components.BottomBarNav
 import com.ultratv.tv.nativeapp.ui.components.SidebarNav
 import com.ultratv.tv.nativeapp.ui.favorites.FavoritesScreen
 import com.ultratv.tv.nativeapp.ui.guide.GuideGridScreen
@@ -82,6 +84,8 @@ object StartupNav {
     /** Build debug : requête préremplie (Recherche) et thème forcé (captures). */
     val debugQuery = MutableStateFlow<String?>(null)
     val debugTheme = MutableStateFlow<String?>(null)
+    /** Accueil vide (tactile) : ouvrir Réglages et lancer l'appairage cloud. */
+    val startPairing = MutableStateFlow(false)
 }
 
 @AndroidEntryPoint
@@ -94,6 +98,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
     @Inject lateinit var deepLinks: com.ultratv.tv.nativeapp.nav.DeepLinkHandler
     @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
+    @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
     @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -102,6 +107,12 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (!com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) {
+            // Téléphone / tablette : barres système transparentes (le contenu passe dessous, les marges viennent des insets).
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
+        }
         RemoteLog.info("activity", "onCreate restoredState=${savedInstanceState != null}")
         handleDebugIntent(intent)
         handleDeepLink(intent)
@@ -111,6 +122,18 @@ class MainActivity : ComponentActivity() {
             runCatching { recordingScheduler.rearmAll() }
         }
         setContent { Root() }
+        // Android 12+ : le geste « accueil » entre en image dans l'image sans passer par onUserLeaveHint, tant que le lecteur est affiché.
+        if (android.os.Build.VERSION.SDK_INT >= 31 && !com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) {
+            lifecycleScope.launch {
+                androidx.compose.runtime.snapshotFlow { com.ultratv.tv.nativeapp.ui.design.Ux.playerActive }.collect { shown ->
+                    runCatching {
+                        setPictureInPictureParams(
+                            android.app.PictureInPictureParams.Builder().setAspectRatio(android.util.Rational(16, 9)).setAutoEnterEnabled(shown).build(),
+                        )
+                    }
+                }
+            }
+        }
         kickoffStartupTasks()
         // Auto-update flow: query GitHub Releases on launch and, if a newer
         // version is found, download + fire the system install Intent without
@@ -168,6 +191,11 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch { prefsStore.setBufferPreset(v) } }
     }
 
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        com.ultratv.tv.nativeapp.ui.mobile.PipState.active = isInPictureInPictureMode
+    }
+
     /**
      * When the user presses Home while a stream is playing, enter PiP so the
      * stream keeps going in a corner. Falls back silently on devices that
@@ -188,6 +216,9 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         if (playback.current.value == null) return
+        // Téléphone / tablette : image dans l'image seulement depuis l'écran du lecteur (jamais depuis l'accueil).
+        if (!com.ultratv.tv.nativeapp.ui.common.isTelevision(this) &&
+            !com.ultratv.tv.nativeapp.ui.mobile.shouldEnterPip(hasPlayback = true, playerShown = com.ultratv.tv.nativeapp.ui.design.Ux.playerActive)) return
         runCatching {
             val params = android.app.PictureInPictureParams.Builder()
                 .setAspectRatio(android.util.Rational(16, 9))
@@ -213,6 +244,9 @@ class MainActivity : ComponentActivity() {
             // every time the app starts so a re-install / OS restart picks up
             // where we left off.
             SyncScheduler.schedule(this@MainActivity, prefs.syncIntervalHours)
+            // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
+            com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
+            runCatching { cloudSync.sync() }
 
             // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
             // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
@@ -262,6 +296,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.adaptive.LocalAdaptive provides adaptive,
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
+        com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
         val dbgTheme by StartupNav.debugTheme.collectAsState()
@@ -316,10 +351,23 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     val visibleEntries by nav.visibleEntries.collectAsState()
     val playerShown = com.ultratv.tv.nativeapp.ui.theme.isPlayerShown(visibleEntries.map { it.destination.route })
     if (com.ultratv.tv.nativeapp.ui.design.Ux.playerActive != playerShown) com.ultratv.tv.nativeapp.ui.design.Ux.playerActive = playerShown
-    val form = rememberFormFactor()
-    // Effective nav style: phone-portrait collapses to a bottom bar regardless
-    // of the user's "sidebar / top bar" preference, otherwise we honour it.
-    val useBottomBar = form == FormFactor.Compact
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val layout = com.ultratv.tv.nativeapp.ui.mobile.navLayoutFor(
+        tv = !touch,
+        widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current,
+        heightDp = com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp.current,
+    )
+    // Barres système : icônes sombres sur fond clair (thème clair), toujours claires dans le lecteur.
+    if (touch) {
+        val view = androidx.compose.ui.platform.LocalView.current
+        val lightBars = com.ultratv.tv.nativeapp.ui.theme.isLightEffective(com.ultratv.tv.nativeapp.ui.design.Ux.themeLight, playerShown)
+        androidx.compose.runtime.SideEffect {
+            val w = (view.context as? android.app.Activity)?.window ?: return@SideEffect
+            val c = WindowCompat.getInsetsController(w, view)
+            c.isAppearanceLightStatusBars = lightBars
+            c.isAppearanceLightNavigationBars = lightBars
+        }
+    }
 
     // One-shot: as soon as we have a NavController, consume any pending
     // auto-play request set during startup.
@@ -341,24 +389,28 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     }
 
     val overlays = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.OverlayHost() }
+    val openSearch: () -> Unit = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } }
+    val navBack: () -> Unit = { nav.popBackStack() }
     Surface(
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
-      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays) {
+      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
-        when {
-            useBottomBar -> Column(Modifier.fillMaxSize()) {
-                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(PaddingValues(horizontal = 12.dp)),
+        val backEntryRoute by nav.currentBackStackEntryAsState()
+        val onPlayer = com.ultratv.tv.nativeapp.ui.mobile.isFullscreenRoute(backEntryRoute?.destination?.route)
+        when (layout) {
+            com.ultratv.tv.nativeapp.ui.mobile.NavLayout.BOTTOM_TABS, com.ultratv.tv.nativeapp.ui.mobile.NavLayout.SIDE_RAIL -> {
+                val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                val prof by profileVm.current.collectAsState()
+                com.ultratv.tv.nativeapp.ui.mobile.MobileScaffold(
+                    layout = layout, navController = nav, fullscreen = onPlayer,
+                    profile = prof?.let { com.ultratv.tv.nativeapp.ui.mobile.ProfileChip(it.initial, it.color) },
+                    onProfile = { profileVm.requestSwitch() },
+                    banner = { com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) }) },
                 ) { NavGraph(nav) }
-                BottomBarNav(navController = nav)
             }
-            else -> Column(Modifier.fillMaxSize()) {
+            com.ultratv.tv.nativeapp.ui.mobile.NavLayout.TV_RAIL -> Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
                 // Le contenu est décalé de la largeur REPLIÉE du rail ; le rail déplié passe par-dessus
                 // (même Box) sans jamais décaler ni re-mesurer le contenu.
@@ -413,6 +465,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onGoSettings = { nav.navigate(Routes.SETTINGS) },
                 onGoCloud = { StartupNav.cloudPairRequest.value = true; nav.navigate(Routes.SETTINGS) },
                 onGoGuide = { nav.navigate(Routes.GUIDE) },
+                onGoSearch = { nav.navigate(Routes.SEARCH) },
+                onGoFavorites = { nav.navigate(Routes.FAVORITES) },
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
