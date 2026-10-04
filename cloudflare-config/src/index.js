@@ -22,7 +22,8 @@ import {
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
-  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider,
+  newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider,
+  isVisibleTo, assignmentOf, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
@@ -84,6 +85,10 @@ async function route(req, env) {
   if (path === "/api/pair/poll" && m === "POST") return pairPoll(req, env);
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
+  if (path === "/api/device/providers" && m === "POST") return devicePutProvider(req, env);
+  const delProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})$/);
+  if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
+  if (path === "/api/device/self" && m === "POST") return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
@@ -107,7 +112,7 @@ async function route(req, env) {
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/revoke|providers\/[0-9a-f]+\/delete)$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign))$/.test(path));
   if (!dashboardRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) return redirect("/login");
 
@@ -138,8 +143,28 @@ async function route(req, env) {
   if (path === "/account/delete") return removeAccount(env, acct, form);
   const rev = path.match(/^\/devices\/([0-9a-f]+)\/revoke$/);
   if (rev) {
-    await revokeDevice(env, acct, rev[1]);
+    if (await revokeDevice(env, acct, rev[1])) {
+      // Un appareil révoqué sort de toutes les affectations.
+      await saveProviders(env, acct, dropDeviceFromAssignments(await loadProviders(env, acct), rev[1]));
+      await putAccount(env, acct);
+    }
     return redirect("/?m=revoked");
+  }
+  const ren = path.match(/^\/devices\/([0-9a-f]+)\/rename$/);
+  if (ren) {
+    await renameDevice(env, acct, ren[1], form.get("name") || "");
+    return redirect("/?m=renamed");
+  }
+  const asg = path.match(/^\/providers\/([0-9a-f]+)\/assign$/);
+  if (asg) {
+    const all = form.get("all") === "1";
+    const r = parseAssign(all ? "all" : form.getAll("d"), acct);
+    if (r.error) return redirect("/?e=assign");
+    const providers = await loadProviders(env, acct);
+    if (!providers.some((p) => p.id === asg[1])) return redirect("/");
+    await saveProviders(env, acct, providers.map((p) => (p.id === asg[1] ? { ...p, assign: r.assign, updatedAt: Date.now() } : p)));
+    await putAccount(env, acct);
+    return redirect("/?m=assigned");
   }
   const del = path.match(/^\/providers\/([0-9a-f]+)\/delete$/);
   const providers = await loadProviders(env, acct);
@@ -283,7 +308,7 @@ async function confirmPairing(env, acct, form) {
     const f = await guardStub(env, `lock:pair:${acct.login}`).lockFail(LOGIN_LOCK);
     return f.locked ? tooMany(f.retryAfter) : redirect("/?e=code");
   }
-  const name = sanitizeText(form.get("name") || "", 40) || "Appareil";
+  const name = sanitizeText(form.get("name") || "", 40) || sanitizeText(r.label || "", 40) || "Appareil";
   await registerDevice(env, acct, { token, deviceId, name, label: r.label });
   return redirect("/?m=paired");
 }
@@ -293,7 +318,7 @@ async function confirmPairing(env, acct, form) {
 async function addProvider(env, acct, form) {
   const providers = await loadProviders(env, acct);
   if (providers.length >= MAX_PROVIDERS) return redirect("/?e=limit");
-  const r = parseProvider(form);
+  const r = parseProvider(form, { deviceId: "", name: "dashboard" });
   if (r.error) return redirect(`/?e=${r.error}`);
   providers.push(r.provider);
   await saveProviders(env, acct, providers);
@@ -351,8 +376,96 @@ async function deviceConfig(req, env) {
   const rl = (await limited(env, `cfg:ip:${clientIp(req)}`, 300, 600, true))
     || (await limited(env, `cfg:dev:${auth.device.id}`, 60, 600, true));
   if (rl) return rl;
+  const version = auth.acct.cfgVersion || 0;
+  const etag = `"v${version}"`;
+  // Synchro incrémentale : rien n'a changé depuis la version connue de l'appareil.
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
+  // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
+  const providers = (await loadProviders(env, auth.acct)).filter((p) => isVisibleTo(p, auth.device.id));
+  const devices = (auth.acct.devices || []).map((d) => ({ id: d.id, name: d.name, label: d.label || "" }));
+  return json(
+    { version, self: auth.device.id, devices, providers: providers.map(syncProvider) },
+    200, { etag, "cache-control": "no-store" },
+  );
+}
+
+const DEV_BODY_MAX = 4 * 1024;
+
+/** Ajoute ou met à jour (si `id` connu de CE compte) un fournisseur, depuis un appareil appairé. */
+async function devicePutProvider(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pput:ip:${clientIp(req)}`, 120, 600, true))
+    || (await limited(env, `pput:dev:${auth.device.id}`, 30, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, DEV_BODY_MAX);
+  if (body.error) return body.error;
+  const origin = { deviceId: auth.device.id, name: auth.device.name };
+  const r = parseDeviceProvider(body.value, origin);
+  if (r.error) return json({ error: "invalid", field: r.error }, 400);
   const providers = await loadProviders(env, auth.acct);
-  return json({ providers: providers.map(publicProvider) });
+  const wanted = body.value.id;
+  if (wanted !== undefined && !(typeof wanted === "string" && /^[0-9a-f]{8}$/.test(wanted))) return json({ error: "invalid", field: "id" }, 400);
+  let assign = null;
+  if (body.value.shareWith !== undefined) {
+    const a = parseAssign(body.value.shareWith, auth.acct);
+    if (a.error) return json({ error: "invalid", field: "shareWith" }, 400);
+    assign = a.assign;
+  }
+  let status = 201;
+  let savedId;
+  if (wanted) {
+    const i = providers.findIndex((p) => p.id === wanted);
+    // Inconnu OU non affecté à cet appareil : même réponse (on ne révèle pas l'existence d'une source d'un autre appareil).
+    if (i < 0 || !isVisibleTo(providers[i], auth.device.id)) return json({ error: "not_found" }, 404);
+    const old = providers[i];
+    providers[i] = { ...r.provider, id: old.id, createdAt: old.createdAt, originDeviceId: old.originDeviceId, originName: old.originName, assign: assign ?? assignmentOf(old) };
+    status = 200; savedId = old.id;
+  } else {
+    if (providers.length >= MAX_PROVIDERS) return json({ error: "limit" }, 409);
+    // Créée depuis un appareil : privée à cet appareil, sauf partage explicite.
+    r.provider.assign = assign ?? [auth.device.id];
+    if (Array.isArray(r.provider.assign) && !r.provider.assign.includes(auth.device.id)) r.provider.assign.push(auth.device.id);
+    providers.push(r.provider); savedId = r.provider.id;
+  }
+  await saveProviders(env, auth.acct, providers);
+  await putAccount(env, auth.acct);
+  return json({ version: auth.acct.cfgVersion, provider: syncProvider(providers.find((p) => p.id === savedId)) }, status);
+}
+
+async function deviceDeleteProvider(req, env, id) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pput:ip:${clientIp(req)}`, 120, 600, true))
+    || (await limited(env, `pput:dev:${auth.device.id}`, 30, 600, true));
+  if (rl) return rl;
+  const providers = await loadProviders(env, auth.acct);
+  const p = providers.find((x) => x.id === id);
+  if (!p || !isVisibleTo(p, auth.device.id)) return json({ error: "not_found" }, 404);
+  // Par défaut l'appareil se RETIRE de l'affectation ; `?all=1` supprime le fournisseur du compte.
+  const everywhere = new URL(req.url).searchParams.get("all") === "1";
+  const a = assignmentOf(p);
+  let next;
+  if (everywhere) next = providers.filter((x) => x.id !== id);
+  else {
+    const rest = a === "all" ? (auth.acct.devices || []).map((d) => d.id).filter((d) => d !== auth.device.id) : a.filter((d) => d !== auth.device.id);
+    next = rest.length === 0 ? providers.filter((x) => x.id !== id) : providers.map((x) => (x.id === id ? { ...x, assign: rest } : x));
+  }
+  await saveProviders(env, auth.acct, next);
+  await putAccount(env, auth.acct);
+  return json({ version: auth.acct.cfgVersion });
+}
+
+/** Renomme CET appareil (étiquette affichée dans le tableau de bord et dans les listes de partage). */
+async function deviceRename(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = await limited(env, `pput:dev:${auth.device.id}`, 30, 600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 1024);
+  if (body.error) return body.error;
+  if (typeof body.value.name !== "string" || !(await renameDevice(env, auth.acct, auth.device.id, body.value.name))) return json({ error: "invalid", field: "name" }, 400);
+  return json({ ok: true });
 }
 
 // Métadonnées TMDB : réservé aux appareils appairés, débit limité par appareil et par IP.

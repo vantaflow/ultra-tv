@@ -92,9 +92,18 @@ const DASH_MSG = {
     mac: "Adresse MAC invalide (AA:BB:CC:DD:EE:FF).",
     short: "Nouveau mot de passe trop court (10 caractères minimum).",
     pw: "Mot de passe actuel incorrect.",
+    assign: "Choisis au moins un appareil de ton compte.",
   },
-  ok: { paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", pw: "Mot de passe mis à jour." },
+  ok: { paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour." },
 };
+
+/** Matrice fournisseur × appareils : cases à cocher + raccourci « Tous ». */
+function assignForm(p, devices, csrfInput) {
+  const a = p.assign === undefined || p.assign === "all" ? "all" : Array.isArray(p.assign) ? p.assign : "all";
+  const boxes = devices.map((d) => `<label class="small"><input type="checkbox" name="d" value="${e(d.id)}"${a === "all" || a.includes(d.id) ? " checked" : ""}/> ${e(d.name)}</label>`).join(" ");
+  return `<form method="post" action="/providers/${e(p.id)}/assign" class="small">${csrfInput}<span class="muted">Reçu par :</span> ${boxes || "—"}
+<label class="small"><input type="checkbox" name="all" value="1"${a === "all" ? " checked" : ""}/> Tous</label> <button class="secondary" type="submit">Enregistrer</button></form>`;
+}
 
 export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
@@ -102,11 +111,14 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const provRows = providers.map((p) => `
 <div class="item"><span class="kind">${e(p.kind)}</span>
-<div><div><strong>${e(p.name)}</strong></div><div class="muted small">${e(displayUrl(p.url))}</div></div>
+<div><div><strong>${e(p.name)}</strong></div><div class="muted small">${e(displayUrl(p.url))}</div>
+<div class="muted small">${p.originName ? `Ajouté depuis ${e(p.originName === "dashboard" ? "le tableau de bord" : p.originName)}` : "Origine inconnue"}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
+${assignForm(p, devices, csrfInput)}</div>
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div>`).join("");
   const devRows = devices.map((d) => `
 <div class="item"><span class="kind">TV</span>
 <div><div><strong>${e(d.name)}</strong></div><div class="muted small">${e(d.label || "")} · appairé le ${e(when(d.createdAt))}</div></div>
+<form method="post" action="/devices/${e(d.id)}/rename" class="row">${csrfInput}<input name="name" maxlength="40" value="${e(d.name)}" aria-label="Nom de l'appareil"/><button class="secondary" type="submit">Renommer</button></form>
 <form method="post" action="/devices/${e(d.id)}/revoke" data-confirm="Révoquer cet appareil ? Il ne pourra plus lire ta configuration.">${csrfInput}<button class="danger" type="submit">Révoquer</button></form></div>`).join("");
   const msg = (err && DASH_MSG.err[err] && `<div class="notice err">${e(DASH_MSG.err[err])}</div>`)
     || (ok && DASH_MSG.ok[ok] && `<div class="notice ok">${e(DASH_MSG.ok[ok])}</div>`) || "";
