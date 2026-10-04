@@ -25,6 +25,7 @@ import {
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider,
   MAX_PROVIDERS, MAX_DEVICES,
 } from "./store.js";
+import { tmdbProxy } from "./tmdb.js";
 import { sanitizeText } from "./sanitize.js";
 import { loginPage, signupPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
@@ -82,6 +83,7 @@ async function route(req, env) {
   if (path === "/api/pair/poll" && m === "POST") return pairPoll(req, env);
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
+  if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
   if (path === "/api/crash" && m === "POST") return ingest(req, env, "crash");
   // Ancienne lecture anonyme par MAC : supprimée (la MAC n'est pas un secret).
@@ -349,6 +351,16 @@ async function deviceConfig(req, env) {
   if (rl) return rl;
   const providers = await loadProviders(env, auth.acct);
   return json({ providers: providers.map(publicProvider) });
+}
+
+// Métadonnées TMDB : réservé aux appareils appairés, débit limité par appareil et par IP.
+async function deviceTmdb(req, env, rest, url) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `tmdb:ip:${clientIp(req)}`, 300, 600, true))
+    || (await limited(env, `tmdb:dev:${auth.device.id}`, 120, 600, true));
+  if (rl) return rl;
+  return tmdbProxy(rest, url.searchParams, env);
 }
 
 async function deviceRotate(req, env) {

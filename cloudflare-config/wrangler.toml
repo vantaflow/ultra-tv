@@ -26,3 +26,4 @@ new_sqlite_classes = ["Guard"]
 #   OPS_TOKEN           mot de passe des tableaux de bord /crashes et /logs
 #   ADMIN_TOKEN         (optionnel) jeton de l'endpoint de migration
 #   PROVIDER_ENC_KEY_PREVIOUS  (optionnel) ancienne clé pendant une rotation
+#   TMDB_API_KEY        clé API TMDB (proxy /api/tmdb/*, jamais embarquée dans l'application)

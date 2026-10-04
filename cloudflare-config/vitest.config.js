@@ -11,6 +11,7 @@ export default defineConfig({
           SESSION_SECRET: "test-session-secret-0123456789abcdef0123456789",
           PROVIDER_ENC_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
           OPS_TOKEN: "test-ops-token-0123456789abcdef0123456789",
+          TMDB_API_KEY: "test-tmdb-key-not-real",
           ADMIN_TOKEN: "test-admin-token-0123456789abcdef0123456789",
         },
       },
