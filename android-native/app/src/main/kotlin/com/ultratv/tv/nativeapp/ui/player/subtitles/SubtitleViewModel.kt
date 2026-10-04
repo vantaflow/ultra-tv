@@ -47,8 +47,14 @@ class SubtitleViewModel @Inject constructor(
 
     fun search(title: String) {
         _hits.value = null
-        viewModelScope.launch { _hits.value = runCatching { online.search(title, _settings.value.languages.text) }.getOrDefault(emptyList()) }
+        viewModelScope.launch {
+            _hits.value = runCatching { online.search(title, _settings.value.languages.text) }.getOrDefault(emptyList())
+            if (online.serviceMissing) _onlineAvailable.value = false
+        }
     }
+
+    /** Le Worker n'a pas de clé OpenSubtitles (503) : message dédié plutôt que « Aucun sous-titre ». */
+    val serviceMissing: Boolean get() = online.serviceMissing
 
     /** Télécharge le sous-titre choisi ; renvoie le chemin du fichier SRT (cache, supprimé avec le cache). */
     suspend fun download(hit: SubtitleHit): String? =

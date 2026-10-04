@@ -45,6 +45,7 @@ class PlayerExtraStrings(val lang: AppLang) {
     val searchOnline get() = t("Search subtitles online", "Chercher des sous-titres en ligne", "Buscar subtítulos en línea", "البحث عن ترجمات")
     val searchNeedsProxy get() = t("Pair this device with your Worker to enable it", "Appairez l'appareil à votre Worker pour l'activer", "Vincula el dispositivo a tu Worker para activarlo", "اربط الجهاز بالـ Worker لتفعيله")
     val searchMoviesOnly get() = t("Available for movies only", "Disponible pour les films uniquement", "Solo para películas", "متاح للأفلام فقط")
+    val subtitlesNotConfigured get() = t("Subtitle search is not enabled on your Worker (OpenSubtitles key missing)", "La recherche de sous-titres n'est pas activée sur votre Worker (clé OpenSubtitles absente)", "La búsqueda de subtítulos no está activada en su Worker (falta la clave de OpenSubtitles)", "البحث عن الترجمات غير مفعّل على الـ Worker الخاص بك (مفتاح OpenSubtitles غير موجود)")
     val searching get() = t("Searching…", "Recherche…", "Buscando…", "جارٍ البحث…")
     val noSubtitleFound get() = t("No subtitles found", "Aucun sous-titre trouvé", "No se encontraron subtítulos", "لا توجد ترجمات")
     val subtitleAdded get() = t("Subtitles added", "Sous-titres ajoutés", "Subtítulos añadidos", "تمت إضافة الترجمة")

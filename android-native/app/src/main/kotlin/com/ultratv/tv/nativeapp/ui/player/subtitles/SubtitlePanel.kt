@@ -106,7 +106,7 @@ fun SubtitlePanel(
             if (page == Page.MAIN) {
                 val canSearch = online && isMovie
                 PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
-                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 2)
+                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 2)
             }
             PillButton(if (page == Page.MAIN) X.close else X.back, { if (page == Page.MAIN) onClose() else page = Page.MAIN }, heightPx = 64, hPadPx = 36, fontPx = 22, modifier = Modifier.fillMaxWidth())
         }
@@ -160,7 +160,7 @@ private fun SearchPage(X: PlayerExtraStrings, vm: SubtitleViewModel, onDownloade
     var busy by remember { mutableStateOf(false) }
     when {
         hits == null -> Text(X.searching, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-        hits!!.isEmpty() -> Text(X.noSubtitleFound, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
+        hits!!.isEmpty() -> Text(if (vm.serviceMissing) X.subtitlesNotConfigured else X.noSubtitleFound, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
         else -> hits!!.take(15).forEach { h: SubtitleHit ->
             ValueRow(h.release.ifBlank { h.id }, h.language.uppercase(), enabled = !busy) {
                 busy = true

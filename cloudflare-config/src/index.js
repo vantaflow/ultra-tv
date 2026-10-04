@@ -26,6 +26,7 @@ import {
   MAX_PROVIDERS, MAX_DEVICES,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
+import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
 import { loginPage, signupPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
@@ -83,6 +84,7 @@ async function route(req, env) {
   if (path === "/api/pair/poll" && m === "POST") return pairPoll(req, env);
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
+  if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
   if (path === "/api/crash" && m === "POST") return ingest(req, env, "crash");
@@ -361,6 +363,17 @@ async function deviceTmdb(req, env, rest, url) {
     || (await limited(env, `tmdb:dev:${auth.device.id}`, 120, 600, true));
   if (rl) return rl;
   return tmdbProxy(rest, url.searchParams, env);
+}
+
+// Sous-titres OpenSubtitles : mêmes garde-fous que TMDB (appareil appairé, débit par appareil et par IP), plus serrés
+// car chaque téléchargement consomme le quota de la clé.
+async function deviceSubtitles(req, env, isSearch, url) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `sub:ip:${clientIp(req)}`, 120, 600, true))
+    || (await limited(env, `sub:dev:${auth.device.id}`, 40, 600, true));
+  if (rl) return rl;
+  return isSearch ? subtitlesSearch(url.searchParams, env) : subtitlesDownload(url.searchParams, env);
 }
 
 async function deviceRotate(req, env) {

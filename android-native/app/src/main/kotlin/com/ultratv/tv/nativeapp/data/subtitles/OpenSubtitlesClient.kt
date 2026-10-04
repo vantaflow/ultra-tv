@@ -37,7 +37,11 @@ class OpenSubtitlesClient @Inject constructor(
         return raw.takeIf { it.toHttpUrlOrNull()?.isHttps == true }
     }
 
-    suspend fun isAvailable(): Boolean = proxyBase() != null
+    /** Le Worker a répondu 503 « subtitles_not_configured » : l'option reste désactivée jusqu'au prochain lancement. */
+    @Volatile var serviceMissing: Boolean = false
+        private set
+
+    suspend fun isAvailable(): Boolean = proxyBase() != null && !serviceMissing
 
     suspend fun search(title: String, languages: List<String>, year: Int? = null): List<SubtitleHit> = withContext(Dispatchers.IO) {
         val base = proxyBase() ?: return@withContext emptyList()
@@ -46,6 +50,7 @@ class OpenSubtitlesClient @Inject constructor(
             ?.apply { if (languages.isNotEmpty()) addQueryParameter("languages", languages.joinToString(",")); year?.let { addQueryParameter("year", it.toString()) } }
             ?.build() ?: return@withContext emptyList()
         http.newCall(authed(url.toString())).execute().use { r ->
+            if (r.code == 503) { serviceMissing = true; return@withContext emptyList() }
             if (!r.isSuccessful) return@withContext emptyList()
             parseResults(r.body?.string().orEmpty())
         }
