@@ -273,7 +273,7 @@ export function pairPage(n, { acct, csrf, code, invalid }) {
   const msg = invalid ? `<div class="notice err" role="alert">${ico("info")}<span>Ce code n'est pas valide : il doit faire 8 caractères. Vérifie l'écran de ta TV ou saisis-le à la main.</span></div>` : "";
   return layout("Ultra TV — appairer", `
 <main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
-<div class="panel"><h1>${code ? "Appairer cet appareil ?" : "Appairer un appareil"}</h1>
+<div class="panel"><h1>${code ? "Appairer cet appareil\u00a0?" : "Appairer un appareil"}</h1>
 <p class="sub">${code ? "Une TV demande l'accès à ta configuration. Vérifie que le code ci-dessous est bien celui affiché sur son écran." : "Saisis le code affiché sur ta TV."}</p>
 ${msg}<p class="muted small mt10">Compte : <strong>${e(acct.login)}</strong></p>
 ${pairForm(csrfInput, code || "")}
