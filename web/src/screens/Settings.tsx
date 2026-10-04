@@ -18,6 +18,7 @@ import { Modal, Seg, Switch } from "@/ui/common";
 import { Icon, type IconName } from "@/ui/Icon";
 import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
+import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
 import { saveDeviceName, saveWorker, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
@@ -219,10 +220,12 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
         <button className="btn primary" disabled={busy} onClick={async () => {
           setBusy(true); setErr(null);
           try {
-            if (kind !== "m3u-file") await testSource(s);
-            await saveSource(s);
+            const out = kind === "m3u-link" ? convertToXtream(s) ?? s : s;
+            if (kind !== "m3u-file") await testSource(out);
+            await saveSource(out);
+            if (out !== s) void useSync.getState().start(out, { silent: true });
             onClose();
-          } catch (e) { setErr(errorKey(e, t)); } finally { setBusy(false); }
+          } catch (e) { setErr(errorKey(e, t, s.type)); } finally { setBusy(false); }
         }}>{busy ? t("src.testing") : t("common.save")}</button>
       </>}>
       <SourceForm kind={kind} value={s} onChange={setS} fileInfo={s.m3uUrl.replace(/^file:/, "")} />

@@ -15,6 +15,19 @@ describe("toSourceFields", () => {
   });
 });
 
+describe("M3U get.php reçu du cloud", () => {
+  const url = "http://h.example.test:8080/get.php?username=alice&password=secret&type=m3u_plus&output=ts";
+  it("devient une source Xtream", () => {
+    expect(toSourceFields(rp({ kind: "M3U", url }))).toMatchObject({ type: "xtream", server: "http://h.example.test:8080", username: "alice", password: "secret", m3uUrl: "" });
+  });
+  it("une source déjà convertie localement n'est ni dupliquée ni resynchronisée", () => {
+    const cur = ls({ server: "http://h.example.test:8080", username: "alice", password: "secret" });
+    const p = reconcile([cur], [rp({ kind: "M3U", url })], emptySource);
+    expect(p.add).toHaveLength(0);
+    expect(p.update).toHaveLength(0);
+  });
+});
+
 describe("reconcile", () => {
   it("ajoute un fournisseur inconnu", () => {
     const p = reconcile([], [rp()], emptySource);

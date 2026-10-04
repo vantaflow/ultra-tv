@@ -2,7 +2,7 @@
 import { liveQuery } from "dexie";
 import { create } from "zustand";
 import type { Source } from "@/db/types";
-import { listSources } from "@/db/sources";
+import { listSources, migrateM3uToXtream } from "@/db/sources";
 import { usePrefs } from "./prefs";
 
 interface SourcesStore { ready: boolean; list: Source[] }
@@ -12,7 +12,8 @@ let started = false;
 export function startSourcesWatcher() {
   if (started) return;
   started = true;
-  liveQuery(() => listSources()).subscribe({
+  // Réparation des sources M3U « get.php » avant le premier affichage ; en cas d'échec on continue normalement.
+  void migrateM3uToXtream().catch(() => 0).then(() => liveQuery(() => listSources()).subscribe({
     next: (list) => {
       useSources.setState({ ready: true, list });
       const { activeSourceId, set } = usePrefs.getState();
@@ -20,7 +21,7 @@ export function startSourcesWatcher() {
       if (!list.length && activeSourceId != null) set({ activeSourceId: null });
     },
     error: () => useSources.setState({ ready: true }),
-  });
+  }));
 }
 
 export function useActiveSource(): Source | undefined {

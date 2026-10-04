@@ -3,6 +3,7 @@
 
 import type { Source } from "@/db/types";
 import type { CloudProvider } from "./client";
+import { parseXtreamUrl } from "@/lib/xtreamUrl";
 
 export interface Plan {
   add: Source[];
@@ -22,7 +23,12 @@ export function toSourceFields(p: CloudProvider): Fields | null {
   const kind = String(p.kind || "").toUpperCase();
   const name = (p.name || "").trim() || p.url;
   if (kind === "XTREAM") return { name, type: "xtream", server: p.url, username: p.username ?? "", password: p.password ?? "", m3uUrl: "" };
-  if (kind === "M3U") return { name, type: "m3u", server: "", username: "", password: "", m3uUrl: p.url };
+  if (kind === "M3U") {
+    // Adresse get.php / player_api.php : suit la même conversion Xtream que les sources locales.
+    const x = parseXtreamUrl(p.url);
+    if (x) return { name, type: "xtream", server: x.server, username: x.username, password: x.password, m3uUrl: "" };
+    return { name, type: "m3u", server: "", username: "", password: "", m3uUrl: p.url };
+  }
   return null;
 }
 
