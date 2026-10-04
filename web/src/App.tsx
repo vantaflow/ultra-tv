@@ -8,6 +8,7 @@ import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
 import { resolveTheme, usePrefs } from "@/state/prefs";
 import { startSourcesWatcher, useActiveSource, useSources } from "@/state/sources";
+import { isStaleSyncing, needsFirstSync } from "@/lib/syncPolicy";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
 import { Home } from "@/screens/Home";
@@ -89,9 +90,17 @@ function Effects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, active?.id]);
 
+  // Synchro interrompue (application fermée en cours de route) : au lancement rien ne tourne, un état « syncing » est donc périmé.
+  // Sans reprise, le direct (écrit en premier) serait utilisable mais Films/Séries resteraient vides pour toujours.
+  useEffect(() => {
+    if (!ready || !active || !isStaleSyncing(active) || useSync.getState().running) return;
+    void useSync.getState().start(active, { preserveFlags: true, silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, active?.id]);
+
   // Source jamais synchronisée hors assistant (ex. M3U get.php convertie en Xtream au démarrage) : première synchro sans action.
   useEffect(() => {
-    if (!ready || !active || active.state !== "new" || active.lastSyncAt !== 0 || loc.pathname.startsWith("/welcome")) return;
+    if (!ready || !active || !needsFirstSync(active) || loc.pathname.startsWith("/welcome")) return;
     void useSync.getState().start(active, { silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, active?.id, active?.state, loc.pathname]);

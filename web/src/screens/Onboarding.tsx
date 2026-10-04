@@ -15,6 +15,7 @@ import { SourceForm, type SourceKind as FormKind } from "./SourceForm";
 import { PairingView } from "./Pairing";
 import { cloudAvailable } from "@/cloud/client";
 import { listSources } from "@/db/sources";
+import { langsToSync } from "@/lib/syncPolicy";
 import { convertToXtream, missingRequired, nonStandardHttpStatus } from "@/lib/xtreamUrl";
 
 type SourceKind = FormKind | "cloud";
@@ -136,7 +137,7 @@ export function Onboarding() {
   useEffect(() => {
     if (step !== "sync" || started.current || savedId == null) return;
     started.current = true;
-    void startSync(savedId, kind === "xtream" && chosen.size < detected.length ? [...chosen] : null);
+    void startSync(savedId, langsToSync(src.type, chosen, detected.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, savedId]);
 
