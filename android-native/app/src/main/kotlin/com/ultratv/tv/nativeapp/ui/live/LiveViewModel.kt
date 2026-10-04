@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -58,6 +59,7 @@ class LiveViewModel @Inject constructor(
     private val zapQueue: LivePlaybackQueue,
     private val reminders: RemindersScheduler,
     private val channelDao: ChannelDao,
+    private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val favoriteDao: FavoriteDao,
     private val syncCoordinator: SyncCoordinator,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
@@ -189,10 +191,22 @@ class LiveViewModel @Inject constructor(
      * Ouvre le lecteur plein écran. File de zapping = fenêtre de ±200 chaînes autour de la chaîne
      * choisie dans la catégorie courante (jamais les 55 000 en mémoire).
      */
-    fun resolveAndPlay(channel: ChannelEntity, onReady: (url: String, title: String) -> Unit) {
+    /** Autres qualités de la même chaîne (même nom et même langue) ; vide s'il n'y en a pas. */
+    suspend fun variantsOf(c: ChannelEntity): List<ChannelEntity> =
+        channelDao.variantsOf(c.providerId, c.title, c.lang).takeIf { v -> v.size > 1 && v.any { it.id == c.id } }.orEmpty()
+
+    /** Variante à lancer selon la qualité préférée (réglage) ; la chaîne choisie telle quelle si rien ne correspond. */
+    private suspend fun preferredVariant(c: ChannelEntity): ChannelEntity {
+        val pref = prefs.flow.first().preferredQuality
+        if (pref == "auto") return c
+        return pickVariant(c, variantsOf(c), pref)
+    }
+
+    fun resolveAndPlay(channel0: ChannelEntity, exact: Boolean = false, onReady: (url: String, title: String) -> Unit) {
         viewModelScope.launch {
             _resolving.value = true
             try {
+                val channel = if (exact) channel0 else preferredVariant(channel0)
                 val cat = selectedCategory.value
                 val window = when (cat) {
                     CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId)
@@ -205,7 +219,7 @@ class LiveViewModel @Inject constructor(
                         channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
                     }
                 }
-                zapQueue.set(_langView.value.filter(window) { it.lang }.ifEmpty { listOf(channel) }, channel)
+                zapQueue.set(_langView.value.filter(window) { it.lang }.map { if (it.id == channel0.id) channel else it }.ifEmpty { listOf(channel) }, channel)
                 val url = if (channel.streamUrl.startsWith("stalker://")) provider.resolvePlayUrl(channel.id, channel.streamUrl) else channel.streamUrl
                 playback.set(PlaybackContext.Item(channel.providerId, "LIVE", channel.remoteId, channel.title, channel.logo, url))
                 onReady(url, channel.title)
@@ -225,4 +239,15 @@ fun pickLanding(cats: List<DirectCategory>, last: String?): String {
     last?.let { l -> if (cats.any { it.id == l && it.count > 0 }) return l }
     cats.firstOrNull { it.id == CATEGORY_FAVORITES && it.count > 0 }?.let { return it.id }
     return cats.firstOrNull { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }?.id ?: CATEGORY_ALL
+}
+
+/** Qualité demandée → variante : exacte, sinon la meilleure en dessous, sinon la plus basse au-dessus ; qualité inconnue en dernier recours. */
+fun pickVariant(current: ChannelEntity, variants: List<ChannelEntity>, pref: String): ChannelEntity {
+    val want = when (pref) { "4k" -> 4; "fhd" -> 3; "hd" -> 2; "sd" -> 1; else -> return current }
+    val known = variants.filter { it.quality > 0 }
+    if (known.isEmpty()) return current
+    return known.firstOrNull { it.quality == want }
+        ?: known.filter { it.quality < want }.maxByOrNull { it.quality }
+        ?: known.filter { it.quality > want }.minByOrNull { it.quality }
+        ?: current
 }

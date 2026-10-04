@@ -85,6 +85,7 @@ class SettingsPanesViewModel @Inject constructor(
     fun setBufferPreset(v: String) = viewModelScope.launch { prefs.setBufferPreset(v) }
     fun backToAuto() = viewModelScope.launch { prefs.resetPlaybackToAuto() }
     fun setLanguages(csv: String) = viewModelScope.launch { prefs.setLanguages(csv) }
+    fun setPreferredQuality(v: String) = viewModelScope.launch { prefs.setPreferredQuality(v) }
     fun setIncludeMulti(v: Boolean) = viewModelScope.launch { prefs.setIncludeMulti(v) }
     fun setIncludeUnknown(v: Boolean) = viewModelScope.launch { prefs.setIncludeUnknownLang(v) }
 }

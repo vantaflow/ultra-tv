@@ -97,6 +97,8 @@ data class UserPrefs(
     // ── Langues des contenus (CSV de codes ; vide = toutes) ──
     val languages: String = "",
     val includeMulti: Boolean = true,
+    /** Qualité préférée des chaînes disponibles en plusieurs qualités : "auto" | "4k" | "fhd" | "hd" | "sd". */
+    val preferredQuality: String = "auto",
     val includeUnknownLang: Boolean = true,
     // ── Synchronisation ──
     /** "auto" | "launch" | "scheduled" | "manual" */
@@ -151,6 +153,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val syncSeries = booleanPreferencesKey("sync_series")
         val syncUnmetered = booleanPreferencesKey("sync_unmetered_only")
         val includeMulti = booleanPreferencesKey("include_multi")
+        val preferredQuality = stringPreferencesKey("preferred_quality")
         val includeUnknown = booleanPreferencesKey("include_unknown_lang")
     }
 
@@ -186,7 +189,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             bufRebufferSec = p[Keys.bufRebuffer] ?: 3, bufMaxMb = p[Keys.bufMb] ?: 32,
             syncMode = p[Keys.syncMode] ?: "auto", syncHour = p[Keys.syncHour] ?: 3, syncLive = p[Keys.syncLive] ?: true, syncEpg = p[Keys.syncEpg] ?: true,
             syncVod = p[Keys.syncVod] ?: true, syncSeries = p[Keys.syncSeries] ?: true, syncUnmeteredOnly = p[Keys.syncUnmetered] ?: true,
-            languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, includeUnknownLang = p[Keys.includeUnknown] ?: true,
+            languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
         )
     }
 
@@ -214,6 +217,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setLocalLogosFolderUri(uri: String) = update { it[Keys.localLogosUri] = uri }
 
     suspend fun setLanguages(csv: String) = update { it[Keys.languages] = csv }
+    suspend fun setPreferredQuality(v: String) = update { it[Keys.preferredQuality] = v }
     suspend fun setIncludeMulti(v: Boolean) = update { it[Keys.includeMulti] = v }
     suspend fun setIncludeUnknownLang(v: Boolean) = update { it[Keys.includeUnknown] = v }
     suspend fun setSyncMode(v: String) = update { it[Keys.syncMode] = v }

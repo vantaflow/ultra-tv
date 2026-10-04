@@ -337,6 +337,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     }
 }
 
+private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }
 private fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) { AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark }
 
 // ───────────────────────── Lecture ─────────────────────────
@@ -359,6 +360,7 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         PrefRow(D.decodingRow, decLabel) { choice = "dec" }
         PrefRow(D.bufferRow, bufLabel) { choice = "buf" }
         PrefRow(D.maxQuality, "${D.auto} · ${ad.auto.maxVideoHeight}p") { }
+        PrefRow(D.preferredQuality, qualityLabel(D, p.preferredQuality), hint = D.preferredQualityHint) { choice = "pq" }
         PrefRow(D.externalPlayer, if (p.defaultPlayer == DefaultPlayer.EXTERNAL) D.on else D.none) { choice = "ext" }
         SwitchPrefRow(D.autoNext, p.autoPlayNextEpisode) { app.setAutoPlayNext(it) }
         SwitchPrefRow(D.resumePlayback, p.resumePlayback) { app.setResumePlayback(it) }
@@ -368,6 +370,7 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         "engine" -> ChoiceDialog(D.playerRow, listOf("auto" to D.auto, "exo" to D.engineExo, "vlc" to D.engineVlc), p.playerEngine, { panes.setPlayerEngine(it); choice = "" }, { choice = "" })
         "dec" -> ChoiceDialog(D.decodingRow, listOf("auto" to D.auto, "hw" to D.hardware, "sw" to D.software), p.decoderMode, { panes.setDecoder(it); choice = "" }, { choice = "" })
         "buf" -> ChoiceDialog(D.bufferRow, listOf("auto" to D.auto, "low_latency" to D.bufLow, "balanced" to D.bufBalanced, "stable" to D.bufStable), p.bufferPreset, { panes.setBufferPreset(it); choice = "" }, { choice = "" })
+        "pq" -> ChoiceDialog(D.preferredQuality, listOf("auto" to D.auto, "4k" to "4K", "fhd" to "FHD", "hd" to "HD", "sd" to "SD"), p.preferredQuality, { panes.setPreferredQuality(it); choice = "" }, { choice = "" })
         "ext" -> ChoiceDialog(D.externalPlayer, listOf(DefaultPlayer.INTERNAL to D.none, DefaultPlayer.EXTERNAL to D.on), p.defaultPlayer, { app.setDefaultPlayer(it); choice = "" }, { choice = "" })
     }
 }

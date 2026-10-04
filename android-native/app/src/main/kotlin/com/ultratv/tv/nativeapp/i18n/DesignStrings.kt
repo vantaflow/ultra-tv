@@ -132,6 +132,10 @@ class DesignStrings(val lang: AppLang) {
     val langPanelTitle get() = t("Languages", "Langues", "Idiomas", "اللغات")
     val langPanelHint get() = t("Temporary filter for this screen only. Your content languages in Settings are not changed.", "Filtre temporaire de cet écran uniquement. Vos langues de contenu dans les Réglages ne changent pas.", "Filtro temporal solo para esta pantalla. Tus idiomas en Ajustes no cambian.", "مرشح مؤقت لهذه الشاشة فقط. لا تتغير لغات المحتوى في الإعدادات.")
 
+    val preferredQuality get() = t("Preferred quality", "Qualité préférée", "Calidad preferida", "الجودة المفضلة")
+    val preferredQualityHint get() = t("For channels available in several qualities", "Pour les chaînes proposées en plusieurs qualités", "Para canales con varias calidades", "للقنوات المتوفرة بعدة جودات")
+    val otherQualities get() = t("Other qualities", "Autres qualités", "Otras calidades", "جودات أخرى")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

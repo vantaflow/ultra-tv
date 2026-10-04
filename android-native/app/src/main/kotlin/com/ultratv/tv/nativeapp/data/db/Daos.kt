@@ -212,6 +212,10 @@ interface ChannelDao {
     """)
     suspend fun favoritesList(pid: Long): List<ChannelEntity>
 
+    /** Autres qualités d'une même chaîne (même titre nettoyé et même langue), de la meilleure à la moins bonne. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND title = :title AND lang = :lang AND junk = 0 AND isSeparator = 0 ORDER BY quality DESC, num LIMIT 12")
+    suspend fun variantsOf(pid: Long, title: String, lang: String): List<ChannelEntity>
+
     /** Chaînes précises d'une source (écran « Chaînes verrouillées » : seulement celles qu'on a verrouillées). */
     @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId IN (:ids) ORDER BY sortKey")
     suspend fun byRemoteIds(pid: Long, ids: List<String>): List<ChannelEntity>

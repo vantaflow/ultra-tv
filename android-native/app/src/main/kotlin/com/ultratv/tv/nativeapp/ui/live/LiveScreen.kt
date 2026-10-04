@@ -128,7 +128,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true }, modifier = Modifier.padding(bottom = 8.design))
             ChannelList(channels, locked, favs, nowNext, selected, vm,
                 onFocusChannel = { focusedChannel = it },
-                onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onPlay) },
+                onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay) },
                 onActions = { actionsFor = it },
                 emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel)
         }
@@ -146,18 +146,23 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     pinPrompt?.let { ch ->
         com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
             title = ch.title,
-            onUnlocked = { pinPrompt = null; vm.resolveAndPlay(ch, onPlay) },
+            onUnlocked = { pinPrompt = null; vm.resolveAndPlay(ch, onReady = onPlay) },
             onCancel = { pinPrompt = null },
         )
     }
     actionsFor?.let { ch ->
         val isFav = ch.remoteId in favs
         val isLocked = "${ch.providerId}:${ch.remoteId}" in locked
-        ModalFocusScope(onBack = { actionsFor = null }, modifier = Modifier.background(Ux.Scrim)) {
+        var variants by remember(ch.id) { mutableStateOf<List<ChannelEntity>>(emptyList()) }
+        var variantPicker by remember(ch.id) { mutableStateOf(false) }
+        LaunchedEffect(ch.id) { variants = vm.variantsOf(ch) }
+        if (variantPicker) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.otherQualities, variants.map { it.id to (qualityName(it.quality) + " · " + it.title) }, ch.id, { id -> variants.firstOrNull { it.id == id }?.let { vm.resolveAndPlay(it, exact = true, onReady = onPlay) }; variantPicker = false; actionsFor = null }, { variantPicker = false })
+        else ModalFocusScope(onBack = { actionsFor = null }, modifier = Modifier.background(Ux.Scrim)) {
             Column(Modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(48.design), verticalArrangement = Arrangement.spacedBy(16.design)) {
                 Text(ch.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(560.design))
                 PillButton(if (isFav) D.removeFavorite else D.addFavorite, onClick = { vm.toggleFavorite(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 PillButton(if (isLocked) D.unlockChannel else D.lockChannel, onClick = { vm.toggleLock(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                if (variants.size > 1) PillButton(D.otherQualities, onClick = { variantPicker = true }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 PillButton(D.close, onClick = { actionsFor = null }, bg = Ux.Surface, modifier = Modifier.width(560.design))
             }
         }
@@ -348,3 +353,5 @@ private fun durationText(D: DesignStrings, ms: Long): String {
     val m = (ms / 60_000).toInt()
     return if (m >= 60) D.hourShort.format(m / 60) + if (m % 60 != 0) " " + D.minShort.format(m % 60) else "" else D.minShort.format(m)
 }
+
+private fun qualityName(q: Int) = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1 -> "SD"; else -> "—" }
