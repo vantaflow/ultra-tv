@@ -18,6 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -196,6 +199,41 @@ fun MovieDetailScreen(
             .filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
     }
     val skeleton = infoLoading && info == null
+
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+        val fav: com.ultratv.tv.nativeapp.ui.common.FavoriteToggleViewModel = hiltViewModel()
+        LaunchedEffect(movie.remoteId) { fav.set("MOVIE", movie.remoteId) }
+        val isFav by fav.isFav.collectAsState()
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val trailer = T.presentable(info?.trailer)
+        com.ultratv.tv.nativeapp.ui.mobile.MobileDetailFrame(backdrop, movie.poster, title, onBack) {
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 33.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            if (skeleton) Skeleton(Modifier.width(220.dp).height(18.dp))
+            else com.ultratv.tv.nativeapp.ui.mobile.MetaRow(listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }), listOfNotNull(quality, langBadge))
+            com.ultratv.tv.nativeapp.ui.mobile.MobilePrimaryButton(S.play, { if (resume > 0) vm.restart(movie, onPlay) else vm.play(movie, onPlay) })
+            if (resume > 0) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) })
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.weight(1f), active = isFav, fill = isFav)
+                com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Download, S.playerRecord, { vm.record(movie, S.toastRecordingQueued) }, Modifier.weight(1f))
+                if (trailer != null) com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Trailer, D.trailerLabel, { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, trailer) }, Modifier.weight(1f))
+            }
+            if (skeleton) { Skeleton(Modifier.fillMaxWidth().height(16.dp)); Skeleton(Modifier.fillMaxWidth().height(16.dp)); Skeleton(Modifier.width(200.dp).height(16.dp)) }
+            else plot?.let { com.ultratv.tv.nativeapp.ui.mobile.ExpandableText(it) }
+            if (people.isNotEmpty()) {
+                Text(D.castTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
+                androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(people) { name ->
+                        Column(Modifier.width(60.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            AvatarImage(null, name, Modifier.size(52.dp))
+                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
 
     val playRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }

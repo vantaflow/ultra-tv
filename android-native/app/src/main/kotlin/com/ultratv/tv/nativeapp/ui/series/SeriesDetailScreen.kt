@@ -43,6 +43,18 @@ import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.*
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 /** Fiche série (maquette SerieDetail) : colonne gauche 560 px, saisons en onglets et épisodes 16:9 à droite. */
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
@@ -74,6 +86,69 @@ fun SeriesDetailScreen(
     var season by remember(series.id) { mutableStateOf<Int?>(null) }
     val activeSeason = season ?: target?.season ?: seasons.firstOrNull()
     val shown = remember(eps, activeSeason) { eps.filter { it.season == activeSeason } }
+
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+        val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
+        val twoPane = com.ultratv.tv.nativeapp.ui.mobile.usesTwoPane(com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current)
+        val fav: com.ultratv.tv.nativeapp.ui.common.FavoriteToggleViewModel = hiltViewModel()
+        LaunchedEffect(series.remoteId) { fav.set("SERIES", series.remoteId) }
+        val isFav by fav.isFav.collectAsState()
+        val info: @Composable ColumnScope.() -> Unit = {
+            Text(tc.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            com.ultratv.tv.nativeapp.ui.mobile.MetaRow(
+                listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre), series.rating?.takeIf { it > 0.0 && it <= 10.0 }?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }),
+                listOfNotNull(series.lang.takeIf { it.isNotBlank() }?.uppercase()),
+            )
+            if (target != null) com.ultratv.tv.nativeapp.ui.mobile.MobilePrimaryButton(
+                if (resuming) D.resumeEpisode(target.season, target.episode) else D.playEpisodeLabel(target.season, target.episode),
+                { vm.playEpisode(series.name, series.remoteId, series.providerId, target, onPlayEpisode) },
+            )
+            com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.fillMaxWidth(), active = isFav, fill = isFav)
+            tc.presentable(series.plot)?.let { com.ultratv.tv.nativeapp.ui.mobile.ExpandableText(it) }
+        }
+        val episodes: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+            if (seasons.size > 1) item(key = "seasons") {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                    items(seasons, key = { it }) { n ->
+                        val sel = n == activeSeason
+                        FocusSurface(onClick = { season = n }, shape = RoundedCornerShape(20.dp), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp).semantics { selected = sel }) { _ ->
+                            Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+                                Text(D.seasonLabel(n), color = if (sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
+                            }
+                        }
+                    }
+                }
+            }
+            if (shown.isEmpty()) item(key = "empty") { Text(if (loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 14.sp) }
+            items(shown, key = { it.id }) { ep ->
+                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+            }
+        }
+        if (twoPane) Box(Modifier.fillMaxSize().background(Ux.Bg)) {
+            Row(Modifier.fillMaxSize()) {
+                Column(Modifier.weight(0.38f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 24.dp, end = 24.dp, top = 64.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PosterImage(series.poster, series.name, Modifier.width(180.dp).aspectRatio(2f / 3f), radius = 28)
+                    info()
+                }
+                LazyColumn(Modifier.weight(0.62f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 8.dp, end = 24.dp, top = 24.dp, bottom = 24.dp)) { episodes() }
+            }
+            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp))
+        } else Box(Modifier.fillMaxSize().background(Ux.Bg)) {
+            LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, bottom = 24.dp)) {
+                item(key = "visual") {
+                    Box(Modifier.fillMaxWidth().height(240.dp).offset(x = 0.dp)) {
+                        Box(Modifier.fillMaxSize().background(Ux.Tone)) { com.ultratv.tv.nativeapp.ui.movies.DetailVisual(series.backdrop, series.poster, series.name) }
+                        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.5f to androidx.compose.ui.graphics.Color.Transparent, 1f to Ux.Bg)))
+                    }
+                }
+                item(key = "info") { Column(Modifier.offset(y = (-40).dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { info() } }
+                episodes()
+            }
+            com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.statusBars))
+        }
+        return
+    }
 
     val playRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }

@@ -2,6 +2,10 @@ package com.ultratv.tv.nativeapp.ui.mobile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +25,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -223,5 +231,102 @@ private fun FavChannelCard(c: ChannelEntity, now: EpgEntity?, onClick: () -> Uni
             LogoBox(c.logo, c.title, Modifier.width(44.dp).height(28.dp), radius = 12, pad = 4)
             Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
+    }
+}
+
+/** Bouton « Retour » rond des fiches (maquette MobileFiche) : pastille sombre translucide, chevron, 48 dp tactiles. */
+@Composable
+fun MobileBackButton(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val M = LocalMobileStrings.current
+    Box(modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = M.a11yBack, onClick = onBack).semantics { contentDescription = M.a11yBack }, contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0xB30A0A0C)), contentAlignment = Alignment.Center) {
+            DIcon(MobileIcons.Back, 20.dp, Color(0xFFF5F5F7), strokeWidth = 2.4f)
+        }
+    }
+}
+
+/** Tuile d'action d'une fiche (Ma liste, Enregistrer, Bande-annonce) : 64 dp de haut, icône + libellé 12 sp. */
+@Composable
+fun MobileActionTile(icon: String, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, active: Boolean = false, fill: Boolean = false) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = modifier.height(64.dp).semantics { contentDescription = label }) { _ ->
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
+            DIcon(icon, 20.dp, if (active) Ux.Accent else Ux.Text, fill = fill)
+            Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Pilule d'action principale (Lecture) : 52 dp, blanche (encre en thème clair), icône lecture. */
+@Composable
+fun MobilePrimaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(26.dp), bg = Ux.Cta, modifier = modifier.fillMaxWidth().height(52.dp)) { _ ->
+        Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+            DIcon(Icons.Play, 18.dp, Ux.TextOnLight, fill = true)
+            Text(label, color = Ux.TextOnLight, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Pilule secondaire pleine largeur (Reprendre à …). */
+@Composable
+fun MobileSecondaryButton(label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(24.dp), bg = Ux.Surface2, modifier = modifier.fillMaxWidth().height(48.dp)) { _ ->
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+    }
+}
+
+/** Ligne de méta (année · durée · genre · note) suivie de pastilles cerclées (qualité, langue). */
+@Composable
+fun MetaRow(bits: List<String>, badges: List<String>) {
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
+        bits.forEachIndexed { i, b ->
+            if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 13.sp)
+            Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 160.dp))
+        }
+        badges.forEach { badge ->
+            Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 1,
+                modifier = Modifier.border(1.5.dp, Ux.LineKey, RoundedCornerShape(5.dp)).padding(horizontal = 6.dp, vertical = 2.dp))
+        }
+    }
+}
+
+/** Synopsis sur 4 lignes puis « Plus » / « Moins ». */
+@Composable
+fun ExpandableText(text: String) {
+    val M = LocalMobileStrings.current
+    var open by androidx.compose.runtime.remember(text) { androidx.compose.runtime.mutableStateOf(false) }
+    var overflow by androidx.compose.runtime.remember(text) { androidx.compose.runtime.mutableStateOf(false) }
+    Column {
+        Text(text, color = Ux.Text2, fontFamily = Manrope, fontSize = 14.sp, lineHeight = 22.sp, maxLines = if (open) Int.MAX_VALUE else 4, overflow = TextOverflow.Ellipsis, onTextLayout = { if (!open) overflow = it.hasVisualOverflow })
+        if (overflow || open) Text(
+            if (open) M.lessInfo else M.moreInfo, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+            modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable { open = !open }.padding(vertical = 14.dp, horizontal = 4.dp),
+        )
+    }
+}
+
+/**
+ * Cadre commun des fiches tactiles : visuel (haut de 300 dp en compact, panneau gauche sur tablette large),
+ * bouton Retour flottant, contenu défilant. Le contenu est fourni par la fiche.
+ */
+@Composable
+fun MobileDetailFrame(backdrop: String?, poster: String?, title: String, onBack: () -> Unit, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val twoPane = usesTwoPane(com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current)
+    Box(Modifier.fillMaxSize().background(Ux.Bg)) {
+        if (twoPane) {
+            Row(Modifier.fillMaxSize()) {
+                Box(Modifier.weight(0.42f).fillMaxSize().background(Ux.Tone)) { com.ultratv.tv.nativeapp.ui.movies.DetailVisual(backdrop, poster, title) }
+                Column(Modifier.weight(0.58f).fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 40.dp, vertical = 56.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { content() }
+            }
+        } else {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Box(Modifier.fillMaxWidth().height(300.dp).background(Ux.Tone)) {
+                    com.ultratv.tv.nativeapp.ui.movies.DetailVisual(backdrop, poster, title)
+                    Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.5f to Color.Transparent, 1f to Ux.Bg)))
+                }
+                Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp).offset(y = (-56).dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { content() }
+            }
+        }
+        MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(WindowInsets.statusBars))
     }
 }
