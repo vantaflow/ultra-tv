@@ -254,6 +254,7 @@ class AdaptiveProfile @Inject constructor(
         val bench = AndroidDeviceInfoSource.benchmarkMs()
         val info = source.read().copy(benchmarkMs = bench)
         val profile = DeviceProfile(info, DeviceClassifier.tier(info))
+        android.util.Log.i("UltraAdaptive", "tier=${profile.tier} bench=${bench}ms heapClassMb=$heapClassMb")
         sp.edit().putInt("version", versionCode()).putLong("bench", bench).apply()
         _state.value = compute(profile, network.sample.value)
     }

@@ -120,7 +120,7 @@ class PlaybackSession(
 
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {
         when (ev) {
-            EngineEvent.Buffering -> if (firstFrame) { network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis())) } else Unit
+            EngineEvent.Buffering -> if (firstFrame) { android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis())) } else Unit
             EngineEvent.Ready -> if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e)
             EngineEvent.FirstFrame -> {
                 firstFrame = true; watchdog?.cancel()

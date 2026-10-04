@@ -29,6 +29,7 @@ object DatabaseModule {
             // app/schemas let Room auto-generate / verify those migrations.
             .addMigrations(*com.ultratv.tv.nativeapp.data.db.ALL_MIGRATIONS)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
+            .addCallback(com.ultratv.tv.nativeapp.data.db.DefaultProfileCallback())
             .build()
 
     @Provides fun provideProviderRawDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.ProviderRawDao = db.providerDao()

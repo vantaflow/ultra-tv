@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.db
 
+import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
@@ -103,7 +104,7 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
 val MIGRATION_14_15 = object : Migration(14, 15) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `profile` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `color` INTEGER NOT NULL, `initial` TEXT NOT NULL, `isKids` INTEGER NOT NULL, `pinHash` TEXT, `createdAt` INTEGER NOT NULL)")
-        db.execSQL("INSERT INTO `profile` (`id`, `name`, `color`, `initial`, `isKids`, `pinHash`, `createdAt`) VALUES (1, 'Principal', ${0xFF3B82F6.toInt()}, 'P', 0, NULL, CAST(strftime('%s','now') AS INTEGER) * 1000)")
+        db.execSQL(DEFAULT_PROFILE_SEED_SQL)
         db.execSQL("CREATE TABLE IF NOT EXISTS `profile_pref` (`profileId` INTEGER NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`profileId`, `key`))")
         db.execSQL("CREATE TABLE IF NOT EXISTS `profile_hidden_category` (`profileId` INTEGER NOT NULL, `categoryKey` TEXT NOT NULL, PRIMARY KEY(`profileId`, `categoryKey`))")
 
@@ -121,3 +122,17 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
 
 /** Chaîne complète 10 → version courante : source UNIQUE pour l'application et pour les tests de migration. */
 val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+
+/** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
+const val DEFAULT_PROFILE_SEED_SQL =
+    "INSERT INTO `profile` (`id`, `name`, `color`, `initial`, `isKids`, `pinHash`, `createdAt`) VALUES (1, 'Principal', ${0xFF3B82F6.toInt()}, 'P', 0, NULL, CAST(strftime('%s','now') AS INTEGER) * 1000)"
+
+/**
+ * Installation neuve : Room crée le schéma 15 SANS passer par les migrations, donc sans profil.
+ * Le flux « Qui regarde ? » restait alors à `null` et l'application affichait un écran noir à jamais.
+ */
+class DefaultProfileCallback : RoomDatabase.Callback() {
+    override fun onCreate(db: SupportSQLiteDatabase) {
+        db.execSQL(DEFAULT_PROFILE_SEED_SQL)
+    }
+}
