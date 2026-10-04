@@ -97,7 +97,11 @@ export interface CloudProvider {
   updatedAt?: number;
   /** Affectations (quand le Worker les expose) : « all » ou identifiants d'appareils. */
   sharedWith?: string[] | "all";
+  /** Réglages d'affichage partagés entre appareils (null = jamais publiés). */
+  prefs?: CloudPrefs | null;
 }
+/** Langues en minuscules (« fr », « other », « multi ») ; null = toutes. `disabled` : identifiants de catégorie du fournisseur. */
+export interface CloudPrefs { langs: string[] | null; disabled: { live: string[]; movie: string[]; series: string[] }; updatedAt: number; by?: string }
 export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
 export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
 
@@ -152,6 +156,23 @@ export async function putProvider(base: string, token: string, input: ProviderIn
   const o = parse<{ provider?: CloudProvider }>(r);
   if (!o.provider?.id) throw new CloudError("bad-response", r.status);
   return o.provider;
+}
+
+export type PutPrefsResult = { status: "ok" } | { status: "stale"; prefs: CloudPrefs } | { status: "unknown" };
+
+/** Publie les réglages d'affichage d'une source. 409 « stale » : le cloud a une version plus récente (à appliquer). */
+export async function putPrefs(base: string, token: string, providerId: string, prefs: Omit<CloudPrefs, "by">): Promise<PutPrefsResult> {
+  const r = await http({ url: `${base}/api/device/providers/${encodeURIComponent(providerId)}/prefs`, method: "PUT", headers: auth(token, { "content-type": "application/json" }), body: json(prefs) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) return { status: "unknown" };
+  if (r.status === 409) {
+    const o = parse<{ prefs?: CloudPrefs }>(r);
+    if (!o.prefs) throw new CloudError("bad-response", 409);
+    return { status: "stale", prefs: o.prefs };
+  }
+  if (r.status < 200 || r.status >= 300) throw new CloudError("put-prefs", r.status);
+  return { status: "ok" };
 }
 
 /** Renomme l'appareil courant dans le compte (le tableau de bord et les autres appareils le voient). */

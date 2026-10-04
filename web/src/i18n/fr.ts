@@ -348,6 +348,8 @@ export const fr = {
   "cloud.shareLimit": "Limite de sources du compte atteinte.",
   "cloud.shareFile": "Un fichier M3U local ne peut pas être partagé.",
   "cloud.unshare": "Ne plus partager",
+  "cloud.prefsSync": "Synchroniser catégories et langues entre appareils",
+  "cloud.prefsSyncDesc": "Les langues choisies et les catégories désactivées d'une source du compte suivent vos autres appareils.",
   "cloud.badgeShared": "Cloud · partagée avec {n} appareils",
   "cloud.badgeAll": "Cloud · partagée avec tous les appareils",
   "cloud.badgeCloud": "Cloud",

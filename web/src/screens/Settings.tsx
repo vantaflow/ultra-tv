@@ -21,7 +21,7 @@ import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
 import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
-import { saveDeviceName, saveWorker, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
+import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
@@ -184,6 +184,9 @@ function CloudPane() {
             <input className="input" style={{ width: "26rem" }} value={worker} aria-label={t("cloud.worker")} spellCheck={false}
               onChange={(e) => setWorker(e.target.value)} onBlur={async () => { if (!(await saveWorker(worker))) setWorker(c.worker); }} />
           </Pref>
+          <Pref label={t("cloud.prefsSync")} desc={t("cloud.prefsSyncDesc")}>
+            <Switch on={c.prefsSync} label={t("cloud.prefsSync")} onChange={(v) => void setPrefsSync(v)} />
+          </Pref>
           <Pref label={t("cloud.lastSync", { t: c.lastSyncAt ? new Date(c.lastSyncAt).toLocaleString(lang) : t("set.never") })}>
             <button className="btn primary" disabled={c.syncing} onClick={async () => {
               setMsg(null);
@@ -329,7 +332,7 @@ function CategoriesPane() {
   const shown = useMemo(() => filterCategories(all, { lang, kind, match: (c) => !nq || normText(c.label).includes(nq) || categoryLang(c.name).toLowerCase() === nq }), [all, lang, kind, nq]);
   const langs = useMemo(() => languageStats(all), [all]);
   if (!source) return null;
-  const setMany = (rows: CategoryRow[], v: 0 | 1) => setCategoriesEnabled(rows, v);
+  const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
   return (
     <>

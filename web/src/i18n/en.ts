@@ -349,6 +349,8 @@ export const en: Dict = {
   "cloud.shareLimit": "The account's source limit is reached.",
   "cloud.shareFile": "A local M3U file cannot be shared.",
   "cloud.unshare": "Stop sharing",
+  "cloud.prefsSync": "Sync categories and languages between devices",
+  "cloud.prefsSyncDesc": "Chosen languages and disabled categories of a cloud source follow your other devices.",
   "cloud.badgeShared": "Cloud · shared with {n} devices",
   "cloud.badgeAll": "Cloud · shared with all devices",
   "cloud.badgeCloud": "Cloud",

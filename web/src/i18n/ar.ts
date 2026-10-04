@@ -349,6 +349,8 @@ export const ar: Dict = {
   "cloud.shareLimit": "تم بلوغ حد المصادر في الحساب.",
   "cloud.shareFile": "لا يمكن مشاركة ملف M3U محلي.",
   "cloud.unshare": "إيقاف المشاركة",
+  "cloud.prefsSync": "مزامنة الفئات واللغات بين الأجهزة",
+  "cloud.prefsSyncDesc": "تتبع اللغات المختارة والفئات المعطّلة لمصدر سحابي أجهزتك الأخرى.",
   "cloud.badgeShared": "السحابة · مشارك مع {n} أجهزة",
   "cloud.badgeAll": "السحابة · مشارك مع كل الأجهزة",
   "cloud.badgeCloud": "السحابة",
