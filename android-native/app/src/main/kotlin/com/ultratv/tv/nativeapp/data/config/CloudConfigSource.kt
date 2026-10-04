@@ -38,4 +38,21 @@ class CloudConfigSource @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * Exécute [block] avec un jeton frais : rotation périodique, effacement du jeton si le Worker le révoque.
+     * Sert à la synchro multi-appareils (lecture conditionnelle, envoi, retrait).
+     */
+    suspend fun <T> withToken(workerBase: String, block: suspend (token: String) -> T): T {
+        var token = tokens.token() ?: throw NotPairedException()
+        if (tokens.ageDays() >= rotateAfterDays) {
+            runCatching { client.rotate(workerBase, token) }.onSuccess { (t, id) -> tokens.save(t, id); token = t }
+        }
+        return try {
+            block(token)
+        } catch (e: TokenRejectedException) {
+            tokens.clear()
+            throw e
+        }
+    }
 }

@@ -94,6 +94,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
     @Inject lateinit var deepLinks: com.ultratv.tv.nativeapp.nav.DeepLinkHandler
     @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
+    @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
     @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -227,6 +228,9 @@ class MainActivity : ComponentActivity() {
             // every time the app starts so a re-install / OS restart picks up
             // where we left off.
             SyncScheduler.schedule(this@MainActivity, prefs.syncIntervalHours)
+            // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
+            com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
+            runCatching { cloudSync.sync() }
 
             // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
             // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
