@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.8] — 2026-10-04
+
+### Corrections
+- Affiches manquantes complétées par TMDB (via le Worker), doublons retirés de la recherche.
+- Lecteur, panneau Chaînes : logos, liste centrée sur la chaîne regardée, onglets superposés corrigés.
+
 ## [1.2.7] — 2026-10-04
 
 ### Nouveautés
