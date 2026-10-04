@@ -39,7 +39,7 @@ object Catchup {
         return synthesizeXtreamTimeshift(channel.streamUrl, prog)
     }
 
-    private fun fillTemplate(template: String, prog: EpgEntity): String {
+    internal fun fillTemplate(template: String, prog: EpgEntity): String {
         val startSec = prog.startMs / 1000
         val endSec = prog.endMs / 1000
         val durMin = ((prog.endMs - prog.startMs) / 60_000).toInt().coerceAtLeast(1)

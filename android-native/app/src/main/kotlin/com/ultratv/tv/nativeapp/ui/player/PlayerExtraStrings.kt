@@ -22,6 +22,10 @@ class PlayerExtraStrings(val lang: AppLang) {
     val zapHint get() = t("Back: previous channel · ▲▼ zap · 0-9 number", "Retour : chaîne précédente · ▲▼ zapper · 0-9 numéro", "Atrás: canal anterior · ▲▼ zapear · 0-9 número", "رجوع: القناة السابقة · ▲▼ تنقّل · 0-9 رقم")
     val noChannelNumber get() = t("No such channel", "Aucune chaîne à ce numéro", "Ningún canal con ese número", "لا توجد قناة بهذا الرقم")
 
+    // Replay
+    val fromStart get() = t("From the start", "Depuis le début", "Desde el principio", "من البداية")
+    val backToLive get() = t("Back to live", "Revenir au direct", "Volver al directo", "العودة إلى البث المباشر")
+
     // Veille
     val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
     val sleepTitle get() = t("Sleep timer", "Minuterie de veille", "Temporizador", "مؤقّت السكون")

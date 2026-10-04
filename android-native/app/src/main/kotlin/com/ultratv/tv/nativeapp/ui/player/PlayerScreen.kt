@@ -325,6 +325,20 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         while (System.currentTimeMillis() < sleepDeadline) delay(5_000)
         session.engine?.pause(); onBack()
     }
+    // [B2·replay] « Depuis le début » sur le programme en cours ; l'URL (identifiants inclus) n'est jamais affichée.
+    val replayVm: com.ultratv.tv.nativeapp.ui.player.replay.ReplayViewModel = hiltViewModel()
+    val nowProg by vm.nowProgramme.collectAsState()
+    var replayProg by remember { mutableStateOf<EpgEntity?>(null) }
+    var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
+    var canReplay by remember { mutableStateOf(false) }
+    LaunchedEffect(nowProg?.id) { canReplay = replayVm.canReplay(nowProg) }
+    LaunchedEffect(item?.remoteId) { replayProg = null }
+    LaunchedEffect(state.phase) {
+        val rp = replayProg ?: return@LaunchedEffect
+        val pid = item?.providerId ?: return@LaunchedEffect
+        if (state.phase == Phase.PLAYING) replayVm.worked(pid)
+        else if (state.phase == Phase.ERROR) replayVm.retryUrl(rp, pid)?.let { currentUrl = it }
+    }
     // [B2·veille] minuterie de la pilule « Veille » : « Toujours là ? » 1 min avant, puis arrêt (flux fermé) et accueil.
     val sleepTimer = remember { com.ultratv.tv.nativeapp.ui.player.sleep.SleepTimer() }
     var sleepPhase by remember { mutableStateOf(com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE) }
@@ -419,6 +433,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
                 sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true },
+                replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null,
+                onReplay = {
+                    val rp = replayProg
+                    if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
+                    else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
+                    touch()
+                },
             )
         }
         zapPreview?.let { pv ->
@@ -479,7 +500,7 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
 private fun Footer(
     isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
     onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
-    sleepLabel: String, onSleepPill: () -> Unit,
+    sleepLabel: String, onSleepPill: () -> Unit, replayLabel: String?, onReplay: () -> Unit,
 ) {
     val now = System.currentTimeMillis()
     val frac: Float; val startLabel: String; val endLabel: String
@@ -515,6 +536,7 @@ private fun Footer(
                 OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks)
                 OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions)
                 OptionPill(D.pDisplay, "M3 5h18v14H3zM8 9h8v6H8z", onOptions)
+                if (isLive && replayLabel != null) OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay)
                 OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill)
                 if (isLive) {
                     OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord)
