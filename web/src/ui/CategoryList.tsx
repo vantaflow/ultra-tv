@@ -20,9 +20,11 @@ export function CategoryList({ cats, value, onPick, extra = [], searchable = tru
   return (
     <>
       {searchable && (
-        <div className="search-box" style={{ padding: "0 0.75rem 0.5rem" }}>
-          <Icon name="search" size={16} />
-          <input className="input" placeholder={t("common.filter")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.categories")} />
+        <div style={{ padding: "0 0.75rem 0.5rem" }}>
+          <div className="search-box">
+            <Icon name="search" size={16} />
+            <input className="input" placeholder={t("common.filter")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.categories")} />
+          </div>
         </div>
       )}
       <VList

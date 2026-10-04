@@ -350,7 +350,10 @@ function CategoriesPane() {
         {(["live", "movie", "series"] as const).map((k) => <button key={k} className="chip" role="tab" aria-selected={kind === k} onClick={() => setKind(k)}>{t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series")} <span className="n">{counts[k]}</span></button>)}
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-        <input className="input" style={{ maxWidth: "22rem" }} placeholder={t("set.catsFilter")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.filter")} />
+        <div className="search-box" style={{ width: "22rem", maxWidth: "100%" }}>
+          <Icon name="search" size={16} />
+          <input className="input" placeholder={t("set.catsFilter")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.filter")} />
+        </div>
         <button className="btn sm" onClick={() => setMany(shown, 1)}>{t("set.catsEnableAll")}</button>
         <button className="btn sm" onClick={() => setMany(shown, 0)}>{t("set.catsDisableAll")}</button>
       </div>
