@@ -1,0 +1,197 @@
+name: Desktop release
+
+# Application bureau (Electron) : macOS (.dmg + .zip universels), Windows (NSIS x64),
+# Linux (AppImage x64). Declenchee par un tag `desktop-vX.Y.Z` (= version de
+# electron/package.json) ou a la main (workflow_dispatch : artefacts seulement).
+# La publication sur GitHub Releases (brouillon) n'a lieu que sur tag.
+
+on:
+  push:
+    tags:
+      - "desktop-v*"
+  workflow_dispatch:
+
+# Permissions minimales par defaut ; seul le job `release` obtient contents: write.
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    # `matrix` n'existe pas dans un `if:` de job : pas de condition ici.
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (universal)
+            os: macos-latest
+            artifact: desktop-mac
+            builder_args: "--mac dmg zip --universal"
+          - name: Windows (x64)
+            os: windows-latest
+            artifact: desktop-win
+            builder_args: "--win nsis --x64"
+          - name: Linux (x64)
+            os: ubuntu-latest
+            artifact: desktop-linux
+            builder_args: "--linux AppImage --x64"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            electron/package-lock.json
+
+      # Sur tag, `desktop-vX.Y.Z` doit correspondre a electron/package.json :
+      # electron-builder nomme les artefacts et latest*.yml d'apres ce fichier.
+      - name: Verify tag matches electron version
+        if: startsWith(github.ref, 'refs/tags/desktop-v')
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          EXPECTED="desktop-v$(node -p "require('./electron/package.json').version")"
+          echo "tag=$TAG expected=$EXPECTED"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "::error::Le tag '$TAG' ne correspond pas a electron/package.json ('$EXPECTED')."
+            exit 1
+          fi
+
+      - name: Web - install
+        working-directory: web
+        run: npm ci
+
+      - name: Web - tests
+        working-directory: web
+        run: npm test
+
+      - name: Web - build
+        working-directory: web
+        run: npm run build
+
+      - name: Electron - install
+        working-directory: electron
+        run: npm ci
+
+      - name: Electron - tests
+        working-directory: electron
+        run: npm test
+
+      - name: Embed web build
+        working-directory: electron
+        run: npm run prepare:web
+
+      # Signature uniquement si les secrets existent ; sinon build non signe
+      # (macOS : signature ad hoc via scripts/adhoc-sign.cjs). Les valeurs vides
+      # ne sont jamais exportees : electron-builder les traiterait mal.
+      - name: Configure code signing
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          export_if_set() {
+            local name="$1" value="$2"
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+              echo "${name}=${value}" >> "$GITHUB_ENV"
+            fi
+          }
+          case "$RUNNER_OS" in
+            macOS)
+              if [ -n "$MAC_CSC_LINK" ]; then
+                export_if_set CSC_LINK "$MAC_CSC_LINK"
+                export_if_set CSC_KEY_PASSWORD "$MAC_CSC_KEY_PASSWORD"
+                export_if_set APPLE_ID "$APPLE_ID"
+                export_if_set APPLE_APP_SPECIFIC_PASSWORD "$APPLE_APP_SPECIFIC_PASSWORD"
+                export_if_set APPLE_TEAM_ID "$APPLE_TEAM_ID"
+                echo "Signature macOS : activee."
+              else
+                echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+                echo "Aucun secret macOS : build non signe (ad hoc)."
+              fi
+              ;;
+            Windows)
+              if [ -n "$WIN_CSC_LINK" ]; then
+                export_if_set CSC_LINK "$WIN_CSC_LINK"
+                export_if_set CSC_KEY_PASSWORD "$WIN_CSC_KEY_PASSWORD"
+                echo "Signature Windows : activee."
+              else
+                echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+                echo "Aucun secret Windows : build non signe."
+              fi
+              ;;
+            *)
+              echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+              ;;
+          esac
+
+      - name: Package
+        working-directory: electron
+        run: npx electron-builder ${{ matrix.builder_args }} --publish never
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ${{ matrix.artifact }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            electron/release/*.dmg
+            electron/release/*.zip
+            electron/release/*.exe
+            electron/release/*.AppImage
+            electron/release/*.blockmap
+            electron/release/latest*.yml
+
+  release:
+    name: Publish draft release
+    needs: build
+    # Uniquement sur tag (pas de matrix ici).
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist
+
+      - name: List files
+        run: ls -la dist
+
+      # `gh` plutot qu'une action tierce. Brouillon : electron-updater ne voit
+      # la version qu'une fois la release publiee a la main.
+      - name: Create or update draft release
+        run: |
+          shopt -s nullglob
+          files=(dist/*)
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+              --draft \
+              --title "Ultra TV desktop ${GITHUB_REF_NAME#desktop-v}" \
+              --generate-notes \
+              --repo "$GITHUB_REPOSITORY"
+          fi
