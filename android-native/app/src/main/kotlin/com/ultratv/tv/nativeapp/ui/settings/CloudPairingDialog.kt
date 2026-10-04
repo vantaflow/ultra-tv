@@ -53,6 +53,10 @@ private const val CODE_TTL_MS = 10 * 60_000L
 internal fun groupPairingCode(code: String): String =
     if (code.contains('-') || code.length < 6) code else code.substring(0, code.length / 2) + "-" + code.substring(code.length / 2)
 
+/** Adresse d'appairage automatique encodée dans le QR : `<worker>/pair?code=ABCDEFGH` (sans tiret). */
+internal fun pairingUrl(workerBase: String, code: String): String =
+    workerBase.trimEnd('/') + "/pair?code=" + code.uppercase().filter { it.isLetterOrDigit() }
+
 /** « 9:42 » : temps restant, jamais négatif. */
 internal fun formatRemaining(ms: Long): String {
     val s = (ms.coerceAtLeast(0) / 1000).toInt()
@@ -90,8 +94,11 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                     Column(verticalArrangement = Arrangement.spacedBy(22.design)) {
                         Step(1, D.pairStep1(host))
                         if (host.isNotBlank()) Row(horizontalArrangement = Arrangement.spacedBy(24.design), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 40.design)) {
-                            QrCode((state as PairingUi.ShowCode).workerBase.trimEnd('/'), 160.design)
-                            Text(D.dashboardScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, modifier = Modifier.width(260.design))
+                            // Le QR mène directement à la confirmation d'appairage avec le code pré-rempli :
+                            // on scanne, on se connecte si besoin, on confirme — rien à recopier.
+                            val sc = state as PairingUi.ShowCode
+                            QrCode(pairingUrl(sc.workerBase, sc.code), 160.design)
+                            Text(D.pairScanAuto, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 3, modifier = Modifier.width(300.design))
                         }
                         Step(2, D.pairStep2)
                         Step(3, D.pairStep3)
@@ -141,11 +148,25 @@ private fun Step(n: Int, text: String) {
 
 @Composable
 private fun CodeBoxes(code: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.design), verticalAlignment = Alignment.CenterVertically) {
-        code.forEach { ch ->
-            if (ch == '-') Text("-", color = Ux.Muted2, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx)
-            else Box(Modifier.width(72.design).height(120.design).clip(RoundedCornerShape(20.design)).background(Ux.Surface), contentAlignment = Alignment.Center) {
-                Text(ch.toString(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx, maxLines = 1)
+    // Les 8 cases + le tiret doivent TOUJOURS tenir : à 72 px fixes elles débordaient
+    // de la colonne sur une TV 1080p et les deux derniers caractères étaient coupés
+    // (code saisi incomplet → « code invalide »). On réduit les cases à la largeur dispo.
+    androidx.compose.foundation.layout.BoxWithConstraints(contentAlignment = Alignment.Center) {
+        val chars = code.count { it != '-' }.coerceAtLeast(1)
+        val dashes = code.count { it == '-' }
+        val gap = 10.design
+        val dashW = 28.design
+        val fit = (maxWidth - gap * (code.length - 1) - dashW * dashes) / chars
+        val boxW = if (maxWidth == androidx.compose.ui.unit.Dp.Infinity) 72.design else minOf(72.design, fit)
+        val scale = boxW / 72.design
+        Row(horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.CenterVertically) {
+            code.forEach { ch ->
+                if (ch == '-') Box(Modifier.width(dashW), contentAlignment = Alignment.Center) {
+                    Text("-", color = Ux.Muted2, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx * scale)
+                }
+                else Box(Modifier.width(boxW).height(boxW * (120f / 72f)).clip(RoundedCornerShape(20.design * scale)).background(Ux.Surface), contentAlignment = Alignment.Center) {
+                    Text(ch.toString(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx * scale, maxLines = 1, softWrap = false)
+                }
             }
         }
     }

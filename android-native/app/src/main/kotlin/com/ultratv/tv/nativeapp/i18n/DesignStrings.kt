@@ -78,6 +78,7 @@ class DesignStrings(val lang: AppLang) {
     val cardCloudDesc get() = t("Sync your sources from the dashboard with a short code", "Synchronisez vos sources depuis le tableau de bord avec un code", "Sincroniza tus fuentes desde el panel con un código", "زامن مصادرك من لوحة التحكم برمز قصير")
     val dashboardTitle get() = t("Dashboard", "Tableau de bord", "Panel de control", "لوحة التحكم")
     val dashboardScan get() = t("Scan with your phone", "À scanner avec votre téléphone", "Escanea con tu teléfono", "امسح الرمز بهاتفك")
+    val pairScanAuto get() = t("Scan with your phone to pair automatically", "Scannez avec votre téléphone pour appairer automatiquement", "Escanea con tu teléfono para vincular automáticamente", "امسح الرمز بهاتفك للاقتران تلقائيًا")
     val pairDeviceLabel get() = t("Name shown on the dashboard", "Nom affiché sur le tableau de bord", "Nombre mostrado en el panel", "الاسم الظاهر في لوحة التحكم")
     val searchPill get() = t("Search", "Rechercher", "Buscar", "بحث")
     val unsupportedSource get() = t("Unsupported source type", "Type de source non pris en charge", "Tipo de fuente no compatible", "نوع المصدر غير مدعوم")

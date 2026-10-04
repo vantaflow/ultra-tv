@@ -316,10 +316,21 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                 askProfile == true && showOnboarding == false -> com.ultratv.tv.nativeapp.ui.profile.WhoIsWatchingScreen()
                 else -> when (showOnboarding) {
                 null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                true -> com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
-                    onOpenSettings = { /* user can re-enter Settings via sidebar */ },
-                    vm = onboarding,
-                )
+                true -> {
+                    // L'assistant est hors de la racine qui fournit l'OverlayHost : sans le sien,
+                    // ses modales (appairage cloud, formulaires) étaient composées DANS le volet
+                    // de l'étape, sous son en-tête — logo en double, boutons écrasés.
+                    val onboardingOverlays = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.OverlayHost() }
+                    Box(Modifier.fillMaxSize()) {
+                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides onboardingOverlays) {
+                            com.ultratv.tv.nativeapp.ui.onboarding.OnboardingWizard(
+                                onOpenSettings = { /* user can re-enter Settings via sidebar */ },
+                                vm = onboarding,
+                            )
+                        }
+                        com.ultratv.tv.nativeapp.ui.common.OverlayLayer(onboardingOverlays)
+                    }
+                }
                 false -> {
                     val first: com.ultratv.tv.nativeapp.ui.sync.FirstSyncViewModel = hiltViewModel()
                     val firstState by first.state.collectAsState()
