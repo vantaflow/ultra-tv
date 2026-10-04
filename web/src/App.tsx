@@ -89,6 +89,13 @@ function Effects() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, active?.id]);
 
+  // Source jamais synchronisée hors assistant (ex. M3U get.php convertie en Xtream au démarrage) : première synchro sans action.
+  useEffect(() => {
+    if (!ready || !active || active.state !== "new" || active.lastSyncAt !== 0 || loc.pathname.startsWith("/welcome")) return;
+    void useSync.getState().start(active, { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, active?.id, active?.state, loc.pathname]);
+
   return null;
 }
 
