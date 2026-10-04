@@ -20,6 +20,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Menu : le focus va sur la page ouverte (et non sur Rechercher).
 - « Qui regarde ? » : Retour garde le profil courant au lieu de quitter l'application.
 
+## [Bureau 1.2.12] — 2026-10-04
+
+### Nouveautés
+- Films et Séries : vue « Tout » en rangées par catégorie (comme sur la TV), « Voir tout » ouvre la grille.
+
 ## [Bureau 1.2.11] — 2026-10-04
 
 ### Corrections
