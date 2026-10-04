@@ -47,6 +47,17 @@ class DesignStrings(val lang: AppLang) {
     fun favTab(label: String, n: Int) = "$label · $n"
     val favHint get() = t("Long-press OK: remove from favorites", "Appui long sur OK : retirer des favoris", "Pulsación larga en OK: quitar de favoritos", "اضغط مطولًا على OK لإزالة من المفضلة")
 
+    // Enregistrements
+    val storageUsed get() = t("Storage used", "Stockage utilisé", "Almacenamiento usado", "التخزين المستخدم")
+    fun storageOf(used: String, total: String) = when (lang) { AppLang.French -> "$used sur $total"; AppLang.Spanish -> "$used de $total"; AppLang.Arabic -> "$used من $total"; else -> "$used of $total" }
+    val recActive get() = t("In progress and scheduled", "En cours et programmés", "En curso y programadas", "قيد التنفيذ ومجدولة")
+    val recDone get() = t("Finished", "Terminés", "Terminadas", "المكتملة")
+    val recBadge get() = "REC"
+    val recQueuedBadge get() = t("QUEUE", "FILE", "COLA", "انتظار")
+    val recFailedBadge get() = t("FAILED", "ÉCHEC", "ERROR", "فشل")
+    val recStop get() = t("Stop", "Arrêter", "Detener", "إيقاف")
+    val recCancel get() = t("Cancel", "Annuler", "Cancelar", "إلغاء")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

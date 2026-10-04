@@ -1,37 +1,53 @@
 package com.ultratv.tv.nativeapp.ui.recordings
 
-import android.content.Intent
+import android.os.StatFs
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.db.RecordingEntity
 import com.ultratv.tv.nativeapp.data.recording.RecordingRepository
+import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.ui.design.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.tv.material3.Button
-import androidx.tv.material3.ButtonDefaults
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
+import java.text.DateFormat
+import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -46,69 +62,100 @@ class RecordingsViewModel @Inject constructor(
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+/** Enregistrements (maquette) : stockage en tête, « en cours et programmés » en lignes de 120 px, « terminés » en grille 4×16:9. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RecordingsScreen(
     onPlayLocal: (filePath: String, title: String) -> Unit,
     vm: RecordingsViewModel = hiltViewModel(),
 ) {
     val list by vm.items.collectAsState()
+    val S = LocalStrings.current
+    val D = LocalDs.current
     val ctx = LocalContext.current
-    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    val active = list.filter { it.status != "done" }
+    val done = list.filter { it.status == "done" }
+    val used = list.sumOf { if (it.status == "done") it.totalBytes.coerceAtLeast(it.downloadedBytes) else it.downloadedBytes }
+    val free = remember(list) { runCatching { StatFs((ctx.getExternalFilesDir(null) ?: ctx.filesDir).path).availableBytes }.getOrDefault(0L) }
+    val total = used + free
 
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(S.recordingsTitle, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
+    Column(Modifier.fillMaxSize().background(Ux.Bg).padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionTitle(S.recordingsTitle, 48)
+            Column(Modifier.width(520.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(D.storageUsed, color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                    Text(D.storageOf(formatBytes(used), formatBytes(total)), color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                }
+                Box(Modifier.fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Surface2)) {
+                    Box(Modifier.fillMaxHeight().fillMaxWidth(if (total > 0) (used.toFloat() / total).coerceIn(0f, 1f) else 0f).background(Ux.Text))
+                }
+            }
+        }
         if (list.isEmpty()) {
-            Text(S.recordingsEmpty, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(S.recordingsEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx)
             return@Column
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(list, key = { it.id }) { r ->
-                Row(
-                    Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(r.title, color = MaterialTheme.colorScheme.onBackground, fontSize = 15.sp, fontWeight = FontWeight.Medium, maxLines = 1)
-                        val pct = if (r.totalBytes > 0) (r.downloadedBytes * 100 / r.totalBytes).toInt() else 0
-                        val sub = when (r.status) {
-                            "running" -> "${S.recordingStatusRunning} $pct% (${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)})"
-                            "done" -> "${S.recordingStatusDone} · ${formatBytes(r.totalBytes)}"
-                            "failed", "error" -> "${S.recordingStatusFailed} — ${r.errorMessage ?: "unknown error"}"
-                            "cancelled" -> S.recordingStatusCancelled
-                            else -> S.recordingStatusQueued
-                        }
-                        Text(sub, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    }
-                    if (r.status == "done") {
-                        Button(onClick = { onPlayLocal("file://${r.filePath}", r.title) }) { Text(S.recordingsPlay) }
-                        Button(onClick = {
-                            runCatching {
-                                val intent = Intent(Intent.ACTION_VIEW).apply {
-                                    setDataAndType(android.net.Uri.parse("file://${r.filePath}"), "video/*")
-                                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                }
-                                ctx.startActivity(Intent.createChooser(intent, S.recordingsOpenWith))
-                            }
-                        }, colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surface)) {
-                            Text(S.recordingsOpenWith)
+        if (active.isNotEmpty()) {
+            GroupLabel(D.recActive)
+            LazyColumn(Modifier.heightIn(max = 380.design), verticalArrangement = Arrangement.spacedBy(14.design)) {
+                items(active.size) { i -> ActiveRow(active[i], S, D) { vm.remove(active[i].id) } }
+            }
+        }
+        if (done.isNotEmpty()) {
+            GroupLabel(D.recDone)
+            LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.design), verticalArrangement = Arrangement.spacedBy(24.design)) {
+                items(done, key = { it.id }) { r ->
+                    FocusSurface(
+                        onClick = { onPlayLocal("file://${r.filePath}", r.title) }, onLongClick = { vm.remove(r.id) },
+                        shape = RoundedCornerShape(18.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f,
+                    ) { _ ->
+                        Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
+                            ThumbImage(null, r.title, Modifier.fillMaxWidth().aspectRatio(16f / 9f), radius = 18)
+                            Text(r.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(r.completedAt ?: r.createdAt))
+                            Text("$date · ${formatBytes(r.totalBytes)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
                         }
                     }
-                    Button(
-                        onClick = { vm.remove(r.id) },
-                        colors = ButtonDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                    ) { Text(S.delete) }
                 }
             }
         }
     }
 }
 
-private fun formatBytes(b: Long): String = when {
+@Composable
+private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strings, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onAction: () -> Unit) {
+    val running = r.status == "running"
+    val failed = r.status == "failed" || r.status == "error"
+    val fraction = if (r.totalBytes > 0) (r.downloadedBytes.toFloat() / r.totalBytes).coerceIn(0f, 1f) else 0f
+    val meta = when {
+        running -> "${(fraction * 100).toInt()} % · ${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)}"
+        failed -> S.recordingStatusFailed        // jamais le message brut : il peut contenir une URL de flux
+        r.status == "cancelled" -> S.recordingStatusCancelled
+        else -> S.recordingStatusQueued
+    }
+    FocusSurface(onClick = onAction, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(120.design)) { f ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
+            Box(
+                Modifier.width(92.design).height(44.design).clip(RoundedCornerShape(10.design)).background(if (running) Ux.Accent else if (failed) Ux.Muted2 else Ux.Surface2),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(if (running) D.recBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.design)) {
+                Text(r.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.design)), heightPx = 6, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
+            }
+            Text(if (running) D.recStop else if (failed) S.delete else D.recCancel, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+        }
+    }
+}
+
+/** Taille lisible (Ko / Mo / Go) sans dépendre de la locale pour l'unité. */
+fun formatBytes(b: Long): String = when {
     b <= 0 -> "—"
-    b < 1024L -> "$b B"
-    b < 1024L * 1024 -> "${b / 1024} KB"
-    b < 1024L * 1024 * 1024 -> "${b / (1024 * 1024)} MB"
-    else -> "%.2f GB".format(b / (1024.0 * 1024 * 1024))
+    b < 1024L * 1024 -> "${(b / 1024).coerceAtLeast(1)} Ko"
+    b < 1024L * 1024 * 1024 -> "${b / (1024 * 1024)} Mo"
+    else -> String.format(java.util.Locale.getDefault(), "%.1f Go", b / (1024.0 * 1024 * 1024))
 }
