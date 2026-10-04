@@ -181,9 +181,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                         Text(p.name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val meta = listOfNotNull(kindName(S.wiz, p.kind), if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
-                        Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+                    Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
                 }
             }
         }
@@ -250,7 +250,7 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
             FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(22.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 5.design, modifier = Modifier.weight(1f).height(132.design)) { f ->
                 Column(Modifier.fillMaxSize().padding(24.design).then(if (sel && !f) Modifier.border(2.design, Ux.Accent, RoundedCornerShape(22.design)) else Modifier), verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically)) {
                     Text(pair.first, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(pair.second, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(pair.second, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -282,7 +282,7 @@ private fun ContentRow(icon: String, label: String, meta: String, on: Boolean, o
             Spacer(Modifier.width(20.design))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1)
-                Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Switch(on, inverted = f)
         }
@@ -425,7 +425,7 @@ private fun LangRow(label: String, count: String, on: Boolean, onClick: () -> Un
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(68.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, modifier = Modifier.weight(1f))
-            if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+            if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             Spacer(Modifier.width(16.design))
             Switch(on, inverted = f)
         }
@@ -453,7 +453,7 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
         SwitchPrefRow(D.telemetry, p.telemetryEnabled) { app.setTelemetry(it) }
         // Attribution exigée par les conditions d'utilisation de l'API TMDB.
-        androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 26.spx, maxLines = 3, modifier = Modifier.padding(top = 14.design))
+        androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, modifier = Modifier.padding(top = 14.design))
     }
     com.ultratv.tv.nativeapp.update.UpdateDialog()
 }

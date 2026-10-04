@@ -204,7 +204,7 @@ fun MovieDetailScreen(
         // Visuel plein écran : fond paysage entier (jamais recadré dans une colonne étroite) fondu vers la gauche ; sinon l'affiche 2:3 nette à droite.
         Box(Modifier.fillMaxSize().background(Ux.Tone)) {
             DetailVisual(backdrop, movie.poster, title)
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.Bg, 0.42f to Ux.Bg.copy(alpha = 0.88f), 0.78f to Ux.Bg.copy(alpha = 0.15f), 1f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.Bg, 0.6f to Ux.Bg.copy(alpha = 0.96f), 0.85f to Ux.Bg.copy(alpha = 0.3f), 1f to Color.Transparent)))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Ux.Bg.copy(alpha = 0.7f))))
         }
         BackLink(S.moviesTitle, onBack, Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 40.design))
@@ -226,7 +226,7 @@ fun MovieDetailScreen(
                     }
                     for (badge in listOfNotNull(quality, langBadge)) {
                         Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
-                            Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
+                            Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                         }
                     }
                 }
@@ -259,7 +259,7 @@ fun MovieDetailScreen(
                     people.forEach { name ->
                         Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
                             AvatarImage(null, name, Modifier.size(96.design))
-                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 22.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }

@@ -97,7 +97,7 @@ fun AddProviderDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
                     Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 1)
+                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 }
             }
             content()
@@ -115,9 +115,9 @@ fun AddProviderDialog(
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
-                Text(D.formHintFields, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
-                Text(D.formHintIme, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
-                Text(D.formHintBack, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
+                Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
             }
         }
     }
@@ -155,7 +155,7 @@ fun FormField(
     }
     val shownError = error ?: if (required && touched && !focused && value.isBlank()) D.fieldRequired else null
     Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.fillMaxWidth()) {
-        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx)
+        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
         Box(
             Modifier
                 .fillMaxWidth()
@@ -203,7 +203,7 @@ fun FormField(
             )
         }
         if (shownError != null) {
-            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = 18.spx)
+            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx)
         }
     }
 }

@@ -80,9 +80,9 @@ object Ux {
     // Texte
     val Text: Color get() = if (light) Color(0xFF16151A) else Color(0xFFF5F5F7)
     val Text2: Color get() = if (light) Color(0xFF3C3B42) else Color(0xFFC4C4CC)
-    val Text3: Color get() = if (light) Color(0xFF5E5D66) else Color(0xFFA1A1AA)
+    val Text3: Color get() = if (light) Color(0xFF54535B) else Color(0xFFA1A1AA)
     /** Texte très atténué (compteurs, entrées désactivées). */
-    val Muted: Color get() = if (light) Color(0xFF8A8992) else Color(0xFF71717A)
+    val Muted: Color get() = if (light) Color(0xFF5A5961) else Color(0xFF8E8E98)
     val Muted2: Color get() = if (light) Color(0xFFB0AEB5) else Color(0xFF52525B)
     val Err: Color get() = if (light) Color(0xFFB3261E) else Color(0xFFFF8A8A)
 
@@ -207,10 +207,10 @@ fun KeyHint(key: String?, label: String, chevron: Boolean = false) {
             contentAlignment = Alignment.Center,
         ) {
             if (chevron) DIcon(Icons.Chevron, 18.design, Color(0xFFE4E4E7), strokeWidth = 2.5f)
-            else Text(key.orEmpty(), color = Color(0xFFE4E4E7), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx)
+            else Text(key.orEmpty(), color = Color(0xFFE4E4E7), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
         }
         Spacer(Modifier.width(12.design))
-        Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx)
+        Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx)
     }
 }
 
@@ -218,7 +218,7 @@ fun KeyHint(key: String?, label: String, chevron: Boolean = false) {
 @Composable
 fun LiveBadge(text: String, bg: Color = Ux.Accent) {
     Box(Modifier.clip(RoundedCornerShape(8.design)).background(bg).padding(horizontal = 14.design, vertical = 6.design)) {
-        Text(text, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, letterSpacing = 2.4.sp, maxLines = 1)
+        Text(text, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.4.sp, maxLines = 1)
     }
 }
 

@@ -158,7 +158,7 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
                 LiveBadge(if (h.kind == HeroItem.Kind.SERIES) S.seriesTitle.uppercase() else S.moviesTitle.uppercase())
                 val meta = listOfNotNull(h.year?.toString(), h.genre, h.rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
-                if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(
                 h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 67.spx,
@@ -225,7 +225,7 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
             }
             Column(Modifier.padding(horizontal = 4.design).padding(bottom = 6.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -242,7 +242,7 @@ private fun ChannelCard(c: ChannelEntity, now: EpgEntity?, onClick: () -> Unit) 
                 LogoBox(c.logo, c.title, Modifier.width(48.design).height(32.design), radius = 6, pad = 3, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
             }
             Text(
-                now?.title ?: "", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx,
+                now?.title ?: "", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }

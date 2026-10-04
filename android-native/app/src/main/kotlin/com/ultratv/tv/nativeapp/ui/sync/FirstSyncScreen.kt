@@ -106,7 +106,7 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
                         }
                     } else {
                         WatchLiveCta(enabled = ui.liveReady, onClick = onWatchLive)
-                        if (!ui.liveReady) Text(D.availableWhenReady, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 2, modifier = Modifier.widthIn(max = 300.design))
+                        if (!ui.liveReady) Text(D.availableWhenReady, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, maxLines = 2, modifier = Modifier.widthIn(max = 300.design))
                     }
                 }
             }
@@ -117,7 +117,7 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
         }
 
         Row(Modifier.fillMaxWidth().height(48.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(D.nextOpenInstant, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(D.nextOpenInstant, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(24.design))
             KeyHint("OK", D.hintWatch)
         }

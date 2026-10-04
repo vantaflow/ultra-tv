@@ -71,11 +71,11 @@ fun ReminderBannerHost(vm: ReminderBannerViewModel = hiltViewModel()) {
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(D.startsInOneMin, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
-                Text("${e.programmeTitle} · ${e.channelName}", color = Ux.Text2, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${e.programmeTitle} · ${e.channelName}", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             FocusSurface(onClick = { vm.watch(e); current = null }, shape = RoundedCornerShape(24.design), bg = Ux.Cta, focusedScale = 1f, ringWidth = 4.design, modifier = Modifier.height(48.design)) { _ ->
                 Box(Modifier.padding(horizontal = 20.design).height(48.design), contentAlignment = Alignment.Center) {
-                    Text(D.watchWord, color = Ux.TextOnLight, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+                    Text(D.watchWord, color = Ux.TextOnLight, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
                 }
             }
         }

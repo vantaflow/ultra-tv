@@ -264,7 +264,7 @@ private fun SectionHeader(label: String) {
     Row(Modifier.fillMaxWidth().height(44.design).padding(horizontal = 4.design), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(4.design).height(20.design).background(Ux.Accent))
         Spacer(Modifier.width(14.design))
-        Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         Spacer(Modifier.width(16.design))
         Box(Modifier.fillMaxWidth().height(0.5f.dp1()).background(Ux.Surface2))
     }
@@ -281,7 +281,7 @@ internal fun QualityBadge(quality: Int, focused: Boolean) {
         else -> return
     }
     val (b, f) = if (focused) Color(0xFF0A0A0C) to Color.White else bg to fg
-    Text(text, color = f, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(b).padding(horizontal = 8.design, vertical = 3.design))
+    Text(text, color = f, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(b).padding(horizontal = 8.design, vertical = 3.design))
 }
 
 /** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne), programme en cours, qualité. */
@@ -302,7 +302,7 @@ private fun ChannelRow(
             Spacer(Modifier.width(20.design))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
@@ -324,7 +324,7 @@ private fun Preview(channel: ChannelEntity?, now: EpgEntity?, next: EpgEntity?, 
         if (now != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
                 LiveBadge(D.live)
-                Text("${EpgClock.hm(now.startMs)} – ${EpgClock.hm(now.endMs)}", color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+                Text("${EpgClock.hm(now.startMs)} – ${EpgClock.hm(now.endMs)}", color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
         }
         Text(now?.title ?: channel.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, lineHeight = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -339,7 +339,7 @@ private fun Preview(channel: ChannelEntity?, now: EpgEntity?, next: EpgEntity?, 
         }
         if (next != null) {
             Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.padding(top = 8.design)) {
-                Text(D.upNext, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, letterSpacing = 2.sp(), maxLines = 1)
+                Text(D.upNext, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("${EpgClock.hm(next.startMs)} · ${next.title}", color = Ux.Text, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Spacer(Modifier.width(16.design))

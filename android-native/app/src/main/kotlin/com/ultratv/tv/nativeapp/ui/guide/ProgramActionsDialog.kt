@@ -84,12 +84,12 @@ fun ProgramActionsDialog(
     ModalFocusScope(onBack = { if (choosingRecord) choosingRecord = false else onDismiss() }, modifier = Modifier.background(Ux.Scrim)) {
         Column(Modifier.width(1040.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(52.design), verticalArrangement = Arrangement.spacedBy(22.design)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                if (channel.catchupDays > 0) Text(D.replayBadge(channel.catchupDays), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(8.design)).background(Ux.Surface2).padding(horizontal = 12.design, vertical = 6.design))
-                Text("${channel.title} · ${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (channel.catchupDays > 0) Text(D.replayBadge(channel.catchupDays), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(8.design)).background(Ux.Surface2).padding(horizontal = 12.design, vertical = 6.design))
+                Text("${channel.title} · ${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(prog.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             prog.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 36.spx, maxLines = 3, overflow = TextOverflow.Ellipsis) }
-            if (recordingRunning) Text(D.recConnectionBusy, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 2)
+            if (recordingRunning) Text(D.recConnectionBusy, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
             if (!choosingRecord) {
                 Column(Modifier.padding(top = 8.design), verticalArrangement = Arrangement.spacedBy(14.design)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(14.design)) {
@@ -127,7 +127,7 @@ private fun ActionButton(label: String, hint: String, icon: String, enabled: Boo
             DIcon(icon, 28.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.2f)
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 23.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }

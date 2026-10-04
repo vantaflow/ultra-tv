@@ -213,7 +213,7 @@ private fun Stepper(W: WizardStrings, step: Step) {
                     contentAlignment = Alignment.Center,
                 ) {
                     if (past) DIcon(Icons.Check, 20.design, Ux.Text, strokeWidth = 3f)
-                    else Text("${i + 1}", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx,
+                    else Text("${i + 1}", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx,
                         color = if (current) Ux.Text else Ux.Text3)
                 }
                 Spacer(Modifier.width(12.design))
@@ -359,7 +359,7 @@ private fun PreviewGrid(raw: String, modifier: Modifier) {
                         if (i == 4) DIcon(Icons.Play, 40.design, Ux.White, fill = true)
                         Text(t, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx,
                             color = Ux.White, maxLines = 1)
-                        if (sub.isNotEmpty()) Text(sub, fontFamily = Manrope, fontSize = 18.spx, color = Ux.Text3, maxLines = 1)
+                        if (sub.isNotEmpty()) Text(sub, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                     }
                 }
             }
@@ -586,7 +586,7 @@ private fun LangTile(label: String, count: String, on: Boolean, onClick: () -> U
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, color = if (f) Ux.TextOnLight else Ux.Text)
-                if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 20.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
+                if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 22.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
             }
             if (on) DIcon(Icons.Check, 32.design, if (f) Ux.TextOnLight else Ux.Accent, strokeWidth = 2.5f)
         }

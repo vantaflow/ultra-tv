@@ -104,8 +104,8 @@ fun RecordingsScreen(
             SectionTitle(S.recordingsTitle, 48)
             Column(Modifier.width(520.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(D.storageUsed, color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
-                    Text(D.storageOf(formatBytes(used), formatBytes(total)), color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                    Text(D.storageUsed, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                    Text(D.storageOf(formatBytes(used), formatBytes(total)), color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 }
                 Box(Modifier.fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Surface2)) {
                     Box(Modifier.fillMaxHeight().fillMaxWidth(if (total > 0) (used.toFloat() / total).coerceIn(0f, 1f) else 0f).background(Ux.Text))
@@ -134,7 +134,7 @@ fun RecordingsScreen(
                             ThumbImage(null, r.title, Modifier.fillMaxWidth().aspectRatio(16f / 9f), radius = 18)
                             Text(r.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(r.completedAt ?: r.createdAt))
-                            Text("$date · ${formatBytes(r.totalBytes)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
+                            Text("$date · ${formatBytes(r.totalBytes)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                         }
                     }
                 }
@@ -162,14 +162,14 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
                 Modifier.width(92.design).height(44.design).clip(RoundedCornerShape(10.design)).background(if (running) Ux.Accent else if (failed) Ux.Muted2 else Ux.Surface2),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (running) D.recBadge else if (scheduled) D.recScheduledBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
+                Text(if (running) D.recBadge else if (scheduled) D.recScheduledBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.design)) {
                 Text(r.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.design)), heightPx = 6, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
             }
-            Text(if (running) D.recStop else if (failed) S.delete else D.recCancel, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+            Text(if (running) D.recStop else if (failed) S.delete else D.recCancel, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
         }
     }
 }

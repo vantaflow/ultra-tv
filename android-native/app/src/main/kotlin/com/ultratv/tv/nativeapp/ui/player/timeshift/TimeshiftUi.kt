@@ -44,7 +44,7 @@ fun behindLabel(sec: Int): String {
 @Composable
 fun TimeshiftBadge(behindSec: Int, X: PlayerExtraStrings) {
     Text(
-        X.delayed + " · " + behindLabel(behindSec), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, letterSpacing = 1.2.sp, maxLines = 1,
+        X.delayed + " · " + behindLabel(behindSec), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.2.sp, maxLines = 1,
         modifier = Modifier.clip(RoundedCornerShape(8.design)).background(Ux.Surface2).padding(horizontal = 14.design, vertical = 6.design),
     )
 }
@@ -70,7 +70,7 @@ fun TimeshiftFooter(
                     Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(12.design).clip(RoundedCornerShape(6.design)).background(Ux.Line))
                     Box(Modifier.align(Alignment.CenterStart).fillMaxWidth(snap.fraction).height(12.design).clip(RoundedCornerShape(6.design)).background(Ux.Accent))
                     Box(Modifier.align(Alignment.CenterStart).offset(x = maxWidth * snap.fraction - 16.design).size(32.design).clip(CircleShape).background(Color.White))
-                    Text(X.directMark, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = 0.7.sp, maxLines = 1, modifier = Modifier.align(Alignment.TopEnd))
+                    Text(X.directMark, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 0.7.sp, maxLines = 1, modifier = Modifier.align(Alignment.TopEnd))
                 }
                 Text(EpgClock.hm(now), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
             }
@@ -94,7 +94,7 @@ fun TimeshiftFooter(
 private fun JumpButton(label: String, onClick: () -> Unit) {
     FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Surface2, modifier = Modifier.size(72.design)) { f ->
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, maxLines = 1)
+            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1)
         }
     }
 }

@@ -130,7 +130,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DIcon("M15 6l-6 6 6 6", 20.design, Ux.Text3, strokeWidth = 2.5f)
                     Spacer(Modifier.width(8.design))
-                    Text(D.settingsTitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                    Text(D.settingsTitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 }
                 Text(D.manageCategories, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -151,10 +151,10 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             PillButton(D.disableAll, { vm.setAll(false) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.design)) {
-            Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 1.4.sp, maxLines = 1, modifier = Modifier.weight(1f))
-            Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Text(D.activeCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 1.4.sp, maxLines = 1) }
+            Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1, modifier = Modifier.weight(1f))
+            Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Text(D.activeCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1) }
             Spacer(Modifier.width(12.design))
-            Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.orderCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 1.4.sp, maxLines = 1) }
+            Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.orderCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1) }
         }
         val state = rememberLazyListState()
         val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -176,9 +176,9 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(if (unsupported) D.noFilterSupport else D.categoriesFooter, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(if (unsupported) D.noFilterSupport else D.categoriesFooter, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(24.design))
-            if (moving != null) Text(D.moveHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1) else Row(horizontalArrangement = Arrangement.spacedBy(28.design)) { KeyHint("OK", D.toggle); KeyHint("OK ▸", D.holdToReorder) }
+            if (moving != null) Text(D.moveHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1) else Row(horizontalArrangement = Arrangement.spacedBy(28.design)) { KeyHint("OK", D.toggle); KeyHint("OK ▸", D.holdToReorder) }
         }
     }
 }
@@ -233,13 +233,13 @@ private fun CategoryLine(
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.defaultMinSize56().height(36.design).clip(RoundedCornerShape(10.design)).background(if (f) Color(0xFF0A0A0C) else Ux.Surface2).padding(horizontal = 8.design), contentAlignment = Alignment.Center) {
-                    Text(r.badge.orEmpty(), color = if (f) Color.White else Color(0xFFE4E4E7), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 16.spx, letterSpacing = 0.6.sp, maxLines = 1)
+                    Text(r.badge.orEmpty(), color = if (f) Color.White else Color(0xFFE4E4E7), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 0.6.sp, maxLines = 1)
                 }
                 Spacer(Modifier.width(16.design))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                     Text(r.label, color = if (f) Ux.TextOnLight else if (r.enabled) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                    Text(count, color = if (f) Ux.OnFocus2 else if (r.enabled) Ux.Text3 else Ux.Muted2, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
+                    Text(count, color = if (f) Ux.OnFocus2 else if (r.enabled) Ux.Text3 else Ux.Muted2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 }
             }
             Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Switch(r.enabled, inverted = f) }

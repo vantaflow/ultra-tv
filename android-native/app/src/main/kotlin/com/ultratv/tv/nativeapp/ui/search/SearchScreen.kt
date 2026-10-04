@@ -161,12 +161,12 @@ fun SearchScreen(
                 Key(S.searchClear, Modifier.weight(1f), small = true, onClick = { vm.clear() })
             }
             if (recent.isNotEmpty()) {
-                Text(S.searchRecent.trimEnd(':', ' ').uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp))
+                Text(S.searchRecent.trimEnd(':', ' ').uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp))
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.design), verticalArrangement = Arrangement.spacedBy(10.design), maxLines = 2) {
                     recent.take(8).forEach { rec ->
                         FocusSurface(onClick = { vm.setQuery(rec) }, shape = RoundedCornerShape(22.design), bg = Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(44.design)) { f ->
                             Box(Modifier.height(44.design).padding(horizontal = 20.design), contentAlignment = Alignment.Center) {
-                                Text(rec, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(rec, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }

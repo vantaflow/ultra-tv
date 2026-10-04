@@ -107,7 +107,7 @@ fun SubtitlePanel(
             if (page == Page.MAIN) {
                 val canSearch = online && isMovie
                 PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().alpha(if (canSearch) 1f else 0.45f))
-                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 2)
+                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
             }
             PillButton(if (page == Page.MAIN) X.close else X.back, { if (page == Page.MAIN) onClose() else page = Page.MAIN }, heightPx = 64, hPadPx = 36, fontPx = 22, modifier = Modifier.fillMaxWidth())
         }
@@ -147,7 +147,7 @@ private fun ValueRow(label: String, value: String, enabled: Boolean = true, onSt
 /** Liste ordonnée : l'ordre de sélection est l'ordre de préférence (rang affiché). */
 @Composable
 private fun LangPicker(X: PlayerExtraStrings, selected: List<String>, onChange: (List<String>) -> Unit) {
-    Text(X.langOrderHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 2)
+    Text(X.langOrderHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
     SubtitleLogic.LANGUAGES.forEach { code ->
         val rank = selected.indexOf(code)
         ValueRow(java.util.Locale.forLanguageTag(code).getDisplayLanguage(java.util.Locale.forLanguageTag(code)).replaceFirstChar { it.uppercase() }, if (rank >= 0) "#${rank + 1}" else "—") { onChange(SubtitleLogic.toggleLanguage(selected, code)) }

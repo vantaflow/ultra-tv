@@ -84,7 +84,7 @@ private fun Card(modifier: Modifier, title: String, badge: String, badgeColor: C
     Column(modifier.clip(RoundedCornerShape(28.design)).background(Ux.Surface).padding(32.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(title.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(2f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
-            Box(Modifier.clip(RoundedCornerShape(20.design)).background(badgeColor).padding(horizontal = 16.design, vertical = 6.design)) { Text(badge.uppercase(), color = Color.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1) }
+            Box(Modifier.clip(RoundedCornerShape(20.design)).background(badgeColor).padding(horizontal = 16.design, vertical = 6.design)) { Text(badge.uppercase(), color = Color.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
         }
         rows.forEach { (k, v) ->
             Row(Modifier.fillMaxWidth().padding(vertical = 8.design), horizontalArrangement = Arrangement.SpaceBetween) {

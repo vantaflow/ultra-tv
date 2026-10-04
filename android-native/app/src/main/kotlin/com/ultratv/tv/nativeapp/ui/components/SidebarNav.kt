@@ -163,7 +163,7 @@ fun SidebarNav(navController: NavController) {
                     Spacer(Modifier.height(20.design))
                     Row(Modifier.padding(start = if (expanded) 4.design else 0.design), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
-                            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.spx, color = Ux.Text, maxLines = 1)
+                            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
                         }
                         if (expanded) {
                             Spacer(Modifier.width(16.design))
@@ -185,7 +185,7 @@ fun SidebarNav(navController: NavController) {
                             Spacer(Modifier.width(16.design))
                             Column(verticalArrangement = Arrangement.spacedBy(2.design)) {
                                 Text(prof?.name ?: D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1)
-                                Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 18.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1)
+                                Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 22.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1)
                             }
                         }
                     }

@@ -104,7 +104,7 @@ fun LockedChannelsScreen(onBack: () -> Unit = {}, vm: LockedChannelsViewModel = 
         }
         FilterField(q, { vm.query.value = it }, S.lockChannelsFilterHint, Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.design)) {
-            Text(if (q.isBlank()) D.lockedOnly else D.searchResultsCount(chans.size), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1, modifier = Modifier.weight(1f))
+            Text(if (q.isBlank()) D.lockedOnly else D.searchResultsCount(chans.size), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.4f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1, modifier = Modifier.weight(1f))
         }
         if (chans.isEmpty()) {
             Text(if (q.isBlank()) D.lockedNone else S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
@@ -116,7 +116,7 @@ fun LockedChannelsScreen(onBack: () -> Unit = {}, vm: LockedChannelsViewModel = 
                     Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
                         LogoBox(c.logo, c.title, Modifier.width(72.design).height(48.design), radius = 10, pad = 5, bg = if (f) Ux.Surface else Ux.Surface2)
                         Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text(D.lockedSwitch, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                        Text(D.lockedSwitch, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                         Switch(isOn, inverted = f)
                     }
                 }

@@ -539,8 +539,8 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
                 if (isLive) { if (tsBehindSec != null && X != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftBadge(tsBehindSec, X) else LiveBadge(D.live) }
                 // Un seul titre : avec un programme du guide la chaîne passe en petit ; sinon son nom EST le titre.
                 val name = item?.title ?: fallbackTitle
-                if (programme != null || !isLive) Text(name, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                item?.badge?.let { b -> Text(b, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design)) }
+                if (programme != null || !isLive) Text(name, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                item?.badge?.let { b -> Text(b, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design)) }
             }
             Text(
                 if (isLive) (programme?.title ?: item?.title ?: fallbackTitle) else (item?.title ?: fallbackTitle),
@@ -678,7 +678,7 @@ private fun StatsCard(session: PlaybackSession, D: DesignStrings, modifier: Modi
     LaunchedEffect(Unit) { while (true) { s = session.engine?.stats(); delay(1_000) } }
     val st by session.state.collectAsState()
     Column(modifier.width(520.design).clip(RoundedCornerShape(20.design)).background(Color(0xE60F0F12)).padding(28.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
-        Text(D.statsLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
+        Text(D.statsLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1)
         val x = s
         fun row(k: String, v: String?) { }
         listOf(
@@ -690,8 +690,8 @@ private fun StatsCard(session: PlaybackSession, D: DesignStrings, modifier: Modi
             "kbps" to (x?.videoBitrateKbps?.toString() ?: "—"), "⚠" to (x?.droppedFrames?.toString() ?: "—"),
         ).forEach { (k, v) ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
-                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
+                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
             }
         }
     }
@@ -708,7 +708,7 @@ private fun OptionRow(label: String, hint: String?, selected: Boolean, onClick: 
         Box(Modifier.fillMaxSize().then(if (selected && !f) Modifier.border(2.design, Ux.Accent, RoundedCornerShape(16.design)) else Modifier)) {
             Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(label, color = if (f) Ux.TextOnLight else if (selected) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (!hint.isNullOrEmpty()) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
+                if (!hint.isNullOrEmpty()) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
         }
     }
@@ -717,7 +717,7 @@ private fun OptionRow(label: String, hint: String?, selected: Boolean, onClick: 
 @Composable
 private fun OptionGroup(title: String, content: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-        Text(title.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
+        Text(title.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1)
         Column(verticalArrangement = Arrangement.spacedBy(8.design)) { content() }
     }
 }
@@ -744,12 +744,12 @@ private fun PlayerSidePanel(
                     val sel = t == tab
                     FocusSurface(onClick = { tab = t }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(52.design)) { f ->
                         Box(Modifier.height(52.design).padding(horizontal = 18.design), contentAlignment = Alignment.Center) {
-                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
+                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                         }
                     }
                 }
             }
-            Text(D.forThisChannel(title), color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(D.forThisChannel(title), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
             Column(Modifier.weight(1f).verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.spacedBy(22.design)) {
                 when (tab) {
                     SideTab.TRACKS -> {
@@ -825,8 +825,8 @@ private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
             D.statDropped to (x?.droppedFrames?.toString() ?: "—"),
         ).forEach { (k, v) ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
-                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 19.spx, maxLines = 1)
+                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
         }
     }

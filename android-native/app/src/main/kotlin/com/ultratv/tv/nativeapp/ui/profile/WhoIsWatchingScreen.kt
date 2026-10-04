@@ -97,7 +97,7 @@ private fun ProfileTile(initial: String, color: Int, label: String, hint: String
         Column(Modifier.padding(bottom = 12.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.design)) {
             ProfileAvatar(initial, color, 200)
             Text(label, color = if (f) Color.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, textAlign = TextAlign.Center)
-            Text(hint, color = Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
+            Text(hint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
         }
     }
 }

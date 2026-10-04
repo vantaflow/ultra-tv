@@ -97,12 +97,12 @@ fun SeriesDetailScreen(
                 }
                 series.lang.takeIf { it.isNotBlank() }?.uppercase()?.let { l ->
                     Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
-                        Text(l, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
+                        Text(l, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                     }
                 }
             }
             tc.presentable(series.plot)?.let {
-                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 33.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
@@ -167,7 +167,7 @@ fun BackLink(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
         Row(Modifier.height(48.design).padding(horizontal = 12.design), verticalAlignment = Alignment.CenterVertically) {
             DIcon(Icons.Chevron, 20.design, if (f) Ux.TextOnLight else Ux.Text3, strokeWidth = 2.5f)
             Spacer(Modifier.width(8.design))
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+            Text(label, color = if (f) Ux.TextOnLight else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
         }
     }
 }
@@ -193,9 +193,9 @@ private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?,
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(if (title.isEmpty()) D.episodeWord(ep.episode) else "${D.episodeShort(ep.episode)} · $title", color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (meta.isNotEmpty()) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
+                if (meta.isNotEmpty()) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 ep.plot?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, lineHeight = 27.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(it, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

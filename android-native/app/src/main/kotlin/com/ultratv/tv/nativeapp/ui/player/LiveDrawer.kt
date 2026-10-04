@@ -98,10 +98,10 @@ internal fun LiveDrawer(
                     shown?.now?.let { n ->
                         Text(
                             "${EpgClock.hm(n.startMs)} – ${EpgClock.hm(n.endMs)}" + (shown.next?.let { " · ${LocalStrings.current.liveThen} ${it.title}" } ?: ""),
-                            color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    Text(D.drawerHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, modifier = Modifier.padding(top = 6.design))
+                    Text(D.drawerHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, modifier = Modifier.padding(top = 6.design))
                 }
             }
         }
@@ -113,7 +113,7 @@ private fun ModalDark(content: @Composable () -> Unit) = com.ultratv.tv.nativeap
 
 @Composable
 private fun Label(text: String, modifier: Modifier = Modifier, color: Color = Ux.Text3) =
-    Text(text, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 18.spx, letterSpacing = TextUnit(1.8f, TextUnitType.Sp), maxLines = 1, modifier = modifier)
+    Text(text, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.8f, TextUnitType.Sp), maxLines = 1, modifier = modifier)
 
 @Composable
 private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit) {
@@ -121,14 +121,14 @@ private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultra
     val fraction = if (now != null && now.endMs > now.startMs) ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs)).coerceIn(0f, 1f) else 0f
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(96.design).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
-            Text("$index", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, modifier = Modifier.width(48.design))
+            Text("$index", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.width(48.design))
             LogoBox(e.channel.logo, e.channel.title, Modifier.width(64.design).height(42.design), radius = 8, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(e.channel.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(2.design)), heightPx = 4, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
-                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (e.isCurrent) Text(D.onAirPill, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 16.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
+            if (e.isCurrent) Text(D.onAirPill, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
         }
     }
 }

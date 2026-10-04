@@ -154,7 +154,7 @@ fun FavoritesScreen(
                 else items(series, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
             }
         }
-        Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx)
+        Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx)
     }
 }
 
@@ -166,11 +166,11 @@ private fun ChannelTile(c: ChannelEntity, now: EpgEntity?, onClick: () -> Unit, 
         Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 LogoBox(c.logo, c.title, Modifier.width(88.design).height(56.design), radius = 12, pad = 6, bg = if (f) Ux.Surface else Ux.Surface2)
-                if (c.seq > 0) Text("${c.seq}", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1)
+                if (c.seq > 0) Text("${c.seq}", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
             Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.design)), heightPx = 6, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
         }

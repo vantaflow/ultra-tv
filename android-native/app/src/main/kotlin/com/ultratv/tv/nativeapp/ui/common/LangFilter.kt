@@ -51,7 +51,7 @@ fun LangPill(view: LangView, onClick: () -> Unit, modifier: Modifier = Modifier)
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(24.design), bg = if (active) Ux.Surface2 else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.height(48.design)) { f ->
         Row(Modifier.height(48.design).padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
             DIcon(Icons.Globe, 22.design, if (f) Ux.TextOnLight else if (active) Ux.Accent else Ux.Text3, strokeWidth = 2f)
-            Text(langPillText(view, D), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(langPillText(view, D), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -64,7 +64,7 @@ fun LangViewPanel(counts: List<LangCount>, view: LangView, onToggle: (String) ->
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim), contentAlignment = Alignment.CenterEnd) {
         Column(Modifier.fillMaxHeight().width(640.design).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design), verticalArrangement = Arrangement.spacedBy(18.design)) {
             Text(D.langPanelTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
-            Text(D.langPanelHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 28.spx, maxLines = 3)
+            Text(D.langPanelHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3)
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item(key = "all") { CheckRow(D.langAll, "", view.useLang == 0) { onClear() } }
                 items(rows, key = { it.lang }) { r ->
@@ -85,7 +85,7 @@ private fun CheckRow(label: String, count: String, checked: Boolean, onClick: ()
                 contentAlignment = Alignment.Center,
             ) { if (checked) DIcon(Icons.Check, 22.design, Ux.White, strokeWidth = 3f) }
             Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
+            if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
         }
     }
 }
@@ -96,7 +96,7 @@ fun LangBadge(lang: String, focused: Boolean = false, modifier: Modifier = Modif
     if (lang.isBlank()) return
     val multi = lang == LangViewMulti
     Text(
-        if (multi) "MULTI" else lang.uppercase(), color = if (focused) Ux.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.spx, maxLines = 1,
+        if (multi) "MULTI" else lang.uppercase(), color = if (focused) Ux.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1,
         modifier = modifier.clip(RoundedCornerShape(6.design)).background(if (focused) Ux.Accent else if (multi) Ux.Surface2 else Ux.Surface).padding(horizontal = 8.design, vertical = 3.design),
     )
 }
