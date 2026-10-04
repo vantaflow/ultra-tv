@@ -373,6 +373,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             MovieDetailScreen(
                 movieId = id,
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onBack = { nav.popBackStack() },
             )
         }
         screen(Routes.SERIES) {

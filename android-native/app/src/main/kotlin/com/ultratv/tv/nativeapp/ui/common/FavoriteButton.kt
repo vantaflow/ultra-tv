@@ -20,8 +20,10 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.tv.material3.Button
-import androidx.tv.material3.Text
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -53,7 +55,7 @@ class FavoriteToggleViewModel @Inject constructor(
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+/** Bouton rond (72 px) à cœur : plein et accent quand l'élément est en favori (maquettes FilmDetail / SerieDetail). */
 @Composable
 fun FavoriteButton(
     kind: String,
@@ -62,7 +64,22 @@ fun FavoriteButton(
 ) {
     LaunchedEffect(kind, remoteId) { vm.set(kind, remoteId) }
     val on by vm.isFav.collectAsState()
-    Button(onClick = { vm.toggle() }) {
-        Text(if (on) "★ Favorited" else "☆ Add to favorites")
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    com.ultratv.tv.nativeapp.ui.design.FocusSurface(
+        onClick = { vm.toggle() },
+        shape = androidx.compose.foundation.shape.CircleShape,
+        bg = com.ultratv.tv.nativeapp.ui.design.Ux.Surface2,
+        modifier = androidx.compose.ui.Modifier
+            .size(72.design)
+            .semantics { contentDescription = if (on) D.removeFavorite else D.addFavorite },
+    ) { f ->
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            com.ultratv.tv.nativeapp.ui.design.DIcon(
+                com.ultratv.tv.nativeapp.ui.design.Icons.Heart, 30.design,
+                if (f) com.ultratv.tv.nativeapp.ui.design.Ux.TextOnLight else if (on) com.ultratv.tv.nativeapp.ui.design.Ux.Accent else com.ultratv.tv.nativeapp.ui.design.Ux.Text,
+                fill = on,
+            )
+        }
     }
 }
+

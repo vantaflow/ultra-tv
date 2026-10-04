@@ -22,6 +22,10 @@ class DesignStrings(val lang: AppLang) {
     val railProfile get() = t("Profile", "Profil", "Perfil", "الملف الشخصي")
     val railSwitchProfile get() = t("Switch profile", "Changer de profil", "Cambiar de perfil", "تبديل الملف")
 
+    // Fiches film / série
+    val castTitle get() = t("Cast", "Distribution", "Reparto", "طاقم التمثيل")
+    fun resumeAt(time: String) = when (lang) { AppLang.French -> "Reprendre à $time"; AppLang.Spanish -> "Reanudar en $time"; AppLang.Arabic -> "استئناف من $time"; else -> "Resume at $time" }
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
