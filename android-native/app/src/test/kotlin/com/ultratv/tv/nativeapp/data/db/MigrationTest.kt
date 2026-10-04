@@ -57,10 +57,10 @@ class MigrationTest {
         }
 
         val db = Room.databaseBuilder(ctx, UltraDb::class.java, "m10.db")
-            .addMigrations(MIGRATION_10_11, MIGRATION_11_12).allowMainThreadQueries().build()
+            .addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
-            val sdb = db.openHelper.writableDatabase     // ouvre ET valide le schéma contre 12.json
-            assertEquals(12, sdb.version)
+            val sdb = db.openHelper.writableDatabase     // ouvre ET valide le schéma contre le schéma courant
+            assertEquals(14, sdb.version)
             // Données conservées
             sdb.query("SELECT name, title, sortKey, lang FROM channel").use { c ->
                 assertTrue(c.moveToFirst()); assertEquals("FR | TF1 HD", c.getString(0)); assertEquals("FR | TF1 HD", c.getString(1)); assertEquals("fr | tf1 hd", c.getString(2))
@@ -79,10 +79,10 @@ class MigrationTest {
     @Test fun migration11a12_depuisUneBaseVersion11() {
         val file = createFromSchema("m11.db", 11)
         sql(file) { db -> db.execSQL("INSERT INTO provider(id,name,kind,baseUrl,username,password,active,lastLiveSyncAt,lastVodSyncAt,lastSeriesSyncAt,lastEpgSyncAt,categoryFilter) VALUES(1,'S','XTREAM','http://serveur-fictif.invalid','u','p',1,0,0,0,0,-1)") }
-        val db = Room.databaseBuilder(ctx, UltraDb::class.java, "m11.db").addMigrations(MIGRATION_11_12).allowMainThreadQueries().build()
+        val db = Room.databaseBuilder(ctx, UltraDb::class.java, "m11.db").addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             val sdb = db.openHelper.writableDatabase
-            assertEquals(12, sdb.version)
+            assertEquals(14, sdb.version)
             sdb.query("SELECT COUNT(*) FROM provider").use { c -> c.moveToFirst(); assertEquals(1, c.getInt(0)) }
         } finally { db.close() }
     }

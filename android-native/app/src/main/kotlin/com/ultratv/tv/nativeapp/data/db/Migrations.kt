@@ -94,3 +94,6 @@ val MIGRATION_13_14 = object : Migration(13, 14) {
         )
     }
 }
+
+/** Chaîne complète 10 → version courante : source UNIQUE pour l'application et pour les tests de migration. */
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
