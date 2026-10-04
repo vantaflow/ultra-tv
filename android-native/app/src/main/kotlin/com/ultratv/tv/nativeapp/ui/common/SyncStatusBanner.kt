@@ -96,9 +96,11 @@ fun OfflineBar() {
     androidx.compose.runtime.DisposableEffect(Unit) {
         val cm = ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
         val cb = object : android.net.ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: android.net.Network) { online = true }
+            override fun onAvailable(network: android.net.Network) { online = !DebugConnectivity.forceOffline }
             override fun onLost(network: android.net.Network) { online = false }
         }
+        online = runCatching { cm?.getNetworkCapabilities(cm.activeNetwork)?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) == true }.getOrDefault(true)
+        if (DebugConnectivity.forceOffline) online = false
         runCatching { cm?.registerDefaultNetworkCallback(cb) }
         onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }
     }

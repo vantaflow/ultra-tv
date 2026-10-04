@@ -100,6 +100,12 @@ class DesignStrings(val lang: AppLang) {
     val offlineTitle get() = t("No internet connection", "Pas de connexion internet", "Sin conexión a internet", "لا يوجد اتصال بالإنترنت")
     val offlineBody get() = t("Your favorites, the guide already loaded and recordings stay available. Live TV resumes as soon as the network is back.", "Vos favoris, le guide déjà chargé et les enregistrements restent disponibles. Le direct reprendra dès le retour du réseau.", "Tus favoritos, la guía ya cargada y las grabaciones siguen disponibles. El directo se reanudará al volver la red.", "تبقى المفضلة والدليل المحمّل والتسجيلات متاحة. سيعود البث المباشر فور عودة الشبكة.")
     val offlineBanner get() = t("No internet connection — saved content stays available.", "Pas de connexion internet — le contenu enregistré reste disponible.", "Sin conexión — el contenido guardado sigue disponible.", "لا يوجد اتصال — المحتوى المحفوظ متاح.")
+    fun sourceErrorBody(name: String) = when (lang) {
+        AppLang.French -> "L’adresse de $name ne répond plus. Les fournisseurs changent parfois d’adresse : vérifiez-la auprès du vôtre."
+        AppLang.Spanish -> "La dirección de $name ya no responde. Los proveedores a veces cambian de dirección: compruébala con el tuyo."
+        AppLang.Arabic -> "عنوان $name لم يعد يستجيب. يغيّر المزوّدون عناوينهم أحيانًا: تحقق منه لدى مزوّدك."
+        else -> "The address of $name no longer responds. Providers sometimes change address: check it with yours."
+    }
     val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
     val seeRecordings get() = t("View recordings", "Voir les enregistrements", "Ver grabaciones", "عرض التسجيلات")
     val browseLive get() = t("Browse live TV", "Parcourir le direct", "Explorar el directo", "تصفح البث المباشر")

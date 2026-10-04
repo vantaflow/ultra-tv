@@ -136,6 +136,7 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("debug_route")?.let { StartupNav.pendingRoute.value = it }
         intent.getStringExtra("debug_query")?.let { StartupNav.debugQuery.value = it }
         intent.getStringExtra("debug_theme")?.let { StartupNav.debugTheme.value = it }
+        com.ultratv.tv.nativeapp.ui.common.DebugConnectivity.forceOffline = intent.getBooleanExtra("debug_offline", false)
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
     }
 
