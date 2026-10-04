@@ -128,7 +128,9 @@ class CloudSyncManager @Inject constructor(
                 val id = if (a.cloud.kind == "XTREAM") repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password) else repo.addM3u(a.cloud.name, a.cloud.url)
                 links.link(id, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
                 if (repo.firstActive() == null) repo.setDefault(id)
-                sync.request(id, force = true)
+                // Appairage depuis l'assistant : une source Xtream attend l'étape Langues (sinon une
+                // box modeste synchronisait d'emblée tout le catalogue — 50 000 chaînes, 180 000 films).
+                if (!(CloudOnboarding.deferXtreamSync && a.cloud.kind == "XTREAM")) sync.request(id, force = true)
                 added++
             }
             is SyncAction.Link -> links.link(a.localId, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
@@ -207,4 +209,9 @@ class CloudSyncManager @Inject constructor(
 
     /** À appeler après un dé-appairage ou un changement de Worker : les liens ne valent plus rien. */
     fun forget() { links.clearAll(); _state.value = CloudSyncState() }
+}
+
+/** Drapeau posé par l'assistant de première source pendant l'appairage cloud. */
+object CloudOnboarding {
+    @Volatile var deferXtreamSync: Boolean = false
 }

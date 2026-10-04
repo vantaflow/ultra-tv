@@ -405,7 +405,14 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
     val cloudPaired by settingsVm.paired.collectAsState()
     val cloudProviders by settingsVm.providers.collectAsState()
     androidx.compose.runtime.LaunchedEffect(cloudStarted, cloudPaired, cloudProviders.size) {
-        if (cloudStarted && cloudPaired && cloudProviders.isNotEmpty()) { cloudStarted = false; onAdded() }
+        if (cloudStarted && cloudPaired && cloudProviders.isNotEmpty()) {
+            cloudStarted = false
+            com.ultratv.tv.nativeapp.data.config.CloudOnboarding.deferXtreamSync = false
+            // Source Xtream reçue du cloud : même parcours qu'une saisie manuelle (choix des langues,
+            // qui lance la synchro) ; M3U : synchro déjà demandée, on passe à « Prêt ».
+            val xtream = cloudProviders.firstOrNull { it.active && it.kind == "XTREAM" } ?: cloudProviders.firstOrNull { it.kind == "XTREAM" }
+            if (xtream != null) onXtreamAdded(xtream.id) else onAdded()
+        }
     }
 
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -450,7 +457,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             SourceCard(Modifier.weight(1f), Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first = true) { form = Form.Xtream }
             SourceCard(Modifier.weight(1f), Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
             SourceCard(Modifier.weight(1f), Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
-            SourceCard(Modifier.weight(1f), Icons.Link, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloudDesc) { cloudStarted = true; settingsVm.startPairing() }
+            SourceCard(Modifier.weight(1f), Icons.Link, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloudDesc) { cloudStarted = true; com.ultratv.tv.nativeapp.data.config.CloudOnboarding.deferXtreamSync = true; settingsVm.startPairing() }
         }
         Spacer(Modifier.height(40.design))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -458,7 +465,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     }
 
-    com.ultratv.tv.nativeapp.ui.settings.CloudPairingDialog(pairingUi, onCancel = { cloudStarted = false; settingsVm.cancelPairing() }, onRetry = { settingsVm.startPairing() })
+    com.ultratv.tv.nativeapp.ui.settings.CloudPairingDialog(pairingUi, onCancel = { cloudStarted = false; com.ultratv.tv.nativeapp.data.config.CloudOnboarding.deferXtreamSync = false; settingsVm.cancelPairing() }, onRetry = { settingsVm.startPairing() })
     when (form) {
         Form.Xtream -> XtreamDialog(
             onDismiss = { form = Form.None },

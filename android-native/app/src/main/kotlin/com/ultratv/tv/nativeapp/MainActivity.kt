@@ -5,6 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import com.ultratv.tv.nativeapp.ui.design.spx
+import com.ultratv.tv.nativeapp.ui.common.design
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -336,7 +339,9 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                     val firstState by first.state.collectAsState()
                     val ui = firstState?.ui
                     when {
-                        firstState == null -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                        // Jamais d'écran noir muet : sur une box lente en pleine écriture du catalogue,
+                        // la première réponse de la base peut prendre plusieurs secondes.
+                        firstState == null -> StartupLoading()
                         ui != null -> com.ultratv.tv.nativeapp.ui.sync.FirstSyncScreen(
                             ui,
                             onWatchLive = { StartupNav.pendingRoute.value = Routes.LIVE; first.leaveToLive() },
@@ -569,5 +574,17 @@ private fun NavGraphBuilder.screen(
 ) {
     composable(route, arguments = arguments) { entry ->
         ScreenFocusHost { content(entry) }
+    }
+}
+
+/** Attente sobre (logo + « Chargement… ») pendant que la base répond, au lieu d'un écran noir. */
+@Composable
+private fun StartupLoading() {
+    Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.Ux.Bg), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(28.design)) {
+            com.ultratv.tv.nativeapp.ui.design.LogoMark(96)
+            androidx.compose.material3.CircularProgressIndicator(color = com.ultratv.tv.nativeapp.ui.design.Ux.Accent, strokeWidth = 5.design, modifier = Modifier.size(56.design))
+            androidx.tv.material3.Text(com.ultratv.tv.nativeapp.i18n.LocalDs.current.loadingLabel, color = com.ultratv.tv.nativeapp.ui.design.Ux.Text2, fontSize = 24.spx)
+        }
     }
 }
