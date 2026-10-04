@@ -291,6 +291,10 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey")
     fun observeForProvider(pid: Long): Flow<List<SeriesEntity>>
 
+    /** Complète la fiche série avec ce que renvoie get_series_info (sans écraser par du vide). */
+    @Query("UPDATE series SET plot = COALESCE(:plot, plot), genre = COALESCE(:genre, genre), `cast` = COALESCE(:cast, `cast`), backdrop = COALESCE(:backdrop, backdrop), year = COALESCE(:year, year), rating = COALESCE(:rating, rating) WHERE id = :id")
+    suspend fun updateInfo(id: Long, plot: String?, genre: String?, cast: String?, backdrop: String?, year: Int?, rating: Double?)
+
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
@@ -485,3 +489,12 @@ enum class SyncPart { LIVE, VOD, SERIES, EPG }
 data class EpgMapping(val id: Long, val epgChannelId: String)
 
 data class RawPassword(val id: Long, val raw: String)
+
+@Dao
+interface VodInfoDao {
+    @Query("SELECT * FROM vod_info WHERE providerId = :pid AND remoteId = :rid")
+    suspend fun get(pid: Long, rid: String): VodInfoEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(v: VodInfoEntity)
+}

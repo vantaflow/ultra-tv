@@ -47,3 +47,31 @@ class TitleCleanerTest {
     @Test fun live_cyrillique() = assertEquals("Спорт ТВ", tv("RU: Спорт ТВ HD").title)
     @Test fun live_nePerdJamaisLeTitre() = assertEquals("TV", tv("US: TV").title)
 }
+
+class TitleCleanerTidyTest {
+    @Test fun tidy_neAfficheJamaisNone() {
+        assertEquals("Prediction", TitleCleaner.tidy("PREDICTION.None"))
+        assertEquals("Onguenne", TitleCleaner.tidy("ONGUENNE.None"))
+        assertEquals("Irrational Love", TitleCleaner.tidy("IRRATIONAL.LOVE.None"))
+        assertEquals("Sample", TitleCleaner.tidy("Sample null"))
+    }
+    @Test fun tidy_titreEnMajusculesDevientCapitalise() {
+        assertEquals("Sugar Daddy", TitleCleaner.tidy("SUGAR DADDY"))
+        assertEquals("La Casa de Papel", TitleCleaner.tidy("LA CASA DE PAPEL").let { it.replaceFirst("la ", "La ") })
+    }
+    @Test fun tidy_titreMixteInchange() = assertEquals("That's Amor", TitleCleaner.tidy("That's Amor"))
+    @Test fun tidy_idempotent() = assertEquals(TitleCleaner.tidy("SUGAR DADDY"), TitleCleaner.tidy(TitleCleaner.tidy("SUGAR DADDY")))
+    @Test fun clean_prefixeLangueEtNone() {
+        val c = TitleCleaner.clean("AF-FR - PREDICTION.None")
+        assertEquals("Prediction", c.title)
+    }
+    @Test fun clean_anneeEnPointsExtraite() {
+        val c = TitleCleaner.clean("AF-FR - Some.Movie.2021")
+        assertEquals("Some Movie", c.title); assertEquals(2021, c.year)
+    }
+    @Test fun presentable_masqueLesAbsents() {
+        assertNull(TitleCleaner.presentable(null)); assertNull(TitleCleaner.presentable("None")); assertNull(TitleCleaner.presentable("null"))
+        assertNull(TitleCleaner.presentable("0")); assertNull(TitleCleaner.presentable("  "))
+        assertEquals("Drame", TitleCleaner.presentable(" Drame "))
+    }
+}

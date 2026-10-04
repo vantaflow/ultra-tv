@@ -5,6 +5,8 @@ import com.ultratv.tv.nativeapp.data.db.CategoryEntity
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.EpgDao
+import com.ultratv.tv.nativeapp.data.db.VodInfoDao
+import com.ultratv.tv.nativeapp.data.db.VodInfoEntity
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.db.EpisodeDao
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
@@ -35,6 +37,7 @@ class CatalogRepository @Inject constructor(
     private val categoryDao: CategoryDao,
     private val favoriteDao: FavoriteDao,
     private val epgDao: EpgDao,
+    private val vodInfoDao: VodInfoDao,
     private val xtream: XtreamClient,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
 ) {
@@ -70,7 +73,11 @@ class CatalogRepository @Inject constructor(
         val s = seriesDao.byId(seriesId) ?: return
         val p = providerDao.byId(s.providerId) ?: return
         val eps = when (p.kind) {
-            "XTREAM" -> xtream.fetchSeriesEpisodes(p, s.remoteId, s.id)
+            "XTREAM" -> {
+                val d = xtream.fetchSeriesDetail(p, s.remoteId, s.id) ?: return
+                seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
+                d.episodes
+            }
             "STALKER" -> {
                 val session = runCatching { stalker.handshake(p) }.getOrNull() ?: return
                 stalker.fetchSeriesEpisodes(p, session, s.remoteId, s.id)
@@ -79,6 +86,26 @@ class CatalogRepository @Inject constructor(
         }
         episodeDao.deleteForSeries(seriesId)
         episodeDao.upsertAll(eps)
+    }
+
+    /**
+     * Détails d'un film : cache Room (TTL 7 jours ; 1 jour si la source n'a rien renvoyé), sinon get_vod_info.
+     * Xtream seulement ; une erreur réseau rend le cache périmé s'il existe, sinon null (la fiche reste lisible).
+     */
+    suspend fun vodInfo(m: MovieEntity, now: Long = System.currentTimeMillis()): VodInfoEntity? {
+        val cached = vodInfoDao.get(m.providerId, m.remoteId)
+        if (cached != null && now - cached.fetchedAt < vodInfoTtlMs(cached)) return cached
+        val p = providerDao.byId(m.providerId)
+        if (p == null || p.kind != "XTREAM") return cached
+        val fetched = runCatching { xtream.fetchVodInfo(p, m.remoteId) }.getOrNull() ?: return cached
+        val row = VodInfoEntity(
+            providerId = m.providerId, remoteId = m.remoteId, plot = fetched.plot, cast = fetched.cast, director = fetched.director,
+            genre = fetched.genre, duration = fetched.duration, releaseDate = fetched.releaseDate, rating = fetched.rating,
+            backdrop = fetched.backdrop, trailer = fetched.trailer, tmdbId = fetched.tmdbId, country = fetched.country,
+            originalName = fetched.originalName, fetchedAt = now,
+        )
+        vodInfoDao.upsert(row)
+        return row
     }
 
     /** Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. */
@@ -133,3 +160,9 @@ data class SearchResults(
     val movies: List<MovieEntity> = emptyList(),
     val series: List<SeriesEntity> = emptyList(),
 )
+
+private const val DAY_MS = 24L * 3_600_000
+
+/** Durée de validité d'une ligne de cache : 7 jours si elle porte des détails, 1 jour si elle est vide. */
+internal fun vodInfoTtlMs(v: VodInfoEntity): Long =
+    if (v.plot == null && v.cast == null && v.genre == null && v.backdrop == null) DAY_MS else 7 * DAY_MS

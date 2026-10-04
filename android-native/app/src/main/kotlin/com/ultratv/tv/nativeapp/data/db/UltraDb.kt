@@ -19,8 +19,9 @@ import androidx.room.RoomDatabase
         ChannelFts::class,
         MovieFts::class,
         SeriesFts::class,
+        VodInfoEntity::class,
     ],
-    version = 11,
+    version = 12,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {
@@ -34,5 +35,6 @@ abstract class UltraDb : RoomDatabase() {
     abstract fun epgDao(): EpgDao
     abstract fun watchHistoryDao(): WatchHistoryDao
     abstract fun recordingDao(): RecordingDao
+    abstract fun vodInfoDao(): VodInfoDao
     abstract fun reminderDao(): com.ultratv.tv.nativeapp.data.reminders.ReminderDao
 }

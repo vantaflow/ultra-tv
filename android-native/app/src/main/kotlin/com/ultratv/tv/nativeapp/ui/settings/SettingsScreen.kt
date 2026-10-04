@@ -447,4 +447,5 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
         SwitchPrefRow(D.telemetry, p.telemetryEnabled) { app.setTelemetry(it) }
     }
+    com.ultratv.tv.nativeapp.update.UpdateDialog()
 }

@@ -423,6 +423,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
         screen(Routes.FAVORITES) {
             FavoritesScreen(
                 onPlayChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onBrowseLive = { nav.navigate(Routes.LIVE) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )

@@ -122,3 +122,42 @@ fun VodCard(title: String, poster: String?, modifier: Modifier, onClick: () -> U
         }
     }
 }
+
+
+object StateIcons {
+    const val Offline = "M2 9a16 16 0 0 1 20 0M5 13a11 11 0 0 1 14 0M9 17a5 5 0 0 1 6 0M12 21h.01M3 3l18 18"
+    const val Warning = "M12 9v4M12 17h.01M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+    const val Download = "M12 3v12M7 10l5 5 5-5M5 21h14"
+}
+
+/**
+ * Carte d'état (maquette Etats) : pastille ronde 80 px, titre Sora 38, texte, progression facultative, boutons.
+ * Sert aux états hors ligne, erreur de source, vide et mise à jour.
+ */
+@Composable
+fun StateCard(
+    title: String,
+    body: String,
+    iconPath: String,
+    primaryLabel: String,
+    onPrimary: () -> Unit,
+    modifier: Modifier = Modifier,
+    badge: Color = Ux.Accent,
+    secondaryLabel: String? = null,
+    onSecondary: () -> Unit = {},
+    progress: Float? = null,
+    primaryFocus: FocusRequester? = null,
+) {
+    Column(modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
+        Box(Modifier.width(80.design).height(80.design).clip(RoundedCornerShape(40.design)).background(badge), contentAlignment = Alignment.Center) {
+            DIcon(iconPath, 40.design, Ux.White, strokeWidth = 2f)
+        }
+        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 38.spx, lineHeight = 42.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(body, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
+        if (progress != null) ProgressLine(progress, Modifier.fillMaxWidth().clip(RoundedCornerShape(5.design)), heightPx = 10, track = Ux.Surface2)
+        Row(horizontalArrangement = Arrangement.spacedBy(16.design), modifier = Modifier.padding(top = 4.design)) {
+            PillButton(primaryLabel, onPrimary, heightPx = 64, hPadPx = 34, fontPx = 22, weight = FontWeight.Bold, bg = Ux.Cta, modifier = if (primaryFocus != null) Modifier.focusRequester(primaryFocus) else Modifier)
+            if (secondaryLabel != null) PillButton(secondaryLabel, onSecondary, heightPx = 64, hPadPx = 30, fontPx = 22)
+        }
+    }
+}

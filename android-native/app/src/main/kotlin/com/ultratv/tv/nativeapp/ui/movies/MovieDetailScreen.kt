@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -24,6 +26,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -44,6 +48,7 @@ import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.ui.series.BackLink
 import com.ultratv.tv.nativeapp.ui.design.AvatarImage
 import com.ultratv.tv.nativeapp.ui.design.BackdropImage
 import com.ultratv.tv.nativeapp.ui.design.DIcon
@@ -73,6 +78,11 @@ class MovieDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     /** Position de reprise en ms (0 = jamais commencé). */
+    private val _info = MutableStateFlow<com.ultratv.tv.nativeapp.data.db.VodInfoEntity?>(null)
+    val info: StateFlow<com.ultratv.tv.nativeapp.data.db.VodInfoEntity?> = _info.asStateFlow()
+    private val _infoLoading = MutableStateFlow(true)
+    val infoLoading: StateFlow<Boolean> = _infoLoading.asStateFlow()
+
     private val _resume = MutableStateFlow(0L)
     val resumeMs: StateFlow<Long> = _resume.asStateFlow()
 
@@ -104,6 +114,13 @@ class MovieDetailViewModel @Inject constructor(
             val m = catalog.movieById(id)
             _m.value = m
             _resume.value = if (m == null) 0L else history.resumePositionMs(m.providerId, "MOVIE", m.remoteId)
+        }
+        // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
+        viewModelScope.launch {
+            _infoLoading.value = true
+            val m = catalog.movieById(id)
+            _info.value = if (m == null) null else runCatching { catalog.vodInfo(m) }.getOrNull()
+            _infoLoading.value = false
         }
     }
 
@@ -151,48 +168,60 @@ fun MovieDetailScreen(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
         return
     }
+    val info by vm.info.collectAsState()
+    val infoLoading by vm.infoLoading.collectAsState()
+    val T = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
+    val title = remember(movie.id) { T.tidy(movie.title) }
+    val year = movie.year?.toString() ?: T.presentable(info?.releaseDate)?.take(4)?.takeIf { it.all(Char::isDigit) }
+    val duration = movieDuration(T.presentable(info?.duration) ?: T.presentable(movie.duration))
+    val genre = T.presentable(info?.genre) ?: T.presentable(movie.genre)
+    val plot = T.presentable(info?.plot) ?: T.presentable(movie.plot)
+    val rating = (info?.rating ?: movie.rating)?.takeIf { it > 0.0 && it <= 10.0 }
+    val backdrop = T.presentable(info?.backdrop) ?: T.presentable(movie.backdrop)
+    val quality = remember(movie.id) { T.clean(movie.name).quality }
+    val langBadge = movie.lang.takeIf { it.isNotBlank() }?.uppercase()
+    val people = remember(info, movie.id) {
+        (listOfNotNull(T.presentable(info?.director)) + (T.presentable(info?.cast) ?: T.presentable(movie.cast)).orEmpty().split(',').map { it.trim() })
+            .filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
+    }
+    val skeleton = infoLoading && info == null
+
     val playRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     RequestInitialFocus(playRequester, hasFocus = { focused }, key = movie.id)
     Box(Modifier.fillMaxSize().background(Ux.Bg)) {
-        // Visuel : zone fixe de 1100 px à droite ; paysage en Crop plein cadre, sinon l'affiche dans sa propre zone.
-        Box(Modifier.align(Alignment.CenterEnd).width(1100.design).fillMaxHeight().background(Ux.Tone)) {
-            if (movie.backdrop != null) BackdropImage(movie.backdrop, Modifier.fillMaxSize())
-            else PosterImage(movie.poster, movie.name, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(720.design), radius = 0)
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.Bg, 0.5f to Ux.Bg.copy(alpha = 0.55f), 1f to Color.Transparent)))
+        // Visuel plein écran : fond paysage entier (jamais recadré dans une colonne étroite) fondu vers la gauche ; sinon l'affiche 2:3 nette à droite.
+        Box(Modifier.fillMaxSize().background(Ux.Tone)) {
+            DetailVisual(backdrop, movie.poster, title)
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.Bg, 0.42f to Ux.Bg.copy(alpha = 0.88f), 0.78f to Ux.Bg.copy(alpha = 0.15f), 1f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Ux.Bg.copy(alpha = 0.7f))))
         }
-        FocusSurface(
-            onClick = onBack, shape = RoundedCornerShape(22.design), bg = Color.Transparent, ringWidth = 4.design, focusedScale = 1f,
-            modifier = Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 40.design).height(52.design),
-        ) { f ->
-            Row(Modifier.padding(horizontal = 14.design).height(52.design), verticalAlignment = Alignment.CenterVertically) {
-                DIcon(Icons.Chevron, 22.design, if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.5f)
-                Spacer(Modifier.width(10.design))
-                Text(S.moviesTitle, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
-            }
-        }
+        BackLink(S.moviesTitle, onBack, Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 40.design))
         Column(
             Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 100.design, bottom = 54.design),
             verticalArrangement = Arrangement.spacedBy(28.design, Alignment.Bottom),
         ) {
             Column(Modifier.widthIn(max = 900.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
                 Text(
-                    movie.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 80.spx, lineHeight = 82.spx,
+                    title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 80.spx, lineHeight = 82.spx,
                     letterSpacing = (-2).spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
-                    val bits = listOfNotNull(movie.year?.toString(), movie.duration?.takeIf { it.isNotBlank() }, movie.genre?.takeIf { it.isNotBlank() })
+                if (skeleton) Skeleton(Modifier.width(420.design).height(30.design))
+                else Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
+                    val bits = listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) })
                     bits.forEachIndexed { i, b ->
                         if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
                         Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 360.design))
                     }
-                    movie.container?.takeIf { it.isNotBlank() }?.let {
+                    for (badge in listOfNotNull(quality, langBadge)) {
                         Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
-                            Text(it.uppercase(), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
+                            Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
                         }
                     }
                 }
-                movie.plot?.takeIf { it.isNotBlank() }?.let {
+                if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
+                    Skeleton(Modifier.fillMaxWidth().height(24.design)); Skeleton(Modifier.fillMaxWidth().height(24.design)); Skeleton(Modifier.width(520.design).height(24.design))
+                } else plot?.let {
                     Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, lineHeight = 39.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -206,20 +235,78 @@ fun MovieDetailScreen(
                 PillButton(S.playerRecord, onClick = { vm.record(movie, S.toastRecordingQueued) }, heightPx = 72, fontPx = 26)
                 FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
-            val cast = movie.cast.orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }.take(6)
-            if (cast.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
+            if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
+                SectionTitle(D.castTitle, 28)
+                Row(horizontalArrangement = Arrangement.spacedBy(32.design)) { repeat(5) { Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) { Skeleton(Modifier.size(96.design), circle = true); Skeleton(Modifier.width(80.design).height(18.design)) } } }
+            } else if (people.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
                 SectionTitle(D.castTitle, 28)
                 Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
-                    cast.forEach { name ->
+                    people.forEach { name ->
                         Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
                             AvatarImage(null, name, Modifier.size(96.design))
-                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 18.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 22.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
                 }
             }
         }
     }
+}
+
+/**
+ * Visuel de fiche. Un fond PAYSAGE est recadré plein cadre ; mais certaines sources renvoient en `backdrop_path` une
+ * image portrait (l'affiche) : on la détecte au chargement et on bascule sur l'affiche 2:3 nette dans son cadre,
+ * sur un fond flou. Jamais d'affiche portrait agrandie en plein cadre.
+ */
+@Composable
+fun DetailVisual(backdrop: String?, poster: String?, title: String) {
+    var landscape by remember(backdrop) { mutableStateOf<Boolean?>(if (backdrop == null) false else null) }
+    Box(Modifier.fillMaxSize()) {
+        if (backdrop != null && landscape != false) {
+            coil.compose.AsyncImage(
+                model = backdrop, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize(),
+                onSuccess = { st -> val d = st.result.drawable; landscape = d.intrinsicWidth.toFloat() / d.intrinsicHeight.coerceAtLeast(1) >= 1.3f },
+                onError = { landscape = false },
+            )
+        }
+        if (landscape == false) {
+            val art = poster ?: backdrop
+            Box(Modifier.align(Alignment.CenterEnd).width(1100.design).fillMaxHeight()) {
+                BlurredFill(art, Modifier.fillMaxSize())
+                PosterImage(art, title, Modifier.align(Alignment.Center).padding(start = 220.design).height(760.design).aspectRatio(2f / 3f), radius = 22)
+            }
+        }
+    }
+}
+
+/** Barre de remplissage de même taille que le contenu attendu : aucun saut de mise en page à l'arrivée des détails. */
+@Composable
+fun Skeleton(modifier: Modifier, circle: Boolean = false) {
+    Box(modifier.clip(if (circle) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(8.design)).background(Ux.Surface))
+}
+
+/** Fond flou de l'image (API 31+, hors petites box) ; sinon simple aplat — le voile de lisibilité fait le reste. */
+@Composable
+fun BlurredFill(url: String?, modifier: Modifier) {
+    val lowRam = com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current
+    if (url.isNullOrBlank() || lowRam || android.os.Build.VERSION.SDK_INT < 31) { Box(modifier.background(Ux.Surface)); return }
+    coil.compose.AsyncImage(
+        model = url, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+        modifier = modifier.blur(48.design),
+    )
+}
+
+/** « 01:52:00 » ou « 112 » (minutes) → « 1 h 52 » ; une valeur illisible est masquée. */
+fun movieDuration(raw: String?): String? {
+    val t = raw?.trim().orEmpty()
+    if (t.isEmpty()) return null
+    val mins = when {
+        t.all { it.isDigit() } -> t.toIntOrNull()
+        Regex("""\d{1,2}:\d{2}(:\d{2})?""").matches(t) -> t.split(':').let { it[0].toInt() * 60 + it[1].toInt() }
+        else -> return t.takeIf { it.length <= 12 }
+    } ?: return null
+    if (mins <= 0) return null
+    return if (mins >= 60) "${mins / 60} h ${"%02d".format(mins % 60)}" else "$mins min"
 }
 
 /** h:mm:ss (ou m:ss sous l'heure) pour « Reprendre à … ». */

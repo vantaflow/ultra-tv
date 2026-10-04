@@ -85,6 +85,7 @@ class SeriesDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             runCatching { catalog.loadEpisodes(id) }
+            _series.value = catalog.seriesById(id)     // loadEpisodes complète plot / genre / année / distribution
             _loading.value = false
         }
         viewModelScope.launch {

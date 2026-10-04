@@ -62,7 +62,7 @@ fun SlotImage(
     val lowRam = LocalLowRam.current
     var loaded by remember(url) { mutableStateOf(false) }
     Box(modifier.clip(shape).background(background), contentAlignment = Alignment.Center) {
-        if (!loaded) {
+        if (!loaded && name.isNotBlank()) {
             Text(
                 initialsOf(name), color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.Bold,
                 fontSize = initialsSize.spx, maxLines = 1, overflow = TextOverflow.Clip,

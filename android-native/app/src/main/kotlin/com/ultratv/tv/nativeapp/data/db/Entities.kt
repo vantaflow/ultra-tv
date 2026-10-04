@@ -173,6 +173,8 @@ data class EpisodeEntity(
     val container: String?,
     val plot: String?,
     val image: String? = null,
+    /** Durée fournie par la source (« 00:42:10 » ou minutes) ; null si inconnue. */
+    val duration: String? = null,
 )
 
 @Entity(
@@ -245,3 +247,26 @@ data class MovieFts(val name: String)
 @Fts4(contentEntity = SeriesEntity::class, tokenizer = FtsOptions.TOKENIZER_UNICODE61)
 @Entity(tableName = "series_fts")
 data class SeriesFts(val name: String)
+
+/**
+ * Détails d'un film (get_vod_info), chargés à l'ouverture de la fiche puis mis en cache. [fetchedAt] sert au TTL ;
+ * une ligne vide est conservée (réponse sans détails) pour ne pas réinterroger la source à chaque ouverture.
+ */
+@Entity(tableName = "vod_info", primaryKeys = ["providerId", "remoteId"])
+data class VodInfoEntity(
+    val providerId: Long,
+    val remoteId: String,
+    val plot: String? = null,
+    val cast: String? = null,
+    val director: String? = null,
+    val genre: String? = null,
+    val duration: String? = null,
+    val releaseDate: String? = null,
+    val rating: Double? = null,
+    val backdrop: String? = null,
+    val trailer: String? = null,
+    val tmdbId: String? = null,
+    val country: String? = null,
+    val originalName: String? = null,
+    val fetchedAt: Long = System.currentTimeMillis(),
+)

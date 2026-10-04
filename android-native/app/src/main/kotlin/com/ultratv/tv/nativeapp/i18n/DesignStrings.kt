@@ -29,6 +29,7 @@ class DesignStrings(val lang: AppLang) {
     fun seasonLabel(n: Int) = when (lang) { AppLang.French -> "Saison $n"; AppLang.Spanish -> "Temporada $n"; AppLang.Arabic -> "الموسم $n"; else -> "Season $n" }
     fun seasonsCount(n: Int) = when (lang) { AppLang.French -> if (n <= 1) "$n saison" else "$n saisons"; AppLang.Spanish -> if (n == 1) "$n temporada" else "$n temporadas"; AppLang.Arabic -> "$n مواسم"; else -> if (n == 1) "$n season" else "$n seasons" }
     fun episodeTag(s: Int, e: Int) = when (lang) { AppLang.French -> "S$s É$e"; else -> "S$s E$e" }
+    fun episodeWord(e: Int) = when (lang) { AppLang.French -> "Épisode $e"; AppLang.Spanish -> "Episodio $e"; AppLang.Arabic -> "الحلقة $e"; else -> "Episode $e" }
     fun episodeShort(e: Int) = if (lang == AppLang.French) "É$e" else "E$e"
     fun resumeEpisode(s: Int, e: Int) = when (lang) { AppLang.French -> "Reprendre ${episodeTag(s, e)}"; AppLang.Spanish -> "Reanudar ${episodeTag(s, e)}"; AppLang.Arabic -> "استئناف ${episodeTag(s, e)}"; else -> "Resume ${episodeTag(s, e)}" }
     fun playEpisodeLabel(s: Int, e: Int) = when (lang) { AppLang.French -> "Lecture ${episodeTag(s, e)}"; AppLang.Spanish -> "Ver ${episodeTag(s, e)}"; AppLang.Arabic -> "تشغيل ${episodeTag(s, e)}"; else -> "Play ${episodeTag(s, e)}" }
@@ -92,6 +93,19 @@ class DesignStrings(val lang: AppLang) {
     val workerUrlSub get() = t("The secure (https) address used to pair this TV", "L’adresse sécurisée (https) utilisée pour appairer cette TV", "La dirección segura (https) para vincular esta TV", "العنوان الآمن (https) المستخدم لإقران هذا التلفاز")
     val workerUrlField get() = t("Dashboard URL", "Adresse du tableau de bord", "URL del panel", "عنوان لوحة التحكم")
 
+    // États
+    fun updateTitle(v: String) = when (lang) { AppLang.French -> "Mise à jour disponible · $v"; AppLang.Spanish -> "Actualización disponible · $v"; AppLang.Arabic -> "تحديث متاح · $v"; else -> "Update available · $v" }
+    val updateDefaultBody get() = t("A new version is available. The download is verified before installation.", "Une nouvelle version est disponible. Le téléchargement est vérifié avant installation.", "Hay una versión nueva. La descarga se verifica antes de instalar.", "يتوفر إصدار جديد. يتم التحقق من التنزيل قبل التثبيت.")
+    val updateFailed get() = t("The update could not be installed. Try again later.", "La mise à jour n’a pas pu être installée. Réessayez plus tard.", "No se pudo instalar la actualización. Inténtalo más tarde.", "تعذّر تثبيت التحديث. حاول لاحقًا.")
+    val offlineTitle get() = t("No internet connection", "Pas de connexion internet", "Sin conexión a internet", "لا يوجد اتصال بالإنترنت")
+    val offlineBody get() = t("Your favorites, the guide already loaded and recordings stay available. Live TV resumes as soon as the network is back.", "Vos favoris, le guide déjà chargé et les enregistrements restent disponibles. Le direct reprendra dès le retour du réseau.", "Tus favoritos, la guía ya cargada y las grabaciones siguen disponibles. El directo se reanudará al volver la red.", "تبقى المفضلة والدليل المحمّل والتسجيلات متاحة. سيعود البث المباشر فور عودة الشبكة.")
+    val offlineBanner get() = t("No internet connection — saved content stays available.", "Pas de connexion internet — le contenu enregistré reste disponible.", "Sin conexión — el contenido guardado sigue disponible.", "لا يوجد اتصال — المحتوى المحفوظ متاح.")
+    val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
+    val seeRecordings get() = t("View recordings", "Voir les enregistrements", "Ver grabaciones", "عرض التسجيلات")
+    val browseLive get() = t("Browse live TV", "Parcourir le direct", "Explorar el directo", "تصفح البث المباشر")
+    val emptyFavTitle get() = t("No favorites yet", "Aucun favori pour l’instant", "Aún no hay favoritos", "لا توجد مفضلات بعد")
+    val emptyFavBody get() = t("Long-press OK on a channel, a movie or a series to add it here.", "Appuyez longuement sur OK sur une chaîne, un film ou une série pour l’ajouter ici.", "Mantén pulsado OK en un canal, película o serie para añadirlo aquí.", "اضغط مطولًا على OK على قناة أو فيلم أو مسلسل لإضافته هنا.")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
@@ -133,7 +147,6 @@ class DesignStrings(val lang: AppLang) {
     val nextOpenInstant get() = t("Next launch will be instant: the catalog is kept on the device and updated in the background.", "La prochaine ouverture sera instantanée : le catalogue est gardé sur l’appareil et mis à jour en arrière-plan.", "La próxima apertura será instantánea: el catálogo se guarda en el dispositivo y se actualiza en segundo plano.", "الفتح التالي فوري: يُحفظ الكتالوج على الجهاز ويُحدَّث في الخلفية.")
     val hintOk get() = t("OK", "OK")
     val hintWatch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
-    val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
     val fixSource get() = t("Fix the source", "Corriger la source", "Corregir la fuente", "تصحيح المصدر")
     // Direct
     val directTitle get() = t("Live", "Direct", "Directo", "مباشر")

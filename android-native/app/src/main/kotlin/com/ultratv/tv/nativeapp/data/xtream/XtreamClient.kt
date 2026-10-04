@@ -130,19 +130,34 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         )
     }
 
-    /** Détails d'un film (get_vod_info) : synopsis, distribution, genre, durée, image paysage. */
-    data class VodInfo(val plot: String?, val cast: String?, val genre: String?, val duration: String?, val backdrop: String?, val poster: String?)
+    /** Détails d'un film (get_vod_info) : synopsis, distribution, réalisateur, genre, durée, date, note, image paysage, bande-annonce… */
+    data class VodInfo(
+        val plot: String?, val cast: String?, val director: String?, val genre: String?, val duration: String?, val releaseDate: String?,
+        val rating: Double?, val backdrop: String?, val trailer: String?, val tmdbId: String?, val country: String?, val originalName: String?,
+        val poster: String?,
+    )
 
     suspend fun fetchVodInfo(p: ProviderEntity, remoteId: String): VodInfo? {
         val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_vod_info&vod_id=$remoteId")
         val info = (runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull()?.get("info") as? JsonObject) ?: return null
-        fun s(k: String) = info[k]?.str()?.takeIf { it.isNotBlank() }
+        return parseVodInfo(info)
+    }
+
+    internal fun parseVodInfo(info: JsonObject): VodInfo {
+        fun s(k: String) = info[k]?.str()?.let { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.presentable(it) }
         return VodInfo(
             plot = s("plot") ?: s("description"),
             cast = s("cast") ?: s("actors"),
+            director = s("director"),
             genre = s("genre"),
             duration = s("duration"),
-            backdrop = (info["backdrop_path"] as? JsonArray)?.firstOrNull()?.str()?.takeIf { it.isNotBlank() } ?: s("backdrop"),
+            releaseDate = s("releasedate") ?: s("release_date") ?: s("releaseDate"),
+            rating = normalizeRating((s("rating") ?: s("rating_5based"))?.toDoubleOrNull()),
+            backdrop = ((info["backdrop_path"] as? JsonArray)?.firstOrNull()?.str() ?: s("backdrop_path") ?: s("backdrop"))?.takeIf { it.isNotBlank() && it.startsWith("http") },
+            trailer = s("youtube_trailer"),
+            tmdbId = s("tmdb_id") ?: s("tmdb"),
+            country = s("country"),
+            originalName = s("o_name"),
             poster = s("movie_image") ?: s("cover_big"),
         )
     }
@@ -181,36 +196,57 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         )
     }
 
-    /** Pull all episodes for one series. Returns pairs (season, episode_entity_without_id). */
-    suspend fun fetchSeriesEpisodes(p: ProviderEntity, seriesRemoteId: String, seriesLocalId: Long): List<EpisodeEntity> {
+    /** Fiche série + épisodes (get_series_info). */
+    data class SeriesDetail(
+        val plot: String?, val genre: String?, val cast: String?, val backdrop: String?, val year: Int?, val rating: Double?,
+        val episodes: List<EpisodeEntity>,
+    )
+
+    /** Pull all episodes for one series. */
+    suspend fun fetchSeriesEpisodes(p: ProviderEntity, seriesRemoteId: String, seriesLocalId: Long): List<EpisodeEntity> =
+        fetchSeriesDetail(p, seriesRemoteId, seriesLocalId)?.episodes.orEmpty()
+
+    suspend fun fetchSeriesDetail(p: ProviderEntity, seriesRemoteId: String, seriesLocalId: Long): SeriesDetail? {
         val body = get("${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=get_series_info&series_id=$seriesRemoteId")
-        val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return emptyList()
-        val episodes = root["episodes"] as? JsonObject ?: return emptyList()
+        val root = runCatching { json.parseToJsonElement(body) as? JsonObject }.getOrNull() ?: return null
+        val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
+        val info = root["info"] as? JsonObject
+        fun si(k: String) = info?.get(k)?.str()?.let { tc.presentable(it) }
+        val episodes = root["episodes"] as? JsonObject
         val out = mutableListOf<EpisodeEntity>()
-        episodes.forEach { (seasonKey, listEl) ->
+        // Certaines sources renvoient un tableau (saisons dans l'ordre) au lieu d'un objet indexé par saison.
+        val seasons: List<Pair<String, JsonArray>> = when (val e = root["episodes"]) {
+            is JsonObject -> e.mapNotNull { (k, v) -> (v as? JsonArray)?.let { k to it } }
+            is JsonArray -> e.mapIndexedNotNull { i, v -> (v as? JsonArray)?.let { (i + 1).toString() to it } }
+            else -> emptyList()
+        }
+        for ((seasonKey, list) in seasons) {
             val seasonNo = seasonKey.toIntOrNull() ?: 0
-            val list = listEl as? JsonArray ?: return@forEach
             list.forEach { ep ->
                 val o = ep as? JsonObject ?: return@forEach
                 val rid = o["id"]?.str() ?: return@forEach
                 val episodeNo = o["episode_num"]?.str()?.toIntOrNull() ?: 0
-                val title = o["title"]?.str() ?: "Episode $episodeNo"
+                val einfo = o["info"] as? JsonObject
+                val title = tc.presentable(o["title"]?.str()) ?: ""
                 val cont = o["container_extension"]?.str() ?: "mkv"
                 val url = "${p.baseUrl}/series/${p.username.urlEnc()}/${p.password.urlEnc()}/$rid.$cont"
                 out += EpisodeEntity(
-                    seriesId = seriesLocalId,
-                    remoteId = rid,
-                    season = seasonNo,
-                    episode = episodeNo,
-                    title = title,
-                    streamUrl = url,
-                    container = cont,
-                    plot = (o["info"] as? JsonObject)?.get("plot")?.str(),
-                    image = (o["info"] as? JsonObject)?.get("movie_image")?.str()?.takeIf { it.isNotBlank() },
+                    seriesId = seriesLocalId, remoteId = rid, season = seasonNo, episode = episodeNo,
+                    title = title, streamUrl = url, container = cont,
+                    plot = tc.presentable(einfo?.get("plot")?.str()),
+                    image = einfo?.get("movie_image")?.str()?.takeIf { it.startsWith("http") },
+                    duration = tc.presentable(einfo?.get("duration")?.str()),
                 )
             }
         }
-        return out
+        if (episodes == null && out.isEmpty() && info == null) return null
+        return SeriesDetail(
+            plot = si("plot"), genre = si("genre"), cast = si("cast"),
+            backdrop = ((info?.get("backdrop_path") as? JsonArray)?.firstOrNull()?.str())?.takeIf { it.startsWith("http") },
+            year = (si("releaseDate") ?: si("release_date") ?: si("releasedate"))?.take(4)?.toIntOrNull(),
+            rating = normalizeRating(si("rating")?.toDoubleOrNull()),
+            episodes = out,
+        )
     }
 
     // ---- EPG ----

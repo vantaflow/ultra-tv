@@ -109,6 +109,7 @@ fun FavoritesScreen(
     onOpenMovie: (Long) -> Unit,
     onOpenSeries: (Long) -> Unit,
     onPlayChannel: (String, String) -> Unit = { _, _ -> },
+    onBrowseLive: () -> Unit = {},
     vm: FavoritesViewModel = hiltViewModel(),
 ) {
     val channels by vm.channels.collectAsState()
@@ -140,7 +141,7 @@ fun FavoritesScreen(
         }
         val empty = when (tab) { 0 -> channels.isEmpty(); 1 -> movies.isEmpty(); else -> series.isEmpty() }
         if (empty) {
-            Text(S.favoritesEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx)
+            StateCard(D.emptyFavTitle, D.emptyFavBody, Icons.Heart, D.browseLive, onPrimary = onBrowseLive, badge = Ux.Surface2, modifier = Modifier.width(820.design))
         } else if (tab == 0) {
             LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.design), verticalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(vertical = 8.design)) {
                 items(channels, key = { it.id }) { c ->

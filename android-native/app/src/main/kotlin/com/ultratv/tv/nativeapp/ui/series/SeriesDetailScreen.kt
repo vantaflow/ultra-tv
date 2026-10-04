@@ -1,6 +1,9 @@
 package com.ultratv.tv.nativeapp.ui.series
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -83,15 +86,22 @@ fun SeriesDetailScreen(
         Column(Modifier.width(560.design).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.design)) {
             BackLink(S.seriesTitle, onBack)
             PosterImage(series.poster, series.name, Modifier.width(300.design).aspectRatio(2f / 3f), radius = 22)
-            Text(series.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx, lineHeight = 59.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val bits = listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, series.genre?.takeIf { it.isNotBlank() })
-            Row(horizontalArrangement = Arrangement.spacedBy(14.design)) {
+            Text(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx, lineHeight = 59.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
+            val bits = listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre),
+                series.rating?.takeIf { it > 0.0 && it <= 10.0 }?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) })
+            Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
                 bits.forEachIndexed { i, b ->
                     if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-                    Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.design))
+                }
+                series.lang.takeIf { it.isNotBlank() }?.uppercase()?.let { l ->
+                    Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
+                        Text(l, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
+                    }
                 }
             }
-            series.plot?.takeIf { it.isNotBlank() }?.let {
+            tc.presentable(series.plot)?.let {
                 Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 33.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.weight(1f))
@@ -124,7 +134,7 @@ fun SeriesDetailScreen(
                 shown.isEmpty() -> Text(S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 else -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.design)) {
                     items(shown, key = { it.id }) { ep ->
-                        EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                        EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
                     }
                 }
             }
@@ -152,8 +162,8 @@ fun cleanEpisodeTitle(raw: String, seriesName: String, seriesTitle: String): Str
 }
 
 @Composable
-internal fun BackLink(label: String, onBack: () -> Unit) {
-    FocusSurface(onClick = onBack, shape = RoundedCornerShape(22.design), bg = androidx.compose.ui.graphics.Color.Transparent, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(48.design)) { f ->
+fun BackLink(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    FocusSurface(onClick = onBack, shape = RoundedCornerShape(22.design), bg = androidx.compose.ui.graphics.Color.Transparent, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.height(48.design)) { f ->
         Row(Modifier.height(48.design).padding(horizontal = 12.design), verticalAlignment = Alignment.CenterVertically) {
             DIcon(Icons.Chevron, 20.design, if (f) Ux.TextOnLight else Ux.Text3, strokeWidth = 2.5f)
             Spacer(Modifier.width(8.design))
@@ -163,24 +173,26 @@ internal fun BackLink(label: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun EpisodeRow(ep: EpisodeEntity, title: String, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClick: () -> Unit) {
+private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClick: () -> Unit) {
     val dur = h?.durationMs ?: 0L
     val pos = h?.positionMs ?: 0L
     val done = dur > 0 && pos >= dur - 60_000
     val fraction = if (done) 1f else if (dur > 0) pos.toFloat() / dur else 0f
-    val meta = when {
+    val length = com.ultratv.tv.nativeapp.ui.movies.movieDuration(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.presentable(ep.duration))
+    val state = when {
         done -> D.watchedLabel
         dur > 0 && pos > 0 -> D.remainingMin(((dur - pos) / 60_000L).toInt().coerceAtLeast(1))
-        else -> ""
+        else -> null
     }
+    val meta = listOfNotNull(length, state).joinToString(" · ")
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(150.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
             Box(Modifier.width(240.design).aspectRatio(16f / 9f)) {
-                ThumbImage(ep.image, title.ifEmpty { ep.title }, Modifier.fillMaxSize(), radius = 14)
+                ThumbImage(ep.image ?: fallbackImage, "", Modifier.fillMaxSize(), radius = 14)
                 if (fraction > 0f) ProgressLine(fraction, Modifier.align(Alignment.BottomStart).fillMaxWidth(), heightPx = 6, track = androidx.compose.ui.graphics.Color(0x66000000))
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
-                Text(if (title.isEmpty()) D.episodeShort(ep.episode) else "${D.episodeShort(ep.episode)} · $title", color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (title.isEmpty()) D.episodeWord(ep.episode) else "${D.episodeShort(ep.episode)} · $title", color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (meta.isNotEmpty()) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1)
                 ep.plot?.takeIf { it.isNotBlank() }?.let {
                     Text(it, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, lineHeight = 27.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)

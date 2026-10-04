@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.common
 
+import com.ultratv.tv.nativeapp.ui.design.Ux
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,7 +31,7 @@ import kotlinx.coroutines.flow.stateIn
 import com.ultratv.tv.nativeapp.data.repo.SyncStatusBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import androidx.tv.material3.MaterialTheme
+import com.ultratv.tv.nativeapp.ui.design.spx
 import androidx.tv.material3.Text
 
 @HiltViewModel
@@ -56,6 +59,7 @@ class SyncStatusViewModel @Inject constructor(
 @OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
 @Composable
 fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hiltViewModel()) {
+    OfflineBar()
     val status by vm.status.collectAsState()
     val failure by vm.failure.collectAsState()
     // L'application reste utilisable (base locale, favoris, réglages) : l'échec n'est
@@ -66,19 +70,45 @@ fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hil
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(androidx.compose.ui.graphics.Color(0xFF3A1014))
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .background(Ux.SurfaceDeep)
+                .padding(horizontal = 24.design, vertical = 10.design),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("⚠", fontSize = 14.sp)
+            com.ultratv.tv.nativeapp.ui.design.DIcon(com.ultratv.tv.nativeapp.ui.design.StateIcons.Warning, 28.design, Ux.Accent)
             Text(
                 "${f.provider} · ${S.messageFor(f.kind)}",
-                color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp,
+                color = Ux.Text, fontSize = 22.spx, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope,
                 modifier = Modifier.weight(1f), maxLines = 2,
             )
-            androidx.tv.material3.Button(onClick = { vm.retry(f.providerId) }) { Text(S.retry, fontSize = 12.sp) }
-            androidx.tv.material3.Button(onClick = { vm.dismissFailure(); onFixSource() }) { Text(S.fixSource, fontSize = 12.sp) }
+            com.ultratv.tv.nativeapp.ui.design.PillButton(S.retry, onClick = { vm.retry(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20)
+            com.ultratv.tv.nativeapp.ui.design.PillButton(S.fixSource, onClick = { vm.dismissFailure(); onFixSource() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
         }
+    }
+}
+
+
+/** État « hors ligne » (maquette Etats) : barre fine tant qu'aucun réseau n'est disponible ; le contenu enregistré reste utilisable. */
+@Composable
+fun OfflineBar() {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    var online by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(true) }
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        val cm = ctx.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+        val cb = object : android.net.ConnectivityManager.NetworkCallback() {
+            override fun onAvailable(network: android.net.Network) { online = true }
+            override fun onLost(network: android.net.Network) { online = false }
+        }
+        runCatching { cm?.registerDefaultNetworkCallback(cb) }
+        onDispose { runCatching { cm?.unregisterNetworkCallback(cb) } }
+    }
+    if (online) return
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    Row(
+        Modifier.fillMaxWidth().background(Ux.SurfaceDeep).padding(horizontal = 24.design, vertical = 10.design),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design),
+    ) {
+        com.ultratv.tv.nativeapp.ui.design.DIcon(com.ultratv.tv.nativeapp.ui.design.StateIcons.Offline, 28.design, Ux.Text2)
+        Text(D.offlineBanner, color = Ux.Text, fontSize = 22.spx, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, maxLines = 1)
     }
 }

@@ -57,3 +57,15 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         }
     }
 }
+
+/** 11 → 12 : cache des détails de film (get_vod_info) et durée des épisodes. Aucune donnée existante n'est touchée. */
+val MIGRATION_11_12 = object : Migration(11, 12) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `episode` ADD COLUMN `duration` TEXT")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `vod_info` (`providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `plot` TEXT, `cast` TEXT, `director` TEXT, " +
+                "`genre` TEXT, `duration` TEXT, `releaseDate` TEXT, `rating` REAL, `backdrop` TEXT, `trailer` TEXT, `tmdbId` TEXT, `country` TEXT, " +
+                "`originalName` TEXT, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`providerId`, `remoteId`))",
+        )
+    }
+}

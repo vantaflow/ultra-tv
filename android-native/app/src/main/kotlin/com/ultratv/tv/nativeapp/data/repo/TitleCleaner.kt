@@ -33,6 +33,41 @@ object TitleCleaner {
     /** Retire lettres modificatrices / symboles décoratifs (« ᴿᴬᵂ », « ◉ », « ³⁸⁴⁰ᴾ »). */
     fun stripDecorations(s: String): String = s.filterNot(::isDecoration).replace(Regex("""\s{2,}"""), " ").trim()
 
+    private val absentTail = Regex("""[.\s_]+(?:None|null|undefined|N/A)\s*$""", RegexOption.IGNORE_CASE)
+    private val dottedYear = Regex("""[.\s_]+(19\d{2}|20\d{2})\s*$""")
+    private val smallWords = setOf("de", "la", "le", "les", "du", "des", "et", "of", "the", "and", "a", "an", "in", "on", "el", "los", "las", "y", "un", "une", "au", "aux", "en")
+    private val roman = Regex("^[IVXLC]+$")
+
+    /**
+     * Rend lisible un titre venu d'une source : « PREDICTION.None » → « Prediction », « IRRATIONAL.LOVE » →
+     * « Irrational Love », « SUGAR DADDY » → « Sugar Daddy ». Les valeurs absentes sérialisées en texte
+     * (« None », « null »…) ne s'affichent jamais. Idempotent.
+     */
+    fun tidy(title: String): String {
+        var s = title.trim()
+        s = s.replace(absentTail, "").trim()
+        if (!s.contains(' ') && (s.contains('.') || s.contains('_'))) s = s.replace(Regex("""[._]+"""), " ").trim()
+        s = s.replace(dottedYear, "").trim()
+        val letters = s.filter { it.isLetter() }
+        if (letters.length >= 4 && letters.none { it.isLowerCase() }) {
+            s = s.split(' ').filter { it.isNotEmpty() }.mapIndexed { i, w ->
+                when {
+                    w.any { it.isDigit() } || roman.matches(w) -> w
+                    i > 0 && w.lowercase() in smallWords -> w.lowercase()
+                    else -> w.lowercase().replaceFirstChar { it.titlecase() }
+                }
+            }.joinToString(" ")
+        }
+        return s.ifEmpty { title.trim() }
+    }
+
+    /** Texte d'affichage d'un champ facultatif : null, vide, « None », « null », « 0 » → absent (champ masqué). */
+    fun presentable(v: String?): String? {
+        val t = v?.trim().orEmpty()
+        if (t.isEmpty()) return null
+        return if (t.lowercase() in setOf("none", "null", "undefined", "n/a", "0", "0000-00-00", "-")) null else t
+    }
+
     fun clean(raw: String, live: Boolean = false): Cleaned {
         var s = raw.trim()
         if (s.isEmpty()) return Cleaned(raw, null, null)
@@ -68,6 +103,11 @@ object TitleCleaner {
             }
         }
         s = s.trim('#', ' ', '-', '_', '|', ':').replace(Regex("""\s{2,}"""), " ")
+        if (!live) {
+            val d = dottedYear.find(s)
+            if (year == null && d != null) year = d.groupValues[1].toInt()
+            s = tidy(s)
+        }
         if (s.isEmpty()) s = raw.trim()
         return Cleaned(s, year, quality)
     }
