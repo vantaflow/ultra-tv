@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
@@ -100,16 +102,31 @@ fun SidebarNav(navController: NavController) {
     // Animations réduites (réglage système) ou low-RAM : bascule instantanée, sans état intermédiaire.
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val noAnim = lowRam || remember { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
-    val width = if (noAnim) target else animateDpAsState(target, tween(140), label = "rail").value
+    // Largeur animée lue UNIQUEMENT à la mesure (Modifier.layout) et les libellés par seuil (derivedStateOf) :
+    // pendant les ~140 ms de l'animation, le rail se re-mesure mais ne se RE-COMPOSE plus (il comptait neuf
+    // FocusSurface recomposées à chaque image, soit autant de travail CPU sur une box d'entrée de gamme).
+    val widthState: androidx.compose.runtime.State<androidx.compose.ui.unit.Dp> =
+        if (noAnim) androidx.compose.runtime.rememberUpdatedState(target) else animateDpAsState(target, tween(140), label = "rail")
     // Libellés et logotype : visibles seulement APRÈS 70 % de l'élargissement, masqués dès le début du repli.
-    val progress = ((width - RAIL_COLLAPSED_PX.design) / (RAIL_EXPANDED_PX.design - RAIL_COLLAPSED_PX.design)).coerceIn(0f, 1f)
-    val labels = expanded && (noAnim || progress >= 0.7f)
-    val labelAlpha by androidx.compose.animation.core.animateFloatAsState(if (labels) 1f else 0f, tween(if (noAnim) 0 else 80), label = "railLabels")
+    val labels by remember(noAnim) {
+        androidx.compose.runtime.derivedStateOf {
+            val progress = ((widthState.value - RAIL_COLLAPSED_PX.design) / (RAIL_EXPANDED_PX.design - RAIL_COLLAPSED_PX.design)).coerceIn(0f, 1f)
+            expanded && (noAnim || progress >= 0.7f)
+        }
+    }
+    val labelAlphaState = androidx.compose.animation.core.animateFloatAsState(if (labels) 1f else 0f, tween(if (noAnim) 0 else 80), label = "railLabels")
+    val showLabels by remember { androidx.compose.runtime.derivedStateOf { labelAlphaState.value > 0f } }
 
     Box(Modifier.fillMaxSize()) {
         // Voile de la maquette MenuOuvert (rgba(10,10,12,.72)) : dessiné, jamais mesuré par le contenu.
         if (expanded) Box(Modifier.fillMaxSize().background(Ux.Scrim))
-        Row(Modifier.fillMaxHeight().width(width)) {
+        Row(
+            Modifier.fillMaxHeight().layout { m, c ->
+                val w = widthState.value.roundToPx().coerceIn(c.minWidth, c.maxWidth)
+                val p = m.measure(c.copy(minWidth = w, maxWidth = w))
+                layout(p.width, p.height) { p.place(0, 0) }
+            },
+        ) {
             Column(
                 Modifier
                     .fillMaxHeight()
@@ -123,10 +140,10 @@ fun SidebarNav(navController: NavController) {
             ) {
                 Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
                     LogoMark()
-                    if (labelAlpha > 0f) {
+                    if (showLabels) {
                         Spacer(Modifier.width(16.design))
                         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-                            Row(Modifier.alpha(labelAlpha)) {
+                            Row(Modifier.graphicsLayer { alpha = labelAlphaState.value }) {
                             Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text, maxLines = 1, softWrap = false)
                             Text("TV", fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text3, maxLines = 1, softWrap = false)
                             }
@@ -149,11 +166,11 @@ fun SidebarNav(navController: NavController) {
                         Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
                             DIcon(Icons.Search, 30.design, when { focused -> Ux.TextOnLight; searchActive -> Ux.White; expanded -> Ux.Text; else -> Ux.Text2 })
                         }
-                        if (labelAlpha > 0f) {
+                        if (showLabels) {
                             Spacer(Modifier.width(16.design))
                             Text(D.searchPill, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                 color = when { focused -> Ux.TextOnLight; searchActive -> Ux.White; else -> Ux.Text2 }, maxLines = 1, softWrap = false,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip, modifier = Modifier.alpha(labelAlpha))
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip, modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value })
                         }
                     }
                 }
@@ -192,13 +209,13 @@ fun SidebarNav(navController: NavController) {
                                 Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
                                     DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.White; expanded -> Ux.Text; else -> Ux.Text3 })
                                 }
-                                if (labelAlpha > 0f) {
+                                if (showLabels) {
                                     Spacer(Modifier.width(16.design))
                                     Text(
                                         item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.White; else -> Ux.Text2 },
                                         maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-                                        modifier = Modifier.alpha(labelAlpha),
+                                        modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value },
                                     )
                                 }
                             }
@@ -212,9 +229,9 @@ fun SidebarNav(navController: NavController) {
                         Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
                             Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
                         }
-                        if (labelAlpha > 0f) {
+                        if (showLabels) {
                             Spacer(Modifier.width(16.design))
-                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
+                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value })
                         }
                     }
                 }
@@ -228,9 +245,9 @@ fun SidebarNav(navController: NavController) {
                 ) { focused ->
                     Row(Modifier.padding(start = 4.design, top = 4.design), verticalAlignment = Alignment.CenterVertically) {
                         com.ultratv.tv.nativeapp.ui.profile.ProfileAvatar(prof?.initial ?: "K", prof?.color ?: 0xFF26262D.toInt(), 56)
-                        if (labelAlpha > 0f) {
+                        if (showLabels) {
                             Spacer(Modifier.width(16.design))
-                            Column(Modifier.alpha(labelAlpha), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                            Column(Modifier.graphicsLayer { alpha = labelAlphaState.value }, verticalArrangement = Arrangement.spacedBy(2.design)) {
                                 Text(prof?.name ?: D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1, softWrap = false)
                                 Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 22.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1, softWrap = false)
                             }
