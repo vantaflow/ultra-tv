@@ -37,6 +37,8 @@ import com.ultratv.tv.nativeapp.ui.design.Manrope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -90,7 +92,14 @@ fun SidebarNav(navController: NavController) {
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
     val target = (if (expanded) RAIL_EXPANDED_PX else RAIL_COLLAPSED_PX).design
-    val width = if (lowRam) target else animateDpAsState(target, tween(140), label = "rail").value
+    // Animations réduites (réglage système) ou low-RAM : bascule instantanée, sans état intermédiaire.
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val noAnim = lowRam || remember { android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
+    val width = if (noAnim) target else animateDpAsState(target, tween(140), label = "rail").value
+    // Libellés et logotype : visibles seulement APRÈS 70 % de l'élargissement, masqués dès le début du repli.
+    val progress = ((width - RAIL_COLLAPSED_PX.design) / (RAIL_EXPANDED_PX.design - RAIL_COLLAPSED_PX.design)).coerceIn(0f, 1f)
+    val labels = expanded && (noAnim || progress >= 0.7f)
+    val labelAlpha by androidx.compose.animation.core.animateFloatAsState(if (labels) 1f else 0f, tween(if (noAnim) 0 else 80), label = "railLabels")
 
     Box(Modifier.fillMaxSize()) {
         // Voile de la maquette MenuOuvert (rgba(10,10,12,.72)) : dessiné, jamais mesuré par le contenu.
@@ -101,18 +110,20 @@ fun SidebarNav(navController: NavController) {
                     .fillMaxHeight()
                     .weight(1f)
                     .background(Ux.Rail)
+                    .clipToBounds()
                     .onFocusChanged { expanded = it.hasFocus }
-                    .padding(vertical = 54.design, horizontal = if (expanded) 24.design else 0.design),
-                horizontalAlignment = if (expanded) Alignment.Start else Alignment.CenterHorizontally,
+                    // Géométrie identique replié / déplié : les icônes gardent le même x pendant tout l'élargissement.
+                    .padding(vertical = 54.design, horizontal = 24.design),
+                horizontalAlignment = Alignment.Start,
             ) {
-                Row(Modifier.padding(start = if (expanded) 4.design else 0.design), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
                     LogoMark()
-                    if (expanded) {
+                    if (labelAlpha > 0f) {
                         Spacer(Modifier.width(16.design))
                         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) {
-                            Row {
-                            Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text)
-                            Text("TV", fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text3)
+                            Row(Modifier.alpha(labelAlpha)) {
+                            Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text, maxLines = 1, softWrap = false)
+                            Text("TV", fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, letterSpacing = 1.6.sp, color = Ux.Text3, maxLines = 1, softWrap = false)
                             }
                         }
                     }
@@ -122,22 +133,22 @@ fun SidebarNav(navController: NavController) {
                 val searchActive = route == "search"
                 FocusSurface(
                     onClick = { if (!searchActive) navController.navigate("search") { launchSingleTop = true } },
-                    shape = RoundedCornerShape(if (expanded) 28.design else 32.design),
+                    shape = RoundedCornerShape(32.design),
                     bg = if (searchActive) Ux.Accent else Ux.Surface,
-                    focusedScale = if (expanded) 1.04f else 1.06f,
+                    focusedScale = 1.05f,
                     ringWidth = 5.design,
-                    modifier = Modifier.height(64.design).then(if (expanded) Modifier.fillMaxWidth() else Modifier.width(64.design)).testTag("rail-search"),
+                    modifier = Modifier.height(64.design).fillMaxWidth().testTag("rail-search"),
                 ) { focused ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        if (expanded) Spacer(Modifier.width(16.design))
-                        Box(if (expanded) Modifier.size(32.design) else Modifier.size(64.design), contentAlignment = Alignment.Center) {
-                            DIcon(Icons.Search, (if (expanded) 32 else 30).design, when { focused -> Ux.TextOnLight; searchActive -> Ux.White; expanded -> Ux.Text; else -> Ux.Text2 })
+                        Spacer(Modifier.width(16.design))
+                        Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
+                            DIcon(Icons.Search, 30.design, when { focused -> Ux.TextOnLight; searchActive -> Ux.White; expanded -> Ux.Text; else -> Ux.Text2 })
                         }
-                        if (expanded) {
+                        if (labelAlpha > 0f) {
                             Spacer(Modifier.width(16.design))
                             Text(D.searchPill, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
-                                color = when { focused -> Ux.TextOnLight; searchActive -> Ux.White; else -> Ux.Text2 }, maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                color = when { focused -> Ux.TextOnLight; searchActive -> Ux.White; else -> Ux.Text2 }, maxLines = 1, softWrap = false,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Clip, modifier = Modifier.alpha(labelAlpha))
                         }
                     }
                 }
@@ -146,12 +157,12 @@ fun SidebarNav(navController: NavController) {
                 Spacer(Modifier.height(12.design))
                 Column(
                     Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(if (expanded) 8.design else 12.design, Alignment.CenterVertically),
-                    horizontalAlignment = if (expanded) Alignment.Start else Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically),
+                    horizontalAlignment = Alignment.Start,
                 ) {
                     railItems.forEach { item ->
                         val active = isSelected(route, item.route)
-                        val h = if (expanded) 72 else 64
+                        val h = 64
                         FocusSurface(
                             onClick = {
                                 if (route != item.route) {
@@ -163,23 +174,24 @@ fun SidebarNav(navController: NavController) {
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape((if (expanded) 18 else 16).design),
+                            shape = RoundedCornerShape(16.design),
                             bg = if (active) Ux.Accent else Color.Transparent,
-                            focusedScale = if (expanded) 1.04f else 1.06f,
-                            ringWidth = (if (expanded) 5 else 6).design,
-                            modifier = Modifier.height(h.design).then(if (expanded) Modifier.fillMaxWidth() else Modifier.width(64.design)),
+                            focusedScale = 1.05f,
+                            ringWidth = 5.design,
+                            modifier = Modifier.height(h.design).fillMaxWidth(),
                         ) { focused ->
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                                if (expanded) Spacer(Modifier.width(16.design))
-                                Box(if (expanded) Modifier.size(32.design) else Modifier.size(64.design), contentAlignment = Alignment.Center) {
-                                    DIcon(item.icon, (if (expanded) 32 else 30).design, when { focused -> Ux.TextOnLight; active -> Ux.White; expanded -> Ux.Text; else -> Ux.Text3 })
+                                Spacer(Modifier.width(16.design))
+                                Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
+                                    DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.White; expanded -> Ux.Text; else -> Ux.Text3 })
                                 }
-                                if (expanded) {
+                                if (labelAlpha > 0f) {
                                     Spacer(Modifier.width(16.design))
                                     Text(
                                         item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.White; else -> Ux.Text2 },
-                                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
+                                        modifier = Modifier.alpha(labelAlpha),
                                     )
                                 }
                             }
@@ -189,13 +201,13 @@ fun SidebarNav(navController: NavController) {
                 val p = pill
                 if (p != null) {
                     Spacer(Modifier.height(20.design))
-                    Row(Modifier.padding(start = if (expanded) 4.design else 0.design), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
                             Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
                         }
-                        if (expanded) {
+                        if (labelAlpha > 0f) {
                             Spacer(Modifier.width(16.design))
-                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1)
+                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
                         }
                     }
                 }
@@ -203,17 +215,17 @@ fun SidebarNav(navController: NavController) {
                 val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
                 val prof by profileVm.current.collectAsState()
                 FocusSurface(
-                    onClick = { profileVm.requestSwitch() }, shape = RoundedCornerShape(if (expanded) 18.design else 28.design), bg = Color.Transparent,
-                    focusedScale = if (expanded) 1.04f else 1.06f, ringWidth = 5.design,
-                    modifier = Modifier.then(if (expanded) Modifier.fillMaxWidth() else Modifier.size(64.design)).testTag("rail-profile"),
+                    onClick = { profileVm.requestSwitch() }, shape = RoundedCornerShape(28.design), bg = Color.Transparent,
+                    focusedScale = 1.05f, ringWidth = 5.design,
+                    modifier = Modifier.fillMaxWidth().testTag("rail-profile"),
                 ) { focused ->
-                    Row(Modifier.padding(start = if (expanded) 4.design else 4.design, top = 4.design), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(start = 4.design, top = 4.design), verticalAlignment = Alignment.CenterVertically) {
                         com.ultratv.tv.nativeapp.ui.profile.ProfileAvatar(prof?.initial ?: "K", prof?.color ?: 0xFF26262D.toInt(), 56)
-                        if (expanded) {
+                        if (labelAlpha > 0f) {
                             Spacer(Modifier.width(16.design))
-                            Column(verticalArrangement = Arrangement.spacedBy(2.design)) {
-                                Text(prof?.name ?: D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1)
-                                Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 22.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1)
+                            Column(Modifier.alpha(labelAlpha), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                                Text(prof?.name ?: D.railProfile, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = if (focused) Ux.TextOnLight else Ux.Text, maxLines = 1, softWrap = false)
+                                Text(D.railSwitchProfile, fontFamily = Manrope, fontSize = 22.spx, color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1, softWrap = false)
                             }
                         }
                     }
