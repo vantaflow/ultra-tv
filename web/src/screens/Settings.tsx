@@ -13,14 +13,15 @@ import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
-import { OTHER_LANG } from "@/sync/core";
+import { OTHER_LANG, categoryLang, filterCategories, languageStats } from "@/lib/categoryLang";
+import { setCategoriesEnabled } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
 import { Icon, type IconName } from "@/ui/Icon";
 import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
 import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
-import { saveDeviceName, saveWorker, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
+import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
@@ -183,6 +184,9 @@ function CloudPane() {
             <input className="input" style={{ width: "26rem" }} value={worker} aria-label={t("cloud.worker")} spellCheck={false}
               onChange={(e) => setWorker(e.target.value)} onBlur={async () => { if (!(await saveWorker(worker))) setWorker(c.worker); }} />
           </Pref>
+          <Pref label={t("cloud.prefsSync")} desc={t("cloud.prefsSyncDesc")}>
+            <Switch on={c.prefsSync} label={t("cloud.prefsSync")} onChange={(v) => void setPrefsSync(v)} />
+          </Pref>
           <Pref label={t("cloud.lastSync", { t: c.lastSyncAt ? new Date(c.lastSyncAt).toLocaleString(lang) : t("set.never") })}>
             <button className="btn primary" disabled={c.syncing} onClick={async () => {
               setMsg(null);
@@ -318,21 +322,17 @@ function CategoriesPane() {
   const source = useActiveSource();
   const sync = useSync();
   const [kind, setKind] = useState<Kind>("live");
+  const [lang, setLang] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const cats = useLiveQuery(async () => (source?.cid ? categoriesOf(source.cid, kind) : []), [source?.cid, kind]) ?? [];
-  const all = useLiveQuery(async () => (source?.cid ? db.categories.where("[sourceId+kind]").between([source.cid, ""], [source.cid, "￿"]).toArray() : []), [source?.cid]) ?? [];
+  const all = useLiveQuery(async () => (source?.cid ? (await db.categories.where("[sourceId+kind]").between([source.cid, ""], [source.cid, "￿"]).toArray()).sort((a, b) => a.ord - b.ord) : []), [source?.cid]) ?? [];
   const initial = useRef<Map<number, 0 | 1> | null>(null);
   if (initial.current == null && all.length) initial.current = new Map(all.map((c) => [c.id!, c.enabled]));
   const pending = initial.current ? all.filter((c) => initial.current!.get(c.id!) !== c.enabled).length : 0;
   const nq = normText(q);
-  const shown = useMemo(() => cats.filter((c) => !nq || normText(c.label).includes(nq) || (c.badge ?? "").toLowerCase() === nq), [cats, nq]);
-  const langs = useMemo(() => {
-    const m = new Map<string, { on: number; total: number }>();
-    for (const c of all) { const k = c.badge ?? OTHER_LANG; const e = m.get(k) ?? { on: 0, total: 0 }; e.total++; if (c.enabled) e.on++; m.set(k, e); }
-    return [...m].sort((a, b) => b[1].total - a[1].total).slice(0, 14);
-  }, [all]);
+  const shown = useMemo(() => filterCategories(all, { lang, kind, match: (c) => !nq || normText(c.label).includes(nq) || categoryLang(c.name).toLowerCase() === nq }), [all, lang, kind, nq]);
+  const langs = useMemo(() => languageStats(all), [all]);
   if (!source) return null;
-  const setMany = (rows: CategoryRow[], v: 0 | 1) => db.categories.bulkUpdate(rows.map((r) => ({ key: r.id!, changes: { enabled: v } })));
+  const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
   return (
     <>
@@ -340,10 +340,16 @@ function CategoriesPane() {
       <p className="lead">{t("set.catsNote")}</p>
       <div className="eyebrow">{t("set.langsChosen")}</div>
       <div className="chips">
-        {langs.map(([code, e]) => (
-          <button key={code} className="chip" aria-selected={e.on > 0} onClick={() => setMany(all.filter((c) => (c.badge ?? OTHER_LANG) === code), e.on > 0 ? 0 : 1)}>
-            {code === OTHER_LANG ? t("lang.other") : code} <span className="n">{e.on}/{e.total}</span>
-          </button>
+        <button className="chip" aria-selected={lang == null} onClick={() => setLang(null)}>{t("set.catsAllLangs")} <span className="n">{all.length}</span></button>
+        {langs.map((e) => (
+          <span key={e.code} className="chip" style={{ display: "inline-flex", gap: 6, alignItems: "center" }} aria-selected={lang === e.code}>
+            <input type="checkbox" checked={e.on === e.total} ref={(el) => { if (el) el.indeterminate = e.on > 0 && e.on < e.total; }}
+              aria-label={t("set.catsToggleLang", { l: e.code === OTHER_LANG ? t("lang.other") : e.code })}
+              onChange={() => void setMany(all.filter((c) => categoryLang(c.name) === e.code), e.on === e.total ? 0 : 1)} />
+            <button type="button" className="linklike" style={{ all: "unset", cursor: "pointer" }} onClick={() => setLang(lang === e.code ? null : e.code)}>
+              {e.code === OTHER_LANG ? t("lang.other") : e.code} <span className="n">{e.on}/{e.total}</span>
+            </button>
+          </span>
         ))}
       </div>
       <div className="chips" role="tablist">
@@ -354,16 +360,16 @@ function CategoriesPane() {
           <Icon name="search" size={16} />
           <input className="input" placeholder={t("set.catsFilter")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={t("common.filter")} />
         </div>
-        <button className="btn sm" onClick={() => setMany(shown, 1)}>{t("set.catsEnableAll")}</button>
-        <button className="btn sm" onClick={() => setMany(shown, 0)}>{t("set.catsDisableAll")}</button>
+        <button className="btn sm" onClick={() => void setMany(shown, 1)}>{t("set.catsEnableAll")} ({shown.length})</button>
+        <button className="btn sm" onClick={() => void setMany(shown, 0)}>{t("set.catsDisableAll")} ({shown.length})</button>
       </div>
       <div style={{ height: "min(28rem, 50vh)", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <VList rows={arrayRows(shown)} rowH={52} className="vlist" label={t("common.categories")}
           render={(c) => c && (
             <div className="cat-row">
-              <span className="tag">{c.badge ?? "—"}</span>
+              <span className="tag">{categoryLang(c.name) === OTHER_LANG ? "—" : categoryLang(c.name)}</span>
               <span className="ellipsis"><b style={{ fontWeight: 600 }}>{c.label}</b> <span className="muted mono" style={{ fontSize: "0.75rem" }}>{c.count || ""}</span></span>
-              <span><Switch on={!!c.enabled} label={c.label} onChange={(v) => db.categories.update(c.id!, { enabled: v ? 1 : 0 })} /></span>
+              <span><Switch on={!!c.enabled} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
               <span />
             </div>
           )} />

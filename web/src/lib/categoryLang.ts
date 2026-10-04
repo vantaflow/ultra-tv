@@ -1,0 +1,73 @@
+// Langue d'une catégorie IPTV déduite de son nom. Un seul code canonique par langue : « FR », « fr », « FRA »,
+// « French », « VF », « VOSTFR », « 🇫🇷 », « |FR| », « FR - » donnent tous « FR » (sinon les filtres sont dupliqués).
+
+import { isIsoCountry, parseCategoryName } from "./channelName";
+
+export const OTHER_LANG = "OTHER";
+
+const GROUPS: Record<string, string> = {
+  FR: "FR FRA FRE FRENCH FRANCAIS FRANCE VF VFF VFQ VOSTFR VOST TRUEFRENCH",
+  UK: "UK GB GBR ENG EN ENGLISH ANGLAIS",
+  ES: "ES ESP SPA SPANISH ESPANOL ESPAGNOL",
+  DE: "DE GER DEU GERMAN DEUTSCH ALLEMAND",
+  IT: "IT ITA ITALIAN ITALIANO",
+  PT: "PT POR PRT PORTUGUESE PORTUGUES",
+  NL: "NL NLD DUTCH",
+  TR: "TR TUR TURKISH TURC",
+  AR: "AR ARA ARB ARABIC ARABE",
+  MULTI: "MULTI MULTILANG MULTILANGUE MULTILINGUAL",
+};
+const ALIAS = new Map<string, string>();
+for (const [code, list] of Object.entries(GROUPS)) for (const a of list.split(" ")) ALIAS.set(a, code);
+
+const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
+
+/** Code canonique d'un jeton (alias, sinon code pays ISO tel quel), ou null. */
+export function canonicalLang(token: string): string | null {
+  const k = fold(token.trim());
+  return ALIAS.get(k) ?? (k.length === 2 && isIsoCountry(k) ? k : null);
+}
+
+const RI_BASE = 0x1f1e6;
+function flagCode(s: string): string | null {
+  const m = /([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/u.exec(s);
+  if (!m) return null;
+  const c = String.fromCharCode(65 + m[1]!.codePointAt(0)! - RI_BASE, 65 + m[2]!.codePointAt(0)! - RI_BASE);
+  return canonicalLang(c);
+}
+
+// Préfixe : « FR| », « |FR| », « FR - », « [FR] », « (FR) », « FR: », « FR_ ».
+const PREFIX = /^[\s|\[(\-_#*•]*(\p{L}{2,12})\s*(?:[|\])):]|\s-\s|-|_)/u;
+const KEYWORD = /(?<![\p{L}\p{N}])(vostfr|vost|vff|vfq|vf|truefrench|french|francais|english|arabic|spanish|german|italian|portuguese)(?![\p{L}\p{N}])/iu;
+
+export function categoryLang(raw: string): string {
+  const n = (raw ?? "").normalize("NFKC").trim();
+  const fl = flagCode(n);
+  if (fl) return fl;
+  const m = PREFIX.exec(n);
+  if (m) { const c = canonicalLang(m[1]!); if (c) return c; }
+  const b = parseCategoryName(n).badge;
+  if (b) return canonicalLang(b) ?? b;
+  const k = KEYWORD.exec(fold(n));
+  if (k) { const c = canonicalLang(k[1]!); if (c) return c; }
+  return OTHER_LANG;
+}
+
+export interface LangStat { code: string; total: number; on: number }
+
+/** Union dédoublonnée des langues d'un ensemble de catégories, avec compteurs ; « OTHER » en dernier. */
+export function languageStats(rows: { name: string; enabled: 0 | 1 }[]): LangStat[] {
+  const m = new Map<string, LangStat>();
+  for (const r of rows) {
+    const code = categoryLang(r.name);
+    const e = m.get(code) ?? { code, total: 0, on: 0 };
+    e.total++; if (r.enabled) e.on++;
+    m.set(code, e);
+  }
+  return [...m.values()].sort((a, b) => (a.code === OTHER_LANG ? 1 : b.code === OTHER_LANG ? -1 : b.total - a.total || a.code.localeCompare(b.code)));
+}
+
+/** Vue filtrée : langue (null = toutes), recherche déjà normalisée par l'appelant via `match`. */
+export function filterCategories<T extends { name: string; kind: string }>(rows: T[], f: { lang: string | null; kind: string | null; match?: (r: T) => boolean }): T[] {
+  return rows.filter((r) => (f.kind == null || r.kind === f.kind) && (f.lang == null || categoryLang(r.name) === f.lang) && (!f.match || f.match(r)));
+}

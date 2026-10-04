@@ -20,6 +20,8 @@ export interface FakeWorker {
     lastPut?: unknown;
     devices: { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }[];
     lastRename?: string;
+    putCount: number;
+    lastPrefs?: unknown;
     hasRename: boolean;
   };
 }
@@ -27,7 +29,7 @@ export interface FakeWorker {
 export async function startFakeWorker(): Promise<FakeWorker> {
   const w: FakeWorker = {
     base: "", providers: [], version: 1, token: "tok-1", close: () => undefined, confirm: () => undefined,
-    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
+    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, putCount: 0, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
   };
   let confirmed = false;
   w.confirm = () => { confirmed = true; };
@@ -73,11 +75,23 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         if (body.shareWith !== undefined && !w.state.shareWithSupported) return send(400, { error: "invalid", field: "shareWith" });
         if (typeof body.kind !== "string") return send(400, { error: "invalid", field: "kind" });
         const id = body.id ?? `a${String(w.providers.length + 1).padStart(7, "0")}`;
-        const p: CloudProvider = { id, kind: body.kind, name: body.name, url: body.url, username: body.username ?? "", password: body.password ?? "", sharedWith: body.shareWith };
+        const p: CloudProvider = { id, kind: body.kind, name: body.name, url: body.url, username: body.username ?? "", password: body.password ?? "", sharedWith: body.shareWith, prefs: w.providers.find((x) => x.id === id)?.prefs };
         const i = w.providers.findIndex((x) => x.id === id);
         if (i >= 0) w.providers[i] = p; else w.providers.push(p);
         w.version++;
         return send(i >= 0 ? 200 : 201, { version: w.version, provider: p });
+      }
+      const pf = url.pathname.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/prefs$/);
+      if (pf && req.method === "PUT") {
+        if (!bearer) return send(401);
+        const p = w.providers.find((x) => x.id === pf[1]);
+        if (!p) return send(404);
+        w.state.putCount++;
+        w.state.lastPrefs = body;
+        if (p.prefs && p.prefs.updatedAt > body.updatedAt) return send(409, { error: "stale", prefs: p.prefs });
+        p.prefs = { ...body, by: "dev-1" };
+        w.version++;
+        return send(200, { version: w.version, prefs: p.prefs });
       }
       const del = url.pathname.match(/^\/api\/device\/providers\/([0-9a-f]{8})$/);
       if (del && req.method === "DELETE") {

@@ -3,8 +3,8 @@
 
 import { create } from "zustand";
 import { getSetting, setSetting, db } from "@/db/db";
-import { deleteSource, emptySource, listSources, saveSource } from "@/db/sources";
-import type { Source } from "@/db/types";
+import { deleteSource, emptySource, getSource, listSources, saveSource } from "@/db/sources";
+import type { CategoryRow, Source } from "@/db/types";
 import { usePrefs } from "@/state/prefs";
 import { useSync } from "@/state/sync";
 import { decryptSecret, encryptSecret } from "@/net/secrets";
@@ -12,14 +12,15 @@ import { detectSourceLanguages } from "@/sync/client";
 import { OTHER_LANG } from "@/sync/core";
 import {
   DEFAULT_WORKER, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
-  deleteProvider, fetchConfig, normalizeWorkerUrl, putProvider, renameDevice, rotateToken,
-  type CloudDevice, type CloudProvider, type ProviderInput,
+  deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken,
+  type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
+import { createBatcher, fromPrefs, shouldApply, toPrefs } from "./prefs";
 
 const K = {
   worker: "cloud.worker", token: "cloud.token", deviceId: "cloud.deviceId", tokenAt: "cloud.tokenAt", etag: "cloud.etag",
-  lastSync: "cloud.lastSync", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices",
+  lastSync: "cloud.lastSync", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices", prefsSync: "cloud.prefsSync", prefsBoot: "cloud.prefsBoot",
 } as const;
 const ROTATE_AFTER_MS = 90 * 86400_000;
 export const SYNC_EVERY_MS = 6 * 3600_000;
@@ -37,10 +38,12 @@ interface CloudState {
   devices: CloudDevice[] | number;
   /** false = le Worker n'a pas l'endpoint de partage : l'option est masquée. null = inconnu. */
   pushAvailable: boolean | null;
+  /** Partage des langues et catégories désactivées entre appareils (activé par défaut). */
+  prefsSync: boolean;
 }
 
 export const useCloud = create<CloudState>(() => ({
-  loaded: false, paired: false, worker: DEFAULT_WORKER, deviceId: "", deviceName: "", lastSyncAt: 0, syncing: false, error: null, devices: 0, pushAvailable: null,
+  loaded: false, paired: false, worker: DEFAULT_WORKER, deviceId: "", deviceName: "", lastSyncAt: 0, syncing: false, error: null, devices: 0, pushAvailable: null, prefsSync: true,
 }));
 const patch = (p: Partial<CloudState>) => useCloud.setState(p);
 
@@ -50,12 +53,12 @@ export function defaultDeviceName(): string {
 }
 
 export async function loadCloud(): Promise<void> {
-  const [worker, deviceId, lastSyncAt, deviceName, push, devices, token] = await Promise.all([
+  const [worker, deviceId, lastSyncAt, deviceName, push, devices, token, prefsSync] = await Promise.all([
     getSetting<string>(K.worker, DEFAULT_WORKER), getSetting<string>(K.deviceId, ""), getSetting<number>(K.lastSync, 0),
     getSetting<string>(K.deviceName, ""), getSetting<boolean | null>(K.push, null), getSetting<CloudDevice[] | number>(K.devices, 0),
-    getSetting<string>(K.token, ""),
+    getSetting<string>(K.token, ""), getSetting<boolean>(K.prefsSync, true),
   ]);
-  patch({ loaded: true, paired: !!token, worker, deviceId, lastSyncAt, deviceName: deviceName || defaultDeviceName(), pushAvailable: push, devices });
+  patch({ loaded: true, paired: !!token, worker, deviceId, lastSyncAt, deviceName: deviceName || defaultDeviceName(), pushAvailable: push, devices, prefsSync });
 }
 
 async function getToken(): Promise<string> {
@@ -137,13 +140,16 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     if (Date.now() - (await getSetting<number>(K.tokenAt, 0)) > ROTATE_AFTER_MS) {
       try { const r = await rotateToken(worker, token); await storeToken(r.token, r.deviceId); token = r.token; } catch (e) { if (e instanceof TokenRejectedError) throw e; /* on réessaiera */ }
     }
-    const etag = force ? "" : await getSetting<string>(K.etag, "");
+    // Première synchro avec cette fonction : lecture complète (même si rien n'a changé) pour amorcer/appliquer les réglages.
+    const booted = await getSetting<boolean>(K.prefsBoot, false);
+    const etag = force || !booted ? "" : await getSetting<string>(K.etag, "");
     const res = await fetchConfig(worker, token, etag);
     const now = Date.now();
     await setSetting(K.lastSync, now);
     patch({ lastSyncAt: now });
     if (res.unchanged) return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true };
     await setSetting(K.etag, res.etag);
+    await setSetting(K.prefsBoot, true);
     const devs = res.config.devices;
     await setSetting(K.devices, devs);
     patch({ devices: devs });
@@ -183,9 +189,102 @@ export async function applyProviders(remote: CloudProvider[], awaitSync = false)
     if (cur) await saveSource({ ...cur, cloudId: undefined, cloudOrigin: undefined, cloudShared: undefined });
   }
   const todo = [...newIds, ...resync];
-  const p = syncNewSources(todo);
+  const p = syncNewSources(todo).then(() => applyRemotePrefs(remote, new Set(todo))).then(resyncAfterPrefs);
   if (awaitSync) await p; else void p.catch(() => undefined);
   return { added: plan.add.length, updated: plan.update.length, removed: plan.remove.length, skipped: plan.skipped, unchanged: false };
+}
+
+// ---------------- Réglages d'affichage partagés (langues + catégories désactivées) ----------------
+
+const prefsAtKey = (cloudId: string) => `cloud.prefsAt.${cloudId}`;
+export const getPrefsAt = (cloudId: string) => getSetting<number>(prefsAtKey(cloudId), 0);
+const PUBLISH_DELAY_MS = 1500;
+/** Sources dont un envoi est en attente : on n'écrase pas leurs changements locaux par une version reçue. */
+const pendingPublish = new Set<number>();
+
+export async function setPrefsSync(on: boolean): Promise<void> {
+  await setSetting(K.prefsSync, on);
+  patch({ prefsSync: on });
+  if (on) await setSetting(K.etag, ""); // prochaine synchro : relit les réglages du compte
+}
+
+async function catsOf(cid: number): Promise<CategoryRow[]> {
+  return cid ? db.categories.where("[sourceId+kind]").between([cid, ""], [cid, "\uffff"]).toArray() : [];
+}
+
+async function relaunchSync(id: number): Promise<void> {
+  while (useSync.getState().running) await new Promise((r) => setTimeout(r, 500));
+  const s = (await listSources()).find((x) => x.id === id);
+  if (s) await useSync.getState().start(s, { preserveFlags: true, silent: true });
+}
+async function resyncAfterPrefs(ids: number[]): Promise<void> {
+  for (const id of ids) await relaunchSync(id);
+}
+
+/** Applique des réglages reçus à une source (sans jamais republier). Retourne true si le catalogue chargé doit être relu. */
+async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolean> {
+  const cats = await catsOf(s.cid);
+  if (!cats.length) return false; // catalogue pas encore là : réessayé après la première synchro
+  const plan = fromPrefs(prefs, cats);
+  if (plan.changes.length) await db.categories.bulkUpdate(plan.changes.map((c) => ({ key: c.id, changes: { enabled: c.enabled } })));
+  await saveSource({ ...(await getSource(s.id!) ?? s), langs: plan.langs });
+  await setSetting(prefsAtKey(s.cloudId!), prefs.updatedAt);
+  return plan.changes.length > 0;
+}
+
+/** Réception : pour chaque source liée dont les réglages du compte sont plus récents que ceux appliqués ici. */
+export async function applyRemotePrefs(remote: CloudProvider[], force: Set<number> = new Set()): Promise<number[]> {
+  if (!useCloud.getState().prefsSync) return [];
+  const resync: number[] = [];
+  const rows = await listSources();
+  for (const p of remote) {
+    const s = rows.find((x) => x.cloudId === p.id);
+    if (!s || pendingPublish.has(s.id!)) continue;
+    if (!p.prefs) {
+      // Amorçage : le compte n'a rien pour cette source, l'état local (déjà personnalisé) devient la valeur par défaut des autres appareils.
+      if (s.cid) await publishPrefs(s.id!);
+      continue;
+    }
+    if (!force.has(s.id!) && !shouldApply(p.prefs, await getPrefsAt(p.id))) continue;
+    if (await applyPrefsTo(s, p.prefs)) resync.push(s.id!);
+  }
+  return resync;
+}
+
+export type PublishOutcome = "sent" | "applied" | "skipped" | "error";
+
+/** Publie les réglages d'une source (langues + catégories désactivées). 409 : la version du compte est plus récente, on l'applique. */
+export async function publishPrefs(sourceId: number): Promise<PublishOutcome> {
+  const st = useCloud.getState();
+  if (!st.paired || !st.prefsSync) return "skipped";
+  const s = (await listSources()).find((x) => x.id === sourceId);
+  if (!s?.cloudId || !s.cid) return "skipped";
+  const token = await getToken();
+  if (!token) return "skipped";
+  try {
+    const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now());
+    const r = await putPrefs(st.worker, token, s.cloudId, prefs);
+    if (r.status === "ok") { await setSetting(prefsAtKey(s.cloudId), prefs.updatedAt); return "sent"; }
+    if (r.status === "stale") {
+      if (await applyPrefsTo(s, r.prefs)) void resyncAfterPrefs([sourceId]).catch(() => undefined);
+      return "applied";
+    }
+    return "skipped";
+  } catch (e) {
+    if (e instanceof TokenRejectedError) patch({ paired: false, error: "token-rejected" });
+    return "error";
+  }
+}
+
+const batcher = createBatcher<number>(PUBLISH_DELAY_MS, (ids) => {
+  for (const id of ids) pendingPublish.delete(id);
+  for (const id of ids) void publishPrefs(id).catch(() => undefined);
+});
+/** À appeler quand l'utilisateur change les langues ou les catégories d'une source : un seul envoi après 1,5 s de calme. */
+export function notePrefsChanged(sourceId: number): void {
+  if (!useCloud.getState().prefsSync) return;
+  pendingPublish.add(sourceId);
+  batcher.note(sourceId);
 }
 
 export type ShareTarget = "all" | string[];
