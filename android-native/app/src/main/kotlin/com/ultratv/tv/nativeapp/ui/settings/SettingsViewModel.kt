@@ -19,7 +19,7 @@ import javax.inject.Inject
 sealed interface PairingUi {
     data object Idle : PairingUi
     data object Requesting : PairingUi
-    data class ShowCode(val code: String, val workerBase: String) : PairingUi
+    data class ShowCode(val code: String, val workerBase: String, val deviceLabel: String = "") : PairingUi
     data class Failed(val message: String) : PairingUi
 }
 
@@ -144,7 +144,7 @@ class SettingsViewModel @Inject constructor(
             cloudPairing.run(base, deviceMac.mac).collect { ev ->
                 when (ev) {
                     is com.ultratv.tv.nativeapp.data.config.PairingEvent.CodeReady ->
-                        _pairing.value = PairingUi.ShowCode(ev.code, base)
+                        _pairing.value = PairingUi.ShowCode(ev.code, base, com.ultratv.tv.nativeapp.data.config.PairingLabel.of(deviceMac.mac))
                     com.ultratv.tv.nativeapp.data.config.PairingEvent.Paired -> {
                         _paired.value = true
                         _pairing.value = PairingUi.Idle

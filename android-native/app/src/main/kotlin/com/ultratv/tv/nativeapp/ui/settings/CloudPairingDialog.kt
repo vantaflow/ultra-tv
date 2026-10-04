@@ -73,6 +73,10 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                     val host = (state as? PairingUi.ShowCode)?.workerBase?.let { hostOnly(it).substringAfter("://") }.orEmpty()
                     Column(verticalArrangement = Arrangement.spacedBy(22.design)) {
                         Step(1, D.pairStep1(host))
+                        if (host.isNotBlank()) Row(horizontalArrangement = Arrangement.spacedBy(24.design), verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 40.design)) {
+                            QrCode((state as PairingUi.ShowCode).workerBase.trimEnd('/'), 160.design)
+                            Text(D.dashboardScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, modifier = Modifier.width(260.design))
+                        }
                         Step(2, D.pairStep2)
                         Step(3, D.pairStep3)
                     }
@@ -97,7 +101,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                                 Box(Modifier.size(14.design).clip(CircleShape).background(Ux.Accent))
                                 Text(D.pairWaiting(formatRemaining(CODE_TTL_MS - (now - shownAt))), color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
                             }
-                            Text(D.pairDevice(android.os.Build.MODEL ?: "Android TV"), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                            Text(D.pairDevice(listOf(android.os.Build.MODEL ?: "Android TV", state.deviceLabel).filter { it.isNotBlank() }.joinToString(" · ")), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                         }
                         // Jamais le message brut du service : il peut contenir une adresse.
                         is PairingUi.Failed -> Text(D.pairFailed, color = Ux.Err, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center)

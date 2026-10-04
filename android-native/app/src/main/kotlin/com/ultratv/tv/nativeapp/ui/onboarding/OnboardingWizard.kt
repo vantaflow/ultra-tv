@@ -375,6 +375,14 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var form by remember { mutableStateOf(Form.None) }
+    // « Depuis le cloud » : appairage plein écran ; une fois la config importée, la box poursuit vers la synchro.
+    var cloudStarted by remember { mutableStateOf(false) }
+    val pairingUi by settingsVm.pairing.collectAsState()
+    val cloudPaired by settingsVm.paired.collectAsState()
+    val cloudProviders by settingsVm.providers.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(cloudStarted, cloudPaired, cloudProviders.size) {
+        if (cloudStarted && cloudPaired && cloudProviders.isNotEmpty()) { cloudStarted = false; onAdded() }
+    }
 
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -407,6 +415,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             SourceCard(Modifier.weight(1f), Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first = true) { form = Form.Xtream }
             SourceCard(Modifier.weight(1f), Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
             SourceCard(Modifier.weight(1f), Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
+            SourceCard(Modifier.weight(1f), Icons.Link, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloudDesc) { cloudStarted = true; settingsVm.startPairing() }
         }
         Spacer(Modifier.height(40.design))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -414,6 +423,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     }
 
+    com.ultratv.tv.nativeapp.ui.settings.CloudPairingDialog(pairingUi, onCancel = { cloudStarted = false; settingsVm.cancelPairing() }, onRetry = { settingsVm.startPairing() })
     when (form) {
         Form.Xtream -> XtreamDialog(
             onDismiss = { form = Form.None },

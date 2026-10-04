@@ -210,6 +210,8 @@ dependencies {
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
     implementation("androidx.documentfile:documentfile:1.0.1")
+    // QR code du tableau de bord cloud, généré localement (aucun réseau).
+    implementation("com.google.zxing:core:3.5.3")
     implementation(libs.mediarouter)
     implementation(libs.play.cast.framework)
 

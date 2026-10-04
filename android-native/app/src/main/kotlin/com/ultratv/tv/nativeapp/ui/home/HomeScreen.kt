@@ -74,6 +74,7 @@ fun HomeScreen(
     onGoMovies: () -> Unit,
     onGoSeries: () -> Unit,
     onGoSettings: () -> Unit,
+    onGoCloud: () -> Unit = {},
     onGoGuide: () -> Unit = {},
     onPlay: (url: String, title: String) -> Unit = { _, _ -> },
     onOpenMovie: (Long) -> Unit = {},
@@ -97,7 +98,7 @@ fun HomeScreen(
         val h = hero
         when {
             h != null -> Hero(h, onOpen = { if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) }, onGuide = onGoGuide)
-            loaded && providers.isEmpty() -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.syncCloud, onGoSettings)
+            loaded && providers.isEmpty() -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
             loaded -> LoadingCard(D.homeEmpty, sync?.percent)
         }
 
@@ -177,7 +178,7 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
 }
 
 @Composable
-private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit) {
+private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit, action2: String? = null, onAction2: () -> Unit = {}) {
     Column(
         Modifier.fillMaxWidth().padding(end = 96.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(56.design),
         verticalArrangement = Arrangement.spacedBy(20.design),
@@ -187,7 +188,10 @@ private fun EmptyCard(title: String, hint: String, action: String, onAction: () 
         val requester = remember { FocusRequester() }
         var focused by remember { mutableStateOf(false) }
         RequestInitialFocus(requester, hasFocus = { focused })
-        PillButton(action, onClick = onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
+        Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
+            PillButton(action, onClick = onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
+            if (action2 != null) PillButton(action2, onClick = onAction2, weight = FontWeight.Bold)
+        }
     }
 }
 

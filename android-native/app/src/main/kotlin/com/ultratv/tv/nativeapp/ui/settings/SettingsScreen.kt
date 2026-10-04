@@ -71,7 +71,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, WORKER, SOURCE_ACTIONS, WORKER_URL }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -143,6 +143,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     val paired by vm.paired.collectAsState()
     val pairingUi by vm.pairing.collectAsState()
     val workerBase by vm.workerBaseUrl.collectAsState()
+    // Accueil vide › « Depuis le cloud » : ouvre directement l'appairage.
+    val cloudReq by com.ultratv.tv.nativeapp.StartupNav.cloudPairRequest.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(cloudReq) { if (cloudReq) { com.ultratv.tv.nativeapp.StartupNav.cloudPairRequest.value = false; vm.startPairing() } }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf(OpenDialog.NONE) }
@@ -206,6 +209,15 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
         PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
+        // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
+            com.ultratv.tv.nativeapp.ui.design.QrCode(workerBase.trimEnd('/'), 132.design)
+            Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
+                Text(D.dashboardTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1)
+                Text(hostOnly(workerBase).substringAfter("://"), color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(D.dashboardScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+            }
+        }
     }
     GroupLabel(D.backup)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
@@ -214,8 +226,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile), null,
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to D.cardCloud), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
+        OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
