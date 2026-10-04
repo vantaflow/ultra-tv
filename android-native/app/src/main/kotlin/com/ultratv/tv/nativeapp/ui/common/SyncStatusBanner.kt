@@ -38,7 +38,15 @@ import androidx.tv.material3.Text
 class SyncStatusViewModel @Inject constructor(
     private val bus: SyncStatusBus,
     private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
+    private val providers: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
 ) : ViewModel() {
+    suspend fun canConvert(providerId: Long): Boolean = providers.canConvertToXtream(providerId)
+    /** « Passer en Xtream Codes » : convertit la source M3U (adresse get.php) puis relance la synchro par l'API. */
+    fun convertToXtream(providerId: Long) {
+        viewModelScope.launch {
+            if (providers.convertToXtream(providerId)) { bus.clearFailure(providerId); sync.request(providerId, force = true) }
+        }
+    }
     val status = bus.status
     /** Pastille du rail : au plus 2 mises à jour par seconde. */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
@@ -81,6 +89,8 @@ fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hil
                 color = Ux.Text, fontSize = 22.spx, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope,
                 modifier = Modifier.weight(1f), maxLines = 2,
             )
+            val canConvert by androidx.compose.runtime.produceState(false, f.providerId, f.kind) { value = f.kind == com.ultratv.tv.nativeapp.data.net.SyncErrorKind.PROVIDER_BLOCKED && vm.canConvert(f.providerId) }
+            if (canConvert) com.ultratv.tv.nativeapp.ui.design.PillButton(com.ultratv.tv.nativeapp.i18n.LocalDs.current.switchToXtream, onClick = { vm.convertToXtream(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
             com.ultratv.tv.nativeapp.ui.design.PillButton(S.retry, onClick = { vm.retry(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20)
             com.ultratv.tv.nativeapp.ui.design.PillButton(S.fixSource, onClick = { vm.dismissFailure(); onFixSource() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
         }

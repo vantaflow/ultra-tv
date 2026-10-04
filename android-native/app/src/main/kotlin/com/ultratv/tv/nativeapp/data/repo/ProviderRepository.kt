@@ -60,6 +60,8 @@ class ProviderRepository @Inject constructor(
     suspend fun byId(id: Long): ProviderEntity? = providerDao.byId(id)
 
     suspend fun addM3u(name: String, url: String): Long {
+        // Adresse get.php / player_api.php avec identifiants : c'est une source Xtream Codes (get.php est souvent bloqué).
+        com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(url)?.let { return addXtream(name.ifBlank { "Xtream" }, it.server, it.username, it.password) }
         providerDao.findByIdentity("M3U", url, "")?.let { return it.id }
         val pid = providerDao.upsert(
             ProviderEntity(
@@ -247,7 +249,22 @@ class ProviderRepository @Inject constructor(
     private val syncScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     private val syncMutex = kotlinx.coroutines.sync.Mutex()
 
+    /** Une source M3U dont l'adresse est de type Xtream (get.php…) ? Alors elle peut passer en Xtream Codes. */
+    suspend fun canConvertToXtream(providerId: Long): Boolean {
+        val p = providerDao.byId(providerId) ?: return false
+        return p.kind == "M3U" && com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(p.baseUrl) != null
+    }
+
+    /** Migration de données (sans changement de schéma) : M3U « get.php » → Xtream Codes ; les dates de synchro repartent à zéro. */
+    suspend fun convertToXtream(providerId: Long): Boolean {
+        val p = providerDao.byId(providerId) ?: return false
+        providerDao.upsert(com.ultratv.tv.nativeapp.data.net.XtreamUrl.convert(p) ?: return false)
+        return true
+    }
+
     private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit, force: Boolean): Int {
+        // Source M3U enregistrée avec une adresse Xtream : conversion automatique au prochain lancement / « Réessayer ».
+        if (canConvertToXtream(providerId)) convertToXtream(providerId)
         val p = providerDao.byId(providerId) ?: return 0
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)

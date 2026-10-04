@@ -291,6 +291,7 @@ fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Un
     val S = LocalStrings.current
     val D = LocalDs.current
     val urlOk = url.isBlank() || isValidHttpUrl(url)
+    val recognized = com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(url) != null
     AddProviderDialog(
         title = "M3U",
         subtitle = D.formSubM3u,
@@ -303,5 +304,6 @@ fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Un
         FormField(S.fieldPlaylistUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
             placeholder = "https://hote.tld/liste.m3u", autoFocus = true, last = true, required = true,
             error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
+        if (recognized) Text(D.xtreamRecognized, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 2, modifier = Modifier.testTag("xtream-recognized"))
     }
 }
