@@ -13,6 +13,7 @@
  * Voir cloudflare-config/README.md pour le détail des routes et de la migration.
  */
 
+import { JSQR_SOURCE } from "./jsqr-bundle.js";
 import { Guard } from "./guard.js";
 import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual } from "./crypto.js";
 import {
@@ -130,6 +131,9 @@ async function route(req, env) {
   // ---- polices auto-hébergées (publiques, immuables) ----
   const font = path.match(/^\/assets\/([a-z]+\.woff2)$/);
   if (font && m === "GET") return fontResponse(font[1]) || new Response("Not found", { status: 404 });
+
+  // ---- lecteur de QR vendorisé (jsQR, Apache-2.0) : chargé seulement à l'ouverture du scanner ----
+  if (path === "/assets/jsqr.js" && m === "GET") return new Response(JSQR_SOURCE, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 
   // ---- pages publiques ----
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }

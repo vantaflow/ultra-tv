@@ -43,7 +43,10 @@ export function nonce() {
   return b64uEncode(crypto.getRandomValues(new Uint8Array(16)));
 }
 
-export function html(body, n, status = 200) {
+/** Pages HTML du tableau de bord : seule la caméra passe à `self` (scan du QR de la TV) ; l'API JSON garde camera=(). */
+export const CAMERA_PERMISSIONS_POLICY = "camera=(self), microphone=(), geolocation=(), payment=(), usb=()";
+
+export function html(body, n, status = 200, { camera = false } = {}) {
   const csp = [
     "default-src 'none'",
     `script-src 'nonce-${n}'`,
@@ -54,7 +57,9 @@ export function html(body, n, status = 200) {
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join("; ");
-  return new Response(body, { status, headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": csp } });
+  const headers = { "content-type": "text/html; charset=utf-8", "content-security-policy": csp };
+  if (camera) headers["permissions-policy"] = CAMERA_PERMISSIONS_POLICY;
+  return new Response(body, { status, headers });
 }
 
 export function escapeHtml(s) {
