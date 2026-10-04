@@ -76,6 +76,9 @@ object StartupNav {
     val pendingRoute = MutableStateFlow<String?>(null)
     /** Débogage uniquement : rubrique de Réglages à ouvrir. */
     val debugRub = MutableStateFlow<Int?>(null)
+    /** Build debug : requête préremplie (Recherche) et thème forcé (captures). */
+    val debugQuery = MutableStateFlow<String?>(null)
+    val debugTheme = MutableStateFlow<String?>(null)
 }
 
 @AndroidEntryPoint
@@ -132,6 +135,8 @@ class MainActivity : ComponentActivity() {
     private fun handleDebugIntent(intent: android.content.Intent?) {
         if (!BuildConfig.DEBUG || intent == null) return
         intent.getStringExtra("debug_route")?.let { StartupNav.pendingRoute.value = it }
+        intent.getStringExtra("debug_query")?.let { StartupNav.debugQuery.value = it }
+        intent.getStringExtra("debug_theme")?.let { StartupNav.debugTheme.value = it }
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
     }
 
@@ -216,7 +221,8 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
-        com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(prefs.theme)
+        val dbgTheme by StartupNav.debugTheme.collectAsState()
+        com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(dbgTheme?.let { com.ultratv.tv.nativeapp.data.prefs.AppTheme.parse(it) } ?: prefs.theme)
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
         UltraTvTheme {
             // L'assistant de premier lancement REMPLACE l'application au lieu de

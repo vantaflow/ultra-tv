@@ -35,6 +35,13 @@ class DesignStrings(val lang: AppLang) {
     val watchedLabel get() = t("watched", "vu", "visto", "تمت المشاهدة")
     fun remainingMin(m: Int) = when (lang) { AppLang.French -> "reste $m min"; AppLang.Spanish -> "quedan $m min"; AppLang.Arabic -> "متبقّي $m د"; else -> "$m min left" }
 
+    // Recherche
+    val keySpace get() = t("Space", "Espace", "Espacio", "مسافة")
+    val keyDelete get() = t("Delete", "Suppr.", "Borrar", "حذف")
+    val searchStart get() = t("Start typing to search channels, movies and series.", "Commencez à taper pour chercher chaînes, films et séries.", "Empieza a escribir para buscar canales, películas y series.", "ابدأ الكتابة للبحث عن القنوات والأفلام والمسلسلات.")
+    fun searchChannels(n: Int) = when (lang) { AppLang.French -> "CHAÎNES · $n"; AppLang.Spanish -> "CANALES · $n"; AppLang.Arabic -> "القنوات · $n"; else -> "CHANNELS · $n" }
+    fun searchVod(n: Int) = when (lang) { AppLang.French -> "FILMS ET SÉRIES · $n"; AppLang.Spanish -> "PELÍCULAS Y SERIES · $n"; AppLang.Arabic -> "الأفلام والمسلسلات · $n"; else -> "MOVIES AND SERIES · $n" }
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
