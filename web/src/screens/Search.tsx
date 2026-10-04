@@ -12,6 +12,7 @@ import { QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
+import { dedupeByTitle } from "@/lib/posterFallback";
 import { NoSource } from "./states";
 
 export function Search() {
@@ -75,8 +76,8 @@ function Inner({ source }: { source: Source }) {
         <section>
           <div className="eyebrow" style={{ marginBottom: 12 }}>{t("search.vod")} · {vodCount}</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9.5rem, 1fr))", gap: 20 }}>
-            {res.movies.map((m) => <PosterCard key={`m${m.id}`} title={m.title} image={m.poster} meta={`${t("nav.movies")}${m.year ? " · " + m.year : ""}`} onClick={() => nav(`/movie/${m.streamId}`)} />)}
-            {res.series.map((m) => <PosterCard key={`s${m.id}`} title={m.title} image={m.poster} meta={`${t("nav.series")}${m.year ? " · " + m.year : ""}`} onClick={() => nav(`/serie/${m.seriesId}`)} />)}
+            {dedupeByTitle(res.movies).map((m) => <PosterCard key={`m${m.id}`} kind="movie" year={m.year} title={m.title} image={m.poster} meta={`${t("nav.movies")}${m.year ? " · " + m.year : ""}`} onClick={() => nav(`/movie/${m.streamId}`)} />)}
+            {dedupeByTitle(res.series).map((m) => <PosterCard key={`s${m.id}`} kind="tv" year={m.year} title={m.title} image={m.poster} meta={`${t("nav.series")}${m.year ? " · " + m.year : ""}`} onClick={() => nav(`/serie/${m.seriesId}`)} />)}
           </div>
         </section>
       )}

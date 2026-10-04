@@ -87,6 +87,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
           rows={rows} minW={150} gap={20} cellH={(w) => w * 1.5 + 58} resetKey={`${cat}|${effSort}|${dq}|${kind}`}
           render={(r) => r ? (
             <PosterCard
+              kind={kind === "movie" ? "movie" : "tv"} year={r.year}
               title={r.title} image={kind === "movie" ? (r as MovieRow).poster : (r as SeriesRow).poster}
               meta={[r.year, r.rating > 0 ? `★ ${r.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}
               fav={favSet.has(idOf(r))} onClick={() => nav(`/${kind === "movie" ? "movie" : "serie"}/${idOf(r)}`)}

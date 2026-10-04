@@ -229,3 +229,17 @@ export async function runPairing(
   }
   onEvent({ type: "expired" });
 }
+
+
+/** Recherche TMDB via le proxy du Worker (clés côté serveur). Renvoie le chemin d'affiche (`/abc.jpg`) ou null. */
+export async function tmdbPosterPath(base: string, token: string, kind: "movie" | "tv", query: string, year?: number | null, language = "fr-FR"): Promise<string | null> {
+  const q = new URLSearchParams({ query: query.slice(0, 120), language });
+  if (year && year >= 1900 && year <= 2099) q.set(kind === "tv" ? "first_air_date_year" : "year", String(year));
+  const r = await http({ url: `${base}/api/tmdb/search/${kind}?${q}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status < 200 || r.status >= 300) return null;
+  const o = parse<{ results?: { poster_path?: string | null }[] }>(r);
+  const hit = (o.results ?? []).find((x) => typeof x.poster_path === "string" && /^\/[\w.-]+$/.test(x.poster_path));
+  return hit?.poster_path ?? null;
+}

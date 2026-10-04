@@ -12,10 +12,11 @@ import { detectSourceLanguages } from "@/sync/client";
 import { OTHER_LANG } from "@/sync/core";
 import {
   DEFAULT_WORKER, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
-  deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken,
+  deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken, tmdbPosterPath,
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
+import { setPosterFinder } from "@/lib/posterFallback";
 import { createBatcher, fromPrefs, shouldApply, toPrefs } from "./prefs";
 
 const K = {
@@ -59,6 +60,11 @@ export async function loadCloud(): Promise<void> {
     getSetting<string>(K.token, ""), getSetting<boolean>(K.prefsSync, true),
   ]);
   patch({ loaded: true, paired: !!token, worker, deviceId, lastSyncAt, deviceName: deviceName || defaultDeviceName(), pushAvailable: push, devices, prefsSync });
+  // Affiches manquantes : recherche TMDB via le Worker (clé côté serveur), seulement si l'appareil est appairé.
+  setPosterFinder(token ? async (kind, query, year) => {
+    const t = await getToken();
+    return t ? tmdbPosterPath(useCloud.getState().worker, t, kind, query, year, usePrefs.getState().lang === "en" ? "en-US" : "fr-FR") : null;
+  } : null);
 }
 
 async function getToken(): Promise<string> {

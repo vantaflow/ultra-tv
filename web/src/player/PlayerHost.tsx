@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { channelsCol } from "@/db/queries";
+import { Img } from "@/ui/Img";
 import { db } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
@@ -362,7 +363,7 @@ export function PlayerHost() {
         </div>
       </div>
 
-      {full && panel && (
+      {full && panel && panel !== "channels" && (
         <aside className="pside" aria-label={t("player.player")}>
           <div className="tabs" role="tablist">
             {(["tracks", "display", "player", "stats"] as const).map((p) => (
@@ -450,21 +451,30 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const t = useT();
   const [rows, setRows] = useState<ChannelRow[]>([]);
   const cur = usePlayer((s) => s.target);
-  useEffect(() => { void channelsCol(cid, cat).filter((c) => !c.sep).limit(300).toArray().then(setRows); }, [cid, cat]);
+  const curRef = useRef<HTMLButtonElement | null>(null);
+  // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
+  useEffect(() => { void channelsCol(cid, cat).filter((c) => !c.sep).limit(5000).toArray().then(setRows); }, [cid, cat]);
+  // À l'ouverture : centré sur la chaîne regardée, qui a le focus (Entrée = rester, ↑↓ = parcourir).
+  useEffect(() => { const el = curRef.current; if (el) { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); } }, [rows.length]);
   return (
     <aside className="pside" aria-label={t("player.channels")}>
       <div className="grp-t">{t("player.channels").toUpperCase()}</div>
-      {rows.map((c) => (
-        <button key={c.id} className="opt" role="radio" aria-checked={cur?.refId === c.streamId} onClick={() => {
-          usePlayer.getState().open({
-            ...cur!, refId: c.streamId, title: c.display, image: c.logo, url: c.url, replay: undefined,
-            channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
-          }, "full");
-          onZap();
-        }}>
-          <span className="ellipsis">{c.num} · {c.display}</span>
-        </button>
-      ))}
+      {rows.map((c) => {
+        const on = cur?.refId === c.streamId;
+        return (
+          <button key={c.id} ref={on ? curRef : undefined} className="opt ch" role="radio" aria-checked={on} onClick={() => {
+            usePlayer.getState().open({
+              ...cur!, refId: c.streamId, title: c.display, image: c.logo, url: c.url, replay: undefined,
+              channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
+            }, "full");
+            onZap();
+          }}>
+            <span className="logo" aria-hidden="true"><Img src={c.logo} contain /></span>
+            <span className="num">{c.num}</span>
+            <span className="ellipsis nm">{c.display}</span>
+          </button>
+        );
+      })}
     </aside>
   );
 }
