@@ -14,6 +14,8 @@ h1{margin:0 0 4px;font-size:22px} h2{margin:0 0 8px;font-size:16px}
 .panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
 label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}
 input,select{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font:inherit}
+input[type=checkbox]{width:auto;margin:0;accent-color:#d91e2b}
+label.small{display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;color:var(--fg)}
 button{background:var(--accent);color:#0b1020;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
 button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border);font-weight:400}
 button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}

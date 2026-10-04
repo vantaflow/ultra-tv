@@ -113,7 +113,7 @@ Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp
                                 var f by remember { mutableStateOf(false) }
                                 RequestInitialFocus(r, hasFocus = { f })
                                 PillButton(D.retry, onRetry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { f = it.isFocused })
-                                PillButton(D.fixSource, onFixSource)
+                                PillButton(D.openSourceSettings, onFixSource)
                             }
                         }
                     } else {

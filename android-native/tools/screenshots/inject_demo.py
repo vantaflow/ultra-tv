@@ -5,7 +5,7 @@ sh('adb','shell','am','force-stop',PK)
 for f in ['ultra-tv.db','ultra-tv.db-wal','ultra-tv.db-shm']:
     open(f'{S}/{f}','wb').write(sh('adb','exec-out','run-as',PK,'cat','databases/'+f).stdout)
 c=sqlite3.connect(S+'/ultra-tv.db'); c.execute('delete from provider')
-vals={'name':'Xtream','kind':'XTREAM','baseUrl':'http://10.0.2.2:8197','username':'demo','password':'demo','active':1,'lastLiveSyncAt':0,'lastVodSyncAt':0,'lastSeriesSyncAt':0,'lastEpgSyncAt':0,'categoryFilter':-1}
+vals={'name':'Xtream','kind':'XTREAM','baseUrl':'http://10.0.2.2:'+os.environ.get('DEMO_PORT','8197'),'username':'demo','password':'demo','active':1,'lastLiveSyncAt':0,'lastVodSyncAt':0,'lastSeriesSyncAt':0,'lastEpgSyncAt':0,'categoryFilter':-1}
 c.execute('insert into provider(%s) values(%s)'%(','.join(vals),','.join('?'*len(vals))),list(vals.values()))
 c.commit(); c.execute('pragma wal_checkpoint(truncate)'); c.close()
 sh('adb','shell','run-as',PK,'rm','-f','databases/ultra-tv.db-wal','databases/ultra-tv.db-shm')
