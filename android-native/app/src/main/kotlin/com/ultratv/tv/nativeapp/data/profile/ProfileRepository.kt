@@ -77,6 +77,9 @@ class ProfileRepository(
     /** Change de profil en cours de session (« Changer de profil » depuis le rail). */
     fun requestSwitch() { forced.value = true }
 
+    /** Retour sur « Qui regarde ? » : on reste sur le profil courant au lieu de quitter l'application. */
+    fun cancelSwitch() { chosenThisSession.value = true; forced.value = false }
+
     suspend fun create(name: String, color: Int, isKids: Boolean = false, pin: String? = null): Long? {
         if (!ProfileRules.canAdd(dao.count())) return null
         val n = ProfileRules.cleanName(name).ifBlank { return null }

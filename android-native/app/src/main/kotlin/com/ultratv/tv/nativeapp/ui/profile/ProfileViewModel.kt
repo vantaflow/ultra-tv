@@ -26,6 +26,7 @@ class ProfileViewModel @Inject constructor(
 
     fun select(id: Long) = viewModelScope.launch { repo.select(id) }
     fun requestSwitch() = repo.requestSwitch()
+    fun cancelSwitch() = repo.cancelSwitch()
     fun create(name: String, color: Int, kids: Boolean) = viewModelScope.launch { repo.create(name, color, kids) }
     fun rename(id: Long, name: String) = viewModelScope.launch { repo.rename(id, name) }
     fun setColor(id: Long, color: Int) = viewModelScope.launch { repo.setColor(id, color) }

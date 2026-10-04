@@ -91,9 +91,18 @@ class CategoriesViewModel @Inject constructor(
     private val pid = providers.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
     val providerList = providers.observeProviders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    val rows: StateFlow<List<CategoryRow>> = combine(pid, kind, query.debounce(150)) { p, k, q -> Triple(p, k, q) }
-        .flatMapLatest { (p, k, q) -> if (p == null) flowOf(emptyList()) else manager.observe(p, k, q) }
+    /** Bascules en cours d'écriture : affichées tout de suite (box lente, base occupée par une synchro). */
+    private val pending = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+    val rows: StateFlow<List<CategoryRow>> = combine(
+        combine(pid, kind, query.debounce(150)) { p, k, q -> Triple(p, k, q) }
+            .flatMapLatest { (p, k, q) -> if (p == null) flowOf(emptyList()) else manager.observe(p, k, q) },
+        pending,
+    ) { list, over -> if (over.isEmpty()) list else list.map { r -> over[r.remoteId]?.let { e -> r.copy(enabled = e, count = if (e) r.count ?: 0 else null) } ?: r } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private fun markPending(ids: List<String>, enabled: Boolean) { pending.value = pending.value + ids.associateWith { enabled } }
+    private fun clearPending(ids: List<String>) { pending.value = pending.value - ids.toSet() }
 
     /** Compteurs des onglets (nombre de catégories par type). */
     val tabCounts: StateFlow<Map<String, Int>> = pid.flatMapLatest { p ->
@@ -102,9 +111,18 @@ class CategoriesViewModel @Inject constructor(
 
     private suspend fun providerId(): Long? = providerList.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }
 
-    fun toggle(r: CategoryRow) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, listOf(r.remoteId), !r.enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } }
+    fun toggle(r: CategoryRow) {
+        val ids = listOf(r.remoteId); val v = !r.enabled
+        markPending(ids, v)
+        viewModelScope.launch { try { providerId()?.let { manager.setEnabled(it, kind.value, ids, v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
+    }
     /** « Tout activer » / « Tout désactiver » : s'applique au résultat FILTRÉ (ex. filtrer « AR » puis tout désactiver). */
-    fun setAll(enabled: Boolean) { viewModelScope.launch { providerId()?.let { manager.setEnabled(it, kind.value, rows.value.map { r -> r.remoteId }, enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } }
+    fun setAll(enabled: Boolean) {
+        val ids = rows.value.filter { it.enabled != enabled }.map { it.remoteId }
+        if (ids.isEmpty()) return
+        markPending(ids, enabled)
+        viewModelScope.launch { try { providerId()?.let { manager.setEnabled(it, kind.value, ids, enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
+    }
     fun saveOrder(ids: List<String>) { viewModelScope.launch { providerId()?.let { manager.saveOrder(it, kind.value, ids) } } }
     val filterUnsupported: StateFlow<Boolean> = providerList.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.categoryFilter == 0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }
@@ -120,7 +138,9 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     val unsupported by vm.filterUnsupported.collectAsState()
     // Réordonnancement : on sélectionne une ligne (poignée « Ordre »), ▲▼ la déplacent, OK valide.
     var moving by remember { mutableStateOf<String?>(null) }
-    var local by remember(rows) { mutableStateOf(rows) }
+    // Liste figée pendant un déplacement : pendant une synchro les compteurs changent sans cesse et
+    // `remember(rows)` réinitialisait l'ordre en cours (« je déplace mais elle reste à sa place »).
+    var local by remember { mutableStateOf(rows) }
     val shown = if (moving != null) local else rows
     BackHandler(enabled = moving != null) { moving = null; local = rows }
 
@@ -219,7 +239,9 @@ private fun CategoryLine(
     r: CategoryRow, kind: String, rowModifier: Modifier = Modifier, isMoving0: Boolean? = null, isMoving: Boolean, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit,
 ) {
-    val count = r.count?.let { when (kind) { "LIVE" -> D.channelsOf(it); "MOVIE" -> D.moviesOf(it); else -> D.seriesOf(it) } }.orEmpty()
+    // Activée mais pas encore téléchargée : « Chargement… » plutôt que « 0 chaîne » (le contenu arrive après la synchro en cours).
+    val count = if (r.enabled && r.count == 0) D.categoryLoading
+        else r.count?.let { when (kind) { "LIVE" -> D.channelsOf(it); "MOVIE" -> D.moviesOf(it); else -> D.seriesOf(it) } }.orEmpty()
     FocusSurface(
         onClick = { if (isMoving) onConfirmMove() else onToggle() },
         onLongClick = { if (!isMoving) onStartMove() },

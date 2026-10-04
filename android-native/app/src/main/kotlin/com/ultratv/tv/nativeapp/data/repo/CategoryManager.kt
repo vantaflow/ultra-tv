@@ -11,6 +11,10 @@ import com.ultratv.tv.nativeapp.data.db.UltraDb
 import com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.take
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +26,7 @@ data class CategoryRow(val remoteId: String, val label: String, val badge: Strin
  * ni affichée ; ses éléments sont purgés tout de suite. La réactiver déclenche une synchro ciblée sur cette seule catégorie.
  */
 @Singleton
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class CategoryManager @Inject constructor(
     private val db: UltraDb,
     private val categoryDao: CategoryDao,
@@ -32,7 +37,10 @@ class CategoryManager @Inject constructor(
 ) {
     fun observe(pid: Long, kind: String, query: String): Flow<List<CategoryRow>> {
         val counts: Flow<List<CategoryCount>> = when (kind) { "LIVE" -> channelDao.observeCategoryCounts(pid); "MOVIE" -> movieDao.observeCategoryCounts(pid); else -> seriesDao.observeCategoryCounts(pid) }
-        return combine(categoryDao.observeOrdered(pid, kind), counts) { cats, cnt -> rows(cats, cnt, query) }
+        // Pendant une synchro la table des chaînes change sans arrêt : compteurs recalculés au plus une fois par seconde
+        // (le premier tout de suite), sinon l'écran se fige sur une box modeste.
+        val throttled = kotlinx.coroutines.flow.merge(counts.take(1), counts.drop(1).sample(1_000))
+        return combine(categoryDao.observeOrdered(pid, kind), throttled) { cats, cnt -> rows(cats, cnt, query) }.conflate()
     }
 
     fun observeTotals(pid: Long, kind: String): Flow<Int> = categoryDao.observeOrdered(pid, kind).let { f -> kotlinx.coroutines.flow.flow { f.collect { emit(it.size) } } }

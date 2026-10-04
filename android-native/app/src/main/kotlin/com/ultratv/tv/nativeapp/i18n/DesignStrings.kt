@@ -77,6 +77,7 @@ class DesignStrings(val lang: AppLang) {
     val cardCloud get() = t("From the cloud", "Depuis le cloud", "Desde la nube", "من السحابة")
     val cardCloudDesc get() = t("Sync your sources from the dashboard with a short code", "Synchronisez vos sources depuis le tableau de bord avec un code", "Sincroniza tus fuentes desde el panel con un código", "زامن مصادرك من لوحة التحكم برمز قصير")
     val dashboardTitle get() = t("Dashboard", "Tableau de bord", "Panel de control", "لوحة التحكم")
+    val categoryLoading get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
     val loadingLabel get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
     val dashboardScan get() = t("Scan with your phone", "À scanner avec votre téléphone", "Escanea con tu teléfono", "امسح الرمز بهاتفك")
     val pairScanAuto get() = t("Scan with your phone to pair automatically", "Scannez avec votre téléphone pour appairer automatiquement", "Escanea con tu teléfono para vincular automáticamente", "امسح الرمز بهاتفك للاقتران تلقائيًا")

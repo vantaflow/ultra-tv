@@ -120,6 +120,8 @@ fun WhoIsWatchingScreen(vm: ProfileViewModel = hiltViewModel(), onManage: () -> 
     val S = ProfileStrings(LocalDs.current.lang)
     var pinFor by remember { mutableStateOf<ProfileEntity?>(null) }
     var attempt by remember { mutableStateOf(0) }
+    // Retour : garde le profil courant (s'il y en a un) au lieu de fermer l'application. La saisie de PIN se ferme d'abord.
+    androidx.activity.compose.BackHandler(enabled = pinFor == null && current != null) { vm.cancelSwitch() }
     var error by remember { mutableStateOf<String?>(null) }
     var adding by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
