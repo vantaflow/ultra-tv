@@ -184,7 +184,7 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Bo
             Row(Modifier.weight(1f).padding(horizontal = 16.design), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     (if (locked) "🔒 " else "") + label,
-                    color = if (f) Ux.TextOnLight else if (selected) Ux.White else Ux.Text2,
+                    color = if (f) Ux.TextOnLight else if (selected) Ux.Text else Ux.Text2,
                     fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                     style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 )

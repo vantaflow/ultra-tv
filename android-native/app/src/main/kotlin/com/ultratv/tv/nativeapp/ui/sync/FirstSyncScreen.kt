@@ -145,7 +145,7 @@ private fun WatchLiveCta(enabled: Boolean, onClick: () -> Unit) {
     FocusSurface(
         onClick = { if (enabled) onClick() },
         shape = RoundedCornerShape(44.design),
-        bg = if (enabled) Ux.White else Ux.Surface,
+        bg = if (enabled) Ux.Cta else Ux.Surface,
         focusedBg = if (enabled) Ux.Cta else Ux.Surface2,
         modifier = Modifier.height(88.design).focusRequester(requester).onFocusChanged { focused = it.isFocused },
     ) { f ->

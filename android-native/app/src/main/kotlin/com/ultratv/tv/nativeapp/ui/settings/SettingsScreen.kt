@@ -95,9 +95,9 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         if (sel && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
                         Spacer(Modifier.width(18.design))
-                        DIcon(r.icon, 28.design, if (f) Ux.TextOnLight else if (sel) Ux.White else Ux.Text3)
+                        DIcon(r.icon, 28.design, if (f) Ux.TextOnLight else if (sel) Ux.Text else Ux.Text3)
                         Spacer(Modifier.width(18.design))
-                        Text(labels[i], color = if (f) Ux.TextOnLight else if (sel) Ux.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(labels[i], color = if (f) Ux.TextOnLight else if (sel) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
