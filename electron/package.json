@@ -44,6 +44,7 @@
       "appfiles.cjs",
       "secrets.cjs",
       "updates.cjs",
+      "cloudfetch.cjs",
       "web-dist/**/*",
       "package.json"
     ],

@@ -9,13 +9,14 @@
 //    jeton (proxy.cjs) ; la tolerance TLS n'existe que sur ce chemin.
 //  - aucune URL de source ni identifiant n'est journalise.
 
-const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme, safeStorage } = require("electron");
+const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme, safeStorage, net } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
 const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
+const { cloudRequest } = require("./cloudfetch.cjs");
 
 const APP_SCHEME = "app";
 const APP_HOST = "ultratv";
@@ -241,6 +242,7 @@ function registerIpc() {
       return fn(...args);
     });
 
+  handle("ut:cloud:request", (req) => cloudRequest(req, (u, init) => net.fetch(u, init)));
   handle("ut:encrypt", (plain) => secrets.encrypt(plain));
   handle("ut:decrypt", (cipher) => secrets.decrypt(cipher));
   handle("ut:fullscreen:toggle", () => {
