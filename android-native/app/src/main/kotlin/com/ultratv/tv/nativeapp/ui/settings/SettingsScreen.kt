@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import com.ultratv.tv.nativeapp.ui.mobile.openInBrowser
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
@@ -73,7 +74,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL, CLOUD }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -87,6 +88,8 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     var rub by rememberSaveable { mutableStateOf(0) }
     val dbg by com.ultratv.tv.nativeapp.StartupNav.debugRub.collectAsState()
     var showPane by rememberSaveable { mutableStateOf(false) }
+    val pairRequested by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(pairRequested) { if (pairRequested) { rub = Rub.SOURCES.ordinal; showPane = true } }
     androidx.compose.runtime.LaunchedEffect(dbg) { dbg?.let { rub = it.coerceIn(0, Rub.entries.lastIndex); showPane = true; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null } }
     val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubAbout)
     val pane: @Composable () -> Unit = {
@@ -234,6 +237,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
         PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
+        if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(workerBase).substringAfter("://")) { ctx.openInBrowser(workerBase) }
     }
     GroupLabel(D.backup)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
@@ -242,8 +246,14 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.STALKER to S.wiz.cardStalker), null,
-            onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
+        OpenDialog.ADD_CHOOSER -> {
+            val touchChooser = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+            // Tactile : Xtream Codes, lien M3U, fichier M3U, cloud (pas de Stalker).
+            val options = if (touchChooser) listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud)
+                else listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.STALKER to S.wiz.cardStalker)
+            ChoiceDialog(D.addSource, options, null,
+                onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else if (k == OpenDialog.CLOUD) { dialog = OpenDialog.NONE; vm.startPairing() } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
+        }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
         OpenDialog.STALKER -> StalkerDialog({ dialog = OpenDialog.NONE }) { n, u, m -> vm.addStalkerAndSync(n, u, m); dialog = OpenDialog.NONE }
@@ -254,6 +264,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         }
         else -> Unit
     }
+    // Accueil vide (tactile) : « Depuis le cloud » ouvre directement l'appairage.
+    val wantPairing by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(wantPairing) { if (wantPairing) { com.ultratv.tv.nativeapp.StartupNav.startPairing.value = false; vm.startPairing() } }
     CloudPairingDialog(pairingUi, onCancel = { vm.cancelPairing() }, onRetry = { vm.startPairing() })
 }
 

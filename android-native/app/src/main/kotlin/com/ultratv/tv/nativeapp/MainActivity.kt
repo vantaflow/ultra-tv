@@ -80,6 +80,8 @@ object StartupNav {
     /** Build debug : requête préremplie (Recherche) et thème forcé (captures). */
     val debugQuery = MutableStateFlow<String?>(null)
     val debugTheme = MutableStateFlow<String?>(null)
+    /** Accueil vide (tactile) : ouvrir Réglages et lancer l'appairage cloud. */
+    val startPairing = MutableStateFlow(false)
 }
 
 @AndroidEntryPoint

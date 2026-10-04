@@ -17,6 +17,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import com.ultratv.tv.nativeapp.ui.mobile.openInBrowser
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -62,16 +68,25 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
     var now by remember { mutableLongStateOf(shownAt) }
     LaunchedEffect(state) { while (state is PairingUi.ShowCode) { now = android.os.SystemClock.elapsedRealtime(); kotlinx.coroutines.delay(1000) } }
     ModalFocusScope(onBack = onCancel, modifier = Modifier.background(Ux.Bg)) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 96.design, vertical = 54.design)) {
+        val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+        Column(Modifier.fillMaxSize().then(if (touch) Modifier.windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.safeDrawing).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp) else Modifier.padding(horizontal = 96.design, vertical = 54.design))) {
             Row(Modifier.height(72.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 LogoMark(56)
                 Text("ULTRA TV", color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, letterSpacing = TextUnit(1.7f, TextUnitType.Sp), maxLines = 1)
             }
-            Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(120.design)) {
-                Column(Modifier.responsiveWidth(760), verticalArrangement = Arrangement.spacedBy(40.design)) {
+            val pairBody: @Composable (Modifier) -> Unit = { codeModifier ->
+                Column(Modifier.responsiveWidth(760), verticalArrangement = Arrangement.spacedBy(if (touch) 20.dp else 40.design)) {
                     Text(D.pairEyebrow, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = TextUnit(3f, TextUnitType.Sp), maxLines = 1)
-                    Text(D.pairTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 67.spx, maxLines = 3)
+                    Text(D.pairTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 64.spx, lineHeight = if (touch) 32.sp else 67.spx, maxLines = 3)
                     val host = (state as? PairingUi.ShowCode)?.workerBase?.let { hostOnly(it).substringAfter("://") }.orEmpty()
+                    if (touch && host.isNotEmpty()) {
+                        // Téléphone / tablette : on est déjà sur l'appareil, donc un bouton plutôt qu'un QR.
+                        val Mo = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+                        val ctxOpen = androidx.compose.ui.platform.LocalContext.current
+                        val base = (state as? PairingUi.ShowCode)?.workerBase.orEmpty()
+                        Text(Mo.dashboardAddress.uppercase() + " · " + host, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+                        PillButton(Mo.openDashboard, onClick = { ctxOpen.openInBrowser(base) }, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(22.design)) {
                         Step(1, D.pairStep1(host))
                         Step(2, D.pairStep2)
@@ -86,7 +101,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                     }
                 }
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(64.design),
+                    codeModifier.clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(if (touch) 20.dp else 64.design),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(32.design),
                 ) {
                     Text(D.pairYourCode, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = TextUnit(2.2f, TextUnitType.Sp), maxLines = 1)
@@ -106,6 +121,8 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                     }
                 }
             }
+            if (touch) Column(Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) { pairBody(Modifier.fillMaxWidth()) }
+            else Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(120.design)) { pairBody(Modifier.weight(1f)) }
         }
     }
 }

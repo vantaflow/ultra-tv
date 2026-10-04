@@ -57,6 +57,9 @@ data class MobileStrings(
     val castUnavailable: String,
     val pipUnavailable: String,
     val longPressHint: String,
+    val fromCloud: String,
+    val openDashboard: String,
+    val dashboardAddress: String,
 ) {
     companion object {
         val FR = MobileStrings(
@@ -70,7 +73,7 @@ data class MobileStrings(
             episodes = "Épisodes", season = "Saison", moreInfo = "Plus", lessInfo = "Moins", categoriesLabel = "Catégories", liveNow = "En direct",
             pullToRefresh = "Tirer pour actualiser", refreshing = "Actualisation…", clearSearch = "Effacer", searchHint = "Chaînes, films, séries",
             details = "Détails", noPreview = "Aucun aperçu", rotateHint = "Tournez l’appareil pour le plein écran",
-            castUnavailable = "Aucun appareil de diffusion détecté", pipUnavailable = "Image dans l’image indisponible", longPressHint = "Appui long : options",
+            castUnavailable = "Aucun appareil de diffusion détecté", pipUnavailable = "Image dans l’image indisponible", longPressHint = "Appui long : options", fromCloud = "Depuis le cloud", openDashboard = "Ouvrir le tableau de bord", dashboardAddress = "Adresse du tableau de bord",
         )
         val EN = MobileStrings(
             tabMore = "More", moreTitle = "More", navProfiles = "Profiles", seeAll = "See all",
@@ -83,7 +86,7 @@ data class MobileStrings(
             episodes = "Episodes", season = "Season", moreInfo = "More", lessInfo = "Less", categoriesLabel = "Categories", liveNow = "Live",
             pullToRefresh = "Pull to refresh", refreshing = "Refreshing…", clearSearch = "Clear", searchHint = "Channels, movies, series",
             details = "Details", noPreview = "No preview", rotateHint = "Rotate the device for full screen",
-            castUnavailable = "No cast device found", pipUnavailable = "Picture-in-picture unavailable", longPressHint = "Long press: options",
+            castUnavailable = "No cast device found", pipUnavailable = "Picture-in-picture unavailable", longPressHint = "Long press: options", fromCloud = "From the cloud", openDashboard = "Open the dashboard", dashboardAddress = "Dashboard address",
         )
         val ES = MobileStrings(
             tabMore = "Más", moreTitle = "Más", navProfiles = "Perfiles", seeAll = "Ver todo",
@@ -96,7 +99,7 @@ data class MobileStrings(
             episodes = "Episodios", season = "Temporada", moreInfo = "Más", lessInfo = "Menos", categoriesLabel = "Categorías", liveNow = "En directo",
             pullToRefresh = "Desliza para actualizar", refreshing = "Actualizando…", clearSearch = "Borrar", searchHint = "Canales, películas, series",
             details = "Detalles", noPreview = "Sin vista previa", rotateHint = "Gira el dispositivo para pantalla completa",
-            castUnavailable = "No se encontró ningún dispositivo", pipUnavailable = "Imagen en imagen no disponible", longPressHint = "Pulsación larga: opciones",
+            castUnavailable = "No se encontró ningún dispositivo", pipUnavailable = "Imagen en imagen no disponible", longPressHint = "Pulsación larga: opciones", fromCloud = "Desde la nube", openDashboard = "Abrir el panel", dashboardAddress = "Dirección del panel",
         )
         val AR = MobileStrings(
             tabMore = "المزيد", moreTitle = "المزيد", navProfiles = "الملفات الشخصية", seeAll = "عرض الكل",
@@ -109,7 +112,7 @@ data class MobileStrings(
             episodes = "الحلقات", season = "الموسم", moreInfo = "المزيد", lessInfo = "أقل", categoriesLabel = "الفئات", liveNow = "مباشر",
             pullToRefresh = "اسحب للتحديث", refreshing = "جارٍ التحديث…", clearSearch = "مسح", searchHint = "قنوات، أفلام، مسلسلات",
             details = "التفاصيل", noPreview = "لا معاينة", rotateHint = "أدر الجهاز لملء الشاشة",
-            castUnavailable = "لم يُعثر على جهاز بث", pipUnavailable = "صورة داخل صورة غير متاحة", longPressHint = "اضغط مطولاً: خيارات",
+            castUnavailable = "لم يُعثر على جهاز بث", pipUnavailable = "صورة داخل صورة غير متاحة", longPressHint = "اضغط مطولاً: خيارات", fromCloud = "من السحابة", openDashboard = "فتح لوحة التحكم", dashboardAddress = "عنوان لوحة التحكم",
         )
 
         fun forLang(lang: AppLang, systemLanguage: String): MobileStrings {
@@ -130,4 +133,10 @@ val LocalMobileStrings = compositionLocalOf { MobileStrings.EN }
 fun mobileStringsFor(lang: AppLang): MobileStrings {
     val sys = LocalConfiguration.current.locales.get(0)?.language ?: "en"
     return remember(lang, sys) { MobileStrings.forLang(lang, sys) }
+}
+
+/** Ouvre une adresse https dans le navigateur (jamais d'autre schéma). */
+fun android.content.Context.openInBrowser(url: String): Boolean {
+    if (!url.startsWith("https://", ignoreCase = true) && !url.startsWith("http://", ignoreCase = true)) return false
+    return runCatching { startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
 }

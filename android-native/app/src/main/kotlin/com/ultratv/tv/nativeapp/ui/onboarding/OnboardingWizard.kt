@@ -399,6 +399,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var form by remember { mutableStateOf(Form.None) }
+    val pairingUi by settingsVm.pairing.collectAsState()
 
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
@@ -426,6 +427,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             TouchSourceCard(Icons.Monitor, W.cardXtream, W.cardXtreamDesc) { form = Form.Xtream }
             TouchSourceCard(Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
             TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
+            TouchSourceCard(Icons.Globe, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cloudSyncHint) { settingsVm.startPairing() }
             TouchCta(W.later, false, onLater)
         }
     } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
@@ -449,6 +451,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     }
 
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.settings.CloudPairingDialog(pairingUi, onCancel = { settingsVm.cancelPairing() }, onRetry = { settingsVm.startPairing() })
     when (form) {
         Form.Xtream -> XtreamDialog(
             onDismiss = { form = Form.None },

@@ -134,7 +134,7 @@ fun MobileHomeScreen(
             val h = state.hero
             when {
                 h != null -> MobileHero(h, D, wide) { onOpenHero(h) }
-                state.providersLoaded && !state.hasProviders -> MobileNotice(D.homeNoSource, D.syncCloudHint, D.syncCloud, onGoSettings)
+                state.providersLoaded && !state.hasProviders -> MobileNotice(D.homeNoSource, D.syncCloudHint, LocalMobileStrings.current.fromCloud, { com.ultratv.tv.nativeapp.StartupNav.startPairing.value = true; onGoSettings() }, secondary = D.addSource to onGoSettings)
                 state.providersLoaded -> MobileNotice(D.homeEmpty, null, null, {}, state.syncPercent)
             }
             if (state.resume.isNotEmpty()) {
@@ -188,7 +188,7 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: () 
 }
 
 @Composable
-private fun MobileNotice(title: String, hint: String?, action: String?, onAction: () -> Unit, percent: Int? = null) {
+private fun MobileNotice(title: String, hint: String?, action: String?, onAction: () -> Unit, percent: Int? = null, secondary: Pair<String, () -> Unit>? = null) {
     Column(
         Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ux.SurfaceDeep).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -197,6 +197,7 @@ private fun MobileNotice(title: String, hint: String?, action: String?, onAction
         if (hint != null) Text(hint, color = Ux.Text2, fontFamily = Manrope, fontSize = 14.sp)
         if (percent != null || action == null) ProgressLine((percent ?: 0) / 100f, Modifier.fillMaxWidth().clip(RoundedCornerShape(3.dp)), heightPx = 8, track = Ux.Surface2)
         if (action != null) PillButton(action, onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+        if (secondary != null) PillButton(secondary.first, secondary.second, modifier = Modifier.fillMaxWidth())
     }
 }
 

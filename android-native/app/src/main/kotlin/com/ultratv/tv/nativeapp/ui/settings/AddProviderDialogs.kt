@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.verticalScroll
@@ -68,6 +69,9 @@ fun isValidHttpUrl(raw: String): Boolean {
     return !host.isNullOrBlank()
 }
 
+/** Vrai après un premier essai d'envoi : seulement alors « Champ requis » s'affiche (jamais pendant la saisie). */
+val LocalFormAttempted = androidx.compose.runtime.compositionLocalOf { false }
+
 /**
  * Formulaire modal (maquette AjoutSource) : 1000 px, en-tête icône + titre + sous-titre, champs de 72 px,
  * « Annuler » / « Ajouter et synchroniser » à droite, aide télécommande en pied.
@@ -88,55 +92,92 @@ fun AddProviderDialog(
     val S = LocalStrings.current
     val D = LocalDs.current
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    var attempted by remember { mutableStateOf(false) }
+    val submit = { if (canSubmit) onSubmit() else attempted = true }
+    androidx.compose.runtime.CompositionLocalProvider(LocalFormAttempted provides attempted, LocalFormSubmit provides submit) {
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
-        Column(
-            modifier = (if (touch) Modifier
-                .windowInsetsPadding(WindowInsets.safeDrawing)
-                .fillMaxWidth(0.94f).widthIn(max = 560.dp)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Ux.SurfaceDeep)
-                .verticalScroll(androidx.compose.foundation.rememberScrollState())
-                .padding(20.dp)
-            else Modifier
+        if (touch) {
+            // Tactile : en-tête et champs DÉFILENT, les boutons restent épinglés en bas, au-dessus du clavier système (imePadding via les insets).
+            Column(
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(vertical = 8.dp)
+                    .fillMaxWidth(0.94f).widthIn(max = 560.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Ux.SurfaceDeep),
+            ) {
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(icon, 22.dp, Ux.White, strokeWidth = 2f) }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 13.sp, color = Ux.Text3, maxLines = 2)
+                        }
+                    }
+                    content()
+                    Spacer(Modifier.height(4.dp))
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(24.dp), bg = Ux.Surface2, modifier = Modifier.height(48.dp).testTag("dialog-cancel")) { _ ->
+                        Box(Modifier.height(48.dp).padding(horizontal = 20.dp), contentAlignment = Alignment.Center) { Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Ux.Text) }
+                    }
+                    FocusSurface(onClick = submit, shape = RoundedCornerShape(24.dp), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(48.dp).weight(1f, fill = false).testTag("dialog-submit")) { _ ->
+                        Box(Modifier.height(48.dp).padding(horizontal = 22.dp), contentAlignment = Alignment.Center) {
+                            Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, color = if (canSubmit) Ux.TextOnLight else Ux.Muted)
+                        }
+                    }
+                }
+            }
+        } else Column(
+            modifier = Modifier
                 .width(1000.design)
                 .clip(RoundedCornerShape(32.design))
                 .background(Ux.SurfaceDeep)
                 .border(1.design, Ux.Surface2, RoundedCornerShape(32.design))
-                .padding(56.design)),
-            verticalArrangement = Arrangement.spacedBy(if (touch) 16.dp else 28.design),
+                .padding(56.design),
+            verticalArrangement = Arrangement.spacedBy(28.design),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 20.design)) {
-                Box(Modifier.size(if (touch) 44.dp else 64.design).clip(RoundedCornerShape(if (touch) 12.dp else 16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
-                    DIcon(icon, if (touch) 22.dp else 32.design, Ux.White, strokeWidth = 2f)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
+                    DIcon(icon, 32.design, Ux.White, strokeWidth = 2f)
                 }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
-                    Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 22.sp else 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = if (touch) 13.sp else 22.spx, color = Ux.Text3, maxLines = if (touch) 2 else 1)
+                Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
+                    Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 }
             }
             content()
-            Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 8.design)) {
-                FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(if (touch) 24.dp else 36.design), bg = Ux.Surface2, modifier = Modifier.height(if (touch) 48.dp else 72.design).testTag("dialog-cancel")) { f ->
-                    Box(Modifier.height(if (touch) 48.dp else 72.design).padding(horizontal = if (touch) 20.dp else 36.design), contentAlignment = Alignment.Center) {
-                        Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = if (touch) 15.sp else 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
+            Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 8.design)) {
+                FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, modifier = Modifier.height(72.design).testTag("dialog-cancel")) { f ->
+                    Box(Modifier.height(72.design).padding(horizontal = 36.design), contentAlignment = Alignment.Center) {
+                        Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
                     }
                 }
-                FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(if (touch) 24.dp else 36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(if (touch) 48.dp else 72.design).testTag("dialog-submit")) { f ->
-                    Box(Modifier.height(if (touch) 48.dp else 72.design).padding(horizontal = if (touch) 22.dp else 44.design), contentAlignment = Alignment.Center) {
-                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 15.sp else 24.spx,
+                FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).testTag("dialog-submit")) { f ->
+                    Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
+                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
                             color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
                     }
                 }
             }
-            // Aide télécommande : sans objet au toucher (clavier système, boutons à l'écran).
-            if (!touch) Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                 Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
             }
         }
     }
+    }
 }
+
+/** Validation depuis le clavier (« OK / Terminé ») : même chemin que le bouton d'envoi. */
+val LocalFormSubmit = androidx.compose.runtime.compositionLocalOf<(() -> Unit)?> { null }
 
 /**
  * Champ texte de formulaire. D-pad haut/bas le quittent toujours ([leaveOnVerticalDpad]) ;
@@ -162,13 +203,13 @@ fun FormField(
     val focusRequester = remember { FocusRequester() }
     val fm = LocalFocusManager.current
     val D = LocalDs.current
-    var touched by remember { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(focused) { if (focused) touched = true }
+    val attempted = LocalFormAttempted.current
+    val formSubmit = LocalFormSubmit.current
     // Focus initial sur le champ principal : sans cela le D-pad reste derrière le dialogue.
     LaunchedEffect(autoFocus) {
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
-    val shownError = error ?: if (required && touched && !focused && value.isBlank()) D.fieldRequired else null
+    val shownError = error ?: if (required && attempted && value.isBlank()) D.fieldRequired else null
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design), modifier = Modifier.fillMaxWidth()) {
         Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx)
@@ -202,7 +243,7 @@ fun FormField(
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { fm.moveFocus(FocusDirection.Down) },
-                    onDone = { fm.moveFocus(FocusDirection.Down) },   // « Ajouter »
+                    onDone = { if (formSubmit != null) formSubmit() else fm.moveFocus(FocusDirection.Down) },   // « OK / Terminé » valide le formulaire
                 ),
                 interactionSource = interaction,
                 modifier = Modifier
