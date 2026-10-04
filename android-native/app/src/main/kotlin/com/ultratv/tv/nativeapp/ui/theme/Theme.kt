@@ -37,6 +37,16 @@ fun isLightTheme(theme: AppTheme, systemDark: Boolean): Boolean = when (theme) {
     AppTheme.AUTO -> !systemDark
 }
 
+/** Le lecteur reste TOUJOURS sombre, quel que soit le réglage. */
+fun isLightEffective(themeLight: Boolean, playerShown: Boolean): Boolean = themeLight && !playerShown
+
+/**
+ * Vrai si un écran lecteur figure parmi les destinations VISIBLES de la navigation (y compris
+ * celle qui sort en transition). État dérivé : un lien profond qui empile un second lecteur
+ * avant la sortie du premier ne peut pas le désynchroniser, contrairement à un compteur.
+ */
+fun isPlayerShown(visibleRoutes: List<String?>): Boolean = visibleRoutes.any { it == com.ultratv.tv.nativeapp.nav.Routes.PLAYER }
+
 /** Publie le thème dans les jetons [Ux] ; à appeler AVANT toute composition qui les lit. */
 @Composable
 fun ApplyUxTheme(theme: AppTheme) {
@@ -46,5 +56,5 @@ fun ApplyUxTheme(theme: AppTheme) {
 
 @Composable
 fun UltraTvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (Ux.themeLight && !Ux.playerActive) Light else Dark, content = content)
+    MaterialTheme(colorScheme = if (isLightEffective(Ux.themeLight, Ux.playerActive)) Light else Dark, content = content)
 }

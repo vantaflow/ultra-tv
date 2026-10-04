@@ -64,13 +64,9 @@ object Ux {
      * Le lecteur reste toujours sombre ([playerActive]).
      */
     var themeLight by mutableStateOf(false)
+    /** Dérivé de la navigation (voir `isPlayerShown`), jamais d'un compteur d'entrées/sorties. */
     var playerActive by mutableStateOf(false)
-        private set
-    private var playerRefs = 0
-    /** Entrée / sortie d'un lecteur. Compté : un lien profond peut afficher le NOUVEAU lecteur avant que l'ancien soit détruit. */
-    fun enterPlayer() { playerRefs++; playerActive = true }
-    fun leavePlayer() { playerRefs = (playerRefs - 1).coerceAtLeast(0); playerActive = playerRefs > 0 }
-    private val light: Boolean get() = themeLight && !playerActive
+    private val light: Boolean get() = com.ultratv.tv.nativeapp.ui.theme.isLightEffective(themeLight, playerActive)
 
     // Surfaces (sombre → clair : maquettes Accueil / AccueilClair / SidebarClair)
     val Bg: Color get() = if (light) Color(0xFFF4F3EF) else Color(0xFF0A0A0C)

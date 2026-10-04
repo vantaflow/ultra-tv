@@ -287,6 +287,11 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
 @Composable
 private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     val nav = rememberNavController()
+    // Le lecteur reste sombre : état DÉRIVÉ des destinations visibles (écrit avant NavHost, donc
+    // avant toute lecture des jetons par le lecteur ; aucun compteur à tenir à jour).
+    val visibleEntries by nav.visibleEntries.collectAsState()
+    val playerShown = com.ultratv.tv.nativeapp.ui.theme.isPlayerShown(visibleEntries.map { it.destination.route })
+    if (com.ultratv.tv.nativeapp.ui.design.Ux.playerActive != playerShown) com.ultratv.tv.nativeapp.ui.design.Ux.playerActive = playerShown
     val form = rememberFormFactor()
     // Effective nav style: phone-portrait collapses to a bottom bar regardless
     // of the user's "sidebar / top bar" preference, otherwise we honour it.

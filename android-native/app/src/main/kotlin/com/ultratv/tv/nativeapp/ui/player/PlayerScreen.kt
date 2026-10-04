@@ -266,8 +266,6 @@ private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
 @Composable
 fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> Unit)? = null, vm: PlayerViewModel = hiltViewModel()) {
     // Le lecteur reste sombre quel que soit le thème de l'application.
-    remember { Ux.enterPlayer() }
-    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Ux.leavePlayer() } }
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val D = LocalDs.current
