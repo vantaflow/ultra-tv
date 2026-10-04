@@ -53,6 +53,9 @@ interface ProviderRawDao {
     @Query("UPDATE provider SET lastSeriesSyncAt = :t WHERE id = :id")
     suspend fun setSeriesSyncAt(id: Long, t: Long)
 
+    @Query("UPDATE provider SET categoryFilter = :v WHERE id = :id")
+    suspend fun setCategoryFilter(id: Long, v: Int)
+
     @Query("UPDATE provider SET lastEpgSyncAt = :t WHERE id = :id")
     suspend fun setEpgSyncAt(id: Long, t: Long)
 
@@ -88,6 +91,7 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
         SyncPart.EPG -> raw.setEpgSyncAt(id, t)
     }
     suspend fun resetSyncAt(id: Long) = raw.resetSyncAt(id)
+    suspend fun setCategoryFilter(id: Long, v: Int) = raw.setCategoryFilter(id, v)
     suspend fun rawPasswords(): List<RawPassword> = raw.rawPasswords()
     suspend fun setRawPassword(id: Long, value: String) = raw.setRawPassword(id, value)
 }
@@ -143,6 +147,12 @@ interface ChannelDao {
 
     @Query("DELETE FROM channel WHERE providerId = :pid")
     suspend fun deleteForProvider(pid: Long)
+
+    @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId IN (:ids)")
+    suspend fun deleteForCategories(pid: Long, ids: List<String>)
+
+    @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId = :cat")
+    suspend fun deleteForCategory(pid: Long, cat: String)
 
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     suspend fun count(pid: Long): Int
@@ -264,6 +274,12 @@ interface MovieDao {
 
     @Query("DELETE FROM movie WHERE providerId = :pid")
     suspend fun deleteForProvider(pid: Long)
+
+    @Query("DELETE FROM movie WHERE providerId = :pid AND categoryId IN (:ids)")
+    suspend fun deleteForCategories(pid: Long, ids: List<String>)
+
+    @Query("DELETE FROM movie WHERE providerId = :pid AND categoryId = :cat")
+    suspend fun deleteForCategory(pid: Long, cat: String)
 }
 
 @Dao
@@ -310,6 +326,12 @@ interface SeriesDao {
 
     @Query("DELETE FROM series WHERE providerId = :pid")
     suspend fun deleteForProvider(pid: Long)
+
+    @Query("DELETE FROM series WHERE providerId = :pid AND categoryId IN (:ids)")
+    suspend fun deleteForCategories(pid: Long, ids: List<String>)
+
+    @Query("DELETE FROM series WHERE providerId = :pid AND categoryId = :cat")
+    suspend fun deleteForCategory(pid: Long, cat: String)
 }
 
 @Dao
@@ -334,6 +356,18 @@ interface CategoryDao {
 
     @Query("UPDATE category SET locked = :locked WHERE id = :id")
     suspend fun setLocked(id: Long, locked: Boolean)
+
+    @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind")
+    suspend fun forProviderKind(pid: Long, kind: String): List<CategoryEntity>
+
+    @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind ORDER BY CASE WHEN position = 0 THEN 1 ELSE 0 END, position, name")
+    fun observeOrdered(pid: Long, kind: String): Flow<List<CategoryEntity>>
+
+    @Query("UPDATE category SET enabled = :enabled WHERE providerId = :pid AND kind = :kind AND remoteId IN (:ids)")
+    suspend fun setEnabled(pid: Long, kind: String, ids: List<String>, enabled: Boolean)
+
+    @Query("UPDATE category SET position = :position WHERE providerId = :pid AND kind = :kind AND remoteId = :id")
+    suspend fun setPosition(pid: Long, kind: String, id: String, position: Int)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<CategoryEntity>)

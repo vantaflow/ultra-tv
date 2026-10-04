@@ -30,6 +30,8 @@ data class ProviderEntity(
     val lastVodSyncAt: Long = 0,
     val lastSeriesSyncAt: Long = 0,
     val lastEpgSyncAt: Long = 0,
+    /** Le serveur respecte `category_id` ? 1 oui, 0 non, -1 pas encore vérifié (téléchargement partiel par catégorie). */
+    val categoryFilter: Int = -1,
 )
 
 @Entity(
@@ -68,6 +70,8 @@ data class ChannelEntity(
     val sortKey: String = sortKeyOf(title),
     /** Numéro de chaîne fourni par la source (ordre du fournisseur) ; 0 = inconnu. */
     val num: Int = 0,
+    /** Numéro séquentiel STABLE dans la catégorie (1, 2, 3…), attribué à la synchro : le `num` des fournisseurs est souvent dupliqué. */
+    val seq: Int = 0,
     /** Nom vide / numérique / événement daté : masqué partout, jamais supprimé. */
     val junk: Boolean = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).let { !it.isSeparator && com.ultratv.tv.nativeapp.data.repo.JunkFilter.isJunk(name) },
     /** Séparateur « ##### XXX ##### » : AFFICHÉ comme en-tête de section, non focalisable, ni lisible ni compté. */
@@ -78,6 +82,8 @@ data class ChannelEntity(
     val quality: Int = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).quality,
     /** Drapeaux binaires : HEVC, HDR, 50/60 FPS, RAW, BACKUP, LQ, VIP. */
     val flags: Int = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).flags,
+    /** Langue détectée (code, « MULTI » ou vide = indéterminée). */
+    val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])
@@ -88,6 +94,12 @@ data class CategoryEntity(
     val remoteId: String,
     val name: String,
     val locked: Boolean = false,
+    /** UN SEUL interrupteur : désactivée = ni téléchargée, ni mise à jour, ni affichée ; ses données sont purgées. */
+    val enabled: Boolean = true,
+    /** Ordre choisi par l'utilisateur (0 = ordre du fournisseur). */
+    val position: Int = 0,
+    /** Langue détectée (code, « MULTI » ou vide = indéterminée). */
+    val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forCategory(name),
 )
 
 @Entity(
@@ -117,6 +129,7 @@ data class MovieEntity(
     val genre: String? = null,
     val cast: String? = null,
     val duration: String? = null,
+    val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
 )
 
 @Entity(
@@ -142,6 +155,7 @@ data class SeriesEntity(
     val backdrop: String? = null,
     val genre: String? = null,
     val cast: String? = null,
+    val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
 )
 
 @Entity(

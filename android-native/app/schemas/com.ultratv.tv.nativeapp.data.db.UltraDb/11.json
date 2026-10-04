@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "fad1b4e8c31f998d367da9a637e32f25",
+    "identityHash": "e87765dafa0bebb53a92310c97aa7c1f",
     "entities": [
       {
         "tableName": "provider",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `baseUrl` TEXT NOT NULL, `username` TEXT NOT NULL, `password` TEXT NOT NULL, `active` INTEGER NOT NULL, `lastLiveSyncAt` INTEGER NOT NULL, `lastVodSyncAt` INTEGER NOT NULL, `lastSeriesSyncAt` INTEGER NOT NULL, `lastEpgSyncAt` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `baseUrl` TEXT NOT NULL, `username` TEXT NOT NULL, `password` TEXT NOT NULL, `active` INTEGER NOT NULL, `lastLiveSyncAt` INTEGER NOT NULL, `lastVodSyncAt` INTEGER NOT NULL, `lastSeriesSyncAt` INTEGER NOT NULL, `lastEpgSyncAt` INTEGER NOT NULL, `categoryFilter` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -73,6 +73,12 @@
             "columnName": "lastEpgSyncAt",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "categoryFilter",
+            "columnName": "categoryFilter",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -86,7 +92,7 @@
       },
       {
         "tableName": "channel",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `epgChannelId` TEXT, `catchupSource` TEXT, `catchupDays` INTEGER NOT NULL, `userPosition` INTEGER NOT NULL, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `num` INTEGER NOT NULL, `junk` INTEGER NOT NULL, `isSeparator` INTEGER NOT NULL, `country` TEXT, `quality` INTEGER NOT NULL, `flags` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `epgChannelId` TEXT, `catchupSource` TEXT, `catchupDays` INTEGER NOT NULL, `userPosition` INTEGER NOT NULL, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `num` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `junk` INTEGER NOT NULL, `isSeparator` INTEGER NOT NULL, `country` TEXT, `quality` INTEGER NOT NULL, `flags` INTEGER NOT NULL, `lang` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -173,6 +179,12 @@
             "notNull": true
           },
           {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "junk",
             "columnName": "junk",
             "affinity": "INTEGER",
@@ -200,6 +212,12 @@
             "fieldPath": "flags",
             "columnName": "flags",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -248,7 +266,7 @@
       },
       {
         "tableName": "movie",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `container` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT, `duration` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `container` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT, `duration` TEXT, `lang` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -351,6 +369,12 @@
             "columnName": "duration",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -396,7 +420,7 @@
       },
       {
         "tableName": "series",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT, `lang` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -481,6 +505,12 @@
             "columnName": "cast",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -620,7 +650,7 @@
       },
       {
         "tableName": "category",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `locked` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `locked` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `position` INTEGER NOT NULL, `lang` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -656,6 +686,24 @@
             "fieldPath": "locked",
             "columnName": "locked",
             "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
             "notNull": true
           }
         ],
@@ -1134,7 +1182,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fad1b4e8c31f998d367da9a637e32f25')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e87765dafa0bebb53a92310c97aa7c1f')"
     ]
   }
 }

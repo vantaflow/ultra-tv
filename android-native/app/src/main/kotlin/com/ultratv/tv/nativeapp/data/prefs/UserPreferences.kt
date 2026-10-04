@@ -83,6 +83,10 @@ data class UserPrefs(
     val bufStartSec: Int = 2,
     val bufRebufferSec: Int = 3,
     val bufMaxMb: Int = 32,
+    // ── Langues des contenus (CSV de codes ; vide = toutes) ──
+    val languages: String = "",
+    val includeMulti: Boolean = true,
+    val includeUnknownLang: Boolean = true,
 )
 
 @Singleton
@@ -118,6 +122,9 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val bufStart = intPreferencesKey("buf_start_sec")
         val bufRebuffer = intPreferencesKey("buf_rebuffer_sec")
         val bufMb = intPreferencesKey("buf_max_mb")
+        val languages = stringPreferencesKey("languages")
+        val includeMulti = booleanPreferencesKey("include_multi")
+        val includeUnknown = booleanPreferencesKey("include_unknown_lang")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -150,6 +157,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             bufferPreset = p[Keys.bufferPreset] ?: "auto",
             bufMinSec = p[Keys.bufMin] ?: 5, bufMaxSec = p[Keys.bufMax] ?: 30, bufStartSec = p[Keys.bufStart] ?: 2,
             bufRebufferSec = p[Keys.bufRebuffer] ?: 3, bufMaxMb = p[Keys.bufMb] ?: 32,
+            languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, includeUnknownLang = p[Keys.includeUnknown] ?: true,
         )
     }
 
@@ -176,6 +184,9 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }
     suspend fun setLocalLogosFolderUri(uri: String) = update { it[Keys.localLogosUri] = uri }
 
+    suspend fun setLanguages(csv: String) = update { it[Keys.languages] = csv }
+    suspend fun setIncludeMulti(v: Boolean) = update { it[Keys.includeMulti] = v }
+    suspend fun setIncludeUnknownLang(v: Boolean) = update { it[Keys.includeUnknown] = v }
     suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
     suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
     suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }

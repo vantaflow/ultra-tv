@@ -69,7 +69,6 @@ class DesignStrings(val lang: AppLang) {
     val directTitle get() = t("Live", "Direct", "Directo", "مباشر")
     val catFavorites get() = t("Favorites", "Favoris", "Favoritos", "المفضلة")
     val catAll get() = t("All", "Tout", "Todo", "الكل")
-    val categoryHeader get() = t("%1\$s · %2\$s channels", "%1\$s · %2\$s chaînes", "%1\$s · %2\$s canales", "%1\$s · %2\$s قناة")
     val noChannels get() = t("No channels in this category", "Aucune chaîne dans cette catégorie", "No hay canales en esta categoría", "لا توجد قنوات في هذه الفئة")
     val noFavorites get() = t("No favorites yet — hold OK on a channel to add one", "Pas encore de favoris — maintenez OK sur une chaîne pour en ajouter", "Aún no hay favoritos: mantén OK en un canal para añadir uno", "لا مفضلات بعد — اضغط مطولًا على OK لإضافة قناة")
     val upNext get() = t("UP NEXT", "À SUIVRE", "A CONTINUACIÓN", "التالي")
@@ -132,7 +131,9 @@ class DesignStrings(val lang: AppLang) {
     val bufferClamped get() = t("Buffer reduced to fit this device's memory", "Tampon réduit pour tenir dans la mémoire de cet appareil", "Búfer reducido para la memoria de este dispositivo", "تم تقليل المخزن المؤقت ليناسب ذاكرة الجهاز")
     val engineExo get() = t("ExoPlayer", "ExoPlayer", "ExoPlayer", "ExoPlayer")
     val engineVlc get() = t("VLC", "VLC", "VLC", "VLC")
-    val sectionsCount get() = t("%d sections", "%d sections", "%d secciones", "%d أقسام")
+    fun sections(n: Int) = when (lang) { AppLang.French -> if (n == 1) "1 section" else "$n sections"; AppLang.Spanish -> if (n == 1) "1 sección" else "$n secciones"; AppLang.Arabic -> "$n أقسام"; else -> if (n == 1) "1 section" else "$n sections" }
+    fun channels(n: Int): String { val f = java.text.NumberFormat.getIntegerInstance().format(n); return when (lang) { AppLang.French -> if (n <= 1) "$f chaîne" else "$f chaînes"; AppLang.Spanish -> if (n == 1) "1 canal" else "$f canales"; AppLang.Arabic -> "$f قناة"; else -> if (n == 1) "1 channel" else "$f channels" } }
+    fun categoryHeader(name: String, n: Int) = "$name · ${channels(n)}"
     val syncing get() = t("Syncing", "Synchronisation", "Sincronizando", "جارٍ المزامنة")
 }
 

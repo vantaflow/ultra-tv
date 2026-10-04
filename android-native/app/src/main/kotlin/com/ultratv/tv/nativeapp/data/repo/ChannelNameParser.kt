@@ -82,6 +82,25 @@ object ChannelNameParser {
         return Parsed(false, display, country, q, flags)
     }
 
+    data class CategoryLabel(val label: String, val badge: String?, val quality: Int)
+
+    private val regions = mapOf("AFRI" to "AFR", "AFRICA" to "AFR", "ASIA" to "ASIA", "EURO" to "EU", "LATAM" to "LATAM", "MENA" to "MENA")
+    private val trailingSuper = Regex("\\s*[\u00B2\u00B3\u00B9]\\s*$")
+
+    /** Nom de catégorie affichable : exposants normalisés, préfixe pays/région -> badge, marqueurs de qualité retirés. */
+    fun parseCategory(raw: String): CategoryLabel {
+        val n = Normalizer.normalize(raw, Normalizer.Form.NFKC).trim()
+        val p = parse(n)
+        var label = p.displayName.trim { it in decor }
+        var badge = p.country
+        if (badge == null) {
+            val first = label.substringBefore(' ').uppercase()
+            regions[first]?.let { badge = it; label = label.substringAfter(' ', label).trim().ifEmpty { label } }
+        }
+        label = label.replace(trailingSuper, "").replace(Regex("\\s{2,}"), " ").trim()
+        return CategoryLabel(label.ifBlank { n }, badge, p.quality)
+    }
+
     /** Retire les marqueurs de qualité / drapeaux du texte et les renvoie. */
     private fun cleanMarkers(text: String): Triple<String, Int, Int> {
         var q = Q_NONE

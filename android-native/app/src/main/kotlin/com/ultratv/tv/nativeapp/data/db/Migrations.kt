@@ -11,6 +11,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  */
 val MIGRATION_10_11 = object : Migration(10, 11) {
     override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `provider` ADD COLUMN `categoryFilter` INTEGER NOT NULL DEFAULT -1")
+        db.execSQL("ALTER TABLE `category` ADD COLUMN `enabled` INTEGER NOT NULL DEFAULT 1")
+        db.execSQL("ALTER TABLE `category` ADD COLUMN `position` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `category` ADD COLUMN `lang` TEXT NOT NULL DEFAULT ''")
         for (col in listOf("lastLiveSyncAt", "lastVodSyncAt", "lastSeriesSyncAt", "lastEpgSyncAt")) {
             db.execSQL("ALTER TABLE `provider` ADD COLUMN `$col` INTEGER NOT NULL DEFAULT 0")
         }
@@ -19,12 +23,14 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
             db.execSQL("ALTER TABLE `$t` ADD COLUMN `sortKey` TEXT NOT NULL DEFAULT ''")
             if (t == "channel") {
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `num` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `seq` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `junk` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `isSeparator` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `country` TEXT")
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `quality` INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE `channel` ADD COLUMN `flags` INTEGER NOT NULL DEFAULT 0")
             }
+            db.execSQL("ALTER TABLE `$t` ADD COLUMN `lang` TEXT NOT NULL DEFAULT ''")
             db.execSQL("ALTER TABLE `$t` ADD COLUMN `title` TEXT NOT NULL DEFAULT ''")
             db.execSQL("UPDATE `$t` SET `title` = `name`, `sortKey` = lower(`name`)")
             if (t != "channel") {

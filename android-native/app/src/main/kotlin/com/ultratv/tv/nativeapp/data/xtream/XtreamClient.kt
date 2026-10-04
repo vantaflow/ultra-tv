@@ -65,7 +65,11 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
      * injoignable échoue avant toute suppression de données locales.
      */
     suspend fun <R> withLiveStreams(p: ProviderEntity, block: suspend (Sequence<ChannelEntity>) -> R): R =
-        withStream(p, "get_live_streams", ::liveOf, block)
+        withStream(p, "get_live_streams", ::liveOf, null, block)
+
+    /** Une seule catégorie (le serveur filtre : ~15 Ko au lieu de 20 Mo pour tout le direct). */
+    suspend fun liveOfCategory(p: ProviderEntity, categoryId: String): List<ChannelEntity> =
+        withStream(p, "get_live_streams", ::liveOf, categoryId) { it.toList() }
 
     private fun liveOf(p: ProviderEntity, o: JsonObject): ChannelEntity? {
         val sid = o["stream_id"]?.str() ?: return null
@@ -100,7 +104,10 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     }
 
     suspend fun <R> withVodStreams(p: ProviderEntity, block: suspend (Sequence<MovieEntity>) -> R): R =
-        withStream(p, "get_vod_streams", ::vodOf, block)
+        withStream(p, "get_vod_streams", ::vodOf, null, block)
+
+    suspend fun vodOfCategory(p: ProviderEntity, categoryId: String): List<MovieEntity> =
+        withStream(p, "get_vod_streams", ::vodOf, categoryId) { it.toList() }
 
     private fun vodOf(p: ProviderEntity, o: JsonObject): MovieEntity? {
         val sid = o["stream_id"]?.str() ?: return null
@@ -149,7 +156,10 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     }
 
     suspend fun <R> withSeries(p: ProviderEntity, block: suspend (Sequence<SeriesEntity>) -> R): R =
-        withStream(p, "get_series", ::seriesOf, block)
+        withStream(p, "get_series", ::seriesOf, null, block)
+
+    suspend fun seriesOfCategory(p: ProviderEntity, categoryId: String): List<SeriesEntity> =
+        withStream(p, "get_series", ::seriesOf, categoryId) { it.toList() }
 
     private fun seriesOf(p: ProviderEntity, o: JsonObject): SeriesEntity? {
         val rid = o["series_id"]?.str() ?: return null
@@ -226,16 +236,18 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
 
     /** Petite liste (catégories) : les erreurs réseau REMONTENT (avant : avalées => catalogue vidé). */
     private suspend inline fun <T : Any> arrAt(p: ProviderEntity, action: String, crossinline transform: (JsonObject) -> T?): List<T> =
-        withStream(p, action, { _, o -> transform(o) }) { seq -> seq.toList() }
+        withStream(p, action, { _, o -> transform(o) }, null) { seq -> seq.toList() }
 
     @OptIn(ExperimentalSerializationApi::class)
     private suspend fun <T : Any, R> withStream(
         p: ProviderEntity,
         action: String,
         transform: (ProviderEntity, JsonObject) -> T?,
+        categoryId: String? = null,
         block: suspend (Sequence<T>) -> R,
     ): R = withContext(Dispatchers.IO) {
-        val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action"
+        val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action" +
+            (categoryId?.let { "&category_id=${it.urlEnc()}" } ?: "")
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
             if (!resp.isSuccessful) throw HttpStatusException(resp.code)
             val input = resp.body?.byteStream()?.buffered() ?: return@use block(emptySequence())

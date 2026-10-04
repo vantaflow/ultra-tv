@@ -18,6 +18,7 @@ import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import androidx.room.withTransaction
 import kotlinx.coroutines.async
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,7 @@ class ProviderRepository @Inject constructor(
     private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
     private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
     private val prefs: UserPreferencesStore,
+    private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -383,62 +385,9 @@ class ProviderRepository @Inject constructor(
         try {
             for (part in due) {
                 when (part) {
-                    SyncPart.LIVE -> {
-                        step(part, "Live categories…", null, 0f)
-                        val liveCats = xtream.fetchLiveCategories(p).let(::maybeLock)
-                        var n = 0
-                        xtream.withLiveStreams(p) { seq ->
-                            // La connexion est déjà ouverte : un serveur injoignable a échoué plus haut,
-                            // avant toute suppression. Suppression + insertion = UNE transaction.
-                            db.withTransaction {
-                                categoryDao.deleteForProviderKind(p.id, "LIVE")
-                                categoryDao.upsertAll(liveCats)
-                                channelDao.deleteForProvider(p.id)
-                                for (batch in seq.chunked(INSERT_BATCH)) {
-                                    channelDao.upsertAll(batch)
-                                    n += batch.size
-                                    step(part, "Live channels: $n", n, n / 60_000f)
-                                }
-                            }
-                        }
-                        written += n
-                    }
-                    SyncPart.VOD -> {
-                        step(part, "Movie categories…", null, 0f)
-                        val cats = xtream.fetchVodCategories(p).let(::maybeLock)
-                        var n = 0
-                        xtream.withVodStreams(p) { seq ->
-                            db.withTransaction {
-                                categoryDao.deleteForProviderKind(p.id, "MOVIE")
-                                categoryDao.upsertAll(cats)
-                                movieDao.deleteForProvider(p.id)
-                                for (batch in seq.chunked(INSERT_BATCH)) {
-                                    movieDao.upsertAll(batch)
-                                    n += batch.size
-                                    step(part, "Movies: $n", n, n / 200_000f)
-                                }
-                            }
-                        }
-                        written += n
-                    }
-                    SyncPart.SERIES -> {
-                        step(part, "Series categories…", null, 0f)
-                        val cats = xtream.fetchSeriesCategories(p).let(::maybeLock)
-                        var n = 0
-                        xtream.withSeries(p) { seq ->
-                            db.withTransaction {
-                                categoryDao.deleteForProviderKind(p.id, "SERIES")
-                                categoryDao.upsertAll(cats)
-                                seriesDao.deleteForProvider(p.id)
-                                for (batch in seq.chunked(INSERT_BATCH)) {
-                                    seriesDao.upsertAll(batch)
-                                    n += batch.size
-                                    step(part, "Series: $n", n, n / 60_000f)
-                                }
-                            }
-                        }
-                        written += n
-                    }
+                    SyncPart.LIVE -> written += syncXtreamPart(p, livePart(), ::maybeLock) { c, n -> step(part, "Live channels: $n", n, c) }
+                    SyncPart.VOD -> written += syncXtreamPart(p, vodPart(), ::maybeLock) { c, n -> step(part, "Movies: $n", n, c) }
+                    SyncPart.SERIES -> written += syncXtreamPart(p, seriesPart(), ::maybeLock) { c, n -> step(part, "Series: $n", n, c) }
                     SyncPart.EPG -> {
                         // Le guide ne doit jamais faire échouer le reste : erreur isolée, réessayée au TTL suivant.
                         val ok = runCatching { syncXmltvInternal(p) { c -> step(part, "EPG: $c", c, c / 400_000f) } }
@@ -453,5 +402,149 @@ class ProviderRepository @Inject constructor(
         } finally {
             syncStatus.clear()
         }
+    }
+
+    // ───────────── Téléchargement par catégorie active (stratégie adaptative) ─────────────
+
+    /** Description d'une partie du catalogue Xtream (direct / films / séries) pour le moteur de synchro générique. */
+    private class PartSpec<T : Any>(
+        val kind: String,
+        val fetchCats: suspend (ProviderEntity) -> List<CategoryEntity>,
+        val streamAll: suspend (ProviderEntity, suspend (Sequence<T>) -> Unit) -> Unit,
+        val fetchOne: suspend (ProviderEntity, String) -> List<T>,
+        val catOf: (T) -> String?,
+        val withLang: (T, String) -> T,
+        val deleteAll: suspend (Long) -> Unit,
+        val deleteCats: suspend (Long, List<String>) -> Unit,
+        val deleteCat: suspend (Long, String) -> Unit,
+        val insert: suspend (List<T>) -> Unit,
+        val postBatch: (List<T>) -> List<T> = { it },
+    )
+
+    private fun livePart() = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
+        "LIVE", { xtream.fetchLiveCategories(it) }, { p, blk -> xtream.withLiveStreams(p, blk) }, { p, c -> xtream.liveOfCategory(p, c) },
+        { it.categoryId }, { c, lang -> c.copy(lang = LanguageDetector.forItem(c.name, lang)) },
+        { channelDao.deleteForProvider(it) }, { pid, ids -> channelDao.deleteForCategories(pid, ids) }, { pid, id -> channelDao.deleteForCategory(pid, id) },
+        { channelDao.upsertAll(it) },
+    )
+
+    private fun vodPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
+        "MOVIE", { xtream.fetchVodCategories(it) }, { p, blk -> xtream.withVodStreams(p, blk) }, { p, c -> xtream.vodOfCategory(p, c) },
+        { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
+        { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
+        { movieDao.upsertAll(it) },
+    )
+
+    private fun seriesPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
+        "SERIES", { xtream.fetchSeriesCategories(it) }, { p, blk -> xtream.withSeries(p, blk) }, { p, c -> xtream.seriesOfCategory(p, c) },
+        { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
+        { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
+        { seriesDao.upsertAll(it) },
+    )
+
+    /**
+     * Synchronise une partie du catalogue en ne téléchargeant que les catégories ACTIVES.
+     * Les listes de catégories (légères) sont toujours rechargées et fusionnées avec l'état de l'utilisateur ;
+     * les éléments des catégories désactivées sont purgés. Stratégie : voir [CatalogPlan].
+     * [progress] reçoit (fraction 0..1, nombre d'éléments déjà écrits).
+     */
+    private suspend fun <T : Any> syncXtreamPart(
+        p: ProviderEntity,
+        spec: PartSpec<T>,
+        lock: (List<CategoryEntity>) -> List<CategoryEntity>,
+        progress: (Float, Int) -> Unit,
+    ): Int {
+        val u = prefs.flow.first()
+        val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
+        val fetched = lock(spec.fetchCats(p))
+        val merged = CatalogPlan.merge(fetched, categoryDao.forProviderKind(p.id, spec.kind), langs, u.includeMulti, u.includeUnknownLang)
+        val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
+        val disabledIds = merged.filter { !it.enabled }.map { it.remoteId }
+        val langByCat = merged.associate { it.remoteId to it.lang }
+        val enabledSet = enabledIds.toHashSet()
+        db.withTransaction {
+            categoryDao.deleteForProviderKind(p.id, spec.kind)
+            categoryDao.upsertAll(merged)
+            // SQLite plafonne les paramètres à 999 : purge par paquets.
+            disabledIds.chunked(500).forEach { spec.deleteCats(p.id, it) }
+        }
+        var strategy = CatalogPlan.strategy(merged.size, enabledIds.size, p.categoryFilter)
+        var written = 0
+        val tier = adaptive.state.value.device.tier
+
+        if (strategy == SyncStrategy.PER_CATEGORY) {
+            // Vérifie au PREMIER appel que le serveur respecte `category_id` (sinon repli sur la requête globale).
+            var verified = p.categoryFilter == 1
+            var idx = 0
+            val queue = enabledIds.toMutableList()
+            if (!verified) {
+                while (queue.isNotEmpty() && !verified && strategy == SyncStrategy.PER_CATEGORY) {
+                    val id = queue.removeAt(0); idx++
+                    val items = fetchWithBackoff { spec.fetchOne(p, id) }
+                    if (items.isEmpty()) { db.withTransaction { spec.deleteCat(p.id, id) }; continue }       // vide : ne prouve rien, on essaie la suivante
+                    if (items.any { spec.catOf(it) != null && spec.catOf(it) != id }) {
+                        providerDao.setCategoryFilter(p.id, 0); strategy = SyncStrategy.GLOBAL_FILTERED
+                    } else {
+                        providerDao.setCategoryFilter(p.id, 1); verified = true
+                        written += insertCategory(p, spec, id, items, langByCat)
+                    }
+                }
+            }
+            if (strategy == SyncStrategy.PER_CATEGORY) {
+                val total = (idx + queue.size).coerceAtLeast(1)
+                val done = java.util.concurrent.atomic.AtomicInteger(idx)
+                val count = java.util.concurrent.atomic.AtomicInteger(written)
+                val gate = kotlinx.coroutines.sync.Semaphore(CatalogPlan.parallelism(tier))
+                kotlinx.coroutines.coroutineScope {
+                    queue.map { id ->
+                        async {
+                            gate.withPermit {
+                                val items = fetchWithBackoff { spec.fetchOne(p, id) }
+                                val n = insertCategory(p, spec, id, items, langByCat)
+                                progress(done.incrementAndGet().toFloat() / total, count.addAndGet(n))
+                            }
+                        }
+                    }.forEach { it.await() }
+                }
+                return count.get()
+            }
+        }
+
+        // Requête globale en flux ; les éléments des catégories désactivées ne sont pas stockés.
+        val all = strategy == SyncStrategy.GLOBAL
+        var n = 0
+        spec.streamAll(p) { seq ->
+            db.withTransaction {
+                spec.deleteAll(p.id)
+                val seqState = ChannelSeq()
+                for (batch in seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
+                    .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }.chunked(adaptive.state.value.auto.insertBatch)) {
+                    val rows = @Suppress("UNCHECKED_CAST") (if (batch.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) seqState.assign(batch as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else batch)
+                    spec.insert(rows)
+                    n += rows.size
+                    progress((n / 60_000f).coerceAtMost(0.95f), n)
+                }
+            }
+        }
+        return n
+    }
+
+    private suspend fun <T : Any> insertCategory(p: ProviderEntity, spec: PartSpec<T>, id: String, items: List<T>, langByCat: Map<String, String>): Int {
+        val withLang = items.map { spec.withLang(it, langByCat[id].orEmpty()) }
+        val rows = @Suppress("UNCHECKED_CAST") (if (withLang.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) ChannelSeq().assign(withLang as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else withLang)
+        db.withTransaction { spec.deleteCat(p.id, id); rows.chunked(1_000).forEach { spec.insert(it) } }
+        return rows.size
+    }
+
+    /** Respecte le serveur : nouvelle tentative avec délai croissant sur 429 / 5xx / coupure. */
+    private suspend fun <R> fetchWithBackoff(block: suspend () -> R): R {
+        var delayMs = 1_000L
+        repeat(2) {
+            try { return block() }
+            catch (e: com.ultratv.tv.nativeapp.data.net.HttpStatusException) { if (e.code != 429 && e.code < 500) throw e }
+            catch (e: java.io.IOException) { /* réessaie */ }
+            kotlinx.coroutines.delay(delayMs); delayMs *= 2
+        }
+        return block()
     }
 }

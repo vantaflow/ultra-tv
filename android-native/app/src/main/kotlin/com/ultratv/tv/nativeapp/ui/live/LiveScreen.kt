@@ -82,6 +82,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     var focusedChannel by remember { mutableStateOf<ChannelEntity?>(null) }
     // Le focus initial (programmatique) ne doit PAS changer de catégorie : seule une action de la télécommande le fait.
     var userMoved by remember { mutableStateOf(false) }
+    // L'aperçu suit la chaîne focalisée avec ~300 ms de recul ; dans les catégories : première chaîne de la catégorie.
+    var previewChannel by remember { mutableStateOf<ChannelEntity?>(null) }
+    LaunchedEffect(focusedChannel) { kotlinx.coroutines.delay(300); previewChannel = focusedChannel }
+    LaunchedEffect(selected) { focusedChannel = null; previewChannel = null }
     val firstChannel = remember { FocusRequester() }
     LaunchedEffect(selected, channels.itemCount > 0) {
         if (!userMoved && channels.itemCount > 0) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
@@ -114,7 +118,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         Column(Modifier.width(640.design).fillMaxHeight().padding(horizontal = 32.design).padding(top = 54.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             val name = when (selected) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(current?.name.orEmpty()) }
             Text(
-                D.categoryHeader.format(name, java.text.NumberFormat.getIntegerInstance().format(current?.count ?: 0)) + (current?.sections?.takeIf { it > 0 }?.let { " · " + D.sectionsCount.format(it) } ?: ""),
+                D.categoryHeader(name, current?.count ?: 0) + (current?.sections?.takeIf { it > 0 }?.let { " · " + D.sections(it) } ?: ""),
                 color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 12.design),
             )
@@ -127,9 +131,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
 
         // ── Aperçu ──
         Preview(
-            channel = focusedChannel ?: channels.itemSnapshotList.firstOrNull(),
-            now = (focusedChannel ?: channels.itemSnapshotList.firstOrNull())?.let { nowNext[it.id]?.first },
-            next = (focusedChannel ?: channels.itemSnapshotList.firstOrNull())?.let { nowNext[it.id]?.second },
+            channel = previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false },
+            now = (previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false })?.let { nowNext[it.id]?.first },
+            next = (previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false })?.let { nowNext[it.id]?.second },
             D = D, modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
@@ -172,6 +176,7 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Bo
                     (if (locked) "🔒 " else "") + label,
                     color = if (f) Ux.TextOnLight else if (selected) Ux.White else Ux.Text2,
                     fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 )
                 Spacer(Modifier.width(8.design))
                 Text(java.text.NumberFormat.getIntegerInstance().format(count), color = if (f) Ux.Line else if (selected) Ux.Text else Color(0xFF71717A), fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
@@ -226,7 +231,7 @@ private fun ChannelList(
                     // Séparateur : en-tête de section, NON focalisable (le D-pad le saute), non lisible.
                     c.isSeparator -> if (!sameLabel(c.title, categoryName)) SectionHeader(c.title)
                     else -> ChannelRow(
-                        c, position = i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
+                        c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first,
                         modifier = if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
@@ -283,7 +288,7 @@ private fun ChannelRow(
             LogoBox(c.logo, c.title, Modifier.width(72.design).height(48.design), radius = 10, pad = 5, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
             Spacer(Modifier.width(20.design))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
-                Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
                 Text(now?.title.orEmpty(), color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
