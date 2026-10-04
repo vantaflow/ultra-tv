@@ -222,6 +222,7 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.datastore.preferences)
     implementation(libs.work.runtime)
+    implementation(libs.tvprovider)
     implementation(libs.hilt.work)
     ksp(libs.hilt.work.compiler)
     implementation(libs.paging.runtime)

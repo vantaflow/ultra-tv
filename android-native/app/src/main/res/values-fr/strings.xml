@@ -2,4 +2,6 @@
 <resources>
     <string name="sync_channel">Synchronisation du catalogue</string>
     <string name="sync_notification">Mise à jour de vos chaînes…</string>
+    <string name="tv_favorites_channel">Favoris</string>
+    <string name="search_hint">Chercher chaînes, films et séries</string>
 </resources>

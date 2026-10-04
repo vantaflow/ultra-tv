@@ -41,3 +41,22 @@ class GuideGridTest {
         assertEquals(10 * h + 0L, guideWindowStart(now, 0))
     }
 }
+
+class ProgramActionStateTest {
+    private fun prog(start: Long, end: Long) = com.ultratv.tv.nativeapp.data.db.EpgEntity(id = 1, channelId = 1, title = "t", description = null, startMs = start, endMs = end)
+
+    @org.junit.Test fun programmeFutur_rappelEtEnregistrementPossibles_pasDeReplay() {
+        val s = com.ultratv.tv.nativeapp.ui.guide.programActionState(prog(2_000, 3_000), replayUrl = null, nowMs = 1_000)
+        org.junit.Assert.assertEquals(com.ultratv.tv.nativeapp.ui.guide.ProgramActionState(replayEnabled = false, remindEnabled = true, recordEnabled = true), s)
+    }
+
+    @org.junit.Test fun programmePasse_avecReplay_ni_rappel_ni_enregistrement() {
+        val s = com.ultratv.tv.nativeapp.ui.guide.programActionState(prog(100, 500), replayUrl = "x", nowMs = 1_000)
+        org.junit.Assert.assertEquals(com.ultratv.tv.nativeapp.ui.guide.ProgramActionState(replayEnabled = true, remindEnabled = false, recordEnabled = false), s)
+    }
+
+    @org.junit.Test fun programmeEnCours_enregistrementPossibleMaisPasDeRappel() {
+        val s = com.ultratv.tv.nativeapp.ui.guide.programActionState(prog(500, 5_000), replayUrl = null, nowMs = 1_000)
+        org.junit.Assert.assertFalse(s.remindEnabled); org.junit.Assert.assertTrue(s.recordEnabled)
+    }
+}

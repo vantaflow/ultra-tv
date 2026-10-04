@@ -256,6 +256,9 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<MovieEntity>>
 
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): MovieEntity?
+
     @Query("SELECT * FROM movie WHERE id = :id")
     suspend fun byId(id: Long): MovieEntity?
 
@@ -318,6 +321,9 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<SeriesEntity>>
 
+    @Query("SELECT * FROM series WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): SeriesEntity?
+
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): SeriesEntity?
 
@@ -359,6 +365,10 @@ interface SeriesDao {
 interface EpisodeDao {
     @Query("SELECT * FROM episode WHERE seriesId = :sid ORDER BY season, episode")
     fun observeForSeries(sid: Long): Flow<List<EpisodeEntity>>
+
+    /** Épisode d'une source par son identifiant distant (liens profonds Watch Next). */
+    @Query("SELECT e.* FROM episode e JOIN series s ON s.id = e.seriesId WHERE s.providerId = :pid AND e.remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): EpisodeEntity?
 
     @Query("SELECT * FROM episode WHERE id = :id")
     suspend fun byId(id: Long): EpisodeEntity?
@@ -465,6 +475,24 @@ interface RecordingDao {
 
     @Query("DELETE FROM recording WHERE id = :id")
     suspend fun delete(id: Long)
+
+    @Query("SELECT * FROM recording WHERE status = 'scheduled' AND scheduledEndMs > :nowMs ORDER BY scheduledStartMs")
+    suspend fun scheduledPending(nowMs: Long): List<RecordingEntity>
+
+    @Query("UPDATE recording SET status = 'failed', errorMessage = 'missed' WHERE status = 'scheduled' AND scheduledEndMs < :nowMs")
+    suspend fun expireMissed(nowMs: Long)
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'scheduled' AND providerId = :pid AND remoteId = :rid AND scheduledStartMs = :startMs")
+    suspend fun countScheduled(pid: Long, rid: String, startMs: Long): Int
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'running'")
+    fun observeRunningCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM recording WHERE status = 'running'")
+    suspend fun runningCount(): Int
+
+    @Query("UPDATE recording SET status = :status, errorMessage = :err WHERE id = :id")
+    suspend fun setStatus(id: Long, status: String, err: String?)
 }
 
 @Dao

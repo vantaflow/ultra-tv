@@ -32,6 +32,8 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
     @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 
+    @Inject lateinit var googleTv: com.ultratv.tv.nativeapp.data.tv.GoogleTvSync
+
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(): ImageLoader {
@@ -98,6 +100,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                 com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
         }
+
+        // Google TV : Watch Next + chaîne Favoris, alimentés par la base (sans effet hors Android TV).
+        googleTv.start(bgScope)
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
         bgScope.launch { runCatching { secretsMigrator.migrate() } }

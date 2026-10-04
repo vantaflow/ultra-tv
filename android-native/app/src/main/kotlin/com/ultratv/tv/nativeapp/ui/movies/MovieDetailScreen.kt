@@ -45,6 +45,7 @@ import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.trailerLabel
 import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -75,6 +76,7 @@ class MovieDetailViewModel @Inject constructor(
     private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
     private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
+    private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
 ) : ViewModel() {
 
     /** Position de reprise en ms (0 = jamais commencé). */
@@ -119,8 +121,17 @@ class MovieDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _infoLoading.value = true
             val m = catalog.movieById(id)
-            _info.value = if (m == null) null else runCatching { catalog.vodInfo(m) }.getOrNull()
+            val source = if (m == null) null else runCatching { catalog.vodInfo(m) }.getOrNull()
+            _info.value = source
             _infoLoading.value = false
+            // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
+            if (m != null) {
+                val t = runCatching { tmdb.forMovie(m, source?.tmdbId) }.getOrNull()
+                if (t?.tmdbId != null) {
+                    _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, m, t)
+                    _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(m, t)
+                }
+            }
         }
     }
 
@@ -233,6 +244,10 @@ fun MovieDetailScreen(
                 )
                 if (resume > 0) PillButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) }, heightPx = 72, fontPx = 26)
                 PillButton(S.playerRecord, onClick = { vm.record(movie, S.toastRecordingQueued) }, heightPx = 72, fontPx = 26)
+                T.presentable(info?.trailer)?.let { url ->
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
+                    PillButton(D.trailerLabel, onClick = { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, url) }, heightPx = 72, fontPx = 26)
+                }
                 FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
             if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {

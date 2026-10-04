@@ -69,3 +69,28 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         )
     }
 }
+
+/**
+ * 12 → 13 : enregistrements programmés depuis le guide (fenêtre voulue + nom de chaîne).
+ * Migration DÉDIÉE au lot B1 ; aucune donnée existante n'est touchée.
+ */
+val MIGRATION_12_13 = object : Migration(12, 13) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `scheduledStartMs` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `scheduledEndMs` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `recording` ADD COLUMN `channelName` TEXT")
+    }
+}
+
+/**
+ * 13 → 14 : cache des fiches TMDB (lot B1). Table nouvelle, aucune donnée existante n'est touchée.
+ */
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `tmdb_info` (`kind` TEXT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, " +
+                "`tmdbId` INTEGER, `overview` TEXT, `posterPath` TEXT, `backdropPath` TEXT, `rating` REAL, `cast` TEXT, `trailerKey` TEXT, " +
+                "`originalLanguage` TEXT, `lang` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`kind`, `providerId`, `remoteId`))",
+        )
+    }
+}

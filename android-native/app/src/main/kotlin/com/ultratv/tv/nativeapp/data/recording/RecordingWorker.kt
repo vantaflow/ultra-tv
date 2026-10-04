@@ -3,6 +3,7 @@ package com.ultratv.tv.nativeapp.data.recording
 import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
+import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.ultratv.tv.nativeapp.data.db.RecordingDao
 import dagger.assisted.Assisted
@@ -34,11 +35,21 @@ class RecordingWorker @AssistedInject constructor(
     private val dao: RecordingDao,
 ) : CoroutineWorker(appContext, params) {
 
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext)
+
     override suspend fun doWork(): Result {
         val id = inputData.getLong(KEY_RECORDING_ID, -1L)
         if (id < 0) return Result.failure()
         val r = dao.byId(id) ?: return Result.failure()
-        val maxDurationMs = inputData.getLong(KEY_MAX_DURATION_MS, 60L * 60 * 1000)
+        var maxDurationMs = inputData.getLong(KEY_MAX_DURATION_MS, 60L * 60 * 1000)
+        // Un enregistrement programmé ne dépasse jamais sa fenêtre, même après une nouvelle tentative.
+        if (r.scheduledEndMs > 0) {
+            val remaining = RecordingPlan.paddedWindow(r.scheduledStartMs, r.scheduledEndMs).second - System.currentTimeMillis()
+            if (remaining <= 0) { dao.setStatus(id, "failed", "missed"); return Result.failure() }
+            maxDurationMs = minOf(maxDurationMs, remaining)
+        }
+        // Service de premier plan (dataSync) : une émission de deux heures ne doit pas être tuée par le système.
+        runCatching { setForeground(foregroundInfo(applicationContext)) }
 
         return withContext(Dispatchers.IO) {
             val file = File(r.filePath).apply { parentFile?.mkdirs() }
@@ -130,6 +141,21 @@ class RecordingWorker @AssistedInject constructor(
     }
 
     companion object {
+        private const val CHANNEL_ID = "recording_active"
+        private const val NOTIF_ID = 4102
+
+        private fun foregroundInfo(ctx: Context): ForegroundInfo {
+            val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                nm.createNotificationChannel(android.app.NotificationChannel(CHANNEL_ID, "Recording", android.app.NotificationManager.IMPORTANCE_LOW))
+            }
+            val n = androidx.core.app.NotificationCompat.Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(ctx.applicationInfo.icon).setContentTitle("REC").setOngoing(true).build()
+            return if (android.os.Build.VERSION.SDK_INT >= 29)
+                ForegroundInfo(NOTIF_ID, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            else ForegroundInfo(NOTIF_ID, n)
+        }
+
         const val KEY_RECORDING_ID = "recording_id"
         const val KEY_MAX_DURATION_MS = "max_duration_ms"
     }

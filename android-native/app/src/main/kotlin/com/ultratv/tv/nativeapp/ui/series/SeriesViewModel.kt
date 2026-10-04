@@ -36,6 +36,7 @@ class SeriesDetailViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val provider: ProviderRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
+    private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
 ) : ViewModel() {
 
     /** Historique des épisodes de cette série, le plus récent d'abord (progression + « Reprendre »). */
@@ -85,8 +86,11 @@ class SeriesDetailViewModel @Inject constructor(
         }
         viewModelScope.launch {
             runCatching { catalog.loadEpisodes(id) }
-            _series.value = catalog.seriesById(id)     // loadEpisodes complète plot / genre / année / distribution
+            val s = catalog.seriesById(id)             // loadEpisodes complète plot / genre / année / distribution
+            _series.value = s
             _loading.value = false
+            // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
+            if (s != null) runCatching { tmdb.forSeries(s) }.getOrNull()?.let { _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it) }
         }
         viewModelScope.launch {
             catalog.episodes(id).collect { _episodes.value = it }
