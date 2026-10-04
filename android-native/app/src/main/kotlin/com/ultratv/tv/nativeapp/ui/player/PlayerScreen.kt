@@ -138,6 +138,7 @@ class PlayerViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val adaptive: AdaptiveProfile,
     private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
+    private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
 ) : ViewModel() {
@@ -158,7 +159,11 @@ class PlayerViewModel @Inject constructor(
             while (true) {
                 val ch = channelDao.byRemoteId(item.providerId, item.remoteId)
                 val now = System.currentTimeMillis()
-                emit(ch?.let { epgDao.rangeForChannels(listOf(it.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now } })
+                var cur = ch?.let { epgDao.rangeForChannels(listOf(it.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now } }
+                // Pas de guide pour cette chaîne : programme court du fournisseur (limité, voir ensureShortEpg).
+                if (cur == null && ch != null && catalogRepo.ensureShortEpg(listOf(ch.id)))
+                    cur = epgDao.rangeForChannels(listOf(ch.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now }
+                emit(cur)
                 delay(20_000)
             }
         }
@@ -211,8 +216,12 @@ class PlayerViewModel @Inject constructor(
     private val browsedCategory = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
     private val browsedEntries = kotlinx.coroutines.flow.MutableStateFlow<List<DrawerEntry>?>(null)
 
-    val queue: StateFlow<List<DrawerEntry>> = kotlinx.coroutines.flow.combine(queueEntries, browsedEntries, playback.current) { q, b, cur ->
-        if (b == null) q else b.map { it.copy(isCurrent = it.channel.remoteId == cur?.remoteId) }
+    /** Programmes obtenus par le secours « programme court » (guide complet absent), par chaîne. */
+    private val shortProgrammes = kotlinx.coroutines.flow.MutableStateFlow<Map<Long, Pair<EpgEntity?, EpgEntity?>>>(emptyMap())
+
+    val queue: StateFlow<List<DrawerEntry>> = kotlinx.coroutines.flow.combine(queueEntries, browsedEntries, playback.current, shortProgrammes) { q, b, cur, sp ->
+        val base = if (b == null) q else b.map { it.copy(isCurrent = it.channel.remoteId == cur?.remoteId) }
+        if (sp.isEmpty()) base else base.map { e -> if (e.now == null) sp[e.channel.id]?.let { (n, x) -> e.copy(now = n, next = x) } ?: e else e }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Catégories LIVE actives (colonne de gauche du tiroir). */
@@ -222,6 +231,16 @@ class PlayerViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val activeCategory: StateFlow<String?> = browsedCategory
+
+    /** Tiroir : complète les lignes sans programme (chaînes visibles ou focalisée) via le programme court du fournisseur. */
+    fun fillProgrammes(channels: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
+        if (channels.isEmpty()) return
+        viewModelScope.launch {
+            if (!catalogRepo.ensureShortEpg(channels.map { it.id })) return@launch
+            val got = entriesFor(channels, null).filter { it.now != null || it.next != null }
+            if (got.isNotEmpty()) shortProgrammes.value = shortProgrammes.value + got.associate { it.channel.id to (it.now to it.next) }
+        }
+    }
 
     /** Charge les chaînes d'une catégorie dans le tiroir (sans zapper). */
     fun browse(categoryId: String) {

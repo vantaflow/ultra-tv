@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.12] — 2026-10-04 (Android TV)
+
+### Corrections
+- Programme en cours : si le guide complet n'est pas (encore) téléchargé, il est demandé chaîne par chaîne au fournisseur (écran Direct, liste des chaînes du lecteur, bandeau).
+- Chaînes en plusieurs exemplaires : pastille de qualité (SD, HD, FHD, 4K) et mentions RAW / HEVC / 50 FPS sur chaque ligne, dans le Direct et dans la liste du lecteur.
+
 ## [1.2.11] — 2026-10-04 (Android TV)
 
 ### Corrections

@@ -314,6 +314,29 @@ internal fun QualityBadge(quality: Int, focused: Boolean) {
     Text(text, color = f, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(b).padding(horizontal = 8.design, vertical = 3.design))
 }
 
+/** Mentions techniques qui distinguent deux flux de même nom et même qualité (« RAW », « HEVC », « 50 FPS »…). */
+internal fun flagsLabel(flags: Int): String? {
+    val P = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser
+    val parts = buildList {
+        if (flags and P.F_RAW != 0) add("RAW")
+        if (flags and P.F_HEVC != 0) add("HEVC")
+        if (flags and P.F_HDR != 0) add("HDR")
+        if (flags and P.F_60FPS != 0) add("60 FPS") else if (flags and P.F_50FPS != 0) add("50 FPS")
+        if (flags and P.F_LQ != 0) add("LQ")
+        if (flags and P.F_BACKUP != 0) add("BACKUP")
+    }
+    return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
+}
+
+/** Qualité + mentions techniques : ce qui différencie les doublons d'une même chaîne. */
+@Composable
+internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.design), verticalAlignment = Alignment.CenterVertically) {
+        flagsLabel(flags)?.let { Text(it, color = if (focused) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1) }
+        QualityBadge(quality, focused)
+    }
+}
+
 /** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne), programme en cours, qualité. */
 @Composable
 private fun ChannelRow(
@@ -338,7 +361,7 @@ private fun ChannelRow(
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
             Spacer(Modifier.width(8.design))
-            QualityBadge(c.quality, f)
+            StreamBadges(c.quality, c.flags, f)
         }
     }
 }
@@ -413,7 +436,7 @@ private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, fa
             }
             if (favorite) Text("♥", color = Ux.Accent, fontSize = 13.sp, maxLines = 1)
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, false)
-            QualityBadge(c.quality, selected)
+            StreamBadges(c.quality, c.flags, selected)
         }
     }
 }

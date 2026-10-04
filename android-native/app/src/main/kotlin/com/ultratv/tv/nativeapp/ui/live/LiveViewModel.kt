@@ -143,6 +143,18 @@ class LiveViewModel @Inject constructor(
             l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now }
         }
         _nowNext.value = (_nowNext.value + add).let { m -> if (m.size > 600) add else m }
+        // Guide complet absent (box qui n'a pas fini la synchro, XMLTV en échec) : programme court du fournisseur.
+        val missing = ids.filter { add[it]?.first == null }
+        if (missing.isNotEmpty()) viewModelScope.launch {
+            if (catalog.ensureShortEpg(missing)) loadNowNextLocal(missing)
+        }
+    }
+
+    /** Relecture locale seulement (pas de nouvel appel réseau) après un programme court. */
+    private suspend fun loadNowNextLocal(ids: List<Long>) {
+        val now = System.currentTimeMillis()
+        val rows = epgDao.rangeForChannels(ids, now - 30 * 60_000, now + 6 * 60 * 60_000).groupBy { it.channelId }
+        _nowNext.value = _nowNext.value + ids.associateWith { id -> val l = rows[id].orEmpty(); l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now } }
     }
 
     init {

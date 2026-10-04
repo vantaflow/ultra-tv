@@ -63,6 +63,11 @@ internal fun LiveDrawer(
     // À l'ouverture, le focus va sur la chaîne regardée (OK = zapper tout de suite, ▲▼ = parcourir autour).
     val currentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     var focusedOnce by remember { mutableStateOf(false) }
+    // Lignes sans programme (guide complet absent sur la box) : on complète les premières à l'ouverture.
+    LaunchedEffect(entries.firstOrNull()?.channel?.id) {
+        val start = (entries.indexOfFirst { it.isCurrent }.takeIf { it >= 0 } ?: 0)
+        vm.fillProgrammes(entries.drop((start - 4).coerceAtLeast(0)).take(12).filter { it.now == null }.map { it.channel })
+    }
     LaunchedEffect(entries.size, current?.channel?.id) {
         current?.let { c -> entries.indexOf(c).takeIf { it >= 0 }?.let { listState.scrollToItem((it - 2).coerceAtLeast(0)) } }
         if (!focusedOnce && current != null) repeat(20) {
@@ -96,7 +101,7 @@ internal fun LiveDrawer(
                     Label("${title.uppercase()} · ${entries.size}", Modifier.padding(bottom = 8.design))
                     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
                         items(entries, key = { it.channel.id }) { e ->
-                            ChannelLine(e, index = entries.indexOf(e) + 1, D = D, onFocus = { selected = e }, onClick = { onPick(e.channel) },
+                            ChannelLine(e, index = entries.indexOf(e) + 1, D = D, onFocus = { selected = e; if (e.now == null) vm.fillProgrammes(listOf(e.channel)) }, onClick = { onPick(e.channel) },
                                 modifier = if (e.isCurrent) Modifier.focusRequester(currentFocus) else Modifier)
                         }
                     }
@@ -139,6 +144,7 @@ private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultra
                 ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(2.design)), heightPx = 4, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
                 Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            com.ultratv.tv.nativeapp.ui.live.StreamBadges(e.channel.quality, e.channel.flags, f)
             if (e.isCurrent) Text(D.onAirPill, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
         }
     }

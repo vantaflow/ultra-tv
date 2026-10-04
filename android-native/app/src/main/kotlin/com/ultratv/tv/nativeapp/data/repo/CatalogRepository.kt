@@ -18,6 +18,9 @@ import com.ultratv.tv.nativeapp.data.db.ProviderDao
 import com.ultratv.tv.nativeapp.data.db.SeriesDao
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
 import javax.inject.Inject
@@ -156,6 +159,29 @@ class CatalogRepository @Inject constructor(
 
     fun upcomingEpg(channelId: Long): kotlinx.coroutines.flow.Flow<List<EpgEntity>> =
         epgDao.observeUpcoming(channelId, System.currentTimeMillis())
+
+    private val shortEpgTried = java.util.concurrent.ConcurrentHashMap<Long, Long>()
+    private val shortEpgGate = kotlinx.coroutines.sync.Semaphore(3)
+
+    /**
+     * Secours quand le guide XMLTV n'est pas (encore) là : programme court du fournisseur pour les chaînes données,
+     * au plus une tentative par chaîne toutes les 15 min, 3 requêtes à la fois. Renvoie true si au moins une a été écrite.
+     */
+    suspend fun ensureShortEpg(channelIds: List<Long>): Boolean = kotlinx.coroutines.coroutineScope {
+        val now = System.currentTimeMillis()
+        val todo = channelIds.filter { now - (shortEpgTried[it] ?: 0L) > 15 * 60_000L }.take(12)
+        todo.forEach { shortEpgTried[it] = now }
+        todo.map { id -> async { shortEpgGate.withPermit { refreshShortEpgCount(id) > 0 } } }.awaitAll().any { it }
+    }
+
+    private suspend fun refreshShortEpgCount(channelId: Long): Int {
+        val ch = channelDao.byId(channelId) ?: return 0
+        val p = providerDao.byId(ch.providerId) ?: return 0
+        if (p.kind != "XTREAM") return 0
+        val rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
+        if (rows.isNotEmpty()) { epgDao.deleteForChannel(ch.id); epgDao.upsertAll(rows) }
+        return rows.size
+    }
 
     /** Pulls short EPG for one channel from Xtream. Safe to call repeatedly — no-op on failure. */
     suspend fun refreshShortEpg(channelId: Long) {
