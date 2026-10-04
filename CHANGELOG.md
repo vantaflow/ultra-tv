@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.9] — 2026-10-04 (Android TV)
+
+### Nouveautés
+- Films et Séries : vue « Tous » en rangées par catégorie (comme Netflix), « Voir tout » ouvre la grille de la catégorie.
+
 ## [1.2.8] — 2026-10-04 (Android TV)
 
 ### Nouveautés
