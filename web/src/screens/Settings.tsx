@@ -227,7 +227,7 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
             const out = kind === "m3u-link" ? convertToXtream(s) ?? s : s;
             if (kind !== "m3u-file") await testSource(out);
             await saveSource(out);
-            if (out !== s) void useSync.getState().start(out, { silent: true });
+            if (out !== s) void useSync.getState().start(out, { preserveFlags: true, silent: true });
             onClose();
           } catch (e) { setErr(errorKey(e, t, s.type)); } finally { setBusy(false); }
         }}>{busy ? t("src.testing") : t("common.save")}</button>

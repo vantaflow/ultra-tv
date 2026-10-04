@@ -101,7 +101,8 @@ function Effects() {
   // Source jamais synchronisée hors assistant (ex. M3U get.php convertie en Xtream au démarrage) : première synchro sans action.
   useEffect(() => {
     if (!ready || !active || !needsFirstSync(active) || loc.pathname.startsWith("/welcome")) return;
-    void useSync.getState().start(active, { silent: true });
+    // Garde les catégories masquées/affichées à la main s'il existe déjà un catalogue (identifiants du fournisseur).
+    void useSync.getState().start(active, { preserveFlags: true, silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, active?.id, active?.state, loc.pathname]);
 
