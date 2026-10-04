@@ -11,9 +11,14 @@ import { useSync } from "@/state/sync";
 import { detectSourceLanguages, testSource } from "@/sync/client";
 import { OTHER_LANG, type DetectedLanguage } from "@/sync/core";
 import { AppMark, Icon, type IconName } from "@/ui/Icon";
-import { SourceForm, type SourceKind } from "./SourceForm";
+import { SourceForm, type SourceKind as FormKind } from "./SourceForm";
+import { PairingView } from "./Pairing";
+import { cloudAvailable } from "@/cloud/client";
+import { listSources } from "@/db/sources";
 
-type Step = "type" | "form" | "langs" | "sync";
+type SourceKind = FormKind | "cloud";
+
+type Step = "type" | "form" | "langs" | "sync" | "cloud";
 
 export function errorKey(e: unknown, t: TFn): string {
   const err = e as Error;
@@ -61,7 +66,7 @@ export function Onboarding() {
   const [params] = useSearchParams();
   const adding = params.get("add") === "1";
   const prefs = usePrefs();
-  const [step, setStep] = useState<Step>("type");
+  const [step, setStep] = useState<Step>(params.get("cloud") === "1" && cloudAvailable() ? "cloud" : "type");
   const [kind, setKind] = useState<SourceKind>("xtream");
   const [src, setSrc] = useState<Source>(() => emptySource());
   const [fileText, setFileText] = useState<string | null>(null);
@@ -76,6 +81,7 @@ export function Onboarding() {
 
   const pickType = (k: SourceKind) => {
     setKind(k);
+    if (k === "cloud") { setStep("cloud"); return; }
     setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : "m3u" });
     setFileText(null); setFileInfo(""); setErr(null);
     setStep("form");
@@ -152,7 +158,7 @@ export function Onboarding() {
             <p className="lead" style={{ marginTop: 12 }}>{t("src.whichLead")}</p>
           </div>
           <div className="choice-grid">
-            {([["xtream", "source", "src.xtream", "src.xtreamD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
+            {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
               <button key={k} className={`choice${i === 0 ? " first" : ""}`} onClick={() => pickType(k)}>
                 <span className="ico"><Icon name={ic} size={30} /></span>
                 <span><b>{t(l)}</b><span className="s">{t(d)}</span></span>
@@ -162,13 +168,27 @@ export function Onboarding() {
         </main>
       )}
 
+      {step === "cloud" && (
+        <PairingView
+          onCancel={() => setStep("type")}
+          onDone={async (r) => {
+            const list = await listSources();
+            const first = list.find((x) => x.cloudId);
+            if (first) { prefs.set({ activeSourceId: first.id! }); setSavedId(first.id!); started.current = true; setSrc(first); setKind(first.type === "xtream" ? "xtream" : "m3u-link"); setStep("sync"); }
+            else if (list.length) nav("/", { replace: true });
+            else { setStep("type"); setErr(r.skipped ? t("cloud.noProviders") : t("cloud.noProviders")); }
+          }}
+        />
+      )}
+      {step === "type" && err && <div className="alert err" style={{ maxWidth: "56rem", margin: "0 auto" }} role="alert">{err}</div>}
+
       {step === "form" && (
         <main onKeyDown={(e) => { if (e.key === "Enter" && !busy && (e.target as HTMLElement).tagName === "INPUT") void submit(); }}>
           <div>
             <div className="eyebrow">{t("src.step", { a: 2, b: 3 })}</div>
             <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
           </div>
-          <SourceForm kind={kind} value={src} onChange={setSrc} fileInfo={fileInfo}
+          <SourceForm kind={kind as FormKind} value={src} onChange={setSrc} fileInfo={fileInfo}
             onPickFile={async (f) => { setFileText(await f.text()); setFileInfo(t("src.fileChosen", { n: f.name, k: Math.round(f.size / 1024) })); setSrc((s) => ({ ...s, m3uUrl: `file:${f.name}`, name: s.name || f.name.replace(/\.[^.]+$/, "") })); }} />
           {err && <div className="alert err" role="alert"><Icon name="alert" size={20} />{err}</div>}
           {busy && <div className="alert" role="status">{t("src.testing")}</div>}

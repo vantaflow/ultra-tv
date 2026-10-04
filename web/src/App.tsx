@@ -20,6 +20,8 @@ import { Favorites } from "@/screens/Favorites";
 import { Settings } from "@/screens/Settings";
 import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
+import { loadCloud, startCloudSchedule } from "@/cloud/service";
+import { cloudAvailable } from "@/cloud/client";
 
 function Effects() {
   const { theme, accent, lang, syncOn } = usePrefs();
@@ -46,6 +48,8 @@ function Effects() {
   useEffect(() => {
     document.documentElement.classList.toggle("mac", bridge()?.platform === "darwin");
     startSourcesWatcher();
+    let stopCloud: (() => void) | undefined;
+    void loadCloud().then(() => { if (cloudAvailable()) stopCloud = startCloudSchedule(); });
     void initTransport();
     const on = () => useUi.getState().setOnline(true);
     const off = () => useUi.getState().setOnline(false);
@@ -56,6 +60,7 @@ function Effects() {
       window.removeEventListener("online", on);
       window.removeEventListener("offline", off);
       if (typeof unsub === "function") unsub();
+      stopCloud?.();
     };
   }, []);
 

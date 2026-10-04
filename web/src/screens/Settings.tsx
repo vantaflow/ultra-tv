@@ -18,11 +18,14 @@ import { Modal, Seg, Switch } from "@/ui/common";
 import { Icon, type IconName } from "@/ui/Icon";
 import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
+import { cloudAvailable } from "@/cloud/client";
+import { saveDeviceName, saveWorker, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
 
-type Section = "sources" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
+type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
 const SECTIONS: { id: Section; icon: IconName; key: "set.sources" }[] = [
   { id: "sources", icon: "source", key: "set.sources" },
+  { id: "cloud", icon: "globe", key: "set.sources" },
   { id: "display", icon: "settings", key: "set.sources" },
   { id: "playback", icon: "play", key: "set.sources" },
   { id: "sync", icon: "refresh", key: "set.sources" },
@@ -37,7 +40,7 @@ export function Settings() {
   const nav = useNavigate();
   const { section } = useParams();
   const cur = (SECTIONS.find((s) => s.id === section)?.id ?? "sources") as Section;
-  const label = (id: Section) => t(({ sources: "set.sources", display: "set.display", playback: "set.playback", sync: "set.sync", categories: "set.categories", language: "set.language", profiles: "set.profiles", about: "set.about" } as const)[id]);
+  const label = (id: Section) => t(({ sources: "set.sources", cloud: "set.cloud", display: "set.display", playback: "set.playback", sync: "set.sync", categories: "set.categories", language: "set.language", profiles: "set.profiles", about: "set.about" } as const)[id]);
   return (
     <div className="settings">
       <nav className="nav" aria-label={t("set.title")}>
@@ -50,6 +53,7 @@ export function Settings() {
       </nav>
       <div className="pane">
         {cur === "sources" && <SourcesPane />}
+        {cur === "cloud" && <CloudPane />}
         {cur === "display" && <DisplayPane />}
         {cur === "playback" && <PlaybackPane />}
         {cur === "sync" && <SyncPane />}
@@ -74,6 +78,8 @@ function SourcesPane() {
   const prefs = usePrefs();
   const sync = useSync();
   const [edit, setEdit] = useState<Source | null>(null);
+  const [share, setShare] = useState<Source | null>(null);
+  const cloud = useCloud();
   const active = useActiveSource();
   return (
     <>
@@ -87,8 +93,13 @@ function SourcesPane() {
             <span className="grow">
               <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
               <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
+              {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
             {!isActive && <button className="btn sm" onClick={() => prefs.set({ activeSourceId: s.id! })}>{t("set.makeActive")}</button>}
+            {cloud.paired && cloud.pushAvailable !== false && s.cloudOrigin !== "cloud" && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && (
+              <button className="btn sm" onClick={() => setShare(s)}><Icon name="globe" size={14} />{t("cloud.share")}</button>
+            )}
+            {s.cloudOrigin === "local" && <button className="btn sm" onClick={async () => { if (await unshareSource(s)) useUi.getState().toast(t("cloud.unshare")); }}>{t("cloud.unshare")}</button>}
             <button className="btn sm" onClick={() => setEdit(s)}>{t("common.edit")}</button>
             <button className="btn sm danger" disabled={sync.running} onClick={async () => { if (confirm(t("set.confirmDelete", { n: s.name }))) await deleteSource(s.id!); }} aria-label={t("common.delete")}><Icon name="trash" size={16} /></button>
           </div>
@@ -96,6 +107,98 @@ function SourcesPane() {
       })}
       <button className="add-card" onClick={() => nav("/welcome?add=1")}><Icon name="plus" size={24} stroke={2.5} />{t("set.addSource")}</button>
       {edit && <EditSource source={edit} onClose={() => setEdit(null)} />}
+      {share && <ShareModal source={share} onClose={() => setShare(null)} />}
+    </>
+  );
+}
+
+function cloudBadge(s: Source, t: ReturnType<typeof useT>): string {
+  if (!s.cloudId) return t("cloud.badgeLocal");
+  if (s.cloudOrigin === "cloud" && s.cloudOriginName && s.cloudShared === undefined) return t("cloud.badgeFrom", { n: s.cloudOriginName });
+  if (s.cloudShared === "all") return t("cloud.badgeAll");
+  if (typeof s.cloudShared === "number") return t("cloud.badgeShared", { n: s.cloudShared });
+  return s.cloudOriginName ? t("cloud.badgeFrom", { n: s.cloudOriginName }) : t("cloud.badgeCloud");
+}
+
+function ShareModal({ source, onClose }: { source: Source; onClose: () => void }) {
+  const t = useT();
+  const { devices, deviceId } = useCloud();
+  const list = Array.isArray(devices) ? devices : [];
+  const [all, setAll] = useState(true);
+  const [sel, setSel] = useState<Set<string>>(new Set(list.map((d) => d.id)));
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    const r = await shareSource(source, all || list.length === 0 ? "all" : [...sel]);
+    setBusy(false);
+    if (r.ok) { useUi.getState().toast(t("cloud.shareDone")); onClose(); }
+    else useUi.getState().toast(r.reason === "limit" ? t("cloud.shareLimit") : r.reason === "unsupported" ? t("cloud.shareFile") : t("cloud.shareFail"));
+    if (!r.ok && r.reason === "unavailable") onClose();
+  };
+  return (
+    <Modal title={t("cloud.shareTitle", { n: source.name })} onClose={onClose} foot={
+      <>
+        <button className="btn" onClick={onClose}>{t("common.cancel")}</button>
+        <button className="btn primary" disabled={busy || (!all && sel.size === 0)} onClick={() => void submit()}>{t("cloud.share")}</button>
+      </>}>
+      <div className="seg" role="radiogroup" style={{ alignSelf: "flex-start" }}>
+        <button role="radio" aria-checked={all} onClick={() => setAll(true)}>{t("cloud.shareAll")}</button>
+        <button role="radio" aria-checked={!all} disabled={list.length === 0} onClick={() => setAll(false)}>{t("cloud.shareChoose")}</button>
+      </div>
+      {!all && list.map((d) => (
+        <label key={d.id} className="pref" style={{ cursor: "pointer" }}>
+          <span>{d.name}{d.id === deviceId ? ` (${t("cloud.thisDevice")})` : ""}</span>
+          <input type="checkbox" checked={sel.has(d.id)} onChange={(e) => setSel((c) => { const n = new Set(c); if (e.target.checked) n.add(d.id); else n.delete(d.id); return n; })} />
+        </label>
+      ))}
+      <p className="muted" style={{ fontSize: "0.8125rem" }}>{t("cloud.shareNote")}</p>
+    </Modal>
+  );
+}
+
+function CloudPane() {
+  const t = useT();
+  const nav = useNavigate();
+  const c = useCloud();
+  const lang = usePrefs((s) => s.lang);
+  const [name, setName] = useState(c.deviceName);
+  const [worker, setWorker] = useState(c.worker);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { setName(c.deviceName); setWorker(c.worker); }, [c.deviceName, c.worker]);
+  if (!cloudAvailable()) return <><h2>{t("set.cloud")}</h2><p className="lead">{t("cloud.lead")}</p></>;
+  return (
+    <>
+      <h2>{t("set.cloud")}</h2>
+      <p className="lead">{t("cloud.lead")}</p>
+      {c.error === "token-rejected" && <div className="alert err" role="alert"><Icon name="alert" size={20} />{t("cloud.tokenRejected")}</div>}
+      {!c.paired ? (
+        <div><button className="btn primary" onClick={() => nav("/welcome?add=1&cloud=1")}><Icon name="globe" size={18} />{t("cloud.pairNow")}</button></div>
+      ) : (
+        <>
+          <Pref label={t("cloud.deviceName")}>
+            <input className="input" style={{ width: "18rem" }} value={name} aria-label={t("cloud.deviceName")} onChange={(e) => setName(e.target.value)} onBlur={() => void saveDeviceName(name)} />
+          </Pref>
+          <Pref label={t("cloud.worker")}>
+            <input className="input" style={{ width: "26rem" }} value={worker} aria-label={t("cloud.worker")} spellCheck={false}
+              onChange={(e) => setWorker(e.target.value)} onBlur={async () => { if (!(await saveWorker(worker))) setWorker(c.worker); }} />
+          </Pref>
+          <Pref label={t("cloud.lastSync", { t: c.lastSyncAt ? new Date(c.lastSyncAt).toLocaleString(lang) : t("set.never") })}>
+            <button className="btn primary" disabled={c.syncing} onClick={async () => {
+              setMsg(null);
+              try {
+                const r = await syncCloud({ force: true });
+                setMsg(r.unchanged ? t("cloud.upToDate") : t("cloud.syncDone", { a: r.added, u: r.updated, r: r.removed }));
+              } catch { setMsg(t("cloud.failed")); }
+            }}><Icon name="refresh" size={18} />{c.syncing ? t("set.syncing") : t("cloud.syncNow")}</button>
+          </Pref>
+          {msg && <div className="alert" role="status">{msg}</div>}
+          <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { n: c.devices })}</div>
+          {Array.isArray(c.devices) && c.devices.map((d) => (
+            <div key={d.id} className="pref"><span>{d.name}</span>{d.id === c.deviceId && <span className="cbadge">{t("cloud.thisDevice")}</span>}</div>
+          ))}
+          <div><button className="btn danger" onClick={async () => { if (confirm(t("cloud.unpairConfirm"))) await unpair(); }}>{t("cloud.unpair")}</button></div>
+        </>
+      )}
     </>
   );
 }
