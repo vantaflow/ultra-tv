@@ -49,7 +49,9 @@ object DatabaseModule {
 object NetworkModule {
 
     @Provides @Singleton
-    fun provideOkHttp(): OkHttpClient = OkHttpClient.Builder()
+    fun provideOkHttp(monitor: com.ultratv.tv.nativeapp.adaptive.NetworkMonitor): OkHttpClient = OkHttpClient.Builder()
+        // Mesure continue du débit et de la latence réels (alimente le profil adaptatif).
+        .addNetworkInterceptor(monitor.interceptor)
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(60, TimeUnit.SECONDS)

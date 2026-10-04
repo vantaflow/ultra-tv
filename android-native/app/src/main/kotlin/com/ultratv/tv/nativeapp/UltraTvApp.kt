@@ -29,12 +29,14 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
     @Inject lateinit var secretsMigrator: com.ultratv.tv.nativeapp.data.security.ProviderSecretsMigrator
+    @Inject lateinit var adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
     @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(): ImageLoader {
-        val low = com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(this)
+        val auto = adaptive.state.value.auto
+        val low = auto.lowRam
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
@@ -52,6 +54,8 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             .diskCachePolicy(CachePolicy.ENABLED)
             // Bitmaps matériels (GPU) : moins de RAM et décodage plus rapide.
             .allowHardware(true)
+            // Entrée de gamme : bitmaps RGB_565 (moitié moins de mémoire).
+            .allowRgb565(auto.imageRgb565)
             // Pas de fondu sur l'entrée de gamme : c'est une animation par image chargée.
             .crossfade(!low)
             .build()

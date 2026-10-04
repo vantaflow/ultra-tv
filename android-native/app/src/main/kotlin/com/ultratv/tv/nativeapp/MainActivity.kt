@@ -188,11 +188,12 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         androidx.compose.ui.unit.LayoutDirection.Rtl
     else
         androidx.compose.ui.unit.LayoutDirection.Ltr
-    val lowRam = androidx.compose.runtime.remember {
-        com.ultratv.tv.nativeapp.ui.common.DeviceClass.isLowRam(ctxForDevice)
-    }
+    val adaptiveVm: com.ultratv.tv.nativeapp.adaptive.AdaptiveViewModel = hiltViewModel()
+    val adaptive by adaptiveVm.state.collectAsState()
+    val lowRam = adaptive.auto.lowRam
     androidx.compose.runtime.CompositionLocalProvider(
         com.ultratv.tv.nativeapp.ui.common.LocalLowRam provides lowRam,
+        com.ultratv.tv.nativeapp.adaptive.LocalAdaptive provides adaptive,
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,

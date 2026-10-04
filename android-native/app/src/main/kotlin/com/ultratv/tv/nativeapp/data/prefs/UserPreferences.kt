@@ -71,6 +71,18 @@ data class UserPrefs(
     /** Optional SAF tree URI for a folder of local channel logos that override
      *  whatever the provider ships. Empty = no override. */
     val localLogosFolderUri: String = "",
+    // ── Lecture : « auto » partout par défaut ; tout choix manuel est PRIORITAIRE sur l'automatique. ──
+    /** "auto" | "exo" | "vlc" */
+    val playerEngine: String = "auto",
+    /** "auto" | "hw" | "sw" */
+    val decoderMode: String = "auto",
+    /** "auto" | "low_latency" | "balanced" | "stable" | "custom" */
+    val bufferPreset: String = "auto",
+    val bufMinSec: Int = 5,
+    val bufMaxSec: Int = 30,
+    val bufStartSec: Int = 2,
+    val bufRebufferSec: Int = 3,
+    val bufMaxMb: Int = 32,
 )
 
 @Singleton
@@ -98,6 +110,14 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
         val preferSwDec = booleanPreferencesKey("prefer_software_decoder")
         val epgOffsetMin = intPreferencesKey("epg_offset_min")
         val localLogosUri = stringPreferencesKey("local_logos_uri")
+        val playerEngine = stringPreferencesKey("player_engine")
+        val decoderMode = stringPreferencesKey("decoder_mode")
+        val bufferPreset = stringPreferencesKey("buffer_preset")
+        val bufMin = intPreferencesKey("buf_min_sec")
+        val bufMax = intPreferencesKey("buf_max_sec")
+        val bufStart = intPreferencesKey("buf_start_sec")
+        val bufRebuffer = intPreferencesKey("buf_rebuffer_sec")
+        val bufMb = intPreferencesKey("buf_max_mb")
     }
 
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
@@ -124,6 +144,12 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
             preferSoftwareDecoder = p[Keys.preferSwDec] ?: false,
             epgTimeOffsetMin = p[Keys.epgOffsetMin] ?: 0,
             localLogosFolderUri = p[Keys.localLogosUri] ?: "",
+            playerEngine = p[Keys.playerEngine] ?: "auto",
+            // Ancienne case « décodeur logiciel » : respectée tant que rien n'a été choisi dans le nouveau réglage.
+            decoderMode = p[Keys.decoderMode] ?: if (p[Keys.preferSwDec] == true) "sw" else "auto",
+            bufferPreset = p[Keys.bufferPreset] ?: "auto",
+            bufMinSec = p[Keys.bufMin] ?: 5, bufMaxSec = p[Keys.bufMax] ?: 30, bufStartSec = p[Keys.bufStart] ?: 2,
+            bufRebufferSec = p[Keys.bufRebuffer] ?: 3, bufMaxMb = p[Keys.bufMb] ?: 32,
         )
     }
 
@@ -149,6 +175,18 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     suspend fun setPreferSoftwareDecoder(v: Boolean) = update { it[Keys.preferSwDec] = v }
     suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }
     suspend fun setLocalLogosFolderUri(uri: String) = update { it[Keys.localLogosUri] = uri }
+
+    suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
+    suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
+    suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }
+    suspend fun setCustomBuffer(minSec: Int, maxSec: Int, startSec: Int, rebufferSec: Int, maxMb: Int) = update {
+        it[Keys.bufMin] = minSec.coerceIn(1, 120); it[Keys.bufMax] = maxSec.coerceIn(2, 300); it[Keys.bufStart] = startSec.coerceIn(1, 30)
+        it[Keys.bufRebuffer] = rebufferSec.coerceIn(1, 60); it[Keys.bufMb] = maxMb.coerceIn(4, 256)
+    }
+    /** « Revenir en automatique » : efface tous les choix manuels de lecture. */
+    suspend fun resetPlaybackToAuto() = update {
+        it[Keys.playerEngine] = "auto"; it[Keys.decoderMode] = "auto"; it[Keys.bufferPreset] = "auto"; it[Keys.preferSwDec] = false
+    }
 
     private suspend inline fun update(crossinline block: (androidx.datastore.preferences.core.MutablePreferences) -> Unit) {
         ctx.userPrefsDs.edit { block(it) }
