@@ -397,3 +397,4 @@ img { display: block; }
 .poster { width: 100%; }
 .detail.series .backdrop { opacity: 0.32; width: 100%; }
 ::-webkit-scrollbar-corner { background: transparent; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 1.125rem; height: 1.125rem; }
