@@ -2,7 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [1.2.0] — à publier
+## [1.2.1] — 2026-10-04
+
+### Corrections
+- **Mise à jour Android impossible** (« conflit avec un package existant ») : depuis les APK par processeur, la re-signature ne trouvait plus de fichier et les releases partaient signées avec une clé de debug jetable. Tous les APK sont désormais signés avec la clé de release, et la publication échoue si un APK reste signé en debug. *Une désinstallation unique est nécessaire pour quitter la 1.1.0/1.2.0 ; ensuite la mise à jour intégrée fonctionne.*
+- **Code d'appairage tronqué** sur box (6 caractères visibles sur 8) : les cases s'adaptent à la largeur disponible.
+- **Écran d'appairage de l'assistant** : plein écran (plus de logo en double ni de boutons écrasés).
+- **Bureau** : une adresse `get.php` saisie en lien M3U devient une source Xtream Codes (plus d'« HTTP 884 »), y compris pour une source déjà enregistrée ; zone de titre réservée sous les boutons de fenêtre macOS.
+
+### Nouveautés
+- **Appairage en un scan** : le QR de la TV ouvre la page d'appairage du tableau de bord avec le code pré-rempli.
+- **Nouveau tableau de bord cloud** : identité Ultra TV, clair et sombre, pensé pour le téléphone ; code saisi avec ou sans tiret.
+
+## [1.2.0] — 2026-10-04
 
 ### Nouveautés
 - **Smartphone et tablette Android** : interface tactile (barre de navigation basse sur téléphone, menu latéral et volets côte à côte sur tablette), lecteur à gestes, formulaires calés au-dessus du clavier.
