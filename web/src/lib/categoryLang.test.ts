@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OTHER_LANG, canonicalLang, categoryLang, filterCategories, languageStats } from "./categoryLang";
+import { OTHER_LANG, canonicalLang, categoryLang, filterCategories, langLabel, languageStats } from "./categoryLang";
 
 // Noms FICTIFS imitant les motifs courants des fournisseurs.
 describe("categoryLang", () => {
@@ -28,11 +28,31 @@ describe("languageStats / filterCategories", () => {
       { code: "FR", total: 3, on: 2 }, { code: "UK", total: 1, on: 1 }, { code: OTHER_LANG, total: 2, on: 2 },
     ]);
     const many = "FR UK ES DE IT PT NL TR AR BE CH CA US MA DZ TN SE NO PL RO GR".split(" ").map((c) => row(`${c}| x`));
-    expect(languageStats(many)).toHaveLength(21);
+    // Regroupé par LANGUE : US→anglais, MA/DZ/TN→arabe ; BE/CH/CA restent des régions.
+    expect(languageStats(many).map((e) => e.code).sort()).toEqual(["AR", "BE", "CA", "CH", "DE", "EL", "ES", "FR", "IT", "NB", "NL", "PL", "PT", "RO", "SV", "TR", "UK"]);
   });
   it("filtre langue + type + recherche", () => {
     expect(filterCategories(rows, { lang: "FR", kind: null })).toHaveLength(3);
     expect(filterCategories(rows, { lang: "FR", kind: "movie" })).toHaveLength(1);
     expect(filterCategories(rows, { lang: null, kind: "live", match: (r) => r.name.includes("D") })).toHaveLength(1);
+  });
+});
+
+describe("pays → langue et noms affichés", () => {
+  it("pays anglophones, lusophones, arabophones regroupés", () => {
+    for (const c of ["US", "AU", "IE", "NZ", "GB"]) expect(canonicalLang(c)).toBe("UK");
+    expect(canonicalLang("BR")).toBe("PT");
+    expect(canonicalLang("MA")).toBe("AR");
+    expect(canonicalLang("SE")).toBe("SV");
+    expect(canonicalLang("ASIA")).toBe("ASIA");
+    expect(canonicalLang("CA")).toBe("CA");
+  });
+  it("noms lisibles dans la langue de l'interface", () => {
+    expect(langLabel("FR", "fr")).toBe("Français");
+    expect(langLabel("UK", "fr")).toBe("Anglais");
+    expect(langLabel("AR", "fr")).toBe("Arabe");
+    expect(langLabel("CA", "fr")).toBe("Canada");
+    expect(langLabel("ASIA", "fr")).toBe("Asie");
+    expect(langLabel("UK", "en")).toBe("English");
   });
 });

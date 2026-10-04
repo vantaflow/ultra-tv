@@ -1,7 +1,7 @@
 // Réglages d'affichage partagés (langues + catégories désactivées) : conversions pures, règle « le plus récent gagne »,
 // et regroupement des envois (anti-rebond). Aucune E/S ici.
 
-import { OTHER_LANG, canonicalLang } from "@/lib/categoryLang";
+import { OTHER_LANG, canonicalLang, protocolLang } from "@/lib/categoryLang";
 import type { CategoryRow, Kind } from "@/db/types";
 import type { CloudPrefs } from "./client";
 
@@ -12,13 +12,14 @@ export const KINDS: Kind[] = ["live", "movie", "series"];
 /** Code local -> code partagé : minuscules, « other », anglais = « en ». */
 export function langToWire(code: string): string {
   if (code === OTHER_LANG) return "other";
-  if (code === "UK" || code === "GB") return "en";
-  return code.toLowerCase();
+  if (code === "GB") return "en";
+  return protocolLang(code);
 }
 /** Code partagé -> code local (alias normalisés ; code inconnu conservé en majuscules). */
 export function langFromWire(w: string): string {
   const l = w.trim();
   if (l.toLowerCase() === "other") return OTHER_LANG;
+  if (l.toLowerCase() === "uk") return "UK_UA"; // ukrainien (ISO 639-1) ; l'anglais circule en « en »
   return canonicalLang(l) ?? l.toUpperCase();
 }
 

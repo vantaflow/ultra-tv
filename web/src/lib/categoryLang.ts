@@ -20,12 +20,64 @@ const GROUPS: Record<string, string> = {
 const ALIAS = new Map<string, string>();
 for (const [code, list] of Object.entries(GROUPS)) for (const a of list.split(" ")) ALIAS.set(a, code);
 
+/**
+ * Pays → langue (un filtre par LANGUE, pas par pays : US, AU, IE, NZ = anglais ; BR = portugais ; MA = arabe…).
+ * « UK » reste le code canonique de l'anglais (compatibilité avec les réglages déjà enregistrés).
+ * Les pays multilingues ou ambigus (CA, BE, CH, IN…) restent des régions, affichées par leur nom.
+ */
+const COUNTRY_LANG: Record<string, string> = {
+  GB: "UK", US: "UK", AU: "UK", IE: "UK", NZ: "UK", JM: "UK",
+  BR: "PT", AO: "PT", MZ: "PT",
+  AT: "DE", LI: "DE",
+  MX: "ES", CO: "ES", CL: "ES", PE: "ES", VE: "ES", EC: "ES", UY: "ES", PY: "ES", BO: "ES", DO: "ES", CU: "ES", GT: "ES", HN: "ES", NI: "ES", PA: "ES", LA: "ES",
+  MA: "AR", TN: "AR", DZ: "AR", EG: "AR", SA: "AR", AE: "AR", QA: "AR", KW: "AR", IQ: "AR", SY: "AR", LB: "AR", JO: "AR", LY: "AR", OM: "AR", YE: "AR", BH: "AR", PS: "AR", SD: "AR",
+  MC: "FR", LU: "FR", SN: "FR", CI: "FR", CM: "FR", HT: "FR",
+  SE: "SV", DK: "DA", NO: "NB", GR: "EL", CY: "EL", IL: "HE", IR: "FA", CZ: "CS", AL: "SQ", XK: "SQ",
+  JP: "JA", KR: "KO", CN: "ZH", HK: "ZH", TW: "ZH", SI: "SL", PK: "UR", VN: "VI", MY: "MS", AM: "HY", GE: "KA", KZ: "KK",
+  RS: "SR", BA: "BS", UA: "UK_UA",
+};
+/** Codes de LANGUE produits (les autres codes à deux lettres sont des régions). */
+const LANG_CODES = new Set<string>([
+  ...Object.keys(GROUPS), ...Object.values(COUNTRY_LANG),
+  "PL", "RU", "RO", "HU", "BG", "HR", "LT", "LV", "ET", "FI", "TH", "ID", "UZ", "AZ", "MK", "MT", "SK", "IS", "HI", "BN", "TA",
+]);
+/** Code ISO 639-1 d'un code canonique, pour les noms localisés (Intl.DisplayNames). */
+const ISO639: Record<string, string> = { UK: "en", UK_UA: "uk", NB: "nb" };
+
 const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toUpperCase();
 
 /** Code canonique d'un jeton (alias, sinon code pays ISO tel quel), ou null. */
 export function canonicalLang(token: string): string | null {
   const k = fold(token.trim());
-  return ALIAS.get(k) ?? (k.length === 2 && isIsoCountry(k) ? k : null);
+  const a = ALIAS.get(k);
+  if (a) return a;
+  if (LANG_CODES.has(k)) return k;
+  if (COUNTRY_LANG[k]) return COUNTRY_LANG[k]!;
+  if (k === "ASIA" || k === "LATINO" || k === "LATAM" || k === "AFRICA" || k === "AFRIQUE") return k === "LATINO" || k === "LATAM" ? "ES" : k;
+  return k.length === 2 && isIsoCountry(k) ? k : null;
+}
+
+/** Nom affiché d'un code (langue ou région), dans la langue de l'interface ; repli : le code. */
+export function langLabel(code: string, uiLang: string): string {
+  if (code === OTHER_LANG) return code;
+  try {
+    if (LANG_CODES.has(code)) {
+      const n = new Intl.DisplayNames([uiLang], { type: "language" }).of(ISO639[code] ?? code.toLowerCase());
+      if (n && n.toLowerCase() !== (ISO639[code] ?? code).toLowerCase()) return n.charAt(0).toLocaleUpperCase(uiLang) + n.slice(1);
+    }
+    if (code === "ASIA") return uiLang.startsWith("fr") ? "Asie" : uiLang.startsWith("es") ? "Asia" : uiLang.startsWith("ar") ? "آسيا" : "Asia";
+    if (code === "AFRICA" || code === "AFRIQUE") return uiLang.startsWith("fr") ? "Afrique" : uiLang.startsWith("ar") ? "أفريقيا" : "Africa";
+    if (code.length === 2) {
+      const r = new Intl.DisplayNames([uiLang], { type: "region" }).of(code);
+      if (r && r !== code) return r;
+    }
+  } catch { /* Intl indisponible */ }
+  return code;
+}
+
+/** Langue du protocole (minuscule, ISO 639-1 quand c'est une langue) ↔ code canonique. */
+export function protocolLang(code: string): string {
+  return (ISO639[code] ?? code).toLowerCase();
 }
 
 const RI_BASE = 0x1f1e6;
