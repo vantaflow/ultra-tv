@@ -8,6 +8,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import com.ultratv.tv.nativeapp.ui.mobile.minTouchTarget
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Row
@@ -138,6 +140,22 @@ fun FocusSurface(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        // Tactile : pas de focus agrandi. Ripple + léger affaissement à l'appui, cible d'au moins 48 dp ;
+        // un anneau fin n'apparaît que pour un clavier matériel (tablette).
+        val pressed by interaction.collectIsPressedAsState()
+        Box(
+            Modifier
+                .minTouchTarget()
+                .then(modifier)
+                .graphicsLayer { val s = if (pressed) 0.97f else 1f; scaleX = s; scaleY = s }
+                .then(if (focused) Modifier.border(2.dp, Ux.Accent, shape) else Modifier)
+                .clip(shape)
+                .background(bg)
+                .combinedClickable(interactionSource = interaction, indication = androidx.compose.material3.ripple(color = Ux.Text), onClick = onClick, onLongClick = onLongClick),
+        ) { content(false) }
+        return
+    }
     Box(
         modifier
             .graphicsLayer {

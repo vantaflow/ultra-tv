@@ -70,6 +70,9 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
             LocalDensity provides scaled,
             LocalSafeArea provides safe,
             LocalUiWidthDp provides wDp,
+            // Mode tactile (téléphone / tablette) : tout ce qui n'est pas une TV. Jamais recalculé ailleurs.
+            com.ultratv.tv.nativeapp.ui.mobile.LocalTouch provides !tv,
+            com.ultratv.tv.nativeapp.ui.mobile.LocalUiHeightDp provides hDp,
         ) { content() }
     }
 }
