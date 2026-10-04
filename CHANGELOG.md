@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.9] — 2026-10-04
+
+### Nouveautés
+- Recherche dans le Guide TV : les chaînes qui diffusent (ou vont diffuser) le programme cherché.
+- Réglages › Catégories : langues regroupées par langue (et non par pays), noms lisibles, 12 principales puis « Plus de langues », case partielle visible.
+
 ## [Bureau 1.2.8] — 2026-10-04
 
 ### Corrections
