@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.4] — 2026-10-04
+
+### Corrections
+- **TV, source reçue du cloud en lien M3U `get.php`** (« Le fournisseur n'autorise pas ce type d'accès ») : le fournisseur cloud est normalisé en Xtream Codes avant la fusion. Avant, la fusion jugeait la version cloud (M3U) différente de la locale déjà convertie (Xtream) et réécrivait l'adresse get.php avec des identifiants vides à chaque synchro cloud. Une source déjà abîmée est réparée automatiquement à la synchro suivante.
+
 ## [1.2.3] — 2026-10-04
 
 ### Performances (TV)

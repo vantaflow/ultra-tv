@@ -135,6 +135,8 @@ class CloudSyncManager @Inject constructor(
             }
             is SyncAction.Link -> links.link(a.localId, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
             is SyncAction.Update -> {
+                // Locale encore en M3U « get.php » face à sa version cloud normalisée en Xtream : on la convertit d'abord.
+                if (a.cloud.kind == "XTREAM" && repo.canConvertToXtream(a.localId)) repo.convertToXtream(a.localId)
                 repo.updateFromCloud(a.localId, if (a.renameLocal) a.cloud.name else null, a.cloud.url, a.cloud.username, a.cloud.password)
                 val keepName = if (a.renameLocal) a.cloud.name else (links.appliedName(a.cloud.id) ?: a.cloud.name)
                 links.link(a.localId, a.cloud.id, keepName, a.cloud.sharedWith(deviceCount))

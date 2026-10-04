@@ -275,6 +275,12 @@ class ProviderRepository @Inject constructor(
     private suspend fun syncAllInternal(providerId: Long, onProgress: (String) -> Unit, force: Boolean): Int {
         // Source M3U enregistrée avec une adresse Xtream : conversion automatique au prochain lancement / « Réessayer ».
         if (canConvertToXtream(providerId)) convertToXtream(providerId)
+        // Source Xtream abîmée par une ancienne fusion cloud (adresse get.php, identifiants vides) : on la reconstruit.
+        providerDao.byId(providerId)?.let { b ->
+            if (b.kind == "XTREAM") com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(b.baseUrl)?.let { c ->
+                providerDao.upsert(b.copy(baseUrl = c.server.trimEnd('/'), username = c.username, password = c.password))
+            }
+        }
         val p = providerDao.byId(providerId) ?: return 0
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)

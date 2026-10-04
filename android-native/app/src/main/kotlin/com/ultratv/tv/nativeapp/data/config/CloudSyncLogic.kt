@@ -98,6 +98,18 @@ object CloudSyncLogic {
         if (this == null) emptyList() else (0 until length()).mapNotNull { optJSONObject(it)?.let(f) }
 
     /**
+     * Une source M3U « get.php / player_api.php » avec identifiants EST une source Xtream Codes (get.php est
+     * souvent bloqué, ex. HTTP 884). L'appareil la convertit ; sans cette normalisation, la fusion voyait la
+     * version cloud (M3U) « différente » de la locale (Xtream) et réécrivait l'adresse get.php avec des
+     * identifiants vides à chaque synchro cloud.
+     */
+    fun normalized(c: CloudProvider): CloudProvider {
+        if (c.kind != "M3U") return c
+        val x = com.ultratv.tv.nativeapp.data.net.XtreamUrl.parse(c.url) ?: return c
+        return c.copy(kind = "XTREAM", url = x.server.trimEnd('/'), username = x.username, password = x.password)
+    }
+
+    /**
      * @param dependents nombre de données locales (favoris + enregistrements) qui dépendent de chaque source locale
      * @param appliedNames dernier nom reçu du cloud, par identifiant cloud
      */
@@ -108,7 +120,7 @@ object CloudSyncLogic {
         appliedNames: Map<String, String>,
     ): List<SyncAction> {
         val actions = mutableListOf<SyncAction>()
-        val supported = cloud.filter { it.kind in SUPPORTED_KINDS }
+        val supported = cloud.map(::normalized).filter { it.kind in SUPPORTED_KINDS }
         val byCloudId = local.filter { it.cloudId != null }.associateBy { it.cloudId!! }
         val unlinkedByIdentity = local.filter { it.cloudId == null }.associateBy { identity(it.kind, it.url, it.username) }.toMutableMap()
         for (c in supported) {

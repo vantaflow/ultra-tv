@@ -17,6 +17,19 @@ class CloudSyncLogicTest {
         CloudSyncLogic.plan(local, cloud, deps, applied)
 
     // ── ajout ──
+    @Test fun plan_m3uGetPhpDuCloud_ajouteeEnXtream() {
+        val a = plan(emptyList(), listOf(cloud("aaaaaaaa", kind = "M3U", url = "http://iptv.example.test/get.php?username=demo&password=s3cret&type=m3u_plus&output=ts", user = "", pass = "")))
+        val add = a.single() as SyncAction.Add
+        assertEquals("XTREAM", add.cloud.kind); assertEquals("http://iptv.example.test", add.cloud.url)
+        assertEquals("demo", add.cloud.username); assertEquals("s3cret", add.cloud.password)
+    }
+
+    @Test fun plan_m3uGetPhpDuCloud_localeDejaConvertie_aucuneReecriture() {
+        val l = local(1, "aaaaaaaa", name = "STRONG", url = "http://iptv.example.test", user = "demo", pass = "s3cret")
+        val c = cloud("aaaaaaaa", name = "STRONG", kind = "M3U", url = "http://iptv.example.test/get.php?username=demo&password=s3cret&type=m3u_plus&output=ts", user = "", pass = "")
+        assertEquals(emptyList<SyncAction>(), plan(listOf(l), listOf(c), applied = mapOf("aaaaaaaa" to "STRONG")))
+    }
+
     @Test fun plan_sourceCloudInconnue_estAjoutee() {
         val a = plan(emptyList(), listOf(cloud("aaaaaaaa")))
         assertEquals(1, a.size); assertTrue(a[0] is SyncAction.Add)
