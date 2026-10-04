@@ -11,7 +11,7 @@
   },
   "main": "main.cjs",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test \"test/*.test.cjs\"",
     "dev": "cross-env SV_DEV=1 electron .",
     "start": "electron .",
     "build:web": "cd ../web && npm run build",

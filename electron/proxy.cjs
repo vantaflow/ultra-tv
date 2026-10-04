@@ -183,6 +183,7 @@ function bufferUpTo(stream, max) {
     stream.on("data", onData);
     stream.once("end", onEnd);
     stream.once("error", onError);
+    stream.resume(); // le flux peut avoir ete mis en pause par peekBytes
   });
 }
 
