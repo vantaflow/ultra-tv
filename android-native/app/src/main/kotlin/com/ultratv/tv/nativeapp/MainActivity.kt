@@ -412,6 +412,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onGoSeries = { nav.navigate(Routes.SERIES) },
                 onGoSettings = { nav.navigate(Routes.SETTINGS) },
                 onGoGuide = { nav.navigate(Routes.GUIDE) },
+                onGoSearch = { nav.navigate(Routes.SEARCH) },
+                onGoFavorites = { nav.navigate(Routes.FAVORITES) },
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },

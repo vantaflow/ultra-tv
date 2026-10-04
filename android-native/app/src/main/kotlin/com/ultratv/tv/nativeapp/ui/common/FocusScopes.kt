@@ -50,6 +50,8 @@ fun RequestInitialFocus(
     key: Any? = Unit,
     attempts: Int = INITIAL_FOCUS_ATTEMPTS,
 ) {
+    // Tactile : aucun focus programmatique (il afficherait un anneau sur un élément que personne n'a visé).
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) return
     LaunchedEffect(key) {
         repeat(attempts) {
             if (hasFocus()) return@LaunchedEffect

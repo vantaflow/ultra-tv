@@ -18,6 +18,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -98,7 +107,19 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val noLocalData = cats.none { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }
     if (noLocalData && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard(Modifier.padding(start = 72.design))) return
 
-    Row(Modifier.fillMaxSize()) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val twoPane = touch && com.ultratv.tv.nativeapp.ui.mobile.usesTwoPane(com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current)
+    if (touch) MobileLiveLayout(
+        cats = cats, selected = selected, onSelect = { vm.selectCategory(it) }, channels = channels, locked = locked, favs = favs, nowNext = nowNext, vm = vm,
+        langView = langView, onLang = { langPanel = true }, twoPane = twoPane, D = D,
+        selectedChannel = previewChannel ?: focusedChannel,
+        onTapChannel = { c ->
+            // Téléphone : un appui lit. Tablette : un appui choisit (aperçu), « Regarder » lit.
+            if (twoPane) { focusedChannel = c; previewChannel = c } else if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay)
+        },
+        onWatch = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay) },
+        onActions = { actionsFor = it },
+    ) else Row(Modifier.fillMaxSize()) {
         // ── Catégories (340) ──
         Column(
             Modifier.width(340.design).fillMaxHeight().padding(start = 48.design, end = 24.design, top = 54.design),
@@ -212,6 +233,7 @@ private fun ChannelList(
     emptyText: String,
     categoryName: String = "",
     first: FocusRequester = remember { FocusRequester() },
+    highlightId: Long? = null,
 ) {
     val state = rememberLazyListState()
     LaunchedEffect(selected) { state.scrollToItem(0) }
@@ -246,7 +268,8 @@ private fun ChannelList(
                     else -> ChannelRow(
                         c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first,
-                        modifier = if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
+                        highlighted = c.id == highlightId,
+                        modifier = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
                     )
                 }
@@ -288,8 +311,9 @@ internal fun QualityBadge(quality: Int, focused: Boolean) {
 @Composable
 private fun ChannelRow(
     c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?,
-    modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit,
+    modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, highlighted: Boolean = false,
 ) {
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) { TouchChannelRow(c, position, locked, favorite, now, highlighted, onClick, onLongClick); return }
     FocusSurface(
         onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep,
         focusedScale = 1.03f, ringWidth = 5.design,
@@ -358,3 +382,104 @@ private fun durationText(D: DesignStrings, ms: Long): String {
 }
 
 private fun qualityName(q: Int) = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1 -> "SD"; else -> "—" }
+
+
+// ───────────────────────── Tactile (téléphone / tablette) ─────────────────────────
+
+/** Ligne chaîne tactile (maquette MobileDirect) : numéro, logo 48×32, nom + progression + programme, qualité. Sélectionnée (tablette) = fond plein. */
+@Composable
+private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val ink = if (selected) Ux.TextOnLight else Ux.Text
+    val sub = if (selected) Ux.OnFocus2 else Ux.Text3
+    val frac = now?.let { ((System.currentTimeMillis() - it.startMs).toFloat() / (it.endMs - it.startMs).coerceAtLeast(1)).coerceIn(0f, 1f) }
+    FocusSurface(
+        onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(14.dp), bg = if (selected) Ux.Cta else Ux.SurfaceDeep,
+        modifier = Modifier.fillMaxWidth().height(64.dp),
+    ) { _ ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(position.toString(), color = if (selected) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.width(30.dp))
+            LogoBox(c.logo, c.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4, bg = if (selected) Color(0xFFE4E4E7) else Ux.Surface2)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text((if (locked) "🔒 " else "") + c.title, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                if (frac != null) ProgressLine(frac, Modifier.fillMaxWidth().clip(RoundedCornerShape(2.dp)), heightPx = 6, track = if (selected) Color(0xFFD4D4D8) else Ux.Surface2)
+                Text(now?.title.orEmpty(), color = sub, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (favorite) Text("♥", color = Ux.Accent, fontSize = 13.sp, maxLines = 1)
+            com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, false)
+            QualityBadge(c.quality, false)
+        }
+    }
+}
+
+/**
+ * Direct tactile. Compact : titre + pilule de langues, puces de catégories, liste (séparateurs en en-têtes collants).
+ * Large (tablette) : liste à gauche (420 dp), aperçu à droite ; un appui sur une ligne la choisit, « Regarder » la lit.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun MobileLiveLayout(
+    cats: List<DirectCategory>, selected: String, onSelect: (String) -> Unit, channels: LazyPagingItems<ChannelEntity>,
+    locked: Set<String>, favs: Set<String>, nowNext: Map<Long, Pair<EpgEntity?, EpgEntity?>>, vm: LiveViewModel,
+    langView: com.ultratv.tv.nativeapp.data.repo.LangView, onLang: () -> Unit, twoPane: Boolean, D: DesignStrings,
+    selectedChannel: ChannelEntity?, onTapChannel: (ChannelEntity) -> Unit, onWatch: (ChannelEntity) -> Unit, onActions: (ChannelEntity) -> Unit,
+) {
+    val current = cats.firstOrNull { it.id == selected }
+    val name = when (selected) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(current?.name.orEmpty()) }
+    val shown = selectedChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false }
+    Row(Modifier.fillMaxSize()) {
+        Column(Modifier.then(if (twoPane) Modifier.width(420.dp) else Modifier.weight(1f)).fillMaxHeight().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+                com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = onLang)
+            }
+            val chipLabel = { c: DirectCategory -> (if (c.locked) "🔒 " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) } }
+            if (twoPane) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.heightIn(max = 120.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                cats.forEach { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
+            } else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(cats, key = { it.id }, contentType = { "chip" }) { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
+            }
+            com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
+                ChannelList(channels, locked, favs, nowNext, selected, vm, onFocusChannel = {}, onPlay = onTapChannel, onActions = onActions,
+                    emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, highlightId = if (twoPane) shown?.id else null)
+            }
+        }
+        if (twoPane) {
+            Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
+            MobilePreview(shown, shown?.let { nowNext[it.id]?.first }, shown?.let { it.remoteId in favs }, D, onWatch, { shown?.let(vm::toggleFavorite) }, { shown?.let(onActions) }, Modifier.weight(1f).fillMaxHeight())
+        }
+    }
+}
+
+@Composable
+private fun CatChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.dp), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp).semantics { this.selected = selected; role = androidx.compose.ui.semantics.Role.Tab }) { _ ->
+        Box(Modifier.padding(horizontal = 14.dp).height(40.dp), contentAlignment = Alignment.Center) {
+            Text(label, color = if (selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+    }
+}
+
+/** Aperçu de tablette (maquette TabletteDirect) : visuel 16:9, badge EN DIRECT + horaires, titre, résumé, actions. */
+@Composable
+private fun MobilePreview(channel: ChannelEntity?, now: EpgEntity?, favorite: Boolean?, D: DesignStrings, onWatch: (ChannelEntity) -> Unit, onFavorite: () -> Unit, onMore: () -> Unit, modifier: Modifier) {
+    val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+    Column(modifier.verticalScroll(androidx.compose.foundation.rememberScrollState()).padding(28.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        if (channel == null) { Text(M.noPreview, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp); return@Column }
+        Box(
+            Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(20.dp)).background(Ux.Tone).clickable(onClickLabel = M.tapToWatchFull) { onWatch(channel) },
+            contentAlignment = Alignment.Center,
+        ) { LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 40, pad = 96, bg = Ux.Tone) }
+        if (now != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LiveBadge(D.live)
+            Text("${EpgClock.hm(now.startMs)} – ${EpgClock.hm(now.endMs)}", color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+        }
+        Text(now?.title ?: channel.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        now?.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 23.sp, maxLines = 6, overflow = TextOverflow.Ellipsis) }
+            ?: Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PillButton(D.watch, { onWatch(channel) }, heightPx = 88, hPadPx = 40, fontPx = 30, weight = FontWeight.Bold, bg = Ux.Cta, iconPath = com.ultratv.tv.nativeapp.ui.design.Icons.Play, iconFill = true)
+            PillButton(if (favorite == true) D.removeFavorite else D.addFavorite, onFavorite, heightPx = 88, hPadPx = 36, fontPx = 28)
+            PillButton("⋯", onMore, heightPx = 88, hPadPx = 32, fontPx = 28)
+        }
+    }
+}
