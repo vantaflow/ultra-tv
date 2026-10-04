@@ -516,7 +516,7 @@ private fun LoadingVisual(logo: String?, name: String) {
 }
 
 @Composable
-private fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
+internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     val (title, hint) = when (kind) {
         PlayErrorKind.REFUSED -> D.errRefused to D.errRefusedHint
         PlayErrorKind.NETWORK -> D.errNetwork to null

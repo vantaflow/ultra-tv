@@ -39,7 +39,7 @@ object Toaster {
     val state = MutableStateFlow<Msg?>(null)
 
     fun show(text: String, kind: Kind = Kind.INFO) {
-        state.value = Msg(text, kind)
+        state.value = Msg(UserText.safe(text), kind)
     }
     fun ok(text: String) = show(text, Kind.OK)
     fun err(text: String) = show(text, Kind.ERROR)

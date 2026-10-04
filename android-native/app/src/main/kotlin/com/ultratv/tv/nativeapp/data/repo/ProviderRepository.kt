@@ -235,7 +235,7 @@ class ProviderRepository @Inject constructor(
             step("Done — $total programmes", 100)
             return total
         } catch (t: Throwable) {
-            syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed: ${t.message}", null))
+            syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed: ${com.ultratv.tv.nativeapp.ui.common.UserText.safe(t.message.orEmpty())}", null))
             return 0
         } finally {
             syncStatus.clear()
