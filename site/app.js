@@ -2,12 +2,8 @@
   var root = document.documentElement;
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  var lang = get("lang") === "en" ? "en" : "fr"; // FR par défaut
-  function applyLang(l) { root.dataset.lang = l; root.lang = l; var b = document.getElementById("lang"); if (b) b.textContent = l === "fr" ? "EN" : "FR"; }
-  applyLang(lang);
   var theme = get("theme");
   if (theme) root.dataset.theme = theme;
-  document.getElementById("lang").addEventListener("click", function () { lang = lang === "fr" ? "en" : "fr"; set("lang", lang); applyLang(lang); });
   document.getElementById("theme").addEventListener("click", function () {
     var dark = root.dataset.theme ? root.dataset.theme === "dark" : !matchMedia("(prefers-color-scheme: light)").matches;
     var next = dark ? "light" : "dark"; root.dataset.theme = next; set("theme", next);

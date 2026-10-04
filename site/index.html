@@ -1,30 +1,36 @@
 <!doctype html>
-<html lang="fr" data-lang="fr">
+<html lang="fr" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ultra TV — lecteur IPTV pour Android TV et Google TV</title>
-<meta name="description" content="Ultra TV est un lecteur IPTV natif pour Android TV et Google TV : Xtream, M3U, Stalker, guide, replay, timeshift, deux moteurs de lecture, réglages automatiques.">
+<meta name="description" content="Ultra TV est un lecteur IPTV natif pour Android TV et Google TV : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <meta property="og:title" content="Ultra TV">
-<meta property="og:description" content="Lecteur IPTV natif pour Android TV et Google TV.">
-<meta property="og:image" content="https://khalilbenaz.github.io/ultra-tv/img/home.webp">
+<meta property="og:type" content="website">
+<meta property="og:description" content="Ultra TV est un lecteur IPTV natif pour Android TV et Google TV : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
+<meta property="og:locale" content="fr_FR">
+<link rel="canonical" href="https://khalilbenaz.github.io/ultra-tv/">
+<link rel="alternate" hreflang="fr" href="https://khalilbenaz.github.io/ultra-tv/">
+<link rel="alternate" hreflang="en" href="https://khalilbenaz.github.io/ultra-tv/en/">
+<link rel="alternate" hreflang="x-default" href="https://khalilbenaz.github.io/ultra-tv/">
+<meta property="og:image" content="https://khalilbenaz.github.io/ultra-tv/img/fr/home.png">
 </head>
 <body>
-<a class="skip" href="#main"><span lang="fr">Aller au contenu</span><span lang="en">Skip to content</span></a>
+<a class="skip" href="#main">Aller au contenu</a>
 <div class="wrap">
 <header class="top">
   <a class="brand" href="#top"><img src="img/logo.svg" alt="" width="34" height="34">ULTRA TV</a>
   <nav class="links" aria-label="Navigation">
-    <a href="#fonctions"><span lang="fr">Fonctions</span><span lang="en">Features</span></a>
-    <a href="#telecharger"><span lang="fr">Télécharger</span><span lang="en">Download</span></a>
-    <a href="#installer"><span lang="fr">Installer</span><span lang="en">Install</span></a>
+    <a href="#fonctions">Fonctions</a>
+    <a href="#telecharger">Télécharger</a>
+    <a href="#installer">Installer</a>
     <a href="#faq">FAQ</a>
-    <button class="chip" id="lang" type="button" aria-label="Langue / Language">EN</button>
-    <button class="chip" id="theme" type="button" aria-label="Thème clair ou sombre / Light or dark theme">◐</button>
+    <a class="chip" id="lang" href="en/" hreflang="en" lang="en" aria-label="English version">EN</a>
+    <button class="chip" id="theme" type="button" aria-label="Thème clair ou sombre">◐</button>
   </nav>
 </header>
 
@@ -32,99 +38,113 @@
 <section class="hero" id="top" style="border:0;padding-top:24px">
   <div>
     <p class="eyebrow">Android TV · Google TV</p>
-    <h1><span lang="fr">Toute votre télé, dans une seule application.</span><span lang="en">All your TV in one app.</span></h1>
-    <p><span lang="fr">Ultra TV est un lecteur IPTV natif, pensé pour la télécommande : chaînes, films, séries, guide des programmes, replay et pause du direct. Il se règle tout seul selon votre appareil et votre réseau.</span><span lang="en">Ultra TV is a native IPTV player designed for the remote: channels, movies, series, programme guide, replay and live pause. It tunes itself to your device and network.</span></p>
+    <h1>Toute votre télé, dans une seule application.</h1>
+    <p>Ultra TV est un lecteur IPTV natif, pensé pour la télécommande : chaînes, films, séries, guide des programmes, replay et pause du direct. Il se règle tout seul selon votre appareil et votre réseau.</p>
     <div class="cta">
-      <a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ <span lang="fr">Télécharger l'APK</span><span lang="en">Download the APK</span></a>
-      <a class="btn alt" href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><span lang="fr">Notes de version</span><span lang="en">Release notes</span> <span data-version>1.1.0</span></a>
+      <a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ Télécharger l'APK</a>
+      <a class="btn alt" href="https://github.com/khalilbenaz/ultra-tv/releases/latest">Notes de version <span data-version>1.1.0</span></a>
     </div>
-    <p class="meta"><span lang="fr">Gratuit, open source (MIT). Ultra TV ne fournit aucun contenu : utilisez vos propres abonnements.</span><span lang="en">Free and open source (MIT). Ultra TV provides no content: bring your own subscription.</span></p>
+    <p class="meta">Gratuit, open source (MIT). Ultra TV ne fournit aucun contenu : utilisez vos propres abonnements.</p>
   </div>
-  <img class="shot" src="img/home.webp" width="1280" height="720" alt="Écran d'accueil d'Ultra TV avec une affiche à la une et la rangée Chaînes en direct" fetchpriority="high">
+  <picture><source srcset="img/fr/home.webp" type="image/webp"><img class="shot" width="1280" height="720" fetchpriority="high" src="img/fr/home.png" alt="Écran d'accueil d'Ultra TV avec une affiche à la une et la rangée Chaînes en direct"></picture>
 </section>
 
 <section id="fonctions">
-  <h2><span lang="fr">Ce que fait Ultra TV</span><span lang="en">What Ultra TV does</span></h2>
+  <h2>Ce que fait Ultra TV</h2>
   <div class="feature">
     <div>
-      <h3><span lang="fr">Direct fluide, même avec des dizaines de milliers de chaînes</span><span lang="en">Smooth live TV, even with tens of thousands of channels</span></h3>
-      <p><span lang="fr">Catégories actives, filtre par langue dès la première source, badges de qualité, zapping par numéro, chaînes récentes, recherche instantanée.</span><span lang="en">Active categories, language filter from the first source, quality badges, number zapping, recent channels, instant search.</span></p>
+      <h3>Direct fluide, même avec des dizaines de milliers de chaînes</h3>
+      <p>Catégories actives, filtre par langue dès la première source, badges de qualité, zapping par numéro, chaînes récentes, recherche instantanée, et Recherche depuis n'importe quel écran (bouton en haut du menu latéral, touches Recherche et micro de la télécommande).</p>
     </div>
-    <img class="shot" src="img/live.webp" width="1280" height="720" loading="lazy" alt="Écran Direct : catégories à gauche, chaînes avec logos et programme en cours" >
+    <picture><source srcset="img/fr/live.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/live.png" alt="Écran Direct : catégories à gauche, chaînes avec logos et programme en cours"></picture>
   </div>
   <div class="feature">
     <div>
-      <h3><span lang="fr">Guide, replay et rappels</span><span lang="en">Guide, replay and reminders</span></h3>
-      <p><span lang="fr">Grille horaire, replay depuis le guide quand la source le permet, rappels et enregistrements programmés, pause du direct par tampon disque.</span><span lang="en">Time grid, replay from the guide when the source allows it, scheduled reminders and recordings, live pause through a disk buffer.</span></p>
+      <h3>Guide, replay et rappels</h3>
+      <p>Grille horaire, replay depuis le guide quand la source le permet, rappels et enregistrements programmés, pause du direct par tampon disque.</p>
     </div>
-    <img class="shot" src="img/guide.webp" width="1280" height="720" loading="lazy" alt="Guide des programmes : grille horaire avec la ligne du moment présent">
+    <picture><source srcset="img/fr/guide.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/guide.png" alt="Guide des programmes : grille horaire avec la ligne du moment présent"></picture>
   </div>
   <div class="feature">
     <div>
-      <h3><span lang="fr">Fiches riches, sous-titres, profils</span><span lang="en">Rich details, subtitles, profiles</span></h3>
-      <p><span lang="fr">Affiches, synopsis et distribution via TMDB, sous-titres en ligne et style réglable, profils dont un profil Enfants, intégration Google TV (Watch Next, recherche vocale).</span><span lang="en">Posters, plots and cast via TMDB, online subtitles with adjustable style, profiles including a Kids profile, Google TV integration (Watch Next, voice search).</span></p>
+      <h3>Fiches riches, sous-titres, profils</h3>
+      <p>Affiches, synopsis et distribution via TMDB, sous-titres en ligne et style réglable, profils dont un profil Enfants, intégration Google TV (Watch Next, recherche vocale).</p>
     </div>
-    <img class="shot" src="img/detail.webp" width="1280" height="720" loading="lazy" alt="Fiche d'un film : visuel, informations, bouton Lecture et distribution">
+    <picture><source srcset="img/fr/detail.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/detail.png" alt="Fiche d'un film : visuel, informations, bouton Lecture et distribution"></picture>
   </div>
   <div class="feature">
     <div>
-      <h3><span lang="fr">Deux moteurs de lecture</span><span lang="en">Two playback engines</span></h3>
-      <p><span lang="fr">ExoPlayer (Media3) et VLC, avec repli automatique d'un moteur ou d'un décodeur à l'autre si une chaîne ne démarre pas. Tampon, qualité et décodage se règlent seuls selon la box ; tout reste modifiable.</span><span lang="en">ExoPlayer (Media3) and VLC, with automatic fallback between engines and decoders when a channel will not start. Buffer, quality and decoding adjust themselves to the box; everything stays configurable.</span></p>
+      <h3>Quatre langues, dont l'arabe en miroir</h3>
+      <p>Interface en français, anglais, espagnol et arabe (de droite à gauche), au choix dans Réglages › Langues, indépendamment de la langue de l'appareil.</p>
     </div>
-    <img class="shot" src="img/player.webp" width="1280" height="720" loading="lazy" alt="Lecteur plein écran avec les commandes superposées">
+    <picture><source srcset="img/ar/home.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/ar/home.png" alt="Accueil en arabe : interface en miroir, menu latéral à droite"></picture>
+  </div>
+  <div class="feature">
+    <div>
+      <h3>Deux moteurs de lecture</h3>
+      <p>ExoPlayer (Media3) et VLC, avec repli automatique d'un moteur ou d'un décodeur à l'autre si une chaîne ne démarre pas. Tampon, qualité et décodage se règlent seuls selon la box ; tout reste modifiable.</p>
+    </div>
+    <picture><source srcset="img/fr/player.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/player.png" alt="Lecteur plein écran avec les commandes superposées"></picture>
   </div>
   <div class="grid three">
-    <div class="card"><h3><span lang="fr">Thèmes</span><span lang="en">Themes</span></h3><p><span lang="fr">Sombre, clair ou automatique. Le lecteur reste toujours sombre.</span><span lang="en">Dark, light or automatic. The player always stays dark.</span></p></div>
-    <div class="card"><h3><span lang="fr">Sécurité</span><span lang="en">Security</span></h3><p><span lang="fr">Identifiants chiffrés sur l'appareil, aucune adresse de flux affichée, appairage au cloud par code.</span><span lang="en">Credentials encrypted on the device, no stream address ever shown, cloud pairing by code.</span></p></div>
-    <div class="card"><h3><span lang="fr">Veille et confort</span><span lang="en">Sleep and comfort</span></h3><p><span lang="fr">Minuterie 30 / 60 / 90 min ou fin de programme, reprise de lecture, mise à jour intégrée.</span><span lang="en">Timer 30 / 60 / 90 min or end of programme, resume playback, built-in updates.</span></p></div>
+    <div class="card"><h3>Thèmes</h3><p>Sombre, clair ou automatique. Le lecteur reste toujours sombre.</p></div>
+    <div class="card"><h3>Sécurité</h3><p>Identifiants chiffrés sur l'appareil, aucune adresse de flux affichée, appairage au cloud par code.</p></div>
+    <div class="card"><h3>Veille et confort</h3><p>Minuterie 30 / 60 / 90 min ou fin de programme, reprise de lecture, mise à jour intégrée.</p></div>
   </div>
 </section>
 
 <section id="telecharger">
-  <h2><span lang="fr">Télécharger</span><span lang="en">Download</span></h2>
+  <h2>Télécharger</h2>
   <div class="grid two">
     <div class="card">
       <h3>APK <span data-version>1.1.0</span></h3>
-      <p><span lang="fr">Android 9 ou plus récent. Le fichier suit toujours la dernière version publiée.</span><span lang="en">Android 9 or newer. The file always follows the latest published release.</span></p>
+      <p>Android 9 ou plus récent. Le fichier suit toujours la dernière version publiée.</p>
       <p><a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ UltraTV-debug.apk</a></p>
-      <p class="meta"><span lang="fr">Somme de contrôle SHA-256 dans la page de la version.</span><span lang="en">SHA-256 checksum on the release page.</span></p>
+      <p class="meta">Somme de contrôle SHA-256 dans la page de la version.</p>
     </div>
     <div class="card">
       <h3>Downloader</h3>
-      <p><span lang="fr">Sur une box sans navigateur : ouvrez l'application Downloader, saisissez le code puis validez.</span><span lang="en">On a box without a browser: open the Downloader app, enter the code and confirm.</span></p>
+      <p>Sur une box sans navigateur : ouvrez l'application Downloader, saisissez le code puis validez.</p>
       <p style="font-size:2rem;margin:0"><code>5248504</code></p>
     </div>
   </div>
 </section>
 
 <section id="installer">
-  <h2><span lang="fr">Installer et configurer</span><span lang="en">Install and set up</span></h2>
-  <h3><span lang="fr">Sur la box</span><span lang="en">On the box</span></h3>
+  <h2>Installer et configurer</h2>
+  <h3>Sur la box</h3>
   <ol class="steps">
-    <li><span lang="fr">Autorisez l'installation d'applications inconnues pour Downloader (Réglages › Sécurité).</span><span lang="en">Allow unknown apps for Downloader (Settings › Security).</span></li>
-    <li><span lang="fr">Téléchargez l'APK avec le code ci-dessus, puis installez-le.</span><span lang="en">Download the APK with the code above, then install it.</span></li>
-    <li><span lang="fr">Au premier lancement, choisissez le type de source (Xtream, M3U, Stalker), saisissez-la, puis cochez vos langues : seules les catégories correspondantes sont téléchargées.</span><span lang="en">At first launch choose the source type (Xtream, M3U, Stalker), enter it, then tick your languages: only the matching categories are downloaded.</span></li>
+    <li>Autorisez l'installation d'applications inconnues pour Downloader (Réglages › Sécurité).</li>
+    <li>Téléchargez l'APK avec le code ci-dessus, puis installez-le.</li>
+    <li>Au premier lancement, choisissez le type de source (Xtream Codes, lien M3U, fichier M3U ou Depuis le cloud), saisissez-la, puis cochez vos langues : seules les catégories correspondantes sont téléchargées.</li>
   </ol>
-  <h3 style="margin-top:28px"><span lang="fr">Avec adb</span><span lang="en">With adb</span></h3>
+  <h3 style="margin-top:28px">Avec adb</h3>
 <pre><code>adb connect IP_DE_LA_BOX:5555
 adb install -r UltraTV-debug.apk</code></pre>
-  <h3 style="margin-top:28px"><span lang="fr">Appairage cloud par code</span><span lang="en">Cloud pairing by code</span></h3>
-  <p><span lang="fr">Pour éviter de saisir des identifiants à la télécommande : dans Réglages › Sources, choisissez « Synchroniser depuis le cloud », notez le code affiché sur la télévision et saisissez-le dans votre tableau de bord (Cloudflare Worker auto-hébergé). Vos sources arrivent chiffrées ; l'appareil reçoit un jeton propre, révocable depuis le tableau de bord.</span><span lang="en">To avoid typing credentials with a remote: in Settings › Sources choose “Sync from the cloud”, note the code shown on the TV and enter it in your dashboard (self-hosted Cloudflare Worker). Sources arrive encrypted; the device gets its own token, revocable from the dashboard.</span></p>
+  <h3 style="margin-top:28px" id="cloud">Synchronisation cloud</h3>
+  <p>Pour éviter de saisir des identifiants à la télécommande, gérez vos sources depuis un navigateur sur <strong>ultratv-config.khalilbenaz.workers.dev</strong> (l'adresse est aussi affichée avec un QR code dans l'application, Réglages › Sources).</p>
+  <ol class="steps">
+    <li>Créez un compte sur le tableau de bord et ajoutez vos sources.</li>
+    <li>Choisissez « Appairer une TV ».</li>
+    <li>Sur la box : « Depuis le cloud » (assistant) ou Réglages › Sources › Synchroniser depuis le cloud. Saisissez dans le tableau de bord le code à 8 caractères affiché sur la télévision.</li>
+  </ol>
+  <p>Vos identifiants sont chiffrés côté serveur ; la box reçoit un jeton propre, révocable depuis le tableau de bord. Vous pouvez aussi déployer votre propre Worker (instructions et secrets à définir dans le dépôt, aucune valeur publiée).</p>
+  <p class="cta"><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev" rel="noopener">Ouvrir le tableau de bord</a></p>
 </section>
 
 <section id="faq">
   <h2>FAQ</h2>
-  <details><summary><span lang="fr">Ultra TV fournit-il des chaînes ?</span><span lang="en">Does Ultra TV include channels?</span></summary><p><span lang="fr">Non. C'est un lecteur : vous apportez votre abonnement ou vos listes, que vous avez le droit d'utiliser.</span><span lang="en">No. It is a player: you bring your own subscription or playlists, which you are entitled to use.</span></p></details>
-  <details><summary><span lang="fr">Mes identifiants sont-ils protégés ?</span><span lang="en">Are my credentials protected?</span></summary><p><span lang="fr">Ils sont chiffrés sur l'appareil, ne sont jamais affichés ni journalisés, et les adresses de flux ne s'affichent nulle part.</span><span lang="en">They are encrypted on the device, never displayed or logged, and stream addresses are never shown.</span></p></details>
-  <details><summary><span lang="fr">Quelles box sont compatibles ?</span><span lang="en">Which boxes are supported?</span></summary><p><span lang="fr">Android 9 et plus (API 28) : Google TV / Chromecast, Mecool, Fire TV via sideload, téléviseurs Android TV. Un mode économe s'active seul sur les appareils à peu de mémoire.</span><span lang="en">Android 9 and later (API 28): Google TV / Chromecast, Mecool, Fire TV by sideload, Android TV sets. A frugal mode switches on by itself on low-memory devices.</span></p></details>
-  <details><summary><span lang="fr">La chaîne ne démarre pas, que faire ?</span><span lang="en">A channel will not start, what now?</span></summary><p><span lang="fr">Ultra TV essaie seul un autre décodeur puis l'autre moteur. Vous pouvez aussi choisir le moteur et le décodage dans le panneau de lecture.</span><span lang="en">Ultra TV tries another decoder, then the other engine, on its own. You can also pick the engine and decoding in the player panel.</span></p></details>
-  <details><summary><span lang="fr">Comment mettre à jour ?</span><span lang="en">How do I update?</span></summary><p><span lang="fr">L'application vérifie les nouvelles versions sur GitHub et propose l'installation.</span><span lang="en">The app checks GitHub for new releases and offers to install them.</span></p></details>
+  <details><summary>Ultra TV fournit-il des chaînes ?</summary><p>Non. C'est un lecteur : vous apportez votre abonnement ou vos listes, que vous avez le droit d'utiliser.</p></details>
+  <details><summary>Mes identifiants sont-ils protégés ?</summary><p>Ils sont chiffrés sur l'appareil, ne sont jamais affichés ni journalisés, et les adresses de flux ne s'affichent nulle part.</p></details>
+  <details><summary>Quelles box sont compatibles ?</summary><p>Android 9 et plus (API 28) : Google TV / Chromecast, Mecool, Fire TV via sideload, téléviseurs Android TV. Un mode économe s'active seul sur les appareils à peu de mémoire.</p></details>
+  <details><summary>La chaîne ne démarre pas, que faire ?</summary><p>Ultra TV essaie seul un autre décodeur puis l'autre moteur. Vous pouvez aussi choisir le moteur et le décodage dans le panneau de lecture.</p></details>
+  <details><summary>Comment mettre à jour ?</summary><p>L'application vérifie les nouvelles versions sur GitHub et propose l'installation.</p></details>
 </section>
 </main>
 
 <footer>
-  <p><span lang="fr">Ultra TV — logiciel libre sous licence MIT. Ultra TV est un client IPTV et ne fournit aucun contenu.</span><span lang="en">Ultra TV — free software under the MIT licence. Ultra TV is an IPTV client and provides no content.</span></p>
-  <p><a href="https://github.com/khalilbenaz/ultra-tv">GitHub</a> · <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> · <a href="https://github.com/khalilbenaz/ultra-tv/blob/main/SECURITY.md"><span lang="fr">Sécurité</span><span lang="en">Security</span></a></p>
+  <p>Ultra TV — logiciel libre sous licence MIT. Ultra TV est un client IPTV et ne fournit aucun contenu.</p>
+  <p><a href="https://github.com/khalilbenaz/ultra-tv">GitHub</a> · <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> · <a href="https://github.com/khalilbenaz/ultra-tv/blob/main/SECURITY.md">Sécurité</a></p>
 </footer>
 </div>
 <script src="app.js" defer></script>

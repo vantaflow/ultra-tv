@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/screenshots/banner.png" alt="Ultra TV" width="100%" />
+  <img src="docs/screenshots/fr/banner.png" alt="Ultra TV" width="100%" />
 </p>
 
 <h1 align="center">Ultra TV</h1>
@@ -17,6 +17,7 @@
 </p>
 
 <p align="center">
+  <a href="README.en.md">🇬🇧 English version</a> ·
   <a href="https://khalilbenaz.github.io/ultra-tv/">Site</a> ·
   <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">Télécharger l'APK</a> ·
   <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> ·
@@ -25,21 +26,26 @@
 
 ---
 
-Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **Stalker**). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
+Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
 
 > Les captures ci-dessous utilisent exclusivement des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).
 
 <p align="center">
-  <img src="docs/screenshots/home.png" alt="Accueil" width="48%" />
-  <img src="docs/screenshots/live.png" alt="Direct" width="48%" />
-  <img src="docs/screenshots/guide.png" alt="Guide des programmes" width="48%" />
-  <img src="docs/screenshots/detail.png" alt="Fiche film" width="48%" />
-  <img src="docs/screenshots/player.png" alt="Lecteur" width="48%" />
-  <img src="docs/screenshots/settings.png" alt="Réglages" width="48%" />
+  <img src="docs/screenshots/fr/home.png" alt="Accueil" width="48%" />
+  <img src="docs/screenshots/fr/live.png" alt="Direct" width="48%" />
+  <img src="docs/screenshots/fr/guide.png" alt="Guide des programmes" width="48%" />
+  <img src="docs/screenshots/fr/detail.png" alt="Fiche film" width="48%" />
+  <img src="docs/screenshots/fr/player.png" alt="Lecteur" width="48%" />
+  <img src="docs/screenshots/fr/settings.png" alt="Réglages" width="48%" />
+  <img src="docs/screenshots/fr/profiles.png" alt="Qui regarde ?" width="48%" />
+  <img src="docs/screenshots/fr/languages.png" alt="Réglages, panneau Langues" width="48%" />
 </p>
+
+Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/en)) et en arabe, interface en miroir ([`docs/screenshots/ar`](docs/screenshots/ar)).
 
 ## Fonctionnalités
 
+- **Recherche** depuis n'importe quel écran : bouton en haut du menu latéral, touches Recherche et micro de la télécommande.
 - **Direct** : catégories actives, filtre par langue dès la première source, séparateurs en en-têtes, badges de qualité, zapping par numéro, retour à la chaîne précédente, 20 chaînes récentes, recherche instantanée (FTS).
 - **Guide** : grille horaire, rappels, enregistrements programmés, **replay** (catch-up Xtream) depuis le guide quand la source le permet.
 - **Pause du direct** (timeshift) : tampon disque circulaire pour les flux MPEG-TS.
@@ -66,11 +72,22 @@ adb connect IP_DE_LA_BOX:5555
 adb install -r UltraTV-debug.apk
 ```
 
-Au premier lancement : choisissez le type de source, saisissez-la, puis cochez vos langues (seules les catégories correspondantes sont téléchargées).
+Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U ou **Depuis le cloud**), saisissez-la, puis cochez vos langues (seules les catégories correspondantes sont téléchargées).
 
-### Appairage cloud par code
+Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
 
-Pour ne pas saisir d'identifiants à la télécommande : Réglages › Sources › **Synchroniser depuis le cloud**. La télévision affiche un code ; saisissez-le dans le tableau de bord de votre [Worker](#worker-cloudflare), ajoutez vos sources, puis « Importer ma configuration depuis le cloud ». L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore sur l'appareil, révocable). L'adresse MAC n'est qu'une étiquette, jamais une clé.
+## Synchronisation cloud
+
+Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depuis un navigateur : **<https://ultratv-config.khalilbenaz.workers.dev>** (l'adresse est aussi affichée, avec un QR code, dans l'application : Réglages › Sources).
+
+1. Créez un compte sur le tableau de bord et ajoutez vos sources.
+2. Dans le tableau de bord, choisissez **Appairer une TV**.
+3. Sur la box : **Depuis le cloud** (écran Source de l'assistant) ou Réglages › Sources › *Synchroniser depuis le cloud*. Un code à 8 caractères s'affiche ; saisissez-le dans le tableau de bord.
+4. La box importe la configuration puis synchronise.
+
+L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore, révocable). Vos identifiants sont **chiffrés côté serveur** (AES-256-GCM). L'étiquette affichée pour la box (« UTV-XXXXXX ») n'est qu'un nom, jamais une clé.
+
+**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez les espaces KV, définissez les secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
 
 ## Sécurité
 
@@ -97,7 +114,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 - La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.1.0 → 10100).
 - **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
 - Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
-- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` ; site : [pages.yml](.github/workflows/pages.yml).
+- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`) ; site : [pages.yml](.github/workflows/pages.yml).
 
 ## Worker Cloudflare
 

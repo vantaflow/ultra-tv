@@ -21,7 +21,7 @@ header.top{display:flex;align-items:center;justify-content:space-between;gap:12p
 nav.links{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 nav.links a,.chip{color:var(--text);text-decoration:none;padding:8px 12px;border-radius:999px;font-weight:600;font-size:.95rem;background:transparent;border:1px solid transparent}
 nav.links a:hover{border-color:var(--line)}
-button.chip{border:1px solid var(--line);background:var(--surface);cursor:pointer;font:600 .9rem "Manrope",sans-serif;color:var(--text);min-height:40px}
+a.chip,button.chip{border:1px solid var(--line);background:var(--surface);cursor:pointer;font:600 .9rem "Manrope",sans-serif;color:var(--text);min-height:40px}
 a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--accent-ink);outline-offset:3px}
 .hero{display:grid;gap:32px;padding:32px 0 48px;align-items:center}
 @media (min-width:900px){.hero{grid-template-columns:1fr 1.15fr;padding:56px 0 72px}}
@@ -48,5 +48,4 @@ details{background:var(--surface);border:1px solid var(--line);border-radius:14p
 summary{cursor:pointer;font-weight:700;color:var(--text)}
 details p{margin:10px 0 0}
 footer{padding:32px 0 56px;border-top:1px solid var(--line);color:var(--text2);font-size:.92rem}
-html[data-lang="fr"] [lang="en"],html[data-lang="en"] [lang="fr"]{display:none!important}
 @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn:hover{transform:none}}
