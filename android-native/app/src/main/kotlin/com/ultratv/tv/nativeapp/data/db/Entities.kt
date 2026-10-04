@@ -179,17 +179,19 @@ data class EpisodeEntity(
 
 @Entity(
     tableName = "favorite",
-    primaryKeys = ["providerId", "kind", "remoteId"],
+    primaryKeys = ["profileId", "providerId", "kind", "remoteId"],
 )
 data class FavoriteEntity(
     val providerId: Long,
     val kind: String,           // "LIVE", "MOVIE", "SERIES"
     val remoteId: String,
+    /** Profil propriétaire (les favoris sont PAR PROFIL). */
+    @androidx.room.ColumnInfo(defaultValue = "1") val profileId: Long = 1L,
 )
 
 @Entity(
     tableName = "watch_history",
-    primaryKeys = ["providerId", "kind", "remoteId"],
+    primaryKeys = ["profileId", "providerId", "kind", "remoteId"],
 )
 data class WatchHistoryEntity(
     val providerId: Long,
@@ -203,6 +205,8 @@ data class WatchHistoryEntity(
     val watchedAt: Long = System.currentTimeMillis(),
     // For episodes: parent series id so we can group "continue watching this show".
     val parentRemoteId: String? = null,
+    /** Profil propriétaire (historique et reprise de lecture PAR PROFIL). */
+    @androidx.room.ColumnInfo(defaultValue = "1") val profileId: Long = 1L,
 )
 
 @Entity(tableName = "recording")

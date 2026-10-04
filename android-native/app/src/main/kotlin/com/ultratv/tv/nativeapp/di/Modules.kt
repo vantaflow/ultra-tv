@@ -27,7 +27,7 @@ object DatabaseModule {
             // registered here via .addMigrations(MIGRATION_10_11, ...). Do NOT
             // widen this destructive range — the exported schemas under
             // app/schemas let Room auto-generate / verify those migrations.
-            .addMigrations(com.ultratv.tv.nativeapp.data.db.MIGRATION_10_11, com.ultratv.tv.nativeapp.data.db.MIGRATION_11_12)
+            .addMigrations(com.ultratv.tv.nativeapp.data.db.MIGRATION_10_11, com.ultratv.tv.nativeapp.data.db.MIGRATION_11_12, com.ultratv.tv.nativeapp.data.db.MIGRATION_13_14)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
             .build()
 
@@ -37,6 +37,8 @@ object DatabaseModule {
     @Provides fun provideSeriesDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.SeriesDao = db.seriesDao()
     @Provides fun provideEpisodeDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.EpisodeDao = db.episodeDao()
     @Provides fun provideCategoryDao(db: UltraDb): CategoryDao = db.categoryDao()
+    @Provides @Singleton fun provideProfileStateStore(@ApplicationContext ctx: Context): com.ultratv.tv.nativeapp.data.profile.ProfileStateStore = com.ultratv.tv.nativeapp.data.profile.DataStoreProfileStateStore(ctx)
+    @Provides fun provideProfileDao(db: UltraDb): com.ultratv.tv.nativeapp.data.profile.ProfileDao = db.profileDao()
     @Provides fun provideFavoriteDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.FavoriteDao = db.favoriteDao()
     @Provides fun provideEpgDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.EpgDao = db.epgDao()
     @Provides fun provideWatchHistoryDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.WatchHistoryDao = db.watchHistoryDao()

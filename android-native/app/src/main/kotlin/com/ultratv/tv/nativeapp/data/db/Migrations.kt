@@ -69,3 +69,27 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
         )
     }
 }
+
+/**
+ * 13 → 14 : PROFILS (suppose que la 12 → 13 de l'agent B1, table recording, la précède). Crée `profile` (le profil existant devient « Principal », id 1), les préférences et catégories
+ * masquées par profil, et rattache favoris et historique au profil 1 (clé primaire élargie à `profileId`).
+ * Aucune donnée n'est perdue. Sources, catalogue et EPG restent globaux.
+ */
+val MIGRATION_13_14 = object : Migration(13, 14) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS `profile` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `color` INTEGER NOT NULL, `initial` TEXT NOT NULL, `isKids` INTEGER NOT NULL, `pinHash` TEXT, `createdAt` INTEGER NOT NULL)")
+        db.execSQL("INSERT INTO `profile` (`id`, `name`, `color`, `initial`, `isKids`, `pinHash`, `createdAt`) VALUES (1, 'Principal', ${0xFF3B82F6.toInt()}, 'P', 0, NULL, CAST(strftime('%s','now') AS INTEGER) * 1000)")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `profile_pref` (`profileId` INTEGER NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`profileId`, `key`))")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `profile_hidden_category` (`profileId` INTEGER NOT NULL, `categoryKey` TEXT NOT NULL, PRIMARY KEY(`profileId`, `categoryKey`))")
+
+        db.execSQL("ALTER TABLE `favorite` RENAME TO `favorite_old`")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `favorite` (`providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `profileId` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`profileId`, `providerId`, `kind`, `remoteId`))")
+        db.execSQL("INSERT INTO `favorite` (`providerId`, `kind`, `remoteId`, `profileId`) SELECT `providerId`, `kind`, `remoteId`, 1 FROM `favorite_old`")
+        db.execSQL("DROP TABLE `favorite_old`")
+
+        db.execSQL("ALTER TABLE `watch_history` RENAME TO `watch_history_old`")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `watch_history` (`providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `title` TEXT NOT NULL, `poster` TEXT, `streamUrl` TEXT NOT NULL, `positionMs` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `watchedAt` INTEGER NOT NULL, `parentRemoteId` TEXT, `profileId` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`profileId`, `providerId`, `kind`, `remoteId`))")
+        db.execSQL("INSERT INTO `watch_history` (`providerId`, `kind`, `remoteId`, `title`, `poster`, `streamUrl`, `positionMs`, `durationMs`, `watchedAt`, `parentRemoteId`, `profileId`) SELECT `providerId`, `kind`, `remoteId`, `title`, `poster`, `streamUrl`, `positionMs`, `durationMs`, `watchedAt`, `parentRemoteId`, 1 FROM `watch_history_old`")
+        db.execSQL("DROP TABLE `watch_history_old`")
+    }
+}

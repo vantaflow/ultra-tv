@@ -166,10 +166,10 @@ interface ChannelDao {
 
     @Query("""
         SELECT c.* FROM channel c
-        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey LIMIT :limit
     """)
-    fun observeFavoritesTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+    fun observeFavoritesTop(pid: Long, limit: Int, profileId: Long): Flow<List<ChannelEntity>>
 
     @Query("SELECT lang AS lang, COUNT(*) AS n FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 GROUP BY lang")
     fun observeLangCounts(pid: Long): Flow<List<LangCount>>
@@ -207,10 +207,10 @@ interface ChannelDao {
 
     @Query("""
         SELECT c.* FROM channel c
-        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey
     """)
-    suspend fun favoritesList(pid: Long): List<ChannelEntity>
+    suspend fun favoritesList(pid: Long, profileId: Long): List<ChannelEntity>
 
     /** Chaînes précises d'une source (écran « Chaînes verrouillées » : seulement celles qu'on a verrouillées). */
     @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId IN (:ids) ORDER BY sortKey")
@@ -218,10 +218,10 @@ interface ChannelDao {
 
     @Query("""
         SELECT c.* FROM channel c
-        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
         WHERE c.providerId = :pid AND c.isSeparator = 0 AND (:useLang = 0 OR c.lang IN (:langs)) ORDER BY c.num, c.sortKey
     """)
-    fun pagedFavorites(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+    fun pagedFavorites(pid: Long, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
     @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
@@ -401,46 +401,47 @@ interface CategoryDao {
 
 @Dao
 interface FavoriteDao {
-    @Query("SELECT * FROM favorite WHERE providerId = :pid AND kind = :kind")
-    fun observeForKind(pid: Long, kind: String): Flow<List<FavoriteEntity>>
+    @Query("SELECT * FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind")
+    fun observeForKind(profileId: Long, pid: Long, kind: String): Flow<List<FavoriteEntity>>
 
-    @Query("SELECT COUNT(*) FROM favorite WHERE providerId = :pid AND kind = :kind")
-    fun observeCount(pid: Long, kind: String): Flow<Int>
+    @Query("SELECT COUNT(*) FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind")
+    fun observeCount(profileId: Long, pid: Long, kind: String): Flow<Int>
 
-    @Query("SELECT EXISTS(SELECT 1 FROM favorite WHERE providerId = :pid AND kind = :kind AND remoteId = :rid)")
-    fun observeIsFavorite(pid: Long, kind: String, rid: String): Flow<Boolean>
+    @Query("SELECT EXISTS(SELECT 1 FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid)")
+    fun observeIsFavorite(profileId: Long, pid: Long, kind: String, rid: String): Flow<Boolean>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun add(f: FavoriteEntity)
 
-    @Query("DELETE FROM favorite WHERE providerId = :pid AND kind = :kind AND remoteId = :rid")
-    suspend fun remove(pid: Long, kind: String, rid: String)
+    @Query("DELETE FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid")
+    suspend fun remove(profileId: Long, pid: Long, kind: String, rid: String)
 }
 
 @Dao
 interface WatchHistoryDao {
-    @Query("SELECT * FROM watch_history WHERE providerId = :pid ORDER BY watchedAt DESC LIMIT :limit")
-    fun observeRecent(pid: Long, limit: Int = 30): Flow<List<WatchHistoryEntity>>
+    @Query("SELECT * FROM watch_history WHERE profileId = :profileId AND providerId = :pid ORDER BY watchedAt DESC LIMIT :limit")
+    fun observeRecent(profileId: Long, pid: Long, limit: Int = 30): Flow<List<WatchHistoryEntity>>
 
-    @Query("SELECT positionMs FROM watch_history WHERE providerId = :pid AND kind = :kind AND remoteId = :rid LIMIT 1")
-    suspend fun positionFor(pid: Long, kind: String, rid: String): Long?
+    @Query("SELECT positionMs FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid LIMIT 1")
+    suspend fun positionFor(profileId: Long, pid: Long, kind: String, rid: String): Long?
 
-    @Query("SELECT * FROM watch_history WHERE providerId = :pid AND kind = :kind ORDER BY watchedAt DESC LIMIT :limit")
-    fun observeRecentByKind(pid: Long, kind: String, limit: Int = 30): Flow<List<WatchHistoryEntity>>
+    @Query("SELECT * FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND kind = :kind ORDER BY watchedAt DESC LIMIT :limit")
+    fun observeRecentByKind(profileId: Long, pid: Long, kind: String, limit: Int = 30): Flow<List<WatchHistoryEntity>>
 
-    @Query("SELECT * FROM watch_history WHERE providerId = :pid AND positionMs > 0 AND (durationMs = 0 OR positionMs < durationMs - 60000) ORDER BY watchedAt DESC LIMIT :limit")
-    fun observeContinueWatching(pid: Long, limit: Int = 20): Flow<List<WatchHistoryEntity>>
+    @Query("SELECT * FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND positionMs > 0 AND (durationMs = 0 OR positionMs < durationMs - 60000) ORDER BY watchedAt DESC LIMIT :limit")
+    fun observeContinueWatching(profileId: Long, pid: Long, limit: Int = 20): Flow<List<WatchHistoryEntity>>
 
     /** Progression des épisodes d'une série (fiche série : barre de progression, « Reprendre »). */
-    @Query("SELECT * FROM watch_history WHERE providerId = :pid AND kind = 'EPISODE' AND parentRemoteId = :parent ORDER BY watchedAt DESC")
-    fun observeEpisodesOf(pid: Long, parent: String): Flow<List<WatchHistoryEntity>>
+    @Query("SELECT * FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND kind = 'EPISODE' AND parentRemoteId = :parent ORDER BY watchedAt DESC")
+    fun observeEpisodesOf(profileId: Long, pid: Long, parent: String): Flow<List<WatchHistoryEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(h: WatchHistoryEntity)
 
-    @Query("DELETE FROM watch_history WHERE providerId = :pid AND kind = :kind AND remoteId = :rid")
-    suspend fun remove(pid: Long, kind: String, rid: String)
+    @Query("DELETE FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid")
+    suspend fun remove(profileId: Long, pid: Long, kind: String, rid: String)
 
+    /** Purge l'historique de TOUS les profils pour un fournisseur supprimé. */
     @Query("DELETE FROM watch_history WHERE providerId = :pid")
     suspend fun clearForProvider(pid: Long)
 }
