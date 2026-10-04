@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.7] — 2026-10-04
+
+### Nouveautés
+- **Catégories et langues partagées entre appareils** (cloud) : masquer/afficher des catégories ou changer les langues sur un appareil s'applique aux autres (le plus récent l'emporte). Interrupteur « Synchroniser catégories et langues » dans Réglages › Cloud, activé par défaut. Au premier lancement de cette version, la configuration déjà faite sur le bureau est publiée pour servir de référence aux autres appareils.
+- **Bureau, Réglages › Catégories** : toutes les langues présentes, sans doublon (alias, drapeaux, préfixes reconnus), une case par langue pour tout activer/désactiver d'un coup, « Tout activer / Tout désactiver » sur la vue filtrée.
+
 ## [1.2.6] — 2026-10-04
 
 ### Corrections
