@@ -43,6 +43,7 @@ class ProviderRepository @Inject constructor(
     private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
     private val prefs: UserPreferencesStore,
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -367,6 +368,9 @@ class ProviderRepository @Inject constructor(
             val t = System.currentTimeMillis()
             for (part in listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES)) providerDao.markSynced(p.id, part, t)
         }
+
+        // Connexions simultanées autorisées (user_info) : alimente les avertissements enregistrement/lecture et le timeshift.
+        xtream.fetchMaxConnections(p)?.let { limits.setMaxConnections(p.id, it) }
 
         // Pondération de la barre de progression : seules les parties dues comptent.
         val weights = mapOf(SyncPart.LIVE to 20, SyncPart.VOD to 35, SyncPart.SERIES to 20, SyncPart.EPG to 25)

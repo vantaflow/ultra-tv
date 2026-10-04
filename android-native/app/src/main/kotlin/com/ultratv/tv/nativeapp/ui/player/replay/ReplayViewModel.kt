@@ -19,5 +19,7 @@ class ReplayViewModel @Inject constructor(private val service: ReplayService) : 
     suspend fun retryUrl(programme: EpgEntity, providerId: Long): String? =
         if (service.onReplayFailed(providerId)) service.urlFor(programme) else null
 
+    fun takePending() = service.takePending()
+
     fun worked(providerId: Long) = service.onReplayWorked(providerId)
 }

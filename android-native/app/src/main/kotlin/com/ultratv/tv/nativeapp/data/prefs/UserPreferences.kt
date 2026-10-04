@@ -224,10 +224,10 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }
     suspend fun setLocalLogosFolderUri(uri: String) = update { it[Keys.localLogosUri] = uri }
 
-    suspend fun setLanguages(csv: String) = update { it[Keys.languages] = csv }
+    suspend fun setLanguages(csv: String) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.LANGUAGES, csv)
     suspend fun setPreferredQuality(v: String) = update { it[Keys.preferredQuality] = v }
-    suspend fun setIncludeMulti(v: Boolean) = update { it[Keys.includeMulti] = v }
-    suspend fun setIncludeUnknownLang(v: Boolean) = update { it[Keys.includeUnknown] = v }
+    suspend fun setIncludeMulti(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.INCLUDE_MULTI, v.toString())
+    suspend fun setIncludeUnknownLang(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.INCLUDE_UNKNOWN, v.toString())
     suspend fun setSyncMode(v: String) = update { it[Keys.syncMode] = v }
     suspend fun setSyncHour(v: Int) = update { it[Keys.syncHour] = v.coerceIn(0, 23) }
     suspend fun setSyncPart(part: String, on: Boolean) = update {

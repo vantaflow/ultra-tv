@@ -317,7 +317,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         when (ts.support(currentUrl)) {
             com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftSupport.OK -> {
                 val live = currentUrl
-                session.release()              // ferme le flux direct AVANT d'ouvrir la connexion amont du relais
+                val pidTs = item?.providerId
+                // Avec une seule connexion, le flux direct est fermé AVANT d'ouvrir celle du relais ; avec 2 ou plus, on peut enchaîner sans trou.
+                if (pidTs == null || ts.maxConnections(pidTs) <= 1) session.release()
+                if (pidTs != null) scope.launch { if (ts.connectionConflict(pidTs)) Toaster.show(D.recConnectionBusy) }
                 ts.activate(live, "UltraTV/1.0 (Android TV)")?.let { liveUrlBeforeTs = live; tsActive = true; pendingPause = true; currentUrl = it }
                     ?: run { session.start(live, item?.let { "${it.providerId}:${it.remoteId}" }, 0) }
             }
@@ -361,14 +364,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // [B2·replay] « Depuis le début » sur le programme en cours ; l'URL (identifiants inclus) n'est jamais affichée.
     val replayVm: com.ultratv.tv.nativeapp.ui.player.replay.ReplayViewModel = hiltViewModel()
     val nowProg by vm.nowProgramme.collectAsState()
-    var replayProg by remember { mutableStateOf<EpgEntity?>(null) }
+    // Replay lancé depuis le guide (« Revoir ») : on reprend le programme pour que le repli d'URL fonctionne aussi.
+    val guideReplay = remember { replayVm.takePending() }
+    var replayProg by remember { mutableStateOf<EpgEntity?>(guideReplay?.first) }
     var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
     var canReplay by remember { mutableStateOf(false) }
     LaunchedEffect(nowProg?.id) { canReplay = replayVm.canReplay(nowProg) }
-    LaunchedEffect(item?.remoteId) { replayProg = null }
+    LaunchedEffect(item?.remoteId) { if (replayProg !== guideReplay?.first) replayProg = null }
     LaunchedEffect(state.phase) {
         val rp = replayProg ?: return@LaunchedEffect
-        val pid = item?.providerId ?: return@LaunchedEffect
+        val pid = item?.providerId ?: guideReplay?.second ?: return@LaunchedEffect
         if (state.phase == Phase.PLAYING) replayVm.worked(pid)
         else if (state.phase == Phase.ERROR) replayVm.retryUrl(rp, pid)?.let { currentUrl = it }
     }

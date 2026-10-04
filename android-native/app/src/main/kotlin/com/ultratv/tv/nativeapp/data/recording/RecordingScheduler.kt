@@ -49,6 +49,7 @@ class RecordingScheduler @Inject constructor(
     private val repo: RecordingRepository,
     private val provider: ProviderRepository,
     private val playback: PlaybackContext,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
 ) {
     private val am = ctx.getSystemService<AlarmManager>()!!
     private val nm = ctx.getSystemService<NotificationManager>()!!
@@ -111,7 +112,7 @@ class RecordingScheduler @Inject constructor(
             Toaster.err("Espace insuffisant pour enregistrer « ${r.title} »")
             return
         }
-        if (ConnectionPolicy.onRecordingStart(playing = playback.current.value != null) == ConnectionWarning.RECORDING_TAKES_CONNECTION) {
+        if (ConnectionPolicy.onRecordingStart(playing = playback.current.value != null, maxConnections = limits.maxConnections(r.providerId)) == ConnectionWarning.RECORDING_TAKES_CONNECTION) {
             val msg = "Un enregistrement démarre sur votre seule connexion : la lecture peut être interrompue"
             notify(id, r.title, msg)
             Toaster.show(msg)

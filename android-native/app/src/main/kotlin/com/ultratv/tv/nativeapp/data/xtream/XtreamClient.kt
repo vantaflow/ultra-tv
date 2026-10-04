@@ -268,6 +268,18 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         }
     }
 
+    /** `user_info.max_connections` de la source (null si injoignable ou absent). Aucun identifiant n'est journalisé. */
+    suspend fun fetchMaxConnections(p: ProviderEntity): Int? = withContext(Dispatchers.IO) {
+        runCatching {
+            val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}"
+            ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) return@use null
+                val root = json.parseToJsonElement(resp.body?.string().orEmpty()) as? JsonObject ?: return@use null
+                com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore.parseMaxConnections(root)
+            }
+        }.getOrNull()
+    }
+
     // ---- Helpers ----
 
     /** Petite liste (catégories) : les erreurs réseau REMONTENT (avant : avalées => catalogue vidé). */

@@ -66,6 +66,15 @@ class ReplayService @Inject constructor(private val channelDao: ChannelDao) {
     private val styles = ConcurrentHashMap<Long, ReplayStyle>()
     private val triedBoth = ConcurrentHashMap.newKeySet<Long>()
 
+    /** Programme dont le replay vient d'être lancé depuis le guide : le lecteur le reprend pour son repli (autre forme d'URL). */
+    @Volatile private var pending: Pair<EpgEntity, Long>? = null
+    fun armFromGuide(programme: EpgEntity, providerId: Long) { pending = programme to providerId }
+    fun takePending(): Pair<EpgEntity, Long>? = pending.also { pending = null }
+
+    /** URL de replay (synchrone, pure) pour la chaîne et le programme déjà chargés par le guide. */
+    fun urlFor(channel: ChannelEntity, programme: EpgEntity, nowMs: Long = System.currentTimeMillis()): String? =
+        ReplayUrls.build(channel, programme, nowMs, styleFor(channel.providerId))
+
     fun styleFor(providerId: Long): ReplayStyle = styles[providerId] ?: ReplayStyle.PATH
 
     suspend fun availability(programme: EpgEntity, nowMs: Long = System.currentTimeMillis()): ReplayAvailability {

@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.ultratv.tv.nativeapp.data.replay.ReplayAvailability
+import com.ultratv.tv.nativeapp.data.replay.ReplayUrls
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -148,7 +150,13 @@ class GuideGridViewModel @Inject constructor(
     private val reminders: RemindersScheduler,
     private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
     recDao: com.ultratv.tv.nativeapp.data.db.RecordingDao,
+    private val replay: com.ultratv.tv.nativeapp.data.replay.ReplayService,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
 ) : ViewModel() {
+    fun maxConnections(providerId: Long) = limits.maxConnections(providerId)
+    fun replayUrl(channel: ChannelEntity, prog: EpgEntity): String? = replay.urlFor(channel, prog)
+    fun armReplay(channel: ChannelEntity, prog: EpgEntity) = replay.armFromGuide(prog, channel.providerId)
+
     /** Un enregistrement en cours occupe la (seule) connexion : le dialogue et « Regarder » le signalent. */
     val recordingRunning: StateFlow<Boolean> = recDao.observeRunningCount().map { it > 0 }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -204,6 +212,14 @@ class GuideGridViewModel @Inject constructor(
 /** Guide TV (maquette Guide.dc.html) : colonne chaînes de 260, 6 créneaux de 30 min, ligne accent = maintenant. */
 @Composable
 fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: String, title: String) -> Unit = { _, _ -> }, vm: GuideGridViewModel = hiltViewModel()) {
+    // Android 13+ : la permission de notification est demandée au PREMIER rappel (pas au lancement de l'app).
+    val notifCtx = androidx.compose.ui.platform.LocalContext.current
+    val notifLauncher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
+    val askNotifications = {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            androidx.core.content.ContextCompat.checkSelfPermission(notifCtx, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) runCatching { notifLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS) }
+    }
     val D = LocalDs.current
     val channels = vm.channels.collectAsLazyPagingItems()
     val programmes by vm.programmes.collectAsState()
@@ -270,9 +286,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                     val c = channels[i]
                     if (c != null) {
                         GuideRow(
-                            c, programmes[c.id].orEmpty(), windowStart, gridW,
+                            c, programmes[c.id].orEmpty(), windowStart, gridW, D,
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg = c to p },
+                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg = c to p },
                         )
                     } else Spacer(Modifier.height(84.design))
                 }
@@ -285,17 +301,17 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     }
     actionTarget?.let { (ch, pr) ->
         val nowMs = System.currentTimeMillis()
-        val replayUrl = remember(ch.id, pr.id) { com.ultratv.tv.nativeapp.data.repo.Catchup.buildUrl(ch, pr, nowMs) }
+        val replayUrl = remember(ch.id, pr.id) { vm.replayUrl(ch, pr) }
         ProgramActionsDialog(
             channel = ch, prog = pr, state = programActionState(pr, replayUrl, nowMs), D = D, recordingRunning = recordingRunning,
-            onReplay = { actionTarget = null; replayUrl?.let { onPlayUrl(it, pr.title) } },
+            onReplay = { actionTarget = null; replayUrl?.let { vm.armReplay(ch, pr); onPlayUrl(it, pr.title) } },
             onWatch = {
                 actionTarget = null
                 // Lecture et enregistrement se partagent la connexion : on prévient avant de la prendre.
-                if (ConnectionPolicy.onPlayRequested(recordingRunning) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
+                if (ConnectionPolicy.onPlayRequested(recordingRunning, vm.maxConnections(ch.providerId)) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
                 onPlayChannel(ch)
             },
-            onRemind = { actionTarget = null; vm.addReminder(ch, pr); Toaster.ok(D.remindSet) },
+            onRemind = { actionTarget = null; vm.addReminder(ch, pr); askNotifications(); Toaster.ok(D.remindSet) },
             onRecord = { series ->
                 actionTarget = null
                 vm.record(ch, pr, series) { r ->
@@ -344,7 +360,7 @@ private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
 @Composable
 private fun GuideRow(
-    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp,
+    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
 ) {
     val nowMs = System.currentTimeMillis()
@@ -376,6 +392,9 @@ private fun GuideRow(
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
                     if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
                         Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
+                        // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »).
+                        if (wPx >= 200 && p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE)
+                            Text(D.replayTag, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design))
                         if (wPx >= 200) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                 }

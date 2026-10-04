@@ -13,6 +13,7 @@ import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.flow.first
 
 enum class TimeshiftSupport { OK, HLS_UNSUPPORTED, NO_SPACE, NOT_HTTP }
 
@@ -31,7 +32,17 @@ class TimeshiftViewModel @Inject constructor(
     @ApplicationContext private val ctx: Context,
     http: OkHttpClient,
     private val adaptive: AdaptiveProfile,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
+    private val recDao: com.ultratv.tv.nativeapp.data.db.RecordingDao,
 ) : ViewModel() {
+    /** Connexions simultanées de la source (`user_info.max_connections`, 1 tant qu'elle n'est pas lue). */
+    fun maxConnections(providerId: Long) = limits.maxConnections(providerId)
+
+    /** Un enregistrement tient-il déjà la seule connexion de la source que le relais va ouvrir ? */
+    suspend fun connectionConflict(providerId: Long): Boolean =
+        com.ultratv.tv.nativeapp.data.recording.ConnectionPolicy.onPlayRequested(recDao.observeRunningCount().first() > 0, maxConnections(providerId)) !=
+            com.ultratv.tv.nativeapp.data.recording.ConnectionWarning.NONE
+
     private val dir = File(ctx.cacheDir, "timeshift")
     // Flux continu : ni délai global (callTimeout) ni lecture arrêtée trop tôt.
     private val client = http.newBuilder().callTimeout(0, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
