@@ -51,11 +51,9 @@ import com.ultratv.tv.nativeapp.ui.guide.GuideGridScreen
 import com.ultratv.tv.nativeapp.ui.home.HomeScreen
 import com.ultratv.tv.nativeapp.ui.live.LiveScreen
 import com.ultratv.tv.nativeapp.ui.movies.MovieDetailScreen
-import com.ultratv.tv.nativeapp.ui.movies.MoviesScreen
 import com.ultratv.tv.nativeapp.ui.player.PlayerScreen
 import com.ultratv.tv.nativeapp.ui.search.SearchScreen
 import com.ultratv.tv.nativeapp.ui.series.SeriesDetailScreen
-import com.ultratv.tv.nativeapp.ui.series.SeriesScreen
 import com.ultratv.tv.nativeapp.ui.settings.SettingsScreen
 import com.ultratv.tv.nativeapp.ui.theme.UltraTvTheme
 import dagger.hilt.android.AndroidEntryPoint
@@ -342,7 +340,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             LiveScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
         screen(Routes.MOVIES) {
-            MoviesScreen(onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
+            com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
         }
         screen(
             Routes.MOVIE_DETAIL,
@@ -355,7 +353,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             )
         }
         screen(Routes.SERIES) {
-            SeriesScreen(onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
+            com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
         }
         screen(
             Routes.SERIES_DETAIL,

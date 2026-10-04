@@ -87,6 +87,12 @@ class DesignStrings(val lang: AppLang) {
     val tomorrow get() = t("Tomorrow", "Demain", "Mañana", "غدًا")
     val guideNoData get() = t("The programme guide is still loading. It will appear here as soon as it is ready.", "Le guide des programmes se charge encore. Il apparaîtra ici dès qu’il sera prêt.", "La guía de programas aún se está cargando.", "لا يزال دليل البرامج قيد التحميل.")
     val remind get() = t("Remind me", "Me le rappeler", "Recordármelo", "ذكّرني")
+    // Films / Séries
+    val moviesTitle get() = t("Movies", "Films", "Películas", "الأفلام")
+    val seriesTitle get() = t("Series", "Séries", "Series", "المسلسلات")
+    val allChip get() = t("All", "Tous", "Todos", "الكل")
+    val noMovies get() = t("No movies yet — your catalog is still loading.", "Aucun film pour l’instant — votre catalogue se charge encore.", "Aún no hay películas: el catálogo se está cargando.", "لا توجد أفلام بعد — لا يزال الكتالوج قيد التحميل.")
+    val noSeries get() = t("No series yet — your catalog is still loading.", "Aucune série pour l’instant — votre catalogue se charge encore.", "Aún no hay series: el catálogo se está cargando.", "لا توجد مسلسلات بعد — لا يزال الكتالوج قيد التحميل.")
     val syncing get() = t("Syncing", "Synchronisation", "Sincronizando", "جارٍ المزامنة")
 }
 

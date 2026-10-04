@@ -565,7 +565,6 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                         color = Color.White.copy(alpha = 0.55f), fontSize = 11.sp,
                     )
                 }
-                Text(currentUrl.substringBefore('?').takeLast(60), color = Color.White.copy(alpha = 0.6f), fontSize = 12.sp)
             }
         }
         FlowRow(
