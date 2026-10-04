@@ -106,3 +106,11 @@ export function prettyCategoryName(raw: string): string {
   const t = trimChars(stripDeco(raw).replace(/\p{So}/gu, " ").trim(), " /").trim().replace(/\s{2,}/g, " ");
   return t.length > 0 && /[\p{L}\p{N}]/u.test(t) ? t : raw;
 }
+
+/** Titre d'épisode : retire « Série - S01E01 - » (les fournisseurs répètent le nom de la série et le code). */
+export function cleanEpisodeTitle(raw: string): string {
+  const m = /\bS\d{1,3}\s?E\d{1,3}\s*[-–:.]?\s*/i.exec(raw);
+  const t = m ? raw.slice(m.index + m[0].length) : raw;
+  const c = cleanTitle(t.trim() || raw).title;
+  return c || raw;
+}

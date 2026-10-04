@@ -15,6 +15,8 @@ import { usePrefs } from "@/state/prefs";
 import { useSources } from "@/state/sources";
 import { hhmm, QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
+import { parseEpisodes } from "@/screens/Detail";
+import type { SeriesInfo } from "@/net/xtream";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { candidates, type Candidate } from "./resolve";
 import { usePlayer } from "./store";
@@ -143,6 +145,22 @@ export function PlayerHost() {
     const iv = setInterval(saveHistory, 10_000);
     return () => { clearInterval(iv); saveHistory(); };
   }, [target?.refId, target?.kind, saveHistory]);
+
+  // --- épisode suivant automatique ---
+  useEffect(() => {
+    if (state !== "ended" || !target || target.kind !== "episode" || !prefs.autoplayNext || !source) return;
+    let dead = false;
+    void db.details.get(`series:${source.id}:${target.seriesId}`).then((row) => {
+      if (dead || !row) return;
+      const all = parseEpisodes(row.json as SeriesInfo).seasons.flatMap((x) => x.eps);
+      const k = all.findIndex((e) => e.id === target.refId);
+      const nx = all[k + 1];
+      if (nx) usePlayer.getState().open({ ...target, refId: nx.id, ext: nx.ext, season: nx.season, episode: nx.num, startAt: 0,
+        subtitle: `${t("common.season", { n: nx.season })} · ${t("common.episodeShort", { n: nx.num })} ${nx.title}`.trim() }, "full");
+    });
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // --- surcouche : apparition au mouvement, masquage après 3 s ---
   const poke = useCallback(() => {

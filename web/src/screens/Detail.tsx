@@ -7,7 +7,7 @@ import type { HistoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
 import { useFavorites } from "@/hooks/data";
 import { useT } from "@/i18n";
 import { fmtClock, fmtDuration, firstString, toNum } from "@/lib/text";
-import { presentable } from "@/lib/titleCleaner";
+import { cleanEpisodeTitle, presentable } from "@/lib/titleCleaner";
 import { currentTransport } from "@/net/transport";
 import { seriesInfo, vodInfo, type SeriesInfo, type VodInfo } from "@/net/xtream";
 import { usePlayer } from "@/player/store";
@@ -114,9 +114,9 @@ function MovieInner({ source }: { source: Source }) {
   );
 }
 
-interface Ep { id: number; title: string; num: number; season: number; ext: string; secs: number; plot: string | null; img: string | null }
+export interface Ep { id: number; title: string; num: number; season: number; ext: string; secs: number; plot: string | null; img: string | null }
 
-function parseEpisodes(info: SeriesInfo | null): { seasons: { n: number; name: string; eps: Ep[] }[] } {
+export function parseEpisodes(info: SeriesInfo | null): { seasons: { n: number; name: string; eps: Ep[] }[] } {
   if (!info?.episodes) return { seasons: [] };
   type Raw = Array<{ id: string | number; title?: string; episode_num?: number | string; container_extension?: string; info?: { duration_secs?: number; plot?: string; movie_image?: string } }>;
   const raw = info.episodes as unknown;
@@ -127,7 +127,7 @@ function parseEpisodes(info: SeriesInfo | null): { seasons: { n: number; name: s
     return {
       n, name: meta?.name ?? "",
       eps: (eps ?? []).map((e): Ep => ({
-        id: toNum(e.id), title: e.title ?? "", num: toNum(e.episode_num), season: n, ext: e.container_extension || "mp4",
+        id: toNum(e.id), title: cleanEpisodeTitle(e.title ?? ""), num: toNum(e.episode_num), season: n, ext: e.container_extension || "mp4",
         secs: toNum(e.info?.duration_secs), plot: presentable(e.info?.plot), img: e.info?.movie_image ?? null,
       })).sort((a, b) => a.num - b.num),
     };
@@ -171,7 +171,7 @@ function SeriesInner({ source }: { source: Source }) {
   const resumeEp = last?.epId != null ? allEps.find((e) => e.id === last.epId) : undefined;
   const main = resumeEp ?? allEps[0];
   return (
-    <div className="detail">
+    <div className="detail series">
       <div className="backdrop" aria-hidden="true"><Img src={firstString(i?.backdrop_path) ?? s.backdrop} /></div>
       <div className="serie-layout" style={{ position: "relative" }}>
         <section style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>

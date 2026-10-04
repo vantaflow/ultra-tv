@@ -29,13 +29,26 @@ export function Guide() {
   return <Inner source={source} />;
 }
 
+/** Les guides XMLTV se chevauchent souvent : on garde une chronologie sans recouvrement. */
+function dedupe(rows: ProgramRow[]): ProgramRow[] {
+  const out: ProgramRow[] = [];
+  let last = 0;
+  for (const p of [...rows].sort((a, b) => a.start - b.start || b.end - a.end)) {
+    const start = Math.max(p.start, last);
+    if (p.end - start < 60_000) continue;
+    out.push(start === p.start ? p : { ...p, start });
+    last = p.end;
+  }
+  return out;
+}
+
 interface Pick { prog: ProgramRow; chan: ChannelRow; x: number; y: number }
 
 function Row({ c, source, from, to, top, now, picked, onPick }: { c: ChannelRow; source: Source; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, e: React.MouseEvent) => void }) {
   const [progs, setProgs] = useState<ProgramRow[]>([]);
   useEffect(() => {
     let dead = false;
-    if (c.epg) void programsFor(source.cid, c.epg, from, to).then((r) => { if (!dead) setProgs(r); });
+    if (c.epg) void programsFor(source.cid, c.epg, from, to).then((r) => { if (!dead) setProgs(dedupe(r)); });
     return () => { dead = true; };
   }, [c.epg, source.cid, from, to]);
   return (

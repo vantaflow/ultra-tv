@@ -31,6 +31,14 @@ export interface Source {
   counts: { live: number; movie: number; series: number };
   expDate: number | null;
   maxConnections: number;
+  /** Compte cloud : identifiant stable du fournisseur côté Worker (clé de fusion). */
+  cloudId?: string;
+  /** "cloud" : créée par le compte (identifiants fournis par le Worker, retirée avec lui) ; "local" : créée ici puis partagée. */
+  cloudOrigin?: "cloud" | "local";
+  /** Partage connu : "all" ou nombre d'appareils. */
+  cloudShared?: "all" | number;
+  /** Nom de l'appareil d'origine (tableau de bord ou autre appareil). */
+  cloudOriginName?: string;
   /** "ready" une fois la première synchro terminée. */
   state: "new" | "syncing" | "ready" | "error";
   error?: string;

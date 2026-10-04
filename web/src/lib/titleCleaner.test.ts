@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanTitle, prettyCategoryName, presentable, tidyTitle } from "./titleCleaner";
+import { cleanEpisodeTitle, cleanTitle, prettyCategoryName, presentable, tidyTitle } from "./titleCleaner";
 
 const film = (s: string) => cleanTitle(s);
 const tv = (s: string) => cleanTitle(s, true);
@@ -94,5 +94,12 @@ describe("prettyCategoryName", () => {
   it("inchangé / brut", () => {
     expect(prettyCategoryName("Sport FR")).toBe("Sport FR");
     expect(prettyCategoryName("###")).toBe("###");
+  });
+});
+
+describe("cleanEpisodeTitle", () => {
+  it("retire série et code d'épisode", () => {
+    expect(cleanEpisodeTitle("AR-SUBS - Some Show (2024) (US) - S01E01 - Enter Sandman (1)")).toBe("Enter Sandman (1)");
+    expect(cleanEpisodeTitle("Épisode 4")).toBe("Épisode 4");
   });
 });

@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
-import { channelsCol, favKey, toggleFavorite } from "@/db/queries";
+import { channelsCol, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
 import { useCategories, useFavorites, useLangSummary } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
@@ -213,7 +213,6 @@ function LiveInner({ source }: { source: Source }) {
           </div>
         </div>
       )}
-      {void favKey}
     </div>
   );
 }

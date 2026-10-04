@@ -1,6 +1,6 @@
 // Préférences d'interface : petites, lues AVANT le premier rendu (pas de flash de thème ni de langue).
 import { create } from "zustand";
-import { detectLang, type Lang } from "@/i18n";
+import { detectLang, type Lang } from "@/i18n/lang";
 
 export type Theme = "auto" | "dark" | "light";
 export interface Profile { id: string; name: string; color: string }
