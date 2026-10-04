@@ -75,6 +75,8 @@ object StartupNav {
     val pendingRoute = MutableStateFlow<String?>(null)
     /** Débogage uniquement : rubrique de Réglages à ouvrir. */
     val debugRub = MutableStateFlow<Int?>(null)
+    /** Demande d'ouverture de la Recherche (touche Recherche / micro de la télécommande), depuis n'importe quel écran. */
+    val searchRequest = MutableStateFlow(0)
     /** Build debug : requête préremplie (Recherche) et thème forcé (captures). */
     val debugQuery = MutableStateFlow<String?>(null)
     val debugTheme = MutableStateFlow<String?>(null)
@@ -169,6 +171,17 @@ class MainActivity : ComponentActivity() {
      * stream keeps going in a corner. Falls back silently on devices that
      * don't support it (some TV firmwares).
      */
+    /** Touches Recherche et micro de la télécommande : ouvrent la Recherche par-dessus l'écran courant (Retour y revient). */
+    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_SEARCH || event.keyCode == android.view.KeyEvent.KEYCODE_VOICE_ASSIST) {
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) StartupNav.searchRequest.value += 1
+            return true
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    override fun onSearchRequested(): Boolean { StartupNav.searchRequest.value += 1; return true }
+
     override fun onUserLeaveHint() {
         super.onUserLeaveHint()
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
@@ -314,6 +327,10 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         val r = pendingRoute ?: return@LaunchedEffect
         nav.navigate(r)
         StartupNav.pendingRoute.value = null
+    }
+    val searchReq by StartupNav.searchRequest.collectAsState()
+    LaunchedEffect(searchReq) {
+        if (searchReq > 0 && nav.currentBackStackEntry?.destination?.route != Routes.SEARCH) nav.navigate(Routes.SEARCH) { launchSingleTop = true }
     }
     LaunchedEffect(pending) {
         val p = pending ?: return@LaunchedEffect

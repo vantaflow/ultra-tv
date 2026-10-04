@@ -51,17 +51,17 @@ import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 
-private data class RailItem(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String)
+internal data class RailItem(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String)
 
-// Ordre et icônes de Sidebar.dc.html : Accueil, Direct, Guide, Films, Séries, Recherche,
-// Favoris, Enregistrements, Réglages.
-private val railItems = listOf(
+// Ordre et icônes de Sidebar.dc.html : Accueil, Direct, Guide, Films, Séries, Favoris, Enregistrements,
+// Réglages. La Recherche n'est PAS une destination : c'est le bouton du haut (sous le logo), ouvert aussi
+// par les touches Recherche / micro de la télécommande depuis n'importe quel écran.
+internal val railItems = listOf(
     RailItem("home", Icons.Home) { it.navHome },
     RailItem("live", Icons.Live) { it.navLive },
     RailItem("guide", Icons.Guide) { it.navGuide },
     RailItem("movies", Icons.Movies) { it.navMovies },
     RailItem("series", Icons.Series) { it.navSeries },
-    RailItem("search", Icons.Search) { it.navSearch },
     RailItem("favorites", Icons.Heart) { it.navFavorites },
     RailItem("recordings", Icons.Record) { it.navRecordings },
     RailItem("settings", Icons.Settings) { it.navSettings },
@@ -117,7 +117,33 @@ fun SidebarNav(navController: NavController) {
                         }
                     }
                 }
-                Spacer(Modifier.height(40.design))
+                Spacer(Modifier.height(28.design))
+                // Bouton Recherche : sous le logo, séparé des destinations (comme sur Google TV).
+                val searchActive = route == "search"
+                FocusSurface(
+                    onClick = { if (!searchActive) navController.navigate("search") { launchSingleTop = true } },
+                    shape = RoundedCornerShape(if (expanded) 28.design else 32.design),
+                    bg = if (searchActive) Ux.Accent else Ux.Surface,
+                    focusedScale = if (expanded) 1.04f else 1.06f,
+                    ringWidth = 5.design,
+                    modifier = Modifier.height(64.design).then(if (expanded) Modifier.fillMaxWidth() else Modifier.width(64.design)).testTag("rail-search"),
+                ) { focused ->
+                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                        if (expanded) Spacer(Modifier.width(16.design))
+                        Box(if (expanded) Modifier.size(32.design) else Modifier.size(64.design), contentAlignment = Alignment.Center) {
+                            DIcon(Icons.Search, (if (expanded) 32 else 30).design, when { focused -> Ux.TextOnLight; searchActive -> Ux.White; expanded -> Ux.Text; else -> Ux.Text2 })
+                        }
+                        if (expanded) {
+                            Spacer(Modifier.width(16.design))
+                            Text(D.searchPill, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
+                                color = when { focused -> Ux.TextOnLight; searchActive -> Ux.White; else -> Ux.Text2 }, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.design))
+                Box(Modifier.fillMaxWidth().height(2.design).background(Ux.Surface2))
+                Spacer(Modifier.height(12.design))
                 Column(
                     Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(if (expanded) 8.design else 12.design, Alignment.CenterVertically),
@@ -201,7 +227,7 @@ fun SidebarNav(navController: NavController) {
 
 private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
-private fun isSelected(route: String, candidate: String): Boolean = when {
+internal fun isSelected(route: String, candidate: String): Boolean = when {
     route == candidate -> true
     candidate == "live" && route.startsWith("player") -> true
     candidate == "movies" && route.startsWith("movies/") -> true

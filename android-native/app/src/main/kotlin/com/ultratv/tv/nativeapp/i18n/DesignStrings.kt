@@ -72,6 +72,7 @@ class DesignStrings(val lang: AppLang) {
     val fieldRequired get() = t("Required field", "Champ requis", "Campo obligatorio", "حقل مطلوب")
     val formNamePh get() = t("e.g. Living room", "Ex. Salon", "Ej. Salón", "مثال: غرفة المعيشة")
     val formSubXtream get() = t("The details provided by your operator", "Les informations fournies par votre opérateur", "Los datos que te da tu operador", "المعلومات التي يقدمها مشغّلك")
+    val searchPill get() = t("Search", "Rechercher", "Buscar", "بحث")
     val unsupportedSource get() = t("Unsupported source type", "Type de source non pris en charge", "Tipo de fuente no compatible", "نوع المصدر غير مدعوم")
     val unsupportedSourceHint get() = t("This source type is no longer supported. You can delete it.", "Ce type de source n’est plus pris en charge. Vous pouvez le supprimer.", "Este tipo de fuente ya no es compatible. Puede eliminarla.", "لم يعد هذا النوع من المصادر مدعومًا. يمكنك حذفه.")
     val formSubM3u get() = t("The address of your playlist", "L’adresse de votre liste de lecture", "La dirección de tu lista", "عنوان قائمة التشغيل")
