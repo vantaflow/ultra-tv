@@ -44,7 +44,7 @@ const val CATEGORY_ALL = "__all__"
 const val CATEGORY_FAVORITES = "__fav__"
 
 /** Entrée de la colonne de catégories : nom, compteur réel, verrouillage parental. */
-data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false)
+data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false, val sections: Int = 0)
 
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
@@ -60,6 +60,7 @@ class LiveViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val favoriteDao: FavoriteDao,
     private val syncCoordinator: SyncCoordinator,
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
 
     private val _locked = lockedStore
@@ -71,9 +72,10 @@ class LiveViewModel @Inject constructor(
 
     private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
-    private val _selected = MutableStateFlow(CATEGORY_ALL)
-    val selectedCategory: StateFlow<String> = _selected.asStateFlow()
-    fun selectCategory(id: String) { _selected.value = id }
+    private val landing = appCtx.getSharedPreferences("direct_state", android.content.Context.MODE_PRIVATE)
+    /** null = pas encore choisi : on ouvre sur la dernière catégorie utilisée, sinon Favoris, sinon la première non vide. */
+    private val _selected = MutableStateFlow<String?>(null)
+    fun selectCategory(id: String) { _selected.value = id; if (id != CATEGORY_ALL) landing.edit().putString("last", id).apply() }
 
     /** Favoris, Tout, puis les catégories NON vides avec leur compteur réel (SQL, servi par l'index). */
     val categories: StateFlow<List<DirectCategory>> = combine(pid, hiddenStore.hidden) { id, hidden -> id to hidden }
@@ -85,16 +87,20 @@ class LiveViewModel @Inject constructor(
                 favoriteDao.observeCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
                 val byId = counts.associate { it.categoryId to it.n }
+                val secById = counts.associate { it.categoryId to it.sections }
                 val visible = cats.filter { hiddenStore.keyFor("LIVE", id, it.remoteId) !in hidden }
-                    .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked) } }
+                    .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
                 val total = visible.sumOf { it.count }
-                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
+                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total, sections = visible.sumOf { it.sections })) + visible
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val selectedCategory: StateFlow<String> = combine(_selected, categories) { sel, cats -> sel ?: pickLanding(cats, landing.getString("last", null)) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CATEGORY_ALL)
+
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, _selected.debounce(120), hiddenStore.hidden) { id, cat, hidden -> Triple(id, cat, hidden) }
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden) { id, cat, hidden -> Triple(id, cat, hidden) }
         .distinctUntilChanged()
         .flatMapLatest { (id, cat, hidden) ->
             if (id == null) flowOf(PagingData.empty())
@@ -178,15 +184,15 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch {
             _resolving.value = true
             try {
-                val cat = _selected.value
+                val cat = selectedCategory.value
                 val window = when (cat) {
                     CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId)
                     CATEGORY_ALL -> {
-                        val rank = channelDao.rankAll(channel.providerId, channel.sortKey)
+                        val rank = channelDao.rankAll(channel.providerId, channel.num, channel.sortKey)
                         channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
-                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.sortKey)
+                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.num, channel.sortKey)
                         channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
                     }
                 }
@@ -202,4 +208,12 @@ class LiveViewModel @Inject constructor(
         val id = providers.value.firstOrNull { it.active }?.id ?: providers.value.firstOrNull()?.id ?: return
         syncCoordinator.request(id, force = true)
     }
+}
+
+/** Catégorie d'ouverture du Direct : dernière utilisée (si elle existe encore), sinon Favoris (s'il y en a), sinon la première non vide. */
+fun pickLanding(cats: List<DirectCategory>, last: String?): String {
+    if (cats.isEmpty()) return CATEGORY_ALL
+    last?.let { l -> if (cats.any { it.id == l && it.count > 0 }) return l }
+    cats.firstOrNull { it.id == CATEGORY_FAVORITES && it.count > 0 }?.let { return it.id }
+    return cats.firstOrNull { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }?.id ?: CATEGORY_ALL
 }

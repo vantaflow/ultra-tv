@@ -204,17 +204,14 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
     }
 }
 
-/** Segment qui glisse : le total n'est pas connu pendant le flux (rien d'inventé). Statique en low-RAM. */
+/** Total inconnu pendant le flux : segment qui défile de gauche à droite (rien d'inventé). Statique et discret en low-RAM. */
 @Composable
 private fun IndeterminateSegment() {
     val lowRam = com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current
-    val x = if (lowRam) 0.3f else {
-        val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "seg")
-        t.animateFloat(0f, 0.7f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1400, easing = androidx.compose.animation.core.LinearEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "x").value
-    }
-    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxHeight().width(maxWidth * 0.3f).androidx_offset(maxWidth * x).background(Ux.Accent))
+    if (lowRam) { Box(Modifier.fillMaxSize().background(Ux.Surface2)); return }
+    val t = androidx.compose.animation.core.rememberInfiniteTransition(label = "seg")
+    val x by t.animateFloat(-0.3f, 1f, androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(1300, easing = androidx.compose.animation.core.LinearEasing)), label = "x")
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().clip(RoundedCornerShape(4.design))) {
+        Box(Modifier.fillMaxHeight().width(maxWidth * 0.3f).offset(x = maxWidth * x).background(Ux.Accent))
     }
 }
-
-private fun Modifier.androidx_offset(x: androidx.compose.ui.unit.Dp) = this.then(offset(x = x))

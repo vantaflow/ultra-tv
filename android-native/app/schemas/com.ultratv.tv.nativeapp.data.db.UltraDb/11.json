@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 11,
-    "identityHash": "67db930e492b676e064b96205de7e8f7",
+    "identityHash": "fad1b4e8c31f998d367da9a637e32f25",
     "entities": [
       {
         "tableName": "provider",
@@ -86,7 +86,7 @@
       },
       {
         "tableName": "channel",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `epgChannelId` TEXT, `catchupSource` TEXT, `catchupDays` INTEGER NOT NULL, `userPosition` INTEGER NOT NULL, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `epgChannelId` TEXT, `catchupSource` TEXT, `catchupDays` INTEGER NOT NULL, `userPosition` INTEGER NOT NULL, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `num` INTEGER NOT NULL, `junk` INTEGER NOT NULL, `isSeparator` INTEGER NOT NULL, `country` TEXT, `quality` INTEGER NOT NULL, `flags` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -165,6 +165,42 @@
             "columnName": "sortKey",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "num",
+            "columnName": "num",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "junk",
+            "columnName": "junk",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSeparator",
+            "columnName": "isSeparator",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "quality",
+            "columnName": "quality",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "flags",
+            "columnName": "flags",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -175,25 +211,27 @@
         },
         "indices": [
           {
-            "name": "index_channel_providerId_sortKey",
+            "name": "index_channel_providerId_num_sortKey",
             "unique": false,
             "columnNames": [
               "providerId",
+              "num",
               "sortKey"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_sortKey` ON `${TABLE_NAME}` (`providerId`, `sortKey`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_num_sortKey` ON `${TABLE_NAME}` (`providerId`, `num`, `sortKey`)"
           },
           {
-            "name": "index_channel_providerId_categoryId_sortKey",
+            "name": "index_channel_providerId_categoryId_num_sortKey",
             "unique": false,
             "columnNames": [
               "providerId",
               "categoryId",
+              "num",
               "sortKey"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_categoryId_sortKey` ON `${TABLE_NAME}` (`providerId`, `categoryId`, `sortKey`)"
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_categoryId_num_sortKey` ON `${TABLE_NAME}` (`providerId`, `categoryId`, `num`, `sortKey`)"
           },
           {
             "name": "index_channel_providerId_remoteId",
@@ -1096,7 +1134,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '67db930e492b676e064b96205de7e8f7')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'fad1b4e8c31f998d367da9a637e32f25')"
     ]
   }
 }

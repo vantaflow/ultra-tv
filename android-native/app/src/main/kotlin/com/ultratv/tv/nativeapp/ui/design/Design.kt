@@ -219,7 +219,7 @@ fun PillButton(
         modifier = modifier.height(heightPx.design),
     ) { f ->
         Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.design), verticalAlignment = Alignment.CenterVertically) {
-            val ink = if (f) Ux.TextOnLight else Ux.Text
+            val ink = if (f || bg == Ux.White) Ux.TextOnLight else Ux.Text
             if (iconPath != null) {
                 DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
                 Spacer(Modifier.width(14.design))

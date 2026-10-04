@@ -17,6 +17,14 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
         db.execSQL("ALTER TABLE `episode` ADD COLUMN `image` TEXT")
         for (t in listOf("channel", "movie", "series")) {
             db.execSQL("ALTER TABLE `$t` ADD COLUMN `sortKey` TEXT NOT NULL DEFAULT ''")
+            if (t == "channel") {
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `num` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `junk` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `isSeparator` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `country` TEXT")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `quality` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `channel` ADD COLUMN `flags` INTEGER NOT NULL DEFAULT 0")
+            }
             db.execSQL("ALTER TABLE `$t` ADD COLUMN `title` TEXT NOT NULL DEFAULT ''")
             db.execSQL("UPDATE `$t` SET `title` = `name`, `sortKey` = lower(`name`)")
             if (t != "channel") {
@@ -27,8 +35,13 @@ val MIGRATION_10_11 = object : Migration(10, 11) {
             if (t == "movie") db.execSQL("ALTER TABLE `movie` ADD COLUMN `duration` TEXT")
             db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId`")
             db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId_categoryId`")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_sortKey` ON `$t` (`providerId`, `sortKey`)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_categoryId_sortKey` ON `$t` (`providerId`, `categoryId`, `sortKey`)")
+            if (t == "channel") {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_num_sortKey` ON `channel` (`providerId`, `num`, `sortKey`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_categoryId_num_sortKey` ON `channel` (`providerId`, `categoryId`, `num`, `sortKey`)")
+            } else {
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_sortKey` ON `$t` (`providerId`, `sortKey`)")
+                db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_categoryId_sortKey` ON `$t` (`providerId`, `categoryId`, `sortKey`)")
+            }
             db.execSQL("CREATE VIRTUAL TABLE IF NOT EXISTS `${t}_fts` USING FTS4(`name` TEXT NOT NULL, tokenize=unicode61, content=`$t`)")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_${t}_fts_BEFORE_UPDATE BEFORE UPDATE ON `$t` BEGIN DELETE FROM `${t}_fts` WHERE `docid`=OLD.`rowid`; END")
             db.execSQL("CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_${t}_fts_BEFORE_DELETE BEFORE DELETE ON `$t` BEGIN DELETE FROM `${t}_fts` WHERE `docid`=OLD.`rowid`; END")

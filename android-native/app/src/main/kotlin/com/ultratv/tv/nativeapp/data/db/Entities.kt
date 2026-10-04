@@ -35,8 +35,8 @@ data class ProviderEntity(
 @Entity(
     tableName = "channel",
     indices = [
-        Index(value = ["providerId", "sortKey"]),
-        Index(value = ["providerId", "categoryId", "sortKey"]),
+        Index(value = ["providerId", "num", "sortKey"]),
+        Index(value = ["providerId", "categoryId", "num", "sortKey"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -64,8 +64,20 @@ data class ChannelEntity(
      *  the favourites + frequently-watched to bubble to the top. */
     val userPosition: Int = 0,
     /** Nom d'affichage nettoyé (préfixes de langue, qualité…) ; [name] reste le nom brut, base de la recherche. */
-    val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name, live = true).title,
+    val title: String = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).displayName,
     val sortKey: String = sortKeyOf(title),
+    /** Numéro de chaîne fourni par la source (ordre du fournisseur) ; 0 = inconnu. */
+    val num: Int = 0,
+    /** Nom vide / numérique / événement daté : masqué partout, jamais supprimé. */
+    val junk: Boolean = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).let { !it.isSeparator && com.ultratv.tv.nativeapp.data.repo.JunkFilter.isJunk(name) },
+    /** Séparateur « ##### XXX ##### » : AFFICHÉ comme en-tête de section, non focalisable, ni lisible ni compté. */
+    val isSeparator: Boolean = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).isSeparator,
+    /** Code ISO du pays (liste blanche) ou null. */
+    val country: String? = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).country,
+    /** 0 aucune, 1 SD, 2 HD, 3 FHD, 4 4K. */
+    val quality: Int = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).quality,
+    /** Drapeaux binaires : HEVC, HDR, 50/60 FPS, RAW, BACKUP, LQ, VIP. */
+    val flags: Int = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).flags,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])

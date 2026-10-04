@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -192,6 +193,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
     val now = remember(windowStart) { System.currentTimeMillis() }
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
+    var focusedProg by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
 
     Column(
         Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design)
@@ -249,7 +251,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
                         GuideRow(
                             c, programmes[c.id].orEmpty(), windowStart, gridW,
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                            onPlay = { onPlayChannel(c) }, onRemind = { vm.addReminder(c, it) },
+                            onPlay = { onPlayChannel(c) }, onRemind = { vm.addReminder(c, it) }, onFocusProg = { p -> focusedProg = c to p },
                         )
                     } else Spacer(Modifier.height(84.design))
                 }
@@ -257,6 +259,20 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewMod
             // Ligne « maintenant » (accent, 3 px) : seulement si l'instant courant est dans la fenêtre.
             val nowFrac = (now - windowStart).toFloat() / GUIDE_WINDOW_MS
             if (nowFrac in 0f..1f) Box(Modifier.offset(x = 260.design + gridW * nowFrac).width(3.design).fillMaxHeight().background(Ux.Accent))
+        }
+        focusedProg?.let { (ch, pr) -> InfoPanel(ch, pr) }
+    }
+}
+
+/** Panneau d'information du programme focalisé (les cellules courtes n'affichent pas de texte). */
+@Composable
+private fun InfoPanel(ch: ChannelEntity, p: EpgEntity) {
+    Row(Modifier.fillMaxWidth().height(120.design).clip(RoundedCornerShape(20.design)).background(Ux.SurfaceDeep).padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
+        LogoBox(ch.logo, ch.title, Modifier.width(84.design).height(56.design), radius = 10, pad = 6)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
+            Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${ch.title} · ${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            p.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
 }
@@ -282,14 +298,17 @@ private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp,
-    firstModifier: Modifier, onPlay: () -> Unit, onRemind: (EpgEntity) -> Unit,
+    firstModifier: Modifier, onPlay: () -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
 ) {
     val nowMs = System.currentTimeMillis()
     Row(Modifier.fillMaxWidth().height(84.design)) {
         Row(Modifier.width(260.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
             LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
             Spacer(Modifier.width(14.design))
-            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            // Variantes de qualité (« 13EME RUE » HD / SD) : un badge les distingue.
+            val q = remember(c.id) { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(c.name, live = true).quality }
+            if (q != null) { Spacer(Modifier.width(8.design)); Text(q, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 7.design, vertical = 2.design)) }
         }
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
@@ -305,11 +324,12 @@ private fun GuideRow(
                     modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
                         .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
                 ) { f ->
-                    Column(Modifier.fillMaxSize().padding(horizontal = 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
-                        Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(
-                            "${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                        )
+                    val wPx = (w.value * 2).toInt()      // largeur en px de maquette
+                    if (f) LaunchedEffect(p.id) { onFocusProg(p) }
+                    // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
+                    if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
+                        Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
+                        if (wPx >= 200) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                 }
             }

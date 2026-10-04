@@ -70,6 +70,7 @@ class PlaybackSession(
     private var firstFrame = false
     private var adaptJob: Job? = null
     private var manualSwitch = false
+    private var launchedAtNs = 0L
 
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
@@ -93,7 +94,7 @@ class PlaybackSession(
     private fun launch(c: Combo) {
         eventsJob?.cancel(); watchdog?.cancel(); rememberJob?.cancel()
         releaseEngine()
-        combo = c; tried += c; firstFrame = false
+        combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
         val preset = presetOverride
         val buffer = if (preset != null) BufferPlanner.resolve(preset, CustomBuffer(), s.heapClassMb, s.lowRam) else s.buffer
@@ -118,6 +119,8 @@ class PlaybackSession(
             EngineEvent.Ready -> if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e)
             EngineEvent.FirstFrame -> {
                 firstFrame = true; watchdog?.cancel()
+                // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
+                android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
                 rememberJob?.cancel()
@@ -138,6 +141,7 @@ class PlaybackSession(
     }
 
     private fun onError(kind: PlayErrorKind) {
+        android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
         network.onError()
         val settingsNow = settings()
         scope.launch {

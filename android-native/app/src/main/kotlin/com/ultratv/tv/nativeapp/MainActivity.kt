@@ -26,6 +26,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.tv.material3.MaterialTheme
@@ -288,14 +289,17 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
                 // Le contenu est décalé de la largeur REPLIÉE du rail ; le rail déplié passe par-dessus
                 // (même Box) sans jamais décaler ni re-mesurer le contenu.
+                // Le lecteur est plein écran : ni rail ni marge (sinon le rail volerait le focus et recouvrirait la vidéo).
+                val backEntry by nav.currentBackStackEntryAsState()
+                val fullscreen = backEntry?.destination?.route?.startsWith("player") == true
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
-                            .padding(start = com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp }),
+                            .padding(start = if (fullscreen) 0.dp else com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp }),
                     ) { NavGraph(nav) }
-                    SidebarNav(navController = nav)
+                    if (!fullscreen) SidebarNav(navController = nav)
                 }
             }
         }

@@ -97,7 +97,7 @@ interface ChannelDao {
     // userPosition first (0 = unset, sorted last via CASE), then alpha by name.
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid
-        ORDER BY sortKey
+        ORDER BY num, sortKey
     """)
     fun observeForProvider(pid: Long): Flow<List<ChannelEntity>>
 
@@ -105,14 +105,14 @@ interface ChannelDao {
      *  40 000 lignes pour n'en garder que 30 saturait le CPU à chaque lot inséré. */
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid
-        ORDER BY sortKey
+        ORDER BY num, sortKey
         LIMIT :limit
     """)
     fun observeTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("""
         SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat
-        ORDER BY sortKey
+        ORDER BY num, sortKey
     """)
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
 
@@ -151,68 +151,68 @@ interface ChannelDao {
     fun observeCount(pid: Long): Flow<Int>
 
     /** Rail d'accueil sans favoris : des chaînes avec logo, par ordre alphabétique (hors décorations). */
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' ORDER BY sortKey LIMIT :limit")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' ORDER BY num, sortKey LIMIT :limit")
     fun observeTopWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid ORDER BY c.sortKey LIMIT :limit
+        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey LIMIT :limit
     """)
     fun observeFavoritesTop(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 
     /** Pagination Room : seules les lignes visibles (+ marge) sont chargées, l'ordre vient de l'index. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY sortKey")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 ORDER BY num, sortKey")
     fun pagedAll(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 ORDER BY num, sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND (categoryId IS NULL OR categoryId NOT IN (:hidden)) ORDER BY sortKey")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND (categoryId IS NULL OR categoryId NOT IN (:hidden)) ORDER BY num, sortKey")
     fun pagedAllExcluding(pid: Long, hidden: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Chaînes qui ONT un programme dans la fenêtre [from, to] (lignes de la grille du guide). */
     @Query("""
-        SELECT * FROM channel c WHERE c.providerId = :pid
+        SELECT * FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
         AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
-        ORDER BY c.sortKey
+        ORDER BY c.num, c.sortKey
     """)
     fun pagedWithEpg(pid: Long, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Fenêtres pour le zapping du lecteur (haut/bas) : jamais toute la liste en mémoire. */
-    @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY sortKey LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 ORDER BY num, sortKey LIMIT :limit OFFSET :offset")
     suspend fun windowAll(pid: Long, limit: Int, offset: Int): List<ChannelEntity>
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 ORDER BY num, sortKey LIMIT :limit OFFSET :offset")
     suspend fun windowCategory(pid: Long, cat: String, limit: Int, offset: Int): List<ChannelEntity>
 
-    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND sortKey < :key")
-    suspend fun rankAll(pid: Long, key: String): Int
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND (num < :num OR (num = :num AND sortKey < :key))")
+    suspend fun rankAll(pid: Long, num: Int, key: String): Int
 
-    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat AND sortKey < :key")
-    suspend fun rankCategory(pid: Long, cat: String, key: String): Int
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 AND (num < :num OR (num = :num AND sortKey < :key))")
+    suspend fun rankCategory(pid: Long, cat: String, num: Int, key: String): Int
 
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid ORDER BY c.sortKey
+        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey
     """)
     suspend fun favoritesList(pid: Long): List<ChannelEntity>
 
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
-        WHERE c.providerId = :pid ORDER BY c.sortKey
+        WHERE c.providerId = :pid AND c.isSeparator = 0 ORDER BY c.num, c.sortKey
     """)
     fun pagedFavorites(pid: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Compteurs par catégorie (colonne de gauche du Direct), servis par l'index couvrant. */
-    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM channel WHERE providerId = :pid GROUP BY categoryId")
+    @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
     @Query("""
         SELECT c.* FROM channel c JOIN channel_fts ON c.id = channel_fts.docid
-        WHERE channel_fts MATCH :match AND c.providerId = :pid LIMIT :limit
+        WHERE channel_fts MATCH :match AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
 }
@@ -250,7 +250,7 @@ interface MovieDao {
     @Query("UPDATE movie SET plot = :plot, cast = :cast, genre = :genre, duration = :duration, backdrop = :backdrop WHERE id = :id")
     suspend fun updateDetails(id: Long, plot: String?, cast: String?, genre: String?, duration: String?, backdrop: String?)
 
-    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM movie WHERE providerId = :pid GROUP BY categoryId")
+    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n, 0 AS sections FROM movie WHERE providerId = :pid GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
     @Query("""
@@ -296,7 +296,7 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, SeriesEntity>
 
-    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n FROM series WHERE providerId = :pid GROUP BY categoryId")
+    @Query("SELECT categoryId AS categoryId, COUNT(*) AS n, 0 AS sections FROM series WHERE providerId = :pid GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
     @Query("""
@@ -425,7 +425,7 @@ interface EpgDao {
     suspend fun forChannelInRange(cid: Long, fromMs: Long, toMs: Long): List<EpgEntity>
 }
 
-data class CategoryCount(val categoryId: String?, val n: Int)
+data class CategoryCount(val categoryId: String?, val n: Int, val sections: Int = 0)
 
 /** Parties du catalogue synchronisées (et horodatées) indépendamment. */
 enum class SyncPart { LIVE, VOD, SERIES, EPG }

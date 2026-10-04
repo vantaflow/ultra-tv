@@ -132,6 +132,7 @@ class DesignStrings(val lang: AppLang) {
     val bufferClamped get() = t("Buffer reduced to fit this device's memory", "Tampon réduit pour tenir dans la mémoire de cet appareil", "Búfer reducido para la memoria de este dispositivo", "تم تقليل المخزن المؤقت ليناسب ذاكرة الجهاز")
     val engineExo get() = t("ExoPlayer", "ExoPlayer", "ExoPlayer", "ExoPlayer")
     val engineVlc get() = t("VLC", "VLC", "VLC", "VLC")
+    val sectionsCount get() = t("%d sections", "%d sections", "%d secciones", "%d أقسام")
     val syncing get() = t("Syncing", "Synchronisation", "Sincronizando", "جارٍ المزامنة")
 }
 

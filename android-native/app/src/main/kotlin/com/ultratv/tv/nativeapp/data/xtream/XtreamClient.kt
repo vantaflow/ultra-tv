@@ -71,6 +71,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         val sid = o["stream_id"]?.str() ?: return null
         val name = o["name"]?.str() ?: return null
         val url = "${p.baseUrl}/live/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.ts"
+        val parsed = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name)
         val tvArchive = o["tv_archive"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
         val archiveDuration = o["tv_archive_duration"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
         return ChannelEntity(
@@ -83,6 +84,10 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             epgChannelId = o["epg_channel_id"]?.str()?.takeIf { it.isNotBlank() },
             catchupSource = null,
             catchupDays = if (tvArchive >= 1) archiveDuration.coerceAtLeast(1) else 0,
+            num = o["num"]?.str()?.toIntOrNull() ?: 0,
+            title = parsed.displayName,
+            junk = !parsed.isSeparator && com.ultratv.tv.nativeapp.data.repo.JunkFilter.isJunk(name),
+            isSeparator = parsed.isSeparator, country = parsed.country, quality = parsed.quality, flags = parsed.flags,
         )
     }
 

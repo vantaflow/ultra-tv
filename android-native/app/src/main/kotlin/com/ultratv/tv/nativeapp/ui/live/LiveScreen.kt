@@ -32,6 +32,9 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.key
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -77,6 +80,12 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     var pinPrompt by remember { mutableStateOf<ChannelEntity?>(null) }
     var actionsFor by remember { mutableStateOf<ChannelEntity?>(null) }
     var focusedChannel by remember { mutableStateOf<ChannelEntity?>(null) }
+    // Le focus initial (programmatique) ne doit PAS changer de catégorie : seule une action de la télécommande le fait.
+    var userMoved by remember { mutableStateOf(false) }
+    val firstChannel = remember { FocusRequester() }
+    LaunchedEffect(selected, channels.itemCount > 0) {
+        if (!userMoved && channels.itemCount > 0) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
+    }
     val current = cats.firstOrNull { it.id == selected }
 
     Row(Modifier.fillMaxSize()) {
@@ -86,13 +95,14 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             verticalArrangement = Arrangement.spacedBy(10.design),
         ) {
             Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, modifier = Modifier.padding(bottom = 10.design), maxLines = 1)
+            val markMoved = Modifier.onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) userMoved = true; false }
             val focus = LocalFocusManager.current
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
+            LazyColumn(modifier = markMoved, verticalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(bottom = 54.design)) {
                 items(cats, key = { it.id }, contentType = { "cat" }) { c ->
                     CategoryRow(
                         label = when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) },
                         count = c.count, selected = c.id == selected, locked = c.locked,
-                        onFocus = { vm.selectCategory(c.id) },
+                        onFocus = { if (userMoved) vm.selectCategory(c.id) },
                         onClick = { vm.selectCategory(c.id); focus.moveFocus(FocusDirection.Right) },
                     )
                 }
@@ -104,7 +114,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         Column(Modifier.width(640.design).fillMaxHeight().padding(horizontal = 32.design).padding(top = 54.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             val name = when (selected) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(current?.name.orEmpty()) }
             Text(
-                D.categoryHeader.format(name, java.text.NumberFormat.getIntegerInstance().format(current?.count ?: 0)),
+                D.categoryHeader.format(name, java.text.NumberFormat.getIntegerInstance().format(current?.count ?: 0)) + (current?.sections?.takeIf { it > 0 }?.let { " · " + D.sectionsCount.format(it) } ?: ""),
                 color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 12.design),
             )
@@ -112,7 +122,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 onFocusChannel = { focusedChannel = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onPlay) },
                 onActions = { actionsFor = it },
-                emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels)
+                emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel)
         }
 
         // ── Aperçu ──
@@ -182,38 +192,81 @@ private fun ChannelList(
     onPlay: (ChannelEntity) -> Unit,
     onActions: (ChannelEntity) -> Unit,
     emptyText: String,
+    categoryName: String = "",
+    first: FocusRequester = remember { FocusRequester() },
 ) {
     val state = rememberLazyListState()
     LaunchedEffect(selected) { state.scrollToItem(0) }
     // Seules les lignes visibles interrogent le guide.
     LaunchedEffect(state, channels) {
         snapshotFlow { state.layoutInfo.visibleItemsInfo.map { it.index } }.collect { idx ->
-            vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.id })
+            vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.takeIf { c -> !c.isSeparator }?.id })
         }
     }
-    val first = remember { FocusRequester() }
+    // Section courante : le dernier séparateur au-dessus (ou à) la première ligne visible (en-tête collant).
+    val stickyLabel by remember(state, channels) {
+        androidx.compose.runtime.derivedStateOf {
+            var i = state.firstVisibleItemIndex
+            var label: String? = null
+            while (i >= 0 && label == null) { channels.itemSnapshotList.getOrNull(i)?.takeIf { it.isSeparator }?.let { label = it.title }; i-- }
+            label?.takeIf { !sameLabel(it, categoryName) }
+        }
+    }
     var firstFocused by remember { mutableStateOf(false) }
-    if (channels.itemCount > 0) RequestInitialFocus(first, hasFocus = { firstFocused }, key = channels.itemCount > 0)
     if (channels.itemCount == 0 && channels.loadState.refresh !is androidx.paging.LoadState.Loading) {
         Text(emptyText, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
         return
     }
-    LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 6.design)) {
-        items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { "channel" }) { i ->
-            val c = channels[i]
-            if (c != null) {
-                ChannelRow(
-                    c, position = i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
-                    now = nowNext[c.id]?.first,
-                    modifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                    onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
-                )
-            } else Spacer(Modifier.fillMaxWidth().height(88.design))
+    Box {
+        LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 6.design)) {
+            items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
+                val c = channels[i]
+                when {
+                    c == null -> Spacer(Modifier.fillMaxWidth().height(88.design))
+                    // Séparateur : en-tête de section, NON focalisable (le D-pad le saute), non lisible.
+                    c.isSeparator -> if (!sameLabel(c.title, categoryName)) SectionHeader(c.title)
+                    else -> ChannelRow(
+                        c, position = i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
+                        now = nowNext[c.id]?.first,
+                        modifier = if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
+                        onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
+                    )
+                }
+            }
         }
+        stickyLabel?.let { Box(Modifier.fillMaxWidth().background(Ux.Bg).padding(top = 6.design, bottom = 6.design)) { SectionHeader(it) } }
     }
 }
 
-/** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne) et programme en cours. */
+private fun sameLabel(a: String, b: String) = a.trim().equals(b.trim(), ignoreCase = true)
+
+/** En-tête de section (séparateur du fournisseur) : barre accent 4×20, libellé majuscules 18 gras #A1A1AA, filet à droite. */
+@Composable
+private fun SectionHeader(label: String) {
+    Row(Modifier.fillMaxWidth().height(44.design).padding(horizontal = 4.design), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.design).height(20.design).background(Ux.Accent))
+        Spacer(Modifier.width(14.design))
+        Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Spacer(Modifier.width(16.design))
+        Box(Modifier.fillMaxWidth().height(0.5f.dp1()).background(Ux.Surface2))
+    }
+}
+
+/** Pastille de qualité : 4K accent, FHD blanc, HD gris clair, SD gris ; inversée sur la ligne focalisée. */
+@Composable
+internal fun QualityBadge(quality: Int, focused: Boolean) {
+    val (text, bg, fg) = when (quality) {
+        4 -> Triple("4K", Ux.Accent, Color.White)
+        3 -> Triple("FHD", Color.White, Color(0xFF0A0A0C))
+        2 -> Triple("HD", Color(0xFFD4D4D8), Color(0xFF0A0A0C))
+        1 -> Triple("SD", Color(0xFF52525B), Color(0xFFE4E4E7))
+        else -> return
+    }
+    val (b, f) = if (focused) Color(0xFF0A0A0C) to Color.White else bg to fg
+    Text(text, color = f, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(b).padding(horizontal = 8.design, vertical = 3.design))
+}
+
+/** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne), programme en cours, qualité. */
 @Composable
 private fun ChannelRow(
     c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?,
@@ -233,7 +286,8 @@ private fun ChannelRow(
                 Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(now?.title.orEmpty(), color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            if (favorite) Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1)
+            if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
+            QualityBadge(c.quality, f)
         }
     }
 }
