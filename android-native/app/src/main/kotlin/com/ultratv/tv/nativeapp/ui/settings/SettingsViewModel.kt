@@ -243,6 +243,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /** Ajoute une source Xtream SANS lancer la synchro (l'assistant propose d'abord le choix des langues). */
+    fun addXtreamOnly(name: String, baseUrl: String, username: String, password: String, onDone: (Long) -> Unit) {
+        viewModelScope.launch {
+            val id = repo.addXtream(name, baseUrl, username, password)
+            makeDefaultIfNone(id)
+            onDone(id)
+        }
+    }
+
+    fun startSync(providerId: Long) { sync.request(providerId, force = true) }
+
     fun addAndSync(name: String, baseUrl: String, username: String, password: String) {
         viewModelScope.launch {
             _syncing.value = true

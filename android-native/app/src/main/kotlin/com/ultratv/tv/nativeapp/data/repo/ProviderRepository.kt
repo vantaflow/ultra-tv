@@ -578,4 +578,14 @@ class ProviderRepository @Inject constructor(
             } finally { syncStatus.clear() }
         }
     }
+
+    /** Langues détectées dans les catégories du serveur (3 requêtes légères, aucun contenu téléchargé). */
+    suspend fun previewLanguages(providerId: Long): List<Pair<String, Int>> {
+        val p = providerDao.byId(providerId) ?: return emptyList()
+        if (p.kind != "XTREAM") return emptyList()
+        val all = runCatching { fetchWithBackoff { xtream.fetchLiveCategories(p) } + fetchWithBackoff { xtream.fetchVodCategories(p) } + fetchWithBackoff { xtream.fetchSeriesCategories(p) } }.getOrDefault(emptyList())
+        return all.map { LanguageDetector.forCategory(it.name) }
+            .filter { it.isNotEmpty() && it != LanguageDetector.MULTI }
+            .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key to it.value }
+    }
 }

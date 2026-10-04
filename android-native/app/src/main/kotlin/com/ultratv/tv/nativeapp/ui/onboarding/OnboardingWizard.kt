@@ -97,6 +97,7 @@ class OnboardingViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
+    private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     bus: SyncStatusBus,
 ) : ViewModel() {
 
@@ -123,9 +124,16 @@ class OnboardingViewModel @Inject constructor(
     val failure = bus.failure
 
     fun dismiss() { viewModelScope.launch { prefs.markOnboardingSeen() } }
+
+    suspend fun previewLanguages(pid: Long) = provider.previewLanguages(pid)
+
+    /** Enregistre le choix (vide = toutes les langues) PUIS démarre la synchro, qui n'activera que les catégories retenues. */
+    fun chooseLanguages(pid: Long, langs: Set<String>) {
+        viewModelScope.launch { prefs.setLanguages(langs.sorted().joinToString(",")); sync.request(pid, force = true) }
+    }
 }
 
-private enum class Step { Welcome, Source, Ready }
+private enum class Step { Welcome, Source, Languages, Ready }
 private enum class Form { None, Xtream, M3uUrl, Stalker }
 
 @Composable
@@ -135,10 +143,11 @@ fun OnboardingWizard(
 ) {
     val W = LocalStrings.current.wiz
     var step by remember { mutableStateOf(Step.Welcome) }
+    var pendingProvider by remember { mutableStateOf<Long?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.markStarted() }
     // BACK remonte d'une étape au lieu de quitter l'application en plein assistant.
     BackHandler(enabled = step != Step.Welcome) {
-        step = if (step == Step.Ready) Step.Source else Step.Welcome
+        step = when (step) { Step.Ready -> Step.Source; Step.Languages -> Step.Source; else -> Step.Welcome }
     }
     Column(
         Modifier.fillMaxSize().background(Ux.Bg).padding(horizontal = 96.design, vertical = 54.design),
@@ -147,7 +156,8 @@ fun OnboardingWizard(
         Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
             when (step) {
                 Step.Welcome -> WelcomeStep(W, onStart = { step = Step.Source }, onSkip = { vm.dismiss() })
-                Step.Source -> SourceStep(W, onAdded = { step = Step.Ready }, onLater = { vm.dismiss() })
+                Step.Source -> SourceStep(W, onAdded = { step = Step.Ready }, onXtreamAdded = { id -> pendingProvider = id; step = Step.Languages }, onLater = { vm.dismiss() })
+                Step.Languages -> LanguagesStep(pendingProvider ?: 0L, vm, onDone = { step = Step.Ready })
                 Step.Ready -> ReadyStep(
                     W, vm,
                     onWatch = { vm.dismiss() },
@@ -185,11 +195,12 @@ private fun Stepper(W: WizardStrings, step: Step) {
     val labels = listOf(W.stepWelcome, W.stepSource, W.stepReady)
     Row(verticalAlignment = Alignment.CenterVertically) {
         labels.forEachIndexed { i, label ->
-            val past = i < step.ordinal
-            val current = i == step.ordinal
+            val ord = when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 }
+            val past = i < ord
+            val current = i == ord
             if (i > 0) {
                 Box(Modifier.padding(horizontal = 10.design).width(56.design).height(2.design)
-                    .background(if (i <= step.ordinal) Ux.Accent else Ux.Line))
+                    .background(if (i <= (when (step) { Step.Welcome -> 0; Step.Source, Step.Languages -> 1; Step.Ready -> 2 })) Ux.Accent else Ux.Line))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
@@ -216,7 +227,7 @@ private fun Stepper(W: WizardStrings, step: Step) {
 @Composable
 private fun Footer(W: WizardStrings, step: Step) {
     Row(Modifier.fillMaxWidth().height(48.design), verticalAlignment = Alignment.CenterVertically) {
-        val ok = when (step) { Step.Welcome -> W.hintValidate; Step.Source -> W.hintChoose; Step.Ready -> W.hintWatch }
+        val ok = when (step) { Step.Welcome -> W.hintValidate; Step.Source, Step.Languages -> W.hintChoose; Step.Ready -> W.hintWatch }
         KeyHint("OK", ok)
         Spacer(Modifier.width(36.design))
         if (step != Step.Ready) KeyHint(null, if (step == Step.Welcome) W.hintBack else W.hintPrevious, chevron = true)
@@ -359,7 +370,7 @@ private fun PreviewGrid(raw: String, modifier: Modifier) {
 // ───────────────────────── Étape 2 : Source ─────────────────────────
 
 @Composable
-private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onLater: () -> Unit) {
+private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Long) -> Unit, onLater: () -> Unit) {
     val settingsVm: SettingsViewModel = hiltViewModel()
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -407,7 +418,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onLater: () -> Uni
     when (form) {
         Form.Xtream -> XtreamDialog(
             onDismiss = { form = Form.None },
-            onSubmit = { n, u, user, pw -> settingsVm.addAndSync(n, u, user, pw); form = Form.None; onAdded() },
+            onSubmit = { n, u, user, pw -> settingsVm.addXtreamOnly(n, u, user, pw) { id -> onXtreamAdded(id) }; form = Form.None },
         )
         Form.M3uUrl -> M3uDialog(
             onDismiss = { form = Form.None },
@@ -529,5 +540,55 @@ private fun Stat(modifier: Modifier, value: Int?, label: String) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.design)) {
         Text(value?.let { "%,d".format(it) } ?: "—", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, color = Ux.Text, maxLines = 1)
         Text(label, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3)
+    }
+}
+
+
+// ───────────────────────── Choix des langues (1re source) ─────────────────────────
+
+@Composable
+private fun LanguagesStep(pid: Long, vm: OnboardingViewModel, onDone: () -> Unit) {
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    var langs by remember { mutableStateOf<List<Pair<String, Int>>?>(null) }
+    var selected by remember { mutableStateOf(setOf<String>()) }
+    androidx.compose.runtime.LaunchedEffect(pid) {
+        val found = vm.previewLanguages(pid)
+        langs = found
+        val sys = java.util.Locale.getDefault().language
+        selected = if (found.any { it.first == sys }) setOf(sys) else emptySet()
+    }
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+        Text(D.langQuestion, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, color = Ux.Text, maxLines = 1)
+        Spacer(Modifier.height(16.design))
+        Text(D.langHelp, fontFamily = Manrope, fontSize = 28.spx, color = Ux.Text2)
+        Spacer(Modifier.height(40.design))
+        val l = langs
+        if (l == null) {
+            Text(D.langLoading, fontFamily = Manrope, fontSize = 28.spx, color = Ux.Text3)
+        } else {
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(20.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
+                LangTile(D.allLanguages, "", selected.isEmpty()) { selected = emptySet() }
+                l.take(12).forEach { (code, n) ->
+                    LangTile(java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()).replaceFirstChar { it.uppercase() }, "$n", code in selected) {
+                        selected = if (code in selected) selected - code else selected + code
+                    }
+                }
+            }
+            Spacer(Modifier.height(48.design))
+            PrimaryCta(D.continueLabel, Icons.Check, fillIcon = false) { vm.chooseLanguages(pid, selected); onDone() }
+        }
+    }
+}
+
+@Composable
+private fun LangTile(label: String, count: String, on: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = if (on) Ux.Surface2 else Ux.Surface, modifier = Modifier.width(260.design).height(112.design)) { f ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, color = if (f) Ux.TextOnLight else Ux.Text)
+                if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 20.spx, color = if (f) Ux.Line else Ux.Text3)
+            }
+            if (on) DIcon(Icons.Check, 32.design, if (f) Ux.TextOnLight else Ux.Accent, strokeWidth = 2.5f)
+        }
     }
 }
