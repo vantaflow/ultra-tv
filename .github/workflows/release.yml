@@ -83,6 +83,21 @@ jobs:
             ./gradlew assembleRelease --console=plain --stacktrace
           fi
 
+      # Garde-fou : avec les secrets présents, AUCUN APK ne doit partir signé
+      # par la clé de debug du runner (différente à chaque build). Sinon la mise
+      # à jour échoue chez l'utilisateur : « conflit avec un package existant ».
+      - name: Verify release signature
+        if: steps.signing.outputs.signed == 'true'
+        run: |
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -maxdepth 2 -name apksigner | sort -V | tail -1)
+          for f in app/build/outputs/apk/release/*-release.apk; do
+            CERTS=$("$SIGNER" verify --print-certs "$f")
+            echo "$f"; echo "$CERTS" | grep -E "DN|SHA-256"
+            if echo "$CERTS" | grep -q "CN=Android Debug"; then
+              echo "::error::$f est signé avec la clé de debug"; exit 1
+            fi
+          done
+
       # AGP emits app-release.apk; the release artifact / in-app updater both
       # expect UltraTV-debug.apk (debug-suffixed applicationId lineage). Rename
       # and emit the sibling .sha256 the updater verifies (UltraTV-debug.apk.sha256).

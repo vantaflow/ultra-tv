@@ -273,11 +273,13 @@ val resignRelease by tasks.registering {
         val keyPwd = System.getenv("ULTRA_KEY_PASSWORD") ?: ksPwd
         val lineage = System.getenv("ULTRA_LINEAGE") ?: return@doLast
 
-        val apk = file("build/outputs/apk/release/app-release.apk")
-        if (!apk.exists()) {
-            println("[resignRelease] APK not found at $apk")
-            return@doLast
-        }
+        // Avec les splits ABI, AGP produit un APK par processeur + l'universel
+        // (app-<abi>-release.apk, app-universal-release.apk) : on les re-signe TOUS.
+        // Aucun APK trouvé = échec franc, sinon la release part signée avec la clé
+        // de debug jetable du runner et la mise à jour échoue (« conflit de package »).
+        val apks = file("build/outputs/apk/release").listFiles { f -> f.name.endsWith("-release.apk") }
+            ?.sortedBy { it.name }.orEmpty()
+        check(apks.isNotEmpty()) { "[resignRelease] aucun APK release dans build/outputs/apk/release" }
         // Locate apksigner — prefer the build-tools that match compileSdk.
         val sdkRoot = System.getenv("ANDROID_HOME")
             ?: System.getenv("ANDROID_SDK_ROOT")
@@ -288,23 +290,25 @@ val resignRelease by tasks.registering {
             ?: error("[resignRelease] apksigner not found under $sdkRoot/build-tools")
         val apksigner = "${buildTools.absolutePath}/apksigner"
 
-        val proc = ProcessBuilder(
-            apksigner, "sign",
-            "--ks", ks,
-            "--ks-key-alias", alias,
-            "--ks-pass", "pass:$ksPwd",
-            "--key-pass", "pass:$keyPwd",
-            "--lineage", lineage,
-            "--rotation-min-sdk-version", "28",
-            "--min-sdk-version", "28",
-            "--v1-signing-enabled", "false",
-            "--v2-signing-enabled", "false",
-            "--v3-signing-enabled", "true",
-            "--v4-signing-enabled", "true",
-            apk.absolutePath,
-        ).inheritIO().start()
-        val code = proc.waitFor()
-        check(code == 0) { "[resignRelease] apksigner exited with $code" }
-        println("[resignRelease] APK re-signed with rotation lineage → $apk")
+        for (apk in apks) {
+            val proc = ProcessBuilder(
+                apksigner, "sign",
+                "--ks", ks,
+                "--ks-key-alias", alias,
+                "--ks-pass", "pass:$ksPwd",
+                "--key-pass", "pass:$keyPwd",
+                "--lineage", lineage,
+                "--rotation-min-sdk-version", "28",
+                "--min-sdk-version", "28",
+                "--v1-signing-enabled", "false",
+                "--v2-signing-enabled", "false",
+                "--v3-signing-enabled", "true",
+                "--v4-signing-enabled", "true",
+                apk.absolutePath,
+            ).inheritIO().start()
+            val code = proc.waitFor()
+            check(code == 0) { "[resignRelease] apksigner exited with $code on ${apk.name}" }
+            println("[resignRelease] APK re-signed with rotation lineage → $apk")
+        }
     }
 }
