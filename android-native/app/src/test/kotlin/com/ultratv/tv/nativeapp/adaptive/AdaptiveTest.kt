@@ -50,6 +50,14 @@ class AdaptiveTest {
         assertEquals(UiEffects.NONE, a.uiEffects); assertTrue(a.imageRgb565); assertTrue(a.lowRam)
         assertEquals(24, a.epgForwardHours); assertEquals(500, a.insertBatch); assertEquals(BufferPreset.AUTO, a.bufferPreset)
     }
+    @Test fun auto_gtvlow_plafonneResolutionEtDebit() {
+        val a = AutoTuner.settings(profile(dev(ram = 1000, cls = 128, cores = 2, is64 = false)), NetQuality.EXCELLENT, false, 80)
+        assertEquals(720, a.maxVideoHeight); assertEquals(6_000_000, a.maxVideoBitrateBps)
+    }
+    @Test fun auto_gtvlow_reseauMauvais_gardeLePlafondLePlusBas() {
+        val a = AutoTuner.settings(profile(dev(ram = 1000, cls = 128, cores = 2, is64 = false)), NetQuality.POOR, false, 80)
+        assertEquals(480, a.maxVideoHeight); assertEquals(2_000_000, a.maxVideoBitrateBps)
+    }
     @Test fun auto_grosseBox_reseauRapide_toutEnPleinEtFaibleLatence() {
         val a = AutoTuner.settings(profile(dev()), NetQuality.EXCELLENT, false, 50)
         assertEquals(UiEffects.FULL, a.uiEffects); assertEquals(BufferPreset.LOW_LATENCY, a.bufferPreset)

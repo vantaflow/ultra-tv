@@ -99,6 +99,8 @@ class PlaybackSession(
         val preset = presetOverride
         val buffer = if (preset != null) BufferPlanner.resolve(preset, CustomBuffer(), s.heapClassMb, s.lowRam) else s.buffer
         _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
+        // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
+        if (s.lowRam) runCatching { coil.Coil.imageLoader(ctx).memoryCache?.clear() }
         val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         engine = e

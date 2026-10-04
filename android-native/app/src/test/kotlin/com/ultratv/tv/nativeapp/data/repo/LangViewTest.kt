@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.data.repo
 
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.ui.live.pickVariant
+import com.ultratv.tv.nativeapp.ui.live.effectiveQualityPref
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -33,6 +34,10 @@ class PickVariantTest {
     private val sd = ch(1, 1); private val hd = ch(2, 2); private val fhd = ch(3, 3); private val uhd = ch(4, 4)
     private val all = listOf(uhd, fhd, hd, sd)
 
+    @Test fun boxBasse_autoEt4k_visentFhd() { assertEquals("fhd", effectiveQualityPref("auto", true)); assertEquals("fhd", effectiveQualityPref("4k", true)) }
+    @Test fun boxBasse_choixPlusBas_respecte() = assertEquals("sd", effectiveQualityPref("sd", true))
+    @Test fun boxPuissante_rienNeChange() { assertEquals("auto", effectiveQualityPref("auto", false)); assertEquals("4k", effectiveQualityPref("4k", false)) }
+    @Test fun boxBasse_unhdAvecFhd_prendFhd() = assertEquals(fhd, pickVariant(uhd, listOf(uhd, fhd, sd), effectiveQualityPref("auto", true)))
     @Test fun exacte_quandDisponible() = assertEquals(fhd, pickVariant(sd, all, "fhd"))
     @Test fun sinon_laMeilleureEnDessous() = assertEquals(hd, pickVariant(uhd, listOf(uhd, hd, sd), "fhd"))
     @Test fun sinon_laPlusBasseAuDessus() = assertEquals(fhd, pickVariant(fhd, listOf(uhd, fhd), "hd"))

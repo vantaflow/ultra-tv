@@ -40,7 +40,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder(this)
-                    .maxSizePercent(if (low) 0.12 else 0.25)
+                    .maxSizePercent(if (low) 0.08 else 0.25)
                     .build()
             }
             .diskCache {
@@ -59,6 +59,15 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             // Pas de fondu sur l'entrée de gamme : c'est une animation par image chargée.
             .crossfade(!low)
             .build()
+    }
+
+    /** Pression mémoire : on rend d'abord les caches d'images (le plus facile à reconstruire depuis le disque). */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        val low = runCatching { adaptive.state.value.auto.lowRam }.getOrDefault(false)
+        if (level >= TRIM_MEMORY_RUNNING_LOW || (low && level >= TRIM_MEMORY_UI_HIDDEN)) {
+            runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+        }
     }
 
     override val workManagerConfiguration: Configuration

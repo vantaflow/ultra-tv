@@ -60,6 +60,7 @@ class LiveViewModel @Inject constructor(
     private val reminders: RemindersScheduler,
     private val channelDao: ChannelDao,
     private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
+    private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
     private val favoriteDao: FavoriteDao,
     private val syncCoordinator: SyncCoordinator,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
@@ -197,7 +198,11 @@ class LiveViewModel @Inject constructor(
 
     /** Variante à lancer selon la qualité préférée (réglage) ; la chaîne choisie telle quelle si rien ne correspond. */
     private suspend fun preferredVariant(c: ChannelEntity): ChannelEntity {
-        val pref = prefs.flow.first().preferredQuality
+        val raw = prefs.flow.first().preferredQuality
+        val lowRam = adaptive.state.value.auto.lowRam
+        // Box basse : « auto » ne change que les chaînes 4K (jamais de montée en qualité).
+        if (lowRam && raw == "auto" && c.quality < 4) return c
+        val pref = effectiveQualityPref(raw, lowRam)
         if (pref == "auto") return c
         return pickVariant(c, variantsOf(c), pref)
     }
@@ -239,6 +244,16 @@ fun pickLanding(cats: List<DirectCategory>, last: String?): String {
     last?.let { l -> if (cats.any { it.id == l && it.count > 0 }) return l }
     cats.firstOrNull { it.id == CATEGORY_FAVORITES && it.count > 0 }?.let { return it.id }
     return cats.firstOrNull { it.id != CATEGORY_FAVORITES && it.id != CATEGORY_ALL && it.count > 0 }?.id ?: CATEGORY_ALL
+}
+
+/**
+ * Qualité effective : sur une box à mémoire basse, « auto » et « 4k » deviennent « fhd » — on lance la variante FHD/HD/SD
+ * d'une chaîne 4K quand elle existe (pickVariant retombe sur la meilleure en dessous). Un choix manuel plus bas est respecté.
+ */
+fun effectiveQualityPref(pref: String, lowRam: Boolean): String = when {
+    !lowRam -> pref
+    pref == "auto" || pref == "4k" -> "fhd"
+    else -> pref
 }
 
 /** Qualité demandée → variante : exacte, sinon la meilleure en dessous, sinon la plus basse au-dessus ; qualité inconnue en dernier recours. */

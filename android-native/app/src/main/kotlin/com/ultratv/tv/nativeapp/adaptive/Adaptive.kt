@@ -106,6 +106,9 @@ data class AutoSettings(
 )
 
 object AutoTuner {
+    const val LOW_TIER_MAX_HEIGHT = 720
+    const val LOW_TIER_MAX_BITRATE = 6_000_000
+
     fun settings(device: DeviceProfile, quality: NetQuality, metered: Boolean, ttfbMs: Int?): AutoSettings {
         val tier = device.tier
         val i = device.info
@@ -117,10 +120,12 @@ object AutoTuner {
         // Résolution max : écran, décodeur, puis réseau.
         val hwH264Height = i.h264?.maxHeight ?: 720
         var maxH = minOf(i.screenHeight.coerceAtLeast(480), hwH264Height.coerceAtLeast(720))
-        if (tier == Tier.LOW) maxH = minOf(maxH, 1080)
+        // Box 1 Go : un flux 4K/FHD fait grimper le RSS jusqu'au lowmemorykiller — on plafonne en HD.
+        if (tier == Tier.LOW) maxH = minOf(maxH, LOW_TIER_MAX_HEIGHT)
         if (tier != Tier.HIGH || i.hevc == null) maxH = minOf(maxH, 1080)
         maxH = when (quality) { NetQuality.POOR -> minOf(maxH, 480); NetQuality.FAIR -> minOf(maxH, 720); else -> maxH }
-        val maxBitrate = when (quality) { NetQuality.POOR -> 2_000_000; NetQuality.FAIR -> 5_000_000; NetQuality.GOOD -> 12_000_000; NetQuality.EXCELLENT -> null }
+        var maxBitrate = when (quality) { NetQuality.POOR -> 2_000_000; NetQuality.FAIR -> 5_000_000; NetQuality.GOOD -> 12_000_000; NetQuality.EXCELLENT -> null }
+        if (tier == Tier.LOW) maxBitrate = minOf(maxBitrate ?: LOW_TIER_MAX_BITRATE, LOW_TIER_MAX_BITRATE)
         return AutoSettings(
             lowRam = tier == Tier.LOW,
             uiEffects = when (tier) { Tier.HIGH -> UiEffects.FULL; Tier.MID -> UiEffects.REDUCED; Tier.LOW -> UiEffects.NONE },

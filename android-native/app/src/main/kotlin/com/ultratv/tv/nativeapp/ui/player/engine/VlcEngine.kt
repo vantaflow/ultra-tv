@@ -61,6 +61,8 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
             addOption(":network-caching=${config.buffer.vlcNetworkCachingMs}")
             addOption(":live-caching=${config.buffer.vlcLiveCachingMs}")
             addOption(":file-caching=${config.buffer.vlcFileCachingMs}")
+            if (maxHeight != Int.MAX_VALUE) addOption(":preferred-resolution=${maxHeight.coerceAtLeast(240)}")
+            maxBitrateBps?.let { addOption(":adaptive-maxbitrate=$it") }
             if (startPositionMs > 5_000) addOption(":start-time=${startPositionMs / 1000}")
         }
         mp.media = media
@@ -92,7 +94,11 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
     override fun setSpeed(speed: Float) { mp.rate = speed }
     override val hasVideo get() = mp.videoTracksCount > 0
-    override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) { /* LibVLC choisit la variante HLS seul */ }
+    private var maxHeight = Int.MAX_VALUE
+    private var maxBitrateBps: Int? = null
+
+    /** LibVLC n'a pas de plafond dur : on borne la variante HLS/DASH choisie (pris en compte au prochain [load]). */
+    override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) { this.maxHeight = maxHeight; this.maxBitrateBps = maxBitrateBps }
 
     override fun stats(): EngineStats {
         val v = mp.currentVideoTrack
