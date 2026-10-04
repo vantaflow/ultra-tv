@@ -101,10 +101,17 @@ fun AddProviderDialog(
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         // Le dialogue tient TOUJOURS dans l'écran (hauteur moins marges de sécurité) : le contenu défile,
         // l'en-tête et les boutons restent épinglés, donc visibles et focalisables quelle que soit l'échelle de police.
-        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        // Clavier à l'écran : la fenêtre n'est pas redimensionnée (elle est seulement « panoramiquée »), donc le dialogue se limite
+        // lui-même à l'espace au-dessus du clavier et se cale en haut tant qu'il est visible : les boutons restent atteignables.
+        val fieldFocused = remember { mutableStateOf(false) }
+        val measured = rememberImeHeight()
+        // Si le clavier est annoncé (champ focalisé) mais que sa hauteur n'est pas encore mesurée : estimation 45 % de la fenêtre.
+        val imeHeight = if (measured > 0.dp) measured else if (fieldFocused.value) (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp else 0.dp
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = if (imeHeight > 0.dp) Alignment.TopCenter else Alignment.Center) {
             val safeV = androidx.compose.foundation.layout.PaddingValues(0.dp).let { com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateTopPadding() }
-            val maxH = (maxHeight - safeV * 2).coerceAtLeast(240.dp)
-            CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted) {
+            val maxH = (maxHeight - safeV * 2 - imeHeight).coerceAtLeast(240.dp)
+            Box(Modifier.padding(top = if (imeHeight > 0.dp) safeV else 0.dp)) {
+            CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted, LocalFieldFocused provides fieldFocused) {
                 Column(
                     modifier = Modifier
                         .width(1000.design)
@@ -148,12 +155,30 @@ fun AddProviderDialog(
                     }
                 }
             }
+            }
         }
     }
 }
 
+/** Hauteur du clavier à l'écran (0 s'il est masqué), lue sur les insets racine de la fenêtre. */
+@Composable
+private fun rememberImeHeight(): androidx.compose.ui.unit.Dp {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var px by remember { mutableStateOf(0) }
+    LaunchedEffect(view) {
+        while (true) {
+            val ins = androidx.core.view.ViewCompat.getRootWindowInsets(view)
+            px = if (ins?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) == true) ins.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime()).bottom else 0
+            kotlinx.coroutines.delay(120)
+        }
+    }
+    return with(density) { px.toDp() }
+}
+
 /** Bouton principal du dialogue courant : cible de « ▼ » et de l'action IME « OK » sur le dernier champ. */
 private val LocalSubmitAttempted = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
+private val LocalFieldFocused = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
 private val LocalSubmitFocus = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
 /**
@@ -181,6 +206,8 @@ fun FormField(
     val fm = LocalFocusManager.current
     val D = LocalDs.current
     val bring = remember { BringIntoViewRequester() }
+    val fieldFocusedState = LocalFieldFocused.current
+    androidx.compose.runtime.DisposableEffect(focused) { if (focused) fieldFocusedState?.value = true; onDispose { if (focused) fieldFocusedState?.value = false } }
     val submit = LocalSubmitFocus.current
     // « Visité puis quitté vide » : l'erreur ne s'affiche JAMAIS à l'ouverture, seulement après un passage dans le champ.
     var settled by remember { mutableStateOf(false) }

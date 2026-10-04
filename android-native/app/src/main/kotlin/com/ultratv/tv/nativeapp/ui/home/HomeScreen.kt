@@ -99,6 +99,8 @@ fun HomeScreen(
         when {
             h != null -> Hero(h, onOpen = { if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) }, onGuide = onGoGuide)
             loaded && providers.isEmpty() -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
+            // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
+            loaded && providers.none { it.kind in com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS } -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.fixSource, onGoSettings)
             loaded -> LoadingCard(D.homeEmpty, sync?.percent)
         }
 
