@@ -26,11 +26,13 @@ export function firstString(v: string[] | string | undefined | null): string | n
   return v || null;
 }
 
-export function fmtDuration(totalSec: number): string {
+/** Durée localisée (« 1 h 05 », « 12 min », « ١٢ د » en arabe) : les unités viennent d'Intl, pas du code. */
+export function fmtDuration(totalSec: number, lang: string = (typeof document !== "undefined" && document.documentElement.lang) || "fr"): string {
   if (!Number.isFinite(totalSec) || totalSec <= 0) return "";
   const h = Math.floor(totalSec / 3600);
   const m = Math.floor((totalSec % 3600) / 60);
-  return h > 0 ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
+  const unit = (n: number, u: "hour" | "minute", digits = 1) => new Intl.NumberFormat(lang, { style: "unit", unit: u, unitDisplay: "short", minimumIntegerDigits: digits }).format(n);
+  return h > 0 ? `${unit(h, "hour")} ${unit(m, "minute", 2)}` : unit(m, "minute");
 }
 
 export function fmtClock(sec: number): string {

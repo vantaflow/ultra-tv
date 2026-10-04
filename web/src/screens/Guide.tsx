@@ -139,7 +139,7 @@ function Inner({ source }: { source: Source }) {
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
           <button className="chip" onClick={() => setPop(true)}>{label} ▾</button>
-          <div className="chips" role="group" aria-label="Jour">{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
+          <div className="chips" role="group" aria-label={t("a11y.day")}>{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
         </div>
       </header>
       <div className="guide-grid" ref={scroller}>

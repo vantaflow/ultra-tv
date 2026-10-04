@@ -173,7 +173,7 @@ function LiveInner({ source }: { source: Source }) {
           />
         )}
       </section>
-      <section className="preview" aria-label="Aperçu">
+      <section className="preview" aria-label={t("a11y.preview")}>
         <PreviewSlot>{t("live.preview")}</PreviewSlot>
         {selected && (
           <>

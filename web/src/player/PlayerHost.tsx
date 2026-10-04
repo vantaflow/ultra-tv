@@ -327,7 +327,7 @@ export function PlayerHost() {
         {full && (live ? prog : cur.d > 0) && (
           <div className="seek mono">
             <span>{live ? hhmm(prog!.start, locale) : fmtClock(cur.t)}</span>
-            <div className="bar" onClick={onSeekBar} role="slider" aria-label="Position" aria-valuenow={Math.round((live ? progRatio : vodRatio) * 100)}>
+            <div className="bar" onClick={onSeekBar} role="slider" aria-label={t("a11y.position")} aria-valuenow={Math.round((live ? progRatio : vodRatio) * 100)}>
               {!live && cur.d > 0 && <div className="buf" style={{ width: `${(cur.buf / cur.d) * 100}%` }} />}
               <div className="fill" style={{ width: `${(live ? progRatio : vodRatio) * 100}%` }} />
               <div className="knob" style={{ insetInlineStart: `${(live ? progRatio : vodRatio) * 100}%` }} />
@@ -342,7 +342,7 @@ export function PlayerHost() {
               <Icon name={state === "paused" ? "play" : "pause"} size={full ? 26 : 20} fill />
             </button>
             {full && !live && <button className="pbtn" aria-label={t("player.fwd10")} onClick={() => seekBy(10)}><Icon name="fwd" size={22} /></button>}
-            <button className="pbtn" aria-label="Volume" onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
+            <button className="pbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
           </div>
           <div className="grp">
             {full ? (
@@ -415,14 +415,14 @@ export function PlayerHost() {
             <>
               <div className="grp-t">{t("player.shortcuts")}</div>
               <div className="hotkeys">
-                <span><span className="kbd">Espace</span></span><span>{t("player.sk.space")}</span>
+                <span><span className="kbd">{t("key.space")}</span></span><span>{t("player.sk.space")}</span>
                 <span><span className="kbd">←</span> <span className="kbd">→</span></span><span>{t("player.sk.arrows")}</span>
                 <span><span className="kbd">↑</span> <span className="kbd">↓</span></span><span>{live ? t("player.sk.zap") : t("player.sk.vol")}</span>
                 <span><span className="kbd">F</span></span><span>{t("player.sk.full")}</span>
                 <span><span className="kbd">P</span></span><span>{t("player.sk.pip")}</span>
                 <span><span className="kbd">M</span></span><span>{t("player.sk.mute")}</span>
                 <span><span className="kbd">I</span></span><span>{t("player.stats")}</span>
-                <span><span className="kbd">Échap</span></span><span>{t("player.sk.esc")}</span>
+                <span><span className="kbd">{t("key.esc")}</span></span><span>{t("player.sk.esc")}</span>
               </div>
               <div className="grp-t">{t("player.stats")}</div>
               <button className="opt" onClick={() => setPanel("stats")}>{t("player.stats")}<Icon name="chevron" size={16} /></button>

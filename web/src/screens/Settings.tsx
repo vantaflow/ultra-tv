@@ -443,9 +443,9 @@ function AboutPane() {
       <div className="hotkeys">
         <span><span className="kbd">/</span> <span className="kbd">Ctrl/⌘ K</span></span><span>{t("set.sk.search")}</span>
         <span><span className="kbd">↑</span> <span className="kbd">↓</span></span><span>{t("set.sk.nav")}</span>
-        <span><span className="kbd">Entrée</span></span><span>{t("set.sk.open")}</span>
-        <span><span className="kbd">Échap</span></span><span>{t("set.sk.esc")}</span>
-        <span><span className="kbd">Espace</span> <span className="kbd">F</span> <span className="kbd">M</span> <span className="kbd">P</span> <span className="kbd">I</span></span><span>{t("player.shortcuts")}</span>
+        <span><span className="kbd">{t("key.enter")}</span></span><span>{t("set.sk.open")}</span>
+        <span><span className="kbd">{t("key.esc")}</span></span><span>{t("set.sk.esc")}</span>
+        <span><span className="kbd">{t("key.space")}</span> <span className="kbd">F</span> <span className="kbd">M</span> <span className="kbd">P</span> <span className="kbd">I</span></span><span>{t("player.shortcuts")}</span>
       </div>
     </>
   );

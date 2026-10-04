@@ -31,7 +31,7 @@ export const useSync = create<SyncStore>((set, get) => ({
       type = fresh.type;
       await syncSource({ ...fresh }, (progress) => set({ progress }), { preserveFlags: opts.preserveFlags });
       set({ running: false });
-      if (!opts.silent) useUi.getState().toast("Catalogue mis à jour");
+      if (!opts.silent) useUi.getState().toast(translate(usePrefs.getState().lang, "toast.synced"));
       return true;
     } catch (e) {
       const err = e as Error;

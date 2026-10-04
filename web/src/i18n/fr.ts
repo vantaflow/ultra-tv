@@ -351,6 +351,17 @@ export const fr = {
   "cloud.badgeCloud": "Cloud",
   "cloud.badgeFrom": "Cloud · depuis {n}",
   "cloud.badgeLocal": "Privée à cet appareil",
+  "a11y.day": "Jour",
+  "a11y.preview": "Aperçu",
+  "a11y.mainNav": "Navigation principale",
+  "a11y.progress": "Progression",
+  "a11y.progressAll": "Progression globale",
+  "a11y.steps": "Étapes",
+  "a11y.position": "Position",
+  "a11y.volume": "Volume",
+  "key.space": "Espace",
+  "key.esc": "Échap",
+  "key.enter": "Entrée",
 } as const;
 
 export type Key = keyof typeof fr;

@@ -40,7 +40,7 @@ function Steps({ n }: { n: number }) {
   const t = useT();
   const labels = [t("set.sources"), t("common.languages"), t("set.sync")];
   return (
-    <ol className="steps" aria-label="Progression">
+    <ol className="steps" aria-label={t("a11y.progress")}>
       {labels.map((l, i) => (
         <li key={i} className={i < n ? "done" : i === n ? "on" : ""}>
           {i > 0 && <span className="ln" aria-hidden="true" />}
@@ -261,7 +261,7 @@ function FirstSync({ name, kindLabel, onRetry, onOpen }: { name: string; kindLab
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
             <span style={{ fontFamily: "var(--font-title)", fontWeight: 700, fontSize: "2.25rem" }}>{t("sync.percent", { p: pct })}</span>
           </div>
-          <div className="bigbar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Progression globale"><i style={{ width: `${pct}%` }} /></div>
+          <div className="bigbar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={t("a11y.progressAll")}><i style={{ width: `${pct}%` }} /></div>
           {error && <div className="alert err" role="alert"><Icon name="alert" size={20} /><span>{t("sync.failed")} — {error}</span></div>}
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <button className="btn primary lg" disabled={!liveReady} onClick={onOpen}><Icon name="play" size={18} fill />{t("sync.watchLive")}</button>
@@ -270,7 +270,7 @@ function FirstSync({ name, kindLabel, onRetry, onOpen }: { name: string; kindLab
           {error && <div><button className="btn" onClick={onRetry}>{t("common.retry")}</button></div>}
           {running && <div><button className="btn sm" onClick={cancel}>{t("common.cancel")}</button></div>}
         </div>
-        <div className="step-list" aria-label="Étapes">
+        <div className="step-list" aria-label={t("a11y.steps")}>
           {rows.map((r) => {
             const ratio = phaseRatio(r.key);
             const state = ratio >= 1 ? "done" : ratio > 0 || (idx === ORDER.indexOf(r.key)) ? "active" : "";

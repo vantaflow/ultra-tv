@@ -28,7 +28,7 @@ export function Rail() {
       <NavLink to="/search" className={`rail-search${isActive("/search") ? " active" : ""}`} title={`${t("nav.search")} (Ctrl/⌘ K)`} aria-label={t("nav.search")}>
         <Icon name="search" />
       </NavLink>
-      <nav aria-label="Navigation principale">
+      <nav aria-label={t("a11y.mainNav")}>
         {ITEMS.map((i) => (
           <NavLink key={i.to} to={i.to} className={`rail-item${isActive(i.match) ? " active" : ""}`} title={t(i.label)}>
             <span className="pill"><Icon name={i.icon} /></span>
