@@ -91,7 +91,6 @@ export interface CloudProvider {
   url: string;
   username?: string;
   password?: string;
-  mac?: string;
   originDeviceId?: string;
   originName?: string;
   createdAt?: number;
@@ -100,7 +99,7 @@ export interface CloudProvider {
   sharedWith?: string[] | "all";
 }
 export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
-export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string }
+export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
 
 export type ConfigResult = { unchanged: true } | { unchanged: false; config: CloudConfig; etag: string };
 
@@ -115,7 +114,7 @@ export async function fetchConfig(base: string, token: string, etag?: string | n
   const o = parse<Partial<CloudConfig>>(r);
   return {
     unchanged: false, etag: r.etag,
-    config: { version: o.version ?? 0, devices: o.devices ?? 0, providers: Array.isArray(o.providers) ? o.providers : [], deviceName: o.deviceName },
+    config: { version: o.version ?? 0, devices: o.devices ?? 0, providers: Array.isArray(o.providers) ? o.providers : [], deviceName: o.deviceName, self: o.self },
   };
 }
 
@@ -134,7 +133,6 @@ export interface ProviderInput {
   url: string;
   username?: string;
   password?: string;
-  mac?: string;
   /** « all » ou liste d'identifiants d'appareils. */
   shareWith?: "all" | string[];
 }

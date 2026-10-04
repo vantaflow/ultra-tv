@@ -195,7 +195,7 @@ function CloudPane() {
           <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { n: c.devices })}</div>
           {Array.isArray(c.devices) && c.devices.map((d) => (
             <div key={d.id} className="pref">
-              <span><span>{d.name}</span>{(d.model || d.lastSeen) && <span className="d" style={{ display: "block" }}>{[d.model, d.lastSeen ? new Date(d.lastSeen).toLocaleString(lang) : null].filter(Boolean).join(" · ")}</span>}</span>
+              <span><span>{d.name}</span>{(d.model || d.lastSeen !== undefined) && <span className="d" style={{ display: "block" }}>{[d.model, new Date(d.lastSeen || 0).getTime() > 0 ? new Date(d.lastSeen!).toLocaleString(lang) : "—"].filter(Boolean).join(" · ")}</span>}</span>
               {(d.isCurrent || d.id === c.deviceId) && <span className="cbadge">{t("cloud.thisDevice")}</span>}
             </div>
           ))}

@@ -53,7 +53,7 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         if (!bearer) return send(401);
         const etag = `"v${w.version}"`;
         if (req.headers["if-none-match"] === etag) return send(304, undefined, { etag });
-        return send(200, { version: w.version, devices: w.state.devices, providers: w.providers }, { etag });
+        return send(200, { version: w.version, self: "dev-1", devices: w.state.devices, providers: w.providers }, { etag });
       }
       if (url.pathname === "/api/device" && req.method === "PATCH") {
         if (!bearer) return send(401);
@@ -73,7 +73,7 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         if (body.shareWith !== undefined && !w.state.shareWithSupported) return send(400, { error: "invalid", field: "shareWith" });
         if (typeof body.kind !== "string") return send(400, { error: "invalid", field: "kind" });
         const id = body.id ?? `a${String(w.providers.length + 1).padStart(7, "0")}`;
-        const p: CloudProvider = { id, kind: body.kind, name: body.name, url: body.url, username: body.username ?? "", password: body.password ?? "", mac: "", sharedWith: body.shareWith };
+        const p: CloudProvider = { id, kind: body.kind, name: body.name, url: body.url, username: body.username ?? "", password: body.password ?? "", sharedWith: body.shareWith };
         const i = w.providers.findIndex((x) => x.id === id);
         if (i >= 0) w.providers[i] = p; else w.providers.push(p);
         w.version++;

@@ -147,7 +147,8 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     const devs = res.config.devices;
     await setSetting(K.devices, devs);
     patch({ devices: devs });
-    const me = Array.isArray(devs) ? devs.find((d) => d.isCurrent) : undefined;
+    const me = Array.isArray(devs) ? devs.find((d) => d.isCurrent || d.id === res.config.self) : undefined;
+    if (res.config.self) { await setSetting(K.deviceId, res.config.self); patch({ deviceId: res.config.self }); }
     if (me) { await saveDeviceName(me.name, false); if (me.id) { await setSetting(K.deviceId, me.id); patch({ deviceId: me.id }); } }
     else if (res.config.deviceName) await saveDeviceName(res.config.deviceName, false);
     return await applyProviders(res.config.providers, !!awaitSync);
