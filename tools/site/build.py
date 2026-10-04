@@ -16,17 +16,21 @@ ALT = {
  "guide": ("Guide des programmes : grille horaire avec la ligne du moment présent", "Programme guide: time grid with the current-time line"),
  "detail": ("Fiche d'un film : visuel, informations, bouton Lecture et distribution", "Movie details: artwork, information, Play button and cast"),
  "player": ("Lecteur plein écran avec les commandes superposées", "Full-screen player with overlaid controls"),
+ "phone": ("Ultra TV sur smartphone Android", "Ultra TV on an Android smartphone"),
+ "tablet": ("Ultra TV sur tablette Android : menu latéral, liste et fiche", "Ultra TV on an Android tablet: side rail, list and details"),
+ "desktop": ("Ultra TV sur Windows et macOS", "Ultra TV on Windows and macOS"),
+ "cloud": ("Tableau de bord cloud : appareils et sources", "Cloud dashboard: devices and sources"),
  "ar": ("Accueil en arabe : interface en miroir, menu latéral à droite", "Home screen in Arabic: mirrored interface, side rail on the right"),
 }
 PAGES = {
  "fr": dict(out="index.html", ROOT="", LANG="fr", ALT="en", ALTCODE="EN", ALTHREF="en/", ALTLABEL="English version", OGLOC="fr_FR",
             CANON="https://khalilbenaz.github.io/ultra-tv/", i=0, THEMELABEL="Thème clair ou sombre",
-            TITLE="Ultra TV — lecteur IPTV pour Android TV et Google TV",
-            DESC="Ultra TV est un lecteur IPTV natif pour Android TV et Google TV : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques."),
+            TITLE="Ultra TV — lecteur IPTV pour TV, smartphone, tablette et ordinateur",
+            DESC="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques."),
  "en": dict(out="en/index.html", ROOT="../", LANG="en", ALT="fr", ALTCODE="FR", ALTHREF="../", ALTLABEL="Version française", OGLOC="en_US",
             CANON="https://khalilbenaz.github.io/ultra-tv/en/", i=1, THEMELABEL="Light or dark theme",
-            TITLE="Ultra TV — IPTV player for Android TV and Google TV",
-            DESC="Ultra TV is a native IPTV player for Android TV and Google TV: Xtream Codes, M3U, guide, replay, timeshift, two playback engines, cloud sync, automatic tuning."),
+            TITLE="Ultra TV — IPTV player for TV, smartphone, tablet and desktop",
+            DESC="Ultra TV is an IPTV player for Android TV, smartphone, tablet, Windows and macOS: Xtream Codes, M3U, guide, replay, timeshift, two playback engines, cloud sync, automatic tuning."),
 }
 tpl = open(os.path.join(os.path.dirname(__file__), "page.tpl.html"), encoding="utf-8").read()
 for lang, P in PAGES.items():
@@ -45,4 +49,16 @@ for lang, names in {"fr": ["home", "live", "guide", "detail", "player"], "en": [
         src = os.path.join(SHOTS, lang, n + ".png"); im = Image.open(src).convert("RGB")
         im.save(os.path.join(d, n + ".webp"), "WEBP", quality=80, method=6)
         im.quantize(colors=192, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG).save(os.path.join(d, n + ".png"), optimize=True)
+# captures des autres appareils : (source, nom, largeur max)
+EXTRA = lambda l: [
+    (f"phone/{l}/home.png", "phone-home", 540), (f"phone/{l}/live.png", "phone-live", 540), (f"phone/{l}/player.png", "phone-player", 540),
+    (f"tablet/{l}/live.png", "tablet-live", 1280), (f"desktop/{l}/06-direct.png", "desktop-direct", 1280), (f"desktop/{l}/14-reglages.png", "desktop-settings", 1280),
+    ("cloud/devices.png", "cloud-devices", 880), ("cloud/sharing.png", "cloud-sharing", 880)]
+for lang in ("fr", "en"):
+    d = os.path.join(SITE, "img", lang)
+    for src, name, mw in EXTRA(lang):
+        im = Image.open(os.path.join(SHOTS, src)).convert("RGB")
+        if im.width > mw: im = im.resize((mw, round(im.height * mw / im.width)), Image.Resampling.LANCZOS)
+        im.save(os.path.join(d, name + ".webp"), "WEBP", quality=80, method=6)
+        im.quantize(colors=192, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.FLOYDSTEINBERG).save(os.path.join(d, name + ".png"), optimize=True)
 print("site généré")

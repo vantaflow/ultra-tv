@@ -2,6 +2,20 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.0] — à publier
+
+### Nouveautés
+- **Smartphone et tablette Android** : interface tactile (barre de navigation basse sur téléphone, menu latéral et volets côte à côte sur tablette), lecteur à gestes, formulaires calés au-dessus du clavier.
+- **Application de bureau Windows et macOS** (`web/` React + Vite + Dexie, `electron/`) : même design que la TV, catalogue local, identifiants chiffrés par le trousseau système, lecture directe, mise à jour automatique ; publication par tag `desktop-vX.Y.Z`.
+- **Synchronisation multi-appareils** : même fournisseur sur tous les appareils d'un compte, source propre à un appareil tant qu'elle n'est pas partagée, choix des appareils destinataires source par source (application et tableau de bord). Worker : `GET /api/config` (`self`, `devices`, `providers` avec `sharedWith`), `POST/PUT/DELETE /api/device/providers`, `PATCH /api/device`, mutations d'un compte sérialisées par un verrou Durable Object.
+- **Bureau** : la Recherche sort du rail (bouton rond sous le logo) avec le raccourci `Ctrl/Cmd + K` ou `/` depuis tout écran ; cases à cocher aux couleurs de la charte (accent `#D91E2B`, coche blanche) en clair et sombre.
+- Site et READMEs (FR/EN) : une section par appareil, captures téléphone, tablette, bureau et tableau de bord cloud.
+
+### Corrections
+- **Accueil Android, source en erreur** : message lisible, bouton « Ouvrir les Réglages des sources » (au lieu de « Corriger la source »), focus initial laissé au menu et non au bouton.
+- **Tableau de bord** : les cases d'affectation des sources s'affichent en ligne avec leur libellé (elles prenaient toute la largeur) et reprennent la couleur d'accent.
+- Inscription au tableau de bord depuis un navigateur sans en-tête `Referer` (politique `same-origin`, contrôle d'origine tolérant), conservé à la fusion.
+
 ## [1.1.1] — à publier
 
 ### Corrections

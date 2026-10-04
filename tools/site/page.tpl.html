@@ -26,6 +26,7 @@
   <a class="brand" href="#top"><img src="{{ROOT}}img/logo.svg" alt="" width="34" height="34">ULTRA TV</a>
   <nav class="links" aria-label="Navigation">
     <a href="#fonctions"><span lang="fr">Fonctions</span><span lang="en">Features</span></a>
+    <a href="#appareils"><span lang="fr">Appareils</span><span lang="en">Devices</span></a>
     <a href="#telecharger"><span lang="fr">Télécharger</span><span lang="en">Download</span></a>
     <a href="#installer"><span lang="fr">Installer</span><span lang="en">Install</span></a>
     <a href="#faq">FAQ</a>
@@ -37,12 +38,12 @@
 <main id="main">
 <section class="hero" id="top" style="border:0;padding-top:24px">
   <div>
-    <p class="eyebrow">Android TV · Google TV</p>
+    <p class="eyebrow">Android TV · Android · Windows · macOS</p>
     <h1><span lang="fr">Toute votre télé, dans une seule application.</span><span lang="en">All your TV in one app.</span></h1>
     <p><span lang="fr">Ultra TV est un lecteur IPTV natif, pensé pour la télécommande : chaînes, films, séries, guide des programmes, replay et pause du direct. Il se règle tout seul selon votre appareil et votre réseau.</span><span lang="en">Ultra TV is a native IPTV player designed for the remote: channels, movies, series, programme guide, replay and live pause. It tunes itself to your device and network.</span></p>
     <div class="cta">
       <a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ <span lang="fr">Télécharger l'APK</span><span lang="en">Download the APK</span></a>
-      <a class="btn alt" href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><span lang="fr">Notes de version</span><span lang="en">Release notes</span> <span data-version>1.1.0</span></a>
+      <a class="btn alt" href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><span lang="fr">Notes de version</span><span lang="en">Release notes</span> <span data-version>1.2.0</span></a>
     </div>
     <p class="meta"><span lang="fr">Gratuit, open source (MIT). Ultra TV ne fournit aucun contenu : utilisez vos propres abonnements.</span><span lang="en">Free and open source (MIT). Ultra TV provides no content: bring your own subscription.</span></p>
   </div>
@@ -93,19 +94,92 @@
   </div>
 </section>
 
+<section id="appareils">
+  <h2><span lang="fr">Un seul compte, tous vos écrans</span><span lang="en">One account, all your screens</span></h2>
+  <p><span lang="fr">Ultra TV existe sur la TV, le smartphone, la tablette, Windows et macOS. Même interface, même fournisseur partout : ajoutez-le une fois dans le tableau de bord cloud, chaque appareil le reçoit.</span><span lang="en">Ultra TV runs on TV, smartphone, tablet, Windows and macOS. Same interface, same provider everywhere: add it once in the cloud dashboard and every device receives it.</span></p>
+
+  <div class="feature" id="tv">
+    <div>
+      <h3><span lang="fr">Android TV et Google TV</span><span lang="en">Android TV and Google TV</span></h3>
+      <p><span lang="fr">L'application d'origine, pilotée à la télécommande : direct, guide, replay, pause du direct, deux moteurs de lecture, profils, Watch Next.</span><span lang="en">The original app, driven by the remote: live TV, guide, replay, live pause, two playback engines, profiles, Watch Next.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/home.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="{{ROOT}}img/{{LANG}}/home.png" alt="{{ALT:home}}"></picture>
+  </div>
+
+  <div class="feature" id="smartphone">
+    <div>
+      <h3><span lang="fr">Smartphone Android</span><span lang="en">Android smartphone</span></h3>
+      <p><span lang="fr">Interface tactile : barre de navigation en bas, listes et grilles au doigt, lecteur avec gestes et image dans l'image. Les formulaires se calent au-dessus du clavier.</span><span lang="en">Touch interface: bottom navigation bar, lists and grids by finger, player with gestures and picture-in-picture. Forms sit above the keyboard.</span></p>
+    </div>
+    <div class="phones">
+      <picture><source srcset="{{ROOT}}img/{{LANG}}/phone-home.webp" type="image/webp"><img class="shot portrait" width="360" height="800" loading="lazy" src="{{ROOT}}img/{{LANG}}/phone-home.png" alt="{{ALT:phone}}"></picture>
+      <picture><source srcset="{{ROOT}}img/{{LANG}}/phone-live.webp" type="image/webp"><img class="shot portrait" width="360" height="800" loading="lazy" src="{{ROOT}}img/{{LANG}}/phone-live.png" alt="{{ALT:phone}}"></picture>
+      <picture><source srcset="{{ROOT}}img/{{LANG}}/phone-player.webp" type="image/webp"><img class="shot portrait" width="360" height="800" loading="lazy" src="{{ROOT}}img/{{LANG}}/phone-player.png" alt="{{ALT:phone}}"></picture>
+    </div>
+  </div>
+
+  <div class="feature" id="tablette">
+    <div>
+      <h3><span lang="fr">Tablette Android</span><span lang="en">Android tablet</span></h3>
+      <p><span lang="fr">Menu latéral, liste et fiche côte à côte : l'écran large est exploité, au toucher comme au clavier.</span><span lang="en">Side rail, list and details side by side: the wide screen is put to work, by touch or keyboard.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/tablet-live.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="{{ROOT}}img/{{LANG}}/tablet-live.png" alt="{{ALT:tablet}}"></picture>
+  </div>
+
+  <div class="feature" id="bureau">
+    <div>
+      <h3>Windows <span lang="fr">et</span><span lang="en">and</span> macOS</h3>
+      <p><span lang="fr">Le même design sur ordinateur : recherche sous le logo (raccourci Ctrl/Cmd + K ou /), lecture directe sans proxy, identifiants chiffrés par le trousseau du système, mise à jour automatique.</span><span lang="en">The same design on desktop: search under the logo (shortcut Ctrl/Cmd + K or /), direct playback with no proxy, credentials encrypted with the system keychain, automatic updates.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/desktop-direct.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="{{ROOT}}img/{{LANG}}/desktop-direct.png" alt="{{ALT:desktop}}"></picture>
+  </div>
+  <div class="feature">
+    <div>
+      <h3><span lang="fr">Réglages du bureau</span><span lang="en">Desktop settings</span></h3>
+      <p><span lang="fr">Sources, cloud, affichage, lecture, synchronisation, langues et profils.</span><span lang="en">Sources, cloud, display, playback, sync, languages and profiles.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/desktop-settings.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="{{ROOT}}img/{{LANG}}/desktop-settings.png" alt="{{ALT:desktop}}"></picture>
+  </div>
+
+  <div class="feature" id="tableau-de-bord">
+    <div>
+      <h3><span lang="fr">Tableau de bord cloud</span><span lang="en">Cloud dashboard</span></h3>
+      <p><span lang="fr">Gérez vos appareils et vos sources depuis un navigateur : <strong>ultratv-config.khalilbenaz.workers.dev</strong>. Appairez un appareil avec un code, renommez-le ou révoquez-le.</span><span lang="en">Manage your devices and sources from a browser: <strong>ultratv-config.khalilbenaz.workers.dev</strong>. Pair a device with a code, rename or revoke it.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/cloud-devices.webp" type="image/webp"><img class="shot" width="880" height="707" loading="lazy" src="{{ROOT}}img/{{LANG}}/cloud-devices.png" alt="{{ALT:cloud}}"></picture>
+  </div>
+  <div class="feature">
+    <div>
+      <h3><span lang="fr">Partage des sources, appareil par appareil</span><span lang="en">Source sharing, device by device</span></h3>
+      <p><span lang="fr">Un fournisseur ajouté depuis le tableau de bord est reçu par tous les appareils. Une source ajoutée sur un appareil reste <em>propre à cet appareil</em> tant que vous ne la partagez pas ; le choix des appareils destinataires se fait source par source, depuis l'application ou le tableau de bord.</span><span lang="en">A provider added from the dashboard is received by every device. A source added on a device stays <em>private to that device</em> until you share it; recipients are chosen source by source, from the app or the dashboard.</span></p>
+    </div>
+    <picture><source srcset="{{ROOT}}img/{{LANG}}/cloud-sharing.webp" type="image/webp"><img class="shot" width="880" height="910" loading="lazy" src="{{ROOT}}img/{{LANG}}/cloud-sharing.png" alt="{{ALT:cloud}}"></picture>
+  </div>
+</section>
+
 <section id="telecharger">
   <h2><span lang="fr">Télécharger</span><span lang="en">Download</span></h2>
   <div class="grid two">
     <div class="card">
-      <h3>APK <span data-version>1.1.0</span></h3>
-      <p><span lang="fr">Android 9 ou plus récent. Le fichier suit toujours la dernière version publiée.</span><span lang="en">Android 9 or newer. The file always follows the latest published release.</span></p>
-      <p><a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ UltraTV-debug.apk</a></p>
-      <p class="meta"><span lang="fr">Somme de contrôle SHA-256 dans la page de la version.</span><span lang="en">SHA-256 checksum on the release page.</span></p>
+      <h3>Android <span data-version>1.2.0</span></h3>
+      <p><span lang="fr">Android 9 ou plus récent (TV, smartphone, tablette). Le fichier universel suit toujours la dernière version publiée.</span><span lang="en">Android 9 or newer (TV, smartphone, tablet). The universal file always follows the latest published release.</span></p>
+      <p><a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">⬇ <span lang="fr">APK universel</span><span lang="en">Universal APK</span></a></p>
+      <p class="meta"><span lang="fr">Plus léger : un APK par processeur (arm64-v8a, armeabi-v7a, x86_64), <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code>, sur la <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest">page de la version</a>. Somme SHA-256 incluse.</span><span lang="en">Lighter: one APK per CPU (arm64-v8a, armeabi-v7a, x86_64), <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code>, on the <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest">release page</a>. SHA-256 included.</span></p>
+    </div>
+    <div class="card">
+      <h3>Windows <span lang="fr">et</span><span lang="en">and</span> macOS</h3>
+      <p><span lang="fr">Windows : installeur <code>.exe</code> (x64). macOS : image disque <code>.dmg</code> (Apple Silicon et Intel). Publiés avec les versions <code>desktop-v…</code> ; mise à jour automatique ensuite.</span><span lang="en">Windows: <code>.exe</code> installer (x64). macOS: <code>.dmg</code> disk image (Apple Silicon and Intel). Published with the <code>desktop-v…</code> releases; automatic updates afterwards.</span></p>
+      <p><a class="btn" href="https://github.com/khalilbenaz/ultra-tv/releases">⬇ <span lang="fr">Releases (.exe, .dmg)</span><span lang="en">Releases (.exe, .dmg)</span></a></p>
     </div>
     <div class="card">
       <h3>Downloader</h3>
       <p><span lang="fr">Sur une box sans navigateur : ouvrez l'application Downloader, saisissez le code puis validez.</span><span lang="en">On a box without a browser: open the Downloader app, enter the code and confirm.</span></p>
       <p style="font-size:2rem;margin:0"><code>5248504</code></p>
+    </div>
+    <div class="card">
+      <h3><span lang="fr">Tableau de bord cloud</span><span lang="en">Cloud dashboard</span></h3>
+      <p><span lang="fr">Aucune installation : ouvrez l'adresse dans un navigateur.</span><span lang="en">Nothing to install: open the address in a browser.</span></p>
+      <p><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev" rel="noopener">ultratv-config.khalilbenaz.workers.dev</a></p>
     </div>
   </div>
 </section>

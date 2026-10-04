@@ -57,18 +57,71 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
 
-## Application de bureau (macOS et Windows)
+## Appareils
 
-Le même design que l'application Android TV, pour Windows et macOS : l'application web de
-[`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)). Elle reste
-utilisable dans un navigateur. Xtream Codes et M3U (lien ou fichier) ; le catalogue est gardé
-en local (IndexedDB), les identifiants sont chiffrés avec le trousseau du système, la lecture
-est directe (aucun proxy distant) et la mise à jour est automatique via les Releases GitHub.
+Un seul compte, tous vos écrans : même interface, même fournisseur partout. Ajoutez-le une fois dans le [tableau de bord cloud](#synchronisation-cloud) et chaque appareil le reçoit.
 
-![Direct](docs/screenshots/desktop/fr/06-direct.png)
+### Android TV et Google TV
 
-Les captures (données synthétiques, FR et EN) sont dans [`docs/screenshots/desktop/`](docs/screenshots/desktop/).
-Publication : pousser un tag `desktop-vX.Y.Z` (workflow `desktop-release.yml`, séparé des tags Android `v*`).
+L'application d'origine, pilotée à la télécommande (voir les captures ci-dessus et [Fonctionnalités](#fonctionnalités)).
+
+### Smartphone Android
+
+Interface tactile : barre de navigation en bas, listes et grilles au doigt, lecteur à gestes avec image dans l'image ; les formulaires se calent au-dessus du clavier.
+
+<p align="center">
+  <img src="docs/screenshots/phone/fr/home.png" alt="Accueil sur smartphone" width="23%" />
+  <img src="docs/screenshots/phone/fr/live.png" alt="Direct sur smartphone" width="23%" />
+  <img src="docs/screenshots/phone/fr/detail.png" alt="Fiche film sur smartphone" width="23%" />
+  <img src="docs/screenshots/phone/fr/player.png" alt="Lecteur sur smartphone" width="23%" />
+</p>
+
+### Tablette Android
+
+Menu latéral, liste et fiche côte à côte.
+
+<p align="center">
+  <img src="docs/screenshots/tablet/fr/live.png" alt="Direct sur tablette" width="48%" />
+  <img src="docs/screenshots/tablet/fr/home.png" alt="Accueil sur tablette" width="48%" />
+</p>
+
+### Windows et macOS
+
+Le même design sur ordinateur : l'application web de [`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)), utilisable aussi dans un navigateur. Xtream Codes et M3U (lien ou fichier) ; catalogue gardé en local (IndexedDB), identifiants chiffrés avec le trousseau du système, lecture directe (aucun proxy distant), mise à jour automatique via les Releases GitHub. **Recherche** : bouton rond sous le logo, raccourci `Ctrl/Cmd + K` ou `/` depuis n'importe quel écran.
+
+<p align="center">
+  <img src="docs/screenshots/desktop/fr/06-direct.png" alt="Direct sur le bureau" width="48%" />
+  <img src="docs/screenshots/desktop/fr/14-reglages.png" alt="Réglages sur le bureau" width="48%" />
+</p>
+
+Toutes les captures du bureau (données synthétiques, FR et EN) : [`docs/screenshots/desktop/`](docs/screenshots/desktop/). Publication : tag `desktop-vX.Y.Z` (workflow `desktop-release.yml`, séparé des tags Android `v*`).
+
+### Tableau de bord cloud
+
+Gérez appareils et sources depuis un navigateur : **<https://ultratv-config.khalilbenaz.workers.dev>**.
+
+<p align="center">
+  <img src="docs/screenshots/cloud/devices.png" alt="Appareils appairés" width="48%" />
+  <img src="docs/screenshots/cloud/sharing.png" alt="Partage des sources par appareil" width="48%" />
+</p>
+
+### Synchronisation multi-appareils
+
+- **Même fournisseur partout** : un fournisseur ajouté dans le tableau de bord est reçu par tous les appareils du compte.
+- **Source propre à un appareil** : une source ajoutée sur un appareil lui reste privée tant que vous ne la partagez pas.
+- **Partage choisi par appareil** : source par source, vous cochez les appareils destinataires (dans l'application : Réglages › Sources › *Partager cette source* ; ou dans le tableau de bord).
+- Les modifications d'un compte sont sérialisées côté Worker (verrou Durable Object) : deux appareils qui écrivent en même temps ne s'écrasent pas.
+
+## Téléchargements
+
+| Appareil | Fichier |
+|---|---|
+| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
+| Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
+| Tableau de bord cloud | <https://ultratv-config.khalilbenaz.workers.dev> (aucune installation) |
+
+Tout est sur la page [Releases](https://github.com/khalilbenaz/ultra-tv/releases) (les fichiers bureau portent les tags `desktop-v…`).
 
 ## Installation
 
@@ -124,7 +177,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a, x86_64)
 ```
 
-- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.1.0 → 10100).
+- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200).
 - **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
 - Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
 - **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`) ; site : [pages.yml](.github/workflows/pages.yml).

@@ -5,7 +5,7 @@
 <h1 align="center">Ultra TV</h1>
 
 <p align="center">
-  <strong>Native IPTV player for Android TV and Google TV.</strong><br/>
+  <strong>IPTV player for Android TV, smartphone, tablet, Windows and macOS.</strong><br/>
   Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt
 </p>
 
@@ -56,6 +56,72 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Google TV**: Watch Next, Favourites channel, voice and global search, `ultratv://` deep links.
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
 - **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
+
+## Devices
+
+One account, all your screens: same interface, same provider everywhere. Add it once in the [cloud dashboard](#cloud-sync) and every device receives it.
+
+### Android TV and Google TV
+
+The original app, driven by the remote (see the screenshots above and [Features](#features)).
+
+### Android smartphone
+
+Touch interface: bottom navigation bar, lists and grids by finger, gesture player with picture-in-picture; forms sit above the keyboard.
+
+<p align="center">
+  <img src="docs/screenshots/phone/en/home.png" alt="Home on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/live.png" alt="Live TV on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/detail.png" alt="Movie details on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/player.png" alt="Player on smartphone" width="23%" />
+</p>
+
+### Android tablet
+
+Side rail, list and details side by side.
+
+<p align="center">
+  <img src="docs/screenshots/tablet/en/live.png" alt="Live TV on tablet" width="48%" />
+  <img src="docs/screenshots/tablet/en/home.png" alt="Home on tablet" width="48%" />
+</p>
+
+### Windows and macOS
+
+The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)), also usable in a browser. Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen.
+
+<p align="center">
+  <img src="docs/screenshots/desktop/en/06-direct.png" alt="Live TV on desktop" width="48%" />
+  <img src="docs/screenshots/desktop/en/14-reglages.png" alt="Settings on desktop" width="48%" />
+</p>
+
+All desktop screenshots (synthetic data, FR and EN): [`docs/screenshots/desktop/`](docs/screenshots/desktop/). Release: `desktop-vX.Y.Z` tag (workflow `desktop-release.yml`, separate from the Android `v*` tags).
+
+### Cloud dashboard
+
+Manage devices and sources from a browser: **<https://ultratv-config.khalilbenaz.workers.dev>**.
+
+<p align="center">
+  <img src="docs/screenshots/cloud/devices.png" alt="Paired devices" width="48%" />
+  <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
+</p>
+
+### Multi-device sync
+
+- **Same provider everywhere**: a provider added in the dashboard is received by every device on the account.
+- **Device-only source**: a source added on a device stays private to it until you share it.
+- **Sharing chosen per device**: source by source, tick the receiving devices (in the app: Settings › Sources › *Share this source*; or in the dashboard).
+- Account changes are serialized on the Worker (Durable Object lock): two devices writing at once do not overwrite each other.
+
+## Downloads
+
+| Device | File |
+|---|---|
+| Android (TV, smartphone, tablet) | universal [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
+| Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
+| Cloud dashboard | <https://ultratv-config.khalilbenaz.workers.dev> (nothing to install) |
+
+Everything is on the [Releases](https://github.com/khalilbenaz/ultra-tv/releases) page (desktop files carry `desktop-v…` tags).
 
 ## Installation
 
@@ -111,7 +177,7 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleRelease                          # per-ABI APKs (arm64-v8a, armeabi-v7a, x86_64)
 ```
 
-- The version comes from the [`VERSION`](VERSION) file; `versionCode = major×10000 + minor×100 + patch` (1.1.0 → 10100), identical for every ABI.
+- The version comes from the [`VERSION`](VERSION) file; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200), identical for every ABI.
 - **Fake Xtream server** to test without a subscription: `python3 android-native/tools/fake-xtream/server.py` (the emulator reaches it at `http://10.0.2.2:8099`, credentials `test` / `test`); `demo.py` serves the synthetic data set used for the screenshots.
 - Debug build: debug intents (`debug_route`, `debug_theme`, `debug_lang`, `debug_engine`, `debug_decoder`, `debug_buffer`…) for screenshots and measurements.
 - **CI** ([ci.yml](.github/workflows/ci.yml)): web (tsc + vitest), Android (compile + unit tests), Worker. Publishing: [release.yml](.github/workflows/release.yml) on a `v*` tag (universal `UltraTV-debug.apk`, per-processor `UltraTV-<version>-<abi>.apk` and `SHA256SUMS.txt`); website: [pages.yml](.github/workflows/pages.yml).
