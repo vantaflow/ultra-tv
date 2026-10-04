@@ -35,6 +35,14 @@ img { display: block; }
 .app.no-rail { grid-template-columns: minmax(0, 1fr); }
 .titlebar-drag { position: fixed; top: 0; left: var(--rail-w); right: 0; height: 28px; -webkit-app-region: drag; z-index: 5; pointer-events: none; }
 .mac .rail { padding-top: 44px; }
+/* macOS (titleBarStyle hiddenInset) : bande de titre reservee sous les boutons feu tricolore, deplacable. */
+html.platform-darwin body::before { content: ""; position: fixed; top: 0; left: 0; right: 0; height: 28px; -webkit-app-region: drag; z-index: 5; pointer-events: none; }
+html.platform-darwin .stage { padding-top: 2.75rem; }
+html.platform-darwin .stage header { -webkit-app-region: drag; }
+html.platform-darwin .stage header > * { -webkit-app-region: no-drag; }
+html.platform-darwin .stage header .brand { -webkit-app-region: drag; }
+html.platform-darwin .content { padding-top: 0; }
+html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .rail {
   background: var(--rail); border-inline-end: 1px solid var(--line);
   display: flex; flex-direction: column; align-items: center; padding: 1.75rem 0 1.25rem; gap: 1.25rem; -webkit-app-region: drag;

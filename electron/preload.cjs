@@ -35,3 +35,11 @@ contextBridge.exposeInMainWorld("ultratv", {
   openExternal: (url) => ipcRenderer.invoke("ut:open-external", String(url)),
   setTitleBarTheme: (isDark) => ipcRenderer.invoke("ut:titlebar-theme", !!isDark),
 });
+
+// Classe de plateforme posee DES le chargement (avant le premier rendu React) : le CSS reserve
+// une zone de titre sous les boutons feu tricolore de macOS (titleBarStyle hiddenInset).
+function tagPlatform() {
+  document.documentElement.classList.add("platform-" + process.platform);
+}
+if (document.documentElement) tagPlatform();
+else window.addEventListener("DOMContentLoaded", tagPlatform, { once: true });

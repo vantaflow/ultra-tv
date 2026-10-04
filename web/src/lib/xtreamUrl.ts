@@ -67,3 +67,10 @@ export function nonStandardHttpStatus(message: string): number | null {
   const c = Number(m[1]);
   return STANDARD_STATUS.has(c) ? null : c;
 }
+
+/** Vrai si un champ obligatoire manque, selon le TYPE EFFECTIF de la source (après conversion get.php → Xtream). */
+export function missingRequired(kind: string, s: Source): boolean {
+  if (s.type === "xtream") return !s.server.trim() || !s.username.trim() || !s.password;
+  if (kind === "m3u-link") return !s.m3uUrl.trim();
+  return false;
+}

@@ -15,7 +15,7 @@ import { SourceForm, type SourceKind as FormKind } from "./SourceForm";
 import { PairingView } from "./Pairing";
 import { cloudAvailable } from "@/cloud/client";
 import { listSources } from "@/db/sources";
-import { convertToXtream, nonStandardHttpStatus } from "@/lib/xtreamUrl";
+import { convertToXtream, missingRequired, nonStandardHttpStatus } from "@/lib/xtreamUrl";
 
 type SourceKind = FormKind | "cloud";
 
@@ -93,8 +93,8 @@ export function Onboarding() {
     // Adresse get.php / player_api.php collée en M3U : c'est une source Xtream Codes (get.php est souvent bloqué).
     const xt = kind === "m3u-link" ? convertToXtream(src) : null;
     const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
-    if (kind === "xtream" && (!s.server.trim() || !s.username.trim() || !s.password)) { setErr(t("src.err.required")); return; }
-    if (kind === "m3u-link" && !s.m3uUrl.trim()) { setErr(t("src.err.required")); return; }
+    // On valide la source EFFECTIVE (après conversion) : une adresse get.php devient Xtream, m3uUrl est alors vide.
+    if (missingRequired(kind, s)) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
     setBusy(true);
     try {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptySource } from "@/db/sources";
-import { convertToXtream, nonStandardHttpStatus, parseXtreamUrl } from "./xtreamUrl";
+import { convertToXtream, missingRequired, nonStandardHttpStatus, parseXtreamUrl } from "./xtreamUrl";
 
 // Hôtes et identifiants fictifs uniquement.
 describe("parseXtreamUrl", () => {
@@ -61,4 +61,16 @@ describe("nonStandardHttpStatus", () => {
     expect(nonStandardHttpStatus("HTTP 503")).toBeNull();
     expect(nonStandardHttpStatus("auth")).toBeNull();
   });
+});
+
+describe("missingRequired", () => {
+  const link = { ...emptySource(), type: "m3u" as const, name: "STRONG", m3uUrl: "http://h.example.test:8080/get.php?username=alice&password=secret&type=m3u_plus&output=ts" };
+  it("get.php en M3U : la source convertie est complète (régression « Renseignez tous les champs »)", () => {
+    const conv = convertToXtream(link)!;
+    expect(conv.m3uUrl).toBe("");
+    expect(missingRequired("m3u-link", conv)).toBe(false);
+  });
+  it("lien M3U vide : champ manquant", () => expect(missingRequired("m3u-link", { ...link, m3uUrl: " " })).toBe(true));
+  it("lien M3U ordinaire : complet", () => expect(missingRequired("m3u-link", { ...link, m3uUrl: "http://h.example.test/l.m3u" })).toBe(false));
+  it("Xtream sans mot de passe : champ manquant", () => expect(missingRequired("xtream", { ...emptySource(), server: "http://h", username: "u" })).toBe(true));
 });
