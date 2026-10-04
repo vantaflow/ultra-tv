@@ -122,3 +122,17 @@ Pilotage par Playwright / CDP : lancer le binaire avec `--remote-debugging-port=
 
 Remplacer la devDependency `electron` par `github:castlabs/electron-releases#v33.4.11+wvcus`, puis prevoir la
 signature EVS (macOS/Windows) pour distribuer avec Widevine ; l'installation depuis GitHub doit etre testee en CI.
+
+## Cloud
+
+Le processus principal expose `window.ultratv.cloudRequest({url, method, headers, body})`
+(`cloudfetch.cjs`) pour joindre le Worker de configuration : HTTPS obligatoire (HTTP seulement vers
+la boucle locale, pour les tests), redirections jamais suivies, seuls les en-têtes `Authorization`,
+`Content-Type`, `Accept` et `If-None-Match` passent, délai de 15 s, réponse limitée à 1 Mo. Rien
+n'est journalisé. Voir `../web/README.md` pour le protocole.
+
+## Tests de bout en bout
+
+Les parcours Playwright `_electron` utilisent `ULTRATV_USER_DATA` (profil isolé). Attention : avec
+`ULTRATV_HEADLESS=1` (fenêtre masquée) Chromium bride les minuteurs et les `requestAnimationFrame`
+du renderer, ce qui ralentit fortement les tests ; préférer une fenêtre visible en CI locale.

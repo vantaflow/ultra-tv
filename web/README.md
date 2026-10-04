@@ -54,6 +54,28 @@ dans un navigateur, il faut un proxy CORS (`../cloudflare`, `../vercel-proxy`, `
   extractible (navigateur). Jamais journalisés, jamais affichés.
 * Aucune URL de flux n'est affichée ni journalisée.
 
+## Compte cloud (application de bureau)
+
+Même fournisseur sur tous les appareils via le Worker `cloudflare-config` (par défaut
+`https://ultratv-config.khalilbenaz.workers.dev`, modifiable dans Réglages › Cloud). Protocole
+identique à celui de l'application Android (`CloudPairingClient.kt`) :
+
+* **Appairage** : `POST /api/pair/start` donne un code à 8 caractères ; l'utilisateur le saisit sur le
+  tableau de bord ; l'appli interroge `POST /api/pair/poll` puis stocke le jeton d'appareil chiffré
+  (`safeStorage`). `429` ralentit l'interrogation, `401` efface le jeton.
+* **Synchronisation** au lancement, toutes les 6 h et à la demande : `GET /api/config` (ETag /
+  `If-None-Match`), puis fusion avec les sources locales — ajout, modification (nouvelle synchro du
+  catalogue si les identifiants changent), retrait (`src/cloud/reconcile.ts`). La clé de fusion est
+  l'identifiant du fournisseur côté Worker. Rotation du jeton après 90 jours.
+* **Partage** d'une source locale (« Partager cette source ») : `POST /api/device/providers` avec
+  `shareWith: "all" | [idsAppareils]` ; les sources locales restent privées tant qu'elles ne sont pas
+  partagées. Option masquée si le Worker répond 404. Renommage de l'appareil : `PATCH /api/device`.
+* Les requêtes vers le Worker sont faites par le processus principal d'Electron (IPC
+  `cloudRequest` : HTTPS seulement, aucune redirection suivie, en-têtes filtrés), jamais depuis la
+  page. Hors Electron (navigateur), l'option n'est pas proposée.
+
+Les tests (`src/cloud/*.test.ts`) tournent contre un faux Worker (`src/cloud/fakeWorker.ts`).
+
 ## Développement
 
 ```bash
