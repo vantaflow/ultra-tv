@@ -172,7 +172,7 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
             if (h.backdrop != null) {
                 BackdropImage(h.backdrop, Modifier.fillMaxSize())
             } else {
-                PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0)
+                PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE)
             }
             // Voile de lisibilité : fondu vers le fond du cadre côté texte.
             Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))

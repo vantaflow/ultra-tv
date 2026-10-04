@@ -106,14 +106,24 @@ class CatalogRepository @Inject constructor(
         return row
     }
 
-    /** Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. */
-    suspend fun search(pid: Long, query: String, limit: Int = 40): SearchResults {
+    /**
+     * Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. Une seule entrée par œuvre
+     * ([SearchDedup]) ; les programmes EPG (7 jours, une ligne par chaîne) s'ajoutent aux chaînes/films/séries.
+     */
+    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis()): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
         return SearchResults(
             channels = channelDao.searchFts(pid, match, limit),
-            movies = movieDao.searchFts(pid, match, limit),
-            series = seriesDao.searchFts(pid, match, limit),
+            movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit),
+            series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit),
+            programs = searchPrograms(pid, query, nowMs),
         )
+    }
+
+    suspend fun searchPrograms(pid: Long, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> {
+        val pattern = EpgSearch.likePattern(query) ?: return emptyList()
+        val rows = epgDao.searchPrograms(pid, pattern, nowMs, nowMs + EpgSearch.WINDOW_MS, EpgSearch.SQL_LIMIT)
+        return EpgSearch.select(rows, query, nowMs)
     }
 
     suspend fun channelsByRemoteIds(pid: Long, ids: List<String>): List<ChannelEntity> =
@@ -161,6 +171,7 @@ data class SearchResults(
     val channels: List<ChannelEntity> = emptyList(),
     val movies: List<MovieEntity> = emptyList(),
     val series: List<SeriesEntity> = emptyList(),
+    val programs: List<ProgramHit> = emptyList(),
 )
 
 private const val DAY_MS = 24L * 3_600_000

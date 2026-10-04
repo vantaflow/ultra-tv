@@ -41,10 +41,13 @@ import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
+import com.ultratv.tv.nativeapp.data.repo.ProgramHit
+import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import com.ultratv.tv.nativeapp.data.repo.SearchResults
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.*
@@ -104,7 +107,12 @@ private sealed interface Row_ {
     data class Header(val text: String) : Row_
     data class Channels(val items: List<ChannelEntity>) : Row_
     data class Vod(val items: List<Any>) : Row_
+    data class Program(val hit: ProgramHit) : Row_
 }
+
+/** « En cours » ou « Mar. 21:30 » (jour abrégé + heure, langue de l'application). */
+private fun programWhen(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.DesignStrings): String =
+    if (h.live) D.programNow else java.text.SimpleDateFormat("EEE HH:mm", D.locale).format(java.util.Date(h.startMs)).replaceFirstChar { it.uppercase() }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -187,7 +195,7 @@ fun SearchScreen(
 
         // ===== Droite : résultats =====
         val rows = remember(r, D) { buildRows(r, D) }
-        val total = r.channels.size + r.movies.size + r.series.size
+        val total = r.channels.size + r.movies.size + r.series.size + r.programs.size
         when {
             q.isBlank() -> Box(Modifier.fillMaxSize().padding(56.design), contentAlignment = Alignment.TopStart) {
                 Text(D.searchStart, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx, modifier = Modifier.padding(top = 60.design))
@@ -207,11 +215,12 @@ fun SearchScreen(
                             row.items.forEach { c -> ChannelCard(c, Modifier.weight(1f)) { onOpenChannel(c.streamUrl, c.name) } }
                             repeat(3 - row.items.size) { Spacer(Modifier.weight(1f)) }
                         }
+                        is Row_.Program -> ProgramCard(row.hit, D) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) }
                         is Row_.Vod -> Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
                             row.items.forEach { v ->
                                 when (v) {
-                                    is MovieEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenMovie(v.id) }
-                                    is SeriesEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenSeries(v.id) }
+                                    is MovieEntity -> VodCard(v.title, v.poster, Modifier.weight(1f), TmdbKind.MOVIE, v.year) { onOpenMovie(v.id) }
+                                    is SeriesEntity -> VodCard(v.title, v.poster, Modifier.weight(1f), TmdbKind.TV, v.year) { onOpenSeries(v.id) }
                                 }
                             }
                             repeat(6 - row.items.size) { Spacer(Modifier.weight(1f)) }
@@ -228,6 +237,10 @@ private fun buildRows(r: SearchResults, D: com.ultratv.tv.nativeapp.i18n.DesignS
     if (r.channels.isNotEmpty()) {
         out += Row_.Header(D.searchChannels(r.channels.size))
         r.channels.take(6).chunked(3).forEach { out += Row_.Channels(it) }
+    }
+    if (r.programs.isNotEmpty()) {
+        out += Row_.Header(D.searchPrograms(r.programs.size))
+        r.programs.forEach { out += Row_.Program(it) }
     }
     val vod: List<Any> = r.movies + r.series
     if (vod.isNotEmpty()) {
@@ -275,7 +288,7 @@ private fun SearchTouch(
     val focus = androidx.compose.ui.focus.FocusRequester()
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     androidx.compose.runtime.LaunchedEffect(Unit) { if (q.isEmpty()) runCatching { focus.requestFocus() } }
-    val total = r.channels.size + r.movies.size + r.series.size
+    val total = r.channels.size + r.movies.size + r.series.size + r.programs.size
     Column(Modifier.fillMaxSize().background(Ux.Bg), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.padding(start = 8.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, M.a11yBack, Ux.Surface, Ux.Text, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack.current)
@@ -319,11 +332,12 @@ private fun SearchTouch(
                     when (val row = rows[i]) {
                         is Row_.Header -> Text(row.text, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = if (i == 0) 0.dp else 10.dp))
                         is Row_.Channels -> row.items.forEach { c -> TouchChannelHit(c) { onOpenChannel(c.streamUrl, c.name) } }
+                        is Row_.Program -> TouchProgramHit(row.hit, D) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) }
                         is Row_.Vod -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             row.items.forEach { v ->
                                 when (v) {
-                                    is MovieEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenMovie(v.id) }
-                                    is SeriesEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenSeries(v.id) }
+                                    is MovieEntity -> VodCard(v.title, v.poster, Modifier.weight(1f), TmdbKind.MOVIE, v.year) { onOpenMovie(v.id) }
+                                    is SeriesEntity -> VodCard(v.title, v.poster, Modifier.weight(1f), TmdbKind.TV, v.year) { onOpenSeries(v.id) }
                                 }
                             }
                             repeat(cols - row.items.size) { Spacer(Modifier.weight(1f)) }
@@ -338,6 +352,7 @@ private fun SearchTouch(
 private fun buildTouchRows(r: SearchResults, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, cols: Int): List<Row_> {
     val out = mutableListOf<Row_>()
     if (r.channels.isNotEmpty()) { out += Row_.Header(D.searchChannels(r.channels.size)); out += Row_.Channels(r.channels.take(8)) }
+    if (r.programs.isNotEmpty()) { out += Row_.Header(D.searchPrograms(r.programs.size)); r.programs.forEach { out += Row_.Program(it) } }
     val vod: List<Any> = r.movies + r.series
     if (vod.isNotEmpty()) { out += Row_.Header(D.searchVod(vod.size)); vod.take(cols * 4).chunked(cols).forEach { out += Row_.Vod(it) } }
     return out
@@ -349,6 +364,37 @@ private fun TouchChannelHit(c: ChannelEntity, onClick: () -> Unit) {
         Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LogoBox(c.logo, c.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4)
             Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+
+@Composable
+private fun ProgramCard(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(96.design)) { f ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
+            LogoBox(h.channel.logo, h.channel.title, Modifier.width(64.design).height(44.design), radius = 10, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                Text(h.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(h.channel.title + " · " + programWhen(h, D), color = if (f) Ux.TextOnLight else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (h.live) LiveBadge(D.live)
+        }
+    }
+}
+
+@Composable
+private fun TouchProgramHit(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(14.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(64.dp)) { _ ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LogoBox(h.channel.logo, h.channel.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4)
+            Column(Modifier.weight(1f)) {
+                Text(h.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(h.channel.title + " · " + programWhen(h, D), color = Ux.Text3, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            if (h.live) Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Ux.Accent).padding(horizontal = 8.dp, vertical = 3.dp)) {
+                Text(D.live, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
+            }
         }
     }
 }

@@ -169,7 +169,7 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: () 
     val shape = RoundedCornerShape(22.dp)
     Box(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(if (wide) 300.dp else 216.dp).clip(shape).background(Ux.Tone).clickable(onClickLabel = D.watch, onClick = onOpen)) {
         if (h.backdrop != null) BackdropImage(h.backdrop, Modifier.fillMaxSize())
-        else PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxSize(), radius = 0)
+        else PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxSize(), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE)
         Column(
             Modifier.align(Alignment.BottomStart).fillMaxWidth().background(Color(0xC70A0A0C)).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),

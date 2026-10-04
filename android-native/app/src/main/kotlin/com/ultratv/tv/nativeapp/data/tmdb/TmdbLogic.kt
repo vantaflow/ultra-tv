@@ -44,6 +44,20 @@ object TmdbParser {
         return first
     }
 
+    /** `poster_path` du meilleur résultat qui en porte un (année voisine d'abord, sinon le premier avec affiche). */
+    fun searchBestPoster(json: String, year: Int?): String? {
+        val arr = runCatching { JSONObject(json).optJSONArray("results") }.getOrNull() ?: return null
+        var first: String? = null
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val path = o.optString("poster_path").takeIf { it.isNotBlank() && it != "null" && it.startsWith("/") } ?: continue
+            if (first == null) first = path
+            val y = (o.optString("release_date").ifBlank { o.optString("first_air_date") }).take(4).toIntOrNull()
+            if (year != null && y != null && kotlin.math.abs(y - year) <= 1) return path
+        }
+        return first
+    }
+
     fun details(json: String): TmdbDetails? {
         val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
         val id = o.optInt("id", 0).takeIf { it > 0 } ?: return null

@@ -521,6 +521,16 @@ interface EpgDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<EpgEntity>)
 
+    /** Programmes en cours ou à venir dont le titre correspond au motif LIKE (ESCAPE antislash), triés par début : le premier de chaque chaîne est le plus proche. */
+    @Query("""
+        SELECT c.*, e.title AS pTitle, e.startMs AS pStart, e.endMs AS pEnd
+        FROM epg e JOIN channel c ON c.id = e.channelId
+        WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
+          AND e.endMs > :nowMs AND e.startMs <= :toMs AND e.title LIKE :pattern ESCAPE '\'
+        ORDER BY e.startMs LIMIT :limit
+    """)
+    suspend fun searchPrograms(pid: Long, pattern: String, nowMs: Long, toMs: Long, limit: Int): List<com.ultratv.tv.nativeapp.data.repo.ProgramHitRow>
+
     @Query("DELETE FROM epg WHERE channelId = :cid")
     suspend fun deleteForChannel(cid: Long)
 
