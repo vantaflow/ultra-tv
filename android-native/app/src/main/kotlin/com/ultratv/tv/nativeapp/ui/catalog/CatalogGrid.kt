@@ -207,7 +207,7 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 /** Affiche 2:3 (focus : ×1,06 + anneau), titre 22 gras sur 1 ligne, année · note 18. */
 @Composable
-private fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Unit) {
+internal fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Unit) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {

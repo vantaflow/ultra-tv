@@ -88,6 +88,9 @@ fun HomeScreen(
     val loaded by vm.providersLoaded.collectAsState()
     val hero by vm.hero.collectAsState()
     val resume by vm.continueWatching.collectAsState()
+    val latestMovies by vm.latestMovies.collectAsState()
+    val latestSeries by vm.latestSeries.collectAsState()
+    val recentChannels by vm.recentChannels.collectAsState()
     val channels by vm.channels.collectAsState()
     val favorites by vm.showingFavorites.collectAsState()
     val nowPlaying by vm.nowPlaying.collectAsState()
@@ -131,6 +134,34 @@ fun HomeScreen(
             LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
                 items(resume, key = { "${it.kind}-${it.remoteId}" }, contentType = { "resume" }) { e ->
                     ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
+                }
+            }
+        }
+
+        if (recentChannels.isNotEmpty()) Section(D.recentlyWatched) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+                items(recentChannels, key = { "rc-${it.remoteId}" }, contentType = { "resume" }) { e ->
+                    ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
+                }
+            }
+        }
+
+        if (latestMovies.isNotEmpty()) Section(D.latestMovies) {
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+                    items(latestMovies, key = { "lm-${it.id}" }, contentType = { "poster" }) { m ->
+                        com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenMovie(m.id) }
+                    }
+                }
+            }
+        }
+
+        if (latestSeries.isNotEmpty()) Section(D.latestSeries) {
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+                    items(latestSeries, key = { "ls-${it.id}" }, contentType = { "poster" }) { m ->
+                        com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenSeries(m.id) }
+                    }
                 }
             }
         }

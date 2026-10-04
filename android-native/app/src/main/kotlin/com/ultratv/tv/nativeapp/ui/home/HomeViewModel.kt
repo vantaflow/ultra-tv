@@ -69,6 +69,21 @@ class HomeViewModel @Inject constructor(
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Derniers films / séries ajoutés par le fournisseur. */
+    val latestMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestMovies(id, 15) }
+        .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val latestSeries: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestSeries(id, 15) }
+        .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Dernières chaînes regardées (historique du profil). */
+    val recentChannels: StateFlow<List<WatchHistoryEntity>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 12) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** « À la une » : la série la mieux notée avec image paysage, à défaut le film le mieux noté. */
     val hero: StateFlow<HeroItem?> = pid.flatMapLatest { id ->
         if (id == null) flowOf(null)

@@ -253,6 +253,10 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
 
+    /** Derniers ajoutés : l'identifiant Xtream (stream_id) croît à chaque ajout du fournisseur. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    fun observeLatest(pid: Long, limit: Int): Flow<List<MovieEntity>>
+
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<MovieEntity>>
 
@@ -317,6 +321,10 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY sortKey LIMIT :limit")
     fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>
+
+    /** Dernières ajoutées : l'identifiant Xtream (series_id) croît à chaque ajout du fournisseur. */
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    fun observeLatest(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<SeriesEntity>>
