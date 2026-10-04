@@ -296,6 +296,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         )
     }
     val state by session.state.collectAsState()
+    // [B2·zapping] saisie du numéro, chaîne précédente, récentes (ZapViewModel).
+    val zap: com.ultratv.tv.nativeapp.ui.player.zap.ZapViewModel = hiltViewModel()
+    val X = com.ultratv.tv.nativeapp.ui.player.playerExtras()
+    val zapPreview by zap.preview.collectAsState()
+    val zapRecent by zap.recent.collectAsState()
+    var lastRecallMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(item) { zap.onPlaying(item) }
+    LaunchedEffect(zapPreview != null) { if (zapPreview != null) zap.loadRecent() }
     DisposableEffect(Unit) {
         onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release() }
     }
@@ -337,6 +345,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
     fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
     BackHandler {
         when {
+            zap.isEntering -> zap.cancelEntry()
+            // [B2·zapping] Retour = chaîne précédente ; un 2e Retour dans les 3 s quitte (sinon on ne sortirait jamais).
+            isLive && !overlayVisible && panel == Panel.None && !drawerOpen && state.phase == Phase.PLAYING && zap.hasPrevious() &&
+                System.currentTimeMillis() - lastRecallMs > 3_000 -> { lastRecallMs = System.currentTimeMillis(); zap.recallPrevious { currentUrl = it } }
             panel != Panel.None -> panel = Panel.None
             drawerOpen -> drawerOpen = false
             overlayVisible && state.phase == Phase.PLAYING -> overlayVisible = false
@@ -352,6 +364,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         Modifier.fillMaxSize().background(Color.Black).focusRequester(rootFocus).androidx_focusable()
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // [B2·zapping] chiffres 0-9 / pavé numérique, OK valide la saisie.
+                if (isLive && panel == Panel.None && !drawerOpen) {
+                    com.ultratv.tv.nativeapp.ui.player.zap.NumberEntry.digitOfKeyCode(ev.nativeKeyEvent.keyCode)?.let { d -> zap.digit(d) { u -> currentUrl = u }; return@onPreviewKeyEvent true }
+                    if (zap.isEntering && (ev.key == Key.Enter || ev.key == Key.DirectionCenter || ev.key == Key.NumPadEnter)) { zap.commitNow(); return@onPreviewKeyEvent true }
+                }
                 val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
                 touch()
                 if (!hidden) return@onPreviewKeyEvent false
@@ -384,6 +401,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
             )
+        }
+        zapPreview?.let { pv ->
+            com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
+            com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
         }
         if (statsOpen) StatsCard(session, D, Modifier.align(Alignment.TopEnd).padding(top = 220.design, end = 96.design))
         if (drawerOpen && isLive) LiveDrawer(vm = vm, onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it }; drawerOpen = false } }, onDismiss = { drawerOpen = false })
