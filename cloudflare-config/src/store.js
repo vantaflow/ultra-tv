@@ -176,6 +176,20 @@ export function displayUrl(raw) {
   catch { return ""; }
 }
 
+/**
+ * Lien IPTV complet (avec identifiants), montré au titulaire du compte qui le demande sur le tableau de bord.
+ * Xtream : la playlist M3U équivalente (get.php) ; M3U : l'URL telle qu'enregistrée.
+ */
+export function iptvLink(p) {
+  if (p.kind !== "XTREAM") return p.url || "";
+  try {
+    const u = new URL(p.url);
+    const base = `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
+    const q = new URLSearchParams({ username: p.username || "", password: p.password || "", type: "m3u_plus", output: "ts" });
+    return `${base}/get.php?${q}`;
+  } catch { return ""; }
+}
+
 // ---- affectations (quel appareil reçoit quel fournisseur) ---------------------
 
 /** Fournisseur sans champ `assign` (données antérieures) = « tous les appareils ». */

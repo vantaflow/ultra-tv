@@ -52,6 +52,7 @@ export function html(body, n, status = 200, { camera = false } = {}) {
     `script-src 'nonce-${n}'`,
     `style-src 'nonce-${n}'`,
     "img-src 'self' data:",
+    "connect-src 'self'",
     "font-src 'self'",
     "form-action 'self'",
     "base-uri 'none'",

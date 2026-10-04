@@ -69,8 +69,15 @@ class CategoryManager @Inject constructor(
             return cats.map { c ->
                 val parsed = ChannelNameParser.parseCategory(c.name)
                 val badge = parsed.badge ?: when (parsed.quality) { ChannelNameParser.Q_4K -> "4K"; ChannelNameParser.Q_FHD -> "FHD"; else -> c.lang.uppercase().takeIf { it.isNotEmpty() && it != LanguageDetector.MULTI } }
-                CategoryRow(c.remoteId, parsed.label, badge, if (c.enabled) byId[c.remoteId] ?: 0 else null, c.enabled, c.lang, c.locked)
-            }.filter { r -> q.isEmpty() || r.label.lowercase().contains(q) || r.badge?.lowercase() == q || r.lang == q }
+                CategoryRow(c.remoteId, com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(c.name), badge, if (c.enabled) byId[c.remoteId] ?: 0 else null, c.enabled, c.lang, c.locked)
+            }.filter { r -> q.isEmpty() || matches(r.label, q) || r.badge?.lowercase() == q || r.lang == q }
+        }
+
+        /** Filtre court (« FR », « AR », « 4K ») = mot entier : « FR » ne doit pas ramener « AFRICA ». Sinon, sous-chaîne. */
+        internal fun matches(label: String, q: String): Boolean {
+            val l = label.lowercase()
+            if (q.length > 3 || q.any { it.isWhitespace() }) return l.contains(q)
+            return l.split(Regex("[^\\p{L}\\p{N}+]+")).any { it == q }
         }
     }
 }

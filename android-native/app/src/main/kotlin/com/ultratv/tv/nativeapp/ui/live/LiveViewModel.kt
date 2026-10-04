@@ -215,11 +215,11 @@ class LiveViewModel @Inject constructor(
                 val window = when (cat) {
                     CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId, profiles.currentIdNow)
                     CATEGORY_ALL -> {
-                        val rank = channelDao.rankAll(channel.providerId, channel.num, channel.sortKey)
+                        val rank = channelDao.rankAll(channel.providerId, channel.num, channel.id)
                         channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
-                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.num, channel.sortKey)
+                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.num, channel.id)
                         channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
                     }
                 }

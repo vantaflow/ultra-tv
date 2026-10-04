@@ -25,7 +25,7 @@ import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
-  MAX_PROVIDERS, MAX_DEVICES,
+  MAX_PROVIDERS, MAX_DEVICES, iptvLink,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
@@ -148,7 +148,7 @@ async function route(req, env) {
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign))$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link))$/.test(path));
   if (!dashboardRoute && !pairRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
@@ -176,6 +176,14 @@ async function route(req, env) {
   if (!timingSafeEqual(form.get("csrf") || "", sess.csrf)) return new Response("Forbidden (csrf)", { status: 403 });
   const rl = await limited(env, `dash:${sess.acct.login}`, 120, 3600);
   if (rl) return rl;
+
+  // Lien IPTV complet, à la demande (jamais dans la page elle-même) : réponse non mise en cache.
+  const lnk = path.match(/^\/providers\/([0-9a-f]+)\/link$/);
+  if (lnk) {
+    const p = (await loadProviders(env, sess.acct)).find((x) => x.id === lnk[1]);
+    if (!p) return new Response("Not found", { status: 404 });
+    return new Response(JSON.stringify({ link: iptvLink(p) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
 
   return withAccountLock(env, sess.acct.login, async (acct) => {
   if (path === "/logout") {

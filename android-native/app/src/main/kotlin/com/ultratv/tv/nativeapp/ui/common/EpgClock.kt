@@ -17,10 +17,20 @@ object EpgClock {
 
     private val fmt = ThreadLocal.withInitial { SimpleDateFormat("HH:mm", Locale.getDefault()) }
 
+    /** Fuseau choisi dans les réglages ("" = système). Lu à chaque formatage : un changement s'applique tout de suite. */
+    @Volatile var zoneId: String = ""
+    private fun zone(): java.util.TimeZone = zoneId.takeIf { it.isNotBlank() }?.let { java.util.TimeZone.getTimeZone(it) } ?: java.util.TimeZone.getDefault()
+
     fun apply(ms: Long): Long = ms + offsetMinutes * 60_000L
 
     /** « 07:30 – 08:30 » isolé en LTR : en RTL, les bornes ne doivent pas s'inverser. */
     fun range(startMs: Long, endMs: Long): String = "\u2066${hm(startMs)} – ${hm(endMs)}\u2069"
 
-    fun hm(ms: Long): String = fmt.get()!!.format(Date(apply(ms)))
+    /** Heure d'un PROGRAMME : décalage EPG appliqué (corrige un guide mal horodaté par le fournisseur). */
+    fun hm(ms: Long): String = fmtIn().format(Date(apply(ms)))
+
+    /** Heure MURALE (horloge, bornes du direct différé) : jamais décalée par le réglage du guide. */
+    fun wall(ms: Long): String = fmtIn().format(Date(ms))
+
+    private fun fmtIn(): SimpleDateFormat = fmt.get()!!.also { it.timeZone = zone() }
 }

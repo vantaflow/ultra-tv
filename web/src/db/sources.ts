@@ -3,6 +3,7 @@
 import { clearCatalog, db } from "./db";
 import type { Source } from "./types";
 import { convertToXtream } from "@/lib/xtreamUrl";
+import { prettyCategoryName } from "@/lib/titleCleaner";
 import { decryptSecret, encryptSecret } from "@/net/secrets";
 
 async function open(s: Source): Promise<Source> {
@@ -43,5 +44,17 @@ export async function migrateM3uToXtream(): Promise<number> {
     const x = convertToXtream(s);
     if (x) { await saveSource(x); n++; }
   }
+  return n;
+}
+
+/**
+ * Libellés de catégories : nom du FOURNISSEUR (décorations retirées seulement). Les anciennes versions retiraient
+ * le préfixe pays (« FR| SPORT » → « SPORT »), ce qui produisait des doublons. Recalculé une fois.
+ */
+export async function migrateCategoryLabels(): Promise<number> {
+  const done = await db.settings.get("migr.catLabels.v1");
+  if (done) return 0;
+  const n = await db.categories.toCollection().modify((c) => { c.label = prettyCategoryName(c.name); });
+  await db.settings.put({ key: "migr.catLabels.v1", value: 1 });
   return n;
 }

@@ -78,11 +78,6 @@ class TitleCleanerTidyTest {
 
 class CategoryNameTest {
     private fun cat(raw: String) = com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(raw)
-    @Test fun separateurFinal_retire() { assertEquals("AFRICA", cat("AFRICA /")); assertEquals("CANAL+", cat("CANAL+ /")); assertEquals("DSTV", cat("DSTV /")) }
-    @Test fun separateurFinalSansEspace_retire() = assertEquals("AFRICA", cat("AFRICA/"))
-    @Test fun caractereDecoratif_retire() = assertEquals("RELAX", cat("RELAX ☼"))
-    @Test fun decorationEtSeparateur_ensemble() = assertEquals("RELAX", cat("☼ RELAX ☼ /"))
-    @Test fun nomOrdinaire_inchange() = assertEquals("Sport FR", cat("Sport FR"))
-    @Test fun plusFinalDeNom_conserve() = assertEquals("CANAL+", cat("CANAL+"))
-    @Test fun nomEntierDecoratif_retombeSurLeBrut() = assertEquals("###", cat("###"))
+    @Test fun nomDuFournisseur_telQuel() { assertEquals("FR| SPORT", cat("FR| SPORT")); assertEquals("AR| SPORT", cat("AR| SPORT")); assertEquals("CANAL+ LIVE²", cat("CANAL+ LIVE²")); assertEquals("### FRANCE ###", cat("### FRANCE ###")) }
+    @Test fun espacesSuperflus_retires() = assertEquals("FR | SPORT", cat("  FR  |  SPORT "))
 }

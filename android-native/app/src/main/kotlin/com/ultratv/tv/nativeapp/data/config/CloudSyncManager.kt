@@ -110,6 +110,8 @@ class CloudSyncManager @Inject constructor(
         } catch (e: RateLimitedException) {
             _state.value = _state.value.copy(syncing = false, failed = true); Result.Failed
         } catch (t: Throwable) {
+            com.ultratv.tv.nativeapp.RemoteLog.warn("cloud", "sync failed: ${t.javaClass.simpleName} ${t.message?.take(160)}")
+            android.util.Log.w("UltraCloud", "sync failed", t)
             _state.value = _state.value.copy(syncing = false, failed = true); Result.Failed
         }
     }

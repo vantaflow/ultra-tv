@@ -219,9 +219,11 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         if (playback.current.value == null) return
+        // TV : jamais d'image dans l'image. Beaucoup de box l'« acceptent » sans rien afficher : le son continuait
+        // après avoir quitté l'application. Le lecteur se met en pause à l'arrêt de l'activité (PlayerScreen).
+        if (com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) return
         // Téléphone / tablette : image dans l'image seulement depuis l'écran du lecteur (jamais depuis l'accueil).
-        if (!com.ultratv.tv.nativeapp.ui.common.isTelevision(this) &&
-            !com.ultratv.tv.nativeapp.ui.mobile.shouldEnterPip(hasPlayback = true, playerShown = com.ultratv.tv.nativeapp.ui.design.Ux.playerActive)) return
+        if (!com.ultratv.tv.nativeapp.ui.mobile.shouldEnterPip(hasPlayback = true, playerShown = com.ultratv.tv.nativeapp.ui.design.Ux.playerActive)) return
         runCatching {
             val params = android.app.PictureInPictureParams.Builder()
                 .setAspectRatio(android.util.Rational(16, 9))

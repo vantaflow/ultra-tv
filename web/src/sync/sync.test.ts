@@ -68,7 +68,7 @@ describe("synchronisation Xtream", () => {
     expect(JSON.stringify(ch)).not.toContain("pw");
     const m = await db.movies.toArray();
     expect(m[0]).toMatchObject({ title: "Film numéro 0", year: 2010, ext: "mkv" });
-    expect((await db.categories.toArray()).find((c) => c.extId === "1" && c.kind === "live")).toMatchObject({ label: "SPORT", badge: "FR", count: 2 });
+    expect((await db.categories.toArray()).find((c) => c.extId === "1" && c.kind === "live")).toMatchObject({ label: "FR | SPORT", badge: "FR", count: 2 });
   });
 
   it("ne synchronise que les langues choisies", async () => {

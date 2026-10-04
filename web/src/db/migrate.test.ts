@@ -23,3 +23,18 @@ describe("migrateM3uToXtream", () => {
     expect((await listSources()).map((s) => s.type).sort()).toEqual(["m3u", "xtream"]);
   });
 });
+
+describe("migrateCategoryLabels", async () => {
+  const { migrateCategoryLabels } = await import("./sources");
+  beforeEach(async () => { await db.categories.clear(); await db.settings.clear(); });
+
+  it("rend le nom du fournisseur (préfixe pays conservé), une seule fois", async () => {
+    await db.categories.bulkAdd([
+      { sourceId: 1, kind: "live", extId: "1", name: "FR| SPORT", label: "SPORT", badge: "fr", count: 0, enabled: 1, adult: 0, ord: 0 },
+      { sourceId: 1, kind: "live", extId: "2", name: "AR| SPORT", label: "SPORT", badge: "ar", count: 0, enabled: 1, adult: 0, ord: 1 },
+    ]);
+    expect(await migrateCategoryLabels()).toBe(2);
+    expect((await db.categories.toArray()).map((c) => c.label)).toEqual(["FR| SPORT", "AR| SPORT"]);
+    expect(await migrateCategoryLabels()).toBe(0);
+  });
+});

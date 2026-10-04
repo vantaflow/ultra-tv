@@ -103,8 +103,8 @@ export function cleanTitle(raw: string, live = false): Cleaned {
 
 /** Nom de catégorie : retire le séparateur final « / » et les décorations. */
 export function prettyCategoryName(raw: string): string {
-  const t = trimChars(stripDeco(raw).replace(/\p{So}/gu, " ").trim(), " /").trim().replace(/\s{2,}/g, " ");
-  return t.length > 0 && /[\p{L}\p{N}]/u.test(t) ? t : raw;
+  // Nom du FOURNISSEUR tel quel : tout nettoyage finissait par rendre des catégories indiscernables (« FR| SPORT » / « AR| SPORT »).
+  return raw.trim().replace(/\s{2,}/g, " ") || raw;
 }
 
 /** Titre d'épisode : retire « Série - S01E01 - » (les fournisseurs répètent le nom de la série et le code). */

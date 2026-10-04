@@ -2,6 +2,23 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.11] — 2026-10-04 (Android TV)
+
+### Corrections
+- Direct : Haut/Bas zappent toujours (le bandeau de la chaîne s'affiche sans voler le focus), OK ouvre la liste des chaînes, Gauche/Droite ou Menu donnent accès aux commandes. Touches chaîne +/- et TV prises en charge (télécommandes Google TV type Mecool G10).
+- Liste des chaînes du lecteur : seulement les catégories actives.
+- Le son ne continue plus après avoir quitté l'application (pause en arrière-plan, plus d'image dans l'image sur TV) ; reprise au retour.
+- Horloge du lecteur : n'applique plus le décalage du guide (elle avançait d'une heure). Nouveau réglage Affichage › Fuseau horaire.
+- Catégories : noms du fournisseur tels quels (plus de doublons « SPORT »), ordre de la playlist conservé (catégories, chaînes, films, séries) ; filtre court « FR » = mot entier.
+
+## [Bureau 1.2.13] — 2026-10-04
+
+### Corrections
+- Catégories : noms du fournisseur tels quels (plus de doublons « SPORT ») ; filtre court « FR » = mot entier.
+
+### Tableau de bord
+- « Afficher le lien IPTV » sur chaque source (à la demande, avec bouton Copier).
+
 ## [1.2.10] — 2026-10-04 (Android TV)
 
 ### Corrections

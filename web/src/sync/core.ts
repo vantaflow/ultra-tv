@@ -4,7 +4,7 @@
 
 import { clearCatalog, db, nextCid } from "@/db/db";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
-import { parseChannelName, parseCategoryName } from "@/lib/channelName";
+import { parseChannelName } from "@/lib/channelName";
 import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
 import { firstString, normText, rating10, toNum } from "@/lib/text";
@@ -28,13 +28,12 @@ export function credsOf(s: Source): XtreamCreds {
 
 function mapCategories(kind: Kind, sourceId: number, list: XtreamCategory[], langs: string[] | null): CategoryRow[] {
   return list.map((c, i) => {
-    const parsed = parseCategoryName(c.category_name ?? "");
     const name = String(c.category_name ?? "");
     const code = categoryLang(name);
     const badge = code === OTHER_LANG ? null : code;
     return {
       sourceId, kind, extId: String(c.category_id), name,
-      label: prettyCategoryName(parsed.label || name), badge, count: 0,
+      label: prettyCategoryName(name), badge, count: 0,
       enabled: langs == null || langs.includes(code) ? 1 : 0,
       adult: /(^|\W)(xxx|adult|adulte|18\+|\+18|porn|erotic)(\W|$)/i.test(name) ? 1 : 0,
       ord: i,
@@ -301,9 +300,8 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
   }
   counts.live = rows.filter((r) => !r.sep).length;
   const cats: CategoryRow[] = [...groups].map(([name, ord]) => {
-    const parsed = parseCategoryName(name);
     return {
-      sourceId, kind: "live" as const, extId: name, name, label: prettyCategoryName(parsed.label), badge: categoryLang(name) === OTHER_LANG ? null : categoryLang(name),
+      sourceId, kind: "live" as const, extId: name, name, label: prettyCategoryName(name), badge: categoryLang(name) === OTHER_LANG ? null : categoryLang(name),
       count: rows.filter((r) => r.catExt === name).length, enabled: 1 as const, adult: 0 as const, ord,
     };
   });

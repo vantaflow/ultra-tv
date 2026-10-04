@@ -217,7 +217,8 @@ class PlayerViewModel @Inject constructor(
 
     /** Catégories LIVE actives (colonne de gauche du tiroir). */
     val categories: StateFlow<List<com.ultratv.tv.nativeapp.data.repo.CategoryRow>> = playback.current.flatMapLatest { item ->
-        if (item == null) flowOf(emptyList()) else categoryManager.observe(item.providerId, "LIVE", "")
+        // Seulement les catégories ACTIVES : une catégorie désactivée n'a plus de chaînes (liste vide si on la choisit).
+        if (item == null) flowOf(emptyList()) else categoryManager.observe(item.providerId, "LIVE", "").map { rows -> rows.filter { it.enabled } }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val activeCategory: StateFlow<String?> = browsedCategory
@@ -369,6 +370,27 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     DisposableEffect(Unit) {
         onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
     }
+    // Application quittée (Accueil, autre appli, veille) hors image dans l'image : plus de son en arrière-plan.
+    // Au retour, le direct repart au bord du direct ; un film reprend où il en était.
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        var stoppedByApp = false
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, ev ->
+            when (ev) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
+                    val inPip = (context as? android.app.Activity)?.isInPictureInPictureMode == true
+                    if (!inPip) session.engine?.let { e -> vm.recordProgress(e.positionMs, e.durationMs.coerceAtLeast(0)); e.pause(); stoppedByApp = true }
+                }
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (stoppedByApp) {
+                    stoppedByApp = false
+                    if (isLive && !tsActive) session.retry() else session.engine?.play()
+                }
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
     LaunchedEffect(Unit) {
         session.notices.collect { n ->
             Toaster.show(when (n) { Notice.USING_VLC -> D.noticeVlc; Notice.USING_EXO -> D.noticeExo; Notice.USING_SOFTWARE -> D.noticeSoftware; Notice.RETRYING -> D.noticeRetry })
@@ -427,11 +449,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(-1L) }
     var playing by remember { mutableStateOf(true) }
-    var clock by remember { mutableStateOf(EpgClock.hm(System.currentTimeMillis())) }
+    var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     LaunchedEffect(Unit) {
         while (true) {
             session.engine?.let { pos = it.positionMs; dur = it.durationMs; playing = it.isPlaying }
-            clock = EpgClock.hm(System.currentTimeMillis())
+            clock = EpgClock.wall(System.currentTimeMillis())
             if (tsActive) tsSnap = ts.snapshot()
             if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > 5_000) overlayVisible = false
             delay(500)
@@ -442,11 +464,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
 
     fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
+    // Direct : la surcouche sert d'abord de BANDEAU (chaîne, programme) ; Haut/Bas zappent, OK ouvre la liste.
+    // Les commandes ne prennent la main (focus) qu'avec Gauche/Droite, Menu ou Info. Sans cette séparation,
+    // le 1er zap affichait les commandes et la touche suivante y déplaçait le focus (plus de zapping, OK = pause).
+    var controlsEngaged by remember { mutableStateOf(false) }
+    LaunchedEffect(overlayVisible) { if (!overlayVisible) controlsEngaged = false }
     BackHandler {
         when {
             zap.isEntering -> zap.cancelEntry()
             // [B2·zapping] Retour = chaîne précédente ; un 2e Retour dans les 3 s quitte (sinon on ne sortirait jamais).
-            isLive && !overlayVisible && panel == Panel.None && !drawerOpen && state.phase == Phase.PLAYING && zap.hasPrevious() &&
+            isLive && (!overlayVisible || !controlsEngaged) && panel == Panel.None && !drawerOpen && state.phase == Phase.PLAYING && zap.hasPrevious() &&
                 System.currentTimeMillis() - lastRecallMs > 3_000 -> { lastRecallMs = System.currentTimeMillis(); zap.recallPrevious { currentUrl = it } }
             panel != Panel.None -> panel = Panel.None
             drawerOpen -> drawerOpen = false
@@ -469,9 +496,31 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     if (zap.isEntering && (ev.key == Key.Enter || ev.key == Key.DirectionCenter || ev.key == Key.NumPadEnter)) { zap.commitNow(); return@onPreviewKeyEvent true }
                 }
                 val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
-                val okKey = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter
-                // Direct, surcouche masquée : OK ouvre la liste des chaînes (sans afficher les commandes derrière).
-                if (hidden && isLive && okKey) { drawerOpen = true; return@onPreviewKeyEvent true }
+                val okKey = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter || ev.key == Key.ButtonSelect || ev.key == Key.ButtonA
+                if (isLive && panel == Panel.None && !drawerOpen) {
+                    // Touche TV (télécommandes Google TV, ex. Mecool G10) : liste des chaînes.
+                    if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_TV || ev.key == Key.Guide) { drawerOpen = true; return@onPreviewKeyEvent true }
+                    // Touches chaîne +/- : zap, quel que soit l'état de la surcouche.
+                    if (ev.key == Key.ChannelUp || ev.key == Key.ChannelDown || ev.key == Key.PageUp || ev.key == Key.PageDown) {
+                        val next = ev.key == Key.ChannelDown || ev.key == Key.PageDown
+                        touch(); controlsEngaged = false; scope.launch { vm.zap(next)?.let { currentUrl = it } }; return@onPreviewKeyEvent true
+                    }
+                    if (!controlsEngaged) {
+                        when {
+                            // OK ouvre la liste des chaînes (sans afficher les commandes derrière).
+                            okKey -> { drawerOpen = true; return@onPreviewKeyEvent true }
+                            ev.key == Key.DirectionUp || ev.key == Key.DirectionDown -> {
+                                touch(); scope.launch { vm.zap(ev.key == Key.DirectionDown)?.let { currentUrl = it } }; return@onPreviewKeyEvent true
+                            }
+                            ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight || ev.key == Key.Menu || ev.key == Key.Info -> {
+                                if (tsActive && hidden && (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight)) { tsJump(if (ev.key == Key.DirectionLeft) -30 else 30); touch(); return@onPreviewKeyEvent true }
+                                touch(); controlsEngaged = true; runCatching { pauseFocus.requestFocus() }; return@onPreviewKeyEvent true
+                            }
+                            ev.key == Key.Back || ev.key == Key.Escape -> return@onPreviewKeyEvent false
+                            else -> { touch(); return@onPreviewKeyEvent true }
+                        }
+                    }
+                }
                 touch()
                 if (!hidden) return@onPreviewKeyEvent false
                 when (ev.key) {

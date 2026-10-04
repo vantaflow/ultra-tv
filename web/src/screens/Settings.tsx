@@ -328,7 +328,7 @@ function CategoriesPane() {
   const pending = initial.current ? all.filter((c) => initial.current!.get(c.id!) !== c.enabled).length : 0;
   const nq = normText(q);
   // Filtre par texte seulement (nom brut ou nom affiché) : aucune déduction de langue, fiable quelle que soit la source.
-  const shown = useMemo(() => all.filter((c) => c.kind === kind && (!nq || normText(c.label).includes(nq) || normText(c.name).includes(nq))), [all, kind, nq]);
+  const shown = useMemo(() => all.filter((c) => c.kind === kind && (!nq || catMatches(c.name, nq))), [all, kind, nq]);
   if (!source) return null;
   const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
@@ -438,4 +438,11 @@ function AboutPane() {
       </div>
     </>
   );
+}
+
+/** Filtre court (« FR », « AR », « 4K ») = mot entier : « FR » ne doit pas ramener « AFRICA ». Sinon, sous-chaîne. */
+export function catMatches(name: string, nq: string): boolean {
+  const n = normText(name);
+  if (nq.length > 3 || /\s/.test(nq)) return n.includes(nq);
+  return n.split(/[^\p{L}\p{N}+]+/u).includes(nq);
 }

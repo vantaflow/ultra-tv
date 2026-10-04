@@ -98,6 +98,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                 RemoteLog.telemetryEnabled = p.telemetryEnabled
                 RemoteLog.workerUrlOverride = p.workerBaseUrl
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.offsetMinutes = p.epgTimeOffsetMin
+                com.ultratv.tv.nativeapp.ui.common.EpgClock.zoneId = p.timeZone
                 com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
         }

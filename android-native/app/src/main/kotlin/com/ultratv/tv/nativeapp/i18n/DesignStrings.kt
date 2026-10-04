@@ -342,6 +342,8 @@ class DesignStrings(val lang: AppLang) {
     val hidden get() = t("Hidden", "Masqués", "Ocultos", "مخفية")
     val launchAtBoot get() = t("Launch when the box starts", "Lancer au démarrage de la box", "Iniciar al arrancar el equipo", "التشغيل عند إقلاع الجهاز")
     val openOn get() = t("Open on", "Ouvrir sur", "Abrir en", "فتح على")
+    val timeZone get() = t("Time zone", "Fuseau horaire", "Zona horaria", "المنطقة الزمنية")
+    val tzSystem get() = t("Device", "Celui de l’appareil", "El del dispositivo", "الخاص بالجهاز")
     val lastChannel get() = t("Last channel", "Dernière chaîne", "Último canal", "آخر قناة")
     val homeScreen get() = t("Home", "Accueil", "Inicio", "الرئيسية")
     val logosFolder get() = t("Local channel logos", "Logos de chaînes locaux", "Logotipos locales", "شعارات القنوات المحلية")

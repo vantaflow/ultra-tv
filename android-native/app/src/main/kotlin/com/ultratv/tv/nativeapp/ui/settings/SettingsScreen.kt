@@ -436,6 +436,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         PrefRow(D.openOn, if (p.autoPlayLastOnLaunch) D.lastChannel else D.homeScreen) { choice = "open" }
+        PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
         PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) { pickLogos.launch(null) }
     }
     when (choice) {
@@ -443,7 +444,20 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to it.displayName }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, listOf(false to D.homeScreen, true to D.lastChannel), p.autoPlayLastOnLaunch, { app.setAutoPlayLast(it); choice = "" }, { choice = "" })
+        "tz" -> ChoiceDialog(D.timeZone, TIME_ZONES.map { it to timeZoneLabel(D, it) }, p.timeZone, { app.setTimeZone(it); choice = "" }, { choice = "" })
     }
+}
+
+/** Fuseaux proposés : « appareil » par défaut ; GMT pour une box mal réglée (ex. GMT+1 au lieu de GMT). */
+private val TIME_ZONES = listOf("", "GMT", "Africa/Casablanca", "Europe/London", "Europe/Paris", "Africa/Algiers", "Africa/Tunis", "Africa/Dakar", "Asia/Riyadh", "America/New_York")
+
+/** Libellé avec le décalage ACTUEL (heure d'été comprise) : « Europe/Paris (GMT+2) ». */
+internal fun timeZoneLabel(D: DesignStrings, id: String): String {
+    val tz = if (id.isBlank()) java.util.TimeZone.getDefault() else java.util.TimeZone.getTimeZone(id)
+    val off = tz.getOffset(System.currentTimeMillis()) / 60_000
+    val gmt = if (off == 0) "GMT" else "GMT" + (if (off > 0) "+" else "−") + (kotlin.math.abs(off) / 60) + (if (off % 60 != 0) ":%02d".format(java.util.Locale.ROOT, kotlin.math.abs(off) % 60) else "")
+    val name = when (id) { "" -> D.tzSystem; "GMT" -> return "GMT"; else -> id.substringAfter('/').replace('_', ' ') }
+    return "$name ($gmt)"
 }
 
 private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }

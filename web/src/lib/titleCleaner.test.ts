@@ -82,18 +82,11 @@ describe("tidyTitle / presentable", () => {
 });
 
 describe("prettyCategoryName", () => {
-  it("retire le séparateur final", () => {
-    expect(prettyCategoryName("AFRICA /")).toBe("AFRICA");
-    expect(prettyCategoryName("CANAL+ /")).toBe("CANAL+");
-    expect(prettyCategoryName("AFRICA/")).toBe("AFRICA");
-  });
-  it("décorations", () => {
-    expect(prettyCategoryName("RELAX ☼")).toBe("RELAX");
-    expect(prettyCategoryName("☼ RELAX ☼ /")).toBe("RELAX");
-  });
-  it("inchangé / brut", () => {
-    expect(prettyCategoryName("Sport FR")).toBe("Sport FR");
-    expect(prettyCategoryName("###")).toBe("###");
+  it("garde le nom du fournisseur tel quel", () => {
+    expect(prettyCategoryName("FR| SPORT")).toBe("FR| SPORT");
+    expect(prettyCategoryName("AR| SPORT")).toBe("AR| SPORT");
+    expect(prettyCategoryName("### FRANCE ###")).toBe("### FRANCE ###");
+    expect(prettyCategoryName("  FR  |  SPORT ")).toBe("FR | SPORT");
   });
 });
 

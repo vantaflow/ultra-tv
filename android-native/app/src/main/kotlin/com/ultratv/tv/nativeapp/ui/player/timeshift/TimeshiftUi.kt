@@ -65,14 +65,14 @@ fun TimeshiftFooter(
             verticalArrangement = Arrangement.spacedBy(26.design),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
-                Text(EpgClock.hm(now - snap.windowSec * 1000L), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                Text(EpgClock.wall(now - snap.windowSec * 1000L), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                 BoxWithConstraints(Modifier.weight(1f).height(40.design)) {
                     Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(12.design).clip(RoundedCornerShape(6.design)).background(Ux.Line))
                     Box(Modifier.align(Alignment.CenterStart).fillMaxWidth(snap.fraction).height(12.design).clip(RoundedCornerShape(6.design)).background(Ux.Accent))
                     Box(Modifier.align(Alignment.CenterStart).offset(x = maxWidth * snap.fraction - 16.design).size(32.design).clip(CircleShape).background(Color.White))
                     Text(X.directMark, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 0.7.sp, maxLines = 1, modifier = Modifier.align(Alignment.TopEnd))
                 }
-                Text(EpgClock.hm(now), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                Text(EpgClock.wall(now), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {

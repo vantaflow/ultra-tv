@@ -53,6 +53,7 @@ button.secondary{background:var(--s2);color:var(--fg);border-color:var(--bd);fon
 button.danger{background:transparent;color:var(--dng);border-color:var(--bd);font-weight:600} button.danger:hover{border-color:var(--dng);background:transparent}
 button.block{width:100%}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.reveal-box .row{margin-top:6px;flex-wrap:nowrap}.reveal-box input{flex:1;min-width:0;font-family:ui-monospace,Menlo,monospace;font-size:.85rem}
 .row.end{justify-content:flex-end}
 .ico{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .inline{display:inline}
@@ -389,7 +390,10 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
 <div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
 ${sh.chips}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
+<div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">Lien IPTV</label>
+<div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">Copier</button></div></div>
 <div class="actions">${sh.form}
+<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">Afficher le lien IPTV</button>
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
   }).join("");
   const devRows = devices.map((d) => `
@@ -406,6 +410,21 @@ document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventLi
 document.querySelectorAll('.share-form').forEach(function(f){var all=f.querySelector('input[name=all]'),ds=f.querySelectorAll('input[name=d]');
  all.addEventListener('change',function(){ds.forEach(function(d){d.checked=all.checked;});});
  ds.forEach(function(d){d.addEventListener('change',function(){all.checked=Array.prototype.every.call(ds,function(x){return x.checked;});});});});
+document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener('click',function(){
+ var box=document.getElementById('lk-'+b.dataset.id);
+ if(!box.hidden){box.hidden=true;box.querySelector('input').value='';b.setAttribute('aria-expanded','false');b.textContent='Afficher le lien IPTV';return;}
+ b.disabled=true;
+ fetch('/providers/'+b.dataset.id+'/link',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
+  .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
+  .then(function(j){var i=box.querySelector('input');i.value=j.link||'';box.hidden=false;b.setAttribute('aria-expanded','true');b.textContent='Masquer le lien';i.focus();i.select();})
+  .catch(function(){alert('Impossible de récupérer le lien.');})
+  .then(function(){b.disabled=false;});
+});});
+document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('click',function(){
+ var i=document.getElementById(c.dataset.for);i.select();
+ var done=function(){c.textContent='Copié';setTimeout(function(){c.textContent='Copier';},1500);};
+ if(navigator.clipboard){navigator.clipboard.writeText(i.value).then(done,function(){document.execCommand('copy');done();});}else{document.execCommand('copy');done();}
+});});
 ${PAIR_JS}
 ${SCAN_JS}
 </script>`;
