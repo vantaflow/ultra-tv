@@ -168,7 +168,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
 
 @Composable
 private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.White else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
         androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
             Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }

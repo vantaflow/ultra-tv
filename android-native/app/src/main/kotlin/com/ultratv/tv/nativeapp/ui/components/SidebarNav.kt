@@ -93,7 +93,7 @@ fun SidebarNav(navController: NavController) {
 
     Box(Modifier.fillMaxSize()) {
         // Voile de la maquette MenuOuvert (rgba(10,10,12,.72)) : dessiné, jamais mesuré par le contenu.
-        if (expanded) Box(Modifier.fillMaxSize().background(Color(0xB80A0A0C)))
+        if (expanded) Box(Modifier.fillMaxSize().background(Ux.Scrim))
         Row(Modifier.fillMaxHeight().width(width)) {
             Column(
                 Modifier

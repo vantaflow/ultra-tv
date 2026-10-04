@@ -226,6 +226,9 @@ private enum class Panel { None, Options, Tracks }
 @OptIn(UnstableApi::class)
 @Composable
 fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
+    // Le lecteur reste sombre quel que soit le thème de l'application.
+    remember { Ux.playerActive = true }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Ux.playerActive = false } }
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val D = LocalDs.current
@@ -449,7 +452,7 @@ private fun RoundButton(sizePx: Int, icon: String, onClick: () -> Unit) {
 
 @Composable
 private fun PauseButton(playing: Boolean, focus: FocusRequester, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.White, modifier = Modifier.size(96.design).focusRequester(focus)) {
+    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Cta, modifier = Modifier.size(96.design).focusRequester(focus)) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             if (playing) DIcon("M7 4h3.5v16H7zM13.5 4H17v16h-3.5z", 36.design, Ux.TextOnLight, fill = true) else DIcon("M7 4v16l13-8z", 36.design, Ux.TextOnLight, fill = true)
         }
@@ -493,7 +496,7 @@ private fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, 
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             hint?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2) }
             Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
-                PillButton(LocalDs.current.retry, onRetry, bg = Ux.White, weight = FontWeight.Bold, modifier = Modifier.focusRequester(first))
+                PillButton(LocalDs.current.retry, onRetry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(first))
                 if (canNext) PillButton(D.nextChannel, onNext)
                 PillButton(D.close, onClose)
             }
@@ -536,7 +539,7 @@ private fun ChipRow(label: String, options: List<Pair<String, Boolean>>, onPick:
         Text(label.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, letterSpacing = 2.sp(), maxLines = 1)
         androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             options.forEachIndexed { i, (text, sel) ->
-                FocusSurface(onClick = { onPick(i) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.White else Ux.Surface, ringWidth = 5.design, modifier = Modifier.height(52.design)) { f ->
+                FocusSurface(onClick = { onPick(i) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 5.design, modifier = Modifier.height(52.design)) { f ->
                     Box(Modifier.padding(horizontal = 24.design).height(52.design), contentAlignment = Alignment.Center) {
                         Text(text, color = if (sel || f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 21.spx, maxLines = 1)
                     }
@@ -552,7 +555,7 @@ private fun OptionsPanel(
     p: UserPrefs, vm: PlayerViewModel, state: com.ultratv.tv.nativeapp.ui.player.engine.SessionState, aspect: AspectMode, speed: Float, isLive: Boolean, statsOpen: Boolean, sleepActive: Boolean, D: DesignStrings,
     onAspect: (AspectMode) -> Unit, onSpeed: (Float) -> Unit, onStats: () -> Unit, onSleep: (Int) -> Unit, onSwitch: (Combo) -> Unit, onBuffer: (BufferPreset) -> Unit, onExternal: () -> Unit, onClose: () -> Unit,
 ) {
-    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Color(0xB80A0A0C)), contentAlignment = Alignment.CenterEnd) {
+    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim), contentAlignment = Alignment.CenterEnd) {
         Column(
             Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design),
             verticalArrangement = Arrangement.spacedBy(28.design),
@@ -586,7 +589,7 @@ private fun TracksPanel(session: PlaybackSession, D: DesignStrings, onClose: () 
     val e = session.engine
     val audio = remember { e?.audioTracks().orEmpty() }
     val subs = remember { e?.subtitleTracks().orEmpty() }
-    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Color(0xB80A0A0C)), contentAlignment = Alignment.CenterEnd) {
+    ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim), contentAlignment = Alignment.CenterEnd) {
         Column(Modifier.fillMaxHeight().width(900.design).background(Ux.Rail).padding(horizontal = 48.design, vertical = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
             Text(D.pTracks, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1)
             ChipRow(D.audio, audio.map { it.label to it.selected }.ifEmpty { listOf("—" to false) }) { i -> audio.getOrNull(i)?.let { e?.selectAudio(it.id) }; onClose() }

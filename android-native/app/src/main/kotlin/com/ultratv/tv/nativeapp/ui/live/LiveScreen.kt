@@ -148,7 +148,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     actionsFor?.let { ch ->
         val isFav = ch.remoteId in favs
         val isLocked = "${ch.providerId}:${ch.remoteId}" in locked
-        ModalFocusScope(onBack = { actionsFor = null }, modifier = Modifier.background(Color(0xB80A0A0C))) {
+        ModalFocusScope(onBack = { actionsFor = null }, modifier = Modifier.background(Ux.Scrim)) {
             Column(Modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(48.design), verticalArrangement = Arrangement.spacedBy(16.design)) {
                 Text(ch.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(560.design))
                 PillButton(if (isFav) D.removeFavorite else D.addFavorite, onClick = { vm.toggleFavorite(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
@@ -179,7 +179,7 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Bo
                     style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 )
                 Spacer(Modifier.width(8.design))
-                Text(java.text.NumberFormat.getIntegerInstance().format(count), color = if (f) Ux.Line else if (selected) Ux.Text else Color(0xFF71717A), fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
+                Text(java.text.NumberFormat.getIntegerInstance().format(count), color = if (f) Ux.OnFocus2 else if (selected) Ux.Text else Ux.Muted, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
             }
         }
     }
@@ -264,7 +264,7 @@ internal fun QualityBadge(quality: Int, focused: Boolean) {
         4 -> Triple("4K", Ux.Accent, Color.White)
         3 -> Triple("FHD", Color.White, Color(0xFF0A0A0C))
         2 -> Triple("HD", Color(0xFFD4D4D8), Color(0xFF0A0A0C))
-        1 -> Triple("SD", Color(0xFF52525B), Color(0xFFE4E4E7))
+        1 -> Triple("SD", Ux.Muted2, Color(0xFFE4E4E7))
         else -> return
     }
     val (b, f) = if (focused) Color(0xFF0A0A0C) to Color.White else bg to fg
@@ -283,13 +283,13 @@ private fun ChannelRow(
         modifier = modifier.fillMaxWidth().height(88.design).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically) {
-            Text(position.toString(), color = if (f) Ux.TextOnLight else Color(0xFF71717A), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(56.design))
+            Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(56.design))
             Spacer(Modifier.width(20.design))
             LogoBox(c.logo, c.title, Modifier.width(72.design).height(48.design), radius = 10, pad = 5, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
             Spacer(Modifier.width(20.design))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                Text(now?.title.orEmpty(), color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 19.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
             QualityBadge(c.quality, f)
@@ -303,8 +303,8 @@ private fun ChannelRow(
 private fun Preview(channel: ChannelEntity?, now: EpgEntity?, next: EpgEntity?, D: DesignStrings, modifier: Modifier) {
     Column(modifier.padding(start = 32.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
         if (channel == null) return@Column
-        Box(Modifier.fillMaxWidth().height(450.design).clip(RoundedCornerShape(24.design)).background(Color(0xFF1F1F25)), contentAlignment = Alignment.Center) {
-            LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 24, pad = 96, bg = Color(0xFF1F1F25))
+        Box(Modifier.fillMaxWidth().height(450.design).clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
+            LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 24, pad = 96, bg = Ux.Tone)
         }
         if (now != null) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {

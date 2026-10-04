@@ -137,7 +137,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 for ((k, label) in listOf("LIVE" to D.directTitle, "MOVIE" to D.moviesTitle, "SERIES" to D.seriesTitle)) {
                     val sel = kind == k
-                    FocusSurface(onClick = { vm.kind.value = k; moving = null }, shape = RoundedCornerShape(28.design), bg = if (sel) Ux.White else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
+                    FocusSurface(onClick = { vm.kind.value = k; moving = null }, shape = RoundedCornerShape(28.design), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
                         Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
                             Text("$label · ${tabs[k] ?: 0}", color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                         }
@@ -224,7 +224,7 @@ private fun CategoryLine(
         onClick = { if (isMoving) onConfirmMove() else onToggle() },
         onLongClick = { if (!isMoving) onStartMove() },
         shape = RoundedCornerShape(18.design),
-        bg = if (r.enabled) Ux.SurfaceDeep else Color(0xFF0F0F12), ringWidth = 5.design, focusedScale = 1.0f,
+        bg = if (r.enabled) Ux.SurfaceDeep else Ux.Rail, ringWidth = 5.design, focusedScale = 1.0f,
         modifier = rowModifier.fillMaxWidth().height(76.design).onPreviewKeyEvent { e ->
             if (!isMoving || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (e.key) { Key.DirectionUp -> { onMove(-1); true }; Key.DirectionDown -> { onMove(1); true }; else -> false }
@@ -237,15 +237,15 @@ private fun CategoryLine(
                 }
                 Spacer(Modifier.width(16.design))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                    Text(r.label, color = if (f) Ux.TextOnLight else if (r.enabled) Ux.Text else Color(0xFF71717A), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    Text(r.label, color = if (f) Ux.TextOnLight else if (r.enabled) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                    Text(count, color = if (f) Ux.Line else if (r.enabled) Ux.Text3 else Color(0xFF52525B), fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
+                    Text(count, color = if (f) Ux.OnFocus2 else if (r.enabled) Ux.Text3 else Ux.Muted2, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1)
                 }
             }
             Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Switch(r.enabled, inverted = f) }
             Spacer(Modifier.width(12.design))
             Box(Modifier.width(110.design).clip(RoundedCornerShape(12.design)).then(if (isMoving) Modifier.background(Ux.Accent) else Modifier).padding(vertical = 8.design), contentAlignment = Alignment.Center) {
-                DIcon("M8 10l4-4 4 4M8 14l4 4 4-4", 26.design, if (isMoving) Color.White else if (f) Ux.Line else Ux.Text3, strokeWidth = 2.2f)
+                DIcon("M8 10l4-4 4 4M8 14l4 4 4-4", 26.design, if (isMoving) Color.White else if (f) Ux.OnFocus2 else Ux.Text3, strokeWidth = 2.2f)
             }
         }
     }

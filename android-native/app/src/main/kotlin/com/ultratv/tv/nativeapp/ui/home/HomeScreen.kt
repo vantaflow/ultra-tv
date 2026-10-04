@@ -142,14 +142,14 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
     ) {
         // Visuel : zone fixe de 760×440 à droite. Paysage → Crop plein cadre ; sinon l'affiche 2:3
         // dans sa propre zone fixe (jamais étirée, jamais sous le texte), sur la couleur du cadre.
-        Box(Modifier.align(Alignment.CenterEnd).width(760.design).fillMaxHeight().background(Color(0xFF1F1F25))) {
+        Box(Modifier.align(Alignment.CenterEnd).width(760.design).fillMaxHeight().background(Ux.Tone)) {
             if (h.backdrop != null) {
                 BackdropImage(h.backdrop, Modifier.fillMaxSize())
             } else {
                 PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0)
             }
             // Voile de lisibilité : fondu vers le fond du cadre côté texte.
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.SurfaceDeep, 0.45f to Color(0x99141418), 1f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))
         }
         Column(
             Modifier.fillMaxHeight().width(880.design).padding(56.design),
@@ -167,7 +167,7 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
                 PillButton(
                     D.watch, onClick = onOpen, heightPx = 76, hPadPx = 40, fontPx = 28, weight = FontWeight.Bold,
-                    iconPath = Icons.Play, iconFill = true, bg = Ux.White,
+                    iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
                     modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused },
                 )
                 PillButton(D.tvGuide, onClick = onGuide)
@@ -187,7 +187,7 @@ private fun EmptyCard(title: String, hint: String, action: String, onAction: () 
         val requester = remember { FocusRequester() }
         var focused by remember { mutableStateOf(false) }
         RequestInitialFocus(requester, hasFocus = { focused })
-        PillButton(action, onClick = onAction, bg = Ux.White, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
+        PillButton(action, onClick = onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
     }
 }
 
@@ -225,7 +225,7 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
             }
             Column(Modifier.padding(horizontal = 4.design).padding(bottom = 6.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (meta != null) Text(meta, color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
     }
@@ -242,7 +242,7 @@ private fun ChannelCard(c: ChannelEntity, now: EpgEntity?, onClick: () -> Unit) 
                 LogoBox(c.logo, c.title, Modifier.width(48.design).height(32.design), radius = 6, pad = 3, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
             }
             Text(
-                now?.title ?: "", color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx,
+                now?.title ?: "", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }

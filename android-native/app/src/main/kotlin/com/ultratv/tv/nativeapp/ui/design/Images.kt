@@ -102,7 +102,7 @@ fun LogoBox(url: String?, name: String, modifier: Modifier, radius: Int = 10, pa
 
 /** Fond de hero / de fiche : zone fixe, `Crop`. */
 @Composable
-fun BackdropImage(url: String?, modifier: Modifier, bg: Color = Color(0xFF1F1F25)) =
+fun BackdropImage(url: String?, modifier: Modifier, bg: Color = Ux.Tone) =
     SlotImage(url, "", modifier, RoundedCornerShape(0.design), SlotFit.Crop, bg)
 
 /** Avatar de distribution : cercle, `Crop`. */

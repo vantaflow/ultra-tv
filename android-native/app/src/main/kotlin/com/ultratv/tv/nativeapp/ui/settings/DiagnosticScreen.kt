@@ -57,7 +57,7 @@ fun DiagnosticScreen(panes: SettingsPanesViewModel = hiltViewModel()) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(24.design)) {
-            Card(Modifier.weight(1f), D.device, when (ad.device.tier) { Tier.LOW -> D.tierLow; Tier.MID -> D.tierMid; Tier.HIGH -> D.tierHigh }, Color(0xFF52525B), listOf(
+            Card(Modifier.weight(1f), D.device, when (ad.device.tier) { Tier.LOW -> D.tierLow; Tier.MID -> D.tierMid; Tier.HIGH -> D.tierHigh }, Ux.Muted2, listOf(
                 D.memory to "${gb(i.ramMb)} Go · " + (if (i.lowRamFlag || i.ramMb < 1800) D.weak else D.comfortable),
                 D.processor to "${i.cores} " + D.cores + " · " + (if (i.is64Bit) "64" else "32") + " bits",
                 D.hwDecoders to codecs, D.screen to "${i.screenWidth}×${i.screenHeight}", "Android" to "${i.sdk}",

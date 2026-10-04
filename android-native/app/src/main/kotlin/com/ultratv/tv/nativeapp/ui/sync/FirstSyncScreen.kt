@@ -95,12 +95,12 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
                     if (ui.failure != null) {
                         Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
-                            Text(S.sync.messageFor(ui.failure), color = Color(0xFFFF8A8A), fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(S.sync.messageFor(ui.failure), color = Ux.Err, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
                                 val r = remember { FocusRequester() }
                                 var f by remember { mutableStateOf(false) }
                                 RequestInitialFocus(r, hasFocus = { f })
-                                PillButton(D.retry, onRetry, bg = Ux.White, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { f = it.isFocused })
+                                PillButton(D.retry, onRetry, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(r).onFocusChanged { f = it.isFocused })
                                 PillButton(D.fixSource, onFixSource)
                             }
                         }
@@ -146,7 +146,7 @@ private fun WatchLiveCta(enabled: Boolean, onClick: () -> Unit) {
         onClick = { if (enabled) onClick() },
         shape = RoundedCornerShape(44.design),
         bg = if (enabled) Ux.White else Ux.Surface,
-        focusedBg = if (enabled) Ux.White else Ux.Surface2,
+        focusedBg = if (enabled) Ux.Cta else Ux.Surface2,
         modifier = Modifier.height(88.design).focusRequester(requester).onFocusChanged { focused = it.isFocused },
     ) { f ->
         val ink = if (enabled) Ux.TextOnLight else Ux.Text3
@@ -188,7 +188,7 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
         Box(
             Modifier.size(60.design).clip(CircleShape).background(when { done -> Ux.Surface2; active -> Ux.Accent; error -> Color(0xFF5A1A1E); else -> Ux.Surface }),
             contentAlignment = Alignment.Center,
-        ) { DIcon(if (done) Icons.Check else icon, 30.design, if (done || active || error) Ux.White else Color(0xFF71717A), strokeWidth = 2.5f) }
+        ) { DIcon(if (done) Icons.Check else icon, 30.design, if (done || active || error) Ux.White else Ux.Muted, strokeWidth = 2.5f) }
         Spacer(Modifier.width(24.design))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {

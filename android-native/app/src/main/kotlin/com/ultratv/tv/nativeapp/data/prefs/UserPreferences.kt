@@ -16,7 +16,18 @@ import javax.inject.Singleton
 private val Context.userPrefsDs by preferencesDataStore(name = "user_prefs")
 
 enum class SidebarPosition { LEFT, TOP }
-enum class AppTheme { DARK, AMOLED, BLUE, LIGHT }
+enum class AppTheme {
+    DARK, LIGHT, AUTO;
+
+    companion object {
+        /** Tolérant : les anciennes valeurs (AMOLED, BLUE, SYSTEM…) retombent sur Sombre, la valeur inconnue aussi. */
+        fun parse(raw: String?): AppTheme = when (raw?.uppercase()) {
+            "LIGHT" -> LIGHT
+            "AUTO", "SYSTEM" -> AUTO
+            else -> DARK
+        }
+    }
+}
 enum class DefaultPlayer { INTERNAL, EXTERNAL }
 
 data class UserPrefs(
@@ -146,7 +157,7 @@ class UserPreferencesStore @Inject constructor(@ApplicationContext private val c
     val flow: Flow<UserPrefs> = ctx.userPrefsDs.data.map { p ->
         UserPrefs(
             sidebarPosition = enumValueOf<SidebarPosition>(p[Keys.sidebar] ?: SidebarPosition.LEFT.name),
-            theme = enumValueOf<AppTheme>(p[Keys.theme] ?: AppTheme.DARK.name),
+            theme = AppTheme.parse(p[Keys.theme]),
             defaultPlayer = enumValueOf<DefaultPlayer>(p[Keys.player] ?: DefaultPlayer.INTERNAL.name),
             autoSyncOnLaunch = p[Keys.autoSync] ?: true,
             showChannelNumbers = p[Keys.channelNums] ?: true,

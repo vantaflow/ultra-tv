@@ -86,7 +86,7 @@ fun PinPad(
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.design)) {
                 Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(error ?: subtitle, color = if (error != null) Color(0xFFFF8A8A) else Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(error ?: subtitle, color = if (error != null) Ux.Err else Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
                 for (i in 0 until length) {

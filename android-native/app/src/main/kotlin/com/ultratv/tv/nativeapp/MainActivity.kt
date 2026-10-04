@@ -216,8 +216,9 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
+        com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(prefs.theme)
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
-        UltraTvTheme(theme = prefs.theme) {
+        UltraTvTheme {
             // L'assistant de premier lancement REMPLACE l'application au lieu de
             // se superposer : avant, l'accueil restait composé derrière (premier
             // focalisable = barre latérale), donc la télécommande pilotait un

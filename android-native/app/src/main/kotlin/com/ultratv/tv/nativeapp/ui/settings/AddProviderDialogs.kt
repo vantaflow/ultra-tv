@@ -100,7 +100,7 @@ fun AddProviderDialog(
                 FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(32.design), modifier = Modifier.testTag("dialog-cancel")) { f ->
                     Box(Modifier.padding(horizontal = 36.design, vertical = 18.design)) {
                         Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
-                            color = if (f) Ux.TextOnLight else Color(0xFFE4E4E7))
+                            color = if (f) Ux.TextOnLight else Ux.Text)
                     }
                 }
             }
@@ -174,7 +174,7 @@ fun FormField(
             )
         }
         if (error != null) {
-            Text(error, color = Color(0xFFFF8A8A), fontFamily = Manrope, fontSize = 20.spx)
+            Text(error, color = Ux.Err, fontFamily = Manrope, fontSize = 20.spx)
         }
     }
 }

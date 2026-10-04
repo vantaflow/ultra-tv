@@ -287,7 +287,7 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
 
 @Composable
 private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.White else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
         Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
             Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
         }
@@ -329,7 +329,7 @@ private fun GuideRow(
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
                     if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
                         Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
-                        if (wPx >= 200) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Clip)
+                        if (wPx >= 200) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                 }
             }

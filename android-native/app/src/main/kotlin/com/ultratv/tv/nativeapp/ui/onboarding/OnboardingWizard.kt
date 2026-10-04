@@ -263,7 +263,7 @@ private fun PrimaryCta(label: String, iconPath: String, fillIcon: Boolean, onCli
 private fun SecondaryButton(label: String, onClick: () -> Unit) {
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(36.design), bg = Ux.Surface, modifier = Modifier.height(72.design)) { f ->
         Box(Modifier.padding(horizontal = 36.design).height(72.design), contentAlignment = Alignment.Center) {
-            Text(label, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, color = if (f) Ux.TextOnLight else Color(0xFFE4E4E7))
+            Text(label, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx, color = if (f) Ux.TextOnLight else Ux.Text)
         }
     }
 }
@@ -451,7 +451,7 @@ private fun SourceCard(modifier: Modifier, icon: String, title: String, desc: St
             ) { DIcon(icon, 38.design, if (f) Ux.White else Ux.Text) }
             Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
                 Text(title, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 34.spx, color = if (f) Ux.TextOnLight else Ux.Text)
-                Text(desc, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, color = if (f) Ux.Line else Ux.Text3)
+                Text(desc, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
             }
         }
     }
@@ -475,7 +475,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
                 val f = failure
                 if (f != null) {
                     Text(LocalStrings.current.sync.messageFor(f.kind), fontFamily = Manrope, fontSize = 30.spx, lineHeight = 42.spx,
-                        color = Color(0xFFFF8A8A), modifier = Modifier.width(820.design))
+                        color = Ux.Err, modifier = Modifier.width(820.design))
                 } else {
                     Text(W.readyBody, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 45.spx, color = Ux.Text2, modifier = Modifier.width(820.design))
                 }
@@ -586,7 +586,7 @@ private fun LangTile(label: String, count: String, on: Boolean, onClick: () -> U
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(label, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, color = if (f) Ux.TextOnLight else Ux.Text)
-                if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 20.spx, color = if (f) Ux.Line else Ux.Text3)
+                if (count.isNotEmpty()) Text(count, fontFamily = Manrope, fontSize = 20.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
             }
             if (on) DIcon(Icons.Check, 32.design, if (f) Ux.TextOnLight else Ux.Accent, strokeWidth = 2.5f)
         }

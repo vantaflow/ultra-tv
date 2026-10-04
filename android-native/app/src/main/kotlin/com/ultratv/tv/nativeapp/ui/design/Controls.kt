@@ -33,7 +33,12 @@ import com.ultratv.tv.nativeapp.ui.common.design
 /** Interrupteur de la maquette : piste 64×36, bouton 28 ; actif = accent (noir si la ligne est focalisée), inactif = #3F3F46 (#D4D4D8 si focalisée). */
 @Composable
 fun Switch(on: Boolean, inverted: Boolean = false) {
-    val track = if (on) (if (inverted) Color(0xFF0A0A0C) else Ux.Accent) else (if (inverted) Color(0xFFD4D4D8) else Color(0xFF3F3F46))
+    val onDarkFocus = Ux.Cta == Color.White   // focus blanc (thème sombre) ; encre en thème clair
+    val track = when {
+        on -> if (inverted && onDarkFocus) Color(0xFF0A0A0C) else Ux.Accent
+        inverted -> if (onDarkFocus) Color(0xFFD4D4D8) else Color(0xFF52525B)
+        else -> Ux.Line
+    }
     Box(Modifier.width(64.design).height(36.design).clip(RoundedCornerShape(18.design)).background(track)) {
         Box(Modifier.padding(start = if (on) 32.design else 4.design, top = 4.design).width(28.design).height(28.design).clip(RoundedCornerShape(14.design)).background(Color.White))
     }
@@ -48,12 +53,12 @@ fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: S
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (hint != null) Text(hint, color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(16.design))
-            Text(value, color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.design))
+            Text(value, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.design))
             Spacer(Modifier.width(12.design))
-            DIcon(CHEVRON, 20.design, if (f) Ux.Line else Ux.Text3, strokeWidth = 2.5f)
+            DIcon(CHEVRON, 20.design, if (f) Ux.OnFocus2 else Ux.Text3, strokeWidth = 2.5f)
         }
     }
 }
@@ -65,7 +70,7 @@ fun SwitchPrefRow(label: String, on: Boolean, modifier: Modifier = Modifier, hin
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (hint != null) Text(hint, color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Switch(on, inverted = f)
         }
@@ -88,7 +93,7 @@ fun GroupLabel(text: String) = Text(text.uppercase(), color = Ux.Text3, fontFami
 @Composable
 fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?, onPick: (T) -> Unit, onDismiss: () -> Unit) {
     val first = FocusRequester()
-    ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Color(0xB80A0A0C))) {
+    ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         Column(Modifier.widthIn(min = 560.design, max = 760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 8.design))
             LazyColumn(Modifier.heightIn(max = 640.design), verticalArrangement = Arrangement.spacedBy(10.design)) {

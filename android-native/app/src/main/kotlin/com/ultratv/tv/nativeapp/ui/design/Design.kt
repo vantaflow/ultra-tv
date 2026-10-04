@@ -25,6 +25,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,17 +58,43 @@ import com.ultratv.tv.nativeapp.ui.common.design
  * normalisée sur la hauteur (voir ProvideUiScale), donc 720p, 1080p et 4K sont identiques.
  */
 object Ux {
-    val Bg = Color(0xFF0A0A0C)
-    val Rail = Color(0xFF0F0F12)
-    val Surface = Color(0xFF1C1C21)
-    val Surface2 = Color(0xFF26262D)
-    val SurfaceDeep = Color(0xFF141418)
-    val Text = Color(0xFFF5F5F7)
-    val Text2 = Color(0xFFC4C4CC)
-    val Text3 = Color(0xFFA1A1AA)
-    val TextOnLight = Color(0xFF0A0A0C)
-    val Line = Color(0xFF3F3F46)
-    val LineKey = Color(0xFF52525B)
+    /**
+     * Thème courant. État Compose : toute lecture d'un jeton ci-dessous dans une composition
+     * s'abonne, donc un changement de thème recompose l'interface sans rien repasser en paramètre.
+     * Le lecteur reste toujours sombre ([playerActive]).
+     */
+    var themeLight by mutableStateOf(false)
+    var playerActive by mutableStateOf(false)
+    private val light: Boolean get() = themeLight && !playerActive
+
+    // Surfaces (sombre → clair : maquettes Accueil / AccueilClair / SidebarClair)
+    val Bg: Color get() = if (light) Color(0xFFF4F3EF) else Color(0xFF0A0A0C)
+    val Rail: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF0F0F12)
+    val Surface: Color get() = if (light) Color(0xFFECEAE5) else Color(0xFF1C1C21)
+    val Surface2: Color get() = if (light) Color(0xFFD9D6CF) else Color(0xFF26262D)
+    val SurfaceDeep: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF141418)
+    /** Fond des visuels de remplacement (affiches, logos sans image). */
+    val Tone: Color get() = if (light) Color(0xFFE3E1DB) else Color(0xFF1F1F25)
+
+    // Texte
+    val Text: Color get() = if (light) Color(0xFF16151A) else Color(0xFFF5F5F7)
+    val Text2: Color get() = if (light) Color(0xFF3C3B42) else Color(0xFFC4C4CC)
+    val Text3: Color get() = if (light) Color(0xFF5E5D66) else Color(0xFFA1A1AA)
+    /** Texte très atténué (compteurs, entrées désactivées). */
+    val Muted: Color get() = if (light) Color(0xFF8A8992) else Color(0xFF71717A)
+    val Muted2: Color get() = if (light) Color(0xFFB0AEB5) else Color(0xFF52525B)
+    val Err: Color get() = if (light) Color(0xFFB3261E) else Color(0xFFFF8A8A)
+
+    val Line: Color get() = if (light) Color(0xFFD9D6CF) else Color(0xFF3F3F46)
+    val LineKey: Color get() = if (light) Color(0xFFB0AEB5) else Color(0xFF52525B)
+    val Scrim: Color get() = if (light) Color(0xCCF4F3EF) else Color(0xB80A0A0C)
+
+    // Focus : sombre = fond blanc / texte noir ; clair = fond encre / texte blanc ; l'anneau reste accent.
+    val Cta: Color get() = if (light) Color(0xFF16151A) else Color(0xFFFFFFFF)
+    val TextOnLight: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF0A0A0C)
+    /** Texte secondaire sur une ligne focalisée. */
+    val OnFocus2: Color get() = if (light) Color(0xFFC9C7CF) else Color(0xFF3F3F46)
+
     val Accent = Color(0xFFD91E2B)
     val White = Color(0xFFFFFFFF)
 }
@@ -103,7 +131,7 @@ fun FocusSurface(
     bg: Color = Ux.Surface,
     focusedScale: Float = 1.06f,
     ringWidth: Dp = 6.design,
-    focusedBg: Color = Ux.White,
+    focusedBg: Color = Ux.Cta,
     onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
@@ -219,7 +247,7 @@ fun PillButton(
         modifier = modifier.height(heightPx.design),
     ) { f ->
         Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.design), verticalAlignment = Alignment.CenterVertically) {
-            val ink = if (f || bg == Ux.White) Ux.TextOnLight else Ux.Text
+            val ink = if (f || bg == Ux.Cta) Ux.TextOnLight else Ux.Text
             if (iconPath != null) {
                 DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
                 Spacer(Modifier.width(14.design))
