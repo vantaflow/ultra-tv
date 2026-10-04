@@ -388,3 +388,10 @@ img { display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* Correctifs de superposition d'images */
+.poster .p .img { position: absolute; inset: 0; z-index: 1; }
+.poster .ph { z-index: 0; }
+.hero .art { display: flex; align-items: center; justify-content: center; }
+.hero .art .img { width: min(14rem, 50%); height: auto; max-height: 55%; object-fit: contain; background: transparent; position: relative; z-index: 1; border-radius: 0.75rem; }
+.poster { width: 100%; }

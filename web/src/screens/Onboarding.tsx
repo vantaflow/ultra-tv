@@ -46,10 +46,13 @@ function Steps({ n }: { n: number }) {
 
 function langLabel(code: string, ui: string, t: TFn): string {
   if (code === OTHER_LANG) return t("lang.other");
+  let out = code;
   try {
-    if (code === "AR") return new Intl.DisplayNames([ui], { type: "language" }).of("ar") ?? code;
-    return new Intl.DisplayNames([ui], { type: "region" }).of(code === "UK" ? "GB" : code) ?? code;
-  } catch { return code; }
+    out = code === "AR"
+      ? new Intl.DisplayNames([ui], { type: "language" }).of("ar") ?? code
+      : new Intl.DisplayNames([ui], { type: "region" }).of(code === "UK" ? "GB" : code) ?? code;
+  } catch { /* code brut */ }
+  return out.charAt(0).toLocaleUpperCase(ui) + out.slice(1);
 }
 
 export function Onboarding() {
@@ -101,7 +104,8 @@ export function Onboarding() {
         const d = await detectSourceLanguages({ ...saved, id });
         setDetected(d.languages);
         const ui = prefs.lang.toUpperCase();
-        const pre = d.languages.filter((l) => l.code === ui).map((l) => l.code);
+        // Langue de l'interface + catégories sans langue identifiable (« Autres », souvent internationales).
+        const pre = d.languages.filter((l) => l.code === ui || l.code === OTHER_LANG).map((l) => l.code);
         setChosen(new Set(pre.length ? pre : d.languages.map((l) => l.code)));
         setStep("langs");
       } else setStep("sync");
@@ -127,7 +131,7 @@ export function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, savedId]);
 
-  const done = !sync.running && sync.progress?.phase === "done";
+  const done = !sync.running && !sync.error && !!sync.progress;
   useEffect(() => { if (done) { const id = setTimeout(() => nav("/", { replace: true }), 900); return () => clearTimeout(id); } }, [done, nav]);
 
   const catsTotal = useMemo(() => detected.filter((l) => chosen.has(l.code)).reduce((a, l) => a + l.categories, 0), [detected, chosen]);

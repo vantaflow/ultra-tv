@@ -85,7 +85,7 @@ function Inner({ source }: { source: Source }) {
   const to = from + HOURS * 3600_000;
 
   // Catégorie par défaut : favoris s'il y en a, sinon première catégorie du direct.
-  const effCat = cat ?? (favs.length ? "__fav" : cats?.[0]?.extId ?? "");
+  const effCat = cat ?? (favs.length ? "__fav" : "");
   const chans = useLiveQuery(async () => {
     if (!source.cid) return [];
     if (effCat === "__fav") return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg);
@@ -94,7 +94,7 @@ function Inner({ source }: { source: Source }) {
   const hasEpg = useLiveQuery(() => db.programs.where("[sourceId+end]").between([source.cid, 0], [source.cid, Infinity]).count(), [source.cid, loading]) ?? 0;
 
   const v = useVirtualizer({ count: chans.length, getScrollElement: () => scroller.current, estimateSize: () => 72, overscan: 6 });
-  const label = effCat === "__fav" ? t("common.favorites") : cats?.find((c) => c.extId === effCat)?.label ?? t("guide.withEpg");
+  const label = effCat === "__fav" ? t("common.favorites") : effCat === "" ? t("guide.withEpg") : cats?.find((c) => c.extId === effCat)?.label ?? t("guide.withEpg");
   const nowX = ((now - from) / 60000) * PX_MIN;
   const days = [t("guide.today"), t("guide.tomorrow"), new Date(Date.now() + 2 * 86400_000).toLocaleDateString(prefs.lang, { weekday: "long" })];
 
@@ -163,7 +163,7 @@ function Inner({ source }: { source: Source }) {
           <div className="modal" style={{ height: "min(36rem, 80vh)", padding: "1.25rem 0.5rem 1rem" }} role="dialog" aria-label={t("common.categories")}>
             <h3 style={{ padding: "0 1rem" }}>{t("common.categories")}</h3>
             <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <CategoryList cats={cats ?? []} value={effCat} extra={[{ id: "__fav", label: t("common.favorites"), n: favs.length }]} onPick={(c) => { setCat(c); setPop(false); }} />
+              <CategoryList cats={cats ?? []} value={effCat} extra={[{ id: "__fav", label: t("common.favorites"), n: favs.length }, { id: "", label: t("guide.withEpg") }]} onPick={(c) => { setCat(c); setPop(false); }} />
             </div>
           </div>
         </div>
