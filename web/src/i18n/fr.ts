@@ -84,6 +84,7 @@ export const fr = {
 
   "vod.sortBy": "Trier",
   "vod.empty": "Rien à afficher dans cette catégorie.",
+  "vod.seeAll": "Voir tout",
   "vod.year": "Année",
   "vod.cast": "Distribution",
   "vod.director": "Réalisation",

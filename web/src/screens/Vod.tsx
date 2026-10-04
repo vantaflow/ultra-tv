@@ -1,8 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { moviesCol, seriesCol, type VodSort } from "@/db/queries";
-import type { MovieRow, SeriesRow, Source } from "@/db/types";
+import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -80,7 +80,11 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
           <button className="chip" onClick={() => setPop(true)}>{t("common.allCategories")} ▾</button>
         </div>
       </div>
-      {rows.count === 0 ? <div className="state-card"><p>{t("vod.empty")}</p></div> : (
+      {cat === "" && !arrayMode && (cats?.length ?? 0) > 0 ? (
+        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet}
+          onSeeAll={(id) => prefs.set({ liveCat: { ...prefs.liveCat, [key]: id } })}
+          onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />
+      ) : rows.count === 0 ? <div className="state-card"><p>{t("vod.empty")}</p></div> : (
         <VGrid
           rows={rows} minW={150} gap={20} cellH={(w) => w * 1.5 + 58} resetKey={`${cat}|${effSort}|${dq}|${kind}`}
           render={(r) => r ? (
@@ -105,5 +109,61 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
         </div>
       )}
     </div>
+  );
+}
+
+const ROW_SIZE = 20;
+
+/** Vue « Tout » : une rangée défilante par catégorie (20 plus récents), « Voir tout » ouvre la grille. Chargement progressif. */
+function CategoryRows({ source, kind, cats, favSet, onSeeAll, onOpen }: {
+  source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>;
+  onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
+}) {
+  const [shown, setShown] = useState(8);
+  const sentinel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver((e) => { if (e.some((x) => x.isIntersecting)) setShown((n) => Math.min(cats.length, n + 8)); }, { rootMargin: "800px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [cats.length]);
+  return (
+    <div className="cat-rows">
+      {cats.slice(0, shown).map((c) => <CategoryRowView key={c.extId} source={source} kind={kind} cat={c} favSet={favSet} onSeeAll={onSeeAll} onOpen={onOpen} />)}
+      <div ref={sentinel} style={{ height: 1 }} />
+    </div>
+  );
+}
+
+function CategoryRowView({ source, kind, cat, favSet, onSeeAll, onOpen }: {
+  source: Source; kind: "movie" | "series"; cat: CategoryRow; favSet: Set<number>;
+  onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
+}) {
+  const t = useT();
+  const items = useLiveQuery(async () => ((kind === "movie" ? moviesCol(source.cid, cat.extId, "recent") : seriesCol(source.cid, cat.extId, "recent")) as import("dexie").Collection<Item, unknown>).limit(ROW_SIZE).toArray(), [source.cid, cat.extId, kind]);
+  if (items && items.length === 0) return null;
+  const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
+  return (
+    <section className="cat-row-v" aria-label={cat.label}>
+      <div className="cat-row-head">
+        <h2 className="ellipsis">{cat.label}</h2>
+        <button className="btn sm" onClick={() => onSeeAll(cat.extId)}>{t("vod.seeAll")}</button>
+      </div>
+      <div className="cat-row-scroll">
+        {(items ?? []).map((r) => (
+          <div key={r.id} className="cat-row-item">
+            <PosterCard kind={kind === "movie" ? "movie" : "tv"} year={r.year} title={r.title}
+              image={kind === "movie" ? (r as MovieRow).poster : (r as SeriesRow).poster}
+              meta={[r.year, r.rating > 0 ? `★ ${r.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}
+              fav={favSet.has(idOf(r))} onClick={() => onOpen(idOf(r))} />
+          </div>
+        ))}
+        {!items && Array.from({ length: 6 }, (_, i) => <div key={i} className="cat-row-item"><PosterSkeleton /></div>)}
+        {items && items.length >= ROW_SIZE && (
+          <button className="cat-row-more" onClick={() => onSeeAll(cat.extId)}>{t("vod.seeAll")}</button>
+        )}
+      </div>
+    </section>
   );
 }

@@ -85,6 +85,7 @@ export const ar: Dict = {
 
   "vod.sortBy": "ترتيب",
   "vod.empty": "لا شيء لعرضه في هذه الفئة.",
+  "vod.seeAll": "عرض الكل",
   "vod.year": "السنة",
   "vod.cast": "طاقم التمثيل",
   "vod.director": "الإخراج",

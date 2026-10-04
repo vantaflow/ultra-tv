@@ -85,6 +85,7 @@ export const en: Dict = {
 
   "vod.sortBy": "Sort",
   "vod.empty": "Nothing to show in this category.",
+  "vod.seeAll": "See all",
   "vod.year": "Year",
   "vod.cast": "Cast",
   "vod.director": "Director",
