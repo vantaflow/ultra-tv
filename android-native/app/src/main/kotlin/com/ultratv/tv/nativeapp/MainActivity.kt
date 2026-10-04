@@ -158,6 +158,7 @@ class MainActivity : ComponentActivity() {
         com.ultratv.tv.nativeapp.ui.common.DebugConnectivity.forceOffline = intent.getBooleanExtra("debug_offline", false)
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
         // Mesures (debug) : moteur (auto|exo|vlc), décodage (auto|hw|sw) et préréglage de tampon.
+        intent.getStringExtra("debug_lang")?.let { v -> lifecycleScope.launch { prefsStore.setLanguage(v) } }
         intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch { prefsStore.setPlayerEngine(v) } }
         intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch { prefsStore.setDecoderMode(v) } }
         intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch { prefsStore.setBufferPreset(v) } }
@@ -230,7 +231,11 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
     val ctxForDevice = androidx.compose.ui.platform.LocalContext.current
     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(prefs.language)
     val strings = com.ultratv.tv.nativeapp.i18n.stringsFor(lang)
-    val direction = if (lang == com.ultratv.tv.nativeapp.i18n.AppLang.Arabic)
+    // « Système » résout la langue de l'appareil : un téléphone en arabe doit aussi passer en RTL.
+    val resolvedLang = if (lang == com.ultratv.tv.nativeapp.i18n.AppLang.System &&
+        androidx.compose.ui.platform.LocalConfiguration.current.locales.get(0)?.language == "ar")
+        com.ultratv.tv.nativeapp.i18n.AppLang.Arabic else lang
+    val direction = if (resolvedLang == com.ultratv.tv.nativeapp.i18n.AppLang.Arabic)
         androidx.compose.ui.unit.LayoutDirection.Rtl
     else
         androidx.compose.ui.unit.LayoutDirection.Ltr

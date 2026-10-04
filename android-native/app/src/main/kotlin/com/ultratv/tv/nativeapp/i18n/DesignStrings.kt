@@ -28,9 +28,9 @@ class DesignStrings(val lang: AppLang) {
 
     fun seasonLabel(n: Int) = when (lang) { AppLang.French -> "Saison $n"; AppLang.Spanish -> "Temporada $n"; AppLang.Arabic -> "الموسم $n"; else -> "Season $n" }
     fun seasonsCount(n: Int) = when (lang) { AppLang.French -> if (n <= 1) "$n saison" else "$n saisons"; AppLang.Spanish -> if (n == 1) "$n temporada" else "$n temporadas"; AppLang.Arabic -> "$n مواسم"; else -> if (n == 1) "$n season" else "$n seasons" }
-    fun episodeTag(s: Int, e: Int) = when (lang) { AppLang.French -> "S$s É$e"; else -> "S$s E$e" }
+    fun episodeTag(s: Int, e: Int) = when (lang) { AppLang.French -> "S$s É$e"; AppLang.Arabic -> "م$s ح$e"; else -> "S$s E$e" }
     fun episodeWord(e: Int) = when (lang) { AppLang.French -> "Épisode $e"; AppLang.Spanish -> "Episodio $e"; AppLang.Arabic -> "الحلقة $e"; else -> "Episode $e" }
-    fun episodeShort(e: Int) = if (lang == AppLang.French) "É$e" else "E$e"
+    fun episodeShort(e: Int) = when (lang) { AppLang.French -> "É$e"; AppLang.Arabic -> "ح$e"; else -> "E$e" }
     fun resumeEpisode(s: Int, e: Int) = when (lang) { AppLang.French -> "Reprendre ${episodeTag(s, e)}"; AppLang.Spanish -> "Reanudar ${episodeTag(s, e)}"; AppLang.Arabic -> "استئناف ${episodeTag(s, e)}"; else -> "Resume ${episodeTag(s, e)}" }
     fun playEpisodeLabel(s: Int, e: Int) = when (lang) { AppLang.French -> "Lecture ${episodeTag(s, e)}"; AppLang.Spanish -> "Ver ${episodeTag(s, e)}"; AppLang.Arabic -> "تشغيل ${episodeTag(s, e)}"; else -> "Play ${episodeTag(s, e)}" }
     val watchedLabel get() = t("watched", "vu", "visto", "تمت المشاهدة")
@@ -54,7 +54,7 @@ class DesignStrings(val lang: AppLang) {
     fun storageOf(used: String, total: String) = when (lang) { AppLang.French -> "$used sur $total"; AppLang.Spanish -> "$used de $total"; AppLang.Arabic -> "$used من $total"; else -> "$used of $total" }
     val recActive get() = t("In progress and scheduled", "En cours et programmés", "En curso y programadas", "قيد التنفيذ ومجدولة")
     val recDone get() = t("Finished", "Terminés", "Terminadas", "المكتملة")
-    val recBadge get() = "REC"
+    val recBadge get() = t("REC", "REC", "REC", "تسجيل")
     val recQueuedBadge get() = t("QUEUE", "FILE", "COLA", "انتظار")
     val recFailedBadge get() = t("FAILED", "ÉCHEC", "ERROR", "فشل")
     val recStop get() = t("Stop", "Arrêter", "Detener", "إيقاف")
