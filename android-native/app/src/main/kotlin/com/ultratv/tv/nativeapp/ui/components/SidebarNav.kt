@@ -27,6 +27,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -82,6 +85,7 @@ const val RAIL_EXPANDED_PX = 340
  * À placer dans un Box plein écran, au-dessus du contenu décalé de [RAIL_COLLAPSED_PX].
  */
 @androidx.tv.material3.ExperimentalTvMaterial3Api
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun SidebarNav(navController: NavController) {
     val current by navController.currentBackStackEntryAsState()
@@ -117,6 +121,9 @@ fun SidebarNav(navController: NavController) {
     val labelAlphaState = androidx.compose.animation.core.animateFloatAsState(if (labels) 1f else 0f, tween(if (noAnim) 0 else 80), label = "railLabels")
     val showLabels by remember { androidx.compose.runtime.derivedStateOf { labelAlphaState.value > 0f } }
 
+    val activeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val hasActive = route == "search" || railItems.any { isSelected(route, it.route) }
+
     Box(Modifier.fillMaxSize()) {
         // Voile de la maquette MenuOuvert (rgba(10,10,12,.72)) : dessiné, jamais mesuré par le contenu.
         if (expanded) Box(Modifier.fillMaxSize().background(Ux.Scrim))
@@ -133,6 +140,9 @@ fun SidebarNav(navController: NavController) {
                     .weight(1f)
                     .background(Ux.Rail)
                     .clipToBounds()
+                    // Entrer dans le menu (← depuis la page) place le focus sur la PAGE OUVERTE, pas sur Rechercher.
+                    .focusProperties { enter = { if (hasActive) activeFocus else androidx.compose.ui.focus.FocusRequester.Default } }
+                    .focusGroup()
                     .onFocusChanged { expanded = it.hasFocus }
                     // Géométrie identique replié / déplié : les icônes gardent le même x pendant tout l'élargissement.
                     .padding(vertical = 54.design, horizontal = 24.design),
@@ -159,7 +169,7 @@ fun SidebarNav(navController: NavController) {
                     bg = if (searchActive) Ux.Accent else Ux.Surface,
                     focusedScale = 1.05f,
                     ringWidth = 5.design,
-                    modifier = Modifier.height(64.design).fillMaxWidth().testTag("rail-search"),
+                    modifier = Modifier.height(64.design).fillMaxWidth().testTag("rail-search").then(if (searchActive) Modifier.focusRequester(activeFocus) else Modifier),
                 ) { focused ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(16.design))
@@ -202,7 +212,7 @@ fun SidebarNav(navController: NavController) {
                             bg = if (active) Ux.Accent else Color.Transparent,
                             focusedScale = 1.05f,
                             ringWidth = 5.design,
-                            modifier = Modifier.height(h.design).fillMaxWidth(),
+                            modifier = Modifier.height(h.design).fillMaxWidth().then(if (active) Modifier.focusRequester(activeFocus) else Modifier),
                         ) { focused ->
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.width(16.design))
