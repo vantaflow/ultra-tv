@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.live
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -296,6 +297,14 @@ private fun SectionHeader(label: String) {
 /** Pastille de qualité : 4K accent, FHD blanc, HD gris clair, SD gris ; inversée sur la ligne focalisée. */
 @Composable
 internal fun QualityBadge(quality: Int, focused: Boolean) {
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        // Maquette MobileDirect : pastille CERCLÉE (liseré 1,5 dp), 4K accent, FHD clair, HD gris ; sur ligne choisie : encre.
+        val (t, c) = when (quality) { 4 -> "4K" to Ux.Accent; 3 -> "FHD" to Ux.Text; 2 -> "HD" to Ux.Text2; 1 -> "SD" to Ux.Muted; else -> return }
+        val ink = if (focused) Ux.TextOnLight else c
+        Text(t, color = ink, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, maxLines = 1,
+            modifier = Modifier.border(1.5.dp, ink, RoundedCornerShape(6.dp)).padding(horizontal = 7.dp, vertical = 3.dp))
+        return
+    }
     val (text, bg, fg) = when (quality) {
         4 -> Triple("4K", Ux.Accent, Color.White)
         3 -> Triple("FHD", Color.White, Color(0xFF0A0A0C))
@@ -406,7 +415,7 @@ private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, fa
             }
             if (favorite) Text("♥", color = Ux.Accent, fontSize = 13.sp, maxLines = 1)
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, false)
-            QualityBadge(c.quality, false)
+            QualityBadge(c.quality, selected)
         }
     }
 }
