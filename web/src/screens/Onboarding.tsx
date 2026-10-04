@@ -137,7 +137,7 @@ export function Onboarding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, savedId]);
 
-  const done = !sync.running && !sync.error && !!sync.progress;
+  const done = step === "sync" && !sync.running && !sync.error && !!sync.progress;
   useEffect(() => { if (done) { const id = setTimeout(() => nav("/", { replace: true }), 900); return () => clearTimeout(id); } }, [done, nav]);
 
   const catsTotal = useMemo(() => detected.filter((l) => chosen.has(l.code)).reduce((a, l) => a + l.categories, 0), [detected, chosen]);
