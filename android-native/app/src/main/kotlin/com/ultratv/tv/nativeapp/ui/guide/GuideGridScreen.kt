@@ -1,393 +1,318 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.EpgDao
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
-import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
+import com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.ui.common.EpgClock
+import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
+import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.ui.design.FocusSurface
+import com.ultratv.tv.nativeapp.ui.design.LogoBox
+import com.ultratv.tv.nativeapp.ui.design.Manrope
+import com.ultratv.tv.nativeapp.ui.design.Sora
+import com.ultratv.tv.nativeapp.ui.design.Ux
+import com.ultratv.tv.nativeapp.ui.design.spx
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import androidx.tv.material3.Button
-import androidx.tv.material3.Card
-import androidx.tv.material3.CardDefaults
-import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
 
-/** Time window represented horizontally. We render 8h at a time around the
- *  user's current scroll anchor; 1 hour = 240 dp on screen. */
-private const val PX_PER_HOUR_DP = 240
-private const val PX_PER_MIN_DP = PX_PER_HOUR_DP / 60f
-private const val ROW_HEIGHT_DP = 60
+/** Fenêtre de la grille : 3 h en 6 créneaux de 30 min (maquette Guide.dc.html). */
+const val GUIDE_WINDOW_MS = 3 * 3_600_000L
+private const val SLOT_MS = 30 * 60_000L
 
-/** Provider-wide EPG view. Loads everything in [rangeForChannels] for the
- *  visible channel set; the LazyColumn only renders visible rows so the
- *  upfront query, even on 5000 channels × 24h, stays well under 100 ms. */
-@OptIn(ExperimentalCoroutinesApi::class)
+/** Début de fenêtre pour le jour [dayOffset] : aujourd'hui = demi-heure courante, ensuite 20:00. */
+fun guideWindowStart(nowMs: Long, dayOffset: Int): Long {
+    if (dayOffset == 0) return nowMs / SLOT_MS * SLOT_MS
+    val cal = Calendar.getInstance().apply {
+        timeInMillis = nowMs; add(Calendar.DAY_OF_YEAR, dayOffset)
+        set(Calendar.HOUR_OF_DAY, 20); set(Calendar.MINUTE, 0); set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+    }
+    return cal.timeInMillis
+}
+
+/**
+ * Certains guides contiennent des programmes qui se chevauchent ou se répètent : on garde l'ordre
+ * chronologique, on rogne le début des suivants et on écarte ceux entièrement recouverts.
+ */
+fun normalizeRow(items: List<EpgEntity>): List<EpgEntity> {
+    val out = ArrayList<EpgEntity>(items.size)
+    var cursor = Long.MIN_VALUE
+    for (p in items.sortedWith(compareBy({ it.startMs }, { it.endMs }))) {
+        if (p.endMs <= cursor || p.endMs <= p.startMs) continue
+        out += if (p.startMs < cursor) p.copy(startMs = cursor) else p
+        cursor = p.endMs
+    }
+    return out
+}
+
+/** Placement d'un programme dans la grille : fractions [0..1] de la fenêtre, tronquées aux bords. */
+data class Slot(val startFrac: Float, val widthFrac: Float)
+
+fun slotFor(startMs: Long, endMs: Long, windowStart: Long, windowMs: Long = GUIDE_WINDOW_MS): Slot? {
+    val s = maxOf(startMs, windowStart)
+    val e = minOf(endMs, windowStart + windowMs)
+    if (e <= s) return null
+    return Slot((s - windowStart).toFloat() / windowMs, (e - s).toFloat() / windowMs)
+}
+
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class GuideGridViewModel @Inject constructor(
     providerRepo: ProviderRepository,
-    private val catalog: CatalogRepository,
-    private val provider: ProviderRepository,
+    private val channelDao: ChannelDao,
     private val epgDao: EpgDao,
+    private val reminders: RemindersScheduler,
 ) : ViewModel() {
+    private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
-    val channels: StateFlow<List<ChannelEntity>> = providerRepo.observeProviders()
-        .flatMapLatest { ps ->
-            val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id
-                ?: return@flatMapLatest flowOf(emptyList())
-            catalog.channels(pid)
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    private val _windowStart = MutableStateFlow(guideWindowStart(System.currentTimeMillis(), 0))
+    val windowStart: StateFlow<Long> = _windowStart.asStateFlow()
+    fun setWindowStart(ms: Long) { _windowStart.value = ms }
+
+    /** Seules les chaînes ayant un guide dans la fenêtre sont des lignes (pas 55 000 lignes vides). */
+    val channels: kotlinx.coroutines.flow.Flow<PagingData<ChannelEntity>> = combine(pid, _windowStart) { id, w -> id to w }
+        .flatMapLatest { (id, w) ->
+            if (id == null) flowOf(PagingData.empty())
+            else Pager(PagingConfig(pageSize = 20, prefetchDistance = 10, initialLoadSize = 30, enablePlaceholders = false)) {
+                channelDao.pagedWithEpg(id, w, w + GUIDE_WINDOW_MS)
+            }.flow
+        }.cachedIn(viewModelScope)
 
     private val _programmes = MutableStateFlow<Map<Long, List<EpgEntity>>>(emptyMap())
     val programmes: StateFlow<Map<Long, List<EpgEntity>>> = _programmes.asStateFlow()
+    private val visible = MutableStateFlow<List<Long>>(emptyList())
+    fun setVisible(ids: List<Long>) { visible.value = ids }
 
-    private val _loading = MutableStateFlow(false)
-    val loading: StateFlow<Boolean> = _loading.asStateFlow()
-
-    /** Pull a fresh xmltv into the EPG table. */
-    fun refreshXmltv() {
+    init {
         viewModelScope.launch {
-            _loading.value = true
-            val pid = catalog.channels(0).let { 0L }  // dummy to satisfy compiler — real id below
-            try {
-                val activeId = channels.value.firstOrNull()?.providerId ?: return@launch
-                provider.syncXmltv(activeId) { /* SyncStatusBus handles UI */ }
-            } finally {
-                _loading.value = false
-                reloadFor(channels.value)
+            combine(visible.debounce(150), _windowStart) { v, w -> v to w }.collect { (ids, w) ->
+                if (ids.isEmpty()) return@collect
+                val rows = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, w, w + GUIDE_WINDOW_MS) }
+                _programmes.value = _programmes.value + rows.groupBy { it.channelId }.let { m -> ids.associateWith { normalizeRow(m[it].orEmpty()) } }
             }
         }
+        // Nouvelle fenêtre : on repart d'un cache vide (les lignes visibles sont rechargées).
+        viewModelScope.launch { _windowStart.collect { _programmes.value = emptyMap() } }
     }
 
-    /** Reload programmes for the visible channels for the next 12 h window. */
-    fun reloadFor(visible: List<ChannelEntity>) {
+    fun addReminder(channel: ChannelEntity, prog: EpgEntity) {
         viewModelScope.launch {
-            if (visible.isEmpty()) { _programmes.value = emptyMap(); return@launch }
-            val now = System.currentTimeMillis()
-            val end = now + 12 * 60 * 60 * 1000L
-            // 500-id chunks: SQLite refuses IN-lists > 999 host params.
-            val flat = visible.map { it.id }.chunked(500).flatMap { ids ->
-                epgDao.rangeForChannels(ids, now - 60 * 60_000, end)
-            }
-            _programmes.value = flat.groupBy { it.channelId }
+            reminders.add(
+                com.ultratv.tv.nativeapp.data.reminders.ReminderEntity(
+                    providerId = channel.providerId, channelRemoteId = channel.remoteId, channelName = channel.name,
+                    programmeTitle = prog.title, startMs = prog.startMs, endMs = prog.endMs,
+                ),
+            )
         }
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+/** Guide TV (maquette Guide.dc.html) : colonne chaînes de 260, 6 créneaux de 30 min, ligne accent = maintenant. */
 @Composable
-fun GuideGridScreen(
-    onPlayChannel: (ChannelEntity) -> Unit,
-    vm: GuideGridViewModel = hiltViewModel(),
-) {
-    val channels by vm.channels.collectAsState()
-    val byChannel by vm.programmes.collectAsState()
-    val loading by vm.loading.collectAsState()
+fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, vm: GuideGridViewModel = hiltViewModel()) {
+    val D = LocalDs.current
+    val channels = vm.channels.collectAsLazyPagingItems()
+    val programmes by vm.programmes.collectAsState()
+    val windowStart by vm.windowStart.collectAsState()
+    var day by remember { mutableStateOf(0) }
+    val now = remember(windowStart) { System.currentTimeMillis() }
+    val focus = LocalFocusManager.current
+    var inGrid by remember { mutableStateOf(false) }
 
-    // Reload programmes whenever the channel list changes.
-    LaunchedEffect(channels) { vm.reloadFor(channels) }
-
-    val now by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    // Time axis: 12h window starting at "now floored to top of hour minus 30 min".
-    val windowStart = remember(now) { (now / 3_600_000L) * 3_600_000L - 30 * 60_000L }
-    val windowEnd = remember(windowStart) { windowStart + 12 * 60 * 60 * 1000L }
-
-    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
-    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
-    Column(Modifier.fillMaxSize()) {
-        // Editorial header
-        androidx.compose.foundation.layout.Spacer(Modifier.height(40.dp))
-        Column(Modifier.padding(start = T.EdgeGutter, end = T.EdgeGutter, bottom = 20.dp)) {
-            Text(
-                "GUIDE TÉLÉ",
-                color = T.Fg3,
-                fontSize = 11.sp,
-                letterSpacing = 2.3.sp,
-                fontWeight = FontWeight.Medium,
-            )
-            androidx.compose.foundation.layout.Spacer(Modifier.height(6.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    S.tvGuide,
-                    fontFamily = F.Serif,
-                    fontSize = 48.sp,
-                    lineHeight = 48.sp,
-                    letterSpacing = (-1.4).sp,
-                    color = T.Fg,
-                )
-                val total = byChannel.values.sumOf { it.size }
-                Text(
-                    S.guideProgrammesTemplate.format(total, channels.size),
-                    fontSize = 13.sp,
-                    color = T.Fg3,
-                )
-                Button(
-                    onClick = { vm.refreshXmltv() },
-                    enabled = !loading,
-                    colors = androidx.tv.material3.ButtonDefaults.colors(containerColor = T.Surface2),
-                ) {
-                    Text(if (loading) S.guideLoading else S.guideRefreshXmltv, fontSize = 13.sp, color = T.Fg2)
-                }
+    Column(
+        Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design)
+            // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
+            .onPreviewKeyEvent { e ->
+                if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
+                val dir = if (e.key == Key.DirectionRight) FocusDirection.Right else FocusDirection.Left
+                if (inGrid && !focus.moveFocus(dir)) {
+                    vm.setWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
+                    true
+                } else true
+            },
+        verticalArrangement = Arrangement.spacedBy(28.design),
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
+                Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1)
+                val dayLabel = dayName(D, day)
+                Text("$dayLabel · ${EpgClock.hm(windowStart)} – ${EpgClock.hm(windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
+                for (d in 0..2) DayChip(dayName(D, d), selected = d == day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
             }
         }
 
-        // Time header row — sticky to the top of the right pane.
-        val hScroll = rememberScrollState()
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(start = T.EdgeGutter, end = T.EdgeGutter)
-                .height(38.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // Left header — CHAÎNE label
-            Text(
-                "CHAÎNE",
-                color = T.Fg3,
-                fontSize = 11.sp,
-                letterSpacing = 2.3.sp,
-                fontWeight = FontWeight.Medium,
-                modifier = Modifier.width(200.dp),
-            )
-            Row(
-                Modifier
-                    .horizontalScroll(hScroll)
-                    .height(38.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val slots = (0..23).toList()
-                slots.forEach { slot ->
-                    val slotMs = windowStart + slot * 30 * 60_000L
-                    Box(
-                        modifier = Modifier
-                            .width((PX_PER_HOUR_DP / 2).dp)
-                            .height(38.dp)
-                            .background(if (slot % 2 == 0) T.Surface1 else androidx.compose.ui.graphics.Color.Transparent),
-                    ) {
+        // En-tête des créneaux
+        Row(Modifier.fillMaxWidth().padding(bottom = 8.design)) {
+            Spacer(Modifier.width(260.design))
+            Row(Modifier.weight(1f)) {
+                for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, modifier = Modifier.weight(1f), maxLines = 1)
+            }
+        }
+        Box(Modifier.fillMaxWidth().height(1.dp1()).background(Ux.Surface2))
+
+        if (channels.itemCount == 0) {
+            Text(D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+            return@Column
+        }
+
+        val state = rememberLazyListState()
+        LaunchedEffect(state, channels) {
+            snapshotFlow { state.layoutInfo.visibleItemsInfo.map { it.index } }.collect { idx ->
+                vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.id })
+            }
+        }
+        val first = remember { FocusRequester() }
+        var firstFocused by remember { mutableStateOf(false) }
+        RequestInitialFocus(first, hasFocus = { firstFocused }, key = programmes.isNotEmpty())
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }) {
+            val gridW = maxWidth - 260.design
+            LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(top = 12.design, bottom = 54.design)) {
+                items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { "row" }) { i ->
+                    val c = channels[i]
+                    if (c != null) {
+                        GuideRow(
+                            c, programmes[c.id].orEmpty(), windowStart, gridW,
+                            firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
+                            onPlay = { onPlayChannel(c) }, onRemind = { vm.addReminder(c, it) },
+                        )
+                    } else Spacer(Modifier.height(84.design))
+                }
+            }
+            // Ligne « maintenant » (accent, 3 px) : seulement si l'instant courant est dans la fenêtre.
+            val nowFrac = (now - windowStart).toFloat() / GUIDE_WINDOW_MS
+            if (nowFrac in 0f..1f) Box(Modifier.offset(x = 260.design + gridW * nowFrac).width(3.design).fillMaxHeight().background(Ux.Accent))
+        }
+    }
+}
+
+private fun Int.dp1() = androidx.compose.ui.unit.Dp(0.5f)
+
+private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int): String = when (offset) {
+    0 -> D.today
+    1 -> D.tomorrow
+    else -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }
+}
+
+@Composable
+private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.White else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
+        Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
+            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+        }
+    }
+}
+
+/** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
+@Composable
+private fun GuideRow(
+    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp,
+    firstModifier: Modifier, onPlay: () -> Unit, onRemind: (EpgEntity) -> Unit,
+) {
+    val nowMs = System.currentTimeMillis()
+    Row(Modifier.fillMaxWidth().height(84.design)) {
+        Row(Modifier.width(260.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
+            LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
+            Spacer(Modifier.width(14.design))
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        Box(Modifier.width(gridW).fillMaxHeight()) {
+            progs.forEachIndexed { idx, p ->
+                val slot = slotFor(p.startMs, p.endMs, windowStart) ?: return@forEachIndexed
+                val isNow = p.startMs <= nowMs && p.endMs > nowMs
+                val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
+                FocusSurface(
+                    onClick = onPlay,
+                    onLongClick = { if (p.startMs > nowMs) onRemind(p) },
+                    shape = RoundedCornerShape(14.design),
+                    bg = if (isNow) Ux.Surface2 else Ux.SurfaceDeep,
+                    ringWidth = 5.design, focusedScale = 1.03f,
+                    modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
+                        .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
+                ) { f ->
+                    Column(Modifier.fillMaxSize().padding(horizontal = 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
+                        Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(
-                            formatHm(slotMs),
-                            color = T.Fg3,
-                            fontSize = 11.sp,
-                            fontFamily = F.Mono,
-                            modifier = Modifier.padding(start = 8.dp, top = 10.dp),
+                            "${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.Line else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         )
                     }
                 }
             }
         }
-        Box(Modifier.fillMaxWidth().height(1.dp).background(T.Line))
-
-        if (channels.isEmpty()) {
-            Text(
-                S.guideNoChannels,
-                color = T.Fg3,
-                modifier = Modifier.padding(start = T.EdgeGutter, top = 20.dp),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = T.EdgeGutter, end = T.EdgeGutter),
-                verticalArrangement = Arrangement.spacedBy(0.dp),
-                contentPadding = PaddingValues(bottom = 40.dp),
-            ) {
-                items(channels, key = { it.id }) { c ->
-                    GuideRow(
-                        channel = c,
-                        programmes = byChannel[c.id].orEmpty(),
-                        windowStartMs = windowStart,
-                        windowEndMs = windowEnd,
-                        nowMs = now,
-                        hScroll = hScroll,
-                        onPlay = { onPlayChannel(c) },
-                    )
-                }
-            }
-        }
     }
 }
-
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
-@Composable
-private fun GuideRow(
-    channel: ChannelEntity,
-    programmes: List<EpgEntity>,
-    windowStartMs: Long,
-    windowEndMs: Long,
-    nowMs: Long,
-    hScroll: androidx.compose.foundation.ScrollState,
-    onPlay: () -> Unit,
-) {
-    val T = com.ultratv.tv.nativeapp.ui.theme.UltraTokens
-    val F = com.ultratv.tv.nativeapp.ui.theme.UltraFonts
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(ROW_HEIGHT_DP.dp)
-            .background(androidx.compose.ui.graphics.Color.Transparent),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        // Channel column — fixed left: logo + name, clickable to start playback.
-        Card(
-            onClick = onPlay,
-            modifier = Modifier.width(200.dp).fillMaxHeight().padding(end = 8.dp),
-            shape = CardDefaults.shape(RoundedCornerShape(10.dp)),
-            colors = com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(containerColor = T.Surface1),
-        ) {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                com.ultratv.tv.nativeapp.ui.common.ChannelLogo(
-                    name = channel.name,
-                    logoUrl = channel.logo,
-                    short = null,
-                    hueSeed = channel.name.hashCode(),
-                    hd = null,
-                    size = 36.dp,
-                    showBadge = false,
-                )
-                androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
-                Text(
-                    channel.name,
-                    maxLines = 2,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = T.Fg,
-                )
-            }
-        }
-        // Programme strip — scrolls horizontally in lock-step with the header.
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .horizontalScroll(hScroll),
-        ) {
-            // Width = (window_end - window_start) / 1h * PX_PER_HOUR_DP
-            val hours = ((windowEndMs - windowStartMs) / 3_600_000.0).coerceAtLeast(1.0)
-            val totalWidthDp = (hours * PX_PER_HOUR_DP).toInt().dp
-            Box(Modifier.width(totalWidthDp).fillMaxHeight()) {
-                programmes
-                    .filter { it.endMs > windowStartMs && it.startMs < windowEndMs }
-                    .forEach { prog ->
-                        val start = prog.startMs.coerceAtLeast(windowStartMs)
-                        val end = prog.endMs.coerceAtMost(windowEndMs)
-                        val leftDp = ((start - windowStartMs) / 60_000f * PX_PER_MIN_DP).toInt().dp
-                        val widthDp = ((end - start) / 60_000f * PX_PER_MIN_DP).toInt().coerceAtLeast(4).dp
-                        val isLive = nowMs in prog.startMs..prog.endMs
-                        Card(
-                            onClick = onPlay,
-                            modifier = Modifier
-                                .padding(start = leftDp, top = 4.dp, bottom = 4.dp, end = 2.dp)
-                                .width(widthDp)
-                                .fillMaxHeight(),
-                            shape = CardDefaults.shape(RoundedCornerShape(8.dp)),
-                            colors = if (isLive)
-                                com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(
-                                    containerColor = T.AccentSoft,
-                                    focusedContainerColor = T.Accent,
-                                    focusedContentColor = androidx.compose.ui.graphics.Color.White,
-                                )
-                            else com.ultratv.tv.nativeapp.ui.theme.ultraCardColors(containerColor = T.Surface1),
-                        ) {
-                            Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                Text(
-                                    prog.title,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isLive) T.Fg else T.Fg2,
-                                    maxLines = 1,
-                                )
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        formatHm(prog.startMs),
-                                        fontSize = 10.sp,
-                                        fontFamily = F.Mono,
-                                        color = if (isLive) T.Accent else T.Fg4,
-                                    )
-                                    if (isLive) {
-                                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
-                                        Box(
-                                            Modifier
-                                                .width(5.dp)
-                                                .height(5.dp)
-                                                .background(T.Accent, androidx.compose.foundation.shape.CircleShape)
-                                        )
-                                        androidx.compose.foundation.layout.Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            com.ultratv.tv.nativeapp.i18n.LocalStrings.current.liveOnAirPill,
-                                            color = T.Accent,
-                                            fontSize = 9.sp,
-                                            letterSpacing = 0.6.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                if (nowMs in windowStartMs..windowEndMs) {
-                    val nowLeftDp = ((nowMs - windowStartMs) / 60_000f * PX_PER_MIN_DP).toInt().dp
-                    Box(
-                        Modifier
-                            .padding(start = nowLeftDp)
-                            .width(2.dp)
-                            .fillMaxHeight()
-                            .background(T.Accent),
-                    )
-                }
-            }
-        }
-    }
-}
-
-private val hmFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-private fun formatHm(ms: Long): String = hmFmt.format(Date(ms))

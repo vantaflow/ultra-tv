@@ -168,6 +168,37 @@ interface ChannelDao {
     @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun pagedForCategory(pid: Long, cat: String): androidx.paging.PagingSource<Int, ChannelEntity>
 
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND (categoryId IS NULL OR categoryId NOT IN (:hidden)) ORDER BY sortKey")
+    fun pagedAllExcluding(pid: Long, hidden: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Chaînes qui ONT un programme dans la fenêtre [from, to] (lignes de la grille du guide). */
+    @Query("""
+        SELECT * FROM channel c WHERE c.providerId = :pid
+        AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
+        ORDER BY c.sortKey
+    """)
+    fun pagedWithEpg(pid: Long, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Fenêtres pour le zapping du lecteur (haut/bas) : jamais toute la liste en mémoire. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid ORDER BY sortKey LIMIT :limit OFFSET :offset")
+    suspend fun windowAll(pid: Long, limit: Int, offset: Int): List<ChannelEntity>
+
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey LIMIT :limit OFFSET :offset")
+    suspend fun windowCategory(pid: Long, cat: String, limit: Int, offset: Int): List<ChannelEntity>
+
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND sortKey < :key")
+    suspend fun rankAll(pid: Long, key: String): Int
+
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND categoryId = :cat AND sortKey < :key")
+    suspend fun rankCategory(pid: Long, cat: String, key: String): Int
+
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId = :pid ORDER BY c.sortKey
+    """)
+    suspend fun favoritesList(pid: Long): List<ChannelEntity>
+
     @Query("""
         SELECT c.* FROM channel c
         JOIN favorite f ON f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
@@ -315,6 +346,9 @@ interface CategoryDao {
 interface FavoriteDao {
     @Query("SELECT * FROM favorite WHERE providerId = :pid AND kind = :kind")
     fun observeForKind(pid: Long, kind: String): Flow<List<FavoriteEntity>>
+
+    @Query("SELECT COUNT(*) FROM favorite WHERE providerId = :pid AND kind = :kind")
+    fun observeCount(pid: Long, kind: String): Flow<Int>
 
     @Query("SELECT EXISTS(SELECT 1 FROM favorite WHERE providerId = :pid AND kind = :kind AND remoteId = :rid)")
     fun observeIsFavorite(pid: Long, kind: String, rid: String): Flow<Boolean>

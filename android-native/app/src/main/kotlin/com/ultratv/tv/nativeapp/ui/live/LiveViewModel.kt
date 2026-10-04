@@ -2,20 +2,35 @@ package com.ultratv.tv.nativeapp.ui.live
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
+import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.db.EpgDao
+import com.ultratv.tv.nativeapp.data.db.EpgEntity
+import com.ultratv.tv.nativeapp.data.db.FavoriteDao
 import com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
 import com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
+import com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue
 import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
+import com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
+import com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -24,290 +39,167 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/**
- * Sentinel category remoteId meaning "show every channel". The Tivimate-style
- * UI renders this as a pinned "All channels" entry at the top of the category
- * list.
- */
+/** Catégorie « Tout » (toutes les chaînes) et « Favoris » (colonne de gauche du Direct). */
 const val CATEGORY_ALL = "__all__"
+const val CATEGORY_FAVORITES = "__fav__"
 
-/** Nombre max de chaînes affichées dans la vue « Toutes ». */
-const val ALL_CHANNELS_CAP = 1_500
+/** Entrée de la colonne de catégories : nom, compteur réel, verrouillage parental. */
+data class DirectCategory(val id: String, val name: String?, val count: Int, val locked: Boolean = false)
 
-/** Chaînes dont on charge le « en cours / suivant » (celles que l'écran peut montrer). */
-const val NOW_NEXT_CAP = 400
-
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class LiveViewModel @Inject constructor(
-    private val syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
-    private val lockedStore: LockedChannelsStore,
+    lockedStore: LockedChannelsStore,
     private val playback: PlaybackContext,
-    private val epgDaoArg: com.ultratv.tv.nativeapp.data.db.EpgDao,
-    private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
-    private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
-    private val channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
+    private val epgDao: EpgDao,
+    private val zapQueue: LivePlaybackQueue,
+    private val reminders: RemindersScheduler,
+    private val channelDao: ChannelDao,
+    private val favoriteDao: FavoriteDao,
+    private val syncCoordinator: SyncCoordinator,
 ) : ViewModel() {
 
-    /**
-     * Swap [channel] with its neighbour at [delta] in the currently visible
-     * list, persisting both userPosition values. delta = -1 moves up, +1
-     * moves down. Cascades fresh positions to neighbours so the user can
-     * keep nudging a row without holes appearing.
-     */
-    fun moveChannel(channel: ChannelEntity, delta: Int) {
-        val list = channels.value
-        val idx = list.indexOfFirst { it.id == channel.id }.takeIf { it >= 0 } ?: return
-        val target = (idx + delta).coerceIn(0, list.size - 1)
-        if (target == idx) return
-        viewModelScope.launch {
-            // Re-assign positions across the affected slice so the user's new
-            // order survives subsequent inserts. 100 per slot leaves space for
-            // future fine-grained nudges without renumbering.
-            val moved = list.toMutableList().apply {
-                add(target, removeAt(idx))
-            }
-            moved.forEachIndexed { i, ch ->
-                channelDao.setPosition(ch.id, (i + 1) * 100)
-            }
-        }
-    }
-
-    /** Pin to top: set userPosition = 1 so the channel floats above the
-     *  alphabetical block. Pressing again resets to 0. Simpler than a full
-     *  reorder mode for users who just want their favourites on top. */
-    fun togglePin(channel: ChannelEntity) {
-        viewModelScope.launch {
-            channelDao.setPosition(channel.id, if (channel.userPosition == 0) 1 else 0)
-        }
-    }
-
-    /** Reset every channel of the active provider back to natural order. */
-    fun resetChannelOrder() {
-        viewModelScope.launch {
-            val pid = providers.value.firstOrNull { it.active }?.id
-                ?: providers.value.firstOrNull()?.id
-                ?: return@launch
-            channelDao.resetPositions(pid)
-        }
-    }
-
+    private val _locked = lockedStore
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
-    // EPG now/next per channel for the current visible list. We re-query every
-    // 60s as well as whenever the channel list changes; rangeForChannels with
-    // an IN(...) on a few hundred ids is fast (indices on channelId).
-    private val _nowNext = MutableStateFlow<Map<Long, Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>>(emptyMap())
-    val nowNext: StateFlow<Map<Long, Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>> = _nowNext.asStateFlow()
+    private val providers = provider.observeProviders().distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val epgDao = epgDaoArg
+    private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
-    /** Adds a reminder for a future programme on the given channel. */
-    fun addReminder(channel: ChannelEntity, prog: com.ultratv.tv.nativeapp.data.db.EpgEntity) {
+    private val _selected = MutableStateFlow(CATEGORY_ALL)
+    val selectedCategory: StateFlow<String> = _selected.asStateFlow()
+    fun selectCategory(id: String) { _selected.value = id }
+
+    /** Favoris, Tout, puis les catégories NON vides avec leur compteur réel (SQL, servi par l'index). */
+    val categories: StateFlow<List<DirectCategory>> = combine(pid, hiddenStore.hidden) { id, hidden -> id to hidden }
+        .flatMapLatest { (id, hidden) ->
+            if (id == null) flowOf(emptyList())
+            else combine(
+                catalog.categories(id, "LIVE"),
+                channelDao.observeCategoryCounts(id),
+                favoriteDao.observeCount(id, "LIVE"),
+            ) { cats: List<CategoryEntity>, counts, favCount ->
+                val byId = counts.associate { it.categoryId to it.n }
+                val visible = cats.filter { hiddenStore.keyFor("LIVE", id, it.remoteId) !in hidden }
+                    .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked) } }
+                val total = visible.sumOf { it.count }
+                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, _selected.debounce(120), hiddenStore.hidden) { id, cat, hidden -> Triple(id, cat, hidden) }
+        .distinctUntilChanged()
+        .flatMapLatest { (id, cat, hidden) ->
+            if (id == null) flowOf(PagingData.empty())
+            else Pager(PagingConfig(pageSize = 40, prefetchDistance = 24, initialLoadSize = 60, enablePlaceholders = false)) {
+                when {
+                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id)
+                    cat == CATEGORY_ALL -> {
+                        val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
+                        if (hiddenIds.isEmpty()) channelDao.pagedAll(id) else channelDao.pagedAllExcluding(id, hiddenIds)
+                    }
+                    else -> channelDao.pagedForCategory(id, cat)
+                }
+            }.flow
+        }
+        .cachedIn(viewModelScope)
+
+    // ── Programme en cours / suivant, chargé pour les lignes VISIBLES seulement ──
+    private val _nowNext = MutableStateFlow<Map<Long, Pair<EpgEntity?, EpgEntity?>>>(emptyMap())
+    val nowNext: StateFlow<Map<Long, Pair<EpgEntity?, EpgEntity?>>> = _nowNext.asStateFlow()
+    private val visibleIds = MutableStateFlow<List<Long>>(emptyList())
+    fun setVisible(ids: List<Long>) { visibleIds.value = ids }
+
+    private suspend fun loadNowNext(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        val now = System.currentTimeMillis()
+        val rows = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 6 * 60 * 60_000) }.groupBy { it.channelId }
+        val add = ids.associateWith { id ->
+            val l = rows[id].orEmpty()
+            l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now }
+        }
+        _nowNext.value = (_nowNext.value + add).let { m -> if (m.size > 600) add else m }
+    }
+
+    init {
+        viewModelScope.launch { visibleIds.debounce(200).collect { loadNowNext(it) } }
+        viewModelScope.launch { while (true) { delay(60_000); loadNowNext(visibleIds.value) } }
+    }
+
+    fun toggleLock(channel: ChannelEntity) {
+        viewModelScope.launch {
+            val on = _locked.keyFor(channel.providerId, channel.remoteId) in lockedChannels.value
+            _locked.set(channel.providerId, channel.remoteId, !on)
+        }
+    }
+
+    val favoriteIds: StateFlow<Set<String>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoritesByKind(id, "LIVE") }
+        .map { l -> l.map { it.remoteId }.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun toggleFavorite(channel: ChannelEntity) {
+        viewModelScope.launch { catalog.setFavorite(channel.providerId, "LIVE", channel.remoteId, channel.remoteId !in favoriteIds.value) }
+    }
+
+    fun addReminder(channel: ChannelEntity, prog: EpgEntity) {
         viewModelScope.launch {
             reminders.add(
                 com.ultratv.tv.nativeapp.data.reminders.ReminderEntity(
-                    providerId = channel.providerId,
-                    channelRemoteId = channel.remoteId,
-                    channelName = channel.name,
-                    programmeTitle = prog.title,
-                    startMs = prog.startMs,
-                    endMs = prog.endMs,
+                    providerId = channel.providerId, channelRemoteId = channel.remoteId, channelName = channel.name,
+                    programmeTitle = prog.title, startMs = prog.startMs, endMs = prog.endMs,
                 ),
             )
         }
     }
 
-    // NOTE: the init {} block lives at the *bottom* of the class so the
-    // properties it touches (channels, providers) are already constructed
-    // by the time it runs. viewModelScope uses Dispatchers.Main.immediate,
-    // which dispatches synchronously when the VM is created on the main
-    // thread — so anything referencing a not-yet-initialised property in
-    // an init block reads `null` and crashes (#LiveViewModel NPE).
-
-    private suspend fun refreshNowNext(ids: List<Long>) {
-        if (ids.isEmpty()) return
-        val now = System.currentTimeMillis()
-        // SQLite caps host parameters at 999. A 50 k-channel playlist would
-        // otherwise crash with "too many SQL variables". Split into 500-id
-        // chunks and concatenate.
-        val rows = ids.chunked(500).flatMap { chunk ->
-            epgDao.rangeForChannels(chunk, now - 30 * 60_000, now + 6 * 60 * 60_000)
+    /** Guide complet d'une chaîne (aujourd'hui + demain), pour le rattrapage et les rappels. */
+    suspend fun loadDaySchedule(channelId: Long): List<EpgEntity> {
+        val cal = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0); set(java.util.Calendar.MILLISECOND, 0)
         }
-        val byCh = rows.groupBy { it.channelId }
-        _nowNext.value = ids.associateWith { id ->
-            val list = byCh[id].orEmpty()
-            val nowProg = list.firstOrNull { it.startMs <= now && it.endMs > now }
-            val nextProg = list.firstOrNull { it.startMs > now }
-            nowProg to nextProg
-        }
+        return epgDao.forChannelInRange(channelId, cal.timeInMillis, cal.timeInMillis + 48 * 3_600_000L)
     }
-
-    fun toggleLock(channel: ChannelEntity) {
-        viewModelScope.launch {
-            val key = lockedStore.keyFor(channel.providerId, channel.remoteId)
-            val on = key in lockedChannels.value
-            lockedStore.set(channel.providerId, channel.remoteId, !on)
-        }
-    }
-
-    private val _query = MutableStateFlow("")
-    val query: StateFlow<String> = _query.asStateFlow()
-
-    private val _selectedCategory = MutableStateFlow<String>(CATEGORY_ALL)
-    val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
     private val _resolving = MutableStateFlow(false)
     val resolving: StateFlow<Boolean> = _resolving.asStateFlow()
 
-    private val _refreshing = MutableStateFlow(false)
-    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
-
-    fun refresh() {
-        viewModelScope.launch {
-            val pid = providers.value.firstOrNull { it.active }?.id
-                ?: providers.value.firstOrNull()?.id
-                ?: return@launch
-            _refreshing.value = true
-            syncCoordinator.request(pid, force = true); _refreshing.value = false
-        }
-    }
-
-    private val providers = provider.observeProviders()
-        .distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val categories: StateFlow<List<CategoryEntity>> =
-        combine(providers, hiddenStore.hidden) { ps, hidden -> ps to hidden }
-            .flatMapLatest { (ps, hidden) ->
-                val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id ?: return@flatMapLatest flowOf(emptyList())
-                catalog.categories(pid, "LIVE").map { list ->
-                    list.filter { hiddenStore.keyFor("LIVE", pid, it.remoteId) !in hidden }
-                }
-            }
-            .distinctUntilChanged()
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
     /**
-     * Channels for the currently selected category — much smaller per-render
-     * set than "all channels", and computed via the SQL `categoryId =`
-     * filter so we don't materialise the full list. With CATEGORY_ALL we
-     * still apply hidden-category filtering in-flight.
+     * Ouvre le lecteur plein écran. File de zapping = fenêtre de ±200 chaînes autour de la chaîne
+     * choisie dans la catégorie courante (jamais les 55 000 en mémoire).
      */
-    val channels: StateFlow<List<ChannelEntity>> =
-        combine(providers, _selectedCategory, hiddenStore.hidden) { ps, cat, hidden ->
-            Triple(ps, cat, hidden)
-        }.flatMapLatest { (ps, cat, hidden) ->
-            val pid = ps.firstOrNull { it.active }?.id ?: ps.firstOrNull()?.id
-            if (pid == null) flowOf(emptyList())
-            else {
-                val base = if (cat == CATEGORY_ALL) {
-                    // « Toutes les chaînes » plafonné : sur une source à 55 000 chaînes, charger
-                    // la table entière (et interroger l'EPG de chacune) saturait RAM et CPU.
-                    // Les catégories (filtre SQL) restent complètes ; la recherche couvre tout.
-                    catalog.topChannels(pid, ALL_CHANNELS_CAP).map { list ->
-                        list.filter { ch ->
-                            val cid = ch.categoryId ?: return@filter true
-                            hiddenStore.keyFor("LIVE", pid, cid) !in hidden
-                        }
-                    }
-                } else {
-                    catalog.channelsForCategory(pid, cat)
-                }
-                // Reorder so favorited live channels float to the top of every
-                // view. We re-use the existing FavoriteEntity table (kind="LIVE").
-                combine(base, catalog.favoritesByKind(pid, "LIVE")) { all, favs ->
-                    val favIds = favs.map { it.remoteId }.toSet()
-                    val (pinned, rest) = all.partition { it.remoteId in favIds }
-                    pinned + rest
-                }
-            }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    fun setQuery(q: String) { _query.value = q }
-    fun selectCategory(remoteId: String) { _selectedCategory.value = remoteId }
-
-    /**
-     * Full programme list for the channel the user is hovering, used by the
-     * TiviMate-style "tonight" schedule column. We compute the window as
-     * yesterday 18:00 → tomorrow 04:00 so the list always shows a few past
-     * entries (matching the user's reference screenshot) plus the rest of
-     * today and the early hours of tomorrow.
-     */
-    suspend fun loadDaySchedule(channelId: Long): List<com.ultratv.tv.nativeapp.data.db.EpgEntity> {
-        val now = System.currentTimeMillis()
-        val cal = java.util.Calendar.getInstance().apply {
-            timeInMillis = now
-            set(java.util.Calendar.HOUR_OF_DAY, 0)
-            set(java.util.Calendar.MINUTE, 0)
-            set(java.util.Calendar.SECOND, 0)
-            set(java.util.Calendar.MILLISECOND, 0)
-        }
-        val startOfDay = cal.timeInMillis
-        val endOfTomorrow = startOfDay + 48 * 60 * 60 * 1000L
-        return epgDao.forChannelInRange(channelId, startOfDay, endOfTomorrow)
-    }
-
-    /**
-     * Resolves the play URL for a channel without seeding the zap queue or
-     * sending the user to the full-screen player. Used by the right-hand
-     * mini-preview pane in Live TV.
-     */
-    suspend fun resolvePreviewUrl(channel: ChannelEntity): String {
-        if (!channel.streamUrl.startsWith("stalker://")) return channel.streamUrl
-        return provider.resolvePlayUrl(channel.id, channel.streamUrl)
-    }
-
     fun resolveAndPlay(channel: ChannelEntity, onReady: (url: String, title: String) -> Unit) {
-        // Seed the zap queue with the list the user was browsing so the
-        // player can D-pad UP/DOWN through it without going back.
-        zapQueue.set(channels.value, channel)
-        fun register(url: String) {
-            playback.set(PlaybackContext.Item(
-                providerId = channel.providerId,
-                kind = "LIVE",
-                remoteId = channel.remoteId,
-                title = channel.name,
-                poster = channel.logo,
-                streamUrl = url,
-            ))
-        }
-        if (!channel.streamUrl.startsWith("stalker://")) {
-            register(channel.streamUrl)
-            onReady(channel.streamUrl, channel.name)
-            return
-        }
         viewModelScope.launch {
             _resolving.value = true
             try {
-                val resolved = provider.resolvePlayUrl(channel.id, channel.streamUrl)
-                register(resolved)
-                onReady(resolved, channel.name)
-            } finally {
-                _resolving.value = false
-            }
+                val cat = _selected.value
+                val window = when (cat) {
+                    CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId)
+                    CATEGORY_ALL -> {
+                        val rank = channelDao.rankAll(channel.providerId, channel.sortKey)
+                        channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
+                    }
+                    else -> {
+                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.sortKey)
+                        channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
+                    }
+                }
+                zapQueue.set(window.ifEmpty { listOf(channel) }, channel)
+                val url = if (channel.streamUrl.startsWith("stalker://")) provider.resolvePlayUrl(channel.id, channel.streamUrl) else channel.streamUrl
+                playback.set(PlaybackContext.Item(channel.providerId, "LIVE", channel.remoteId, channel.title, channel.logo, url))
+                onReady(url, channel.title)
+            } finally { _resolving.value = false }
         }
     }
 
-    init {
-        // Run AFTER `channels` is initialised. viewModelScope is Main.immediate,
-        // so referencing channels in an init block at the top of the class read
-        // a null backing field and crashed.
-        viewModelScope.launch {
-            channels.collect { list ->
-                if (list.isEmpty()) { _nowNext.value = emptyMap(); return@collect }
-                refreshNowNext(list.take(NOW_NEXT_CAP).map { it.id })
-            }
-        }
-        viewModelScope.launch {
-            while (true) {
-                kotlinx.coroutines.delay(60_000)
-                refreshNowNext(channels.value.take(NOW_NEXT_CAP).map { it.id })
-            }
-        }
+    fun refresh() {
+        val id = providers.value.firstOrNull { it.active }?.id ?: providers.value.firstOrNull()?.id ?: return
+        syncCoordinator.request(id, force = true)
     }
 }

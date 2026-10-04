@@ -65,6 +65,28 @@ class DesignStrings(val lang: AppLang) {
     val hintWatch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
     val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
     val fixSource get() = t("Fix the source", "Corriger la source", "Corregir la fuente", "تصحيح المصدر")
+    // Direct
+    val directTitle get() = t("Live", "Direct", "Directo", "مباشر")
+    val catFavorites get() = t("Favorites", "Favoris", "Favoritos", "المفضلة")
+    val catAll get() = t("All", "Tout", "Todo", "الكل")
+    val categoryHeader get() = t("%1\$s · %2\$s channels", "%1\$s · %2\$s chaînes", "%1\$s · %2\$s canales", "%1\$s · %2\$s قناة")
+    val noChannels get() = t("No channels in this category", "Aucune chaîne dans cette catégorie", "No hay canales en esta categoría", "لا توجد قنوات في هذه الفئة")
+    val noFavorites get() = t("No favorites yet — hold OK on a channel to add one", "Pas encore de favoris — maintenez OK sur une chaîne pour en ajouter", "Aún no hay favoritos: mantén OK en un canal para añadir uno", "لا مفضلات بعد — اضغط مطولًا على OK لإضافة قناة")
+    val upNext get() = t("UP NEXT", "À SUIVRE", "A CONTINUACIÓN", "التالي")
+    val noProgramInfo get() = t("No programme information", "Aucune information de programme", "Sin información de programa", "لا توجد معلومات عن البرنامج")
+    val addFavorite get() = t("Add to favorites", "Ajouter aux favoris", "Añadir a favoritos", "إضافة إلى المفضلة")
+    val removeFavorite get() = t("Remove from favorites", "Retirer des favoris", "Quitar de favoritos", "إزالة من المفضلة")
+    val lockChannel get() = t("Lock channel", "Verrouiller la chaîne", "Bloquear canal", "قفل القناة")
+    val unlockChannel get() = t("Unlock channel", "Déverrouiller la chaîne", "Desbloquear canal", "فتح القناة")
+    val close get() = t("Close", "Fermer", "Cerrar", "إغلاق")
+    val hourShort get() = t("%d h", "%d h", "%d h", "%d س")
+    val minShort get() = t("%d min", "%d min", "%d min", "%d د")
+    val loading get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
+    // Guide
+    val today get() = t("Today", "Aujourd’hui", "Hoy", "اليوم")
+    val tomorrow get() = t("Tomorrow", "Demain", "Mañana", "غدًا")
+    val guideNoData get() = t("The programme guide is still loading. It will appear here as soon as it is ready.", "Le guide des programmes se charge encore. Il apparaîtra ici dès qu’il sera prêt.", "La guía de programas aún se está cargando.", "لا يزال دليل البرامج قيد التحميل.")
+    val remind get() = t("Remind me", "Me le rappeler", "Recordármelo", "ذكّرني")
     val syncing get() = t("Syncing", "Synchronisation", "Sincronizando", "جارٍ المزامنة")
 }
 

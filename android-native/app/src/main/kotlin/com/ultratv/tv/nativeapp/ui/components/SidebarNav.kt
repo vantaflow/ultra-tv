@@ -141,12 +141,12 @@ fun SidebarNav(navController: NavController) {
                             modifier = Modifier.height(h.design).then(if (expanded) Modifier.fillMaxWidth() else Modifier.width(64.design)),
                         ) { focused ->
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                                if (expanded) Spacer(Modifier.width(20.design))
+                                if (expanded) Spacer(Modifier.width(16.design))
                                 Box(if (expanded) Modifier.size(32.design) else Modifier.size(64.design), contentAlignment = Alignment.Center) {
                                     DIcon(item.icon, (if (expanded) 32 else 30).design, when { focused -> Ux.TextOnLight; active -> Ux.White; expanded -> Ux.Text; else -> Ux.Text3 })
                                 }
                                 if (expanded) {
-                                    Spacer(Modifier.width(20.design))
+                                    Spacer(Modifier.width(16.design))
                                     Text(
                                         item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.White; else -> Ux.Text2 },

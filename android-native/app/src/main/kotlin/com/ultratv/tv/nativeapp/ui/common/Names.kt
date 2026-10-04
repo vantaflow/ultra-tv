@@ -10,6 +10,6 @@ package com.ultratv.tv.nativeapp.ui.common
 fun prettyCategoryName(raw: String): String {
     if (raw.isBlank()) return raw
     // Trim leading/trailing decorative chars: # = - * _ < > | and whitespace.
-    val trimmed = raw.trim { it.isWhitespace() || it in "#=-*_<>|·•‧" }
+    val trimmed = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.stripDecorations(raw).trim { it.isWhitespace() || it in "#=-*_<>|·•‧" }
     return trimmed.ifBlank { raw }
 }

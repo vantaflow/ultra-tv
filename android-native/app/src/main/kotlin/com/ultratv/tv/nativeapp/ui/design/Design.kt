@@ -3,6 +3,8 @@ package com.ultratv.tv.nativeapp.ui.design
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -92,6 +94,7 @@ val Int.spx: TextUnit get() = (this / 2f).sp
  * anneau accent de 6 px (maquette). Pas d'ombre floue ni d'animation : rendu statique, peu
  * coûteux sur une box d'entrée de gamme.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun FocusSurface(
     onClick: () -> Unit,
@@ -101,6 +104,7 @@ fun FocusSurface(
     focusedScale: Float = 1.06f,
     ringWidth: Dp = 6.design,
     focusedBg: Color = Ux.White,
+    onLongClick: (() -> Unit)? = null,
     content: @Composable BoxScope.(focused: Boolean) -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -114,7 +118,7 @@ fun FocusSurface(
             .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
-            .clickable(interactionSource = interaction, indication = null, onClick = onClick),
+            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick),
     ) { content(focused) }
 }
 

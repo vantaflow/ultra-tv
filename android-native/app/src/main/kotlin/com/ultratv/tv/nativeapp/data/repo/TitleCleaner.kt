@@ -23,6 +23,9 @@ object TitleCleaner {
     private fun isDecoration(c: Char): Boolean =
         c.code in 0x02B0..0x02FF || c.code in 0x2070..0x209F || c.code in 0x1D2C..0x1DBF || c == '◉' || c == '★' || c == '☆' || c == '•' || c == '●' || c == '⚽'
 
+    /** Retire lettres modificatrices / symboles décoratifs (« ᴿᴬᵂ », « ◉ », « ³⁸⁴⁰ᴾ »). */
+    fun stripDecorations(s: String): String = s.filterNot(::isDecoration).replace(Regex("""\s{2,}"""), " ").trim()
+
     fun clean(raw: String, live: Boolean = false): Cleaned {
         var s = raw.trim()
         if (s.isEmpty()) return Cleaned(raw, null, null)
