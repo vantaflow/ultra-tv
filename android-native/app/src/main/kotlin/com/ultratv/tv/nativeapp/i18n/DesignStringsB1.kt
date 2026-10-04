@@ -24,6 +24,7 @@ val DesignStrings.actRecordHint get() = t("This programme or the whole series", 
 val DesignStrings.actRecordThis get() = t("This programme only", "Ce programme seulement", "Solo este programa", "هذا البرنامج فقط")
 val DesignStrings.actRecordSeries get() = t("Whole series", "Série entière", "Serie completa", "المسلسل كاملًا")
 val DesignStrings.actRecordSeriesHint get() = t("Every broadcast with the same title on this channel", "Chaque diffusion du même titre sur cette chaîne", "Cada emisión con el mismo título en este canal", "كل بث بنفس العنوان على هذه القناة")
+val DesignStrings.yesterday get() = t("Yesterday", "Hier", "Ayer", "أمس")
 val DesignStrings.replayTag get() = t("Replay", "Replay", "Repetición", "إعادة")
 fun DesignStrings.replayBadge(days: Int) = t("REPLAY $days D", "REPLAY $days J", "REPETICIÓN $days D", "إعادة $days أيام")
 

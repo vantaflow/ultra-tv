@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +79,8 @@ fun ProgramActionsDialog(
     onDismiss: () -> Unit,
 ) {
     var choosingRecord by remember { mutableStateOf(false) }
+    // Le choix « ce programme / série » remplace les 4 boutons : sans focus explicite, il filerait dans la barre latérale.
+    val recordFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     ModalFocusScope(onBack = { if (choosingRecord) choosingRecord = false else onDismiss() }, modifier = Modifier.background(Ux.Scrim)) {
         Column(Modifier.width(1040.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(52.design), verticalArrangement = Arrangement.spacedBy(22.design)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
@@ -99,8 +102,12 @@ fun ProgramActionsDialog(
                     }
                 }
             } else {
+                // Dans la couche modale : le focus est pris APRÈS la composition du bouton (sinon il part dans la barre latérale).
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    repeat(20) { if (runCatching { recordFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; kotlinx.coroutines.delay(50) }
+                }
                 Row(Modifier.padding(top = 8.design), horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                    ActionButton(D.actRecordThis, "${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", Icons.Record, true, Modifier.weight(1f)) { onRecord(false) }
+                    ActionButton(D.actRecordThis, "${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", Icons.Record, true, Modifier.weight(1f).focusRequester(recordFocus)) { onRecord(false) }
                     ActionButton(D.actRecordSeries, D.actRecordSeriesHint, Icons.Record, true, Modifier.weight(1f)) { onRecord(true) }
                 }
             }

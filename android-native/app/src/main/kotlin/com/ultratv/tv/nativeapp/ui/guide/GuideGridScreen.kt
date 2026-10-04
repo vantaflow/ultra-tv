@@ -72,6 +72,7 @@ import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
 import com.ultratv.tv.nativeapp.i18n.remindSet
 import com.ultratv.tv.nativeapp.i18n.replayTag
+import com.ultratv.tv.nativeapp.i18n.yesterday
 import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -253,7 +254,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 Text("$dayLabel · ${EpgClock.hm(windowStart)} – ${EpgClock.hm(windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
-                for (d in 0..2) DayChip(dayName(D, d), selected = d == day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
+                for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
             }
         }
 
@@ -344,6 +345,7 @@ private fun InfoPanel(ch: ChannelEntity, p: EpgEntity) {
 private fun Int.dp1() = androidx.compose.ui.unit.Dp(0.5f)
 
 private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int): String = when (offset) {
+    -1 -> D.yesterday
     0 -> D.today
     1 -> D.tomorrow
     else -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }

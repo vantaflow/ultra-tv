@@ -26,7 +26,7 @@ class TimeshiftProxy(
     assumedBytesPerSec: Long,
 ) : AutoCloseable {
     val buffer = CircularFileBuffer(bufferFile, capacity)
-    private val server = ServerSocket(0, 4, InetAddress.getLoopbackAddress())
+    private val server = ServerSocket(0, 4, InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)))   // 127.0.0.1 EXPLICITE : sur Android getLoopbackAddress() peut renvoyer ::1, alors que l URL locale vise 127.0.0.1
     /** Jeton aléatoire dans le chemin : une autre appli de l'appareil ne peut pas deviner l'adresse. */
     private val token = ByteArray(12).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
     private val stopped = AtomicBoolean(false)
