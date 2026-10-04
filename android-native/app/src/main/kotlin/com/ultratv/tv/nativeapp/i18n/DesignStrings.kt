@@ -65,6 +65,17 @@ class DesignStrings(val lang: AppLang) {
     fun lockedCountLine(n: Int) = when (lang) { AppLang.French -> if (n <= 1) "$n chaîne verrouillée" else "$n chaînes verrouillées"; AppLang.Spanish -> "$n canales bloqueados"; AppLang.Arabic -> "$n قناة مقفلة"; else -> if (n == 1) "$n locked channel" else "$n locked channels" }
     fun searchResultsCount(n: Int) = when (lang) { AppLang.French -> "RÉSULTATS · $n"; AppLang.Spanish -> "RESULTADOS · $n"; AppLang.Arabic -> "النتائج · $n"; else -> "RESULTS · $n" }
 
+    // Formulaires d'ajout de source
+    val addAndSync get() = t("Add and sync", "Ajouter et synchroniser", "Añadir y sincronizar", "إضافة ومزامنة")
+    val fieldRequired get() = t("Required field", "Champ requis", "Campo obligatorio", "حقل مطلوب")
+    val formNamePh get() = t("e.g. Living room", "Ex. Salon", "Ej. Salón", "مثال: غرفة المعيشة")
+    val formSubXtream get() = t("The details provided by your operator", "Les informations fournies par votre opérateur", "Los datos que te da tu operador", "المعلومات التي يقدمها مشغّلك")
+    val formSubM3u get() = t("The address of your playlist", "L’adresse de votre liste de lecture", "La dirección de tu lista", "عنوان قائمة التشغيل")
+    val formSubStalker get() = t("Portal address and device MAC", "Adresse du portail et MAC de l’appareil", "Dirección del portal y MAC del dispositivo", "عنوان البوابة وعنوان MAC للجهاز")
+    val formHintFields get() = t("▲▼ Previous / next field", "▲▼ Champ précédent / suivant", "▲▼ Campo anterior / siguiente", "▲▼ الحقل السابق / التالي")
+    val formHintIme get() = t("Keyboard: Next", "Clavier : Suivant", "Teclado: Siguiente", "لوحة المفاتيح: التالي")
+    val formHintBack get() = t("‹ Back to cancel", "‹ Retour pour annuler", "‹ Atrás para cancelar", "‹ رجوع للإلغاء")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")

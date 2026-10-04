@@ -5,6 +5,7 @@ import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -86,9 +87,26 @@ fun ScreenFocusHost(
 }
 
 /**
+ * Couche d'incrustation plein écran : les modales ne sont PAS composées là où elles sont déclarées (dans un volet
+ * défilant, elles se retrouvaient décalées et rognées) mais ici, par-dessus tout l'écran, rail compris.
+ */
+class OverlayHost {
+    internal val layers = androidx.compose.runtime.mutableStateListOf<Layer>()
+    internal class Layer(val content: @Composable () -> Unit)
+}
+
+val LocalOverlayHost = androidx.compose.runtime.compositionLocalOf<OverlayHost?> { null }
+
+/** À placer une fois, en dernier enfant de la racine plein écran. */
+@Composable
+fun OverlayLayer(host: OverlayHost) {
+    host.layers.forEach { layer -> key(layer) { layer.content() } }
+}
+
+/**
  * Surcouche modale pour TV : le focus y est piégé (les flèches ne ressortent pas
  * vers l'écran en dessous, qui reste composé), le focus initial est posé dedans,
- * et BACK la ferme.
+ * et BACK la ferme. Rendue dans l'[OverlayHost] quand il existe (plein écran, centrée sur l'écran).
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -96,6 +114,32 @@ fun ModalFocusScope(
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     contentAlignment: androidx.compose.ui.Alignment = androidx.compose.ui.Alignment.Center,
+    content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
+) {
+    val host = LocalOverlayHost.current
+    val latestBack = androidx.compose.runtime.rememberUpdatedState(onBack)
+    val latestContent = androidx.compose.runtime.rememberUpdatedState(content)
+    val latestModifier = androidx.compose.runtime.rememberUpdatedState(modifier)
+    val body: @Composable () -> Unit = {
+        ModalBody(latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
+    }
+    if (host == null) {
+        body()
+    } else {
+        androidx.compose.runtime.DisposableEffect(host) {
+            val layer = OverlayHost.Layer(body)
+            host.layers.add(layer)
+            onDispose { host.layers.remove(layer) }
+        }
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun ModalBody(
+    onBack: (() -> Unit)?,
+    modifier: Modifier,
+    contentAlignment: androidx.compose.ui.Alignment,
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
 ) {
     val requester = remember { FocusRequester() }

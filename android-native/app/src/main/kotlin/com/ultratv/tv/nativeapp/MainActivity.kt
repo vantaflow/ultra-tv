@@ -283,10 +283,12 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         StartupNav.pending.value = null
     }
 
+    val overlays = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.OverlayHost() }
     Surface(
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
+      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         when {
             useBottomBar -> Column(Modifier.fillMaxSize()) {
@@ -327,8 +329,10 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 }
             }
         }
+        com.ultratv.tv.nativeapp.ui.common.OverlayLayer(overlays)
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         }
+      }
     }
 }
 

@@ -41,12 +41,12 @@ class ProviderFormsTest {
         var submitted: Pair<String, String>? = null
         rule.setContent { M3uDialog(onDismiss = {}, onSubmit = { n, u -> submitted = n to u }) }
 
-        // Le champ URL (obligatoire) est en premier et reçoit le focus initial.
+        // Ordre de la maquette : Nom puis URL ; le champ URL (obligatoire) reçoit le focus initial.
         rule.onNodeWithTag("field-url").assertIsFocused()
         rule.onNodeWithTag("field-url").performTextInput("http://serveur-fictif.invalid/liste.m3u")
 
-        // D-pad BAS depuis le champ : le focus DOIT passer au champ Nom (avant : il restait bloqué).
-        rule.onNodeWithTag("field-url").performKeyInput { pressKey(Key.DirectionDown) }
+        // D-pad HAUT depuis le champ : le focus DOIT passer au champ Nom (avant : il restait bloqué).
+        rule.onNodeWithTag("field-url").performKeyInput { pressKey(Key.DirectionUp) }
         rule.onNodeWithTag("field-name").assertIsFocused()
         rule.onNodeWithTag("field-name").performTextInput("Ma playlist")
 
