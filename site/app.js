@@ -2,7 +2,7 @@
   var root = document.documentElement;
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  var lang = get("lang") || ((navigator.language || "fr").slice(0, 2) === "en" ? "en" : "fr");
+  var lang = get("lang") === "en" ? "en" : "fr"; // FR par défaut
   function applyLang(l) { root.dataset.lang = l; root.lang = l; var b = document.getElementById("lang"); if (b) b.textContent = l === "fr" ? "EN" : "FR"; }
   applyLang(lang);
   var theme = get("theme");
