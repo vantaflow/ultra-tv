@@ -15,14 +15,15 @@ import { SourceForm, type SourceKind as FormKind } from "./SourceForm";
 import { PairingView } from "./Pairing";
 import { cloudAvailable } from "@/cloud/client";
 import { listSources } from "@/db/sources";
+import { convertToXtream, nonStandardHttpStatus } from "@/lib/xtreamUrl";
 
 type SourceKind = FormKind | "cloud";
 
 type Step = "type" | "form" | "langs" | "sync" | "cloud";
 
-export function errorKey(e: unknown, t: TFn): string {
+export function errorKey(e: unknown, t: TFn, type?: Source["type"]): string {
   const err = e as Error;
-  if (err instanceof HttpError) return t("src.err.blocked", { c: err.status });
+  if (err instanceof HttpError) return type === "m3u" && nonStandardHttpStatus(err.message) != null ? t("src.err.m3uBlocked") : t("src.err.blocked", { c: err.status });
   if (err.message === "auth") return t("src.err.auth");
   if (err.message === "expired") return t("src.err.expired");
   if (err.message === "not-m3u") return t("src.err.notm3u");
@@ -89,7 +90,9 @@ export function Onboarding() {
 
   const submit = async () => {
     setErr(null);
-    const s = { ...src, name: src.name.trim() || (kind === "xtream" ? src.server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
+    // Adresse get.php / player_api.php collée en M3U : c'est une source Xtream Codes (get.php est souvent bloqué).
+    const xt = kind === "m3u-link" ? convertToXtream(src) : null;
+    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
     if (kind === "xtream" && (!s.server.trim() || !s.username.trim() || !s.password)) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-link" && !s.m3uUrl.trim()) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
@@ -106,7 +109,7 @@ export function Onboarding() {
       setSavedId(id);
       setSrc({ ...saved, id });
       prefs.set({ activeSourceId: id });
-      if (kind === "xtream") {
+      if (s.type === "xtream") {
         const d = await detectSourceLanguages({ ...saved, id });
         setDetected(d.languages);
         const ui = prefs.lang.toUpperCase();
@@ -116,7 +119,7 @@ export function Onboarding() {
         setStep("langs");
       } else setStep("sync");
     } catch (e) {
-      setErr(errorKey(e, t));
+      setErr(errorKey(e, t, s.type));
     } finally {
       setBusy(false);
     }
@@ -222,7 +225,7 @@ export function Onboarding() {
         </main>
       )}
 
-      {step === "sync" && <FirstSync name={src.name} kindLabel={kind === "xtream" ? "Xtream Codes" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
+      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
     </div>
   );
 }

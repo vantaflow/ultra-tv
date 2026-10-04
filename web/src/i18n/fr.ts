@@ -246,6 +246,8 @@ export const fr = {
   "src.err.cors": "Le navigateur bloque la requête (CORS). Configurez un proxy dans Réglages ou utilisez l’application de bureau.",
   "src.err.notm3u": "Ce contenu n’est pas une playlist M3U.",
   "src.err.blocked": "Le fournisseur a refusé la requête (code {c}).",
+  "src.err.m3uBlocked": "Le fournisseur refuse le téléchargement de la liste M3U. Utilisez le type Xtream Codes.",
+  "src.xtreamDetected": "Adresse Xtream détectée : la source sera ajoutée en Xtream Codes.",
   "src.err.required": "Renseignez tous les champs obligatoires.",
   "src.connect": "Vérifier et continuer",
 

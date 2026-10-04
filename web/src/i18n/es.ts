@@ -247,6 +247,8 @@ export const es: Dict = {
   "src.err.cors": "El navegador bloquea la solicitud (CORS). Configura un proxy en Ajustes o usa la aplicación de escritorio.",
   "src.err.notm3u": "Este contenido no es una lista M3U.",
   "src.err.blocked": "El proveedor ha rechazado la solicitud (código {c}).",
+  "src.err.m3uBlocked": "El proveedor rechaza la descarga de la lista M3U. Usa el tipo Xtream Codes.",
+  "src.xtreamDetected": "Dirección Xtream detectada: la fuente se añadirá como Xtream Codes.",
   "src.err.required": "Rellena todos los campos obligatorios.",
   "src.connect": "Comprobar y continuar",
 

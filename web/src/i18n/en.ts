@@ -247,6 +247,8 @@ export const en: Dict = {
   "src.err.cors": "The browser blocks the request (CORS). Set a proxy in Settings or use the desktop app.",
   "src.err.notm3u": "This content is not an M3U playlist.",
   "src.err.blocked": "The provider refused the request (code {c}).",
+  "src.err.m3uBlocked": "The provider refuses the M3U playlist download. Use the Xtream Codes type.",
+  "src.xtreamDetected": "Xtream address detected: the source will be added as Xtream Codes.",
   "src.err.required": "Fill in all required fields.",
   "src.connect": "Check and continue",
 

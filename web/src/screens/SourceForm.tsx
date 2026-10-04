@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useT } from "@/i18n";
 import type { Source } from "@/db/types";
 import { Icon } from "@/ui/Icon";
+import { parseXtreamUrl } from "@/lib/xtreamUrl";
 
 export type SourceKind = "xtream" | "m3u-link" | "m3u-file";
 
@@ -37,6 +38,7 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
         <div className="field full">
           <label htmlFor="f-m3u">{t("src.m3uUrl")}</label>
           <input id="f-m3u" className="input" value={value.m3uUrl} placeholder="http://…/playlist.m3u8" autoCapitalize="off" spellCheck={false} onChange={(e) => set({ m3uUrl: e.target.value })} />
+          {parseXtreamUrl(value.m3uUrl) && <span className="muted" role="status">{t("src.xtreamDetected")}</span>}
         </div>
       )}
       {kind === "m3u-file" && (

@@ -2,6 +2,7 @@
 
 import { clearCatalog, db } from "./db";
 import type { Source } from "./types";
+import { convertToXtream } from "@/lib/xtreamUrl";
 import { decryptSecret, encryptSecret } from "@/net/secrets";
 
 async function open(s: Source): Promise<Source> {
@@ -33,4 +34,14 @@ export async function deleteSource(id: number): Promise<void> {
   await db.favorites.where("addedAt").above(-1).filter((f) => f.sourceId === id).delete();
   await db.history.where("updatedAt").above(-1).filter((h) => h.sourceId === id).delete();
   await db.sources.delete(id);
+}
+
+/** Migration unique : les sources M3U enregistrées avec une adresse get.php / player_api.php passent en Xtream Codes. */
+export async function migrateM3uToXtream(): Promise<number> {
+  let n = 0;
+  for (const s of await listSources()) {
+    const x = convertToXtream(s);
+    if (x) { await saveSource(x); n++; }
+  }
+  return n;
 }

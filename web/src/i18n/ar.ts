@@ -247,6 +247,8 @@ export const ar: Dict = {
   "src.err.cors": "المتصفح يحظر الطلب (CORS). اضبط وسيطًا في الإعدادات أو استخدم تطبيق سطح المكتب.",
   "src.err.notm3u": "هذا المحتوى ليس قائمة M3U.",
   "src.err.blocked": "رفض المزوّد الطلب (الرمز {c}).",
+  "src.err.m3uBlocked": "يرفض المزوّد تنزيل قائمة M3U. استخدم نوع Xtream Codes.",
+  "src.xtreamDetected": "تم اكتشاف عنوان Xtream: ستُضاف المصدر بنوع Xtream Codes.",
   "src.err.required": "املأ جميع الحقول المطلوبة.",
   "src.connect": "تحقق وتابع",
 
