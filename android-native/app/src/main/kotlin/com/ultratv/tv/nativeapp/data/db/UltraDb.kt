@@ -24,7 +24,7 @@ import androidx.room.RoomDatabase
         com.ultratv.tv.nativeapp.data.profile.ProfilePrefEntity::class,
         com.ultratv.tv.nativeapp.data.profile.ProfileHiddenCategoryEntity::class,
     ],
-    version = 14,
+    version = 15,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {

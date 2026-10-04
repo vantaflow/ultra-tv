@@ -71,11 +71,11 @@ val MIGRATION_11_12 = object : Migration(11, 12) {
 }
 
 /**
- * 13 → 14 : PROFILS (suppose que la 12 → 13 de l'agent B1, table recording, la précède). Crée `profile` (le profil existant devient « Principal », id 1), les préférences et catégories
+ * 14 → 15 : PROFILS (suppose les DEUX migrations de B1 en amont : 12 → 13 recording, 13 → 14 tmdb_info). Crée `profile` (le profil existant devient « Principal », id 1), les préférences et catégories
  * masquées par profil, et rattache favoris et historique au profil 1 (clé primaire élargie à `profileId`).
  * Aucune donnée n'est perdue. Sources, catalogue et EPG restent globaux.
  */
-val MIGRATION_13_14 = object : Migration(13, 14) {
+val MIGRATION_14_15 = object : Migration(14, 15) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("CREATE TABLE IF NOT EXISTS `profile` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `color` INTEGER NOT NULL, `initial` TEXT NOT NULL, `isKids` INTEGER NOT NULL, `pinHash` TEXT, `createdAt` INTEGER NOT NULL)")
         db.execSQL("INSERT INTO `profile` (`id`, `name`, `color`, `initial`, `isKids`, `pinHash`, `createdAt`) VALUES (1, 'Principal', ${0xFF3B82F6.toInt()}, 'P', 0, NULL, CAST(strftime('%s','now') AS INTEGER) * 1000)")

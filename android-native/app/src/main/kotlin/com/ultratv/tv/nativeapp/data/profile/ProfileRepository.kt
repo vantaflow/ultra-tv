@@ -55,10 +55,14 @@ class ProfileRepository(
     val startupMode: Flow<StartupMode> = state.startupMode
 
     private val chosenThisSession = MutableStateFlow(false)
+    private val forced = MutableStateFlow(false)
 
-    /** Vrai tant que « Qui regarde ? » doit être montré (démarrage, plusieurs profils, mode « Toujours demander »). */
-    val needsSelection: Flow<Boolean> = combine(profiles, state.startupMode, chosenThisSession) { l, m, chosen ->
-        !chosen && StartupRules.shouldAsk(l.size, m)
+    /**
+     * Vrai tant que « Qui regarde ? » doit être montré : au démarrage (plusieurs profils, mode « Toujours demander »)
+     * ou sur demande explicite (« Changer de profil »). Null tant que la base n'a pas répondu.
+     */
+    val needsSelection: Flow<Boolean?> = combine(profiles, state.startupMode, chosenThisSession, forced) { l, m, chosen, f ->
+        if (l.isEmpty()) null else f || (!chosen && StartupRules.shouldAsk(l.size, m))
     }
 
     suspend fun setStartupMode(m: StartupMode) = state.setStartupMode(m)
@@ -67,10 +71,11 @@ class ProfileRepository(
     suspend fun select(id: Long) {
         state.setCurrentId(id)
         chosenThisSession.value = true
+        forced.value = false
     }
 
     /** Change de profil en cours de session (« Changer de profil » depuis le rail). */
-    fun requestSwitch() { chosenThisSession.value = false }
+    fun requestSwitch() { forced.value = true }
 
     suspend fun create(name: String, color: Int, isKids: Boolean = false, pin: String? = null): Long? {
         if (!ProfileRules.canAdd(dao.count())) return null

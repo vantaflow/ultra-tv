@@ -46,7 +46,13 @@ import javax.inject.Inject
 @HiltViewModel
 class ParentalViewModel @Inject constructor(
     private val store: ParentalStore,
+    profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
+    /** Profil Enfants : le contrôle parental est forcé, son code ne peut pas être retiré. */
+    val parentalForced: StateFlow<Boolean> = profiles.current
+        .map { com.ultratv.tv.nativeapp.data.profile.KidsRules.forcesParentalControl(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
 
     val pinSet: StateFlow<Boolean> = store.pinHash
         .map { it != null }
@@ -70,7 +76,8 @@ fun ParentalSection(
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalChangePin.takeIf { set } ?: S.parentalSetPin, if (set) S.parentalPinEnabled else S.parentalPinNotSet) { dialog = true }
-        if (set) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { vm.setPin("") {} }
+        val forced by vm.parentalForced.collectAsState()
+        if (set && !forced) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { vm.setPin("") {} }
         com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalManageLocked, "", onClick = onManageLockedChannels)
     }
     if (dialog) PinSetDialog(onCancel = { dialog = false }, onConfirm = { pin -> vm.setPin(pin) { dialog = false } })

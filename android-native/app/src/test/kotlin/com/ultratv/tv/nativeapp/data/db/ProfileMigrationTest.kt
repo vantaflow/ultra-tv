@@ -17,17 +17,18 @@ class ProfileMigrationTest {
     @get:Rule
     val helper = MigrationTestHelper(InstrumentationRegistry.getInstrumentation(), UltraDb::class.java, emptyList(), FrameworkSQLiteOpenHelperFactory())
 
-    /** Stand-in de la 12 → 13 de l'agent B1 (table recording) : sans effet sur les tables testées ici. */
-    private val noopB1 = object : Migration(12, 13) { override fun migrate(db: SupportSQLiteDatabase) {} }
+    /** Stand-ins des 12 → 13 (recording) et 13 → 14 (tmdb_info) de l'agent B1 : sans effet sur les tables testées ici. */
+    private val noopB1a = object : Migration(12, 13) { override fun migrate(db: SupportSQLiteDatabase) {} }
+    private val noopB1b = object : Migration(13, 14) { override fun migrate(db: SupportSQLiteDatabase) {} }
 
     @Test
-    fun migrate13to14_donneesExistantes_rattacheesAuProfilPrincipal() {
+    fun migrate14to15_donneesExistantes_rattacheesAuProfilPrincipal() {
         helper.createDatabase("t", 12).apply {
             execSQL("INSERT INTO favorite (providerId, kind, remoteId) VALUES (7, 'MOVIE', 'm1')")
             execSQL("INSERT INTO watch_history (providerId, kind, remoteId, title, poster, streamUrl, positionMs, durationMs, watchedAt, parentRemoteId) VALUES (7, 'MOVIE', 'm1', 'Titre', NULL, 'u', 500, 9000, 1, NULL)")
             close()
         }
-        val db = helper.runMigrationsAndValidate("t", 14, true, noopB1, MIGRATION_13_14)
+        val db = helper.runMigrationsAndValidate("t", 15, true, noopB1a, noopB1b, MIGRATION_14_15)
 
         db.query("SELECT id, name, isKids, pinHash FROM profile").use {
             assertEquals(1, it.count); it.moveToFirst()

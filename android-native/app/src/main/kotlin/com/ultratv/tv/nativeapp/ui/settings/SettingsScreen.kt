@@ -67,12 +67,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.NumberFormat
+import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
 private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
-    LANGUAGES("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18"), ABOUT("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"),
+    LANGUAGES("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18"), PROFILES("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"), ABOUT("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"),
 }
 
 /** Réglages (maquettes Reglages / Synchro / ReglagesAffichage / Diagnostic) : rubriques à gauche, volet à droite. */
@@ -82,7 +83,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     var rub by rememberSaveable { mutableStateOf(0) }
     val dbg by com.ultratv.tv.nativeapp.StartupNav.debugRub.collectAsState()
     androidx.compose.runtime.LaunchedEffect(dbg) { dbg?.let { rub = it.coerceIn(0, Rub.entries.lastIndex); com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null } }
-    val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, D.rubAbout)
+    val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubAbout)
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(460.design).fillMaxHeight().padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
@@ -105,14 +106,15 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
             when (Rub.entries[rub]) {
-                Rub.SOURCES -> SourcesPane(vm, panes)
-                Rub.SYNC -> SyncPane(panes, onNavigate)
+                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
+                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
                 Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
                 Rub.DISPLAY -> DisplayPane(vm, panes, app)
-                Rub.PLAYBACK -> PlaybackPane(panes, app)
+                Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
                 Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
                 Rub.LANGUAGES -> LanguagesPane(panes, app)
-                Rub.ABOUT -> AboutPane(vm, panes, app, onNavigate)
+                Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
+                Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
             }
         }
     }

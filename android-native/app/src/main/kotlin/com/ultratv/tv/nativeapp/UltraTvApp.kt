@@ -32,6 +32,8 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
     @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 
+    @Inject lateinit var hiddenCategories: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
+
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(): ImageLoader {
@@ -92,6 +94,8 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
         bgScope.launch { runCatching { secretsMigrator.migrate() } }
+        // Anciennes catégories masquées (globales) → profil Principal, une seule fois.
+        bgScope.launch { runCatching { hiddenCategories.importLegacyOnce() } }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks
         // briefly (≤ 3 s) so the request actually leaves the device before the
