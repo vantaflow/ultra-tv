@@ -38,6 +38,7 @@ import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.*
+import androidx.compose.ui.focus.focusRequester
 
 /**
  * Guide dans le lecteur (maquette LecteurGuide) : à gauche, catégories + chaînes de la catégorie (numéro, logo, nom,
@@ -59,7 +60,16 @@ internal fun LiveDrawer(
     var selected by remember { mutableStateOf<PlayerViewModel.DrawerEntry?>(null) }
     val shown = selected ?: current ?: entries.firstOrNull()
     val listState = rememberLazyListState()
-    LaunchedEffect(entries.size, current?.channel?.id) { current?.let { c -> entries.indexOf(c).takeIf { it >= 0 }?.let { listState.scrollToItem((it - 2).coerceAtLeast(0)) } } }
+    // À l'ouverture, le focus va sur la chaîne regardée (OK = zapper tout de suite, ▲▼ = parcourir autour).
+    val currentFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    var focusedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(entries.size, current?.channel?.id) {
+        current?.let { c -> entries.indexOf(c).takeIf { it >= 0 }?.let { listState.scrollToItem((it - 2).coerceAtLeast(0)) } }
+        if (!focusedOnce && current != null) repeat(20) {
+            if (runCatching { currentFocus.requestFocus() }.isSuccess) { focusedOnce = true; return@LaunchedEffect }
+            kotlinx.coroutines.delay(50)
+        }
+    }
     BackHandler { onDismiss() }
     ModalDark {
         Row(Modifier.fillMaxSize()) {
@@ -86,7 +96,8 @@ internal fun LiveDrawer(
                     Label("${title.uppercase()} · ${entries.size}", Modifier.padding(bottom = 8.design))
                     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
                         items(entries, key = { it.channel.id }) { e ->
-                            ChannelLine(e, index = entries.indexOf(e) + 1, D = D, onFocus = { selected = e }, onClick = { onPick(e.channel) })
+                            ChannelLine(e, index = entries.indexOf(e) + 1, D = D, onFocus = { selected = e }, onClick = { onPick(e.channel) },
+                                modifier = if (e.isCurrent) Modifier.focusRequester(currentFocus) else Modifier)
                         }
                     }
                 }
@@ -116,10 +127,10 @@ private fun Label(text: String, modifier: Modifier = Modifier, color: Color = Ux
     Text(text, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.8f, TextUnitType.Sp), maxLines = 1, modifier = modifier)
 
 @Composable
-private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit) {
+private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val now = e.now
     val fraction = if (now != null && now.endMs > now.startMs) ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs)).coerceIn(0f, 1f) else 0f
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(96.design).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(96.design).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             Text("$index", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.width(48.design))
             LogoBox(e.channel.logo, e.channel.title, Modifier.width(64.design).height(42.design), radius = 8, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)

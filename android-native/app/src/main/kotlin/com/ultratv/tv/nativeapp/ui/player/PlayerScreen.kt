@@ -467,6 +467,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     if (zap.isEntering && (ev.key == Key.Enter || ev.key == Key.DirectionCenter || ev.key == Key.NumPadEnter)) { zap.commitNow(); return@onPreviewKeyEvent true }
                 }
                 val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
+                val okKey = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter
+                // Direct, surcouche masquée : OK ouvre la liste des chaînes (sans afficher les commandes derrière).
+                if (hidden && isLive && okKey) { drawerOpen = true; return@onPreviewKeyEvent true }
                 touch()
                 if (!hidden) return@onPreviewKeyEvent false
                 when (ev.key) {
@@ -474,7 +477,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     Key.DirectionDown -> if (isLive) { scope.launch { vm.zap(true)?.let { currentUrl = it } }; true } else false
                     Key.DirectionLeft -> if (tsActive) { tsJump(-30); true } else if (!isLive) { session.engine?.let { it.seekTo((it.positionMs - 10_000).coerceAtLeast(0)) }; true } else false
                     Key.DirectionRight -> if (tsActive) { tsJump(30); true } else if (!isLive) { session.engine?.let { it.seekTo(it.positionMs + 10_000) }; true } else false
-                    else -> true      // OK / autres : on affiche seulement la surcouche
+                    else -> true      // OK (VOD) / Info / Menu / autres : on affiche la surcouche des commandes
                 }
             },
     ) {
