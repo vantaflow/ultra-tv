@@ -27,13 +27,14 @@ import com.ultratv.tv.nativeapp.data.db.LangCount
 import com.ultratv.tv.nativeapp.data.repo.LangView
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.ui.design.*
 
 /** Nom lisible d'un code de la colonne `lang` : « fr » → « Français » ; « MULTI » → « Multilingue » ; « » → « Non déterminé ». */
 fun langLabel(code: String, D: DesignStrings): String = when (code) {
     "" -> D.langUndetermined
     "MULTI" -> D.langMulti
-    else -> java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()).replaceFirstChar { it.uppercase() }.ifBlank { code.uppercase() }
+    else -> java.util.Locale(code).getDisplayLanguage(D.locale).replaceFirstChar { it.uppercase() }.ifBlank { code.uppercase() }
 }
 
 /** Texte de la pilule : « Langues : toutes » / « Langues : FR · AR » (au plus 3 codes, puis « +n »). */

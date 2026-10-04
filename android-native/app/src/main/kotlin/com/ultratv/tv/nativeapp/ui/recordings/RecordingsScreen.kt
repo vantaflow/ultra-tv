@@ -47,6 +47,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.ultratv.tv.nativeapp.i18n.locale
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
@@ -133,7 +134,7 @@ fun RecordingsScreen(
                         Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
                             ThumbImage(null, r.title, Modifier.fillMaxWidth().aspectRatio(16f / 9f), radius = 18)
                             Text(r.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            val date = DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(r.completedAt ?: r.createdAt))
+                            val date = DateFormat.getDateInstance(DateFormat.MEDIUM, D.locale).format(Date(r.completedAt ?: r.createdAt))
                             Text("$date · ${formatBytes(r.totalBytes)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                         }
                     }
@@ -150,7 +151,7 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
     val failed = r.status == "failed" || r.status == "error"
     val fraction = if (r.totalBytes > 0) (r.downloadedBytes.toFloat() / r.totalBytes).coerceIn(0f, 1f) else 0f
     val meta = when {
-        scheduled -> scheduledMeta(r)
+        scheduled -> scheduledMeta(r, D.locale)
         running -> "${(fraction * 100).toInt()} % · ${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)}"
         failed -> S.recordingStatusFailed        // jamais le message brut : il peut contenir une URL de flux
         r.status == "cancelled" -> S.recordingStatusCancelled
@@ -177,11 +178,11 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
 private fun rank(status: String) = when (status) { "running" -> 0; "queued" -> 1; "scheduled" -> 2; else -> 3 }
 
 /** « 20:30 – 22:30 · Chaîne » avec la date quand ce n'est pas aujourd'hui. */
-private fun scheduledMeta(r: RecordingEntity): String {
+private fun scheduledMeta(r: RecordingEntity, loc: java.util.Locale): String {
     val start = Date(r.scheduledStartMs)
-    val sameDay = DateFormat.getDateInstance(DateFormat.SHORT).format(start) == DateFormat.getDateInstance(DateFormat.SHORT).format(Date())
-    val tf = DateFormat.getTimeInstance(DateFormat.SHORT)
-    val day = if (sameDay) "" else DateFormat.getDateInstance(DateFormat.MEDIUM).format(start) + " "
+    val sameDay = DateFormat.getDateInstance(DateFormat.SHORT, loc).format(start) == DateFormat.getDateInstance(DateFormat.SHORT, loc).format(Date())
+    val tf = DateFormat.getTimeInstance(DateFormat.SHORT, loc)
+    val day = if (sameDay) "" else DateFormat.getDateInstance(DateFormat.MEDIUM, loc).format(start) + " "
     return day + tf.format(start) + " – " + tf.format(Date(r.scheduledEndMs)) + (r.channelName?.let { " · $it" } ?: "")
 }
 

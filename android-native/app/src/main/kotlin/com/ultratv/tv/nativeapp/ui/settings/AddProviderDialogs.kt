@@ -7,8 +7,21 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +32,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,47 +96,65 @@ fun AddProviderDialog(
 ) {
     val S = LocalStrings.current
     val D = LocalDs.current
+    val submitFocus = remember { FocusRequester() }
+    val attempted = remember { mutableStateOf(false) }
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
-        Column(
-            modifier = Modifier
-                .width(1000.design)
-                .clip(RoundedCornerShape(32.design))
-                .background(Ux.SurfaceDeep)
-                .border(1.design, Ux.Surface2, RoundedCornerShape(32.design))
-                .padding(56.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
-                Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
-                    DIcon(icon, 32.design, Ux.White, strokeWidth = 2f)
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
-                    Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
-                }
-            }
-            content()
-            Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 8.design)) {
-                FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, modifier = Modifier.height(72.design).testTag("dialog-cancel")) { f ->
-                    Box(Modifier.height(72.design).padding(horizontal = 36.design), contentAlignment = Alignment.Center) {
-                        Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
+        // Le dialogue tient TOUJOURS dans l'écran (hauteur moins marges de sécurité) : le contenu défile,
+        // l'en-tête et les boutons restent épinglés, donc visibles et focalisables quelle que soit l'échelle de police.
+        BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val safeV = androidx.compose.foundation.layout.PaddingValues(0.dp).let { com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateTopPadding() }
+            val maxH = (maxHeight - safeV * 2).coerceAtLeast(240.dp)
+            CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted) {
+                Column(
+                    modifier = Modifier
+                        .width(1000.design)
+                        .heightIn(max = maxH)
+                        .clip(RoundedCornerShape(32.design))
+                        .background(Ux.SurfaceDeep)
+                        .border(1.design, Ux.Surface2, RoundedCornerShape(32.design))
+                        .padding(horizontal = 56.design, vertical = 40.design),
+                    verticalArrangement = Arrangement.spacedBy(24.design),
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                        Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
+                            DIcon(icon, 32.design, Ux.White, strokeWidth = 2f)
+                        }
+                        Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
+                            Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                        }
+                    }
+                    Column(
+                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(24.design),
+                    ) { content() }
+                    Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 4.design)) {
+                        FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, modifier = Modifier.height(72.design).testTag("dialog-cancel")) { f ->
+                            Box(Modifier.height(72.design).padding(horizontal = 36.design), contentAlignment = Alignment.Center) {
+                                Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
+                            }
+                        }
+                        FocusSurface(onClick = { if (canSubmit) onSubmit() else attempted.value = true }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).focusRequester(submitFocus).testTag("dialog-submit")) { f ->
+                            Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
+                                Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
+                                    color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
+                            }
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
+                        Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                        Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                        Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                     }
                 }
-                FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).testTag("dialog-submit")) { f ->
-                    Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
-                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
-                            color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
-                    }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
-                Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
-                Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
-                Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
             }
         }
     }
 }
+
+/** Bouton principal du dialogue courant : cible de « ▼ » et de l'action IME « OK » sur le dernier champ. */
+private val LocalSubmitAttempted = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
+private val LocalSubmitFocus = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
 /**
  * Champ texte de formulaire. D-pad haut/bas le quittent toujours ([leaveOnVerticalDpad]) ;
@@ -147,13 +180,21 @@ fun FormField(
     val focusRequester = remember { FocusRequester() }
     val fm = LocalFocusManager.current
     val D = LocalDs.current
+    val bring = remember { BringIntoViewRequester() }
+    val submit = LocalSubmitFocus.current
+    // « Visité puis quitté vide » : l'erreur ne s'affiche JAMAIS à l'ouverture, seulement après un passage dans le champ.
+    var settled by remember { mutableStateOf(false) }
     var touched by remember { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(focused) { if (focused) touched = true }
+    val attempted = LocalSubmitAttempted.current?.value == true
+    androidx.compose.runtime.LaunchedEffect(focused) {
+        if (focused) { runCatching { bring.bringIntoView() }; kotlinx.coroutines.delay(300); settled = true }
+        else if (settled) touched = true   // quitté après y être réellement resté (pas un transfert de focus à l'ouverture)
+    }
     // Focus initial sur le champ principal : sans cela le D-pad reste derrière le dialogue.
     LaunchedEffect(autoFocus) {
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
-    val shownError = error ?: if (required && touched && !focused && value.isBlank()) D.fieldRequired else null
+    val shownError = error ?: if (required && value.isBlank() && !focused && (touched || attempted)) D.fieldRequired else null
     Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.fillMaxWidth()) {
         Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
         Box(
@@ -186,12 +227,19 @@ fun FormField(
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { fm.moveFocus(FocusDirection.Down) },
-                    onDone = { fm.moveFocus(FocusDirection.Down) },   // « Ajouter »
+                    onDone = { if (submit != null) runCatching { submit.requestFocus() } else fm.moveFocus(FocusDirection.Down) },   // « Ajouter »
                 ),
                 interactionSource = interaction,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    .bringIntoViewRequester(bring)
+                    .then(
+                        if (last && submit != null) Modifier.onPreviewKeyEvent { ev ->
+                            // ▼ depuis le dernier champ : droit sur le bouton principal (et non sur « Annuler »).
+                            if (ev.key == Key.DirectionDown) { if (ev.type == KeyEventType.KeyDown) runCatching { submit.requestFocus() }; true } else false
+                        } else Modifier,
+                    )
                     .leaveOnVerticalDpad()
                     .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
                 decorationBox = { inner ->

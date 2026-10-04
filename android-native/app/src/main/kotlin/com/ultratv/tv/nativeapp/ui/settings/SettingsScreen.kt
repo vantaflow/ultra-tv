@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import com.ultratv.tv.nativeapp.i18n.locale
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -412,7 +413,7 @@ fun LanguagePickerDialog(languages: List<Pair<String, Int>>, selected: Set<Strin
                 item { LangRow(D.allLanguages, "", selected.isEmpty()) { onChange(emptySet()) } }
                 items(items.size, key = { items[it].first }) { i ->
                     val (code, n) = items[i]
-                    LangRow(java.util.Locale(code).getDisplayLanguage(java.util.Locale.getDefault()).replaceFirstChar { it.uppercase() }, if (n > 0) "$n" else "", code in selected) { onChange(if (code in selected) selected - code else selected + code) }
+                    LangRow(java.util.Locale(code).getDisplayLanguage(D.locale).replaceFirstChar { it.uppercase() }, if (n > 0) "$n" else "", code in selected) { onChange(if (code in selected) selected - code else selected + code) }
                 }
             }
             PillButton(D.close, onDismiss, bg = Ux.Surface)

@@ -51,3 +51,11 @@ val DesignStrings.tmdbAttribution get() = t(
     "Este producto utiliza la API de TMDB pero no está avalado ni certificado por TMDB.",
     "يستخدم هذا المنتج واجهة TMDB لكنه غير معتمد أو مصدّق من TMDB.",
 )
+
+/** Locale de FORMATAGE (noms de jours, de langues, dates) alignée sur la langue de l'application, pas sur celle de l'appareil. Chiffres latins en arabe. */
+val DesignStrings.locale: java.util.Locale get() = when (lang) {
+    AppLang.French -> java.util.Locale.FRENCH
+    AppLang.Spanish -> java.util.Locale("es")
+    AppLang.Arabic -> java.util.Locale.forLanguageTag("ar-u-nu-latn")
+    else -> java.util.Locale.ENGLISH
+}

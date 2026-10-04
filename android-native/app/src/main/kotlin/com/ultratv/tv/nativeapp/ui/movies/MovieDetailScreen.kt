@@ -184,7 +184,7 @@ fun MovieDetailScreen(
     val T = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
     val title = remember(movie.id) { T.tidy(movie.title) }
     val year = movie.year?.toString() ?: T.presentable(info?.releaseDate)?.take(4)?.takeIf { it.all(Char::isDigit) }
-    val duration = movieDuration(T.presentable(info?.duration) ?: T.presentable(movie.duration))
+    val duration = movieDuration(T.presentable(info?.duration) ?: T.presentable(movie.duration), D.hourShort.replace("%d", "").trim(), D.minShort.replace("%d", "").trim())
     val genre = T.presentable(info?.genre) ?: T.presentable(movie.genre)
     val plot = T.presentable(info?.plot) ?: T.presentable(movie.plot)
     val rating = (info?.rating ?: movie.rating)?.takeIf { it > 0.0 && it <= 10.0 }
@@ -204,7 +204,7 @@ fun MovieDetailScreen(
         // Visuel plein écran : fond paysage entier (jamais recadré dans une colonne étroite) fondu vers la gauche ; sinon l'affiche 2:3 nette à droite.
         Box(Modifier.fillMaxSize().background(Ux.Tone)) {
             DetailVisual(backdrop, movie.poster, title)
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.Bg, 0.6f to Ux.Bg.copy(alpha = 0.96f), 0.85f to Ux.Bg.copy(alpha = 0.3f), 1f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.Bg, 0.6f to Ux.Bg.copy(alpha = 0.96f), 0.85f to Ux.Bg.copy(alpha = 0.3f), 1f to Color.Transparent)))
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Ux.Bg.copy(alpha = 0.7f))))
         }
         BackLink(S.moviesTitle, onBack, Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 40.design))
@@ -312,7 +312,7 @@ fun BlurredFill(url: String?, modifier: Modifier) {
 }
 
 /** « 01:52:00 » ou « 112 » (minutes) → « 1 h 52 » ; une valeur illisible est masquée. */
-fun movieDuration(raw: String?): String? {
+fun movieDuration(raw: String?, hUnit: String = "h", minUnit: String = "min"): String? {
     val t = raw?.trim().orEmpty()
     if (t.isEmpty()) return null
     val mins = when {
@@ -321,7 +321,7 @@ fun movieDuration(raw: String?): String? {
         else -> return t.takeIf { it.length <= 12 }
     } ?: return null
     if (mins <= 0) return null
-    return if (mins >= 60) "${mins / 60} h ${"%02d".format(mins % 60)}" else "$mins min"
+    return if (mins >= 60) "${mins / 60} $hUnit ${"%02d".format(mins % 60)}" else "$mins $minUnit"
 }
 
 /** h:mm:ss (ou m:ss sous l'heure) pour « Reprendre à … ». */

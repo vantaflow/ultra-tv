@@ -63,8 +63,10 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
             Row(verticalAlignment = Alignment.CenterVertically) {
                 LogoMark()
                 Spacer(Modifier.width(16.design))
-                Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, letterSpacing = 1.7.sp, color = Ux.Text)
+                androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalLayoutDirection provides androidx.compose.ui.unit.LayoutDirection.Ltr) { Row {
+Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, letterSpacing = 1.7.sp, color = Ux.Text)
                 Text("TV", fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 28.spx, letterSpacing = 1.7.sp, color = Ux.Text3)
+}}
             }
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.widthIn(max = 700.design)) {
                 DIcon(Icons.Monitor, 26.design, Ux.Text2)

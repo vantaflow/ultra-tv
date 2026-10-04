@@ -98,6 +98,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.ultratv.tv.nativeapp.i18n.locale
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -251,7 +252,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
                 Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1)
                 val dayLabel = dayName(D, day)
-                Text("$dayLabel · ${EpgClock.hm(windowStart)} – ${EpgClock.hm(windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Text("$dayLabel · ${EpgClock.range(windowStart, windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
@@ -336,7 +337,7 @@ private fun InfoPanel(ch: ChannelEntity, p: EpgEntity) {
         LogoBox(ch.logo, ch.title, Modifier.width(84.design).height(56.design), radius = 10, pad = 6)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
             Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${ch.title} · ${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text("${ch.title} · ${EpgClock.range(p.startMs, p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             p.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
     }
@@ -348,7 +349,7 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
     -1 -> D.yesterday
     0 -> D.today
     1 -> D.tomorrow
-    else -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }
+    else -> SimpleDateFormat("EEEE", D.locale).format(Date(System.currentTimeMillis() + offset * 86_400_000L)).replaceFirstChar { it.uppercase() }
 }
 
 @Composable
@@ -398,7 +399,7 @@ private fun GuideRow(
                         // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »).
                         if (wPx >= 200 && p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE)
                             Text(D.replayTag, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design))
-                        if (wPx >= 200) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
+                        if (wPx >= 200) Text("${EpgClock.range(p.startMs, p.endMs)}", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                 }
             }

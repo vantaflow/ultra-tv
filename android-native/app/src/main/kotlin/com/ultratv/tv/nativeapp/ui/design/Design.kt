@@ -277,3 +277,11 @@ fun ProgressLine(fraction: Float, modifier: Modifier = Modifier, heightPx: Int =
         Box(Modifier.fillMaxHeight().fillMaxWidth(fraction.coerceIn(0f, 1f)).background(Ux.Accent))
     }
 }
+
+/** Dégradé horizontal « côté début → côté fin » : en RTL le côté du texte est à droite, donc le dégradé est inversé. */
+@Composable
+fun startToEndBrush(vararg stops: Pair<Float, Color>): androidx.compose.ui.graphics.Brush {
+    val rtl = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    val s = if (rtl) stops.map { (1f - it.first) to it.second }.reversed().toTypedArray() else stops
+    return androidx.compose.ui.graphics.Brush.horizontalGradient(*s)
+}

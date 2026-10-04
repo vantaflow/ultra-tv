@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -94,7 +95,7 @@ fun WhoIsWatchingContent(
 @Composable
 private fun ProfileTile(initial: String, color: Int, label: String, hint: String, modifier: Modifier, onClick: () -> Unit) {
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(48.design), bg = Color.Transparent, focusedBg = Color.Transparent, focusedScale = 1.08f, ringWidth = 6.design, modifier = modifier.width(240.design)) { f ->
-        Column(Modifier.padding(bottom = 12.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.design)) {
+        Column(Modifier.fillMaxWidth().padding(bottom = 12.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.design)) {
             ProfileAvatar(initial, color, 200)
             Text(label, color = if (f) Color.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, textAlign = TextAlign.Center)
             Text(hint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)

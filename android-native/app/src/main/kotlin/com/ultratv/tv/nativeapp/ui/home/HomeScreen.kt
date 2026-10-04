@@ -149,7 +149,7 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
                 PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0)
             }
             // Voile de lisibilité : fondu vers le fond du cadre côté texte.
-            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))
         }
         Column(
             Modifier.fillMaxHeight().width(880.design).padding(56.design),

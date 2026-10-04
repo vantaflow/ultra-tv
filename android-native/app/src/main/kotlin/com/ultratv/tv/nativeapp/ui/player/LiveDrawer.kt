@@ -97,7 +97,7 @@ internal fun LiveDrawer(
                     Text(shown?.now?.title ?: shown?.channel?.title.orEmpty(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     shown?.now?.let { n ->
                         Text(
-                            "${EpgClock.hm(n.startMs)} – ${EpgClock.hm(n.endMs)}" + (shown.next?.let { " · ${LocalStrings.current.liveThen} ${it.title}" } ?: ""),
+                            "${EpgClock.range(n.startMs, n.endMs)}" + (shown.next?.let { " · ${LocalStrings.current.liveThen} ${it.title}" } ?: ""),
                             color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
                         )
                     }

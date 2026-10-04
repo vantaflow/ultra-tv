@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
 import androidx.compose.ui.test.assertIsFocused
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -106,5 +107,22 @@ class ProviderFormsTest {
         rule.onNodeWithTag("dialog-submit").performClick()
         assertNull(saved)
         rule.onNodeWithTag("field-worker").performTextInput("")
+    }
+
+    /** Écran bas (400 dp, bien plus court que le dialogue) : « ▼ » depuis le mot de passe atteint le bouton principal, visible. */
+    @Config(sdk = [34], qualifiers = "w1920dp-h400dp-xhdpi")
+    @Test fun xtream_ecranBas_boutonPrincipalAtteignableAuDpadEtVisible() {
+        rule.setContent { XtreamDialog(onDismiss = {}, onSubmit = { _, _, _, _ -> }) }
+        rule.onNodeWithTag("field-pass").requestFocus()
+        rule.onNodeWithTag("field-pass").assertIsFocused()
+        rule.onNodeWithTag("field-pass").performKeyInput { pressKey(Key.DirectionDown) }
+        rule.onNodeWithTag("dialog-submit").assertIsFocused()
+        rule.onNodeWithTag("dialog-submit").assertIsDisplayed()
+        rule.onNodeWithTag("dialog-cancel").assertIsDisplayed()
+    }
+
+    @Test fun xtream_ouverture_aucuneErreurChampRequis() {
+        rule.setContent { XtreamDialog(onDismiss = {}, onSubmit = { _, _, _, _ -> }) }
+        rule.onNodeWithText("Required field").assertDoesNotExist()
     }
 }

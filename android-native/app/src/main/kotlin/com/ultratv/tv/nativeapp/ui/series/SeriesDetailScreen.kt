@@ -178,7 +178,7 @@ private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?,
     val pos = h?.positionMs ?: 0L
     val done = dur > 0 && pos >= dur - 60_000
     val fraction = if (done) 1f else if (dur > 0) pos.toFloat() / dur else 0f
-    val length = com.ultratv.tv.nativeapp.ui.movies.movieDuration(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.presentable(ep.duration))
+    val length = com.ultratv.tv.nativeapp.ui.movies.movieDuration(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.presentable(ep.duration), D.hourShort.replace("%d", "").trim(), D.minShort.replace("%d", "").trim())
     val state = when {
         done -> D.watchedLabel
         dur > 0 && pos > 0 -> D.remainingMin(((dur - pos) / 60_000L).toInt().coerceAtLeast(1))

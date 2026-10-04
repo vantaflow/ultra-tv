@@ -19,5 +19,8 @@ object EpgClock {
 
     fun apply(ms: Long): Long = ms + offsetMinutes * 60_000L
 
+    /** « 07:30 – 08:30 » isolé en LTR : en RTL, les bornes ne doivent pas s'inverser. */
+    fun range(startMs: Long, endMs: Long): String = "\u2066${hm(startMs)} – ${hm(endMs)}\u2069"
+
     fun hm(ms: Long): String = fmt.get()!!.format(Date(apply(ms)))
 }

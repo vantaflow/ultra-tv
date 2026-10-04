@@ -85,7 +85,7 @@ fun ProgramActionsDialog(
         Column(Modifier.width(1040.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(52.design), verticalArrangement = Arrangement.spacedBy(22.design)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
                 if (channel.catchupDays > 0) Text(D.replayBadge(channel.catchupDays), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(8.design)).background(Ux.Surface2).padding(horizontal = 12.design, vertical = 6.design))
-                Text("${channel.title} · ${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${channel.title} · ${EpgClock.range(prog.startMs, prog.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(prog.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             prog.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 36.spx, maxLines = 3, overflow = TextOverflow.Ellipsis) }
@@ -107,7 +107,7 @@ fun ProgramActionsDialog(
                     repeat(20) { if (runCatching { recordFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; kotlinx.coroutines.delay(50) }
                 }
                 Row(Modifier.padding(top = 8.design), horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                    ActionButton(D.actRecordThis, "${EpgClock.hm(prog.startMs)} – ${EpgClock.hm(prog.endMs)}", Icons.Record, true, Modifier.weight(1f).focusRequester(recordFocus)) { onRecord(false) }
+                    ActionButton(D.actRecordThis, "${EpgClock.range(prog.startMs, prog.endMs)}", Icons.Record, true, Modifier.weight(1f).focusRequester(recordFocus)) { onRecord(false) }
                     ActionButton(D.actRecordSeries, D.actRecordSeriesHint, Icons.Record, true, Modifier.weight(1f)) { onRecord(true) }
                 }
             }
