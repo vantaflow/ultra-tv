@@ -49,6 +49,7 @@ export function html(body, n, status = 200) {
     `script-src 'nonce-${n}'`,
     `style-src 'nonce-${n}'`,
     "img-src 'self' data:",
+    "font-src 'self'",
     "form-action 'self'",
     "base-uri 'none'",
     "frame-ancestors 'none'",

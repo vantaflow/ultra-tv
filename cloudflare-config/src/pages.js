@@ -5,46 +5,155 @@ import { escapeHtml as e, html } from "./http.js";
 import { displayUrl } from "./store.js";
 
 const CSS = `
-:root{color-scheme:dark;--bg:#0b1020;--bg2:#131a30;--bg3:#1b2240;--fg:#e6e9f2;--muted:#8a93ac;--accent:#6ea8ff;--danger:#ff6b6b;--ok:#5fd19a;--border:rgba(255,255,255,.08)}
+@font-face{font-family:Sora;src:url(/assets/sora.woff2) format("woff2");font-weight:100 800;font-display:swap}
+@font-face{font-family:Manrope;src:url(/assets/manrope.woff2) format("woff2");font-weight:200 800;font-display:swap}
+:root{color-scheme:dark light;--bg:#0A0A0C;--s1:#141418;--s2:#1C1C21;--bd:#26262D;--fg:#F5F5F7;--fg2:#C4C4CC;--mut:#A1A1AA;--acc:#D91E2B;--acc-h:#EB2F3C;--on-acc:#fff;--acc-soft:rgba(217,30,43,.14);--acc-fg:#FF6B74;--dng:#FF6B74;--ok:#4ADE80;--ok-soft:rgba(74,222,128,.12);--ring:#FF8A92;--glow:rgba(217,30,43,.16);--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px rgba(0,0,0,.35);--fr:#F5F5F7;--ff:Manrope,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--fh:Sora,Manrope,system-ui,sans-serif}
+@media (prefers-color-scheme:light){:root{--bg:#F6F6F8;--s1:#FFFFFF;--s2:#F0F0F3;--bd:#E1E1E7;--fg:#121216;--fg2:#3A3A44;--mut:#5B5B66;--acc-h:#B9141F;--acc-soft:rgba(217,30,43,.08);--acc-fg:#C4121E;--dng:#B4121D;--ok:#15803D;--ok-soft:rgba(21,128,61,.09);--ring:#D91E2B;--glow:rgba(217,30,43,.07);--shadow:0 1px 2px rgba(18,18,22,.05),0 8px 24px rgba(18,18,22,.06);--fr:#121216}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
-a{color:var(--accent);text-decoration:none}
-h1{margin:0 0 4px;font-size:22px} h2{margin:0 0 8px;font-size:16px}
-.sub,.muted{color:var(--muted)} .sub{margin-bottom:20px} .small{font-size:12px}
-.panel{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px}
-label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}
-input,select{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:8px;padding:9px 11px;font:inherit}
-input[type=checkbox]{width:auto;margin:0;accent-color:#d91e2b}
-label.small{display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;color:var(--fg)}
-button{background:var(--accent);color:#0b1020;border:0;border-radius:8px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}
-button.secondary{background:transparent;color:var(--fg);border:1px solid var(--border);font-weight:400}
-button.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
-.item{display:flex;gap:10px;align-items:center;padding:10px 12px;background:var(--bg3);border-radius:10px;margin-top:8px}
-.item form{margin-left:auto}
-.kind{background:var(--accent);color:#0b1020;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
-.tabs{display:flex;gap:6px;border-bottom:1px solid var(--border);margin:12px 0}
-.tabs button{background:transparent;color:var(--muted);border-radius:0;font-weight:500}
-.tabs button.on{color:var(--accent);border-bottom:2px solid var(--accent)}
-.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
-.card{max-width:400px;margin:80px auto;padding:24px;background:var(--bg2);border-radius:14px;border:1px solid var(--border)}
-.layout{max-width:880px;margin:0 auto}
-.notice{padding:10px 12px;border-radius:8px;background:var(--bg3);font-size:13px;margin-bottom:14px}
-.notice.err{color:var(--danger);border:1px solid var(--danger)} .notice.ok{color:var(--ok);border:1px solid var(--ok)}
-.pill{font-family:ui-monospace,monospace;background:var(--bg3);padding:6px 10px;border-radius:8px;color:var(--accent)}
-.code{font-family:ui-monospace,monospace;letter-spacing:.15em}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th,td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
-th{color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-size:10px}
-pre{white-space:pre-wrap;word-break:break-word;margin:6px 0 0;font-size:12px}
-.lvl-error td.level,.lvl-warn td.level{color:var(--danger)}
-[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--bg) radial-gradient(900px 420px at 50% -140px,var(--glow),transparent 70%) no-repeat;color:var(--fg);font:15px/1.55 var(--ff);padding:0 16px 40px;-webkit-font-smoothing:antialiased;overflow-wrap:anywhere}
+a{color:var(--acc-fg);text-decoration:none;font-weight:600;border-radius:6px} a:hover{text-decoration:underline}
+h1,h2,h3{font-family:var(--fh);margin:0;letter-spacing:-.01em;line-height:1.2}
+h1{font-size:26px;font-weight:700} h2{font-size:18px;font-weight:650} h3{font-size:15px;font-weight:600}
+p{margin:0}
+.sub,.muted{color:var(--mut)} .sub{margin-top:6px} .small{font-size:13px}
+:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.skip{position:absolute;left:-999px;top:8px;background:var(--acc);color:var(--on-acc);padding:10px 14px;border-radius:10px;z-index:9}
+.skip:focus{left:16px}
+/* Marque */
+.brand{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:10px;color:var(--fg);font-family:var(--fh);font-weight:700;font-size:18px}
+.logo{width:36px;height:36px;flex:none;display:block}
+.logo .lg-bg{fill:#0A0A0C} .logo .lg-fr{stroke:#F5F5F7}
+@media (prefers-color-scheme:light){.logo .lg-bg{fill:#0A0A0C}}
+/* Surfaces */
+.layout{max-width:1120px;margin:0 auto}
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;gap:10px;margin-bottom:4px;flex-wrap:wrap}
+.count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 8px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);color:var(--fg2);font:600 13px var(--ff)}
+.grid{display:grid;gap:16px;align-items:start}
+@media (min-width:900px){.grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}.grid>.col{min-width:0}}
+.col>.panel:last-child{margin-bottom:0}
+@media (max-width:899px){.col{display:contents}.grid>.col>.panel{margin:0}.o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}}
+.stack{display:grid;gap:12px;margin-top:16px}
+/* Formulaires */
+label,.lbl{display:block;color:var(--fg2);font-size:13px;font-weight:600;margin:14px 0 6px}
+label .hint,.hint{color:var(--mut);font-weight:500}
+input,select{width:100%;min-height:48px;background:var(--bg);color:var(--fg);border:1.5px solid var(--bd);border-radius:14px;padding:11px 14px;font:inherit;font-size:16px;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:var(--mut);opacity:.75}
+input:hover{border-color:var(--mut)}
+input:focus-visible{outline:none;border-color:var(--acc);box-shadow:0 0 0 4px var(--acc-soft),0 0 0 2px var(--acc)}
+input[type=checkbox]{appearance:none;width:22px;height:22px;min-height:0;flex:none;margin:0;padding:0;border-radius:7px;display:inline-grid;place-content:center;cursor:pointer;background:var(--bg)}
+input[type=checkbox]::after{content:"";width:11px;height:6px;border:solid var(--on-acc);border-width:0 0 2.5px 2.5px;transform:rotate(-45deg) translate(1px,-1px) scale(0);transition:transform .12s}
+input[type=checkbox]:checked{background:var(--acc);border-color:var(--acc)} input[type=checkbox]:checked::after{transform:rotate(-45deg) translate(1px,-1px) scale(1)}
+input[type=checkbox]:focus-visible{outline:3px solid var(--ring);outline-offset:2px;box-shadow:none}
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;background:var(--acc);color:var(--on-acc);border:1.5px solid transparent;border-radius:14px;font:700 15px var(--ff);cursor:pointer;transition:background .15s,transform .1s,border-color .15s}
+button:hover{background:var(--acc-h)} button:active{transform:scale(.98)}
+button.secondary{background:var(--s2);color:var(--fg);border-color:var(--bd);font-weight:600} button.secondary:hover{border-color:var(--mut);background:var(--s2)}
+button.danger{background:transparent;color:var(--dng);border-color:var(--bd);font-weight:600} button.danger:hover{border-color:var(--dng);background:transparent}
+button.block{width:100%}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.row.end{justify-content:flex-end}
+.ico{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .inline{display:inline}
-h2.mt{margin-top:20px}
+/* Messages */
+.notice{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;font-size:14px;font-weight:600;margin:0 0 16px;border:1px solid}
+.notice.err{color:var(--dng);background:var(--acc-soft);border-color:var(--dng)} .notice.ok{color:var(--ok);background:var(--ok-soft);border-color:var(--ok)}
+/* Auth */
+.auth{max-width:420px;margin:0 auto;padding-top:max(32px,9vh)}
+.auth .brand{margin-bottom:22px} .auth .logo{width:44px;height:44px}
+.auth .panel{padding:24px}
+.auth h1{margin-bottom:2px}
+.auth form{margin-top:8px}
+.auth .alt{margin-top:18px;text-align:center;color:var(--mut)}
+.note{display:flex;gap:10px;margin-top:16px;padding:12px 14px;border-radius:14px;background:var(--s2);color:var(--fg2);font-size:13px}
+/* En-tête */
+.topbar{flex-wrap:wrap;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 0;margin-bottom:8px}
+.who{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 14px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);color:var(--fg2);font-weight:600;font-size:13px;max-width:55vw}
+.pill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar button{min-height:44px;padding:0 16px}
+/* Appairage */
+.pair{display:grid;gap:20px}
+@media (min-width:900px){.pair{grid-template-columns:1fr 1fr;align-items:start;gap:40px}}
+.steps{margin:12px 0 0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:s}
+.steps li{display:flex;gap:12px;align-items:flex-start;color:var(--fg2);font-size:14px;counter-increment:s}
+.steps li::before{content:counter(s);flex:none;width:26px;height:26px;border-radius:50%;background:var(--acc-soft);color:var(--acc-fg);font:700 13px/26px var(--fh);text-align:center}
+.codebox{display:flex;gap:6px;justify-content:center;align-items:center}
+.cell{width:100%;max-width:46px;min-width:0;height:60px;padding:0;text-align:center;font:700 26px var(--fh);text-transform:uppercase;border-radius:14px;background:var(--bg)}
+.codebox .sep{width:10px;height:3px;border-radius:2px;background:var(--mut);flex:none;margin:0 2px}
+@media (max-width:380px){.codebox{gap:4px}.cell{height:54px;font-size:22px}}
+.code-fallback{font-family:var(--fh);font-weight:700;font-size:24px;letter-spacing:.18em;text-align:center;text-transform:uppercase}
+/* Cartes appareils / sources */
+.card{background:var(--s2);border:1px solid var(--bd);border-radius:16px;padding:14px 16px;transition:border-color .15s}
+.card:hover{border-color:var(--mut)}
+.card-top{display:flex;gap:12px;align-items:center}
+.badge-ico{width:44px;height:44px;flex:none;border-radius:14px;background:var(--bg);border:1px solid var(--bd);display:grid;place-items:center;color:var(--acc-fg)}
+.card-title{font-weight:700;font-size:16px;line-height:1.3}
+.card-meta{color:var(--mut);font-size:13px}
+.grow{min-width:0;flex:1}
+.kind{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:7px;background:var(--acc-soft);color:var(--acc-fg);font:700 11px var(--ff);letter-spacing:.06em;margin-right:6px;vertical-align:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--bg);color:var(--fg2);font-size:12px;font-weight:600}
+.chip.all{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
+.chip.none{color:var(--dng)}
+.chip.acc{background:var(--acc-soft);border-color:transparent;color:var(--acc-fg)}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.actions button,.actions summary{min-height:44px}
+details>summary{list-style:none;display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:14px;background:var(--bg);border:1.5px solid var(--bd);color:var(--fg);font-weight:600;font-size:14px;cursor:pointer;transition:border-color .15s}
+details>summary::-webkit-details-marker{display:none}
+details>summary:hover{border-color:var(--mut)}
+details[open]>summary{border-color:var(--acc);color:var(--acc-fg)}
+details>.drop{margin-top:12px;padding-top:4px;flex-basis:100%}
+.actions details{display:contents}
+.actions details[open]{display:block;flex-basis:100%}
+.actions details[open]>summary{margin-bottom:0}
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pick{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0;padding:0 14px;border-radius:12px;background:var(--bg);border:1.5px solid var(--bd);color:var(--fg);font-size:14px;font-weight:600;cursor:pointer}
+.pick:has(input:checked){border-color:var(--acc)}
+.pick.all{border-style:dashed}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:28px 16px;border:1.5px dashed var(--bd);border-radius:16px;color:var(--mut)}
+.empty .badge-ico{width:56px;height:56px;border-radius:18px;background:var(--s2)} .empty .badge-ico .ico{width:26px;height:26px}
+.empty strong{color:var(--fg);font:600 16px var(--fh)}
+/* Onglets d'ajout (CSS seul : fonctionne sans JavaScript) */
+.tabbed{position:relative}
+.seg{display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--bd);border-radius:16px;margin:16px 0 4px}
+.tabbed>input[type=radio]{position:absolute;opacity:0;width:1px;height:1px;min-height:0;pointer-events:none}
+.seg label{flex:1;margin:0;min-height:44px;display:grid;place-items:center;border-radius:12px;color:var(--fg2);font-size:14px;cursor:pointer;transition:background .15s,color .15s}
+#t-xtream:checked~.seg label[for=t-xtream],#t-m3u:checked~.seg label[for=t-m3u]{background:var(--acc);color:var(--on-acc)}
+#t-xtream:focus-visible~.seg label[for=t-xtream],#t-m3u:focus-visible~.seg label[for=t-m3u]{outline:3px solid var(--ring);outline-offset:2px}
+.tabbed form{display:none} #t-xtream:checked~#form-xtream,#t-m3u:checked~#form-m3u{display:block}
+.secure{display:flex;gap:8px;align-items:flex-start;margin-top:14px;color:var(--mut);font-size:13px}
+.secure .ico{width:16px;height:16px;margin-top:3px}
+.danger-zone{border-color:color-mix(in srgb,var(--dng) 40%,var(--bd))}
+/* Journaux (exploitation) */
+.tablewrap{overflow-x:auto;border:1px solid var(--bd);border-radius:16px;background:var(--s1)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+th{color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg2)}
+.lvl-error td.level,.lvl-warn td.level{color:var(--dng)}
+.mt0{margin-top:0}.mt6{margin-top:6px}.mt10{margin-top:10px}.mt16{margin-top:16px}.mb16{margin-bottom:16px}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
 
+const ICONS = {
+  tv: '<rect x="3" y="4" width="18" height="13" rx="3"/><path d="M8 21h8"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/>',
+  lock: '<rect x="4" y="11" width="16" height="10" rx="3"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
+  share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-3.8M8.2 13l7.6 3.8"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+};
+const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
+
+const LOGO = `<svg class="logo" viewBox="0 0 512 512" role="img" aria-label="Ultra TV"><rect class="lg-bg" width="512" height="512" rx="116"/><rect class="lg-fr" x="96" y="120" width="320" height="216" rx="40" fill="none" stroke-width="28"/><path d="M224 188v80l70-40z" fill="#D91E2B"/><path class="lg-fr" d="M196 392h120" stroke-width="28" stroke-linecap="round"/></svg>`;
+const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='116' fill='%230A0A0C'/%3E%3Crect x='96' y='120' width='320' height='216' rx='40' fill='none' stroke='%23F5F5F7' stroke-width='28'/%3E%3Cpath d='M224 188v80l70-40z' fill='%23D91E2B'/%3E%3Cpath d='M196 392h120' stroke='%23F5F5F7' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E";
+
 function layout(title, body, n, extra = "") {
-  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body>${body}${extra}</body></html>`, n);
+  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">Aller au contenu</a>${body}${extra}</body></html>`, n);
 }
 
 const AUTH_ERR = {
@@ -55,33 +164,42 @@ const AUTH_ERR = {
   taken: "Cet identifiant n'est pas disponible.",
 };
 
-export function loginPage(n, err) {
+const authErr = (err) => (err && AUTH_ERR[err] ? `<div class="notice err" role="alert">${ico("info")}<span>${e(AUTH_ERR[err])}</span></div>` : "");
+
+const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
+const nextQ = (next) => (next && next !== "/" ? `?next=${encodeURIComponent(next)}` : "");
+
+export function loginPage(n, err, next = "/") {
   return layout("Ultra TV — connexion", `
-<div class="card"><h1>Ultra TV</h1><div class="sub">Connexion à ta configuration</div>
-${err && AUTH_ERR[err] ? `<div class="notice err">${e(AUTH_ERR[err])}</div>` : ""}
-<form method="post" action="/login">
-<label for="login">Identifiant <span class="small">(ou ton ancienne adresse MAC)</span></label>
-<input id="login" name="login" required autocomplete="username" autofocus />
+<main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="panel"><h1>Connexion</h1><p class="sub">Retrouve ta configuration et tes appareils.</p>
+${authErr(err)}
+<form method="post" action="/login">${nextField(next)}
+<label for="login">Identifiant <span class="hint">(ou ton ancienne adresse MAC)</span></label>
+<input id="login" name="login" required autocomplete="username" autocapitalize="none" spellcheck="false" autofocus />
 <label for="pw">Mot de passe</label>
 <input id="pw" name="password" type="password" required autocomplete="current-password" />
-<div class="row"><button type="submit">Se connecter</button><a href="/signup">Créer un compte</a></div>
-</form></div>`, n);
+<div class="row"><button class="block" type="submit">Se connecter</button></div>
+</form></div>
+<p class="alt">Pas encore de compte ? <a href="/signup${e(nextQ(next))}">Créer un compte</a></p></main>`, n);
 }
 
-export function signupPage(n, err) {
+export function signupPage(n, err, next = "/") {
   return layout("Ultra TV — inscription", `
-<div class="card"><h1>Ultra TV</h1><div class="sub">Créer un compte</div>
-${err && AUTH_ERR[err] ? `<div class="notice err">${e(AUTH_ERR[err])}</div>` : ""}
-<form method="post" action="/signup">
-<label for="login">Identifiant</label>
-<input id="login" name="login" required autocomplete="username" minlength="3" maxlength="64" />
-<label for="pw">Mot de passe <span class="small">(10 caractères minimum)</span></label>
+<main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="panel"><h1>Créer un compte</h1><p class="sub">Une seule configuration pour toutes tes TV.</p>
+${authErr(err)}
+<form method="post" action="/signup">${nextField(next)}
+<label for="login">Identifiant <span class="hint">(3 à 64 caractères)</span></label>
+<input id="login" name="login" required autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="64" />
+<label for="pw">Mot de passe <span class="hint">(10 caractères minimum)</span></label>
 <input id="pw" name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password" />
 <label for="pw2">Confirmer le mot de passe</label>
 <input id="pw2" name="confirm" type="password" required minlength="10" maxlength="200" autocomplete="new-password" />
-<p class="muted small">L'adresse MAC de ta box n'est plus un identifiant : ton appareil s'associe à ton compte avec un code affiché sur la TV.</p>
-<div class="row"><button type="submit">Créer le compte</button><a href="/login">J'ai déjà un compte</a></div>
-</form></div>`, n);
+<div class="note">${ico("info")}<span>L'adresse MAC de ta box n'est plus un identifiant : ton appareil s'associe à ton compte avec un code affiché sur la TV.</span></div>
+<div class="row"><button class="block" type="submit">Créer le compte</button></div>
+</form></div>
+<p class="alt">Déjà inscrit ? <a href="/login${e(nextQ(next))}">J'ai déjà un compte</a></p></main>`, n);
 }
 
 const DASH_MSG = {
@@ -98,72 +216,143 @@ const DASH_MSG = {
   ok: { paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour." },
 };
 
-/** Matrice fournisseur × appareils : cases à cocher + raccourci « Tous ». */
-function assignForm(p, devices, csrfInput) {
+/** « il y a 3 jours » : durée relative lisible, calculée côté serveur. */
+function ago(t, now = Date.now()) {
+  if (!t) return "";
+  const s = Math.max(0, Math.round((now - t) / 1000));
+  if (s < 60) return "à l'instant";
+  const steps = [[3600, 60, "min"], [86400, 3600, "h"], [2592000, 86400, "j"], [31536000, 2592000, "mois"]];
+  for (const [lim, div, unit] of steps) if (s < lim) return `il y a ${Math.floor(s / div)} ${unit}`;
+  const y = Math.floor(s / 31536000);
+  return `il y a ${y} an${y > 1 ? "s" : ""}`;
+}
+
+/** Badges de partage + formulaire (cases à cocher + raccourci « Tous »). Sans JavaScript, tout fonctionne. */
+function sharing(p, devices, csrfInput) {
   const a = p.assign === undefined || p.assign === "all" ? "all" : Array.isArray(p.assign) ? p.assign : "all";
-  const boxes = devices.map((d) => `<label class="small"><input type="checkbox" name="d" value="${e(d.id)}"${a === "all" || a.includes(d.id) ? " checked" : ""}/> ${e(d.name)}</label>`).join(" ");
-  return `<form method="post" action="/providers/${e(p.id)}/assign" class="small">${csrfInput}<span class="muted">Reçu par :</span> ${boxes || "—"}
-<label class="small"><input type="checkbox" name="all" value="1"${a === "all" ? " checked" : ""}/> Tous</label> <button class="secondary" type="submit">Enregistrer</button></form>`;
+  const shown = a === "all" ? [] : devices.filter((d) => a.includes(d.id));
+  const chips = a === "all"
+    ? `<span class="chip all">${ico("share")}Tous les appareils</span>`
+    : shown.length ? shown.map((d) => `<span class="chip">${e(d.name)}</span>`).join("") : `<span class="chip none">Aucun appareil</span>`;
+  const picks = devices.map((d) => `<label class="pick"><input type="checkbox" name="d" value="${e(d.id)}"${a === "all" || a.includes(d.id) ? " checked" : ""}/>${e(d.name)}</label>`).join("");
+  return { chips: `<div class="chips" aria-label="Partagé avec">${chips}</div>`,
+    form: `<details><summary>${ico("share")}Partage</summary><form method="post" action="/providers/${e(p.id)}/assign" class="drop share-form">${csrfInput}
+<div class="lbl mt0">Reçu par</div>
+<div class="picks"><label class="pick all"><input type="checkbox" name="all" value="1"${a === "all" ? " checked" : ""}/>Tous les appareils</label>${picks}</div>
+<div class="row"><button type="submit">Enregistrer le partage</button></div></form></details>` };
+}
+
+const PAIR_JS = `(function(){var box=document.getElementById('codecells'),fb=document.getElementById('code');if(!box||!fb)return;
+ var cs=Array.prototype.slice.call(box.querySelectorAll('.cell'));box.hidden=false;fb.hidden=true;fb.required=false;fb.disabled=true;
+ var hid=document.createElement('input');hid.type='hidden';hid.name='code';fb.parentNode.appendChild(hid);
+ function sync(){hid.value=cs.map(function(c){return c.value;}).join('');}
+ function fill(txt,from){var t=txt.toUpperCase().replace(/[^A-Z0-9]/g,'');for(var i=0;i<t.length&&from+i<cs.length;i++)cs[from+i].value=t[i];sync();var k=Math.min(from+t.length,cs.length-1);cs[k].focus();}
+ cs.forEach(function(c,i){
+  c.addEventListener('input',function(){var v=c.value;c.value='';if(v)fill(v,i);else sync();});
+  c.addEventListener('keydown',function(ev){if(ev.key==='Backspace'&&!c.value&&i>0){cs[i-1].value='';cs[i-1].focus();sync();}
+   else if(ev.key==='ArrowLeft'&&i>0){cs[i-1].focus();}else if(ev.key==='ArrowRight'&&i<cs.length-1){cs[i+1].focus();}});
+  c.addEventListener('paste',function(ev){ev.preventDefault();fill((ev.clipboardData||window.clipboardData).getData('text'),i);});
+  c.addEventListener('focus',function(){c.select();});});sync();
+ box.closest('form').addEventListener('submit',function(){sync();});})();
+`;
+
+function pairForm(csrfInput, code = "") {
+  const c = code || "";
+  const cells = Array.from({ length: 8 }, (_, i) => `${i === 4 ? '<span class="sep" aria-hidden="true"></span>' : ""}<input class="cell" maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${e(c[i] || "")}" aria-label="Caractère ${i + 1} sur 8"/>`).join("");
+  return `<form method="post" action="/pair">${csrfInput}
+<div class="lbl mt0" id="l-code">Code affiché sur la TV</div>
+<div id="codecells" class="codebox" role="group" aria-labelledby="l-code" hidden>${cells}</div>
+<input id="code" class="code-fallback" name="code" required maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH" aria-labelledby="l-code" aria-describedby="code-hint" value="${e(c ? `${c.slice(0, 4)}-${c.slice(4)}` : "")}"/>
+<p class="hint small mt6" id="code-hint">8 caractères. Le tiret est facultatif et les minuscules sont acceptées.</p>
+<label for="dname">Nom de l'appareil <span class="hint">(facultatif)</span></label><input id="dname" name="name" maxlength="40" placeholder="Salon"/>
+<div class="row"><button class="block" type="submit">Appairer</button></div></form>`;
+}
+
+export function pairPage(n, { acct, csrf, code, invalid }) {
+  const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
+  const msg = invalid ? `<div class="notice err" role="alert">${ico("info")}<span>Ce code n'est pas valide : il doit faire 8 caractères. Vérifie l'écran de ta TV ou saisis-le à la main.</span></div>` : "";
+  return layout("Ultra TV — appairer", `
+<main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="panel"><h1>${code ? "Appairer cet appareil\u00a0?" : "Appairer un appareil"}</h1>
+<p class="sub">${code ? "Une TV demande l'accès à ta configuration. Vérifie que le code ci-dessous est bien celui affiché sur son écran." : "Saisis le code affiché sur ta TV."}</p>
+${msg}<p class="muted small mt10">Compte : <strong>${e(acct.login)}</strong></p>
+${pairForm(csrfInput, code || "")}
+<p class="alt"><a href="/">Annuler</a></p></div></main>`, n, `<script nonce="${n}">${PAIR_JS}</script>`);
 }
 
 export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
-  const provRows = providers.map((p) => `
-<div class="item"><span class="kind">${e(p.kind)}</span>
-<div><div><strong>${e(p.name)}</strong></div><div class="muted small">${e(displayUrl(p.url))}</div>
-<div class="muted small">${p.originName ? `Ajouté depuis ${e(p.originName === "dashboard" ? "le tableau de bord" : p.originName)}` : "Origine inconnue"}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
-${assignForm(p, devices, csrfInput)}</div>
-<form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div>`).join("");
+  const provRows = providers.map((p) => {
+    const sh = sharing(p, devices, csrfInput);
+    const origin = p.originName ? `Ajouté depuis ${e(p.originName === "dashboard" ? "le tableau de bord" : p.originName)}` : "Origine inconnue";
+    return `
+<article class="card"><div class="card-top"><div class="badge-ico">${ico("list")}</div>
+<div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
+${sh.chips}
+<div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
+<div class="actions">${sh.form}
+<form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
+  }).join("");
   const devRows = devices.map((d) => `
-<div class="item"><span class="kind">TV</span>
-<div><div><strong>${e(d.name)}</strong></div><div class="muted small">${e(d.label || "")} · appairé le ${e(when(d.createdAt))}</div></div>
-<form method="post" action="/devices/${e(d.id)}/rename" class="row">${csrfInput}<input name="name" maxlength="40" value="${e(d.name)}" aria-label="Nom de l'appareil"/><button class="secondary" type="submit">Renommer</button></form>
-<form method="post" action="/devices/${e(d.id)}/revoke" data-confirm="Révoquer cet appareil ? Il ne pourra plus lire ta configuration.">${csrfInput}<button class="danger" type="submit">Révoquer</button></form></div>`).join("");
-  const msg = (err && DASH_MSG.err[err] && `<div class="notice err">${e(DASH_MSG.err[err])}</div>`)
-    || (ok && DASH_MSG.ok[ok] && `<div class="notice ok">${e(DASH_MSG.ok[ok])}</div>`) || "";
+<article class="card"><div class="card-top"><div class="badge-ico">${ico("tv")}</div>
+<div class="grow"><div class="card-title">${e(d.name)}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
+<div class="actions"><details><summary>${ico("edit")}Renommer</summary><form method="post" action="/devices/${e(d.id)}/rename" class="drop">${csrfInput}
+<label class="mt0" for="rn-${e(d.id)}">Nom de l'appareil</label><input id="rn-${e(d.id)}" name="name" maxlength="40" value="${e(d.name)}"/>
+<div class="row"><button type="submit">Renommer</button></div></form></details>
+<form method="post" action="/devices/${e(d.id)}/revoke" data-confirm="Révoquer cet appareil ? Il ne pourra plus lire ta configuration.">${csrfInput}<button class="danger" type="submit">Révoquer</button></form></div></article>`).join("");
+  const msg = (err && DASH_MSG.err[err] && `<div class="notice err" role="alert">${ico("info")}<span>${e(DASH_MSG.err[err])}</span></div>`)
+    || (ok && DASH_MSG.ok[ok] && `<div class="notice ok" role="status">${ico("info")}<span>${e(DASH_MSG.ok[ok])}</span></div>`) || "";
   const script = `<script nonce="${n}">
 document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventListener('submit',function(ev){if(!confirm(f.dataset.confirm))ev.preventDefault();});});
-var ids=['xtream','m3u'];
-document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){
- ids.forEach(function(k){document.getElementById('form-'+k).hidden=(k!==b.dataset.tab);});
- document.querySelectorAll('.tabs button').forEach(function(x){x.classList.toggle('on',x===b);});});});
+document.querySelectorAll('.share-form').forEach(function(f){var all=f.querySelector('input[name=all]'),ds=f.querySelectorAll('input[name=d]');
+ all.addEventListener('change',function(){ds.forEach(function(d){d.checked=all.checked;});});
+ ds.forEach(function(d){d.addEventListener('change',function(){all.checked=Array.prototype.every.call(ds,function(x){return x.checked;});});});});
+${PAIR_JS}
 </script>`;
   return layout(`Ultra TV — ${acct.login}`, `
 <div class="layout">
-<div class="topbar"><div><h1 class="inline">Ultra TV</h1> <span class="pill">${e(acct.login)}</span></div>
-<form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div>
+<header class="topbar"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="who"><span class="pill" title="Compte connecté">${ico("user")}<span>${e(acct.login)}</span></span>
+<form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div></header>
+<main id="main">
 ${msg}
-<div class="panel"><h2>Appairer un appareil</h2>
-<div class="muted small">Ouvre Ultra TV sur ta TV : Réglages, Synchronisation cloud. Un code à 8 caractères s'affiche. Saisis-le ici.</div>
-<form method="post" action="/pair">${csrfInput}
-<label for="code">Code affiché sur la TV</label><input id="code" class="code" name="code" required maxlength="12" autocomplete="off" placeholder="ABCD-EFGH"/>
-<label for="dname">Nom de l'appareil</label><input id="dname" name="name" maxlength="40" placeholder="Salon"/>
-<div class="row"><button type="submit">Appairer</button></div></form>
-<h2 class="mt">Appareils appairés (${devices.length})</h2>
-${devRows || `<div class="muted small">Aucun appareil.</div>`}</div>
-<div class="panel"><h2>Fournisseurs (${providers.length})</h2>${provRows || `<div class="muted small">Aucun fournisseur.</div>`}
-<h2 class="mt">Ajouter un fournisseur</h2>
-<div class="tabs"><button type="button" class="on" data-tab="xtream">Xtream Codes</button><button type="button" data-tab="m3u">M3U URL</button></div>
-<form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
-<label>Nom</label><input name="name" maxlength="64"/><label>URL du serveur</label><input name="url" required maxlength="2048" placeholder="http://provider.com:8080"/>
-<label>Utilisateur</label><input name="username" required maxlength="256" autocomplete="off"/><label>Mot de passe</label><input name="password" type="password" required maxlength="256" autocomplete="off"/>
-<div class="row"><button type="submit">Ajouter</button></div></form>
-<form method="post" action="/providers" id="form-m3u" hidden>${csrfInput}<input type="hidden" name="kind" value="M3U"/>
-<label>Nom</label><input name="name" maxlength="64"/><label>URL de la playlist</label><input name="url" required maxlength="2048"/>
-<div class="row"><button type="submit">Ajouter</button></div></form>
-<p class="muted small">Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</p></div>
-<div class="panel"><h2>Mot de passe</h2>
+<section class="panel" aria-labelledby="h-pair"><div class="pair">
+<div><h1 id="h-pair">Appairer un appareil</h1><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
+<ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol></div>
+${pairForm(csrfInput)}
+</div></section>
+<div class="grid">
+<div class="col"><section class="panel o1" aria-labelledby="h-dev"><div class="panel-h"><h2 id="h-dev">Appareils</h2><span class="count" aria-label="${devices.length} appareil${devices.length > 1 ? "s" : ""}">${devices.length}</span></div>
+<p class="muted small">Les TV qui lisent ta configuration.</p>
+<div class="stack">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div></section>
+<section class="panel o4" aria-labelledby="h-pw"><h2 id="h-pw">Mot de passe</h2>
 <form method="post" action="/password">${csrfInput}
-<label>Mot de passe actuel</label><input name="current" type="password" required autocomplete="current-password"/>
-<label>Nouveau mot de passe (10 caractères minimum)</label><input name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password"/>
-<div class="row"><button type="submit">Mettre à jour</button></div></form></div>
-<div class="panel"><h2>Zone dangereuse</h2><div class="muted small">Supprime le compte, ses fournisseurs et révoque tous ses appareils.</div>
+<label for="cur">Mot de passe actuel</label><input id="cur" name="current" type="password" required autocomplete="current-password"/>
+<label for="npw">Nouveau mot de passe <span class="hint">(10 caractères minimum)</span></label><input id="npw" name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password"/>
+<div class="row"><button type="submit">Mettre à jour</button></div></form></section>
+<section class="panel danger-zone o5" aria-labelledby="h-dz"><h2 id="h-dz">Zone dangereuse</h2><p class="muted small mt6">Supprime le compte, ses fournisseurs et révoque tous ses appareils.</p>
 <form method="post" action="/account/delete" data-confirm="Supprimer définitivement ce compte ?">${csrfInput}
-<label>Mot de passe</label><input name="password" type="password" required autocomplete="current-password"/>
-<div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></div>
-</div>`, n, script);
+<label for="dpw">Mot de passe</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
+<div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section></div>
+<div class="col"><section class="panel o2" aria-labelledby="h-src"><div class="panel-h"><h2 id="h-src">Fournisseurs</h2><span class="count" aria-label="${providers.length} fournisseur${providers.length > 1 ? "s" : ""}">${providers.length}</span></div>
+<p class="muted small">Tes sources de chaînes, et les appareils qui les reçoivent.</p>
+<div class="stack">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>Aucun fournisseur</strong><span class="small">Ajoute une source Xtream Codes ou une playlist M3U ci-dessous.</span></div>`}</div></section>
+<section class="panel o3" aria-labelledby="h-add"><h2 id="h-add">Ajouter un fournisseur</h2>
+<div class="tabbed"><input type="radio" name="tab" id="t-xtream" checked aria-label="Xtream Codes"/><input type="radio" name="tab" id="t-m3u" aria-label="Playlist M3U"/><div class="seg" aria-hidden="true"><label for="t-xtream">Xtream Codes</label><label for="t-m3u">Playlist M3U</label></div>
+<form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
+<label for="xn">Nom <span class="hint">(facultatif)</span></label><input id="xn" name="name" maxlength="64" placeholder="Mon fournisseur"/>
+<label for="xu">URL du serveur</label><input id="xu" name="url" type="url" required maxlength="2048" placeholder="http://provider.com:8080" autocapitalize="none" spellcheck="false"/>
+<label for="xl">Utilisateur</label><input id="xl" name="username" required maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+<label for="xp">Mot de passe</label><input id="xp" name="password" type="password" required maxlength="256" autocomplete="off"/>
+<div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form>
+<form method="post" action="/providers" id="form-m3u">${csrfInput}<input type="hidden" name="kind" value="M3U"/>
+<label for="mn">Nom <span class="hint">(facultatif)</span></label><input id="mn" name="name" maxlength="64" placeholder="Ma playlist"/>
+<label for="mu">URL de la playlist</label><input id="mu" name="url" type="url" required maxlength="2048" placeholder="https://exemple.com/liste.m3u" autocapitalize="none" spellcheck="false"/>
+<div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form></div>
+<p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section></div>
+</div></main></div>`, n, script);
 }
 
 const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
@@ -173,12 +362,12 @@ export function eventsPage(n, items) {
     const lvl = String(it.level || "info").toLowerCase();
     return `<tr class="lvl-${e(lvl)}"><td>${e(fmtTime(it.ts))}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td>${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${e(it.deviceId || "")}</td></tr>`;
   }).join("");
-  return layout("Ultra TV — journaux", `<h1>Journaux — ${items.length}</h1><div class="sub">Fenêtre glissante de 7 jours. Messages nettoyés côté serveur.</div>
-<table><thead><tr><th>Date</th><th>Niveau</th><th>Tag</th><th>Message</th><th>Appareil</th><th>Version</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table>
-${rows ? "" : `<div class="muted">Aucun événement.</div>`}`, n);
+  return layout("Ultra TV — journaux", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Journaux — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 7 jours. Messages nettoyés côté serveur.</p>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Niveau</th><th>Tag</th><th>Message</th><th>Appareil</th><th>Version</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>
+${rows ? "" : `<div class="empty mt16"><strong>Aucun événement</strong></div>`}</main>`, n);
 }
 
 export function crashesPage(n, items) {
   const rows = items.map((it) => `<div class="panel"><div><strong>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</strong> · ${e(it.device || "")} · SDK ${e(it.androidSdk ?? "?")} · ${e(fmtTime(it.ts))} · ${e(it.deviceId || "")}</div><pre>${e(it.stack || "")}</pre></div>`).join("");
-  return layout("Ultra TV — crashs", `<h1>Crashs — ${items.length}</h1><div class="sub">Fenêtre glissante de 30 jours.</div>${rows || `<div class="muted">Aucun crash.</div>`}`, n);
+  return layout("Ultra TV — crashs", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Crashs — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 30 jours.</p>${rows || `<div class="empty"><strong>Aucun crash</strong></div>`}</main>`, n);
 }

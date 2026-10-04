@@ -338,3 +338,71 @@ describe("Origin « null » (Firefox, Safari)", () => {
     expect(sameOrigin(new Request("https://w.example/signup", { method: "POST", headers: { origin: "null", "sec-fetch-site": "cross-site" } }))).toBe(false);
   });
 });
+
+describe("polices auto-hébergées", () => {
+  it("police_servieParLeWorker_cspFontSrcSelfSansAffaiblir", async () => {
+    const f = await call("/assets/sora.woff2");
+    expect(f.status).toBe(200);
+    expect(f.headers.get("content-type")).toBe("font/woff2");
+    expect((await call("/assets/inconnue.woff2")).status).toBe(404);
+    const csp = (await call("/login")).headers.get("content-security-policy");
+    expect(csp).toContain("font-src 'self'");
+    expect(csp).not.toContain("unsafe-inline");
+  });
+});
+
+describe("appairage par lien/QR", () => {
+  it("GET_pair_nonConnecte_redirigeVersConnexionAvecRetour", async () => {
+    const r = await call("/pair?code=ABCD2345", { ip: freshIp() });
+    expect(r.status).toBe(302);
+    expect(r.headers.get("location")).toBe("/login?next=" + encodeURIComponent("/pair?code=ABCD2345"));
+  });
+
+  it("GET_pair_connecte_affichePrerempliSansAppairer", async () => {
+    const acct = await newAccount();
+    const r = await call("/pair?code=abcd-2345", { cookie: acct.cookie, ip: acct.ip });
+    expect(r.status).toBe(200);
+    const h = await r.text();
+    expect(h).toContain("Appairer cet appareil");
+    expect(h).toContain('value="ABCD-2345"');
+    // Un GET ne crée jamais d'appareil.
+    const dash = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(dash).toContain("Aucun appareil");
+  });
+
+  it("GET_pair_codeInvalide_messagePropre", async () => {
+    const acct = await newAccount();
+    const h = await (await call("/pair?code=zzz", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(h).toContain("Ce code n'est pas valide");
+  });
+
+  it("login_nextHostile_ignore_pasDOpenRedirect", async () => {
+    const acct = await newAccount();
+    for (const next of ["https://evil.test/", "//evil.test", "/pair?code=ABCD2345&x=1", "/pair?code=ABCD234", "/\\evil.test", "/pair?code=ABCD2345\n", "/dashboard"]) {
+      const r = await call("/login", { method: "POST", ip: freshIp(), form: { login: acct.login, password: strongPw, next } });
+      expect(r.status).toBe(302);
+      expect(r.headers.get("location")).toBe("/");
+    }
+    const ok = await call("/login", { method: "POST", ip: freshIp(), form: { login: acct.login, password: strongPw, next: "/pair?code=ABCD2345" } });
+    expect(ok.headers.get("location")).toBe("/pair?code=ABCD2345");
+  });
+
+  it("signup_nextHostile_ignore", async () => {
+    const r = await call("/signup", { method: "POST", ip: freshIp(), form: { login: `u-${crypto.randomUUID().slice(0, 8)}`, password: strongPw, confirm: strongPw, next: "https://evil.test" } });
+    expect(r.headers.get("location")).toBe("/");
+  });
+
+  it("loginPage_nextHostile_neEstPasReinjecte", async () => {
+    const h = await (await call("/login?next=%22%3E%3Cscript%3E", { ip: freshIp() })).text();
+    expect(h).not.toContain('name="next"');
+  });
+
+  it("pair_codeSansTiretEnMinuscules_accepte", async () => {
+    const acct = await newAccount();
+    const tv = freshIp();
+    const start = await (await call("/api/pair/start", { method: "POST", ip: tv, json: {} })).json();
+    const typed = start.code.replace("-", "").toLowerCase();
+    const r = await call("/pair", { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, code: typed, name: "Salon" } });
+    expect(r.headers.get("location")).not.toContain("e=");
+  });
+});

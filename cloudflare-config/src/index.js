@@ -29,7 +29,8 @@ import {
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
-import { loginPage, signupPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
+import { fontResponse } from "./fonts.js";
+import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
 
@@ -126,19 +127,34 @@ async function route(req, env) {
   if ((path === "/crashes" || path === "/logs") && m === "GET") return opsPage(req, env, path === "/crashes" ? "crash" : "event");
   if (path === "/api/admin/migrate" && m === "POST") return adminMigrate(req, env, url);
 
+  // ---- polices auto-hébergées (publiques, immuables) ----
+  const font = path.match(/^\/assets\/([a-z]+\.woff2)$/);
+  if (font && m === "GET") return fontResponse(font[1]) || new Response("Not found", { status: 404 });
+
   // ---- pages publiques ----
-  if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e")); }
+  if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/login" && m === "POST") return doLogin(req, env);
-  if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e")); }
+  if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/signup" && m === "POST") return doSignup(req, env);
 
   // ---- tableau de bord (session) ----
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
+  const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign))$/.test(path));
-  if (!dashboardRoute && !mutating) return new Response("Not found", { status: 404 });
-  if (!sess) return redirect("/login");
+  if (!dashboardRoute && !pairRoute && !mutating) return new Response("Not found", { status: 404 });
+  if (!sess) {
+    const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
+    return redirect(c ? `/login?next=${encodeURIComponent(`/pair?code=${c}`)}` : "/login");
+  }
+
+  // Lien/QR affiché par la TV : on confirme avec un POST explicite, le GET n'appaire jamais.
+  if (pairRoute) {
+    const raw = url.searchParams.get("code");
+    const c = normalizeCode(raw);
+    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c });
+  }
 
   if (dashboardRoute) {
     const n = nonce();
@@ -199,6 +215,11 @@ async function route(req, env) {
   });
 }
 
+// Retour après connexion : uniquement /pair?code=XXXXXXXX (chemin relatif strict, jamais d'open redirect).
+const NEXT_RE = /^\/pair\?code=[A-Z2-9]{8}$/;
+const safeNext = (v) => (typeof v === "string" && NEXT_RE.test(v) ? v : "/");
+const nextQuery = (to) => (to === "/" ? "" : `&next=${encodeURIComponent(to)}`);
+
 // ---- sessions -------------------------------------------------------------------
 
 async function currentSession(req, env) {
@@ -226,6 +247,7 @@ async function doLogin(req, env) {
   if (locked) return locked;
   const parsed = await readForm(req);
   if (parsed.error) return parsed.error;
+  const to = safeNext(parsed.form.get("next"));
   const rawLogin = (parsed.form.get("login") || "").slice(0, 128);
   const password = (parsed.form.get("password") || "").slice(0, 256);
   const login = normalizeLogin(rawLogin) || `invalid:${await sha256Hex(rawLogin)}`;
@@ -242,7 +264,7 @@ async function doLogin(req, env) {
       guardStub(env, `lock:ip:${ip}`).lockFail(IP_LOCK),
     ]);
     if (a.locked || b.locked) return tooMany(Math.max(a.retryAfter, b.retryAfter));
-    return redirect("/login?e=pw");
+    return redirect(`/login?e=pw${nextQuery(to)}`);
   }
   await guardStub(env, lockKey).lockClear();
   if (verdict.needsRehash) {
@@ -250,7 +272,7 @@ async function doLogin(req, env) {
     delete acct.salt;
     await putAccount(env, acct);
   }
-  return startSession(env, acct);
+  return startSession(env, acct, to);
 }
 
 async function doSignup(req, env) {
@@ -260,19 +282,20 @@ async function doSignup(req, env) {
   const parsed = await readForm(req);
   if (parsed.error) return parsed.error;
   const f = parsed.form;
+  const to = safeNext(f.get("next"));
   const login = normalizeLogin(f.get("login"));
   const password = (f.get("password") || "").slice(0, 256);
-  if (!login) return redirect("/signup?e=login");
-  if (password.length < MIN_PASSWORD) return redirect("/signup?e=short");
-  if (password !== (f.get("confirm") || "")) return redirect("/signup?e=mismatch");
+  if (!login) return redirect(`/signup?e=login${nextQuery(to)}`);
+  if (password.length < MIN_PASSWORD) return redirect(`/signup?e=short${nextQuery(to)}`);
+  if (password !== (f.get("confirm") || "")) return redirect(`/signup?e=mismatch${nextQuery(to)}`);
   // Un compte hérité (clé = MAC en clair) ne peut pas être « squatté » avant sa migration.
-  if (isMacLogin(login) && (await env.CONFIG.get(login)) !== null) return redirect("/signup?e=taken");
-  if (!(await guardStub(env, `acct:${login}`).claim())) return redirect("/signup?e=taken");
+  if (isMacLogin(login) && (await env.CONFIG.get(login)) !== null) return redirect(`/signup?e=taken${nextQuery(to)}`);
+  if (!(await guardStub(env, `acct:${login}`).claim())) return redirect(`/signup?e=taken${nextQuery(to)}`);
   try {
     const acct = { login, passwordHash: await hashPassword(password), devices: [], sessEpoch: 0, createdAt: Date.now() };
     await saveProviders(env, acct, []);
     await putAccount(env, acct);
-    return await startSession(env, acct);
+    return await startSession(env, acct, to);
   } catch (err) {
     await guardStub(env, `acct:${login}`).release();
     throw err;
