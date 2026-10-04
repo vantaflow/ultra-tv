@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import androidx.compose.ui.focus.focusRequester
 import com.ultratv.tv.nativeapp.i18n.locale
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -84,7 +85,11 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val D = LocalDs.current
     var rub by rememberSaveable { mutableStateOf(0) }
     val dbg by com.ultratv.tv.nativeapp.StartupNav.debugRub.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(dbg) { dbg?.let { rub = it.coerceIn(0, Rub.entries.lastIndex); com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null } }
+    val rubFocus = remember { List(Rub.entries.size) { androidx.compose.ui.focus.FocusRequester() } }
+    // Débogage (captures) : ouvre la rubrique demandée ET y place le focus (la rubrique suit le focus), une fois le focus initial posé.
+    androidx.compose.runtime.LaunchedEffect(dbg) {
+        dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
+    }
     val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubAbout)
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(460.design).fillMaxHeight().padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
@@ -93,7 +98,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 val sel = rub == i
                 FocusSurface(
                     onClick = { rub = i }, shape = RoundedCornerShape(18.design), bg = if (sel) Ux.Surface2 else Color.Transparent, ringWidth = 5.design, focusedScale = 1.0f,
-                    modifier = Modifier.fillMaxWidth().height(72.design).onFocusChanged { if (it.isFocused) rub = i },
+                    modifier = Modifier.fillMaxWidth().height(72.design).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused) rub = i },
                 ) { f ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         if (sel && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
