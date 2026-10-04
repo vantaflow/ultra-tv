@@ -53,6 +53,19 @@ describe("tmdbProxy", () => {
     expect(fetchFn.mock.calls[0][1].redirect).toBe("manual");
     expect(JSON.stringify([...r.headers])).not.toContain("SECRET");
   });
+  it("jetonV4_envoyeEnBearer_pasDansLUrl_etPrioritaireSurLaCleV3", async () => {
+    const fetchFn = vi.fn(async () => new Response('{"id":1}', { status: 200 }));
+    await tmdbProxy("movie/1", sp(""), { TMDB_READ_TOKEN: "TOK4", TMDB_API_KEY: "KEY3" }, { fetchFn, cache: mkCache() });
+    expect(fetchFn.mock.calls[0][1].headers.authorization).toBe("Bearer TOK4");
+    expect(fetchFn.mock.calls[0][0]).not.toContain("api_key");
+    expect(fetchFn.mock.calls[0][0]).not.toContain("TOK4");
+  });
+  it("sansJeton_cleV3_enRepli_enParametre", async () => {
+    const fetchFn = vi.fn(async () => new Response('{"id":1}', { status: 200 }));
+    await tmdbProxy("movie/1", sp(""), { TMDB_API_KEY: "KEY3" }, { fetchFn, cache: mkCache() });
+    expect(fetchFn.mock.calls[0][0]).toContain("api_key=KEY3");
+    expect(fetchFn.mock.calls[0][1].headers.authorization).toBeUndefined();
+  });
   it("deuxiemeAppel_serviDuCache_sansAppelAmont", async () => {
     const fetchFn = vi.fn(async () => new Response('{"id":603}', { status: 200 }));
     const cache = mkCache();

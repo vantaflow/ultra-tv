@@ -1,4 +1,6 @@
-// Proxy TMDB : la clé reste dans le secret Wrangler TMDB_API_KEY, jamais dans l'application.
+// Proxy TMDB : les identifiants restent dans les secrets Wrangler, jamais dans l'application.
+//   TMDB_READ_TOKEN  jeton v4, envoyé en « Authorization: Bearer » (à privilégier) ;
+//   TMDB_API_KEY     clé v3 (?api_key=), en repli seulement si le jeton est absent.
 // Seuls les chemins de la liste blanche sont relayés ; les paramètres sont filtrés.
 
 const API = "https://api.themoviedb.org/3/";
@@ -53,14 +55,16 @@ export function cacheKey(t) {
 export async function tmdbProxy(rest, searchParams, env, { fetchFn = fetch, cache = globalThis.caches?.default } = {}) {
   const t = tmdbTarget(rest, searchParams);
   if (!t) return new Response(JSON.stringify({ error: "not_allowed" }), { status: 404, headers: { "content-type": "application/json" } });
-  if (!env.TMDB_API_KEY) return new Response(JSON.stringify({ error: "tmdb_not_configured" }), { status: 503, headers: { "content-type": "application/json" } });
+  if (!env.TMDB_READ_TOKEN && !env.TMDB_API_KEY) return new Response(JSON.stringify({ error: "tmdb_not_configured" }), { status: 503, headers: { "content-type": "application/json" } });
   const key = cacheKey(t);
   const hit = cache ? await cache.match(key) : undefined;
   if (hit) return hit;
   const up = new URL(API + t.path);
   for (const [k, v] of t.params) up.searchParams.set(k, v);
-  up.searchParams.set("api_key", env.TMDB_API_KEY);
-  const r = await fetchFn(up.toString(), { headers: { accept: "application/json" }, redirect: "manual" });
+  const headers = { accept: "application/json" };
+  if (env.TMDB_READ_TOKEN) headers.authorization = `Bearer ${env.TMDB_READ_TOKEN}`;
+  else up.searchParams.set("api_key", env.TMDB_API_KEY);
+  const r = await fetchFn(up.toString(), { headers, redirect: "manual" });
   const body = await r.text();
   const ok = r.status === 200;
   const res = new Response(ok ? body : JSON.stringify({ error: r.status === 404 ? "not_found" : "upstream" }), {
