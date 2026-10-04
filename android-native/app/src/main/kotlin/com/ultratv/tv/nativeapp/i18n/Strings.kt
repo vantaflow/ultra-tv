@@ -33,7 +33,6 @@ data class Strings(
     val navFavorites: String,
     val navSearch: String,
     val navCategories: String,
-    val navMultiview: String,
     val navRecordings: String,
     val navSettings: String,
 
@@ -198,9 +197,6 @@ data class Strings(
     val favoritesSeriesSection: String,
     val detailLoading: String,
     val seriesNoEpisodes: String,
-    val multiViewTitle: String,
-    val multiViewHint: String,
-    val multiViewPickTemplate: String,
     val recordingsPlay: String,
     val recordingsOpenWith: String,
     val playerOff: String,
@@ -427,7 +423,7 @@ data class CommonStrings(
 private val EN = Strings(
     navHome = "Home", navLive = "Live TV", navGuide = "Guide", navMovies = "Movies",
     navSeries = "Series", navFavorites = "Favorites", navSearch = "Search",
-    navCategories = "Categories", navMultiview = "Multi-View",
+    navCategories = "Categories",
     navRecordings = "Recordings", navSettings = "Settings",
 
     homeWelcome = "Welcome to Ultra TV",
@@ -581,9 +577,6 @@ private val EN = Strings(
     favoritesSeriesSection = "Series — %1\$d",
     detailLoading = "Loading…",
     seriesNoEpisodes = "No episodes available.",
-    multiViewTitle = "Multi-View",
-    multiViewHint = "Tap a tile to assign a channel. ENTER cycles through tiles.",
-    multiViewPickTemplate = "Choose a channel for tile %1\$d:",
     recordingsPlay = "Play",
     recordingsOpenWith = "Open with…",
     playerOff = "Off",
@@ -740,7 +733,7 @@ private val EN = Strings(
 private val FR = Strings(
     navHome = "Accueil", navLive = "TV en direct", navGuide = "Guide", navMovies = "Films",
     navSeries = "Séries", navFavorites = "Favoris", navSearch = "Recherche",
-    navCategories = "Catégories", navMultiview = "Multi-vue",
+    navCategories = "Catégories",
     navRecordings = "Enregistrements", navSettings = "Paramètres",
 
     homeWelcome = "Bienvenue dans Ultra TV",
@@ -894,9 +887,6 @@ private val FR = Strings(
     favoritesSeriesSection = "Séries — %1\$d",
     detailLoading = "Chargement…",
     seriesNoEpisodes = "Aucun épisode disponible.",
-    multiViewTitle = "Multi-vue",
-    multiViewHint = "Sélectionne une case pour lui attribuer une chaîne. ENTRÉE passe à la suivante.",
-    multiViewPickTemplate = "Choisis une chaîne pour la case %1\$d :",
     recordingsPlay = "Lire",
     recordingsOpenWith = "Ouvrir avec…",
     playerOff = "Désactivé",
@@ -1053,7 +1043,7 @@ private val FR = Strings(
 private val ES = Strings(
     navHome = "Inicio", navLive = "TV en vivo", navGuide = "Guía", navMovies = "Películas",
     navSeries = "Series", navFavorites = "Favoritos", navSearch = "Buscar",
-    navCategories = "Categorías", navMultiview = "Multi-vista",
+    navCategories = "Categorías",
     navRecordings = "Grabaciones", navSettings = "Ajustes",
 
     homeWelcome = "Bienvenido a Ultra TV",
@@ -1207,9 +1197,6 @@ private val ES = Strings(
     favoritesSeriesSection = "Series — %1\$d",
     detailLoading = "Cargando…",
     seriesNoEpisodes = "No hay episodios disponibles.",
-    multiViewTitle = "Multi-vista",
-    multiViewHint = "Pulsa una casilla para asignar un canal. ENTER pasa entre casillas.",
-    multiViewPickTemplate = "Elige un canal para la casilla %1\$d:",
     recordingsPlay = "Reproducir",
     recordingsOpenWith = "Abrir con…",
     playerOff = "Apagado",
@@ -1366,7 +1353,7 @@ private val ES = Strings(
 private val AR = Strings(
     navHome = "الرئيسية", navLive = "البث المباشر", navGuide = "الدليل", navMovies = "الأفلام",
     navSeries = "المسلسلات", navFavorites = "المفضلة", navSearch = "بحث",
-    navCategories = "الفئات", navMultiview = "عرض متعدد",
+    navCategories = "الفئات",
     navRecordings = "التسجيلات", navSettings = "الإعدادات",
 
     homeWelcome = "مرحبًا بكم في Ultra TV",
@@ -1520,9 +1507,6 @@ private val AR = Strings(
     favoritesSeriesSection = "المسلسلات — %1\$d",
     detailLoading = "جاري التحميل…",
     seriesNoEpisodes = "لا توجد حلقات متاحة.",
-    multiViewTitle = "عرض متعدد",
-    multiViewHint = "اضغط مربعًا لإسناد قناة. ENTER يتنقّل بين المربعات.",
-    multiViewPickTemplate = "اختر قناة للمربع %1\$d:",
     recordingsPlay = "تشغيل",
     recordingsOpenWith = "فتح باستخدام…",
     playerOff = "إيقاف",

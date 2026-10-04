@@ -3,7 +3,7 @@ package com.ultratv.tv.nativeapp.ui.common
 import androidx.compose.ui.graphics.Color
 
 /**
- * Shared hue → Color helpers used by ChannelLogo, ContinueWatchingTile and
+ * Shared hue → Color helpers used by ChannelLogo and
  * Live's preview pane. Previously each call site shipped a near-identical
  * copy of these maths with subtle variations — single source of truth now.
  *

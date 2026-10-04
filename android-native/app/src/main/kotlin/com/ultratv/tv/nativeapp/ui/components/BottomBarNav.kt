@@ -39,7 +39,7 @@ private val items = listOf(
 /**
  * Compact-width navigation bar: a single row of icon+label buttons across
  * the bottom of the screen. The full ten-route set scrolls horizontally so
- * users on narrow phones can still reach Guide / Favorites / Multi-View
+ * users on narrow phones can still reach Guide / Favorites
  * without us giving up vertical real estate.
  */
 @androidx.tv.material3.ExperimentalTvMaterial3Api

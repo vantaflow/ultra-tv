@@ -41,7 +41,6 @@ Full editorial redesign — AMOLED-first, accent rouge `#FF3A2F`, typo **Instrum
 | **Settings** | Tabs sidebar 300 dp · section cards Surface1 + border · MAC card gradient accent · toggle, pills, color swatches |
 | **Onboarding** | Wizard 3 steps · stepper accent · option Cloud (recommandée) vs Manuel · QR code stub |
 
-Multi-View screen was removed in v1.0.0 — too few users, awkward focus on a single remote.
 
 ### Logo
 
@@ -100,7 +99,6 @@ A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a remote-co
 - 🏠 Dynamic Home: **Continue watching** (tap an item → Resume / Dismiss sheet), **Recently watched**, **Movies**, **Series**, **Featured channels** rails
 - 🆕 **First-time MAC card**: shows your device MAC + dashboard steps when no provider is configured
 - 🗓 **TV Guide grid** (Tivimate-style): 12 h × N channels timeline with "now" indicator, refreshed from the provider's full `xmltv.php` feed (streaming pull-parser handles 50 MB+ feeds)
-- ▦ **Multi-View**: up to 4 channels simultaneously in a 2×2 grid
 
 ### Personalization
 - 🎨 **3 themes**: Dark · AMOLED · Blue
