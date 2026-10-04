@@ -76,6 +76,7 @@ fun AddProviderDialog(
     canSubmit: Boolean,
     icon: String = Icons.Monitor,
     subtitle: String? = null,
+    submitLabel: String? = null,
     content: @Composable () -> Unit,
 ) {
     val S = LocalStrings.current
@@ -108,7 +109,7 @@ fun AddProviderDialog(
                 }
                 FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).testTag("dialog-submit")) { f ->
                     Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
-                        Text(D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
+                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
                             color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
                     }
                 }

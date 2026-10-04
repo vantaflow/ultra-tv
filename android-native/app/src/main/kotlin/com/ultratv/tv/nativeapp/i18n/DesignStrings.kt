@@ -76,6 +76,22 @@ class DesignStrings(val lang: AppLang) {
     val formHintIme get() = t("Keyboard: Next", "Clavier : Suivant", "Teclado: Siguiente", "لوحة المفاتيح: التالي")
     val formHintBack get() = t("‹ Back to cancel", "‹ Retour pour annuler", "‹ Atrás para cancelar", "‹ رجوع للإلغاء")
 
+    // Appairage
+    val pairEyebrow get() = t("SYNC FROM THE CLOUD", "SYNCHRONISER DEPUIS LE CLOUD", "SINCRONIZAR DESDE LA NUBE", "المزامنة من السحابة")
+    val pairTitle get() = t("Add your sources from your phone", "Ajoutez vos sources depuis votre téléphone", "Añade tus fuentes desde tu móvil", "أضف مصادرك من هاتفك")
+    fun pairStep1(host: String) = when (lang) { AppLang.French -> "Ouvrez $host"; AppLang.Spanish -> "Abre $host"; AppLang.Arabic -> "افتح $host"; else -> "Open $host" }.trim()
+    val pairStep2 get() = t("Sign in, then “Pair a TV”", "Connectez-vous, puis « Appairer une TV »", "Inicia sesión y elige «Vincular una TV»", "سجّل الدخول ثم «إقران تلفاز»")
+    val pairStep3 get() = t("Enter the code shown here", "Saisissez le code ci-contre", "Introduce el código mostrado aquí", "أدخل الرمز المعروض هنا")
+    val pairNewCode get() = t("New code", "Nouveau code", "Código nuevo", "رمز جديد")
+    val pairYourCode get() = t("YOUR CODE", "VOTRE CODE", "TU CÓDIGO", "رمزك")
+    val pairRequesting get() = t("Requesting a code…", "Demande d’un code…", "Solicitando un código…", "جارٍ طلب الرمز…")
+    fun pairWaiting(remaining: String) = when (lang) { AppLang.French -> "En attente de saisie · expire dans $remaining"; AppLang.Spanish -> "Esperando · caduca en $remaining"; AppLang.Arabic -> "بانتظار الإدخال · ينتهي خلال $remaining"; else -> "Waiting for entry · expires in $remaining" }
+    fun pairDevice(name: String) = when (lang) { AppLang.French -> "Appareil : $name"; AppLang.Spanish -> "Dispositivo: $name"; AppLang.Arabic -> "الجهاز: $name"; else -> "Device: $name" }
+    val pairFailed get() = t("Pairing failed or the code expired. Try a new code.", "L’appairage a échoué ou le code a expiré. Demandez un nouveau code.", "El emparejamiento falló o el código caducó. Pide un código nuevo.", "فشل الإقران أو انتهت صلاحية الرمز. اطلب رمزًا جديدًا.")
+    val workerUrlTitle get() = t("Dashboard address", "Adresse du tableau de bord", "Dirección del panel", "عنوان لوحة التحكم")
+    val workerUrlSub get() = t("The secure (https) address used to pair this TV", "L’adresse sécurisée (https) utilisée pour appairer cette TV", "La dirección segura (https) para vincular esta TV", "العنوان الآمن (https) المستخدم لإقران هذا التلفاز")
+    val workerUrlField get() = t("Dashboard URL", "Adresse du tableau de bord", "URL del panel", "عنوان لوحة التحكم")
+
     // Commun
     val live get() = t("LIVE", "EN DIRECT", "EN DIRECTO", "مباشر")
     val watch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
