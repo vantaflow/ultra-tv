@@ -286,7 +286,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             (categoryId?.let { "&category_id=${it.urlEnc()}" } ?: "")
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
             if (!resp.isSuccessful) throw HttpStatusException(resp.code)
-            val input = resp.body?.byteStream()?.buffered() ?: return@use block(emptySequence())
+            val input = resp.body?.byteStream()?.let { ControlCharFilter(it) }?.buffered() ?: return@use block(emptySequence())
             // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
             val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
                 .mapNotNull { transform(p, it) }
@@ -309,7 +309,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
             // Pas d'URL dans le message : elle contient identifiant et mot de passe.
             if (!resp.isSuccessful) throw HttpStatusException(resp.code)
-            resp.body?.string().orEmpty()
+            resp.body?.string().orEmpty().let(::stripControlChars)
         }
     }
 
@@ -326,3 +326,20 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         fmt.parse(s)?.time
     }.getOrNull()
 }
+
+/**
+ * Certaines sources renvoient des caractères de contrôle BRUTS (tabulation, saut de ligne, U+0001…) dans les chaînes JSON,
+ * ce qui est invalide et faisait échouer toute la réponse. Chaque octet de contrôle devient une espace : hors chaîne c'est
+ * un blanc équivalent, dans une chaîne c'est le seul remplacement qui garde le JSON valide. Les octets UTF-8 multi-octets
+ * (>= 0x80) ne sont jamais touchés.
+ */
+internal class ControlCharFilter(input: java.io.InputStream) : java.io.FilterInputStream(input) {
+    override fun read(): Int = super.read().let { if (it in 0..31 || it == 127) 0x20 else it }
+    override fun read(b: ByteArray, off: Int, len: Int): Int {
+        val n = super.read(b, off, len)
+        for (i in off until off + n.coerceAtLeast(0)) if (b[i] in 0..31 || b[i].toInt() == 127) b[i] = 0x20
+        return n
+    }
+}
+
+internal fun stripControlChars(s: String): String = if (s.none { it.code < 32 || it.code == 127 }) s else s.map { if (it.code < 32 || it.code == 127) ' ' else it }.joinToString("")

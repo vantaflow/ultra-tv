@@ -74,3 +74,28 @@ class XtreamStreamingTest {
         } catch (e: UnknownHostException) { /* ok : l'erreur remonte au lieu d'être avalée */ }
     }
 }
+
+/** La source réelle renvoie parfois des caractères de contrôle bruts (tabulation, saut de ligne, U+0001) dans les noms de catégories. */
+class XtreamControlCharsTest {
+    private val provider = ProviderEntity(id = 1, name = "fictif", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "test", password = "test")
+    private fun client(body: String) = XtreamClient(
+        OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1)
+                .code(200).message("m").body(body.toResponseBody("application/json".toMediaType())).build()
+        }).build(),
+    )
+
+    @Test fun categories_caracteresDeControleBruts_sontTolerees() = runBlocking {
+        val body = "[{\"category_id\":\"1\",\"category_name\":\"FR\tFILMS\",\"parent_id\":0}," +
+            "{\"category_id\":\"2\",\"category_name\":\"AR\nSERIES\u0001\",\"parent_id\":0}," +
+            "{\"category_id\":\"3\",\"category_name\":\"Normal\",\"parent_id\":0}]"
+        val cats = client(body).fetchVodCategories(provider)
+        assertEquals(listOf("1", "2", "3"), cats.map { it.remoteId })
+        assertTrue(cats.none { c -> c.name.any { it.isISOControl() } })
+    }
+
+    @Test fun categories_jsonNormal_inchange() = runBlocking {
+        val cats = client("""[{"category_id":"7","category_name":"Sport","parent_id":0}]""").fetchLiveCategories(provider)
+        assertEquals("Sport", cats.single().name)
+    }
+}
