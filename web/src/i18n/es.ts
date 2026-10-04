@@ -162,7 +162,7 @@ export const es: Dict = {
   "set.display": "Pantalla",
   "set.playback": "Reproducción",
   "set.sync": "Sincronización",
-  "set.categories": "Idiomas y categorías",
+  "set.categories": "Categorías",
   "set.language": "Idioma",
   "set.profiles": "Perfiles",
   "set.about": "Acerca de",

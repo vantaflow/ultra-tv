@@ -162,7 +162,7 @@ export const en: Dict = {
   "set.display": "Display",
   "set.playback": "Playback",
   "set.sync": "Sync",
-  "set.categories": "Languages and categories",
+  "set.categories": "Categories",
   "set.language": "Language",
   "set.profiles": "Profiles",
   "set.about": "About",

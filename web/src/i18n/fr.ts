@@ -161,7 +161,7 @@ export const fr = {
   "set.display": "Affichage",
   "set.playback": "Lecture",
   "set.sync": "Synchronisation",
-  "set.categories": "Langues et catégories",
+  "set.categories": "Catégories",
   "set.language": "Langue",
   "set.profiles": "Profils",
   "set.about": "À propos",

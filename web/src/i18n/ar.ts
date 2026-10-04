@@ -162,7 +162,7 @@ export const ar: Dict = {
   "set.display": "العرض",
   "set.playback": "التشغيل",
   "set.sync": "المزامنة",
-  "set.categories": "اللغات والفئات",
+  "set.categories": "الفئات",
   "set.language": "اللغة",
   "set.profiles": "الملفات الشخصية",
   "set.about": "حول",

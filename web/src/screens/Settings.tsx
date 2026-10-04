@@ -13,7 +13,6 @@ import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
-import { OTHER_LANG, categoryLang, filterCategories, langLabel, languageStats } from "@/lib/categoryLang";
 import { setCategoriesEnabled } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
 import { Icon, type IconName } from "@/ui/Icon";
@@ -67,9 +66,6 @@ export function Settings() {
     </div>
   );
 }
-
-/** Langues affichées d'emblée dans Réglages › Catégories (les plus fournies) ; le reste derrière « Plus de langues ». */
-const TOP_LANGS = 12;
 
 function Pref({ label, desc, children }: { label: string; desc?: string; children: React.ReactNode }) {
   return <div className="pref"><div><div>{label}</div>{desc && <div className="d">{desc}</div>}</div>{children}</div>;
@@ -325,17 +321,14 @@ function CategoriesPane() {
   const source = useActiveSource();
   const sync = useSync();
   const [kind, setKind] = useState<Kind>("live");
-  const [lang, setLang] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const all = useLiveQuery(async () => (source?.cid ? (await db.categories.where("[sourceId+kind]").between([source.cid, ""], [source.cid, "￿"]).toArray()).sort((a, b) => a.ord - b.ord) : []), [source?.cid]) ?? [];
   const initial = useRef<Map<number, 0 | 1> | null>(null);
   if (initial.current == null && all.length) initial.current = new Map(all.map((c) => [c.id!, c.enabled]));
   const pending = initial.current ? all.filter((c) => initial.current!.get(c.id!) !== c.enabled).length : 0;
   const nq = normText(q);
-  const shown = useMemo(() => filterCategories(all, { lang, kind, match: (c) => !nq || normText(c.label).includes(nq) || categoryLang(c.name).toLowerCase() === nq }), [all, lang, kind, nq]);
-  const langs = useMemo(() => languageStats(all), [all]);
-  const [moreLangs, setMoreLangs] = useState(false);
-  const ui = usePrefs((p) => p.lang);
+  // Filtre par texte seulement (nom brut ou nom affiché) : aucune déduction de langue, fiable quelle que soit la source.
+  const shown = useMemo(() => all.filter((c) => c.kind === kind && (!nq || normText(c.label).includes(nq) || normText(c.name).includes(nq))), [all, kind, nq]);
   if (!source) return null;
   const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
@@ -343,26 +336,6 @@ function CategoriesPane() {
     <>
       <h2>{t("set.categories")}</h2>
       <p className="lead">{t("set.catsNote")}</p>
-      <div className="eyebrow">{t("set.langsChosen")}</div>
-      <div className="chips">
-        <button className="chip" aria-selected={lang == null} onClick={() => setLang(null)}>{t("set.catsAllLangs")} <span className="n">{all.length}</span></button>
-        {(moreLangs ? langs : langs.slice(0, TOP_LANGS)).map((e) => {
-          const name = e.code === OTHER_LANG ? t("lang.other") : langLabel(e.code, ui);
-          return (
-            <span key={e.code} className="chip lang-chip" aria-selected={lang === e.code}>
-              <input type="checkbox" checked={e.on === e.total} ref={(el) => { if (el) el.indeterminate = e.on > 0 && e.on < e.total; }}
-                aria-label={t("set.catsToggleLang", { l: name })}
-                onChange={() => void setMany(all.filter((c) => categoryLang(c.name) === e.code), e.on === e.total ? 0 : 1)} />
-              <button type="button" className="linklike" onClick={() => setLang(lang === e.code ? null : e.code)} title={e.code}>
-                {name} <span className="n">{e.on}/{e.total}</span>
-              </button>
-            </span>
-          );
-        })}
-        {langs.length > TOP_LANGS && (
-          <button className="chip" onClick={() => setMoreLangs((v) => !v)}>{moreLangs ? t("set.catsFewerLangs") : t("set.catsMoreLangs", { n: langs.length - TOP_LANGS })}</button>
-        )}
-      </div>
       <div className="chips" role="tablist">
         {(["live", "movie", "series"] as const).map((k) => <button key={k} className="chip" role="tab" aria-selected={kind === k} onClick={() => setKind(k)}>{t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series")} <span className="n">{counts[k]}</span></button>)}
       </div>
@@ -378,7 +351,6 @@ function CategoriesPane() {
         <VList rows={arrayRows(shown)} rowH={52} className="vlist" label={t("common.categories")}
           render={(c) => c && (
             <div className="cat-row">
-              <span className="tag">{categoryLang(c.name) === OTHER_LANG ? "—" : categoryLang(c.name)}</span>
               <span className="ellipsis"><b style={{ fontWeight: 600 }}>{c.label}</b> <span className="muted mono" style={{ fontSize: "0.75rem" }}>{c.count || ""}</span></span>
               <span><Switch on={!!c.enabled} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
               <span />
