@@ -21,6 +21,17 @@ class PlayerExtraStrings(val lang: AppLang) {
     val recent get() = t("RECENT", "RÉCENTES", "RECIENTES", "الأخيرة")
     val zapHint get() = t("Back: previous channel · ▲▼ zap · 0-9 number", "Retour : chaîne précédente · ▲▼ zapper · 0-9 numéro", "Atrás: canal anterior · ▲▼ zapear · 0-9 número", "رجوع: القناة السابقة · ▲▼ تنقّل · 0-9 رقم")
     val noChannelNumber get() = t("No such channel", "Aucune chaîne à ce numéro", "Ningún canal con ese número", "لا توجد قناة بهذا الرقم")
+
+    // Veille
+    val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
+    val sleepTitle get() = t("Sleep timer", "Minuterie de veille", "Temporizador", "مؤقّت السكون")
+    val sleepEndOfProgramme get() = t("End of programme", "Fin du programme", "Fin del programa", "نهاية البرنامج")
+    val sleepOff get() = t("Cancel timer", "Annuler la minuterie", "Cancelar", "إلغاء المؤقّت")
+    val stillThere get() = t("Still there?", "Toujours là ?", "¿Sigues ahí?", "هل ما زلت هنا؟")
+    val imHere get() = t("I'm here", "Je suis là", "Sigo aquí", "أنا هنا")
+    val sleepNow get() = t("Stop now", "Arrêter maintenant", "Parar ahora", "إيقاف الآن")
+    val close get() = t("Close", "Fermer", "Cerrar", "إغلاق")
+    fun sleepStopsIn(s: Int) = when (lang) { AppLang.French -> "Arrêt dans $s s"; AppLang.Spanish -> "Se detiene en $s s"; AppLang.Arabic -> "الإيقاف بعد $s ث"; else -> "Stopping in $s s" }
 }
 
 @Composable

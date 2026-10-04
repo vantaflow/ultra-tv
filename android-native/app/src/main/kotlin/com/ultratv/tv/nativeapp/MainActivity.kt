@@ -428,7 +428,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             val rawTitle = entry.arguments?.getString("title").orEmpty()
             val url = java.net.URLDecoder.decode(rawUrl, "UTF-8")
             val title = java.net.URLDecoder.decode(rawTitle, "UTF-8")
-            PlayerScreen(url = url, title = title, onBack = { nav.popBackStack() })
+            PlayerScreen(url = url, title = title, onBack = { nav.popBackStack() }, onHome = { nav.popBackStack(Routes.HOME, false) })
         }
     }
 }

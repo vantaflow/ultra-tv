@@ -263,7 +263,7 @@ private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewModel = hiltViewModel()) {
+fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> Unit)? = null, vm: PlayerViewModel = hiltViewModel()) {
     // Le lecteur reste sombre quel que soit le thème de l'application.
     remember { Ux.playerActive = true }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { Ux.playerActive = false } }
@@ -324,6 +324,24 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
         if (sleepDeadline <= 0L) return@LaunchedEffect
         while (System.currentTimeMillis() < sleepDeadline) delay(5_000)
         session.engine?.pause(); onBack()
+    }
+    // [B2·veille] minuterie de la pilule « Veille » : « Toujours là ? » 1 min avant, puis arrêt (flux fermé) et accueil.
+    val sleepTimer = remember { com.ultratv.tv.nativeapp.ui.player.sleep.SleepTimer() }
+    var sleepPhase by remember { mutableStateOf(com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE) }
+    var sleepLeft by remember { mutableStateOf(0) }
+    var sleepMenu by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val now = System.currentTimeMillis()
+            sleepPhase = sleepTimer.phase(now); sleepLeft = sleepTimer.secondsLeft(now)
+            if (sleepPhase == com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.EXPIRED) {
+                sleepTimer.cancel()
+                session.release()      // libère la connexion unique du fournisseur
+                (onHome ?: onBack)()
+                break
+            }
+            delay(1_000)
+        }
     }
     // Position / durée / horloge (500 ms) ; masquage de la surcouche après 5 s sans action.
     var pos by remember { mutableLongStateOf(0L) }
@@ -400,12 +418,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, vm: PlayerViewM
                 onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
+                sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true },
             )
         }
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
             com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
         }
+        if (sleepMenu) com.ultratv.tv.nativeapp.ui.player.sleep.SleepMenu(
+            X, vm.nowProgramme.collectAsState().value?.endMs, sleepTimer.choice != null,
+            onPick = { c -> if (c == null) sleepTimer.cancel() else sleepTimer.arm(c, System.currentTimeMillis()); sleepMenu = false; touch() }, onClose = { sleepMenu = false },
+        )
+        if (sleepPhase == com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.WARNING && !sleepMenu) com.ultratv.tv.nativeapp.ui.player.sleep.AreYouThereDialog(
+            X, sleepLeft, onStay = { sleepTimer.confirmPresence(System.currentTimeMillis()); sleepPhase = com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE },
+            onStop = { sleepTimer.arm(com.ultratv.tv.nativeapp.ui.player.sleep.SleepChoice.Minutes(0), 0L) },
+        )
         if (statsOpen) StatsCard(session, D, Modifier.align(Alignment.TopEnd).padding(top = 220.design, end = 96.design))
         if (drawerOpen && isLive) LiveDrawer(vm = vm, onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it }; drawerOpen = false } }, onDismiss = { drawerOpen = false })
         if (panel != Panel.None) PlayerSidePanel(
@@ -452,6 +479,7 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
 private fun Footer(
     isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
     onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
+    sleepLabel: String, onSleepPill: () -> Unit,
 ) {
     val now = System.currentTimeMillis()
     val frac: Float; val startLabel: String; val endLabel: String
@@ -487,6 +515,7 @@ private fun Footer(
                 OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks)
                 OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions)
                 OptionPill(D.pDisplay, "M3 5h18v14H3zM8 9h8v6H8z", onOptions)
+                OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill)
                 if (isLive) {
                     OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord)
                     OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels)
