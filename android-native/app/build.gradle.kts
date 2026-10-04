@@ -124,7 +124,8 @@ android {
             isEnable = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = false
+            // APK universel en plus : c'est lui que cherche la mise à jour intégrée (UltraTV-debug.apk).
+            isUniversalApk = true
         }
     }
 

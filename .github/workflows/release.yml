@@ -90,16 +90,23 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           mkdir -p dist
-          SRC="android-native/app/build/outputs/apk/release/app-release.apk"
-          if [ ! -f "$SRC" ]; then
-            echo "::error::Expected APK not found at $SRC"
-            ls -R android-native/app/build/outputs/apk || true
-            exit 1
-          fi
-          cp "$SRC" dist/UltraTV-debug.apk
+          OUT="android-native/app/build/outputs/apk/release"
+          ls -1 "$OUT"
+          V="${GITHUB_REF_NAME#v}"
+          # APK universel : nom historique attendu par la mise à jour intégrée.
+          UNI=$(ls "$OUT"/*universal*-release.apk 2>/dev/null | head -1)
+          [ -z "$UNI" ] && [ -f "$OUT/app-release.apk" ] && UNI="$OUT/app-release.apk"
+          if [ -z "$UNI" ]; then echo "::error::APK universel introuvable dans $OUT"; exit 1; fi
+          cp "$UNI" dist/UltraTV-debug.apk
+          # APK par processeur, plus légers (armeabi-v7a = Chromecast HD).
+          for abi in armeabi-v7a arm64-v8a x86_64; do
+            f=$(ls "$OUT"/*-"$abi"-release.apk 2>/dev/null | head -1)
+            [ -n "$f" ] && cp "$f" "dist/UltraTV-$V-$abi.apk"
+          done
           cd dist
           sha256sum UltraTV-debug.apk | awk '{print $1}' > UltraTV-debug.apk.sha256
-          echo "SHA-256:"; cat UltraTV-debug.apk.sha256
+          sha256sum *.apk > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
@@ -108,5 +115,6 @@ jobs:
           name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            dist/UltraTV-debug.apk
+            dist/*.apk
             dist/UltraTV-debug.apk.sha256
+            dist/SHA256SUMS.txt
