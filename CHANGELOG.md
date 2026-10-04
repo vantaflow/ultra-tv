@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.11] — 2026-10-04
+
+### Corrections
+- Lecteur : panneau Chaînes et zapping ▲▼ limités à la catégorie de la chaîne en cours (même lancée depuis l'accueil ou la recherche) ; titre du panneau = catégorie.
+- Direct / Films / Séries : plus de bouton « Langues : … ».
+
 ## [Bureau 1.2.10] — 2026-10-04
 
 ### Modifications
