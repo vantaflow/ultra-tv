@@ -84,7 +84,7 @@ fun SubtitlePanel(
         if (touch) Box(Modifier.matchParentSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { if (page == Page.MAIN) onClose() else page = Page.MAIN })
         Box(Modifier.fillMaxSize().padding(end = if (touch) 360.dp else 640.design, bottom = 120.design), contentAlignment = Alignment.BottomCenter) { SubtitlePreview(style, X.previewText) }
         Column(
-            Modifier.fillMaxHeight().then(if (touch) Modifier.width(360.dp) else Modifier.width(640.design)).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
+            Modifier.fillMaxHeight().then(if (touch) Modifier.width(360.dp) else Modifier.width(640.design)).background(Ux.Rail).border(1.design, Ux.Surface2).padding(start = 56.design, end = 56.design, top = 54.design, bottom = 96.design),
             verticalArrangement = Arrangement.spacedBy(14.design),
         ) {
             Text(X.subtitlesTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1)
@@ -112,7 +112,7 @@ fun SubtitlePanel(
             if (page == Page.MAIN) {
                 val canSearch = online && isMovie
                 PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().alpha(if (canSearch) 1f else 0.45f))
-                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
+                if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 26.spx, maxLines = 2)
             }
             PillButton(if (page == Page.MAIN) X.close else X.back, { if (page == Page.MAIN) onClose() else page = Page.MAIN }, heightPx = 64, hPadPx = 36, fontPx = 22, modifier = Modifier.fillMaxWidth())
         }

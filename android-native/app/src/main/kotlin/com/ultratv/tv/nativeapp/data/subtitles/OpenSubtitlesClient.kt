@@ -33,7 +33,8 @@ class OpenSubtitlesClient @Inject constructor(
     /** Base du Worker appairé, ou null si aucun proxy n'est configuré / appairé. */
     suspend fun proxyBase(): String? {
         if (!token.isPaired) return null
-        val raw = prefs.flow.first().workerBaseUrl.trim().trimEnd('/')
+        // Adresse vide = Worker par défaut (comme la synchro cloud) ; sinon « appairez l'appareil » s'affichait à tort.
+        val raw = prefs.flow.first().workerBaseUrl.ifBlank { com.ultratv.tv.nativeapp.BuildConfig.WORKER_URL }.trim().trimEnd('/')
         return raw.takeIf { it.toHttpUrlOrNull()?.isHttps == true }
     }
 

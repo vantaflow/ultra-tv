@@ -388,6 +388,21 @@ class ProviderRepository @Inject constructor(
         spec: PartSpec<T>,
         lock: (List<CategoryEntity>) -> List<CategoryEntity>,
         progress: (Float, Int) -> Unit,
+    ): Int = partLock(spec.kind).withLock { syncXtreamPartLocked(p, spec, lock, progress) }
+
+    /**
+     * Un verrou PAR PARTIE (direct, films, séries) en plus du verrou global : activer une catégorie du Direct
+     * pendant que la synchro complète traite les films la charge tout de suite, au lieu d'attendre la fin
+     * de toute la synchro (plusieurs minutes sur une grosse source → « Chargement… » interminable).
+     */
+    private val partLocks = mapOf("LIVE" to kotlinx.coroutines.sync.Mutex(), "MOVIE" to kotlinx.coroutines.sync.Mutex(), "SERIES" to kotlinx.coroutines.sync.Mutex())
+    private fun partLock(kind: String) = partLocks[kind] ?: partLocks.getValue("SERIES")
+
+    private suspend fun <T : Any> syncXtreamPartLocked(
+        p: ProviderEntity,
+        spec: PartSpec<T>,
+        lock: (List<CategoryEntity>) -> List<CategoryEntity>,
+        progress: (Float, Int) -> Unit,
     ): Int {
         val u = prefs.flow.first()
         val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
@@ -491,10 +506,13 @@ class ProviderRepository @Inject constructor(
         val p = providerDao.byId(providerId) ?: return
         if (p.kind != "XTREAM" || ids.isEmpty()) return
         val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
-        syncMutex.withLock {
-            syncStatus.set(SyncStatusBus.Status(p.name, "Categories", 0, part, 0))
+        // Serveur qui ignore `category_id` : pas de chargement ciblé possible, synchro complète (verrou global).
+        if (p.categoryFilter == 0) { syncAll(providerId, force = true); return }
+        // Synchro complète en cours : on ne touche pas à son indicateur de progression (ni ne l'efface).
+        val ownStatus = !syncMutex.isLocked
+        partLock(kind).withLock {
+            if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", 0, part, 0))
             try {
-                if (p.categoryFilter == 0) { syncAllInternal(providerId, {}, force = true); return@withLock }
                 var n = 0
                 val cats = categoryDao.forProviderKind(p.id, kind).associateBy { it.remoteId }
                 val langOf: (String) -> String = { cats[it]?.lang.orEmpty() }
@@ -504,9 +522,9 @@ class ProviderRepository @Inject constructor(
                         "MOVIE" -> { val sp = vodPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
                         else -> { val sp = seriesPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
                     }
-                    syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
+                    if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
                 }
-            } finally { syncStatus.clear() }
+            } finally { if (ownStatus) syncStatus.clear() }
         }
     }
 

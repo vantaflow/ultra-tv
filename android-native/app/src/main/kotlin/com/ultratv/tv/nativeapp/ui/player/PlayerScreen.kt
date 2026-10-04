@@ -35,6 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -713,22 +715,19 @@ private fun Footer(
                 PauseButton(playing, pauseFocus, onToggle)
                 if (!isLive) RoundButton(72, "M13 5l7 7-7 7M4 5l7 7-7 7", onClick = { onSeek(10_000) })
             }
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(12.design)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
-                OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks)
-                OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions)
-                OptionPill(D.pDisplay, "M3 5h18v14H3zM8 9h8v6H8z", onOptions)
-                if (isLive) {
-                    OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord)
-                    OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels)
-                }
-            }
-            // [B2] pilules du lot : Replay, Sous-titres, Veille (sur une 2e ligne pour ne pas déborder de l'écran).
-            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
-                if (isLive && replayLabel != null) OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay)
-                OptionPill(subLabel, "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6", onSubs)
-                OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill)
-            }
+            // Une seule ligne (défilante si l'écran est étroit). « Affichage » ouvrait le même panneau que « Lecteur » : fusionnés.
+            androidx.compose.foundation.lazy.LazyRow(
+                Modifier.weight(1f).padding(start = 32.design),
+                horizontalArrangement = Arrangement.spacedBy(14.design, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (isLive) item { OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels) }
+                if (isLive && replayLabel != null) item { OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay) }
+                item { OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks) }
+                item { OptionPill(subLabel, "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6", onSubs) }
+                if (isLive) item { OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord) }
+                item { OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill) }
+                item { OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions) }
             }
         }
     }
@@ -755,21 +754,36 @@ private fun PauseButton(playing: Boolean, focus: FocusRequester, onClick: () -> 
 
 @Composable
 private fun OptionPill(label: String, icon: String, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(32.design), bg = Ux.Surface2, ringWidth = 5.design, modifier = Modifier.height(64.design)) { f ->
-        Row(Modifier.padding(horizontal = 28.design).height(64.design), verticalAlignment = Alignment.CenterVertically) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(30.design), bg = Ux.Surface2, ringWidth = 5.design, modifier = Modifier.height(60.design)) { f ->
+        Row(Modifier.padding(horizontal = 22.design).height(60.design), verticalAlignment = Alignment.CenterVertically) {
             DIcon(icon, 24.design, if (f) Ux.TextOnLight else Ux.Text)
-            Spacer(Modifier.width(12.design))
+            Spacer(Modifier.width(10.design))
             Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
         }
     }
 }
 
+/**
+ * Chargement : l'image du programme (ou le logo) en plein écran, floutée et assombrie, le visuel net au centre,
+ * le titre et une fine barre animée — au lieu d'une petite vignette dans un cadre sur fond noir.
+ */
 @Composable
 private fun LoadingVisual(logo: String?, name: String) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(32.design)) {
-            LogoBox(logo, name, Modifier.width(320.design).height(200.design), radius = 24, pad = 24, bg = Ux.Surface)
-            androidx.compose.material3.CircularProgressIndicator(color = Ux.Accent, strokeWidth = 5.design, modifier = Modifier.size(64.design))
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
+        if (!logo.isNullOrBlank()) {
+            coil.compose.AsyncImage(
+                model = logo, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(48.dp).graphicsLayer { alpha = 0.45f },
+            )
+        }
+        Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x660A0A0C), Color(0xE60A0A0C)))))
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(36.design)) {
+            LogoBox(logo, name, Modifier.width(360.design).height(240.design), radius = 28, pad = 20, bg = Color(0x33FFFFFF))
+            Text(name, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 1200.design))
+            androidx.compose.material3.LinearProgressIndicator(
+                color = Ux.Accent, trackColor = Color(0x33FFFFFF),
+                modifier = Modifier.width(320.design).height(6.design).clip(RoundedCornerShape(3.design)),
+            )
         }
     }
 }

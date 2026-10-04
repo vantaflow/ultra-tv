@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.10] — 2026-10-04 (Android TV)
+
+### Corrections
+- Catégories : une catégorie activée se charge tout de suite, sans attendre la fin de la synchro complète.
+- Lecteur : nouvel écran de chargement (fond flouté, logo, barre de progression) ; options sur une seule ligne.
+- Sous-titres en ligne : panneau plus tronqué, plus de faux « Appairez l'appareil » quand le Worker par défaut est utilisé.
+
 ## [1.2.9] — 2026-10-04 (Android TV)
 
 ### Nouveautés
