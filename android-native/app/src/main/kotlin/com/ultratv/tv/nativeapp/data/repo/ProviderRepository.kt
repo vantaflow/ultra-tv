@@ -65,7 +65,7 @@ class ProviderRepository @Inject constructor(
         providerDao.findByIdentity("M3U", url, "")?.let { return it.id }
         val pid = providerDao.upsert(
             ProviderEntity(
-                name = name.ifBlank { runCatching { java.net.URI(url).host }.getOrNull() ?: "M3U" },
+                name = name.ifBlank { "M3U" },
                 kind = "M3U",
                 baseUrl = url,
                 username = "",
@@ -138,7 +138,7 @@ class ProviderRepository @Inject constructor(
         providerDao.findByIdentity("STALKER", normalised, mac.trim())?.let { return it.id }
         return providerDao.upsert(
             ProviderEntity(
-                name = name.ifBlank { runCatching { java.net.URI(portalUrl).host }.getOrNull() ?: "Stalker" },
+                name = name.ifBlank { "Stalker" },
                 kind = "STALKER",
                 baseUrl = portalUrl.trimEnd('/'),
                 username = mac.trim(),         // MAC address
@@ -292,7 +292,7 @@ class ProviderRepository @Inject constructor(
         providerDao.findByIdentity("XTREAM", normalised, username)?.let { return it.id }
         return providerDao.upsert(
             ProviderEntity(
-                name = name.ifBlank { runCatching { java.net.URI(normalised).host }.getOrNull() ?: "Xtream" },
+                name = name.ifBlank { "Xtream" },
                 kind = "XTREAM",
                 baseUrl = normalised,
                 username = username,
