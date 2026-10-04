@@ -2,6 +2,7 @@
 // attribut on*= ni style="" (la CSP n'autorise que les balises portant le nonce).
 
 import { escapeHtml as e, html } from "./http.js";
+import { parsePairQr } from "./qr.js";
 import { displayUrl } from "./store.js";
 
 const CSS = `
@@ -82,6 +83,19 @@ button.block{width:100%}
 .cell{width:100%;max-width:46px;min-width:0;height:60px;padding:0;text-align:center;font:700 26px var(--fh);text-transform:uppercase;border-radius:14px;background:var(--bg)}
 .codebox .sep{width:10px;height:3px;border-radius:2px;background:var(--mut);flex:none;margin:0 2px}
 @media (max-width:380px){.codebox{gap:4px}.cell{height:54px;font-size:22px}}
+.mt10{margin-top:10px}
+.scanner{border:0;padding:0;margin:0;width:100%;max-width:none;height:100%;max-height:none;background:#050507;color:#F5F5F7;overflow:hidden}
+.scanner[open]{display:flex;flex-direction:column}
+.scanner::backdrop{background:#000}
+.scan-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;padding-top:max(12px,env(safe-area-inset-top))}
+.scan-bar h2{font-size:17px;color:#F5F5F7}
+.scan-x{background:rgba(255,255,255,.12);color:#F5F5F7;border-color:rgba(255,255,255,.28);min-height:48px;min-width:48px}
+.scan-x:hover{background:rgba(255,255,255,.2)}
+.scan-view{position:relative;flex:1;min-height:0;overflow:hidden;background:#000}
+.scan-view video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-frame{position:absolute;left:50%;top:50%;width:min(68vw,68vh,340px);aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid var(--acc);border-radius:22px;box-shadow:0 0 0 100vmax rgba(0,0,0,.55)}
+.scan-msg{padding:14px 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));text-align:center;font-weight:600;color:#E4E4EA;min-height:56px}
+.scan-msg.bad{color:#FF8A92}
 .code-fallback{font-family:var(--fh);font-weight:700;font-size:24px;letter-spacing:.18em;text-align:center;text-transform:uppercase}
 /* Cartes appareils / sources */
 .card{background:var(--s2);border:1px solid var(--bd);border-radius:16px;padding:14px 16px;transition:border-color .15s}
@@ -145,6 +159,8 @@ const ICONS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
   edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
   share: '<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M8.2 11l7.6-3.8M8.2 13l7.6 3.8"/>',
+  scan: '<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
 };
 const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
@@ -152,8 +168,8 @@ const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${IC
 const LOGO = `<svg class="logo" viewBox="0 0 512 512" role="img" aria-label="Ultra TV"><rect class="lg-bg" width="512" height="512" rx="116"/><rect class="lg-fr" x="96" y="120" width="320" height="216" rx="40" fill="none" stroke-width="28"/><path d="M224 188v80l70-40z" fill="#D91E2B"/><path class="lg-fr" d="M196 392h120" stroke-width="28" stroke-linecap="round"/></svg>`;
 const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='116' fill='%230A0A0C'/%3E%3Crect x='96' y='120' width='320' height='216' rx='40' fill='none' stroke='%23F5F5F7' stroke-width='28'/%3E%3Cpath d='M224 188v80l70-40z' fill='%23D91E2B'/%3E%3Cpath d='M196 392h120' stroke='%23F5F5F7' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E";
 
-function layout(title, body, n, extra = "") {
-  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">Aller au contenu</a>${body}${extra}</body></html>`, n);
+function layout(title, body, n, extra = "", camera = false) {
+  return html(`<!doctype html><html lang="fr"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">Aller au contenu</a>${body}${extra}</body></html>`, n, 200, { camera });
 }
 
 const AUTH_ERR = {
@@ -256,6 +272,53 @@ const PAIR_JS = `(function(){var box=document.getElementById('codecells'),fb=doc
  box.closest('form').addEventListener('submit',function(){sync();});})();
 `;
 
+// Scanner de QR : caméra arrière, décodage sur le thread principal (~8 images/s), aucun worker/blob.
+// BarcodeDetector natif si présent, sinon jsQR (/assets/jsqr.js, chargé à l'ouverture seulement).
+// Le contenu lu n'est jamais ouvert : parsePairQr n'en extrait que le code, l'utilisateur confirme avec « Appairer ».
+const SCAN_JS = `(function(){var nonce=document.currentScript&&document.currentScript.nonce||'';
+ var btn=document.getElementById('scan-btn'),dlg=document.getElementById('scanner');
+ if(!btn||!dlg||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)return;
+ var parse=${parsePairQr.toString()};
+ var video=document.getElementById('scan-video'),msg=document.getElementById('scan-msg'),shut=document.getElementById('scan-close');
+ var stream=null,timer=0,det=null,canvas=null,ctx=null,running=false,loading=null;
+ var BAD='Ce QR ne vient pas d\\u2019Ultra TV',DENIED='Autorise la cam\\u00e9ra dans les r\\u00e9glages du navigateur, ou saisis le code.';
+ btn.hidden=false;
+ function say(t,bad){msg.textContent=t;msg.className=bad?'scan-msg bad':'scan-msg';}
+ function stop(){running=false;clearTimeout(timer);if(stream){stream.getTracks().forEach(function(t){t.stop();});stream=null;}video.srcObject=null;}
+ function loadJsqr(){if(window.jsQR)return Promise.resolve();if(loading)return loading;
+  loading=new Promise(function(ok,ko){var s=document.createElement('script');s.src='/assets/jsqr.js';s.nonce=nonce;s.onload=function(){window.jsQR?ok():ko();};s.onerror=function(){loading=null;ko();};document.head.appendChild(s);});return loading;}
+ function decode(){
+  if(det)return det.detect(video).then(function(r){return r.length?r[0].rawValue:null;});
+  var w=video.videoWidth,h=video.videoHeight;if(!w||!h)return Promise.resolve(null);
+  var k=Math.min(1,640/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+  if(!canvas){canvas=document.createElement('canvas');ctx=canvas.getContext('2d',{willReadFrequently:true});}
+  canvas.width=w;canvas.height=h;ctx.drawImage(video,0,0,w,h);
+  var r=window.jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'});return Promise.resolve(r?r.data:null);}
+ function tick(){if(!running)return;
+  decode().then(function(text){if(!running)return;
+   if(text){var code=parse(text,location.origin);
+    if(code){found(code);return;}
+    say(BAD,true);}
+   timer=setTimeout(tick,125);},function(){if(running)timer=setTimeout(tick,250);});}
+ function found(code){stop();
+  var cs=document.querySelectorAll('#codecells .cell');for(var i=0;i<cs.length&&i<8;i++)cs[i].value=code.charAt(i);
+  var fb=document.getElementById('code');if(fb)fb.value=code;
+  var h=document.querySelector('input[name=code][type=hidden]');if(h)h.value=code;
+  dlg.close();var d=document.getElementById('dname');if(d)d.focus();}
+ function open(){say('Place le QR affich\\u00e9 sur la TV dans le cadre.');
+  if(!dlg.open)dlg.showModal();
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false}).then(function(s){
+   if(!dlg.open){s.getTracks().forEach(function(t){t.stop();});return;}
+   stream=s;video.srcObject=s;return video.play().catch(function(){}).then(function(){
+    if(window.BarcodeDetector){try{det=new BarcodeDetector({formats:['qr_code']});}catch(x){det=null;}}
+    return det?null:loadJsqr();}).then(function(){running=true;tick();},function(){stop();say('Lecteur de QR indisponible. Saisis le code \\u00e0 la main.',true);});
+  },function(){say(DENIED,true);});}
+ btn.addEventListener('click',open);
+ shut.addEventListener('click',function(){dlg.close();});
+ dlg.addEventListener('close',stop);dlg.addEventListener('cancel',stop);
+})();
+`;
+
 function pairForm(csrfInput, code = "") {
   const c = code || "";
   const cells = Array.from({ length: 8 }, (_, i) => `${i === 4 ? '<span class="sep" aria-hidden="true"></span>' : ""}<input class="cell" maxlength="1" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" value="${e(c[i] || "")}" aria-label="Caractère ${i + 1} sur 8"/>`).join("");
@@ -264,8 +327,12 @@ function pairForm(csrfInput, code = "") {
 <div id="codecells" class="codebox" role="group" aria-labelledby="l-code" hidden>${cells}</div>
 <input id="code" class="code-fallback" name="code" required maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD-EFGH" aria-labelledby="l-code" aria-describedby="code-hint" value="${e(c ? `${c.slice(0, 4)}-${c.slice(4)}` : "")}"/>
 <p class="hint small mt6" id="code-hint">8 caractères. Le tiret est facultatif et les minuscules sont acceptées.</p>
+<button type="button" id="scan-btn" class="secondary block mt10" hidden>${ico("scan")}Scanner le QR de la TV</button>
 <label for="dname">Nom de l'appareil <span class="hint">(facultatif)</span></label><input id="dname" name="name" maxlength="40" placeholder="Salon"/>
-<div class="row"><button class="block" type="submit">Appairer</button></div></form>`;
+<div class="row"><button class="block" type="submit">Appairer</button></div></form>
+<dialog id="scanner" class="scanner" aria-labelledby="scan-title"><div class="scan-bar"><h2 id="scan-title">Scanner le QR de la TV</h2><button type="button" id="scan-close" class="scan-x">${ico("close")}Fermer</button></div>
+<div class="scan-view"><video id="scan-video" playsinline muted></video><div class="scan-frame" aria-hidden="true"></div></div>
+<p id="scan-msg" class="scan-msg" role="status" aria-live="polite"></p></dialog>`;
 }
 
 export function pairPage(n, { acct, csrf, code, invalid }) {
@@ -277,7 +344,7 @@ export function pairPage(n, { acct, csrf, code, invalid }) {
 <p class="sub">${code ? "Une TV demande l'accès à ta configuration. Vérifie que le code ci-dessous est bien celui affiché sur son écran." : "Saisis le code affiché sur ta TV."}</p>
 ${msg}<p class="muted small mt10">Compte : <strong>${e(acct.login)}</strong></p>
 ${pairForm(csrfInput, code || "")}
-<p class="alt"><a href="/">Annuler</a></p></div></main>`, n, `<script nonce="${n}">${PAIR_JS}</script>`);
+<p class="alt"><a href="/">Annuler</a></p></div></main>`, n, `<script nonce="${n}">${PAIR_JS}${SCAN_JS}</script>`, true);
 }
 
 export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
@@ -310,6 +377,7 @@ document.querySelectorAll('.share-form').forEach(function(f){var all=f.querySele
  all.addEventListener('change',function(){ds.forEach(function(d){d.checked=all.checked;});});
  ds.forEach(function(d){d.addEventListener('change',function(){all.checked=Array.prototype.every.call(ds,function(x){return x.checked;});});});});
 ${PAIR_JS}
+${SCAN_JS}
 </script>`;
   return layout(`Ultra TV — ${acct.login}`, `
 <div class="layout">
@@ -352,7 +420,7 @@ ${pairForm(csrfInput)}
 <label for="mu">URL de la playlist</label><input id="mu" name="url" type="url" required maxlength="2048" placeholder="https://exemple.com/liste.m3u" autocapitalize="none" spellcheck="false"/>
 <div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form></div>
 <p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section></div>
-</div></main></div>`, n, script);
+</div></main></div>`, n, script, true);
 }
 
 const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
