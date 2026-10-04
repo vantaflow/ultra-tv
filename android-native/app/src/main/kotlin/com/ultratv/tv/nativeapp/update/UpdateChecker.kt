@@ -66,6 +66,7 @@ object UpdateChecker {
             val req = Request.Builder()
                 .url("https://api.github.com/repos/$REPO/releases/latest")
                 .header("Accept", "application/vnd.github+json")
+                .header("Cache-Control", "no-cache")
                 .build()
             http.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {

@@ -66,7 +66,10 @@ fun UpdateDialog() {
                 downloading = true; failed = false; launched = false
                 job = scope.launch {
                     runCatching {
-                        withContext(Dispatchers.IO) { UpdateChecker.downloadAndInstall(ctx, update) { p -> progress = p } }
+                        // Revérifier juste avant : si une version plus récente est sortie depuis l'invite
+                        // (ex. 1.2.4 affichée, 1.2.5 publiée entre-temps), c'est elle qu'on installe.
+                        val target = UpdateChecker.checkForUpdate()?.takeIf { it.versionCode >= update.versionCode } ?: update
+                        withContext(Dispatchers.IO) { UpdateChecker.downloadAndInstall(ctx, target) { p -> progress = p } }
                     }.onSuccess { launched = true }
                      .onFailure { e -> if (e is kotlinx.coroutines.CancellationException) throw e; if (e is SignatureMismatchException) mismatch = true else failed = true }
                     downloading = false
