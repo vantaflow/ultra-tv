@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.2] — 2026-10-04
+
+### Corrections
+- **TV, appairage cloud depuis l'assistant** : la source Xtream reçue passe par le choix des langues avant toute synchro (avant : tout le catalogue d'un coup, box écrasée) ; « Regarder la TV » affiche un écran de chargement au lieu d'un écran noir.
+- **TV** : choisir une page referme le menu ; le Guide ne bloque plus GAUCHE vers le menu ; l'invite de mise à jour se ferme toujours et explique la désinstallation unique si la signature change.
+- **Bureau** : l'assistant accepte une adresse `get.php` saisie en M3U (conversion en Xtream, plus de « champs obligatoires ») ; première synchro lancée automatiquement après conversion ; choix des langues respecté (catalogue Films/Séries) et reprise d'une synchro interrompue ; Guide TV : correspondance des chaînes sans casse (TF1, France 2… avaient un guide vide) ; textes arabes complets (test de complétude) ; loupe des champs de recherche alignée ; bande de titre réservée sous les boutons de fenêtre macOS.
+- **Release** : APK aussi publiés sous un nom stable (`releases/latest/download/UltraTV-<abi>.apk`).
+
 ## [1.2.1] — 2026-10-04
 
 ### Corrections
