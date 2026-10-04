@@ -1,4 +1,2 @@
-# electron-builder buildResources directory.
-# App icons (icon.icns / icon.ico / icon.png) belong here — see ../README.md.
-# Generate them with `npm run icons` from ../docs/redesign/logo.svg.
-# Binary icons are intentionally NOT committed; regenerate locally / in CI.
+# electron-builder buildResources : icones generees par `npm run icons` (scripts/make-icons.mjs)
+# depuis icon.svg, et entitlements macOS. Tout est commite.

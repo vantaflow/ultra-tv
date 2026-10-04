@@ -57,6 +57,19 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
 
+## Application de bureau (macOS et Windows)
+
+Le même design que l'application Android TV, pour Windows et macOS : l'application web de
+[`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)). Elle reste
+utilisable dans un navigateur. Xtream Codes et M3U (lien ou fichier) ; le catalogue est gardé
+en local (IndexedDB), les identifiants sont chiffrés avec le trousseau du système, la lecture
+est directe (aucun proxy distant) et la mise à jour est automatique via les Releases GitHub.
+
+![Direct](docs/screenshots/desktop/fr/06-direct.png)
+
+Les captures (données synthétiques, FR et EN) sont dans [`docs/screenshots/desktop/`](docs/screenshots/desktop/).
+Publication : pousser un tag `desktop-vX.Y.Z` (workflow `desktop-release.yml`, séparé des tags Android `v*`).
+
 ## Installation
 
 Android 9 ou plus récent (API 28).

@@ -1,0 +1,43 @@
+/** Clé de recherche : minuscules, sans accents ni ponctuation, espaces réduits. */
+export function normText(s: string): string {
+  return s
+    .normalize("NFKD")
+    .replace(/\p{M}+/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+export function toNum(v: unknown, fallback = 0): number {
+  const n = typeof v === "number" ? v : parseFloat(String(v ?? ""));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/** Note sur 10 à partir de `rating` (déjà sur 10) ou `rating_5based`. */
+export function rating10(rating: unknown, rating5: unknown): number {
+  const r = toNum(rating, NaN);
+  if (Number.isFinite(r) && r > 0) return Math.min(10, r);
+  const r5 = toNum(rating5, 0);
+  return Math.min(10, r5 * 2);
+}
+
+export function firstString(v: string[] | string | undefined | null): string | null {
+  if (Array.isArray(v)) return v.find((x) => !!x) ?? null;
+  return v || null;
+}
+
+export function fmtDuration(totalSec: number): string {
+  if (!Number.isFinite(totalSec) || totalSec <= 0) return "";
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  return h > 0 ? `${h} h ${String(m).padStart(2, "0")}` : `${m} min`;
+}
+
+export function fmtClock(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0;
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  const mm = String(m).padStart(h > 0 ? 2 : 1, "0");
+  return h > 0 ? `${h}:${mm}:${String(s).padStart(2, "0")}` : `${mm}:${String(s).padStart(2, "0")}`;
+}
