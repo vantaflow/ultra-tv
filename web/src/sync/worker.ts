@@ -5,7 +5,7 @@ import { db } from "@/db/db";
 import type { Source, SyncProgress } from "@/db/types";
 import type { Transport } from "@/net/transport";
 import { detectLanguages, runSync, testConnection } from "./core";
-import { syncEpg } from "./epg";
+import { syncEpg, syncShortEpg } from "./epg";
 
 export type WorkerRequest =
   | { id: number; type: "sync"; source: Source; transport: Transport; epg: boolean; preserveFlags?: boolean }
@@ -53,8 +53,14 @@ self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
           post({ id: req.id, type: "progress", progress: { phase: "epg", ratio: 0, counts } });
           const fresh = await db.sources.get(req.source.id!);
           const withCid = { ...req.source, cid: fresh?.cid ?? req.source.cid };
-          try { await syncEpg(withCid, req.transport, ctrl.signal, (ratio) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts } })); }
-          catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; /* le guide est facultatif */ }
+          let n = 0;
+          try { n = await syncEpg(withCid, req.transport, ctrl.signal, (ratio) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts } })); }
+          catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; /* le guide est facultatif : repli ci-dessous */ }
+          // xmltv.php bloqué, vide ou sans chaîne reconnue : repli get_short_epg par chaîne.
+          if (n === 0) {
+            try { await syncShortEpg(withCid, req.transport, ctrl.signal); }
+            catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; }
+          }
         }
         post({ id: req.id, type: "result", value: counts });
         break;

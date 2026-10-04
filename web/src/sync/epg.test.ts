@@ -25,4 +25,19 @@ describe("xmltv", () => {
       ]);
     }
   });
+
+  it("compare les identifiants sans casse et écrit celui du catalogue (régression : guide vide pour TF1.fr / tf1.fr)", () => {
+    const got: { epg: string }[] = [];
+    const s = scanXmltv(new Set(["tf1.fr"]), 0, Date.UTC(2100, 0, 1), (r) => got.push(...r));
+    s.push('<programme start="20260704200000 +0000" stop="20260704220000 +0000" channel="TF1.fr"><title>JT</title></programme>');
+    s.end();
+    expect(got.map((r) => r.epg)).toEqual(["tf1.fr"]);
+  });
+  it("une ligne par variante de casse présente dans le catalogue", () => {
+    const got: { epg: string }[] = [];
+    const s = scanXmltv(new Set(["tf1.fr", "TF1.fr"]), 0, Date.UTC(2100, 0, 1), (r) => got.push(...r));
+    s.push('<programme start="20260704200000 +0000" stop="20260704220000 +0000" channel="TF1.fr"><title>JT</title></programme>');
+    s.end();
+    expect(got.map((r) => r.epg).sort()).toEqual(["TF1.fr", "tf1.fr"]);
+  });
 });
