@@ -277,7 +277,10 @@ private fun SearchTouch(
     androidx.compose.runtime.LaunchedEffect(Unit) { if (q.isEmpty()) runCatching { focus.requestFocus() } }
     val total = r.channels.size + r.movies.size + r.series.size
     Column(Modifier.fillMaxSize().background(Ux.Bg), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(S.navSearch, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp))
+        Row(Modifier.padding(start = 8.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, M.a11yBack, Ux.Surface, Ux.Text, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack.current)
+            Text(S.navSearch, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.padding(start = 8.dp))
+        }
         Row(
             Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp).clip(RoundedCornerShape(26.dp)).background(Ux.SurfaceDeep).padding(start = 16.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),

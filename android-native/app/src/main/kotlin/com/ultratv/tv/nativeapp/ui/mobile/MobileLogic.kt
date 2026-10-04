@@ -35,7 +35,7 @@ fun navLayoutFor(tv: Boolean, widthDp: Float, heightDp: Float): NavLayout = when
 enum class MobileTab { HOME, LIVE, GUIDE, MOVIES, MORE }
 
 /** Destinations ouvertes par « Plus ». */
-val MORE_ROUTES = listOf(Routes.SERIES, Routes.SEARCH, Routes.FAVORITES, "recordings", Routes.SETTINGS, "profiles")
+val MORE_ROUTES = listOf(Routes.SERIES, Routes.FAVORITES, "recordings", Routes.SETTINGS, "profiles")
 
 fun tabForRoute(route: String?): MobileTab = when {
     route == null || route == Routes.HOME -> MobileTab.HOME

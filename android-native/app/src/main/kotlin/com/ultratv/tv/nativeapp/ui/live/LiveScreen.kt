@@ -439,7 +439,10 @@ private fun MobileLiveLayout(
         Column(Modifier.then(if (twoPane) Modifier.width(420.dp) else Modifier.weight(1f)).fillMaxHeight().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
-                com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = onLang)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = onLang)
+                    com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+                }
             }
             val chipLabel = { c: DirectCategory -> (if (c.locked) "🔒 " else "") + when (c.id) { CATEGORY_FAVORITES -> D.catFavorites; CATEGORY_ALL -> D.catAll; else -> prettyCategoryName(c.name.orEmpty()) } }
             if (twoPane) androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.heightIn(max = 120.dp).verticalScroll(androidx.compose.foundation.rememberScrollState())) {

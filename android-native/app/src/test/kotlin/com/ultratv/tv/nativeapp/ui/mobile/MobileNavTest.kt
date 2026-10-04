@@ -79,7 +79,7 @@ class MobileNavTest {
     @Test fun compact_plusOuvreLaFeuille_aveclesSixDestinations() {
         host(NavLayout.BOTTOM_TABS)
         rule.onNodeWithText("Plus").performClick()
-        for (label in listOf("Séries", "Recherche", "Favoris", "Enregistrements", "Réglages", "Profils")) rule.onNodeWithText(label).assertIsDisplayed()
+        for (label in listOf("Séries", "Favoris", "Enregistrements", "Réglages", "Profils")) rule.onNodeWithText(label).assertIsDisplayed()
         rule.onNodeWithText("Réglages").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitForIdle()
         assertEquals("settings", nav!!.currentDestination?.route)
@@ -94,6 +94,40 @@ class MobileNavTest {
         assertTrue(asked)
     }
 
+    @Test fun compact_chaqueOnglet_menALaBonneRoute() {
+        host(NavLayout.BOTTOM_TABS)
+        for ((label, route) in listOf("Direct" to "live", "Guide" to "guide", "Films" to "movies", "Accueil" to "home")) {
+            rule.onNodeWithText(label).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.waitForIdle()
+            assertEquals(label, route, nav!!.currentDestination?.route)
+        }
+    }
+
+    @Test fun compact_chaqueEntreeDePlus_menALaBonneRoute() {
+        host(NavLayout.BOTTOM_TABS)
+        for ((label, route) in listOf("Séries" to "series", "Favoris" to "favorites", "Enregistrements" to "recordings", "Réglages" to "settings")) {
+            rule.onNodeWithText("Plus").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.onNodeWithText(label).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.waitForIdle()
+            assertEquals(label, route, nav!!.currentDestination?.route)
+        }
+    }
+
+    @Test fun tablette_chaqueEntreeDuRail_menALaBonneRoute() {
+        host(NavLayout.SIDE_RAIL)
+        for ((label, route) in listOf("Direct" to "live", "Guide" to "guide", "Films" to "movies", "Séries" to "series", "Favoris" to "favorites", "Enregistrements" to "recordings", "Réglages" to "settings", "Accueil" to "home")) {
+            rule.onNodeWithText(label).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.waitForIdle()
+            assertEquals(label, route, nav!!.currentDestination?.route)
+        }
+    }
+
+    @Test fun rechercheN_estPasUneEntreeDeMenu() {
+        host(NavLayout.BOTTOM_TABS)
+        rule.onNodeWithText("Plus").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        assertEquals(0, rule.onAllNodesWithTextCount("Recherche"))
+    }
+
     @Test fun compact_surLeLecteur_aucuneBarre() {
         host(NavLayout.BOTTOM_TABS, fullscreen = true)
         assertTrue(rule.onAllNodesWithTextCount("Accueil") == 0)
@@ -101,7 +135,7 @@ class MobileNavTest {
 
     @Test fun tablette_railLateral_aToutesLesEntrees_etPasDeBarreDuBas() {
         host(NavLayout.SIDE_RAIL)
-        for (label in listOf("Accueil", "Direct", "Guide", "Films", "Séries", "Recherche", "Favoris", "Enregistrements", "Réglages")) rule.onNodeWithText(label).assertExists()
+        for (label in listOf("Accueil", "Direct", "Guide", "Films", "Séries", "Favoris", "Enregistrements", "Réglages")) rule.onNodeWithText(label).assertExists()
         assertFalse(rule.onAllNodesWithTextCount("Plus") > 0)
     }
 

@@ -119,7 +119,10 @@ fun RecordingsScreen(
             }
         }
         if (touch) {
-            Text(S.recordingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(S.recordingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
             meter()
         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
             SectionTitle(S.recordingsTitle, 48)

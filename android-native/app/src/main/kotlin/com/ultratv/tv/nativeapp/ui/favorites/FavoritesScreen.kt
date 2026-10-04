@@ -147,7 +147,7 @@ fun FavoritesScreen(
                 }
             }
         }
-        if (touch) { SectionTitle(S.favorites, 56); tabs() }
+        if (touch) { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { SectionTitle(S.favorites, 56); com.ultratv.tv.nativeapp.ui.mobile.SearchAction() }; tabs() }
         else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
             SectionTitle(S.favorites, 48)
             tabs()

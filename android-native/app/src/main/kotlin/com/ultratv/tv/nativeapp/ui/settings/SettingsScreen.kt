@@ -111,7 +111,10 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         // Téléphone : liste de rubriques, puis la rubrique choisie en plein écran (Retour système = retour à la liste).
         androidx.activity.compose.BackHandler(enabled = showPane) { showPane = false }
         if (!showPane) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1, modifier = Modifier.padding(bottom = 8.dp))
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
             Rub.entries.forEachIndexed { i, r ->
                 FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(56.dp)) { _ ->
                     Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {

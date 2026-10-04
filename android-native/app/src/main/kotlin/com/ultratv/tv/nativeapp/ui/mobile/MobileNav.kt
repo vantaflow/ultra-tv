@@ -153,7 +153,6 @@ private data class MoreDef(val route: String, val icon: String, val label: (com.
 
 private val moreItems = listOf(
     MoreDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
-    MoreDef(Routes.SEARCH, Icons.Search) { s, _, _ -> s.navSearch },
     MoreDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
     MoreDef("recordings", Icons.Record) { s, _, _ -> s.navRecordings },
     MoreDef(Routes.SETTINGS, Icons.Settings) { _, d, _ -> d.settingsTitle },
@@ -214,7 +213,6 @@ private val railDefs = listOf(
     RailDef(Routes.GUIDE, Icons.Guide) { s, _ -> s.navGuide },
     RailDef(Routes.MOVIES, Icons.Movies) { s, _ -> s.navMovies },
     RailDef(Routes.SERIES, Icons.Series) { s, _ -> s.navSeries },
-    RailDef(Routes.SEARCH, Icons.Search) { s, _ -> s.navSearch },
     RailDef(Routes.FAVORITES, Icons.Heart) { s, _ -> s.navFavorites },
     RailDef("recordings", Icons.Record) { s, _ -> s.navRecordings },
     RailDef(Routes.SETTINGS, Icons.Settings) { _, d -> d.settingsTitle },
@@ -307,4 +305,18 @@ fun MobileScaffold(
             if (moreOpen && !fullscreen) MoreSheet(navController, onDismiss = { moreOpen = false }, onProfiles = onProfile)
         }
     }
+}
+
+/** Ouvre la recherche plein écran (empile sans vider : Retour ramène à l'écran d'origine). Fourni par la racine. */
+val LocalOpenSearch = androidx.compose.runtime.compositionLocalOf<() -> Unit> { {} }
+/** Retour (pile de navigation) pour les écrans plein écran tactiles. */
+val LocalNavBack = androidx.compose.runtime.compositionLocalOf<() -> Unit> { {} }
+
+/** Loupe de la barre du haut des écrans principaux (tactile seulement). */
+@Composable
+fun SearchAction(modifier: Modifier = Modifier) {
+    if (!LocalTouch.current) return
+    val M = LocalMobileStrings.current
+    val open = LocalOpenSearch.current
+    IconCircle(Icons.Search, M.a11ySearch, Ux.Surface, Ux.Text, open, modifier)
 }

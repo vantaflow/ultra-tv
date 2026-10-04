@@ -361,11 +361,13 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     }
 
     val overlays = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.OverlayHost() }
+    val openSearch: () -> Unit = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } }
+    val navBack: () -> Unit = { nav.popBackStack() }
     Surface(
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
-      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays) {
+      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         val backEntryRoute by nav.currentBackStackEntryAsState()
         val onPlayer = com.ultratv.tv.nativeapp.ui.mobile.isFullscreenRoute(backEntryRoute?.destination?.route)

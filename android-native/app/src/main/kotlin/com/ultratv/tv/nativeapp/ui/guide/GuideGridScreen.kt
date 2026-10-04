@@ -446,6 +446,7 @@ private fun GuideTouch(
                 Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
                 Text("${dayName(D, day)} · ${EpgClock.hm(windowStart)} – ${EpgClock.hm(windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1)
             }
+            com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.design.Icons.Chevron, D.today.let { "−3 h" }, Ux.Surface, Ux.Text, { onShift(-1) })
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle("M9 6l6 6-6 6", "+3 h", Ux.Surface, Ux.Text, { onShift(1) })
         }

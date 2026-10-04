@@ -162,7 +162,10 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 48.spx, maxLines = 1)
-            com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true })
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true })
+                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+            }
         }
         if (langPanel) com.ultratv.tv.nativeapp.ui.common.LangViewPanel(langCounts, langView, onToggle = { vm.toggleLang(it) }, onClear = { vm.clearLangView() }, onDismiss = { langPanel = false })
         LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
