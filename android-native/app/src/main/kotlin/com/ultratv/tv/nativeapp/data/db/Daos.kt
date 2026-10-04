@@ -249,6 +249,9 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<MovieEntity>>
 
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): MovieEntity?
+
     @Query("SELECT * FROM movie WHERE id = :id")
     suspend fun byId(id: Long): MovieEntity?
 
@@ -308,6 +311,9 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY sortKey")
     fun observeForCategory(pid: Long, cat: String): Flow<List<SeriesEntity>>
 
+    @Query("SELECT * FROM series WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): SeriesEntity?
+
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): SeriesEntity?
 
@@ -346,6 +352,10 @@ interface SeriesDao {
 interface EpisodeDao {
     @Query("SELECT * FROM episode WHERE seriesId = :sid ORDER BY season, episode")
     fun observeForSeries(sid: Long): Flow<List<EpisodeEntity>>
+
+    /** Épisode d'une source par son identifiant distant (liens profonds Watch Next). */
+    @Query("SELECT e.* FROM episode e JOIN series s ON s.id = e.seriesId WHERE s.providerId = :pid AND e.remoteId = :rid LIMIT 1")
+    suspend fun byRemoteId(pid: Long, rid: String): EpisodeEntity?
 
     @Query("SELECT * FROM episode WHERE id = :id")
     suspend fun byId(id: Long): EpisodeEntity?

@@ -28,3 +28,9 @@ class DeepLinkTest {
         assertNull(DeepLink.parse("ultratv://inconnu/1/2"))
     }
 }
+
+class DeepLinkSeriesTest {
+    @org.junit.Test fun serie_aller_retour() {
+        org.junit.Assert.assertEquals(DeepLink.OpenSeries(3, "s/1"), DeepLink.parse(DeepLink.series(3, "s/1")))
+    }
+}

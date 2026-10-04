@@ -9,6 +9,7 @@ import java.net.URLEncoder
  *   ultratv://live/{providerId}/{remoteId}      lecture d'une chaîne
  *   ultratv://movie/{providerId}/{remoteId}     lecture d'un film
  *   ultratv://episode/{providerId}/{remoteId}   lecture d'un épisode
+ *   ultratv://series/{providerId}/{remoteId}    fiche d'une série
  *   ultratv://search?q=…                        écran Recherche
  * Les identifiants distants sont encodés (ils peuvent contenir « / », espaces…). Un lien ne désigne
  * jamais une URL de flux : il est résolu dans le catalogue local de l'utilisateur.
@@ -17,6 +18,7 @@ sealed interface DeepLink {
     data class PlayLive(val providerId: Long, val remoteId: String) : DeepLink
     data class PlayMovie(val providerId: Long, val remoteId: String) : DeepLink
     data class PlayEpisode(val providerId: Long, val remoteId: String) : DeepLink
+    data class OpenSeries(val providerId: Long, val remoteId: String) : DeepLink
     data class Search(val query: String) : DeepLink
 
     companion object {
@@ -28,6 +30,7 @@ sealed interface DeepLink {
         fun live(providerId: Long, remoteId: String) = "$SCHEME://live/$providerId/${enc(remoteId)}"
         fun movie(providerId: Long, remoteId: String) = "$SCHEME://movie/$providerId/${enc(remoteId)}"
         fun episode(providerId: Long, remoteId: String) = "$SCHEME://episode/$providerId/${enc(remoteId)}"
+        fun series(providerId: Long, remoteId: String) = "$SCHEME://series/$providerId/${enc(remoteId)}"
         fun search(query: String) = "$SCHEME://search?q=${enc(query)}"
 
         fun parse(raw: String?): DeepLink? {
@@ -49,6 +52,7 @@ sealed interface DeepLink {
                 "live" -> PlayLive(pid, rid)
                 "movie" -> PlayMovie(pid, rid)
                 "episode" -> PlayEpisode(pid, rid)
+                "series" -> OpenSeries(pid, rid)
                 else -> null
             }
         }

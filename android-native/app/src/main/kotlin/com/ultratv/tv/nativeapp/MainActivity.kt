@@ -142,7 +142,10 @@ class MainActivity : ComponentActivity() {
 
     /** Lien profond `ultratv://…` (notification de rappel, Google TV) : résolu dans le catalogue local. */
     private fun handleDeepLink(intent: android.content.Intent?) {
-        val link = com.ultratv.tv.nativeapp.nav.DeepLink.parse(intent?.data?.toString()) ?: return
+        // Recherche vocale : ACTION_SEARCH + requête ; sinon lien profond ultratv://… (VIEW).
+        val voiceQuery = if (intent?.action == android.content.Intent.ACTION_SEARCH) intent.getStringExtra(android.app.SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } else null
+        val link = voiceQuery?.let { com.ultratv.tv.nativeapp.nav.DeepLink.Search(it) }
+            ?: com.ultratv.tv.nativeapp.nav.DeepLink.parse(intent?.data?.toString()) ?: return
         lifecycleScope.launch { runCatching { deepLinks.handle(link) } }
     }
 

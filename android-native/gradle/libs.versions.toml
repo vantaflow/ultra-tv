@@ -20,6 +20,7 @@ serialization = "1.7.3"
 activity-compose = "1.9.3"
 datastore = "1.1.1"
 work = "2.10.0"
+tvprovider = "1.0.0"
 hilt-work = "1.2.0"
 paging = "3.3.5"
 paging-compose = "3.3.5"
@@ -67,6 +68,7 @@ coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-androi
 serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+tvprovider = { module = "androidx.tvprovider:tvprovider", version.ref = "tvprovider" }
 work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work" }
 hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hilt-work" }
 hilt-work-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hilt-work" }
