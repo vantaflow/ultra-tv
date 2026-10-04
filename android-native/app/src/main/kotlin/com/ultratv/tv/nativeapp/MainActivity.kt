@@ -46,7 +46,6 @@ import com.ultratv.tv.nativeapp.ui.common.ScreenFocusHost
 import com.ultratv.tv.nativeapp.ui.common.rememberFormFactor
 import com.ultratv.tv.nativeapp.ui.components.BottomBarNav
 import com.ultratv.tv.nativeapp.ui.components.SidebarNav
-import com.ultratv.tv.nativeapp.ui.components.TopBarNav
 import com.ultratv.tv.nativeapp.ui.favorites.FavoritesScreen
 import com.ultratv.tv.nativeapp.ui.guide.GuideGridScreen
 import com.ultratv.tv.nativeapp.ui.home.HomeScreen
@@ -266,7 +265,6 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     // Effective nav style: phone-portrait collapses to a bottom bar regardless
     // of the user's "sidebar / top bar" preference, otherwise we honour it.
     val useBottomBar = form == FormFactor.Compact
-    val useTopBar = !useBottomBar && (sidebarPosition == SidebarPosition.TOP || form == FormFactor.Medium)
 
     // One-shot: as soon as we have a NavController, consume any pending
     // auto-play request set during startup.
@@ -300,16 +298,6 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                         .padding(PaddingValues(horizontal = 12.dp)),
                 ) { NavGraph(nav) }
                 BottomBarNav(navController = nav)
-            }
-            useTopBar -> Column(Modifier.fillMaxSize()) {
-                com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
-                TopBarNav(navController = nav)
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.background)
-                        .padding(PaddingValues(start = 24.dp, end = 24.dp)),
-                ) { NavGraph(nav) }
             }
             else -> Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
