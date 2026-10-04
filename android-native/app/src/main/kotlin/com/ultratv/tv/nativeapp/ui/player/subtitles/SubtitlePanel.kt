@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.input.key.Key
@@ -105,7 +106,7 @@ fun SubtitlePanel(
             }
             if (page == Page.MAIN) {
                 val canSearch = online && isMovie
-                PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().alpha(if (canSearch) 1f else 0.45f))
                 if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 2)
             }
             PillButton(if (page == Page.MAIN) X.close else X.back, { if (page == Page.MAIN) onClose() else page = Page.MAIN }, heightPx = 64, hPadPx = 36, fontPx = 22, modifier = Modifier.fillMaxWidth())

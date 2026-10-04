@@ -65,6 +65,11 @@ object Ux {
      */
     var themeLight by mutableStateOf(false)
     var playerActive by mutableStateOf(false)
+        private set
+    private var playerRefs = 0
+    /** Entrée / sortie d'un lecteur. Compté : un lien profond peut afficher le NOUVEAU lecteur avant que l'ancien soit détruit. */
+    fun enterPlayer() { playerRefs++; playerActive = true }
+    fun leavePlayer() { playerRefs = (playerRefs - 1).coerceAtLeast(0); playerActive = playerRefs > 0 }
     private val light: Boolean get() = themeLight && !playerActive
 
     // Surfaces (sombre → clair : maquettes Accueil / AccueilClair / SidebarClair)
