@@ -25,7 +25,8 @@ export interface UltraTvBridge {
   onFullscreenChange?(cb: (on: boolean) => void): (() => void) | void;
   checkForUpdates?(): Promise<unknown>;
   onUpdateStatus?(cb: (s: { state: string; version?: string; percent?: number }) => void): (() => void) | void;
-  openExternal?(url: string): Promise<void> | void;
+  openExternal?(url: string): Promise<unknown> | void;
+  setTitleBarTheme?(isDark: boolean): Promise<unknown> | void;
 }
 
 declare global {
@@ -42,7 +43,7 @@ const ENV_PROXY = (import.meta as unknown as { env?: { VITE_DEFAULT_PROXY_URL?: 
 export async function getProxySetting(): Promise<string | null> {
   return getSetting<string | null>(PROXY_KEY, null);
 }
-export const setProxySetting = (url: string | null) => setSetting(PROXY_KEY, url || null);
+export const setProxySetting = async (url: string | null) => { await setSetting(PROXY_KEY, url || null); await initTransport(); };
 export const defaultProxy = () => ENV_PROXY;
 
 /** Transport à utiliser depuis le thread principal. */
@@ -52,6 +53,14 @@ export async function currentTransport(): Promise<Transport> {
   const url = (await getProxySetting()) || ENV_PROXY;
   return url ? { mode: "proxy", url } : { mode: "direct" };
 }
+
+// Copie synchrone (images, lecteur) : initialisée au démarrage, mise à jour quand le proxy change.
+let cached: Transport = { mode: "direct" };
+export const transportSync = (): Transport => {
+  const b = bridge();
+  return b?.proxyBase ? { mode: "electron", base: b.proxyBase } : cached;
+};
+export async function initTransport(): Promise<void> { cached = await currentTransport(); }
 
 function b64url(s: string): string {
   const bytes = new TextEncoder().encode(s);

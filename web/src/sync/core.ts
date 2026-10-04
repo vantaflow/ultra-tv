@@ -60,8 +60,7 @@ export async function detectLanguages(t: Transport, s: Source, signal?: AbortSig
 
 export async function testConnection(t: Transport, s: Source, signal?: AbortSignal) {
   if (s.type === "m3u") {
-    const res = await transportFetch(t, s.m3uUrl, { signal, userAgent: s.userAgent, referer: s.referer });
-    const head = (await res.text()).slice(0, 200);
+    const head = (await readM3u(t, s, signal)).slice(0, 200);
     if (!head.includes("#EXTM3U") && !head.includes("#EXTINF")) throw new Error("not-m3u");
     return { ok: true as const, expDate: null, maxConnections: 1 };
   }
@@ -70,6 +69,17 @@ export async function testConnection(t: Transport, s: Source, signal?: AbortSign
   if (!ui || ui.auth === 0 || (ui.status && ui.status !== "Active")) throw new Error(ui?.status === "Expired" ? "expired" : "auth");
   const exp = ui.exp_date ? toNum(ui.exp_date, 0) * 1000 : 0;
   return { ok: true as const, expDate: exp || null, maxConnections: toNum(ui.max_connections, 1) };
+}
+
+/** Texte de la playlist : fichier local (stocké à l'ajout, adresse « file:… ») ou lien distant. */
+async function readM3u(t: Transport, s: Source, signal?: AbortSignal): Promise<string> {
+  if (s.m3uUrl.startsWith("file:")) {
+    const row = await db.details.get(`m3ufile:${s.id ?? "tmp"}`);
+    if (typeof row?.json !== "string") throw new Error("not-m3u");
+    return row.json;
+  }
+  const res = await transportFetch(t, s.m3uUrl, { signal, userAgent: s.userAgent, referer: s.referer });
+  return res.text();
 }
 
 class Throttle {
@@ -270,8 +280,7 @@ async function streamIntoDb<T>(
 
 async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {
   report("live", 0, true);
-  const res = await transportFetch(t, source.m3uUrl, { signal, userAgent: source.userAgent, referer: source.referer });
-  const entries = parseM3u(await res.text());
+  const entries = parseM3u(await readM3u(t, source, signal));
   const groups = new Map<string, number>();
   const rows: ChannelRow[] = [];
   entries.forEach((e, i) => {

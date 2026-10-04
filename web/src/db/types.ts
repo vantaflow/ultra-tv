@@ -140,6 +140,8 @@ export interface HistoryRow {
   updatedAt: number;
   /** Épisode : identifiant, extension de conteneur, saison/épisode et série parente. */
   ext?: string;
+  /** Identifiant de l'épisode (séries) pour la reprise exacte. */
+  epId?: number;
   seriesId?: number;
   season?: number;
   episode?: number;
