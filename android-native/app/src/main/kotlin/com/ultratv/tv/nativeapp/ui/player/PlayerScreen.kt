@@ -304,8 +304,36 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var lastRecallMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(item) { zap.onPlaying(item) }
     LaunchedEffect(zapPreview != null) { if (zapPreview != null) zap.loadRecent() }
+    // [B2·timeshift] pause du direct : tampon disque via un relais local (une seule connexion fournisseur).
+    val ts: com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftViewModel = hiltViewModel()
+    var tsActive by remember { mutableStateOf(false) }
+    var tsSnap by remember { mutableStateOf<com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftSnapshot?>(null) }
+    var liveUrlBeforeTs by remember { mutableStateOf<String?>(null) }
+    var pendingPause by remember { mutableStateOf(false) }
+    fun startTimeshift() {
+        when (ts.support(currentUrl)) {
+            com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftSupport.OK -> {
+                val live = currentUrl
+                session.release()              // ferme le flux direct AVANT d'ouvrir la connexion amont du relais
+                ts.activate(live, "UltraTV/1.0 (Android TV)")?.let { liveUrlBeforeTs = live; tsActive = true; pendingPause = true; currentUrl = it }
+                    ?: run { session.start(live, item?.let { "${it.providerId}:${it.remoteId}" }, 0) }
+            }
+            com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftSupport.NO_SPACE -> Toaster.show(X.tsNoSpace)
+            else -> Toaster.show(X.tsHls)
+        }
+    }
+    fun tsJump(sec: Int) { ts.jump(sec)?.let { currentUrl = it } }
+    fun tsBackToLive() { ts.goLive()?.let { currentUrl = it; pendingPause = false } }
+    LaunchedEffect(state.phase) {
+        if (!tsActive) return@LaunchedEffect
+        if (state.phase == Phase.PLAYING && pendingPause) { session.engine?.pause(); pendingPause = false }
+        if (state.phase == Phase.ERROR || state.phase == Phase.ENDED) {
+            ts.deactivate(); tsActive = false; tsSnap = null; Toaster.show(X.tsFailed)
+            liveUrlBeforeTs?.let { currentUrl = it }
+        }
+    }
     DisposableEffect(Unit) {
-        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release() }
+        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
     }
     LaunchedEffect(Unit) {
         session.notices.collect { n ->
@@ -315,6 +343,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(currentUrl) {
         val it = vm.current.value
         val resume = vm.prepareResume()
+        if (tsActive && !ts.isLocalUrl(currentUrl)) { ts.deactivate(); tsActive = false; tsSnap = null }   // [B2·timeshift] autre chaîne : le relais lâche la connexion d'abord
         session.start(currentUrl, it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)
     }
     // Progression enregistrée toutes les 10 s (« Reprendre la lecture »).
@@ -366,6 +395,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         while (true) {
             session.engine?.let { pos = it.positionMs; dur = it.durationMs; playing = it.isPlaying }
             clock = EpgClock.hm(System.currentTimeMillis())
+            if (tsActive) tsSnap = ts.snapshot()
             if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > 5_000) overlayVisible = false
             delay(500)
         }
@@ -407,8 +437,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 when (ev.key) {
                     Key.DirectionUp -> if (isLive) { scope.launch { vm.zap(false)?.let { currentUrl = it } }; true } else false
                     Key.DirectionDown -> if (isLive) { scope.launch { vm.zap(true)?.let { currentUrl = it } }; true } else false
-                    Key.DirectionLeft -> if (!isLive) { session.engine?.let { it.seekTo((it.positionMs - 10_000).coerceAtLeast(0)) }; true } else false
-                    Key.DirectionRight -> if (!isLive) { session.engine?.let { it.seekTo(it.positionMs + 10_000) }; true } else false
+                    Key.DirectionLeft -> if (tsActive) { tsJump(-30); true } else if (!isLive) { session.engine?.let { it.seekTo((it.positionMs - 10_000).coerceAtLeast(0)) }; true } else false
+                    Key.DirectionRight -> if (tsActive) { tsJump(30); true } else if (!isLive) { session.engine?.let { it.seekTo(it.positionMs + 10_000) }; true } else false
                     else -> true      // OK / autres : on affiche seulement la surcouche
                 }
             },
@@ -425,10 +455,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         )
 
         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) {
-            Header(item, title, vm, clock, isLive, D)
-            Footer(
-                isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
+            Header(item, title, vm, clock, isLive, D, tsSnap?.behindSec, X)
+            if (tsActive && tsSnap != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftFooter(
+                tsSnap!!, playing, X, pauseFocus,
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
+                onJump = { tsJump(it); touch() }, onLive = { tsBackToLive(); touch() },
+            ) else Footer(
+                isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
+                onToggle = { if (isLive && replayProg == null) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
@@ -473,7 +507,7 @@ private fun Modifier.androidx_focusable() = this.focusable()
 // ───────────────────────── Surcouche ─────────────────────────
 
 @Composable
-private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings) {
+private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings, tsBehindSec: Int? = null, X: com.ultratv.tv.nativeapp.ui.player.PlayerExtraStrings? = null) {
     val programme by vm.nowProgramme.collectAsState()
     Row(
         Modifier.fillMaxWidth().height(200.design).background(Color(0xD10A0A0C)).padding(horizontal = 96.design, vertical = 54.design),
@@ -481,7 +515,7 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.design), modifier = Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                if (isLive) LiveBadge(D.live)
+                if (isLive) { if (tsBehindSec != null && X != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftBadge(tsBehindSec, X) else LiveBadge(D.live) }
                 // Un seul titre : avec un programme du guide la chaîne passe en petit ; sinon son nom EST le titre.
                 val name = item?.title ?: fallbackTitle
                 if (programme != null || !isLive) Text(name, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))

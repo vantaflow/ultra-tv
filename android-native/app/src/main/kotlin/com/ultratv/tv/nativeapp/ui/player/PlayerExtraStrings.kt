@@ -26,6 +26,13 @@ class PlayerExtraStrings(val lang: AppLang) {
     val fromStart get() = t("From the start", "Depuis le début", "Desde el principio", "من البداية")
     val backToLive get() = t("Back to live", "Revenir au direct", "Volver al directo", "العودة إلى البث المباشر")
 
+    // Pause du direct
+    val delayed get() = t("TIME-SHIFTED", "EN DIFFÉRÉ", "EN DIFERIDO", "مؤجّل")
+    val directMark get() = t("LIVE", "DIRECT", "DIRECTO", "مباشر")
+    val tsHls get() = t("Pause is unavailable on this stream (HLS)", "Pause du direct indisponible sur ce flux (HLS)", "Pausa no disponible en esta señal (HLS)", "الإيقاف المؤقت غير متاح لهذا البث (HLS)")
+    val tsNoSpace get() = t("Not enough free space to pause live TV", "Espace libre insuffisant pour mettre le direct en pause", "Espacio libre insuficiente para pausar el directo", "مساحة التخزين غير كافية لإيقاف البث مؤقتًا")
+    val tsFailed get() = t("Live buffer interrupted, back to live", "Tampon interrompu, retour au direct", "Búfer interrumpido, volviendo al directo", "انقطع التخزين المؤقت، العودة إلى المباشر")
+
     // Veille
     val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
     val sleepTitle get() = t("Sleep timer", "Minuterie de veille", "Temporizador", "مؤقّت السكون")
