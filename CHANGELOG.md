@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.6] — 2026-10-04
+
+### Corrections
+- **Mise à jour intégrée** : installe toujours la version la plus récente (revérification au clic sur « Installer ») ; avant, la version vue au démarrage était téléchargée même si une plus récente était sortie entre-temps.
+
 ## [1.2.5] — 2026-10-04
 
 ### Nouveautés
