@@ -195,6 +195,8 @@ export const es: Dict = {
   "set.catsSummary": "{a} activas · {d} desactivadas",
   "set.catsApply": "Aplicar y sincronizar",
   "set.catsPending": "{n} cambio(s) por aplicar",
+  "set.catsAllLangs": "Todos los idiomas",
+  "set.catsToggleLang": "Activar/desactivar categorías {l}",
   "set.catsEnableAll": "Activar todo",
   "set.catsDisableAll": "Desactivar todo",
   "set.catsNote": "Desactivada: la categoría ya no se descarga ni se muestra. Sincronización más rápida, aplicación más ligera.",

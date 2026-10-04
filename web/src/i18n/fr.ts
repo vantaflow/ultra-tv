@@ -194,6 +194,8 @@ export const fr = {
   "set.catsSummary": "{a} actives · {d} désactivées",
   "set.catsApply": "Appliquer et synchroniser",
   "set.catsPending": "{n} modification(s) à appliquer",
+  "set.catsAllLangs": "Toutes les langues",
+  "set.catsToggleLang": "Activer/désactiver les catégories {l}",
   "set.catsEnableAll": "Tout activer",
   "set.catsDisableAll": "Tout désactiver",
   "set.catsNote": "Désactivée : la catégorie n’est plus téléchargée ni affichée. Synchro plus rapide, application plus légère.",

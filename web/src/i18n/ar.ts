@@ -195,6 +195,8 @@ export const ar: Dict = {
   "set.catsSummary": "{a} نشطة · {d} معطّلة",
   "set.catsApply": "تطبيق ومزامنة",
   "set.catsPending": "{n} تغيير بانتظار التطبيق",
+  "set.catsAllLangs": "كل اللغات",
+  "set.catsToggleLang": "تفعيل/تعطيل فئات {l}",
   "set.catsEnableAll": "تفعيل الكل",
   "set.catsDisableAll": "تعطيل الكل",
   "set.catsNote": "المعطّلة: لا تُحمَّل الفئة ولا تُعرض. مزامنة أسرع وتطبيق أخف.",
