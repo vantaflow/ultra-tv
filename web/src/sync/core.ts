@@ -5,6 +5,7 @@
 import { clearCatalog, db, nextCid } from "@/db/db";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
 import { parseChannelName, parseCategoryName } from "@/lib/channelName";
+import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
 import { firstString, normText, rating10, toNum } from "@/lib/text";
 import { parseM3u } from "@/lib/m3u";
@@ -17,7 +18,7 @@ import {
 
 export type ProgressFn = (p: SyncProgress) => void;
 
-export const OTHER_LANG = "OTHER";
+export { OTHER_LANG };
 
 export interface DetectedLanguage { code: string; categories: number }
 
@@ -28,9 +29,9 @@ export function credsOf(s: Source): XtreamCreds {
 function mapCategories(kind: Kind, sourceId: number, list: XtreamCategory[], langs: string[] | null): CategoryRow[] {
   return list.map((c, i) => {
     const parsed = parseCategoryName(c.category_name ?? "");
-    const badge = parsed.badge;
-    const code = badge ?? OTHER_LANG;
     const name = String(c.category_name ?? "");
+    const code = categoryLang(name);
+    const badge = code === OTHER_LANG ? null : code;
     return {
       sourceId, kind, extId: String(c.category_id), name,
       label: prettyCategoryName(parsed.label || name), badge, count: 0,
@@ -51,7 +52,7 @@ export async function detectLanguages(t: Transport, s: Source, signal?: AbortSig
   ]);
   const map = new Map<string, number>();
   for (const cat of [...live, ...vod, ...ser]) {
-    const code = parseCategoryName(cat.category_name ?? "").badge ?? OTHER_LANG;
+    const code = categoryLang(String(cat.category_name ?? ""));
     map.set(code, (map.get(code) ?? 0) + 1);
   }
   const languages = [...map].map(([code, categories]) => ({ code, categories })).sort((a, b) => b.categories - a.categories);
@@ -302,7 +303,7 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
   const cats: CategoryRow[] = [...groups].map(([name, ord]) => {
     const parsed = parseCategoryName(name);
     return {
-      sourceId, kind: "live" as const, extId: name, name, label: prettyCategoryName(parsed.label), badge: parsed.badge,
+      sourceId, kind: "live" as const, extId: name, name, label: prettyCategoryName(parsed.label), badge: categoryLang(name) === OTHER_LANG ? null : categoryLang(name),
       count: rows.filter((r) => r.catExt === name).length, enabled: 1 as const, adult: 0 as const, ord,
     };
   });
