@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.10] — 2026-10-04
+
+### Modifications
+- Réglages › Catégories : plus de filtre ni d'étiquette de langue (détection peu fiable selon les fournisseurs) ; onglets Direct/Films/Séries, recherche dans le nom, « Tout activer / Tout désactiver » sur la vue filtrée.
+
 ## [Bureau 1.2.9] — 2026-10-04
 
 ### Nouveautés
