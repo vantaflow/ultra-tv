@@ -74,7 +74,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL, CLOUD }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, WORKER, SOURCE_ACTIONS, WORKER_URL, CLOUD, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -181,6 +181,11 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf(OpenDialog.NONE) }
     var selected by remember { mutableStateOf<ProviderEntity?>(null) }
+    val C = rememberCloudStrings()
+    val cloud by vm.cloud.collectAsState()
+    val offer by vm.offerShare.collectAsState()
+    var connWarn by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(cloud, providers) { connWarn = vm.connectionWarning() }
     var backupPwd by remember { mutableStateOf("") }
 
     val saveBackup = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -218,7 +223,13 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
                     Spacer(Modifier.width(24.design))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                         Text(p.name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        val meta = listOfNotNull(kindName(S.wiz, p.kind), if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
+                        val cloudTag = when {
+                            p.kind != "XTREAM" && p.kind != "M3U" -> null
+                            vm.cloudIdOf(p.id) != null -> C.cloudShared(vm.sharedWith(p.id).coerceAtLeast(1))
+                            paired -> C.localPrivate
+                            else -> null
+                        }
+                        val meta = listOfNotNull(kindName(S.wiz, p.kind), cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
                         Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
@@ -238,7 +249,18 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         if (paired) PrefRow(D.paired, D.unpair, hint = hostOnly(workerBase)) { vm.unpair() }
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
-        PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
+        if (paired) {
+            val minutes = if (cloud.lastSyncAt > 0) (System.currentTimeMillis() - cloud.lastSyncAt) / 60_000 else -1L
+            val status = when {
+                cloud.failed -> C.syncFailed
+                minutes >= 0 -> C.syncedWithCloud + " · " + C.ago(minutes) + (if (cloud.deviceCount > 0) " · " + C.devicesCount(cloud.deviceCount) else "")
+                else -> C.notSynced
+            }
+            PrefRow(C.syncNow, "", hint = status) { vm.syncFromCloud() }
+            PrefRow(C.thisDevice, cloud.selfName, hint = C.deviceNameHint) { dialog = OpenDialog.RENAME_DEVICE }
+            if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
+            if (connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
+        } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
         if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(workerBase).substringAfter("://")) { ctx.openInBrowser(workerBase) }
     }
@@ -262,11 +284,29 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         OpenDialog.STALKER -> StalkerDialog({ dialog = OpenDialog.NONE }) { n, u, m -> vm.addStalkerAndSync(n, u, m); dialog = OpenDialog.NONE }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
-            ChoiceDialog(p.name, listOf("default" to D.setDefault, "sync" to D.syncNow, "delete" to D.deleteSource), null,
-                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id) }; dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+            val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U")
+            val linked = vm.cloudIdOf(p.id) != null
+            val opts = buildList {
+                add("default" to D.setDefault); add("sync" to D.syncNow)
+                if (shareable && !linked) add("share" to C.shareSource)
+                if (shareable && linked) { add("share" to C.editSharing); add("stop" to C.stopSharing) }
+                add("delete" to D.deleteSource)
+            }
+            ChoiceDialog(p.name, opts, null,
+                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = if (k == "share") OpenDialog.SHARE else OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         }
+        OpenDialog.SHARE -> selected?.let { p ->
+            ShareDevicesDialog(cloud.devices, cloud.selfId, null, onConfirm = { sel -> vm.share(p.id, sel); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+        }
+        OpenDialog.RENAME_DEVICE -> RenameDeviceDialog(cloud.selfName, onSave = { vm.renameThisDevice(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         else -> Unit
     }
+    // Après l'ajout d'une source sur un appareil appairé : proposition (jamais d'envoi automatique).
+    offer?.let { id ->
+        OfferShareDialog(onShare = { vm.dismissOffer(); scope.launch { selected = vm.providerById(id) }; dialog = OpenDialog.SHARE }, onLater = { vm.dismissOffer() })
+    }
+    // Sources retirées du cloud pour cet appareil, avec des favoris ou enregistrements : confirmation.
+    if (cloud.pending.isNotEmpty()) RemovalDialog(cloud.pending, onRemove = { vm.confirmRemovals(it) }, onKeep = { vm.keepLocal(it) })
     // Accueil vide (tactile) : « Depuis le cloud » ouvre directement l'appairage.
     val wantPairing by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
     androidx.compose.runtime.LaunchedEffect(wantPairing) { if (wantPairing) { com.ultratv.tv.nativeapp.StartupNav.startPairing.value = false; vm.startPairing() } }

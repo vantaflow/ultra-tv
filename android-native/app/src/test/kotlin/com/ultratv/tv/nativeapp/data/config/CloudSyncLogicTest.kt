@@ -95,9 +95,9 @@ class CloudSyncLogicTest {
     }
 
     @Test fun parseConfig_litAssignDevicesEtVersion() {
-        val body = """{"version":7,"self":"d1","devices":[{"id":"d1","name":"TV","label":"Pixel"},{"id":"d2","name":"","label":"Mac"}],
-          "providers":[{"id":"aaaaaaaa","kind":"xtream","name":"A","url":"http://h","username":"u","password":"p","mac":"","assign":["d1","d2"],"originName":"TV","updatedAt":5},
-                       {"id":"bbbbbbbb","kind":"M3U","name":"B","url":"https://x/l.m3u","assign":"all"},{"kind":"M3U","url":"x"}]}"""
+        val body = """{"version":7,"devices":[{"id":"d1","name":"TV","model":"Pixel","isCurrent":true},{"id":"d2","name":"","model":"Mac"}],
+          "providers":[{"id":"aaaaaaaa","kind":"xtream","name":"A","url":"http://h","username":"u","password":"p","mac":"","sharedWith":["d1","d2"],"originName":"TV","updatedAt":5},
+                       {"id":"bbbbbbbb","kind":"M3U","name":"B","url":"https://x/l.m3u","sharedWith":"all"},{"kind":"M3U","url":"x"}]}"""
         val c = CloudSyncLogic.parseConfig(body)
         assertEquals(7L, c.version); assertEquals("d1", c.selfId); assertEquals(2, c.devices.size)
         assertEquals(2, c.providers.size)                            // l'entrée sans id est ignorée

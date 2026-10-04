@@ -106,7 +106,7 @@ export async function rotateDevice(env, acct, device) {
 
 // ---- validation des fournisseurs -------------------------------------------
 
-const KINDS = ["XTREAM", "M3U", "STALKER"];
+const KINDS = ["XTREAM", "M3U"]; // Stalker est retiré de l'application
 
 function cleanLine(v, max) {
   // eslint-disable-next-line no-control-regex
@@ -129,7 +129,7 @@ export function parseProvider(form, origin = null) {
   if (!url) return { error: "url" };
   const p = {
     id: [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join(""),
-    kind, name: cleanLine(form.get("name"), 64) || kind, url, username: "", password: "", mac: "",
+    kind, name: cleanLine(form.get("name"), 64) || kind, url, username: "", password: "",
     createdAt: Date.now(), updatedAt: Date.now(),
     // Appareil d'origine (ou « dashboard ») : affiché dans le tableau de bord.
     originDeviceId: origin?.deviceId || "", originName: cleanLine(origin?.name || "", 64),
@@ -138,10 +138,6 @@ export function parseProvider(form, origin = null) {
     p.username = cleanLine(form.get("username"), 256);
     p.password = cleanLine(form.get("password"), 256);
     if (!p.username || !p.password) return { error: "creds" };
-  } else if (kind === "STALKER") {
-    const mac = normalizeLogin(form.get("mac"));
-    if (!mac || !isMacLogin(mac)) return { error: "mac" };
-    p.mac = mac.toUpperCase();
   }
   return { provider: p };
 }
@@ -155,7 +151,7 @@ export function publicProvider({ id: _id, ...rest }) {
 export function syncProvider(p) {
   return {
     sharedWith: p.assign === undefined ? "all" : p.assign,
-    id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "", mac: p.mac || "",
+    id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
   };
 }
@@ -165,7 +161,7 @@ export function syncProvider(p) {
  * (un objet ou un tableau serait converti en « [object Object] » et passerait la validation).
  */
 export function parseDeviceProvider(body, origin) {
-  const FIELDS = ["kind", "name", "url", "username", "password", "mac"];
+  const FIELDS = ["kind", "name", "url", "username", "password"]; // `mac` est ignoré en entrée
   for (const k of FIELDS) {
     if (body[k] !== undefined && typeof body[k] !== "string") return { error: k };
   }
@@ -216,3 +212,6 @@ export async function renameDevice(env, acct, deviceId, rawName) {
   await putAccount(env, acct);
   return true;
 }
+
+/** Types encore pris en charge : un ancien fournisseur d'un autre type n'est plus envoyé aux appareils. */
+export const isSupportedKind = (p) => KINDS.includes(p.kind);

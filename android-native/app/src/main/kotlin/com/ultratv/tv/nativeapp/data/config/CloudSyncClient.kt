@@ -62,7 +62,7 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
 
     suspend fun renameSelf(base: String, token: String, name: String) = withContext(Dispatchers.IO) {
         val body = org.json.JSONObject().put("name", name).toString().toRequestBody(json)
-        val req = Request.Builder().url("$base/api/device/self").header("Authorization", "Bearer $token").post(body).build()
+        val req = Request.Builder().url("$base/api/device").header("Authorization", "Bearer $token").patch(body).build()
         http.newCall(req).execute().use { r ->
             check(r.code, r.header("Retry-After"))
             if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while renaming the device")

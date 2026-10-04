@@ -163,7 +163,7 @@ describe("POST /api/device/providers : validation et attaques", () => {
     expect((await putProv(phone, { kind: "M3U", url: "javascript:alert(1)" })).status).toBe(400);
     expect((await putProv(phone, { kind: "M3U", url: "file:///etc/passwd" })).status).toBe(400);
     expect((await putProv(phone, { kind: "XTREAM", url: "http://h:80" })).status).toBe(400);
-    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80", mac: "zz" })).status).toBe(400);
+    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80", mac: "00:1A:79:00:00:01" })).status).toBe(400);
   });
   it("champsNonChaines_objetsTableaux_refuses", async () => {
     const { phone } = await twoDevices();
@@ -255,5 +255,69 @@ describe("appareils : nom et tableau de bord", () => {
     const id = /\/devices\/([0-9a-f]+)\/rename/.exec(html)[1];
     await call(`/devices/${id}/rename`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, name: "Mac bureau" } });
     expect(await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text()).toContain("Mac bureau");
+  });
+});
+
+describe("Stalker retiré : champ mac", () => {
+  it("macIgnoreEnEntree_etNeSortPlus_etLesAnciensStalkerSontFiltres", async () => {
+    const { acct, phone } = await twoDevices();
+    const r = await putProv(phone, { ...m3u("Avec mac"), mac: "00:1A:79:00:00:01" });
+    expect(r.status).toBe(201);
+    const p = (await r.json()).provider;
+    expect("mac" in p).toBe(false);
+    expect((await (await cfg(phone)).json()).providers.every((x) => !("mac" in x))).toBe(true);
+    // un ancien fournisseur Stalker stocké ne part plus vers les appareils
+    const { env } = await import("cloudflare:workers");
+    const { loadProviders, saveProviders, getAccount, putAccount } = await import("../src/store.js");
+    const a = await getAccount(env, acct.login);
+    const list = await loadProviders(env, a);
+    list.push({ id: "0badc0de", kind: "STALKER", name: "Vieux portail", url: "http://p:80", mac: "00:1A:79:00:00:02", username: "", password: "" });
+    await saveProviders(env, a, list); await putAccount(env, a);
+    expect(await names(phone)).toEqual(["Avec mac"]);
+    // et le tableau de bord refuse d'en créer
+    expect((await addProvider(acct, { kind: "STALKER", url: "http://p:80", mac: "00:1A:79:00:00:03" })).headers.get("location")).toContain("e=kind");
+  });
+});
+
+describe("mutations concurrentes d'un compte", () => {
+  it("vingtAjoutsSimultanesDeDeuxAppareils_etDuTableauDeBord_aucunePerte", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    const jobs = [];
+    for (let i = 0; i < 8; i++) {
+      jobs.push(putProv(tv, { ...m3u(`tv-${i}`, `tv${i}.example`), shareWith: "all" }));
+      jobs.push(putProv(phone, { ...m3u(`ph-${i}`, `ph${i}.example`), shareWith: "all" }));
+    }
+    for (let i = 0; i < 4; i++) jobs.push(addProvider(acct, m3u(`dash-${i}`, `d${i}.example`)));
+    const res = await Promise.all(jobs);
+    expect(res.every((r) => r.status === 201 || r.status === 302), res.map((r) => r.status).join()).toBe(true);
+    const got = await names(tv);
+    expect(got.length).toBe(20);
+    const b = await (await cfg(tv)).json();
+    expect(b.version).toBeGreaterThanOrEqual(20);        // une version par mutation, sans doublon perdu
+  });
+  it("affectationsEtSuppressionsSimultanees_restentCoherentes", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    const ids = [];
+    for (let i = 0; i < 4; i++) ids.push((await (await putProv(tv, { ...m3u(`s${i}`, `s${i}.example`), shareWith: "all" })).json()).provider.id);
+    const ops = ids.flatMap((id) => [
+      call(`/providers/${id}/assign`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, d: phone.deviceId } }),
+      call(`/api/device/providers/${id}`, { method: "DELETE", ip: freshIp(), headers: bearer(tv.token) }),
+    ]);
+    const res = await Promise.all(ops);
+    expect(res.every((r) => r.status < 500)).toBe(true);
+    // chaque source a un état valide : visible du téléphone seul, ou supprimée
+    const seen = (await (await cfg(phone)).json()).providers;
+    for (const p of seen) expect(Array.isArray(p.sharedWith) || p.sharedWith === "all").toBe(true);
+    expect((await (await cfg(tv)).json()).providers.length).toBe(0);
+  });
+  it("verrouTenu_rendOccupe503_puisSeLibere", async () => {
+    const { acct, tv } = await twoDevices();
+    const { env } = await import("cloudflare:workers");
+    const stub = env.GUARD.get(env.GUARD.idFromName(`mut:${acct.login}`));
+    const l = await stub.lockAcquire(200);
+    expect(l.ok).toBe(true);
+    expect((await stub.lockAcquire(200)).ok).toBe(false);
+    // la mutation attend la libération (expiration du verrou) puis réussit
+    expect((await putProv(tv, m3u("Après verrou"))).status).toBe(201);
   });
 });

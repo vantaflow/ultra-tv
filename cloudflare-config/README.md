@@ -45,7 +45,7 @@ Un appareil ne reçoit, ne modifie et ne supprime QUE les fournisseurs qui lui s
 | `PATCH /api/device` (ou `POST /api/device/self`) | `{name}` : renomme l'appareil. |
 
 Tableau de bord : matrice fournisseurs × appareils (cases + « Tous »), appareils renommables, origine et date de chaque fournisseur. Révoquer un appareil le retire des listes explicites.
-Limite connue : les écritures sont des lecture-modification-écriture KV ; deux écritures simultanées de deux appareils sur le même compte peuvent s'écraser (rare, la version monte et l'appareil resynchronise).
+Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de passe, rotation) sont sérialisées par un verrou Durable Object `mut:<login>` ; le compte est relu SOUS le verrou et `version` n'est incrémentée que dans ce critique (aucune écriture perdue entre appareils et tableau de bord). Stalker est retiré : `mac` est ignoré en entrée, jamais renvoyé, et un ancien fournisseur Stalker n'est plus envoyé aux appareils.
 
 ## Déploiement
 

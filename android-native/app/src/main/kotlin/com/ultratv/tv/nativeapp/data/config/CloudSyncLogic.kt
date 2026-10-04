@@ -80,9 +80,10 @@ object CloudSyncLogic {
 
     fun parseConfig(body: String): CloudConfig {
         val o = JSONObject(body)
-        val devices = o.optJSONArray("devices").toList { d -> CloudDevice(d.optString("id"), d.optString("name"), d.optString("label")) }
+        val selfFromDevices = o.optJSONArray("devices").toList { d -> d.optString("id").takeIf { d.optBoolean("isCurrent") } }.filterNotNull().firstOrNull()
+        val devices = o.optJSONArray("devices").toList { d -> CloudDevice(d.optString("id"), d.optString("name"), d.optString("model").ifBlank { d.optString("label") }) }
         val providers = o.optJSONArray("providers").toList { p ->
-            val a = p.opt("assign")
+            val a = p.opt("sharedWith")
             CloudProvider(
                 id = p.optString("id"), kind = p.optString("kind").uppercase(), name = p.optString("name"), url = p.optString("url"),
                 username = p.optString("username"), password = p.optString("password"), mac = p.optString("mac"),
@@ -90,7 +91,7 @@ object CloudSyncLogic {
                 originName = p.optString("originName"), updatedAt = p.optLong("updatedAt"),
             )
         }.filter { it.id.isNotBlank() }
-        return CloudConfig(o.optLong("version"), o.optString("self").ifBlank { null }, devices, providers)
+        return CloudConfig(o.optLong("version"), o.optString("self").ifBlank { null } ?: selfFromDevices, devices, providers)
     }
 
     private fun <T> JSONArray?.toList(f: (JSONObject) -> T): List<T> =

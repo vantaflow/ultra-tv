@@ -39,13 +39,13 @@ class CloudLinkStore @Inject constructor(@ApplicationContext ctx: Context) {
         set(v) { sp.edit().putLong("last_sync", v).apply() }
 
     fun saveDevices(selfId: String?, devices: List<CloudDevice>) {
-        val a = JSONArray(); devices.forEach { a.put(JSONObject().put("id", it.id).put("name", it.name).put("label", it.label)) }
+        val a = JSONArray(); devices.forEach { a.put(JSONObject().put("id", it.id).put("name", it.name).put("model", it.label)) }
         sp.edit().putString("devices", a.toString()).putString("self", selfId).apply()
     }
 
     fun devices(): List<CloudDevice> = runCatching {
         val a = JSONArray(sp.getString("devices", "[]"))
-        (0 until a.length()).map { a.getJSONObject(it).let { d -> CloudDevice(d.optString("id"), d.optString("name"), d.optString("label")) } }
+        (0 until a.length()).map { a.getJSONObject(it).let { d -> CloudDevice(d.optString("id"), d.optString("name"), d.optString("model")) } }
     }.getOrDefault(emptyList())
 
     fun selfId(): String? = sp.getString("self", null)

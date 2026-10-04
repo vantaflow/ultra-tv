@@ -52,6 +52,7 @@ class SettingsViewModel @Inject constructor(
     fun dismissOffer() { _offerShare.value = null }
     private fun offerIfPaired(id: Long) { if (deviceTokens.isPaired) _offerShare.value = id }
 
+    suspend fun providerById(id: Long) = repo.byId(id)
     fun cloudIdOf(localId: Long): String? = cloudSync.cloudIdOf(localId)
     fun sharedWith(localId: Long): Int = cloudSync.sharedWith(localId)
     suspend fun connectionWarning(): Boolean = cloudSync.connectionWarning()

@@ -23,7 +23,7 @@ import {
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider,
-  isVisibleTo, assignmentOf, parseAssign, dropDeviceFromAssignments, renameDevice,
+  isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
@@ -58,6 +58,30 @@ async function lockedOut(env, key, asJson = false) {
 const LOGIN_LOCK = { threshold: 5, baseSec: 60, capSec: 900 };   // par compte
 const IP_LOCK = { threshold: 10, baseSec: 60, capSec: 3600 };    // par IP
 const SECRET_LOCK = { threshold: 5, baseSec: 60, capSec: 3600 }; // OPS / ADMIN
+
+// ---- sérialisation des mutations d'un compte ----------------------------------------
+
+/**
+ * Toute mutation d'un compte (fournisseurs, affectations, appareils, mot de passe) passe par ici : un verrou par compte dans
+ * un Durable Object. `fn` reçoit le compte relu SOUS le verrou (jamais une copie lue avant l'attente), puis la version
+ * (`cfgVersion`) n'est incrémentée que dans ce critique : aucune écriture perdue entre deux appareils et le tableau de bord.
+ */
+async function withAccountLock(env, login, fn) {
+  const stub = guardStub(env, `mut:${login}`);
+  let token = null;
+  for (let i = 0; i < 60 && !token; i++) {
+    const r = await stub.lockAcquire(10_000);
+    if (r.ok) token = r.token; else await new Promise((res) => setTimeout(res, 40 + Math.random() * 80));
+  }
+  if (!token) return json({ error: "busy" }, 503, { "retry-after": "2" });
+  try {
+    const acct = await getAccount(env, login);
+    if (!acct) return json({ error: "gone" }, 404);
+    return await fn(acct);
+  } finally {
+    await stub.lockRelease(token);
+  }
+}
 
 // ---- point d'entrée -----------------------------------------------------------
 
@@ -131,7 +155,7 @@ async function route(req, env) {
   const rl = await limited(env, `dash:${sess.acct.login}`, 120, 3600);
   if (rl) return rl;
 
-  const acct = sess.acct;
+  return withAccountLock(env, sess.acct.login, async (acct) => {
   if (path === "/logout") {
     acct.sessEpoch = (acct.sessEpoch || 0) + 1; // invalide aussi le cookie s'il a fuité
     await putAccount(env, acct);
@@ -167,10 +191,12 @@ async function route(req, env) {
     return redirect("/?m=assigned");
   }
   const del = path.match(/^\/providers\/([0-9a-f]+)\/delete$/);
+  if (!del) return new Response("Not found", { status: 404 });
   const providers = await loadProviders(env, acct);
   await saveProviders(env, acct, providers.filter((p) => p.id !== del[1]));
   await putAccount(env, acct);
   return redirect("/");
+  });
 }
 
 // ---- sessions -------------------------------------------------------------------
@@ -381,7 +407,7 @@ async function deviceConfig(req, env) {
   // Synchro incrémentale : rien n'a changé depuis la version connue de l'appareil.
   if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
   // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
-  const providers = (await loadProviders(env, auth.acct)).filter((p) => isVisibleTo(p, auth.device.id));
+  const providers = (await loadProviders(env, auth.acct)).filter((p) => isSupportedKind(p) && isVisibleTo(p, auth.device.id));
   const devices = (auth.acct.devices || []).map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
   return json(
     { version, self: auth.device.id, devices, providers: providers.map(syncProvider) },
@@ -403,12 +429,14 @@ async function devicePutProvider(req, env) {
   const origin = { deviceId: auth.device.id, name: auth.device.name };
   const r = parseDeviceProvider(body.value, origin);
   if (r.error) return json({ error: "invalid", field: r.error }, 400);
-  const providers = await loadProviders(env, auth.acct);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+  const providers = await loadProviders(env, acct);
   const wanted = body.value.id;
   if (wanted !== undefined && !(typeof wanted === "string" && /^[0-9a-f]{8}$/.test(wanted))) return json({ error: "invalid", field: "id" }, 400);
   let assign = null;
   if (body.value.shareWith !== undefined) {
-    const a = parseAssign(body.value.shareWith, auth.acct);
+    const a = parseAssign(body.value.shareWith, acct);
     if (a.error) return json({ error: "invalid", field: "shareWith" }, 400);
     assign = a.assign;
   }
@@ -428,9 +456,10 @@ async function devicePutProvider(req, env) {
     if (Array.isArray(r.provider.assign) && !r.provider.assign.includes(auth.device.id)) r.provider.assign.push(auth.device.id);
     providers.push(r.provider); savedId = r.provider.id;
   }
-  await saveProviders(env, auth.acct, providers);
-  await putAccount(env, auth.acct);
-  return json({ version: auth.acct.cfgVersion, provider: syncProvider(providers.find((p) => p.id === savedId)) }, status);
+  await saveProviders(env, acct, providers);
+  await putAccount(env, acct);
+  return json({ version: acct.cfgVersion, provider: syncProvider(providers.find((p) => p.id === savedId)) }, status);
+  });
 }
 
 async function deviceDeleteProvider(req, env, id) {
@@ -439,7 +468,9 @@ async function deviceDeleteProvider(req, env, id) {
   const rl = (await limited(env, `pput:ip:${clientIp(req)}`, 120, 600, true))
     || (await limited(env, `pput:dev:${auth.device.id}`, 30, 600, true));
   if (rl) return rl;
-  const providers = await loadProviders(env, auth.acct);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+  const providers = await loadProviders(env, acct);
   const p = providers.find((x) => x.id === id);
   if (!p || !isVisibleTo(p, auth.device.id)) return json({ error: "not_found" }, 404);
   // Par défaut l'appareil se RETIRE de l'affectation ; `?all=1` supprime le fournisseur du compte.
@@ -448,12 +479,13 @@ async function deviceDeleteProvider(req, env, id) {
   let next;
   if (everywhere) next = providers.filter((x) => x.id !== id);
   else {
-    const rest = a === "all" ? (auth.acct.devices || []).map((d) => d.id).filter((d) => d !== auth.device.id) : a.filter((d) => d !== auth.device.id);
+    const rest = a === "all" ? (acct.devices || []).map((d) => d.id).filter((d) => d !== auth.device.id) : a.filter((d) => d !== auth.device.id);
     next = rest.length === 0 ? providers.filter((x) => x.id !== id) : providers.map((x) => (x.id === id ? { ...x, assign: rest } : x));
   }
-  await saveProviders(env, auth.acct, next);
-  await putAccount(env, auth.acct);
-  return json({ version: auth.acct.cfgVersion });
+  await saveProviders(env, acct, next);
+  await putAccount(env, acct);
+  return json({ version: acct.cfgVersion });
+  });
 }
 
 /** Renomme CET appareil (étiquette affichée dans le tableau de bord et dans les listes de partage). */
@@ -464,8 +496,11 @@ async function deviceRename(req, env) {
   if (rl) return rl;
   const body = await readJson(req, 1024);
   if (body.error) return body.error;
-  if (typeof body.value.name !== "string" || !(await renameDevice(env, auth.acct, auth.device.id, body.value.name))) return json({ error: "invalid", field: "name" }, 400);
-  return json({ ok: true });
+  if (typeof body.value.name !== "string") return json({ error: "invalid", field: "name" }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!(await renameDevice(env, acct, auth.device.id, body.value.name))) return json({ error: "invalid", field: "name" }, 400);
+    return json({ ok: true });
+  });
 }
 
 // Métadonnées TMDB : réservé aux appareils appairés, débit limité par appareil et par IP.
@@ -494,8 +529,12 @@ async function deviceRotate(req, env) {
   if (res) return res;
   const rl = await limited(env, `rotate:dev:${auth.device.id}`, 5, 3600, true);
   if (rl) return rl;
-  const token = await rotateDevice(env, auth.acct, auth.device);
-  return json({ token, deviceId: auth.device.id });
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    const dev = acct.devices?.find((d) => d.id === auth.device.id);
+    if (!dev) return json({ error: "unauthorized" }, 401);
+    const token = await rotateDevice(env, acct, dev);
+    return json({ token, deviceId: auth.device.id });
+  });
 }
 
 // ---- ingestion ---------------------------------------------------------------

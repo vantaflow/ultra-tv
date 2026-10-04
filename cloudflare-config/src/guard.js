@@ -32,6 +32,23 @@ export class Guard extends DurableObject {
     await this.ctx.storage.delete("claimed");
   }
 
+  // ---- verrou d'écriture d'un compte (sérialise les mutations) ---------------
+  /** Prend le verrou si libre (ou expiré) ; l'appelant réessaie sinon. Le jeton protège contre une libération tardive. */
+  async lockAcquire(ttlMs) {
+    const now = Date.now();
+    const cur = await this.ctx.storage.get("m");
+    if (cur && cur.until > now) return { ok: false };
+    const token = crypto.randomUUID();
+    await this.ctx.storage.put("m", { token, until: now + ttlMs });
+    await this.#expireAt(now + ttlMs + 1000);
+    return { ok: true, token };
+  }
+
+  async lockRelease(token) {
+    const cur = await this.ctx.storage.get("m");
+    if (cur && cur.token === token) await this.ctx.storage.delete("m");
+  }
+
   // ---- fenêtre fixe --------------------------------------------------------
   async hit(limit, windowSec) {
     const now = Date.now();
