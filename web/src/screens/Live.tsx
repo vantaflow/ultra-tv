@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { channelsCol, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useLangSummary } from "@/hooks/data";
+import { useCategories, useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -53,7 +53,6 @@ function LiveInner({ source }: { source: Source }) {
   const prefs = usePrefs();
   const cats = useCategories(source, "live");
   const favs = useFavorites(source, "live");
-  const langs = useLangSummary(source);
   const [root, size] = useElementSize<HTMLDivElement>();
   const wide = size.w >= 1400;
   const cat = prefs.liveCat[String(source.id)] ?? "";
@@ -148,7 +147,6 @@ function LiveInner({ source }: { source: Source }) {
           <div className="top">
             {!wide && <h1>{t("nav.live")}</h1>}
             {wide && <h1 className="ellipsis" style={{ fontSize: "1.5rem" }}>{catLabel}</h1>}
-            <button className="btn sm" onClick={() => nav("/settings/categories")} title={t("set.categories")}>{t("common.langsLabel", { l: langs })}</button>
           </div>
           {!wide && (
             <div className="chips scroll" role="tablist" aria-label={t("common.categories")}>

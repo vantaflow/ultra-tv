@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { moviesCol, seriesCol, type VodSort } from "@/db/queries";
 import type { MovieRow, SeriesRow, Source } from "@/db/types";
-import { useCategories, useFavorites, useLangSummary } from "@/hooks/data";
+import { useCategories, useFavorites } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
 import { useT } from "@/i18n";
@@ -31,7 +31,6 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const prefs = usePrefs();
   const cats = useCategories(source, kind);
   const favs = useFavorites(source, kind);
-  const langs = useLangSummary(source);
   const favSet = useMemo(() => new Set(favs.map((f) => f.refId)), [favs]);
   const key = `${source.id}:${kind}`;
   const cat = prefs.liveCat[key] ?? "";
@@ -72,7 +71,6 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
               { v: "recent", label: t("common.sortRecent") }, { v: "provider", label: t("common.sortProvider") },
               ...(cat === "" ? [{ v: "rating" as const, label: t("common.sortRating") }] : []),
             ]} />
-            <button className="btn sm" onClick={() => nav("/settings/categories")}>{t("common.langsLabel", { l: langs })}</button>
           </div>
         </div>
         <div className="chips scroll" role="tablist" aria-label={t("common.categories")}>

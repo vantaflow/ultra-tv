@@ -150,7 +150,6 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(bottom = 4.design),
             )
-            com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = { langPanel = true }, modifier = Modifier.padding(bottom = 8.design))
             ChannelList(channels, locked, favs, nowNext, selected, vm,
                 onFocusChannel = { focusedChannel = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay) },
@@ -167,7 +166,6 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         )
     }
 
-    if (langPanel) com.ultratv.tv.nativeapp.ui.common.LangViewPanel(langCounts, langView, onToggle = { vm.toggleLang(it) }, onClear = { vm.clearLangView() }, onDismiss = { langPanel = false })
     pinPrompt?.let { ch ->
         com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
             title = ch.title,
@@ -440,7 +438,6 @@ private fun MobileLiveLayout(
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(D.directTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    com.ultratv.tv.nativeapp.ui.common.LangPill(langView, onClick = onLang)
                     com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
                 }
             }

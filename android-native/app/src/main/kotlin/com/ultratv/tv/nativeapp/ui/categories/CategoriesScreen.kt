@@ -213,7 +213,7 @@ internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String
     }
 }
 
-/** Ligne de 76 px : badge, nom + compteur, interrupteur « Active », poignée d'ordre. Grisée si désactivée ; blanche + anneau au focus. */
+/** Ligne de 76 px : nom + compteur (sans étiquette de langue, peu fiable selon les fournisseurs), interrupteur « Active », poignée d'ordre. Grisée si désactivée ; blanche + anneau au focus. */
 @Composable
 private fun CategoryLine(
     r: CategoryRow, kind: String, rowModifier: Modifier = Modifier, isMoving0: Boolean? = null, isMoving: Boolean, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
@@ -232,10 +232,6 @@ private fun CategoryLine(
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.defaultMinSize56().height(36.design).clip(RoundedCornerShape(10.design)).background(if (f) Color(0xFF0A0A0C) else Ux.Surface2).padding(horizontal = 8.design), contentAlignment = Alignment.Center) {
-                    Text(r.badge.orEmpty(), color = if (f) Color.White else Color(0xFFE4E4E7), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 0.6.sp, maxLines = 1)
-                }
-                Spacer(Modifier.width(16.design))
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                     Text(r.label, color = if (f) Ux.TextOnLight else if (r.enabled) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
