@@ -46,6 +46,9 @@ wrangler kv namespace create CONFIG --preview
 wrangler secret put SESSION_SECRET     # >= 32 caractères aléatoires : openssl rand -base64 48
 wrangler secret put PROVIDER_ENC_KEY   # clé AES-256 en base64      : openssl rand -base64 32
 wrangler secret put OPS_TOKEN          # >= 32 caractères : mot de passe de /crashes et /logs
+wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (fiches enrichies)
+wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
+wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 
 # 3) Vérifier puis déployer

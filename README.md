@@ -1,268 +1,130 @@
-# Ultra TV
+<p align="center">
+  <img src="docs/screenshots/banner.png" alt="Ultra TV" width="100%" />
+</p>
+
+<h1 align="center">Ultra TV</h1>
 
 <p align="center">
-  <img src="docs/redesign/logo.svg" alt="Ultra TV" width="160" />
+  <strong>Lecteur IPTV natif pour Android TV et Google TV.</strong><br/>
+  Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt
 </p>
 
 <p align="center">
-  <strong>Native Android TV / Google TV IPTV player.</strong><br/>
-  Kotlin · Jetpack Compose · Compose-TV · Media3 · Room · Hilt
+  <a href="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/khalilbenaz/ultra-tv?label=release" /></a>
+  <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
+  <a href="https://khalilbenaz.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">
-    <img src="https://img.shields.io/badge/Download-Android%20TV%20APK-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Download APK" />
-  </a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-0284c7?style=for-the-badge" alt="License" /></a>
-  <img src="https://img.shields.io/badge/Kotlin-2.0-7F52FF?style=for-the-badge&logo=kotlin" />
-  <img src="https://img.shields.io/badge/Compose--TV-1.0-4285F4?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Media3-1.5-FF6F00?style=for-the-badge" />
+  <a href="https://khalilbenaz.github.io/ultra-tv/">Site</a> ·
+  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">Télécharger l'APK</a> ·
+  <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 ---
 
-## 🎨 New UI (2026 redesign)
+Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **Stalker**). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
 
-Full editorial redesign — AMOLED-first, accent rouge `#FF3A2F`, typo **Instrument Serif** pour les titres + **Geist** / **Geist Mono** pour le reste.
-
-<p align="center">
-  <img src="docs/redesign/home.png" alt="Home — hero éditorial + rails Netflix-style" width="900" />
-</p>
-
-| Écran | Description |
-|---|---|
-| **Home** | Hero éditorial 720 dp · serif 84 sp · eyebrow accent · colonne "En direct maintenant" · rails Continue Watching 16:9 + Films / Séries / Chaînes |
-| **Live TV** | Layout Tivimate 3 panes : catégories (accent pill) · chaînes (numérotation mono, logo dégradé hue) · **fenêtre preview** avec logo géant, chip `EN DIRECT`, cards now/next, CTA Regarder |
-| **Films / Séries** | Hero featured + rails Netflix par catégorie · focus Apple-TV (scale 1.08 + ring accent) |
-| **Detail** | Affiche 320×480 · serif 72 sp · meta accent · `94% match` · épisodes mono `S01E02` |
-| **Guide TV** | Timeline 12 h × N chaînes · ruler mono · ligne `NOW` accent · cards programme avec chip `EN COURS` |
-| **Recherche** | 2 panes : clavier d'écran 4×10 + récentes à gauche · chips de filtres + grille de résultats à droite |
-| **Player** | Overlays minimaux : top bar transport, bottom controls big play + ring accent, **stats card** mono, **EPG drawer** zapping |
-| **Settings** | Tabs sidebar 300 dp · section cards Surface1 + border · MAC card gradient accent · toggle, pills, color swatches |
-| **Onboarding** | Wizard 3 steps · stepper accent · option Cloud (recommandée) vs Manuel · QR code stub |
-
-
-### Logo
+> Les captures ci-dessous utilisent exclusivement des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).
 
 <p align="center">
-  <img src="docs/redesign/logo.svg" alt="Ultra TV — logo variant C" width="120" />
+  <img src="docs/screenshots/home.png" alt="Accueil" width="48%" />
+  <img src="docs/screenshots/live.png" alt="Direct" width="48%" />
+  <img src="docs/screenshots/guide.png" alt="Guide des programmes" width="48%" />
+  <img src="docs/screenshots/detail.png" alt="Fiche film" width="48%" />
+  <img src="docs/screenshots/player.png" alt="Lecteur" width="48%" />
+  <img src="docs/screenshots/settings.png" alt="Réglages" width="48%" />
 </p>
 
-Logo "variant C" : dégradé rouge `#FF3A2F → #7A0E08`, trois ondes de diffusion qui émanent d'un point en bas à gauche, triangle play plein à droite. Installé en tant que `ic_launcher` adaptive + banner Android TV (320×180).
+## Fonctionnalités
 
----
+- **Direct** : catégories actives, filtre par langue dès la première source, séparateurs en en-têtes, badges de qualité, zapping par numéro, retour à la chaîne précédente, 20 chaînes récentes, recherche instantanée (FTS).
+- **Guide** : grille horaire, rappels, enregistrements programmés, **replay** (catch-up Xtream) depuis le guide quand la source le permet.
+- **Pause du direct** (timeshift) : tampon disque circulaire pour les flux MPEG-TS.
+- **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution), reprise de lecture, saisons en onglets.
+- **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
+- **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage).
+- **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
+- **Google TV** : Watch Next, chaîne Favoris, recherche vocale et globale, liens profonds `ultratv://`.
+- **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
+- **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
 
-## What is Ultra TV?
+## Installation
 
-Ultra TV is a **fully native** Android TV IPTV client. D-pad navigation is handled by Compose-TV's focus tree (no WebView bridges), playback uses Media3 / ExoPlayer for native codec support, and the whole catalog (channels, movies, series, EPG, history, favorites) lives in a local Room database. It speaks **Xtream Codes**, **M3U / M3U8** (URL or local file), and **Stalker Portal** out of the box.
+Android 9 ou plus récent (API 28).
 
-A companion **Cloudflare Worker** (in `cloudflare-config/`) provides a remote-config dashboard so users can provision their providers from a web browser and have the TV pull them in one click. The TV is **paired** with the dashboard account by a short code (no shared secret in the APK, no anonymous reads) — see [cloudflare-config/README.md](cloudflare-config/README.md).
+**APK.** Téléchargez [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk) (somme SHA-256 sur la page de la release) et installez-le.
 
-## Features
+**Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5248504`**, autorisez les sources inconnues, installez.
 
-### Catalog & providers
-- 🎬 **Xtream Codes** · **M3U URL** · **M3U file from local storage** · **Stalker Portal** with Live + VOD + series catalogues (MAC handshake + lazy `create_link` at play time, including movies)
-- 🔁 **Multi-provider** — add as many as you want, pick the default in Settings (★ Default badge)
-- 🚦 **De-duplication** — re-adding the same `(kind, url, username)` reuses the existing row instead of duplicating
-- 🛰️ **Cloud sync via Cloudflare Worker** — create a dashboard account, press **Pair** in Settings, type the 8-character code shown on the TV into the dashboard, add providers, then the app pulls them with one tap. The TV holds a random 256-bit **device token** (stored hashed server-side, encrypted in the Android Keystore on the device, revocable from the dashboard). Provider credentials are encrypted at rest (AES-GCM) on the Worker. The MAC is a display label only, never a key.
-- ⏱️ **Background sync via WorkManager** (every 6 / 12 / 24 h, or every launch)
-- 📈 **Live sync progress banner** pinned to the top of every screen during sync
-
-### Live TV
-- 📺 **Tivimate-style two-pane layout**: categories on the left, channels of the selected category on the right
-- 🔢 Channel position numbers, logos, focus highlight, **now-playing + next-up programme** under each name (from cached EPG)
-- 🏷️ **Categories management** (search, bulk Hide / Show, "Hide adult" preset, 🔒 / 🔞 markers)
-- 🧹 Cleans decorative wrappers (`### FRANCE ###` → `FRANCE`) for display while keeping DB intact
-
-### Movies / Series
-- 🎞️ **Netflix-style rails by category** (top 25 per rail), hero banner with the featured title
-- 🟦 Focus scale animation (1.0 → 1.08, 160 ms tween)
-- 🔍 Cross-content **search** (debounced 220 ms): channels + movies + series, with **last-10 recent queries** as one-tap chips
-- ★ **Favorites** (per kind, browsable from a dedicated screen)
-- 📚 **Series episodes** loaded on demand — Xtream via `get_series_info` (per-season map), Stalker via `get_ordered_list?category=…`; played through Media3 (Stalker episodes resolve their `stalker://` URL via `create_link` at play time, exactly like channels and movies)
-
-### Player
-- ▶ **Media3 / ExoPlayer** — HLS, DASH, MPEG-TS, MP4 with hardware codec support
-- 🎮 D-pad: BACK = exit, plus **Live**: ▲/▼ zap channels in the current category; **VOD**: ◀/▶ seek
-- 🎚 **Subtitle + audio track selector** (VOD only) — reads Tracks from Media3, applies a TrackSelectionOverride
-- 📋 **EPG drawer overlay** (Live only) — press OK / center to slide in a right-side channel list with now/next; D-pad picks a channel to zap to
-- 📡 **Chromecast button** in the player toolbar — opens the system Cast picker when Google Play Services are available (silent no-op on Cast-less Android TV builds)
-- ⏸️ **Continue watching** (position recorded every 10 s + on dispose)
-- 🚀 **Auto-play last watched on launch** option
-- 🥷 **Open in external player** (VLC / MX / Just Player / Next Player) for codecs Media3 can't handle
-- ⏺ **Record VOD** — from a movie's detail page, queue an OkHttp-backed download via WorkManager; progress visible on a Recordings screen; played locally once done (no external storage permission — saved under app-private external storage)
-- 📐 **Aspect & speed** controls in the player toolbar — Fit / Fill / Zoom / 16:9 / 4:3 for picture, 0.5× / 1× / 1.25× / 1.5× / 2× for VOD playback speed
-- 💤 **Sleep timer** (15 min · 30 min · 1 h · 2 h · cancel) — pauses + exits player at the deadline
-- 📊 **Stream stats overlay** — resolution / video & audio codec / frame rate / bitrate / buffer ahead, toggled from the player overlay
-
-### Discovery / Home
-- 🏠 Dynamic Home: **Continue watching** (tap an item → Resume / Dismiss sheet), **Recently watched**, **Movies**, **Series**, **Featured channels** rails
-- 🆕 **First-time MAC card**: shows your device MAC + dashboard steps when no provider is configured
-- 🗓 **TV Guide grid** (Tivimate-style): 12 h × N channels timeline with "now" indicator, refreshed from the provider's full `xmltv.php` feed (streaming pull-parser handles 50 MB+ feeds)
-
-### Personalization
-- 🎨 **3 themes**: Dark · AMOLED · Blue
-- 📐 **Adaptive nav**: sidebar on tablets/TV (≥ 840 dp), top bar on medium widths (600–840 dp, also the user-selectable option in Settings), bottom bar on phones (< 600 dp). Phones / tablets ship from the same APK.
-- 🌍 **Multi-language** UI: English / Français / Español / العربية + System (auto-detect). RTL layout direction flips automatically for Arabic. Translation table covers nav, home, settings and common buttons; the longer prose is still English for now.
-- 🔄 **Boot autolaunch** — open Ultra TV automatically when the box finishes booting
-- 🪟 **Picture-in-picture** — pressing Home while a stream plays shrinks the player into a corner (Android 8+)
-- 🪜 **Onboarding wizard** on first launch — 3-step flow showing the device MAC and the two provider-adding paths
-- 🔢 Show / hide channel numbers, hide adult categories beyond PIN, resume playback toggle, auto-play next episode
-
-### Backup & state
-- 💾 **Export / restore** providers + favorites + watch history as a single JSON file (Storage Access Framework picker)
-
-### Security
-- 🔐 **Parental PIN** (SHA-256, DataStore-backed) — auto-locks adult categories on each sync when a PIN is set
-- 🔒 **Per-channel lock** — Settings → Manage locked channels lets you flag individual channels; play prompts for the PIN
-- 🆔 **Stable per-device label** derived from `ANDROID_ID` (hashed) — shown in the dashboard next to your paired TV; **not a secret and not an access key**
-
-### Performance
-- 🖼️ **Coil ImageLoader** with 25 %-heap memory + 256 MB disk cache (no re-downloads on scroll)
-- 📦 **Chunked DB inserts** (500 rows / batch) during sync — flat memory on huge catalogs
-- ⚡ **DB indices** on `(providerId, categoryId)` for fast category filtering
-- 🎯 SQL-level filtering for Live TV per category (only the visible subset materialises)
-- 🧱 **R8 / ProGuard release build** with resource shrinking — **18 MB debug → 4.9 MB release** (incl. Google Cast SDK) (latest APK shipped is the release variant)
-- 📑 **Paging Room** for Movies / Series flat-grid (pages of 60, only ~120 items in memory regardless of catalog size)
-
-### Distribution & updates
-- 🇩 **Downloader code `5248504`** — initial sideload via the [Downloader app](https://www.aftvnews.com/downloader/) on any Android TV box.
-- 🌐 GitHub Releases — latest APK at `releases/latest/download/UltraTV-debug.apk`.
-- 🔄 **In-app self-update** (v1.0.5+) — the app pings GitHub Releases on launch, compares versionCode, and pops a dialog with a progress bar that downloads + installs the new APK via PackageInstaller. First update prompts once for "Install unknown apps"; subsequent updates are one-tap. No Play Store, no third-party updater required.
-
-### Telemetry & crash reporting
-- 🛰️ **Cloudflare Worker ingest** — every crash + ad-hoc `RemoteLog.info/warn/error/debug(...)` event is POSTed to the worker with the paired device's token (nothing is sent until the TV is paired). Credentials in URLs are scrubbed on the device **and** again on the server.
-- 📒 **Crash dashboard** — `GET /crashes` (HTTP Basic, password = `OPS_TOKEN`) returns an HTML page with stack traces, 30-day rolling window.
-- 🪵 **Event dashboard** — `GET /logs` (same secret) table with level colouring, 7-day rolling window.
-- 🔑 `OPS_TOKEN` is a **server-side Wrangler secret**, never shipped in the APK and never accepted in a query string. Ingestion is rate-limited and size-capped per device.
-
-## Quick start
-
-### Install on a TV box
-
-1. Install the **Downloader** app on your Android TV box from Google Play.
-2. Open Downloader, enter code **`5248504`**, press **Go**.
-3. Allow install from unknown sources when prompted; install the APK.
-4. On first launch, you'll see a **First-time setup** card with your device label.
-5. Either:
-   - Open **Settings** → tap **+ Xtream / + M3U URL / + M3U file / + Stalker portal** and fill in the form.
-   - **Or** self-host the Cloudflare Worker, create an account, **Pair** the TV with the code it displays, then **Sync from cloud**.
-
-From v1.0.5 onwards you only need Downloader for the *first* install — the app auto-updates itself from GitHub Releases.
-
-### Build from source
+**adb** :
 
 ```bash
-git clone https://github.com/khalilbenaz/ultra-tv
-cd ultra-tv/android-native
+adb connect IP_DE_LA_BOX:5555
+adb install -r UltraTV-debug.apk
+```
 
-# JDK 17 is required (Android Gradle Plugin 8.7+)
+Au premier lancement : choisissez le type de source, saisissez-la, puis cochez vos langues (seules les catégories correspondantes sont téléchargées).
+
+### Appairage cloud par code
+
+Pour ne pas saisir d'identifiants à la télécommande : Réglages › Sources › **Appairer**. La télévision affiche un code à 8 caractères ; saisissez-le dans le tableau de bord de votre [Worker](#worker-cloudflare), ajoutez vos sources, puis « Synchroniser depuis le cloud ». L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore sur l'appareil, révocable). L'adresse MAC n'est qu'une étiquette, jamais une clé.
+
+## Sécurité
+
+- Identifiants des sources **chiffrés au repos** sur l'appareil ; sur le Worker, AES-256-GCM.
+- **Aucune URL de flux, aucun identifiant n'est affiché** ni journalisé ; les messages d'erreur sont filtrés (`UserText`). Un nom de source vide ne reprend pas l'adresse du serveur.
+- Aucun jeton partagé dans l'APK. Détails, modèle de menace et rotation des anciens secrets : [SECURITY.md](SECURITY.md).
+
+## Réglages automatiques
+
+À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
+
+## Développement
+
+JDK 17 requis.
+
+```bash
+git clone https://github.com/khalilbenaz/ultra-tv && cd ultra-tv/android-native
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
-./gradlew assembleDebug
-
-# APK at app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug                            # APK universel
+./gradlew testDebugUnitTest                        # tests unitaires (JUnit, Robolectric)
+./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a, x86_64)
 ```
 
-For a smaller signed release build:
+- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.1.0 → 10100).
+- **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
+- Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
+- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` ; site : [pages.yml](.github/workflows/pages.yml).
+
+## Worker Cloudflare
+
+`cloudflare-config/` : tableau de bord d'appairage, stockage chiffré des sources, ingestion des crashs, proxies TMDB et OpenSubtitles. Procédure complète : [cloudflare-config/README.md](cloudflare-config/README.md).
 
 ```bash
-./gradlew assembleRelease
-# ~8 MB APK at app/build/outputs/apk/release/app-release.apk
+cd cloudflare-config && npm ci
+wrangler kv namespace create CONFIG                # coller les ids dans wrangler.toml
+wrangler secret put SESSION_SECRET                 # >= 32 caractères aléatoires
+wrangler secret put PROVIDER_ENC_KEY               # clé AES-256 en base64
+wrangler secret put OPS_TOKEN                      # mot de passe de /crashes et /logs
+wrangler secret put TMDB_READ_TOKEN                # jeton de lecture TMDB v4 (fiches enrichies)
+wrangler secret put TMDB_API_KEY                   # clé TMDB v3 (repli si pas de jeton v4)
+wrangler secret put OPENSUBTITLES_API_KEY          # clé OpenSubtitles (sous-titres en ligne)
+npm test && wrangler deploy --dry-run
 ```
 
-### Deploy the Cloudflare Worker (optional)
+TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
 
-```bash
-cd cloudflare-config
-npm ci
+## Limites connues
 
-wrangler kv namespace create CONFIG              # paste id/preview_id into wrangler.toml
-wrangler kv namespace create CONFIG --preview
-wrangler secret put SESSION_SECRET               # >= 32 random chars (openssl rand -base64 48)
-wrangler secret put PROVIDER_ENC_KEY             # AES-256 key (openssl rand -base64 32)
-wrangler secret put OPS_TOKEN                    # >= 32 chars: /crashes and /logs password
-npm test                                         # vitest, fake secrets
-wrangler deploy --dry-run                        # validate; drop --dry-run to really deploy
-```
+- Le **replay** et la **pause du direct** dépendent de la source (catch-up Xtream, flux MPEG-TS) ; indisponibles sinon.
+- Les fiches TMDB et les sous-titres en ligne exigent un Worker configuré avec les secrets ci-dessus.
+- La première synchro d'un très gros catalogue (≈ 55 000 chaînes) prend environ une minute sur un appareil de milieu de gamme et davantage sur un modèle d'entrée de gamme.
+- L'APK grossit avec LibVLC (≈ 53 Mo en arm64-v8a, contre ≈ 9 Mo en 1.0.x).
+- Les mesures publiées dans les notes de version viennent d'émulateurs Android TV (rendu logiciel) : à confirmer sur matériel réel.
 
-Full procedure, route table, pairing flow and **migration of existing data**: [cloudflare-config/README.md](cloudflare-config/README.md). The Worker URL is what you paste in the app's Settings → **Change**; it is also the host of the dashboards. The old `ADMIN_PASSWORD` / `CRASH_TOKEN` secrets are no longer read: the Worker refuses to start without the new ones.
+## Licence
 
-If you fork the project, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev` (or the `ULTRA_WORKER_URL` env var) so your installs talk to *your* worker. There is no token to swap any more: each device gets its own at pairing time. The hard-coded telemetry token of ≤ v1.0.30 must be considered **compromised** (see [SECURITY.md](SECURITY.md#worker-token-rotation-and-compromised-legacy-secrets)).
-
-## Architecture
-
-```
-android-native/
-├── app/src/main/kotlin/com/ultratv/tv/nativeapp/
-│   ├── MainActivity.kt         (entry point + nav host)
-│   ├── UltraTvApp.kt           (Hilt + Coil + WorkManager Configuration.Provider)
-│   ├── BootReceiver.kt         (BOOT_COMPLETED → MainActivity)
-│   ├── data/
-│   │   ├── db/                 (Room entities + DAOs)
-│   │   ├── xtream/             (Xtream Codes player_api.php client)
-│   │   ├── stalker/            (Stalker Portal handshake + create_link)
-│   │   ├── m3u/                (M3U/M3U8 parser, URL or text input)
-│   │   ├── repo/               (Provider / Catalog / History / PlaybackContext / SyncStatusBus)
-│   │   ├── sync/               (WorkManager SyncWorker + SyncScheduler)
-│   │   ├── parental/           (PIN store, SHA-256)
-│   │   ├── prefs/              (UserPreferences, HiddenCategoriesStore)
-│   │   └── config/             (DeviceMac, RemoteConfigImporter)
-│   ├── di/                     (Hilt modules: DB / Network)
-│   ├── nav/                    (Routes catalog)
-│   ├── RemoteLog.kt            (direct-to-Worker crash + event transport)
-│   ├── update/                 (UpdateChecker + UpdateDialog — GitHub Releases self-update)
-│   └── ui/
-│       ├── theme/              (DesignTokens, ultraCardColors, palettes: AMOLED / Dark / Blue)
-│       ├── components/         (SidebarNav, TopBarNav, UltraIcons — 28 stroke icons)
-│       ├── common/             (PosterCard, ContentRail, HeroBanner, ChannelLogo, ContinueWatchingTile, NowPlayingMini)
-│       ├── home/               (rails + MAC onboarding card)
-│       ├── live/               (Tivimate 3-pane: categories | channels | preview window)
-│       ├── movies/             (Rails view + Detail)
-│       ├── series/             (Rails view + Detail with episodes)
-│       ├── guide/              (12 h × N timeline grid with NOW accent line)
-│       ├── search/             (on-screen keyboard + filter chips + grid)
-│       ├── favorites/
-│       ├── categories/         (Hide / Show + bulk)
-│       ├── player/             (Media3 PlayerView wrapper)
-│       └── settings/           (editorial header + section cards + AddProviderDialogs)
-└── cloudflare-config/          (Worker: accounts + device pairing, encrypted providers, crash & event dashboards)
-```
-
-## Roadmap
-
-In active development / next iterations:
-
-- 📊 **7-day xmltv** (current grid covers 12 h; longer window is a windowing change away)
-- 🔍 **Full-text search index** (Room FTS4) — current LIKE is ok up to ~10k items
-- 🧭 **Aggregated crash grouping** on the dashboard (currently one entry per occurrence; collapsing by stack fingerprint would scale better)
-
-Recently landed:
-
-- 🔓 ~~Anonymous worker sync (v1.0.8)~~ — **removed**: reading config by MAC alone exposed provider credentials. Replaced by device pairing + revocable tokens.
-- 🎯 **Settings dialog focus (v1.0.8)** — text fields grab D-pad focus on dialog open and show an accent-tinted border so the cursor is visible.
-- 🔁 **Update dialog loop fix (v1.0.8)** — local + remote versions are now compared on the same packed-semver scale; no more "update available" popping after every install.
-- 🪟 **Auto-update via system installer (v1.0.6)** — switched from PackageInstaller sessions to `ACTION_VIEW` + FileProvider so the OS install activity handles the APK. Works on Fire TV, Mecool, vivo boxes that rejected the session path.
-- 🩹 **Focus visibility + sidebar flicker (v1.0.7)** — `inverseOnSurface` flipped to near-black so TV Button/Card focus reads as a white pill with dark text instead of white-on-white. Sidebar labels gate on the animated width so returning via the left D-pad doesn't reflow text.
-- 🎨 **2026 editorial redesign** of every screen — AMOLED-first, accent `#FF3A2F`, Instrument Serif + Geist typo, new variant-C launcher icon. See the *New UI* section above.
-- 🛰️ **Remote crash + event reporting** to a self-hosted Cloudflare Worker (`POST /api/crash`, `POST /api/event`); HTML dashboards at `/crashes` and `/logs`. No more `crash.txt` hunting.
-- 🔄 **In-app GitHub-Releases auto-update** with a download progress bar + PackageInstaller commit. After v1.0.5 the Downloader code is only needed for the very first install.
-- 🩹 **LiveViewModel init-order NPE fix** that was crashing any nav to Live TV on some devices (Main.immediate dispatch + property declared after init).
-- 📥 **HLS-segment recording** for Live channels (m3u8 polling + .ts append).
-- 🌐 **Deep i18n EN / FR / ES / AR** across every screen — Home, Live, Movies/Series, Settings (incl. private dialogs and SAF toasts), Preferences, Categories, Onboarding wizard, Guide list + grid, Add-provider dialogs, parental PIN flow, Recordings, Search, Player overlays plus the rail-title fallback. ~270 keys, RTL-aware.
-- 👆 **Touch UX**: vertical-drag gesture overlays for system volume (right strip, `🔊 nn%`) and screen brightness (left strip, `☀ nn%`); **pull-to-refresh** on Home, Live TV, Movies, Series and the Guide grid. Both inert under D-pad, so TV remote behaviour is unchanged.
-
-## Credits
-
-Ultra TV — original work by [khalilbenaz](https://github.com/khalilbenaz). MIT-licensed.
-
-The native Android TV codebase supersedes the earlier Capacitor WebView build (kept under `android-app/` and `web/` for historical reference — legacy, no releases produced from it, see [`android-app/README.md`](android-app/README.md)) — Compose-TV's focus tree gave reliable D-pad navigation on every box we tested, including the Mecool KM7 Plus where the WebView bridge approach struggled.
-
-If you fork / repackage, please keep the credit visible in the About screen.
-
-## License
-
-MIT. See [LICENSE](LICENSE).
-
-## Disclaimer
-
-Ultra TV is an IPTV **client**, not a content provider. It does not include, host or distribute any stream. Use only playlists, EPG sources and credentials you are authorized to access in your jurisdiction.
+MIT, voir [LICENSE](LICENSE). Ultra TV est un client IPTV : utilisez uniquement des listes, guides et identifiants que vous avez le droit d'utiliser. Les polices Sora et Manrope sont sous licence OFL.

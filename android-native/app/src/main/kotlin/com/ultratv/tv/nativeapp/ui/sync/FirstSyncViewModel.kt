@@ -51,6 +51,14 @@ fun isDone(p: ProviderEntity, part: SyncPart): Boolean = when (part) {
 }
 
 /**
+ * Fin de la première synchro : toutes les parties faites, OU catalogue (direct, films, séries) fait et plus aucune
+ * synchro en cours. Le guide ne doit pas retenir l'écran : s'il échoue (flux XMLTV absent, réseau limité), il est
+ * retenté au TTL suivant au lieu de remontrer « Préparation du catalogue » à chaque démarrage.
+ */
+fun firstSyncFinished(parts: List<SyncPart>, done: (SyncPart) -> Boolean, syncRunning: Boolean): Boolean =
+    parts.all(done) || (!syncRunning && parts.filter { it != SyncPart.EPG }.all(done))
+
+/**
  * Écran de première synchronisation : visible tant que la source active n'a pas fini sa PREMIÈRE
  * synchro (toutes parties) et que l'utilisateur ne l'a pas quitté via « Regarder le direct ».
  * Les synchros suivantes n'utilisent PAS cet écran (pastille discrète dans le rail).
@@ -81,7 +89,7 @@ class FirstSyncViewModel @Inject constructor(
     val state: StateFlow<Resolved?> = combine(provider.observeProviders(), statusThrottled, bus.failure, dismissed, counts) { ps, st, fail, gone, cnt ->
         val p = ps.firstOrNull { it.active } ?: ps.firstOrNull() ?: return@combine Resolved(null)
         val parts = requiredParts(p.kind)
-        val allDone = parts.all { isDone(p, it) }
+        val allDone = firstSyncFinished(parts, { isDone(p, it) }, syncRunning = st != null)
         // Première synchro déjà faite : un échec de rafraîchissement n'est qu'une bannière fine (données locales intactes).
         if (gone || allDone) return@combine Resolved(null)
         // M3U local : tout est importé d'un coup, jamais d'écran de chargement.
