@@ -92,6 +92,8 @@ fun HomeScreen(
     val favorites by vm.showingFavorites.collectAsState()
     val nowPlaying by vm.nowPlaying.collectAsState()
     val sync by vm.syncStatus.collectAsState()
+    val dataState: com.ultratv.tv.nativeapp.ui.common.DataStateViewModel = hiltViewModel()
+    val failure by dataState.failure.collectAsState()
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
@@ -114,7 +116,14 @@ fun HomeScreen(
             h != null -> Hero(h, onOpen = { if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) }, onGuide = onGoGuide)
             loaded && providers.isEmpty() -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
             // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
-            loaded && providers.none { it.kind in com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS } -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.fixSource, onGoSettings)
+            loaded && providers.none { it.kind in com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS } -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.openSourceSettings, onGoSettings, takeFocus = false)
+            // Source en erreur : message lisible, bouton explicite, aucun focus d'office (l'utilisateur reste sur le rail : « Accueil » n'ouvre pas les Réglages).
+            loaded && failure != null -> failure!!.let { f ->
+                EmptyCard(
+                    LocalStrings.current.sync.messageFor(f.kind), D.sourceErrorBody(f.provider), D.openSourceSettings, onGoSettings,
+                    action2 = D.retry, onAction2 = { dataState.retry(f.providerId) }, takeFocus = false,
+                )
+            }
             loaded -> LoadingCard(D.homeEmpty, sync?.percent)
         }
 
@@ -194,16 +203,16 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
 }
 
 @Composable
-private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit, action2: String? = null, onAction2: () -> Unit = {}) {
+private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit, action2: String? = null, onAction2: () -> Unit = {}, takeFocus: Boolean = true) {
     Column(
         Modifier.fillMaxWidth().padding(end = 96.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(56.design),
         verticalArrangement = Arrangement.spacedBy(20.design),
     ) {
-        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        Text(hint, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(hint, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, lineHeight = 36.spx, maxLines = 5, overflow = TextOverflow.Ellipsis)
         val requester = remember { FocusRequester() }
         var focused by remember { mutableStateOf(false) }
-        RequestInitialFocus(requester, hasFocus = { focused })
+        if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
         Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
             PillButton(action, onClick = onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
             if (action2 != null) PillButton(action2, onClick = onAction2, weight = FontWeight.Bold)

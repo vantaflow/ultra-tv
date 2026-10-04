@@ -83,7 +83,7 @@ fun NoDataStateCard(modifier: Modifier = Modifier, vm: DataStateViewModel = hilt
             )
         } else if (f != null) {
             StateCard(
-                S.messageFor(f.kind), D.sourceErrorBody(f.provider), StateIcons.Warning, D.fixSource,
+                S.messageFor(f.kind), D.sourceErrorBody(f.provider), StateIcons.Warning, D.openSourceSettings,
                 onPrimary = { StartupNav.pendingRoute.value = Routes.SETTINGS }, badge = Ux.Accent,
                 secondaryLabel = D.retry, onSecondary = { vm.retry(f.providerId) },
                 modifier = Modifier.responsiveWidth(820),

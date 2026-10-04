@@ -87,12 +87,12 @@ fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hil
             Text(
                 "${f.provider} · ${S.messageFor(f.kind)}",
                 color = Ux.Text, fontSize = 22.spx, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope,
-                modifier = Modifier.weight(1f), maxLines = 2,
+                modifier = Modifier.weight(1f), maxLines = 3,
             )
             val canConvert by androidx.compose.runtime.produceState(false, f.providerId, f.kind) { value = f.kind == com.ultratv.tv.nativeapp.data.net.SyncErrorKind.PROVIDER_BLOCKED && vm.canConvert(f.providerId) }
             if (canConvert) com.ultratv.tv.nativeapp.ui.design.PillButton(com.ultratv.tv.nativeapp.i18n.LocalDs.current.switchToXtream, onClick = { vm.convertToXtream(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
             com.ultratv.tv.nativeapp.ui.design.PillButton(S.retry, onClick = { vm.retry(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20)
-            com.ultratv.tv.nativeapp.ui.design.PillButton(S.fixSource, onClick = { vm.dismissFailure(); onFixSource() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
+            com.ultratv.tv.nativeapp.ui.design.PillButton(com.ultratv.tv.nativeapp.i18n.LocalDs.current.openSourceSettings, onClick = { vm.dismissFailure(); onFixSource() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
         }
     }
 }

@@ -193,6 +193,7 @@ class DesignStrings(val lang: AppLang) {
     val nextOpenInstant get() = t("Next launch will be instant: the catalog is kept on the device and updated in the background.", "La prochaine ouverture sera instantanée : le catalogue est gardé sur l’appareil et mis à jour en arrière-plan.", "La próxima apertura será instantánea: el catálogo se guarda en el dispositivo y se actualiza en segundo plano.", "الفتح التالي فوري: يُحفظ الكتالوج على الجهاز ويُحدَّث في الخلفية.")
     val hintOk get() = t("OK", "OK")
     val hintWatch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
+    val openSourceSettings get() = t("Open source settings", "Ouvrir les Réglages des sources", "Abrir los ajustes de fuentes", "فتح إعدادات المصادر")
     val fixSource get() = t("Fix the source", "Corriger la source", "Corregir la fuente", "تصحيح المصدر")
     // Direct
     val directTitle get() = t("Live", "Direct", "Directo", "مباشر")
