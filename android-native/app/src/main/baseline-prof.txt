@@ -12,6 +12,18 @@ HSPLcom/ultratv/tv/nativeapp/ui/home/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/onboarding/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/live/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/theme/**;->**(**)**
+# Composants de dessin et écrans parcourus à la télécommande (FocusSurface, Chip, PosterCell, grille, guide, détail, recherche…) :
+# absents du profil, ils tournaient interprétés puis en JIT à CHAQUE première visite d'un écran sur la box.
+HSPLcom/ultratv/tv/nativeapp/ui/design/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/catalog/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/guide/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/movies/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/series/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/search/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/favorites/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/profile/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/sync/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/nav/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/i18n/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/db/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/repo/**;->**(**)**
