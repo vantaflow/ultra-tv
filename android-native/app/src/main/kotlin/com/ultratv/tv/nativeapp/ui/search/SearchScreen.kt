@@ -23,6 +23,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,6 +136,10 @@ fun SearchScreen(
         res.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { vm.setQuery(it.trim()) }
     }
 
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        SearchTouch(q, r, recent, searching, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, onOpenChannel, onOpenMovie, onOpenSeries)
+        return
+    }
     Row(Modifier.fillMaxSize().background(Ux.Bg)) {
         // ===== Gauche : saisie + clavier (620 px) =====
         Column(
@@ -246,3 +256,96 @@ private fun ChannelCard(c: ChannelEntity, modifier: Modifier, onClick: () -> Uni
     }
 }
 
+
+
+/**
+ * Recherche tactile : champ de saisie du SYSTÈME (clavier Android, pas de clavier à l'écran), résultats par sections.
+ * Chaînes en lignes pleines ; films et séries en grille d'affiches à colonnes adaptatives.
+ */
+@Composable
+private fun SearchTouch(
+    q: String, r: SearchResults, recent: List<String>, searching: Boolean, voiceAvailable: Boolean, onVoice: () -> Unit, vm: SearchViewModel,
+    onOpenChannel: (String, String) -> Unit, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit,
+) {
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+    val widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current
+    val cols = com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f), minCellDp = 110f)
+    val focus = androidx.compose.ui.focus.FocusRequester()
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    androidx.compose.runtime.LaunchedEffect(Unit) { if (q.isEmpty()) runCatching { focus.requestFocus() } }
+    val total = r.channels.size + r.movies.size + r.series.size
+    Column(Modifier.fillMaxSize().background(Ux.Bg), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(S.navSearch, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp))
+        Row(
+            Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(52.dp).clip(RoundedCornerShape(26.dp)).background(Ux.SurfaceDeep).padding(start = 16.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            DIcon(Icons.Search, 20.dp, Ux.Text3)
+            androidx.compose.foundation.text.BasicTextField(
+                value = q, onValueChange = { vm.setQuery(it) }, singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Ux.Accent),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { keyboard?.hide() }),
+                modifier = Modifier.weight(1f).focusRequester(focus).semantics { contentDescription = M.a11ySearch },
+                decorationBox = { inner -> Box(contentAlignment = Alignment.CenterStart) { if (q.isEmpty()) Text(M.searchHint, color = Ux.Muted, fontFamily = Manrope, fontSize = 16.sp, maxLines = 1); inner() } },
+            )
+            if (q.isNotEmpty()) com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Close, M.clearSearch, Color.Transparent, Ux.Text2, { vm.clear() })
+            else if (voiceAvailable) com.ultratv.tv.nativeapp.ui.mobile.IconCircle("M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3", D.keyVoice, Color.Transparent, Ux.Text2, onVoice)
+        }
+        val rows = remember(r, D, cols) { buildTouchRows(r, D, cols) }
+        when {
+            q.isBlank() -> Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (recent.isNotEmpty()) {
+                    Text(S.searchRecent.trimEnd(':', ' ').uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.5.sp)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        recent.take(8).forEach { rec ->
+                            FocusSurface(onClick = { vm.setQuery(rec) }, shape = RoundedCornerShape(20.dp), bg = Ux.Surface, modifier = Modifier.height(40.dp)) { _ ->
+                                Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) { Text(rec, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                            }
+                        }
+                    }
+                } else Text(D.searchStart, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp)
+            }
+            searching && total == 0 -> Box(Modifier.fillMaxSize())
+            total == 0 -> Text(S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 20.dp))
+            else -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp)) {
+                items(rows.size) { i ->
+                    when (val row = rows[i]) {
+                        is Row_.Header -> Text(row.text, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = if (i == 0) 0.dp else 10.dp))
+                        is Row_.Channels -> row.items.forEach { c -> TouchChannelHit(c) { onOpenChannel(c.streamUrl, c.name) } }
+                        is Row_.Vod -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            row.items.forEach { v ->
+                                when (v) {
+                                    is MovieEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenMovie(v.id) }
+                                    is SeriesEntity -> VodCard(v.title, v.poster, Modifier.weight(1f)) { onOpenSeries(v.id) }
+                                }
+                            }
+                            repeat(cols - row.items.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun buildTouchRows(r: SearchResults, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, cols: Int): List<Row_> {
+    val out = mutableListOf<Row_>()
+    if (r.channels.isNotEmpty()) { out += Row_.Header(D.searchChannels(r.channels.size)); out += Row_.Channels(r.channels.take(8)) }
+    val vod: List<Any> = r.movies + r.series
+    if (vod.isNotEmpty()) { out += Row_.Header(D.searchVod(vod.size)); vod.take(cols * 4).chunked(cols).forEach { out += Row_.Vod(it) } }
+    return out
+}
+
+@Composable
+private fun TouchChannelHit(c: ChannelEntity, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(14.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(60.dp)) { _ ->
+        Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            LogoBox(c.logo, c.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4)
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        }
+    }
+}

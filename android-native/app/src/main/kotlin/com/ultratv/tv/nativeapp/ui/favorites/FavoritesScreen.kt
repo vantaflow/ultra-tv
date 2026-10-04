@@ -17,6 +17,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.mutableIntStateOf
@@ -125,36 +128,46 @@ fun FavoritesScreen(
         D.favTab(S.seriesTitle, series.size),
     )
 
-    Column(Modifier.fillMaxSize().background(Ux.Bg).padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design), verticalArrangement = Arrangement.spacedBy(32.design)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
-            SectionTitle(S.favorites, 48)
-            Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current
+    val usable = widthDp - 40f - (if (widthDp >= 600f) 88f else 0f)
+    Column(
+        Modifier.fillMaxSize().background(Ux.Bg).then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design)),
+        verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 32.design),
+    ) {
+        @Composable fun tabs() {
+            Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 12.design), modifier = if (touch) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier) {
                 labels.forEachIndexed { i, l ->
                     val sel = i == tab
-                    FocusSurface(onClick = { tab = i }, shape = RoundedCornerShape(28.design), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
-                        Box(Modifier.height(56.design).padding(horizontal = 28.design), contentAlignment = Alignment.Center) {
-                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                    FocusSurface(onClick = { tab = i }, shape = RoundedCornerShape(if (touch) 20.dp else 28.design), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(if (touch) 40.dp else 56.design)) { f ->
+                        Box(Modifier.height(if (touch) 40.dp else 56.design).padding(horizontal = if (touch) 16.dp else 28.design), contentAlignment = Alignment.Center) {
+                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (touch) 13.sp else 22.spx, maxLines = 1)
                         }
                     }
                 }
             }
         }
+        if (touch) { SectionTitle(S.favorites, 56); tabs() }
+        else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+            SectionTitle(S.favorites, 48)
+            tabs()
+        }
         val empty = when (tab) { 0 -> channels.isEmpty(); 1 -> movies.isEmpty(); else -> series.isEmpty() }
         if (empty) {
-            StateCard(D.emptyFavTitle, D.emptyFavBody, Icons.Heart, D.browseLive, onPrimary = onBrowseLive, badge = Ux.Surface2, modifier = Modifier.width(820.design))
+            StateCard(D.emptyFavTitle, D.emptyFavBody, Icons.Heart, D.browseLive, onPrimary = onBrowseLive, badge = Ux.Surface2, modifier = if (touch) Modifier.fillMaxWidth() else Modifier.width(820.design))
         } else if (tab == 0) {
-            LazyVerticalGrid(GridCells.Fixed(4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(24.design), verticalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(vertical = 8.design)) {
+            LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 170f) else 4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), contentPadding = PaddingValues(vertical = 8.design)) {
                 items(channels, key = { it.id }) { c ->
                     ChannelTile(c, now[c.id], onClick = { onPlayChannel(c.streamUrl, c.name) }, onLong = { vm.remove("LIVE", c.providerId, c.remoteId) })
                 }
             }
         } else {
-            LazyVerticalGrid(GridCells.Fixed(6), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(20.design), verticalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(vertical = 8.design)) {
+            LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 110f) else 6), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design), verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 20.design), contentPadding = PaddingValues(vertical = 8.design)) {
                 if (tab == 1) items(movies, key = { it.id }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
                 else items(series, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
             }
         }
-        Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx)
+        Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, modifier = if (touch) Modifier.padding(bottom = 8.dp) else Modifier)
     }
 }
 
@@ -162,7 +175,7 @@ fun FavoritesScreen(
 @Composable
 private fun ChannelTile(c: ChannelEntity, now: EpgEntity?, onClick: () -> Unit, onLong: () -> Unit) {
     val fraction = if (now != null && now.endMs > now.startMs) ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs)).coerceIn(0f, 1f) else 0f
-    FocusSurface(onClick = onClick, onLongClick = onLong, shape = RoundedCornerShape(22.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.04f, modifier = Modifier.height(196.design)) { f ->
+    FocusSurface(onClick = onClick, onLongClick = onLong, shape = RoundedCornerShape(22.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.04f, modifier = Modifier.height(if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) 112.dp else 196.design)) { f ->
         Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 LogoBox(c.logo, c.title, Modifier.width(88.design).height(56.design), radius = 12, pad = 6, bg = if (f) Ux.Surface else Ux.Surface2)

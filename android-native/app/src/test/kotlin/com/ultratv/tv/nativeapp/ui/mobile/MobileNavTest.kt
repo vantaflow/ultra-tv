@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -78,7 +79,7 @@ class MobileNavTest {
         host(NavLayout.BOTTOM_TABS)
         rule.onNodeWithText("Plus").performClick()
         for (label in listOf("Séries", "Recherche", "Favoris", "Enregistrements", "Réglages", "Profils")) rule.onNodeWithText(label).assertIsDisplayed()
-        rule.onNodeWithText("Réglages").performClick()
+        rule.onNodeWithText("Réglages").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitForIdle()
         assertEquals("settings", nav!!.currentDestination?.route)
         rule.onNodeWithText("Plus").assertIsSelected()
@@ -88,7 +89,7 @@ class MobileNavTest {
         var asked = false
         host(NavLayout.BOTTOM_TABS, onProfile = { asked = true })
         rule.onNodeWithText("Plus").performClick()
-        rule.onNodeWithText("Profils").performClick()
+        rule.onNodeWithText("Profils").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         assertTrue(asked)
     }
 

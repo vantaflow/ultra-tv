@@ -134,3 +134,4 @@ fun aspectAfterPinch(current: AspectMode, scale: Float): AspectMode {
 
 /** Image dans l'image : seulement pendant une lecture, et pas sur un écran qui n'a aucun flux. */
 fun shouldEnterPip(hasPlayback: Boolean, playerShown: Boolean): Boolean = hasPlayback && playerShown
+

@@ -78,6 +78,19 @@ import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.DIcon
+import com.ultratv.tv.nativeapp.ui.mobile.lockOrientation
+import com.ultratv.tv.nativeapp.ui.mobile.MobileControls
+import com.ultratv.tv.nativeapp.ui.mobile.GestureHudView
+import com.ultratv.tv.nativeapp.ui.mobile.enterPip
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.aspectRatio
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.LiveBadge
 import com.ultratv.tv.nativeapp.ui.design.LogoBox
@@ -283,6 +296,20 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
     var speed by remember { mutableStateOf(1f) }
     var statsOpen by remember { mutableStateOf(false) }
+    // Tactile : orientation, gestes et niveaux (luminosité / volume).
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
+    val portrait = touch && androidx.compose.ui.platform.LocalConfiguration.current.let { it.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT }
+    val levels = remember { com.ultratv.tv.nativeapp.ui.mobile.PlayerLevels(context) }
+    var hud by remember { mutableStateOf<com.ultratv.tv.nativeapp.ui.mobile.GestureHud?>(null) }
+    var dragStartLevel by remember { mutableStateOf(0f) }
+    var lockedLandscape by remember { mutableStateOf(false) }
+    LaunchedEffect(hud) { if (hud != null) { delay(900); hud = null } }
+    if (touch) {
+        com.ultratv.tv.nativeapp.ui.mobile.ImmersiveWhen(fullscreen = !portrait)
+        DisposableEffect(Unit) { onDispose { levels.resetBrightness(); context.lockOrientation(null) } }
+        LaunchedEffect(portrait) { lockedLandscape = !portrait && lockedLandscape }
+    }
     var sleepDeadline by remember { mutableLongStateOf(0L) }
     val latestPrefs by androidx.compose.runtime.rememberUpdatedState(p)
 
@@ -451,6 +478,101 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 }
             },
     ) {
+        if (touch) {
+            val dpPx = androidx.compose.ui.platform.LocalDensity.current.density
+            val progressNow = System.currentTimeMillis()
+            val prog = vm.nowProgramme.collectAsState().value
+            val liveProgress = isLive && !tsActive
+            val fraction: Float; val startLabel: String; val endLabel: String
+            if (tsActive && tsSnap != null) { fraction = tsSnap!!.fraction; startLabel = EpgClock.hm(progressNow - tsSnap!!.windowSec * 1000L); endLabel = X.directMark }
+            else if (liveProgress) {
+                val st = prog?.startMs; val en = prog?.endMs
+                fraction = if (st != null && en != null && en > st) ((progressNow - st).toFloat() / (en - st)).coerceIn(0f, 1f) else 0f
+                startLabel = st?.let { EpgClock.hm(it) }.orEmpty(); endLabel = en?.let { EpgClock.hm(it) }.orEmpty()
+            } else { fraction = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f; startLabel = fmt(pos); endLabel = if (dur > 0) fmt(dur) else "" }
+            val togglePlay: () -> Unit = {
+                if (isLive && replayProg == null && !tsActive) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }
+                touch()
+            }
+            val replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null
+            val pillList = buildList {
+                if (isLive && !portrait) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.channels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", { drawerOpen = true }))
+                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.tracks, "M4 6h16M4 12h10M4 18h6", { panel = Panel.Tracks }))
+                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.subsPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Subs, { panel = Panel.Subtitles }))
+                if (isLive && replayLabel != null) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(replayLabel, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Replay, {
+                    val rp = replayProg
+                    if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
+                    else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
+                    touch()
+                }, active = replayProg != null))
+                if (isLive) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", { vm.recordLive(120, S.recordingQueuedTemplate) }))
+                if (tsActive) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.backToLive, "M7 4v16l13-8z", { tsBackToLive(); touch() }, active = true))
+                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.sleepPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Moon, { sleepMenu = true }, active = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE))
+                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.pip, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Pip, { if (!context.enterPip()) Toaster.show(M.pipUnavailable) }))
+                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", { panel = Panel.Options }))
+            }
+            val headTitle = if (isLive) (prog?.title ?: item?.title ?: title) else (item?.title ?: title)
+            val badge = if (isLive) com.ultratv.tv.nativeapp.ui.mobile.liveBadgeText(D.live, null, item?.title ?: title) else null
+            val videoArea: @Composable () -> Unit = {
+                Box(Modifier.fillMaxSize().background(Color.Black)) {
+                    AndroidView(factory = { container.also { v -> (v.parent as? android.view.ViewGroup)?.removeView(v) } }, modifier = Modifier.fillMaxSize())
+                    if (!com.ultratv.tv.nativeapp.ui.mobile.PipState.active) {
+                        com.ultratv.tv.nativeapp.ui.mobile.GestureLayer(
+                            isLive = isLive, modifier = Modifier.fillMaxSize(),
+                            onTap = { if (overlayVisible) overlayVisible = false else touch() },
+                            onDoubleTap = { zone ->
+                                val d = com.ultratv.tv.nativeapp.ui.mobile.doubleTapSeekMs(zone, isLive && !tsActive)
+                                if (d != null) { session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, d, it.durationMs)) }; hud = com.ultratv.tv.nativeapp.ui.mobile.GestureHud.Seek(d > 0) }
+                                else if (zone == com.ultratv.tv.nativeapp.ui.mobile.TapZone.CENTER) togglePlay()
+                            },
+                            onDragStart = { role -> dragStartLevel = when (role) { com.ultratv.tv.nativeapp.ui.mobile.DragRole.BRIGHTNESS -> levels.brightness(); com.ultratv.tv.nativeapp.ui.mobile.DragRole.VOLUME -> levels.volume(); else -> 0f } },
+                            onDrag = { role, total, h ->
+                                if (role == com.ultratv.tv.nativeapp.ui.mobile.DragRole.BRIGHTNESS || role == com.ultratv.tv.nativeapp.ui.mobile.DragRole.VOLUME) {
+                                    val lv = com.ultratv.tv.nativeapp.ui.mobile.levelAfterDrag(dragStartLevel, total, h)
+                                    if (role == com.ultratv.tv.nativeapp.ui.mobile.DragRole.BRIGHTNESS) levels.setBrightness(lv) else levels.setVolume(lv)
+                                    hud = com.ultratv.tv.nativeapp.ui.mobile.GestureHud.Level(role, lv)
+                                }
+                            },
+                            onDragEnd = { role, total ->
+                                if (role == com.ultratv.tv.nativeapp.ui.mobile.DragRole.ZAP) com.ultratv.tv.nativeapp.ui.mobile.zapFor(total, 80f * dpPx)?.let { dir ->
+                                    hud = com.ultratv.tv.nativeapp.ui.mobile.GestureHud.Zap(dir > 0)
+                                    scope.launch { vm.zap(dir > 0)?.let { currentUrl = it } }
+                                }
+                            },
+                            onPinch = { sc -> val next = com.ultratv.tv.nativeapp.ui.mobile.aspectAfterPinch(aspect, sc); if (next != aspect) { aspect = next; hud = com.ultratv.tv.nativeapp.ui.mobile.GestureHud.Aspect(next) } },
+                        )
+                        if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
+                        if (state.phase == Phase.ERROR) ErrorPanel(
+                            kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
+                            onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = onBack,
+                        )
+                        if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
+                            MobileControls(
+                                isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = null, playing = playing,
+                                fraction = fraction, startLabel = startLabel, endLabel = endLabel, seekable = !isLive && dur > 0, compact = portrait,
+                                onBack = onBack, onTogglePlay = togglePlay,
+                                onSeekBy = { d -> if (tsActive) { tsJump((d / 1000).toInt()) } else session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, d, it.durationMs)) }; touch() },
+                                onSeekTo = { f -> if (dur > 0) session.engine?.seekTo((dur * f).toLong()); touch() },
+                                onSettings = { panel = Panel.Options }, pills = pillList, jumpSec = if (tsActive) 30 else 10,
+                                onFullscreen = if (portrait) ({ context.lockOrientation(true) }) else if (lockedLandscape) ({ context.lockOrientation(false) }) else null,
+                            )
+                        }
+                        GestureHudView(hud)
+                    }
+                }
+            }
+            if (portrait && !com.ultratv.tv.nativeapp.ui.mobile.PipState.active) {
+                val queueEntries by vm.queue.collectAsState()
+                Column(Modifier.fillMaxSize().background(Color.Black).windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))) {
+                    Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) { videoArea() }
+                    com.ultratv.tv.nativeapp.ui.mobile.PortraitInfo(
+                        live = isLive, liveLabel = D.live, title = headTitle, subtitle = if (isLive) item?.title else null, pills = pillList,
+                        entries = queueEntries, channelsLabel = M.channels,
+                        onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it } } }, modifier = Modifier.weight(1f),
+                    )
+                }
+            } else videoArea()
+        } else {
         AndroidView(factory = { container }, modifier = Modifier.fillMaxSize())
 
         // Chargement : visuel de la chaîne avec anneau de progression.
@@ -483,6 +605,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     touch()
                 },
             )
+        }
         }
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
@@ -734,12 +857,15 @@ private fun PlayerSidePanel(
     val audio = remember { e?.audioTracks().orEmpty() }
     val subs = remember { e?.subtitleTracks().orEmpty() }
     val labels = listOf(SideTab.TRACKS to D.pTracks, SideTab.DISPLAY to D.pDisplay, SideTab.PLAYER to D.pPlayer, SideTab.STATS to D.statsShort)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     ModalFocusScope(onBack = onClose, modifier = Modifier.background(androidx.compose.ui.graphics.Color.Transparent), contentAlignment = Alignment.CenterEnd) {
+        // Tactile : toucher à côté du panneau le ferme.
+        if (touch) Box(Modifier.matchParentSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null, onClick = onClose))
         Column(
-            Modifier.fillMaxHeight().width(640.design).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
+            Modifier.fillMaxHeight().then(if (touch) Modifier.width(360.dp) else Modifier.width(640.design)).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
             verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.design), modifier = if (touch) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier) {
                 labels.forEach { (t, l) ->
                     val sel = t == tab
                     FocusSurface(onClick = { tab = t }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(52.design)) { f ->

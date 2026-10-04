@@ -19,6 +19,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,40 +87,49 @@ fun AddProviderDialog(
 ) {
     val S = LocalStrings.current
     val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         Column(
-            modifier = Modifier
+            modifier = (if (touch) Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .fillMaxWidth(0.94f).widthIn(max = 560.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Ux.SurfaceDeep)
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())
+                .padding(20.dp)
+            else Modifier
                 .width(1000.design)
                 .clip(RoundedCornerShape(32.design))
                 .background(Ux.SurfaceDeep)
                 .border(1.design, Ux.Surface2, RoundedCornerShape(32.design))
-                .padding(56.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
+                .padding(56.design)),
+            verticalArrangement = Arrangement.spacedBy(if (touch) 16.dp else 28.design),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
-                Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
-                    DIcon(icon, 32.design, Ux.White, strokeWidth = 2f)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 20.design)) {
+                Box(Modifier.size(if (touch) 44.dp else 64.design).clip(RoundedCornerShape(if (touch) 12.dp else 16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
+                    DIcon(icon, if (touch) 22.dp else 32.design, Ux.White, strokeWidth = 2f)
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
-                    Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
+                    Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 22.sp else 40.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    if (subtitle != null) Text(subtitle, fontFamily = Manrope, fontSize = if (touch) 13.sp else 22.spx, color = Ux.Text3, maxLines = if (touch) 2 else 1)
                 }
             }
             content()
-            Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 8.design)) {
-                FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, modifier = Modifier.height(72.design).testTag("dialog-cancel")) { f ->
-                    Box(Modifier.height(72.design).padding(horizontal = 36.design), contentAlignment = Alignment.Center) {
-                        Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
+            Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 8.design)) {
+                FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(if (touch) 24.dp else 36.design), bg = Ux.Surface2, modifier = Modifier.height(if (touch) 48.dp else 72.design).testTag("dialog-cancel")) { f ->
+                    Box(Modifier.height(if (touch) 48.dp else 72.design).padding(horizontal = if (touch) 20.dp else 36.design), contentAlignment = Alignment.Center) {
+                        Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = if (touch) 15.sp else 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
                     }
                 }
-                FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(72.design).testTag("dialog-submit")) { f ->
-                    Box(Modifier.height(72.design).padding(horizontal = 44.design), contentAlignment = Alignment.Center) {
-                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx,
+                FocusSurface(onClick = { if (canSubmit) onSubmit() }, shape = RoundedCornerShape(if (touch) 24.dp else 36.design), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(if (touch) 48.dp else 72.design).testTag("dialog-submit")) { f ->
+                    Box(Modifier.height(if (touch) 48.dp else 72.design).padding(horizontal = if (touch) 22.dp else 44.design), contentAlignment = Alignment.Center) {
+                        Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 15.sp else 24.spx,
                             color = when { !canSubmit -> Ux.Muted; f || canSubmit -> Ux.TextOnLight; else -> Ux.Text })
                     }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
+            // Aide télécommande : sans objet au toucher (clavier système, boutons à l'écran).
+            if (!touch) Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                 Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                 Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
@@ -154,12 +169,13 @@ fun FormField(
         if (autoFocus) runCatching { focusRequester.requestFocus() }
     }
     val shownError = error ?: if (required && touched && !focused && value.isBlank()) D.fieldRequired else null
-    Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.fillMaxWidth()) {
-        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design), modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx)
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(72.design)
+                .height(if (touch) 52.dp else 72.design)
                 .clip(RoundedCornerShape(18.design))
                 .background(Ux.Surface)
                 .then(
@@ -176,7 +192,7 @@ fun FormField(
                 value = value,
                 onValueChange = onChange,
                 singleLine = true,
-                textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = 24.spx),
+                textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = if (touch) 16.sp else 24.spx),
                 cursorBrush = SolidColor(Ux.Accent),
                 visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
@@ -196,14 +212,14 @@ fun FormField(
                     .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
                 decorationBox = { inner ->
                     if (value.isEmpty() && placeholder != null) {
-                        Text(placeholder, color = Ux.Muted, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
+                        Text(placeholder, color = Ux.Muted, fontFamily = Manrope, fontSize = if (touch) 16.sp else 24.spx, maxLines = 1)
                     }
                     inner()
                 },
             )
         }
         if (shownError != null) {
-            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx)
+            Text(shownError, color = Ux.Err, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx)
         }
     }
 }

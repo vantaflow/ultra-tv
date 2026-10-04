@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,6 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,8 +86,47 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val D = LocalDs.current
     var rub by rememberSaveable { mutableStateOf(0) }
     val dbg by com.ultratv.tv.nativeapp.StartupNav.debugRub.collectAsState()
-    androidx.compose.runtime.LaunchedEffect(dbg) { dbg?.let { rub = it.coerceIn(0, Rub.entries.lastIndex); com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null } }
+    var showPane by rememberSaveable { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(dbg) { dbg?.let { rub = it.coerceIn(0, Rub.entries.lastIndex); showPane = true; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null } }
     val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubAbout)
+    val pane: @Composable () -> Unit = {
+            when (Rub.entries[rub]) {
+                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
+                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
+                Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
+                Rub.DISPLAY -> DisplayPane(vm, panes, app)
+                Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
+                Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
+                Rub.LANGUAGES -> LanguagesPane(panes, app)
+                Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
+                Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
+            }
+    }
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    val compact = touch && com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current < 600f
+    if (compact) {
+        // Téléphone : liste de rubriques, puis la rubrique choisie en plein écran (Retour système = retour à la liste).
+        androidx.activity.compose.BackHandler(enabled = showPane) { showPane = false }
+        if (!showPane) Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1, modifier = Modifier.padding(bottom = 8.dp))
+            Rub.entries.forEachIndexed { i, r ->
+                FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(56.dp)) { _ ->
+                    Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        DIcon(r.icon, 22.dp, Ux.Text2)
+                        Text(labels[i], color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        DIcon("M9 6l6 6-6 6", 18.dp, Ux.Text3, strokeWidth = 2.5f)
+                    }
+                }
+            }
+        } else Column(Modifier.fillMaxSize()) {
+            Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.a11yBack, Ux.Surface, Ux.Text, { showPane = false })
+                Text(labels[rub], color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { pane() }
+        }
+        return
+    }
     Row(Modifier.fillMaxSize()) {
         Column(Modifier.width(460.design).fillMaxHeight().padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
@@ -106,17 +148,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         }
         Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
         Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
-            when (Rub.entries[rub]) {
-                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
-                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
-                Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
-                Rub.DISPLAY -> DisplayPane(vm, panes, app)
-                Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
-                Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
-                Rub.LANGUAGES -> LanguagesPane(panes, app)
-                Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
-                Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
-            }
+            pane()
         }
     }
 }
@@ -406,7 +438,7 @@ fun LanguagePickerDialog(languages: List<Pair<String, Int>>, selected: Set<Strin
     val fallback = listOf("fr", "en", "ar", "es", "de", "pt", "it", "tr", "nl", "el").map { it to 0 }
     val items = languages.ifEmpty { fallback }
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
-        Column(Modifier.width(760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+        Column(Modifier.responsiveWidth(760).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.contentLanguages, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, modifier = Modifier.padding(bottom = 8.design))
             androidx.compose.foundation.lazy.LazyColumn(Modifier.height(600.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item { LangRow(D.allLanguages, "", selected.isEmpty()) { onChange(emptySet()) } }

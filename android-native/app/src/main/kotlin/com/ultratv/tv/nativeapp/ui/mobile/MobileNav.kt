@@ -3,6 +3,8 @@ package com.ultratv.tv.nativeapp.ui.mobile
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -166,7 +168,7 @@ fun MoreSheet(navController: NavController, onDismiss: () -> Unit, onProfiles: (
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val M = LocalMobileStrings.current
     Box(
-        Modifier.fillMaxSize().background(Ux.Scrim).clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onDismiss),
+        Modifier.fillMaxSize().background(Ux.Scrim).pointerInput(Unit) { detectTapGestures { onDismiss() } },
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(
@@ -174,7 +176,7 @@ fun MoreSheet(navController: NavController, onDismiss: () -> Unit, onProfiles: (
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))
                 .background(Ux.SurfaceDeep)
-                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+                .pointerInput(Unit) { detectTapGestures { } }
                 .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),

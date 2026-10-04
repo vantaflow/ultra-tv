@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.sync
 
+import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.background
@@ -77,7 +78,7 @@ fun FirstSyncScreen(ui: FirstSyncUi, onWatchLive: () -> Unit, onRetry: () -> Uni
         }
 
         Row(Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(120.design)) {
-            Column(Modifier.width(820.design), verticalArrangement = Arrangement.spacedBy(44.design)) {
+            Column(Modifier.responsiveWidth(820), verticalArrangement = Arrangement.spacedBy(44.design)) {
                 Column(verticalArrangement = Arrangement.spacedBy(18.design)) {
                     Text(D.firstSync, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, maxLines = 1)
                     Text(D.preparing, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 72.spx, lineHeight = 76.spx, letterSpacing = (-1).spx, maxLines = 2, overflow = TextOverflow.Ellipsis)

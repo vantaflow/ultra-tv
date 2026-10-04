@@ -79,14 +79,14 @@ fun NoDataStateCard(modifier: Modifier = Modifier, vm: DataStateViewModel = hilt
                 D.offlineTitle, D.offlineBody, StateIcons.Offline, D.retry,
                 onPrimary = { vm.retry(f?.providerId) }, badge = androidx.compose.ui.graphics.Color(0xFF52525B),
                 secondaryLabel = D.seeRecordings, onSecondary = { StartupNav.pendingRoute.value = "recordings" },
-                modifier = Modifier.width(820.design),
+                modifier = Modifier.responsiveWidth(820),
             )
         } else if (f != null) {
             StateCard(
                 S.messageFor(f.kind), D.sourceErrorBody(f.provider), StateIcons.Warning, D.fixSource,
                 onPrimary = { StartupNav.pendingRoute.value = Routes.SETTINGS }, badge = Ux.Accent,
                 secondaryLabel = D.retry, onSecondary = { vm.retry(f.providerId) },
-                modifier = Modifier.width(820.design),
+                modifier = Modifier.responsiveWidth(820),
             )
         }
     }

@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.player.subtitles
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -77,9 +79,12 @@ fun SubtitlePanel(
     fun set(s: SubtitleStyle) { vm.setStyle(s); onStyle(s) }
     ModalFocusScope(onBack = { if (page == Page.MAIN) onClose() else page = Page.MAIN }, modifier = Modifier.background(Color.Transparent), contentAlignment = Alignment.CenterEnd) {
         // Aperçu : le texte tel qu'il sera rendu, à gauche de l'écran.
-        Box(Modifier.fillMaxSize().padding(end = 640.design, bottom = 120.design), contentAlignment = Alignment.BottomCenter) { SubtitlePreview(style, X.previewText) }
+        val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+        // Tactile : toucher à côté du panneau le ferme.
+        if (touch) Box(Modifier.matchParentSize().clickable(interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }, indication = null) { if (page == Page.MAIN) onClose() else page = Page.MAIN })
+        Box(Modifier.fillMaxSize().padding(end = if (touch) 360.dp else 640.design, bottom = 120.design), contentAlignment = Alignment.BottomCenter) { SubtitlePreview(style, X.previewText) }
         Column(
-            Modifier.fillMaxHeight().width(640.design).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
+            Modifier.fillMaxHeight().then(if (touch) Modifier.width(360.dp) else Modifier.width(640.design)).background(Ux.Rail).border(1.design, Ux.Surface2).padding(horizontal = 56.design, vertical = 54.design),
             verticalArrangement = Arrangement.spacedBy(14.design),
         ) {
             Text(X.subtitlesTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1)
@@ -131,7 +136,7 @@ private val Float.spx get() = androidx.compose.ui.unit.TextUnit(this / 2f, andro
 @Composable
 private fun ValueRow(label: String, value: String, enabled: Boolean = true, onStep: (Int) -> Unit) {
     FocusSurface(
-        onClick = { if (enabled) onStep(1) }, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f,
+        onClick = { if (enabled) onStep(1) }, onLongClick = { if (enabled) onStep(-1) }, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f,
         modifier = Modifier.fillMaxWidth().height(72.design).onPreviewKeyEvent { ev ->
             if (ev.type != KeyEventType.KeyDown) false
             else when (ev.key) { Key.DirectionLeft -> { if (enabled) onStep(-1); true }; Key.DirectionRight -> { if (enabled) onStep(1); true }; else -> false }

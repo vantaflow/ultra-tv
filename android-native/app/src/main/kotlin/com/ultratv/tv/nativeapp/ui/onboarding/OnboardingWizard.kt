@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.onboarding
 
+import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -283,7 +284,7 @@ internal fun fitTitleSizePx(text: String, basePx: Int = 84, maxWidthPx: Int = 11
 @Composable
 private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Unit) {
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.width(900.design), verticalArrangement = Arrangement.spacedBy(40.design)) {
+        Column(Modifier.responsiveWidth(900), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
                 Eyebrow(W.stepLabel.format(1))
                 Text(
@@ -295,7 +296,7 @@ private fun WelcomeStep(W: WizardStrings, onStart: () -> Unit, onSkip: () -> Uni
                     modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true),
                 )
                 Text(W.welcomeTagline, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 45.spx,
-                    color = Ux.Text2, modifier = Modifier.width(820.design))
+                    color = Ux.Text2, modifier = Modifier.responsiveWidth(820))
             }
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
                 Bullet(Icons.Monitor, W.bulletXtream)
@@ -465,7 +466,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     val status by vm.syncStatus.collectAsState()
     val failure by vm.failure.collectAsState()
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.width(920.design), verticalArrangement = Arrangement.spacedBy(40.design)) {
+        Column(Modifier.responsiveWidth(920), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Box(Modifier.size(112.design).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) {
                 DIcon(Icons.Check, 56.design, Ux.White, strokeWidth = 2.5f)
             }
@@ -475,9 +476,9 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
                 val f = failure
                 if (f != null) {
                     Text(LocalStrings.current.sync.messageFor(f.kind), fontFamily = Manrope, fontSize = 30.spx, lineHeight = 42.spx,
-                        color = Ux.Err, modifier = Modifier.width(820.design))
+                        color = Ux.Err, modifier = Modifier.responsiveWidth(820))
                 } else {
-                    Text(W.readyBody, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 45.spx, color = Ux.Text2, modifier = Modifier.width(820.design))
+                    Text(W.readyBody, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 45.spx, color = Ux.Text2, modifier = Modifier.responsiveWidth(820))
                 }
             }
             Row(Modifier.padding(top = 8.design), verticalAlignment = Alignment.CenterVertically) {

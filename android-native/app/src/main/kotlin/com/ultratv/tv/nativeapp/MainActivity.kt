@@ -115,6 +115,18 @@ class MainActivity : ComponentActivity() {
             runCatching { recordingScheduler.rearmAll() }
         }
         setContent { Root() }
+        // Android 12+ : le geste « accueil » entre en image dans l'image sans passer par onUserLeaveHint, tant que le lecteur est affiché.
+        if (android.os.Build.VERSION.SDK_INT >= 31 && !com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) {
+            lifecycleScope.launch {
+                androidx.compose.runtime.snapshotFlow { com.ultratv.tv.nativeapp.ui.design.Ux.playerActive }.collect { shown ->
+                    runCatching {
+                        setPictureInPictureParams(
+                            android.app.PictureInPictureParams.Builder().setAspectRatio(android.util.Rational(16, 9)).setAutoEnterEnabled(shown).build(),
+                        )
+                    }
+                }
+            }
+        }
         kickoffStartupTasks()
         // Auto-update flow: query GitHub Releases on launch and, if a newer
         // version is found, download + fire the system install Intent without
@@ -171,6 +183,11 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch { prefsStore.setBufferPreset(v) } }
     }
 
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        com.ultratv.tv.nativeapp.ui.mobile.PipState.active = isInPictureInPictureMode
+    }
+
     /**
      * When the user presses Home while a stream is playing, enter PiP so the
      * stream keeps going in a corner. Falls back silently on devices that
@@ -180,6 +197,9 @@ class MainActivity : ComponentActivity() {
         super.onUserLeaveHint()
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return
         if (playback.current.value == null) return
+        // Téléphone / tablette : image dans l'image seulement depuis l'écran du lecteur (jamais depuis l'accueil).
+        if (!com.ultratv.tv.nativeapp.ui.common.isTelevision(this) &&
+            !com.ultratv.tv.nativeapp.ui.mobile.shouldEnterPip(hasPlayback = true, playerShown = com.ultratv.tv.nativeapp.ui.design.Ux.playerActive)) return
         runCatching {
             val params = android.app.PictureInPictureParams.Builder()
                 .setAspectRatio(android.util.Rational(16, 9))
