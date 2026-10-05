@@ -67,6 +67,8 @@ class SettingsPanesViewModel @Inject constructor(
     fun setUnmetered(v: Boolean) = viewModelScope.launch { prefs.setSyncUnmeteredOnly(v) }
 
     /** Active / désactive un type de contenu. Désactivé + [purge] : les données déjà téléchargées sont supprimées. */
+    fun setExtraEpg(url: String) = viewModelScope.launch { prefs.setExtraEpg(url) }
+
     fun setPart(part: String, on: Boolean, purge: Boolean) {
         viewModelScope.launch {
             prefs.setSyncPart(part, on)

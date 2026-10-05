@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -727,7 +728,9 @@ private fun Modifier.androidx_focusable() = this.focusable()
 private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings, tsBehindSec: Int? = null, X: com.ultratv.tv.nativeapp.ui.player.PlayerExtraStrings? = null) {
     val programme by vm.nowProgramme.collectAsState()
     Row(
-        Modifier.fillMaxWidth().height(200.design).background(Color(0xD10A0A0C)).padding(horizontal = 96.design, vertical = 54.design),
+        // Hauteur MINIMALE (et non fixe) : badge + titre dépassaient de quelques pixels et le bas des lettres était coupé,
+        // davantage avec la taille de police agrandie de certaines box.
+        Modifier.fillMaxWidth().heightIn(min = 200.design).background(Color(0xD10A0A0C)).padding(horizontal = 96.design, vertical = 44.design),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.design), modifier = Modifier.weight(1f)) {

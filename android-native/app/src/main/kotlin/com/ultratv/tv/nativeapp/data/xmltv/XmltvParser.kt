@@ -53,6 +53,77 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
         }
     }
 
+    /**
+     * Guide complémentaire à une URL publique (gzip détecté automatiquement). Les `<channel>` précèdent les
+     * `<programme>` : chaque chaîne du guide est résolue (identifiant, noms affichés) vers 0..n chaînes locales,
+     * puis ses programmes sont émis pour chacune (décalés de N heures pour « X +N »).
+     */
+    suspend fun <R> withExternal(
+        url: String,
+        resolve: (feedId: String, names: List<String>) -> List<Pair<Long, Int>>,
+        window: LongRange = defaultWindow(),
+        block: suspend (Sequence<EpgEntity>) -> R,
+    ): R = withContext(Dispatchers.IO) {
+        ok.newCall(Request.Builder().url(url).header("User-Agent", "UltraTV").build()).execute().use { resp ->
+            if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
+            val raw = resp.body?.byteStream()?.buffered() ?: error("Empty xmltv body")
+            raw.mark(2)
+            val gz = raw.read() == 0x1f && raw.read() == 0x8b
+            raw.reset()
+            val input = if (gz) java.util.zip.GZIPInputStream(raw, 64 * 1024).buffered() else raw
+            block(externalProgrammes(input, resolve, window))
+        }
+    }
+
+    fun externalProgrammes(
+        input: InputStream,
+        resolve: (feedId: String, names: List<String>) -> List<Pair<Long, Int>>,
+        window: LongRange = Long.MIN_VALUE..Long.MAX_VALUE,
+    ): Sequence<EpgEntity> = sequence {
+        val parser = Xml.newPullParser()
+        parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
+        parser.setInput(input, null)
+        val map = HashMap<String, List<Pair<Long, Int>>>()
+        var event = parser.eventType
+        while (event != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG && parser.name == "channel") {
+                val id = parser.getAttributeValue(null, "id")
+                val names = ArrayList<String>(2)
+                while (true) {
+                    val e = parser.next()
+                    if (e == XmlPullParser.END_TAG && parser.name == "channel") break
+                    if (e == XmlPullParser.END_DOCUMENT) break
+                    if (e == XmlPullParser.START_TAG) { if (parser.name == "display-name") names += readText(parser) else skipToEndTag(parser, parser.name) }
+                }
+                if (id != null) resolve(id, names).takeIf { it.isNotEmpty() }?.let { map[id] = it }
+            } else if (event == XmlPullParser.START_TAG && parser.name == "programme") {
+                val targets = parser.getAttributeValue(null, "channel")?.let { map[it] }
+                val start = parseDate(parser.getAttributeValue(null, "start"))
+                val stop = parseDate(parser.getAttributeValue(null, "stop"))
+                if (targets == null || start == null || stop == null || stop <= start) skipToEndTag(parser, "programme")
+                else {
+                    var title: String? = null
+                    var desc: String? = null
+                    while (true) {
+                        val e = parser.next()
+                        if (e == XmlPullParser.END_TAG && parser.name == "programme") break
+                        if (e == XmlPullParser.END_DOCUMENT) break
+                        if (e == XmlPullParser.START_TAG) when (parser.name) {
+                            "title" -> if (title == null) title = readText(parser)
+                            "desc" -> if (desc == null) desc = readText(parser).take(MAX_DESC)
+                            else -> skipToEndTag(parser, parser.name)
+                        }
+                    }
+                    if (title != null) for ((cid, h) in targets) {
+                        val s = start + h * 3_600_000L; val t = stop + h * 3_600_000L
+                        if (t >= window.first && s <= window.last) yield(EpgEntity(channelId = cid, title = title, description = desc, startMs = s, endMs = t))
+                    }
+                }
+            }
+            event = parser.next()
+        }
+    }
+
     /** Variante en liste, pour les tests et les petits flux. */
     fun parse(
         input: InputStream,

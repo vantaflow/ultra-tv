@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.16] — 2026-10-05 (Android TV)
+
+### Corrections
+- Guide : les programmes ne disparaissent plus après une resynchronisation des chaînes (identifiants de chaînes conservés) ; une catégorie activée reçoit son guide dans la minute, pas la nuit suivante.
+- Lecteur : titre de l'en-tête plus coupé en bas.
+
+### Nouveautés
+- Guide complémentaire (Réglages › Synchronisation) : XMLTV France par défaut, ou epgshare01 (beIN Sports, Arabie saoudite, Émirats). Complète uniquement les chaînes sans programme, par identifiant, par nom ou en « +N ».
+
 ## [1.2.15] — 2026-10-04 (Android TV)
 
 ### Corrections

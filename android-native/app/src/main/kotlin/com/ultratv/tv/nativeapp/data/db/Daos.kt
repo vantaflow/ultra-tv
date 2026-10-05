@@ -124,6 +124,10 @@ interface ChannelDao {
     @Query("SELECT id, epgChannelId FROM channel WHERE providerId = :pid AND epgChannelId IS NOT NULL AND epgChannelId != ''")
     suspend fun epgMapping(pid: Long): List<EpgMapping>
 
+    /** (remoteId → id) : la resynchronisation réécrit les chaînes en gardant leur identifiant (programmes, liens). */
+    @Query("SELECT id, remoteId FROM channel WHERE providerId = :pid")
+    suspend fun idsByRemote(pid: Long): List<ChannelIdRow>
+
     /** (id, titre, identifiant EPG) de toutes les chaînes : rattache « TF1 +1 » au programme de « TF1 ». */
     @Query("SELECT id, title, epgChannelId, country FROM channel WHERE providerId = :pid AND isSeparator = 0")
     suspend fun epgTitles(pid: Long): List<EpgTitle>
@@ -554,6 +558,10 @@ interface EpgDao {
     """)
     suspend fun searchPrograms(pid: Long, pattern: String, nowMs: Long, toMs: Long, limit: Int): List<com.ultratv.tv.nativeapp.data.repo.ProgramHitRow>
 
+    /** Chaînes de la source qui ont au moins un programme encore à venir ou en cours. */
+    @Query("SELECT DISTINCT e.channelId FROM epg e JOIN channel c ON c.id = e.channelId WHERE c.providerId = :pid AND e.endMs >= :nowMs")
+    suspend fun channelsWithProgrammes(pid: Long, nowMs: Long): List<Long>
+
     @Query("DELETE FROM epg WHERE channelId = :cid")
     suspend fun deleteForChannel(cid: Long)
 
@@ -579,6 +587,7 @@ data class CategoryCount(val categoryId: String?, val n: Int, val sections: Int 
 enum class SyncPart { LIVE, VOD, SERIES, EPG }
 
 data class EpgMapping(val id: Long, val epgChannelId: String)
+data class ChannelIdRow(val id: Long, val remoteId: String)
 data class EpgTitle(val id: Long, val title: String, val epgChannelId: String?, val country: String? = null)
 
 data class RawPassword(val id: Long, val raw: String)

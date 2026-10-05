@@ -20,6 +20,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -164,8 +165,37 @@ class ProviderRepository @Inject constructor(
         }
     }
 
-    /** Télécharge le XMLTV en flux (fenêtre −2 h / +24 h) et l'insère par lots. Les erreurs remontent. */
+    /**
+     * Guide de la source PUIS guide complémentaire (chaînes restées sans programme). Le complément est tenté même si
+     * le guide de la source échoue ; l'erreur de la source ne remonte que si rien n'a pu être ajouté.
+     */
     private suspend fun syncXmltvInternal(p: ProviderEntity, onCount: (Int) -> Unit): Int {
+        val own = runCatching { syncProviderXmltv(p, onCount) }
+        val extra = runCatching { syncExtraEpg(p) { c -> onCount((own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
+        if (own.isFailure && extra == 0) throw own.exceptionOrNull()!!
+        return (own.getOrNull() ?: 0) + extra
+    }
+
+    /** Guide complémentaire (Réglages › Synchronisation) pour les chaînes sans programme ; 0 si désactivé. */
+    private suspend fun syncExtraEpg(p: ProviderEntity, onCount: (Int) -> Unit): Int {
+        val url = prefs.flow.first().extraEpg.takeIf { it.startsWith("https://") } ?: return 0
+        val have = epgDao.channelsWithProgrammes(p.id, System.currentTimeMillis()).toHashSet()
+        val targets = channelDao.epgTitles(p.id).filter { it.id !in have }
+        if (targets.isEmpty()) return 0
+        val resolver = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.Resolver(targets)
+        var total = 0
+        xmltv.withExternal(url, resolver::resolve) { seq ->
+            for (batch in seq.chunked(INSERT_BATCH)) {
+                db.withTransaction { epgDao.upsertAll(batch) }
+                total += batch.size
+                onCount(total)
+            }
+        }
+        return total
+    }
+
+    /** Télécharge le XMLTV de la source en flux (fenêtre −2 h / +24 h) et l'insère par lots. Les erreurs remontent. */
+    private suspend fun syncProviderXmltv(p: ProviderEntity, onCount: (Int) -> Unit): Int {
         // Build (xmltv channel id → local channel id) map for matching.
         // Plusieurs flux d'une même chaîne (HD, 4K, UHD…) partagent souvent le même identifiant EPG : TOUS reçoivent
         // le programme (avant : seul le dernier, les autres restaient « sans information »).
@@ -370,8 +400,13 @@ class ProviderRepository @Inject constructor(
         "LIVE", { xtream.fetchLiveCategories(it) }, { p, blk -> xtream.withLiveStreams(p, blk) }, { p, c -> xtream.liveOfCategory(p, c) },
         { it.categoryId }, { c, lang -> c.copy(lang = LanguageDetector.forItem(c.name, lang)) },
         { channelDao.deleteForProvider(it) }, { pid, ids -> channelDao.deleteForCategories(pid, ids) }, { pid, id -> channelDao.deleteForCategory(pid, id) },
-        { channelDao.upsertAll(it) },
+        // Identifiant CONSERVÉ d'une synchro à l'autre : le guide est rattaché aux identifiants de chaînes ; les réécrire
+        // (suppression + insertion) laissait tous les programmes orphelins jusqu'au guide de la nuit.
+        { rows -> val keep = liveIds; channelDao.upsertAll(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c }) },
     )
+
+    /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */
+    @Volatile private var liveIds: Map<String, Long> = emptyMap()
 
     private fun vodPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
         "MOVIE", { xtream.fetchVodCategories(it) }, { p, blk -> xtream.withVodStreams(p, blk) }, { p, c -> xtream.vodOfCategory(p, c) },
@@ -416,6 +451,7 @@ class ProviderRepository @Inject constructor(
     ): Int {
         val u = prefs.flow.first()
         val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
+        if (spec.kind == "LIVE") liveIds = channelDao.idsByRemote(p.id).associate { it.remoteId to it.id }
         val fetched = lock(spec.fetchCats(p))
         val merged = CatalogPlan.merge(fetched, categoryDao.forProviderKind(p.id, spec.kind), langs, u.includeMulti, u.includeUnknownLang)
         val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
@@ -521,6 +557,7 @@ class ProviderRepository @Inject constructor(
         // Synchro complète en cours : on ne touche pas à son indicateur de progression (ni ne l'efface).
         val ownStatus = !syncMutex.isLocked
         partLock(kind).withLock {
+            if (kind == "LIVE") liveIds = channelDao.idsByRemote(p.id).associate { it.remoteId to it.id }
             if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", 0, part, 0))
             try {
                 var n = 0
@@ -535,6 +572,20 @@ class ProviderRepository @Inject constructor(
                     if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
                 }
             } finally { if (ownStatus) syncStatus.clear() }
+        }
+        // Nouvelles chaînes du direct : leur guide tout de suite (regroupé), pas à la synchro de la nuit.
+        if (kind == "LIVE") scheduleEpgRefresh(providerId)
+    }
+
+    private val epgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var epgJob: kotlinx.coroutines.Job? = null
+
+    /** Guide re-téléchargé 60 s après la DERNIÈRE activation de catégorie (plusieurs activations = un seul téléchargement). */
+    private fun scheduleEpgRefresh(providerId: Long) {
+        epgJob?.cancel()
+        epgJob = epgScope.launch {
+            kotlinx.coroutines.delay(60_000)
+            runCatching { syncXmltv(providerId) }
         }
     }
 

@@ -341,6 +341,7 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
     val counts by panes.counts.collectAsState()
     val totals by panes.categoryTotals.collectAsState()
     var purgeFor by remember { mutableStateOf<String?>(null) }
+    var extraOpen by remember { mutableStateOf(false) }
     val last = provider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
     val subtitle = if (last <= 0L) D.neverSynced else D.lastUpdate.format(ago(D, System.currentTimeMillis() - last), nextText(p.syncMode, p.syncHour, p.syncIntervalHours, last))
 
@@ -368,6 +369,7 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
         val live = "${D.channels(counts.live)} · ${D.everyHours((ttl.liveMs / 3_600_000L).toInt())}"
         ContentRow(Icons.Live, D.liveTv, live, p.syncLive) { if (!it) purgeFor = "live" else panes.setPart("live", true, false) }
         ContentRow(Icons.Guide, D.stepGuide, D.guideWindow(2, 24) + " · " + D.everyNight, p.syncEpg) { panes.setPart("epg", it, false) }
+        if (p.syncEpg) PrefRow(D.extraGuide, com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.labelOf(p.extraEpg) ?: D.extraGuideOff, hint = D.extraGuideHint) { extraOpen = true }
         ContentRow(Icons.Movies, D.stepMovies, D.moviesOf(counts.movies) + " · " + D.everyDay, p.syncVod) { if (!it) purgeFor = "vod" else panes.setPart("vod", true, false) }
         ContentRow(Icons.Series, D.stepSeries, D.seriesOf(counts.series) + " · " + D.everyDay, p.syncSeries) { if (!it) purgeFor = "series" else panes.setPart("series", true, false) }
     }
@@ -375,6 +377,13 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
         SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly, Modifier.weight(1f)) { panes.setUnmetered(it) }
         PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled), Modifier.weight(1f)) { onNavigate("categories") }
     }
+    if (extraOpen) ChoiceDialog(
+        D.extraGuide,
+        listOf("" to D.extraGuideOff) + com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.OPTIONS,
+        p.extraEpg,
+        onPick = { panes.setExtraEpg(it); extraOpen = false },
+        onDismiss = { extraOpen = false },
+    )
     purgeFor?.let { part ->
         ChoiceDialog(D.purgeTitle, listOf(false to D.keepData, true to D.purgeData), null, onPick = { purge -> panes.setPart(part, false, purge); purgeFor = null }, onDismiss = { purgeFor = null })
     }

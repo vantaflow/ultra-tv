@@ -58,6 +58,8 @@ data class UserPrefs(
     val language: String = "system",
     /** Fuseau horaire de l'horloge et du guide : "" = celui du système, sinon un identifiant (« GMT », « Africa/Casablanca »…). */
     val timeZone: String = "",
+    /** Guide complémentaire (XMLTV) pour les chaînes que la source ne couvre pas : URL, "" = désactivé. */
+    val extraEpg: String = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
     /** Per-MAC password used when fetching config from the worker. Optional —
      *  empty for unprotected entries. Persists across launches; never logged. */
     val configPassword: String = "",
@@ -137,6 +139,7 @@ class UserPreferencesStore @Inject constructor(
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
         val language = stringPreferencesKey("language")
         val timeZone = stringPreferencesKey("time_zone")
+        val extraEpg = stringPreferencesKey("extra_epg")
         val configPassword = stringPreferencesKey("config_password")
         val telemetry = booleanPreferencesKey("telemetry_enabled")
         val syncDisplayPrefs = booleanPreferencesKey("sync_display_prefs")
@@ -189,6 +192,7 @@ class UserPreferencesStore @Inject constructor(
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
             language = p[Keys.language] ?: "system",
             timeZone = p[Keys.timeZone] ?: "",
+            extraEpg = p[Keys.extraEpg] ?: com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
             configPassword = p[Keys.configPassword] ?: "",
             telemetryEnabled = p[Keys.telemetry] ?: true,
             syncDisplayPrefs = p[Keys.syncDisplayPrefs] ?: true,
@@ -225,6 +229,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
     suspend fun setTimeZone(id: String) = update { it[Keys.timeZone] = id }
+    suspend fun setExtraEpg(url: String) = update { it[Keys.extraEpg] = url }
     suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
     suspend fun setTelemetry(on: Boolean) = update { it[Keys.telemetry] = on }
     suspend fun setSyncDisplayPrefs(on: Boolean) = update { it[Keys.syncDisplayPrefs] = on }
