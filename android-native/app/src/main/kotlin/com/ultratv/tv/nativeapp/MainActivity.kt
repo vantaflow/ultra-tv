@@ -206,6 +206,7 @@ class MainActivity : ComponentActivity() {
      */
     /** Touches Recherche et micro de la télécommande : ouvrent la Recherche par-dessus l'écran courant (Retour y revient). */
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()
         if (event.keyCode == android.view.KeyEvent.KEYCODE_SEARCH || event.keyCode == android.view.KeyEvent.KEYCODE_VOICE_ASSIST) {
             if (event.action == android.view.KeyEvent.ACTION_DOWN && event.repeatCount == 0) StartupNav.searchRequest.value += 1
             return true

@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.18] — 2026-10-05 (Android TV)
+
+### Corrections
+- Menu : ne s'ouvre plus tout seul (focus récupéré pendant une mise à jour en arrière-plan) ; seulement à la télécommande.
+- Page série : la sélection ne saute plus sur un épisode au milieu quand les épisodes se rechargent.
+- Films et épisodes : position de reprise enregistrée toutes les 30 s (reprise fiable même après une coupure).
+
 ## [1.2.17] — 2026-10-05 (Android TV)
 
 ### Nouveautés

@@ -121,7 +121,7 @@ fun SeriesDetailScreen(
                 }
             }
             if (shown.isEmpty()) item(key = "empty") { Text(if (loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 14.sp) }
-            items(shown, key = { it.id }) { ep ->
+            items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
                 EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
             }
         }
@@ -152,7 +152,8 @@ fun SeriesDetailScreen(
 
     val playRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
-    RequestInitialFocus(playRequester, hasFocus = { focused }, key = target?.id ?: series.id)
+    // Une seule fois par série, quand le bouton apparaît : clé stable (les épisodes rechargés changent d'identifiant interne).
+    RequestInitialFocus(playRequester, hasFocus = { focused }, key = series.remoteId to (target != null))
 
     Row(
         Modifier.fillMaxSize().background(Ux.Bg).padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design),
@@ -208,7 +209,7 @@ fun SeriesDetailScreen(
                 shown.isEmpty() && loading -> Text(S.detailLoading, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 shown.isEmpty() -> Text(S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 else -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.design)) {
-                    items(shown, key = { it.id }) { ep ->
+                    items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
                         EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
                     }
                 }

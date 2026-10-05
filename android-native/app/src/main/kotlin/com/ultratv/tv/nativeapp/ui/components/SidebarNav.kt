@@ -27,6 +27,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -143,7 +145,14 @@ fun SidebarNav(navController: NavController) {
                     // Entrer dans le menu (← depuis la page) place le focus sur la PAGE OUVERTE, pas sur Rechercher.
                     .focusProperties { enter = { if (hasActive) activeFocus else androidx.compose.ui.focus.FocusRequester.Default } }
                     .focusGroup()
-                    .onFocusChanged { expanded = it.hasFocus }
+                    // Ne s'ouvre que sur une VRAIE touche : un focus récupéré tout seul (liste rafraîchie par une synchro
+                    // en arrière-plan) ouvrait le menu sans action de l'utilisateur ; on rend alors le focus à la page.
+                    .onFocusChanged { st ->
+                        if (!st.hasFocus) expanded = false
+                        else if (com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey()) expanded = true
+                        else if (!expanded) leaveRail()
+                    }
+                    .onPreviewKeyEvent { ev -> if (!expanded && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) expanded = true; false }
                     // Géométrie identique replié / déplié : les icônes gardent le même x pendant tout l'élargissement.
                     .padding(vertical = 54.design, horizontal = 24.design),
                 horizontalAlignment = Alignment.Start,

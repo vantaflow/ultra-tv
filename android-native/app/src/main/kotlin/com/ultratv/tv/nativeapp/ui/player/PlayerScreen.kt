@@ -471,8 +471,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var playing by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     LaunchedEffect(Unit) {
+        var lastSave = System.currentTimeMillis()
         while (true) {
             session.engine?.let { pos = it.positionMs; dur = it.durationMs; playing = it.isPlaying }
+            // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
+            if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())
             if (tsActive) tsSnap = ts.snapshot()
             if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > 5_000) overlayVisible = false
