@@ -41,7 +41,7 @@ class TitleCleanerTest {
     @Test fun live_prefixeParentheses() = assertEquals("ESPN PLAY 25", tv("(AU) ESPN PLAY 25 (D)").title)
     @Test fun live_decorationDieses() = assertEquals("SAMPLE SERIES", tv("### SAMPLE SERIES RAW ###").title)
     @Test fun live_prefixeChiffres() = assertEquals("SHE'S GOTTA HAVE IT", tv("24/7: SHE'S GOTTA HAVE IT").title)
-    @Test fun live_ligneEvenement_garde_ledernierSegment() =
+    @Test fun ligneEvenement_direct_gardeLeDernierSegment() =
         assertEquals("VIAPLAY PPV 16", tv("End | Some Grand Prix | Sprint | 2026-07-04 | 10:30 (GMT) | 8K EXCLUSIVE | DK: VIAPLAY PPV 16").title)
     @Test fun live_arabeInchange() = assertEquals("الكندوش", tv("AR: الكندوش").title)
     @Test fun live_cyrillique() = assertEquals("Спорт ТВ", tv("RU: Спорт ТВ HD").title)

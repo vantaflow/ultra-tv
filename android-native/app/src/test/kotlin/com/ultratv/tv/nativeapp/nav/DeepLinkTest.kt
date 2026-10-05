@@ -5,7 +5,7 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class DeepLinkTest {
-    @Test fun live_aller_retour_avec_caracteres_speciaux() {
+    @Test fun direct_allerRetour_avecCaracteresSpeciaux() {
         val rid = "ch 1/é+x"
         assertEquals(DeepLink.PlayLive(7, rid), DeepLink.parse(DeepLink.live(7, rid)))
     }
