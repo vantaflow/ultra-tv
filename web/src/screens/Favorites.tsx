@@ -35,30 +35,41 @@ export function Favorites() {
 function Inner({ source }: { source: Source }) {
   const t = useT();
   const nav = useNavigate();
-  const [tab, setTab] = useState<Kind>("live");
+  // « Tout » par défaut : tous les favoris classés par section (chaînes, films, séries).
+  const [tab, setTab] = useState<Kind | "all">("all");
   const all = useFavorites(source);
-  const favs = all.filter((f) => f.kind === tab);
-  const chans = useLiveQuery(async () => (tab === "live" ? (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c) : []), [tab, favs.length, source.cid]) ?? [];
+  const live = all.filter((f) => f.kind === "live");
+  const chans = useLiveQuery(async () => (tab === "live" || tab === "all" ? (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c) : []), [tab, live.length, source.cid]) ?? [];
   const n = (k: Kind) => all.filter((f) => f.kind === k).length;
+  const label = (k: Kind) => t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series");
+  const chanGrid = <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(22rem, 1fr))", gap: 8 }}>{chans.map((c) => <Chan key={c.id} source={source} c={c} />)}</div>;
+  const posters = (k: "movie" | "series") => (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9.5rem, 1fr))", gap: 20 }}>
+      {all.filter((f) => f.kind === k).map((f) => <PosterCard key={f.key} title={f.name} image={f.image} fav onClick={() => nav(`/${k === "movie" ? "movie" : "serie"}/${f.refId}`)} />)}
+    </div>
+  );
   return (
     <div className="page">
       <div className="page-head"><h1>{t("fav.title")}</h1></div>
       <div className="chips" role="tablist">
+        <button className="chip" role="tab" aria-selected={tab === "all"} onClick={() => setTab("all")}>{t("common.all")} <span className="n">{all.length}</span></button>
         {(["live", "movie", "series"] as const).map((k) => (
           <button key={k} className="chip" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>
-            {t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series")} <span className="n">{n(k)}</span>
+            {label(k)} <span className="n">{n(k)}</span>
           </button>
         ))}
       </div>
       {all.length === 0 ? (
         <StateCard icon="heart" title={t("fav.emptyTitle")} body={t("fav.emptyBody")} actions={<button className="btn primary" onClick={() => nav("/live")}>{t("fav.browse")}</button>} />
-      ) : tab === "live" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(22rem, 1fr))", gap: 8 }}>{chans.map((c) => <Chan key={c.id} source={source} c={c} />)}</div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9.5rem, 1fr))", gap: 20 }}>
-          {favs.map((f) => <PosterCard key={f.key} title={f.name} image={f.image} fav onClick={() => nav(`/${tab === "movie" ? "movie" : "serie"}/${f.refId}`)} />)}
+      ) : tab === "all" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+          {live.length > 0 && <section><h2 className="section-title">{label("live")} <span className="muted">{live.length}</span></h2>{chanGrid}</section>}
+          {n("movie") > 0 && <section><h2 className="section-title">{label("movie")} <span className="muted">{n("movie")}</span></h2>{posters("movie")}</section>}
+          {n("series") > 0 && <section><h2 className="section-title">{label("series")} <span className="muted">{n("series")}</span></h2>{posters("series")}</section>}
         </div>
-      )}
+      ) : n(tab) === 0 ? (
+        <p className="muted">{t("fav.emptyTitle")}</p>
+      ) : tab === "live" ? chanGrid : posters(tab)}
     </div>
   );
 }

@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.25] — 2026-10-05 (Android TV) · Bureau 1.2.25
+
+### Nouveautés
+- Favoris : onglet **Tout** (ouvert par défaut) qui regroupe chaînes, films et séries, classés par section avec leur nombre.
+
 ## [Bureau 1.2.24] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections

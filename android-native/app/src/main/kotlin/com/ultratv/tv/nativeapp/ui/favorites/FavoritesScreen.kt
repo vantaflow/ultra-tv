@@ -122,7 +122,9 @@ fun FavoritesScreen(
     val S = LocalStrings.current
     val D = LocalDs.current
     var tab by remember { mutableIntStateOf(0) }
+    // Onglet 0 « Tout » (par défaut) : tous les favoris classés par section ; puis chaînes, films, séries.
     val labels = listOf(
+        D.favTab(D.catAll, channels.size + movies.size + series.size),
         D.favTab(S.navLive.let { D.channelsWord }, channels.size),
         D.favTab(S.moviesTitle, movies.size),
         D.favTab(S.seriesTitle, series.size),
@@ -152,10 +154,33 @@ fun FavoritesScreen(
             SectionTitle(S.favorites, 48)
             tabs()
         }
-        val empty = when (tab) { 0 -> channels.isEmpty(); 1 -> movies.isEmpty(); else -> series.isEmpty() }
+        val empty = when (tab) { 0 -> channels.isEmpty() && movies.isEmpty() && series.isEmpty(); 1 -> channels.isEmpty(); 2 -> movies.isEmpty(); else -> series.isEmpty() }
         if (empty) {
             StateCard(D.emptyFavTitle, D.emptyFavBody, Icons.Heart, D.browseLive, onPrimary = onBrowseLive, badge = Ux.Surface2, modifier = if (touch) Modifier.fillMaxWidth() else Modifier.width(820.design))
         } else if (tab == 0) {
+            // Grille commune : chaînes sur `cc` colonnes, affiches sur `vc` colonnes → total cc × vc, titres pleine largeur.
+            val cc = if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 170f) else 4
+            val vc = if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 110f) else 6
+            LazyVerticalGrid(GridCells.Fixed(cc * vc), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design), verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design), contentPadding = PaddingValues(vertical = 8.design)) {
+                fun header(title: String, n: Int) = item(key = "h-$title", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                    Text("$title  $n", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 16.sp else 30.spx, modifier = Modifier.padding(top = if (touch) 8.dp else 16.design))
+                }
+                if (channels.isNotEmpty()) {
+                    header(D.channelsWord, channels.size)
+                    items(channels, key = { "c${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(vc) }) { c ->
+                        ChannelTile(c, now[c.id], onClick = { onPlayChannel(c.streamUrl, c.name) }, onLong = { vm.remove("LIVE", c.providerId, c.remoteId) })
+                    }
+                }
+                if (movies.isNotEmpty()) {
+                    header(S.moviesTitle, movies.size)
+                    items(movies, key = { "m${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
+                }
+                if (series.isNotEmpty()) {
+                    header(S.seriesTitle, series.size)
+                    items(series, key = { "s${it.id}" }, span = { androidx.compose.foundation.lazy.grid.GridItemSpan(cc) }) { x -> VodCard(x.title, x.poster, Modifier, onClick = { onOpenSeries(x.id) }) }
+                }
+            }
+        } else if (tab == 1) {
             LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 170f) else 4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), contentPadding = PaddingValues(vertical = 8.design)) {
                 items(channels, key = { it.id }) { c ->
                     ChannelTile(c, now[c.id], onClick = { onPlayChannel(c.streamUrl, c.name) }, onLong = { vm.remove("LIVE", c.providerId, c.remoteId) })
@@ -163,7 +188,7 @@ fun FavoritesScreen(
             }
         } else {
             LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 110f) else 6), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design), verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 20.design), contentPadding = PaddingValues(vertical = 8.design)) {
-                if (tab == 1) items(movies, key = { it.id }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
+                if (tab == 2) items(movies, key = { it.id }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
                 else items(series, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
             }
         }
