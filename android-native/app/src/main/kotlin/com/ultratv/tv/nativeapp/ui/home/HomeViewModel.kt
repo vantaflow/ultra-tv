@@ -68,7 +68,12 @@ class HomeViewModel @Inject constructor(
     val continueWatching: StateFlow<List<WatchHistoryEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
         // Reçu d'un autre appareil sans adresse locale (épisode d'une série jamais ouverte ici) : pas de carte cliquable.
-        .map { l -> l.filter { it.streamUrl.isNotBlank() } }
+        // Épisode sans image (anciennes lignes) : affiche de la série.
+        .map { l -> l.filter { it.streamUrl.isNotBlank() }.map { h ->
+            if (h.poster.isNullOrBlank() && h.kind == "EPISODE" && h.parentRemoteId != null)
+                catalog.seriesByRemote(h.providerId, h.parentRemoteId)?.let { s -> h.copy(poster = s.poster ?: s.backdrop) } ?: h
+            else h
+        } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Derniers films / séries ajoutés par le fournisseur. */

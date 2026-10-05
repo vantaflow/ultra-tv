@@ -46,14 +46,16 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 ## Fonctionnalités
 
 - **Recherche** depuis n'importe quel écran : bouton en haut du menu latéral, touches Recherche et micro de la télécommande.
-- **Direct** : catégories actives, filtre par langue dès la première source, séparateurs en en-têtes, badges de qualité, zapping par numéro, retour à la chaîne précédente, 20 chaînes récentes, recherche instantanée (FTS).
-- **Guide** : grille horaire, rappels, enregistrements programmés, **replay** (catch-up Xtream) depuis le guide quand la source le permet.
+- **Direct** : Haut/Bas zappent, **OK ouvre la liste des chaînes**, touches chaîne +/− et TV des télécommandes Google TV ; bandeau chaîne et programme ; zapping par numéro, retour à la chaîne précédente, 20 chaînes récentes, recherche instantanée (FTS).
+- **Catégories** : noms et ordre de la playlist tels que fournis par la source, activer / désactiver / réordonner, filtre texte (« FR » = mot entier) ; pastilles de qualité (SD, HD, FHD, 4K, RAW, HEVC…) pour distinguer les flux d'une même chaîne.
+- **Guide** : grille horaire, rappels, enregistrements programmés, **replay** (catch-up Xtream) depuis le guide quand la source le permet. Programme repris d'une chaîne du même nom quand le fournisseur n'en donne qu'à une catégorie (HEVC, Général…), chaînes « +1 / +2 » décalées d'autant, programme court du fournisseur en secours, et **guide complémentaire gratuit** (XMLTV France par défaut, epgshare01 beIN Sports / Arabie saoudite / Émirats) pour les chaînes restées sans programme.
 - **Pause du direct** (timeshift) : tampon disque circulaire pour les flux MPEG-TS.
-- **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution), reprise de lecture, saisons en onglets.
+- **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution), **reprise automatique** (position enregistrée toutes les 30 s), saisons en onglets, rangées par catégorie.
 - **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
 - **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage).
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
-- **Google TV** : Watch Next, chaîne Favoris, recherche vocale et globale, liens profonds `ultratv://`.
+- **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes), recherche vocale et globale, liens profonds `ultratv://`.
+- **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
 
@@ -105,6 +107,8 @@ Gérez appareils et sources depuis un navigateur : **<https://ultratv-config.kha
   <img src="docs/screenshots/cloud/sharing.png" alt="Partage des sources par appareil" width="48%" />
 </p>
 
+Chaque source a un bouton **Afficher le lien IPTV** (lien M3U complet, à la demande, avec bouton Copier).
+
 Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvre la page d'appairage avec le code déjà rempli. Le code se saisit aussi à la main, avec ou sans tiret.
 
 <p align="center">
@@ -117,6 +121,8 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 - **Même fournisseur partout** : un fournisseur ajouté dans le tableau de bord est reçu par tous les appareils du compte.
 - **Source propre à un appareil** : une source ajoutée sur un appareil lui reste privée tant que vous ne la partagez pas.
 - **Partage choisi par appareil** : source par source, vous cochez les appareils destinataires (dans l'application : Réglages › Sources › *Partager cette source* ; ou dans le tableau de bord).
+- **Catégories partagées** : activer, désactiver une catégorie sur un appareil s'applique aux autres (la modification la plus récente gagne).
+- **Favoris, reprises et derniers vus partagés** : un film commencé sur la TV reprend au même endroit sur le Mac ; un favori ajouté ou retiré l'est partout. Par source du compte, profils rapprochés par leur nom.
 - Les modifications d'un compte sont sérialisées côté Worker (verrou Durable Object) : deux appareils qui écrivent en même temps ne s'écrasent pas.
 
 ## Téléchargements
@@ -145,7 +151,7 @@ adb connect IP_DE_LA_BOX:5555
 adb install -r UltraTV-debug.apk
 ```
 
-Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U ou **Depuis le cloud**), saisissez-la, puis cochez vos langues (seules les catégories correspondantes sont téléchargées).
+Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U ou **Depuis le cloud**), saisissez-la, puis choisissez vos catégories (seules les catégories actives sont téléchargées).
 
 Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
 
@@ -211,6 +217,8 @@ TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masqu
 
 - Le **replay** et la **pause du direct** dépendent de la source (catch-up Xtream, flux MPEG-TS) ; indisponibles sinon.
 - Les fiches TMDB et les sous-titres en ligne exigent un Worker configuré avec les secrets ci-dessus.
+- Un épisode commencé sur la TV apparaît dans « Reprendre » sur l'ordinateur une fois la série ouverte au moins une fois sur celui-ci.
+- Aucun guide gratuit ne couvre les chaînes marocaines (2M, Al Aoula…) : seul le guide du fournisseur les renseigne.
 - La première synchro d'un très gros catalogue (≈ 55 000 chaînes) prend environ une minute sur un appareil de milieu de gamme et davantage sur un modèle d'entrée de gamme.
 - L'APK grossit avec LibVLC (≈ 53 Mo en arm64-v8a, contre ≈ 9 Mo en 1.0.x).
 - Les mesures publiées dans les notes de version viennent d'émulateurs Android TV (rendu logiciel) : à confirmer sur matériel réel.

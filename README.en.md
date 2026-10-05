@@ -46,14 +46,16 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 ## Features
 
 - **Search** from any screen: a button at the top of the side rail, plus the remote's Search and microphone keys.
-- **Live TV**: active categories, language filter from the first source, section separators, quality badges, number zapping, back to the previous channel, 20 recent channels, instant search (FTS).
-- **Guide**: time grid, reminders, scheduled recordings, **replay** (Xtream catch-up) from the guide when the source allows it.
+- **Live TV**: Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, back to the previous channel, 20 recent channels, instant search (FTS).
+- **Categories**: names and playlist order exactly as the source provides them, enable / disable / reorder, text filter ("FR" = whole word); quality badges (SD, HD, FHD, 4K, RAW, HEVC…) to tell apart streams of the same channel.
+- **Guide**: time grid, reminders, scheduled recordings, **replay** (Xtream catch-up) from the guide when the source allows it. Programme borrowed from a channel with the same name when the provider only tags one category (HEVC, General…), "+1 / +2" channels shifted accordingly, the provider's short EPG as a fallback, and a **free additional guide** (XMLTV France by default, epgshare01 beIN Sports / Saudi Arabia / UAE) for channels still without a programme.
 - **Live pause** (timeshift): circular disk buffer for MPEG-TS streams.
-- **Movies and series**: rich details through **TMDB** (poster, plot, cast), resume playback, seasons as tabs.
+- **Movies and series**: rich details through **TMDB** (poster, plot, cast), **automatic resume** (position saved every 30 s), seasons as tabs, rows by category.
 - **Two playback engines**: ExoPlayer (Media3) and **LibVLC**; Auto / ExoPlayer / VLC, decoding Auto / Hardware / Software, automatic fallback and per-channel memory.
 - **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset).
 - **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
-- **Google TV**: Watch Next, Favourites channel, voice and global search, `ultratv://` deep links.
+- **Google TV**: "Continue watching" (movies, episodes and recent live channels), Ultra TV home channel (favourites then recent channels), voice and global search, `ultratv://` deep links.
+- **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
 - **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
 
@@ -105,6 +107,8 @@ Manage devices and sources from a browser: **<https://ultratv-config.khalilbenaz
   <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
 </p>
 
+Each source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button).
+
 Pair in one scan: the TV shows a QR, the phone camera opens the pairing page with the code already filled in. The code can also be typed by hand, with or without the dash.
 
 <p align="center">
@@ -117,6 +121,8 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 - **Same provider everywhere**: a provider added in the dashboard is received by every device on the account.
 - **Device-only source**: a source added on a device stays private to it until you share it.
 - **Sharing chosen per device**: source by source, tick the receiving devices (in the app: Settings › Sources › *Share this source*; or in the dashboard).
+- **Shared categories**: enabling or disabling a category on one device applies to the others (latest change wins).
+- **Shared favourites, resume points and recently watched**: a movie started on the TV resumes at the same spot on the Mac; a favourite added or removed is everywhere. Per account source, profiles matched by name.
 - Account changes are serialized on the Worker (Durable Object lock): two devices writing at once do not overwrite each other.
 
 ## Downloads
@@ -145,7 +151,7 @@ adb connect BOX_IP:5555
 adb install -r UltraTV-debug.apk
 ```
 
-On first launch: choose the source type (Xtream Codes, M3U link, M3U file or **From the cloud**), enter it, then tick your languages (only the matching categories are downloaded).
+On first launch: choose the source type (Xtream Codes, M3U link, M3U file or **From the cloud**), enter it, then choose your categories (only active categories are downloaded).
 
 An address like `…/get.php?username=…&password=…` pasted as an M3U link is recognised and added as an Xtream Codes source (many providers block `get.php`).
 
@@ -211,6 +217,8 @@ TMDB and OpenSubtitles are optional: without their secrets, the app hides the ma
 
 - **Replay** and **live pause** depend on the source (Xtream catch-up, MPEG-TS streams); unavailable otherwise.
 - TMDB details and online subtitles require a Worker configured with the secrets above.
+- An episode started on the TV shows up in "Resume" on the computer once the series has been opened there at least once.
+- No free guide covers Moroccan channels (2M, Al Aoula…): only the provider's guide does.
 - The first sync of a very large catalogue (≈ 55,000 channels) takes about a minute on a mid-range device and longer on an entry-level one.
 - The APK grows with LibVLC (≈ 53 MB in arm64-v8a, against ≈ 9 MB in 1.0.x).
 - Measurements published in the release notes come from Android TV emulators (software rendering): to be confirmed on real hardware.

@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.21] — 2026-10-05 (Android TV)
+
+### Corrections
+- Accueil, « Reprendre la lecture » : bas de la carte plus coupé ; affiche de la série pour les épisodes déjà enregistrés sans image.
+
+### Documentation
+- README (FR/EN) et site : partage des favoris et reprises, catégories partagées, guide complémentaire, zapping et liste des chaînes, Google TV, lien IPTV du tableau de bord.
+
 ## [1.2.20] — 2026-10-05 (Android TV)
 
 ### Nouveautés

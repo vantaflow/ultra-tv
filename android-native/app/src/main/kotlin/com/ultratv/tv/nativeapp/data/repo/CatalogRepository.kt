@@ -68,6 +68,7 @@ class CatalogRepository @Inject constructor(
     suspend fun channelById(id: Long): ChannelEntity? = channelDao.byId(id)
     suspend fun movieById(id: Long): MovieEntity? = movieDao.byId(id)
     suspend fun seriesById(id: Long): SeriesEntity? = seriesDao.byId(id)
+    suspend fun seriesByRemote(pid: Long, remoteId: String): SeriesEntity? = seriesDao.byRemoteId(pid, remoteId)
     suspend fun episodeById(id: Long): EpisodeEntity? = episodeDao.byId(id)
 
     /**

@@ -283,7 +283,7 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
                 ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20)
                 ProgressLine(progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), heightPx = 6, track = Color(0x66000000))
             }
-            Column(Modifier.padding(horizontal = 4.design).padding(bottom = 6.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
+            Column(Modifier.padding(horizontal = 12.design).padding(bottom = 16.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
