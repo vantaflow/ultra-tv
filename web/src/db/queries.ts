@@ -48,8 +48,12 @@ export const programsFor = (cid: number, epg: string, from: number, to: number) 
 
 export const favKey = (profile: string, sourceId: number, kind: Kind, refId: number) => `${profile}:${sourceId}:${kind}:${refId}`;
 
+// Avec un type : égalité exacte (un between(x, x) exclut la borne haute et ne renvoyait jamais rien).
 export const favoritesOf = (profile: string, sourceId: number, kind?: Kind): Promise<FavoriteRow[]> =>
-  db.favorites.where("[profile+sourceId+kind]").between([profile, sourceId, kind ?? ""], [profile, sourceId, kind ?? "￿"]).reverse().sortBy("addedAt");
+  (kind
+    ? db.favorites.where("[profile+sourceId+kind]").equals([profile, sourceId, kind])
+    : db.favorites.where("[profile+sourceId+kind]").between([profile, sourceId, ""], [profile, sourceId, "￿"])
+  ).reverse().sortBy("addedAt");
 
 export async function toggleFavorite(row: Omit<FavoriteRow, "key" | "addedAt">): Promise<boolean> {
   const key = favKey(row.profile, row.sourceId, row.kind, row.refId);

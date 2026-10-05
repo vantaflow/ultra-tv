@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.22] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Favoris : la lecture par type (direct, films, séries) ne renvoyait jamais rien — cœur jamais rempli sur les fiches, onglets de la page Favoris à 0, favoris absents des rangées — alors que les favoris étaient bien enregistrés et synchronisés.
+
 ## [Bureau 1.2.21] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections
