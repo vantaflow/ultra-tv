@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.19] — 2026-10-05 (Android TV)
+
+### Corrections
+- Lecture : la box ne se met plus en veille pendant un film, un épisode ou le direct.
+- Catégories partagées : des réglages reçus pour un type pas encore chargé (séries après le direct) restent en attente au lieu d'être marqués appliqués ; un état local jamais publié (ex. séries activées sur la TV) est publié à la fin de la synchro, et suit sur le Mac.
+
 ## [1.2.18] — 2026-10-05 (Android TV)
 
 ### Corrections

@@ -482,6 +482,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             delay(500)
         }
     }
+    // Pas de veille ni d'économiseur d'écran pendant la lecture (la box s'endormait au milieu d'un épisode).
+    val activity = context as? android.app.Activity
+    androidx.compose.runtime.DisposableEffect(playing, state.phase) {
+        val keep = playing || state.phase == Phase.LOADING
+        activity?.window?.let { w -> if (keep) w.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+        onDispose { activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
     LaunchedEffect(aspect) { session.engine?.setAspect(aspect) }
     LaunchedEffect(speed) { session.engine?.setSpeed(speed) }
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }

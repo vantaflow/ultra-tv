@@ -130,11 +130,19 @@ class CloudSyncManager @Inject constructor(
         prefsScope.launch {
             statusBus.status.map { it != null }.distinctUntilChanged().collect { running ->
                 if (running) return@collect
-                for (cid in links.pendingPrefsIds()) runCatching {
+                val pendingIds = links.pendingPrefsIds().toSet()
+                for (cid in pendingIds) runCatching {
                     val localId = links.localIdOf(cid) ?: run { links.setPendingPrefs(cid, null); null } ?: return@runCatching
                     val remote = DisplayPrefs.parse(org.json.JSONObject(links.pendingPrefs(cid) ?: return@runCatching)) ?: return@runCatching
                     if (remote.updatedAt > links.prefsAt(cid)) applyRemote(localId, cid, remote, isActive = repo.firstActive()?.id == localId)
                     else links.setPendingPrefs(cid, null)
+                }
+                // Réconciliation : un état local qui diffère de la dernière version échangée (changement jamais publié,
+                // catégories arrivées après coup…) est publié. Sans cela, la TV et le Mac divergeaient en silence.
+                for (p in repo.observeProviders().first()) {
+                    val cid = links.cloudIdOf(p.id) ?: continue
+                    if (cid in links.pendingPrefsIds() || links.prefsAt(cid) <= 0L) continue
+                    publishPrefs(p.id)
                 }
             }
         }
@@ -177,11 +185,14 @@ class CloudSyncManager @Inject constructor(
             return
         }
         links.setPendingPrefs(cloudId, null)
+        var incomplete = false
         // Même chemin que l'écran Catégories : désactiver retire le contenu, réactiver recharge ces catégories.
         for ((kind, key) in DisplayPrefs.KINDS) {
             val off = remote.disabled[key].orEmpty().toSet()
             val all = dao.remoteIds(localId, kind)
-            if (all.isEmpty()) continue
+            // Type pas encore chargé (séries après le direct…) : ces réglages restent EN ATTENTE pour lui, sinon ses
+            // catégories arrivaient ensuite toutes actives alors que le réglage était marqué « appliqué ».
+            if (all.isEmpty()) { if (off.isNotEmpty()) incomplete = true; continue }
             val wasOff = dao.disabledIds(localId, kind).toSet()
             categories.setEnabled(localId, kind, all.filter { it in off && it !in wasOff }, false)
             categories.setEnabled(localId, kind, all.filter { it !in off && it in wasOff }, true)
@@ -193,6 +204,7 @@ class CloudSyncManager @Inject constructor(
             prefs.setIncludeMulti(multi)
             prefs.setIncludeUnknownLang(unknown)
         }
+        if (incomplete) { links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote)); return }
         links.setPrefs(cloudId, remote.updatedAt, DisplayPrefs.fingerprint(DisplayPrefs.toCloud(localPrefs(localId), 0)))
     }
 
