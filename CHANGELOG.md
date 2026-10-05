@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.27] — 2026-10-05
+
+### Corrections
+- macOS : mise à jour automatique sans signature Apple. L'application télécharge elle-même la nouvelle version, puis « Installer » remplace l'application et la relance (l'ancienne est restaurée en cas d'échec). À installer une dernière fois à la main ; les suivantes sont automatiques.
+
 ## [1.2.26] — 2026-10-05 (Android TV)
 
 ### Corrections

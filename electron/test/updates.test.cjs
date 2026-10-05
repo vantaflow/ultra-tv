@@ -18,3 +18,11 @@ test("aucune release de bureau : null", () => {
   assert.strictEqual(pickDesktopTag([{ tag_name: "v1.2.22" }]), null);
   assert.strictEqual(pickDesktopTag(null), null);
 });
+
+test("compareVersions : ordre numérique, pas alphabétique", () => {
+  const { compareVersions } = require("../updates.cjs");
+  assert.ok(compareVersions("1.2.26", "1.2.9") > 0);
+  assert.ok(compareVersions("1.2.9", "1.2.26") < 0);
+  assert.strictEqual(compareVersions("1.2.26", "1.2.26"), 0);
+  assert.ok(compareVersions("1.3.0", "1.2.99") > 0);
+});
