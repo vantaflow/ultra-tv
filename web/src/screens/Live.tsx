@@ -184,7 +184,7 @@ function LiveInner({ source }: { source: Source }) {
             {nn.now && (
               <div className="progress" style={{ height: 8 }}><i style={{ width: `${Math.min(100, Math.max(0, ((Date.now() - nn.now.start) / (nn.now.end - nn.now.start)) * 100))}%` }} /></div>
             )}
-            {nn.now?.desc ? <p className="desc clamp-4">{nn.now.desc}</p> : !nn.now && <p className="desc muted">{t("common.noProgram")}</p>}
+            {nn.now?.desc ? <ProgramDesc text={nn.now.desc} /> : !nn.now && <p className="desc muted">{t("common.noProgram")}</p>}
             {nn.next && (
               <div className="next">
                 <div className="eyebrow">{t("common.upNext")}</div>
@@ -213,5 +213,18 @@ function LiveInner({ source }: { source: Source }) {
         </div>
       )}
     </div>
+  );
+}
+
+/** Description du programme : 4 lignes, « Voir plus » pour la lire en entier (repliée à chaque changement de programme). */
+function ProgramDesc({ text }: { text: string }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [text]);
+  return (
+    <>
+      <p className={open ? "desc" : "desc clamp-4"}>{text}</p>
+      {text.length > 180 && <button className="more" onClick={() => setOpen((o) => !o)}>{t(open ? "common.showLess" : "common.showMore")}</button>}
+    </>
   );
 }

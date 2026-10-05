@@ -25,6 +25,8 @@ export const en: Dict = {
   "common.continue": "Continue",
   "common.close": "Close",
   "common.all": "All",
+  "common.showMore": "Show more",
+  "common.showLess": "Show less",
   "common.none": "None",
   "common.recent": "Recent",
   "common.favorites": "Favorites",

@@ -25,6 +25,8 @@ export const ar: Dict = {
   "common.continue": "متابعة",
   "common.close": "إغلاق",
   "common.all": "الكل",
+  "common.showMore": "عرض المزيد",
+  "common.showLess": "عرض أقل",
   "common.none": "لا شيء",
   "common.recent": "الأحدث",
   "common.favorites": "المفضلة",

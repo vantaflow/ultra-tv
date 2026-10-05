@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.26] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Direct, programme en cours : la description n'est plus coupée au milieu d'une ligne ; « Voir plus » pour la lire en entier.
+
 ## [1.2.25] — 2026-10-05 (Android TV) · Bureau 1.2.25
 
 ### Nouveautés

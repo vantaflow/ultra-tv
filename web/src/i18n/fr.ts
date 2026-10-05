@@ -24,6 +24,8 @@ export const fr = {
   "common.continue": "Continuer",
   "common.close": "Fermer",
   "common.all": "Tout",
+  "common.showMore": "Voir plus",
+  "common.showLess": "Voir moins",
   "common.none": "Aucun",
   "common.recent": "Récents",
   "common.favorites": "Favoris",

@@ -175,7 +175,9 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .preview { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; min-width: 0; }
 .preview-slot { aspect-ratio: 16 / 9; border-radius: 1.25rem; background: var(--tone); position: relative; width: 100%; display: flex; align-items: center; justify-content: center; color: var(--text-5); font-weight: 600; font-size: 0.875rem; text-align: center; padding: 1rem; }
 .preview h2 { font-size: 1.625rem; line-height: 1.15; }
+.preview > * { flex-shrink: 0; }
 .preview p.desc { color: var(--text-2); line-height: 1.55; font-size: 0.9375rem; }
+.preview .more { align-self: flex-start; font-size: 0.8125rem; font-weight: 700; color: var(--text-2); text-decoration: underline; margin-top: -0.5rem; }
 .preview .actions { display: flex; gap: 0.625rem; flex-wrap: wrap; }
 .preview .next { display: flex; flex-direction: column; gap: 0.5rem; }
 .preview .next .r { display: flex; justify-content: space-between; font-size: 0.9375rem; gap: 1rem; }
