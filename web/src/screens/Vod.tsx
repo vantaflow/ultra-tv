@@ -38,13 +38,19 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const [filter, setFilter] = useState("");
   const [pop, setPop] = useState(false);
   const dq = useDebounced(filter, 250);
-  const effSort: VodSort = cat !== "" && sort === "rating" ? "recent" : sort;
+  // « Mieux notés » dans une catégorie : pas d'index dédié, tri en mémoire (mode tableau).
+  const ratingInCat = cat !== "" && sort === "rating";
   const total = kind === "movie" ? source.counts.movie : source.counts.series;
 
-  const make = () => (kind === "movie" ? moviesCol(source.cid, cat || null, effSort) : seriesCol(source.cid, cat || null, effSort)) as import("dexie").Collection<Item, unknown>;
-  const arrayMode = dq.trim().length > 0;
-  const arr = useLiveQuery(async () => (arrayMode ? make().filter((r) => r.norm.includes(normText(dq))).limit(2000).toArray() : []), [arrayMode, dq, cat, effSort, source.cid, kind]);
-  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, cat, effSort, kind, arrayMode], 96);
+  const make = () => (kind === "movie" ? moviesCol(source.cid, cat || null, sort) : seriesCol(source.cid, cat || null, sort)) as import("dexie").Collection<Item, unknown>;
+  const arrayMode = dq.trim().length > 0 || ratingInCat;
+  const arr = useLiveQuery(async () => {
+    if (!arrayMode) return [];
+    const q = normText(dq.trim());
+    const col = q ? make().filter((r) => r.norm.includes(q)) : make();
+    return ratingInCat ? byRating(await col.toArray()).slice(0, 5000) : col.limit(2000).toArray();
+  }, [arrayMode, ratingInCat, dq, cat, sort, source.cid, kind]);
+  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, cat, sort, kind, arrayMode], 96);
   const rows: Rows<Item> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
 
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
@@ -67,9 +73,9 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
               <Icon name="search" size={16} />
               <input className="input" placeholder={t("common.filter")} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t("common.filter")} />
             </div>
-            <Seg label={t("vod.sortBy")} value={effSort} onChange={setSort} options={[
+            <Seg label={t("vod.sortBy")} value={sort} onChange={setSort} options={[
               { v: "recent", label: t("common.sortRecent") }, { v: "provider", label: t("common.sortProvider") },
-              ...(cat === "" ? [{ v: "rating" as const, label: t("common.sortRating") }] : []),
+              { v: "rating", label: t("common.sortRating") },
             ]} />
           </div>
         </div>
@@ -81,12 +87,12 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
         </div>
       </div>
       {cat === "" && !arrayMode && (cats?.length ?? 0) > 0 ? (
-        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet}
+        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={sort}
           onSeeAll={(id) => prefs.set({ liveCat: { ...prefs.liveCat, [key]: id } })}
           onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />
       ) : rows.count === 0 ? <div className="state-card"><p>{t("vod.empty")}</p></div> : (
         <VGrid
-          rows={rows} minW={150} gap={20} cellH={(w) => w * 1.5 + 58} resetKey={`${cat}|${effSort}|${dq}|${kind}`}
+          rows={rows} minW={150} gap={20} cellH={(w) => w * 1.5 + 58} resetKey={`${cat}|${sort}|${dq}|${kind}`}
           render={(r) => r ? (
             <PosterCard
               kind={kind === "movie" ? "movie" : "tv"} year={r.year}
@@ -114,9 +120,14 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
 
 const ROW_SIZE = 20;
 
-/** Vue « Tout » : une rangée défilante par catégorie (20 plus récents), « Voir tout » ouvre la grille. Chargement progressif. */
-function CategoryRows({ source, kind, cats, favSet, onSeeAll, onOpen }: {
-  source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>;
+/** Mieux notés d'abord (tri stable : à note égale, ordre de la collection conservé). Exporté pour les tests. */
+export function byRating<T extends { rating: number }>(items: T[]): T[] {
+  return [...items].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+}
+
+/** Vue « Tout » : une rangée défilante par catégorie (20 premiers selon le tri choisi), « Voir tout » ouvre la grille. Chargement progressif. */
+function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen }: {
+  source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>; sort: VodSort;
   onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
 }) {
   const [shown, setShown] = useState(8);
@@ -130,18 +141,21 @@ function CategoryRows({ source, kind, cats, favSet, onSeeAll, onOpen }: {
   }, [cats.length]);
   return (
     <div className="cat-rows">
-      {cats.slice(0, shown).map((c) => <CategoryRowView key={c.extId} source={source} kind={kind} cat={c} favSet={favSet} onSeeAll={onSeeAll} onOpen={onOpen} />)}
+      {cats.slice(0, shown).map((c) => <CategoryRowView key={c.extId} source={source} kind={kind} cat={c} favSet={favSet} sort={sort} onSeeAll={onSeeAll} onOpen={onOpen} />)}
       <div ref={sentinel} style={{ height: 1 }} />
     </div>
   );
 }
 
-function CategoryRowView({ source, kind, cat, favSet, onSeeAll, onOpen }: {
-  source: Source; kind: "movie" | "series"; cat: CategoryRow; favSet: Set<number>;
+function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: {
+  source: Source; kind: "movie" | "series"; cat: CategoryRow; favSet: Set<number>; sort: VodSort;
   onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
 }) {
   const t = useT();
-  const items = useLiveQuery(async () => ((kind === "movie" ? moviesCol(source.cid, cat.extId, "recent") : seriesCol(source.cid, cat.extId, "recent")) as import("dexie").Collection<Item, unknown>).limit(ROW_SIZE).toArray(), [source.cid, cat.extId, kind]);
+  const items = useLiveQuery(async () => {
+    const col = (kind === "movie" ? moviesCol(source.cid, cat.extId, sort) : seriesCol(source.cid, cat.extId, sort)) as import("dexie").Collection<Item, unknown>;
+    return sort === "rating" ? byRating(await col.toArray()).slice(0, ROW_SIZE) : col.limit(ROW_SIZE).toArray();
+  }, [source.cid, cat.extId, kind, sort]);
   if (items && items.length === 0) return null;
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
   return (

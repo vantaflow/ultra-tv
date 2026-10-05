@@ -217,6 +217,8 @@ export const en: Dict = {
   "set.about.update": "Check for updates",
   "set.about.updateNone": "You are up to date.",
   "set.about.updateAvail": "Update {v} available.",
+  "set.about.updateFail": "Couldn’t check for updates. Try again later or download the latest version from the website.",
+  "set.about.updateUnavail": "Automatic updates aren’t available for this install: download the latest version from the website.",
   "set.about.privacy": "Ultra TV provides no content. Your source credentials are encrypted on this device and never logged.",
   "set.about.shortcuts": "Keyboard shortcuts",
   "set.sk.search": "Search",

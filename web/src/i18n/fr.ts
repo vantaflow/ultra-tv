@@ -216,6 +216,8 @@ export const fr = {
   "set.about.update": "Rechercher une mise à jour",
   "set.about.updateNone": "Vous avez la dernière version.",
   "set.about.updateAvail": "Mise à jour {v} disponible.",
+  "set.about.updateFail": "Impossible de vérifier les mises à jour. Réessayez plus tard ou téléchargez la dernière version sur le site.",
+  "set.about.updateUnavail": "Mise à jour automatique indisponible sur cette installation : téléchargez la dernière version sur le site.",
   "set.about.privacy": "Ultra TV ne fournit aucun contenu. Les identifiants de vos sources sont chiffrés sur cet appareil et jamais journalisés.",
   "set.about.shortcuts": "Raccourcis clavier",
   "set.sk.search": "Rechercher",

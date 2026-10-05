@@ -26,6 +26,34 @@ function isMacSigned() {
   });
 }
 
+const REPO = "khalilbenaz/ultra-tv";
+
+// La release GitHub "Latest" est celle de l'application Android (vX.Y.Z), sans latest.yml :
+// le fournisseur GitHub d'electron-updater ne trouvait donc jamais la version de bureau.
+// On cherche la release de bureau publiee la plus recente (desktop-vX.Y.Z) et on pointe dessus.
+// Exporte pour les tests.
+function pickDesktopTag(releases) {
+  const tags = (Array.isArray(releases) ? releases : [])
+    .filter((r) => r && !r.draft && !r.prerelease && /^desktop-v\d+\.\d+\.\d+$/.test(r.tag_name || ""))
+    .map((r) => r.tag_name);
+  const num = (t) => t.slice("desktop-v".length).split(".").map(Number);
+  tags.sort((a, b) => {
+    const x = num(a), y = num(b);
+    for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return y[i] - x[i];
+    return 0;
+  });
+  return tags[0] || null;
+}
+
+async function latestDesktopTag() {
+  const res = await fetch(`https://api.github.com/repos/${REPO}/releases?per_page=50`, {
+    headers: { Accept: "application/vnd.github+json", "User-Agent": "UltraTV-Updater" },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`github ${res.status}`);
+  return pickDesktopTag(await res.json());
+}
+
 function createUpdater({ app, send }) {
   let autoUpdater = null;
   let last = { state: "unavailable", message: "not-initialised" };
@@ -75,6 +103,12 @@ function createUpdater({ app, send }) {
     const ok = await initPromise;
     if (!ok || !autoUpdater) return last;
     try {
+      const tag = await latestDesktopTag();
+      if (!tag) {
+        publish({ state: "not-available" });
+        return last;
+      }
+      autoUpdater.setFeedURL({ provider: "generic", url: `https://github.com/${REPO}/releases/download/${tag}` });
       await autoUpdater.checkForUpdates();
     } catch {
       publish({ state: "error", message: "update-failed" });
@@ -85,4 +119,4 @@ function createUpdater({ app, send }) {
   return { check, status: () => last };
 }
 
-module.exports = { createUpdater };
+module.exports = { createUpdater, pickDesktopTag };

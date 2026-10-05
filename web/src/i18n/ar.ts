@@ -217,6 +217,8 @@ export const ar: Dict = {
   "set.about.update": "البحث عن تحديث",
   "set.about.updateNone": "لديك أحدث إصدار.",
   "set.about.updateAvail": "التحديث {v} متاح.",
+  "set.about.updateFail": "تعذّر البحث عن تحديثات. أعد المحاولة لاحقًا أو نزّل أحدث إصدار من الموقع.",
+  "set.about.updateUnavail": "التحديث التلقائي غير متاح لهذا التثبيت: نزّل أحدث إصدار من الموقع.",
   "set.about.privacy": "لا يوفّر Ultra TV أي محتوى. بيانات اعتماد مصادرك مشفّرة على هذا الجهاز ولا تُسجَّل أبدًا.",
   "set.about.shortcuts": "اختصارات لوحة المفاتيح",
   "set.sk.search": "بحث",

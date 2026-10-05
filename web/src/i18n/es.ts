@@ -217,6 +217,8 @@ export const es: Dict = {
   "set.about.update": "Buscar actualizaciones",
   "set.about.updateNone": "Tienes la última versión.",
   "set.about.updateAvail": "Actualización {v} disponible.",
+  "set.about.updateFail": "No se pudo buscar actualizaciones. Inténtalo más tarde o descarga la última versión desde el sitio.",
+  "set.about.updateUnavail": "Las actualizaciones automáticas no están disponibles en esta instalación: descarga la última versión desde el sitio.",
   "set.about.privacy": "Ultra TV no proporciona contenido. Las credenciales de tus fuentes se cifran en este equipo y nunca se registran.",
   "set.about.shortcuts": "Atajos de teclado",
   "set.sk.search": "Buscar",

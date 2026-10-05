@@ -424,7 +424,10 @@ function AboutPane() {
         {b?.checkForUpdates && (
           <button className="btn" onClick={async () => {
             const r = (await b.checkForUpdates!()) as { state?: string; version?: string } | undefined;
-            setMsg(r?.state === "available" || r?.state === "downloading" || r?.state === "downloaded" ? t("set.about.updateAvail", { v: r.version ?? "" }) : t("set.about.updateNone"));
+            const st = r?.state;
+            // Une erreur n'est plus présentée comme « à jour ».
+            setMsg(st === "available" || st === "downloading" || st === "downloaded" ? t("set.about.updateAvail", { v: r?.version ?? "" })
+              : st === "error" ? t("set.about.updateFail") : st === "unavailable" ? t("set.about.updateUnavail") : t("set.about.updateNone"));
           }}>{t("set.about.update")}</button>
         )}
       </Pref>

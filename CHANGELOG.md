@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.17] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Films et séries : les tris « Récents », « Ordre du fournisseur » et « Mieux notés » s'appliquent aussi à la vue par rangées de catégories ; « Mieux notés » fonctionne désormais dans une catégorie.
+- Mise à jour : la recherche ne trouvait jamais la nouvelle version de bureau (elle lisait la release Android marquée « Latest ») ; elle vise maintenant la dernière release de bureau publiée.
+- Mise à jour : une vérification échouée n'affiche plus « Vous avez la dernière version ».
+
 ## [1.2.22] — 2026-10-05 (Android TV) · Bureau 1.2.16
 
 ### Corrections
