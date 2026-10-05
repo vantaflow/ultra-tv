@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.18] — 2026-10-05 (Mac, Windows, Linux)
+
+### Nouveautés
+- Mise à jour prête : bandeau « Redémarrer et installer » dès que la nouvelle version est téléchargée (sinon installation à la fermeture de l'application).
+- Application laissée ouverte : nouvelle recherche de mise à jour toutes les 6 heures.
+
 ## [Bureau 1.2.17] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections

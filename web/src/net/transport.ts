@@ -24,6 +24,7 @@ export interface UltraTvBridge {
   isFullscreen?(): Promise<boolean> | boolean;
   onFullscreenChange?(cb: (on: boolean) => void): (() => void) | void;
   checkForUpdates?(): Promise<unknown>;
+  installUpdate?(): Promise<unknown>;
   onUpdateStatus?(cb: (s: { state: string; version?: string; percent?: number }) => void): (() => void) | void;
   openExternal?(url: string): Promise<unknown> | void;
   setTitleBarTheme?(isDark: boolean): Promise<unknown> | void;

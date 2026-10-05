@@ -443,3 +443,5 @@ input[type="checkbox"]:indeterminate::after { content: ""; width: 0.55rem; heigh
 .cat-row-item { flex: 0 0 9.5rem; scroll-snap-align: start; }
 .cat-row-more { flex: 0 0 9.5rem; aspect-ratio: 2 / 3; border-radius: var(--radius, 1rem); background: var(--surface); color: var(--text); font-weight: 700; }
 .cat-row-more:hover, .cat-row-more:focus-visible { background: var(--surface-2, var(--surface)); outline: 2px solid var(--accent); }
+.update-ready { position: fixed; bottom: 1.5rem; inset-inline-end: 1.5rem; z-index: 101; display: flex; align-items: center; gap: 0.75rem; max-width: min(34rem, calc(100vw - 2rem)); padding: 0.875rem 1rem; border-radius: 1rem; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+.update-ready .sub { font-size: 0.8125rem; opacity: 0.75; }

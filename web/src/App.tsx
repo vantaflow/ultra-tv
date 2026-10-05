@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { dirOf } from "@/i18n";
+import { dirOf, useT } from "@/i18n";
 import { initTransport, bridge } from "@/net/transport";
 import { PlayerHost } from "@/player/PlayerHost";
 import { ErrorBoundary } from "@/ui/ErrorBoundary";
@@ -109,6 +109,22 @@ function Effects() {
   return null;
 }
 
+/** Mise à jour téléchargée : proposée tout de suite (sinon installée à la fermeture de l'application). */
+function UpdateReady() {
+  const t = useT();
+  const u = useUi((s) => s.update);
+  const [hidden, setHidden] = useState<string | null>(null);
+  const b = bridge();
+  if (u?.state !== "downloaded" || !b?.installUpdate || hidden === (u.version ?? "")) return null;
+  return (
+    <div className="update-ready" role="status">
+      <div><strong>{t("state.update", { v: u.version ?? "" })}</strong><div className="sub">{t("state.updateLater")}</div></div>
+      <button className="btn primary sm" onClick={() => void b.installUpdate!()}>{t("state.install")}</button>
+      <button className="btn sm" onClick={() => setHidden(u.version ?? "")}>{t("state.later")}</button>
+    </div>
+  );
+}
+
 function Shell() {
   const loc = useLocation();
   const { ready } = useSources();
@@ -135,6 +151,7 @@ function Shell() {
         </Routes>
       </main>
       <Toasts />
+      <UpdateReady />
     </div>
   );
 }

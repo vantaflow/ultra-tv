@@ -301,6 +301,8 @@ export const fr = {
   "state.update": "Mise à jour disponible · {v}",
   "state.updateBody": "Téléchargement vérifié avant installation.",
   "state.install": "Redémarrer et installer",
+  "state.updateLater": "La mise à jour s’installera aussi à la fermeture de l’application.",
+  "state.later": "Plus tard",
   "state.downloading": "Téléchargement de la mise à jour… {p} %",
 
   "profile.who": "Qui regarde ?",

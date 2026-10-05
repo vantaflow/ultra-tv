@@ -255,6 +255,7 @@ function registerIpc() {
   });
   handle("ut:fullscreen:get", () => mainWindow.isFullScreen());
   handle("ut:update:check", () => updater.check());
+  handle("ut:update:install", () => updater.install());
   handle("ut:open-external", async (url) => {
     if (typeof url !== "string" || url.length > 4096 || !isHttpUrl(url)) throw new Error("invalid-url");
     await shell.openExternal(url);
@@ -412,6 +413,8 @@ if (!app.requestSingleInstanceLock()) {
 
     if (app.isPackaged && !IS_DEV && !HEADLESS) {
       setTimeout(() => void updater.check(), 5000);
+      // Application laissee ouverte longtemps : nouvelle verification toutes les 6 h.
+      setInterval(() => void updater.check(), 6 * 3600_000);
     }
 
     app.on("activate", () => {

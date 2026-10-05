@@ -302,6 +302,8 @@ export const ar: Dict = {
   "state.update": "تحديث متاح · {v}",
   "state.updateBody": "يتم التحقق من التنزيل قبل التثبيت.",
   "state.install": "إعادة التشغيل والتثبيت",
+  "state.updateLater": "سيتم تثبيت التحديث أيضًا عند إغلاق التطبيق.",
+  "state.later": "لاحقًا",
   "state.downloading": "جارٍ تنزيل التحديث… {p} %",
 
   "profile.who": "من يشاهد؟",

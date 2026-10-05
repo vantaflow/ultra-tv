@@ -116,7 +116,14 @@ function createUpdater({ app, send }) {
     return last;
   }
 
-  return { check, status: () => last };
+  // Installation immediate d'une mise a jour deja telechargee (silencieuse, relance l'application).
+  function install() {
+    if (!autoUpdater || last.state !== "downloaded") return false;
+    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    return true;
+  }
+
+  return { check, install, status: () => last };
 }
 
 module.exports = { createUpdater, pickDesktopTag };

@@ -302,6 +302,8 @@ export const en: Dict = {
   "state.update": "Update available · {v}",
   "state.updateBody": "Download is verified before installing.",
   "state.install": "Restart and install",
+  "state.updateLater": "It will also install when you quit the app.",
+  "state.later": "Later",
   "state.downloading": "Downloading the update… {p} %",
 
   "profile.who": "Who's watching?",
