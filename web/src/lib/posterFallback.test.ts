@@ -37,3 +37,14 @@ describe("fallbackPoster", () => {
     expect(await fallbackPoster("Autre film", "movie")).toBeNull();
   });
 });
+
+describe("fallbackPoster — sous-titre", () => {
+  it("réessaie sur le titre principal quand le titre complet ne donne rien", async () => {
+    const calls: string[] = [];
+    setPosterFinder(async (_k, q) => { calls.push(q); return q === "Zzz Saga" ? "/s.jpg" : null; });
+    const u = await fallbackPoster("Zzz Saga : La lignée immortelle (2025)", "movie");
+    expect(u).toBe("https://image.tmdb.org/t/p/w342/s.jpg");
+    expect(calls).toContain("Zzz Saga");
+    setPosterFinder(null);
+  });
+});

@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.22] — 2026-10-05 (Android TV) · Bureau 1.2.16
+
+### Corrections
+- Gestion des catégories : les catégories cochées sont toujours listées en premier (TV, Mac, Windows), ordre du fournisseur conservé dans chaque groupe.
+- Bureau : une série regardée sur un autre appareil apparaît avec sa dernière position même si elle n'a jamais été ouverte sur ce poste.
+- Bureau : affiches manquantes retrouvées pour les titres longs avec sous-titre (recherche sur le titre principal) ; les anciens « introuvable » sont réessayés.
+
 ## [1.2.21] — 2026-10-05 (Android TV)
 
 ### Corrections

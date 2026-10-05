@@ -71,6 +71,8 @@ class CategoryManager @Inject constructor(
                 val badge = parsed.badge ?: when (parsed.quality) { ChannelNameParser.Q_4K -> "4K"; ChannelNameParser.Q_FHD -> "FHD"; else -> c.lang.uppercase().takeIf { it.isNotEmpty() && it != LanguageDetector.MULTI } }
                 CategoryRow(c.remoteId, com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(c.name), badge, if (c.enabled) byId[c.remoteId] ?: 0 else null, c.enabled, c.lang, c.locked)
             }.filter { r -> q.isEmpty() || matches(r.label, q) || r.badge?.lowercase() == q || r.lang == q }
+                // Cochées d'abord (ordre conservé dans chaque groupe), comme sur le bureau.
+                .sortedByDescending { it.enabled }
         }
 
         /** Filtre court (« FR », « AR », « 4K ») = mot entier : « FR » ne doit pas ramener « AFRICA ». Sinon, sous-chaîne. */

@@ -37,7 +37,7 @@ export function dedupeByTitle<T extends { title: string; year?: number | null; p
 
 type Finder = (kind: "movie" | "tv", query: string, year: number | null) => Promise<string | null>;
 const IMG = "https://image.tmdb.org/t/p/w342";
-const KEY = "utv.posterCache.v1";
+const KEY = "utv.posterCache.v2"; // v2 : nouvelles variantes de recherche, les « rien trouvé » de v1 sont réessayés
 const MAX = 3000;
 const cache = new Map<string, string | null>();
 const inflight = new Map<string, Promise<string | null>>();
@@ -78,6 +78,9 @@ export async function fallbackPoster(title: string, kind: "movie" | "tv", year?:
     try {
       let path = await f(kind, query, yr);
       if (!path && yr) path = await f(kind, query, null);
+      // Titre long avec sous-titre (« Lupin the IIIrd the Movie : La lignée immortelle ») : essai sur le titre principal.
+      const short = query.split(/\s+[:–—-]\s+|\s*:\s+/)[0]!.trim();
+      if (!path && short && short !== query && short.length >= 3) path = await f(kind, short, yr) ?? (yr ? await f(kind, short, null) : null);
       const url = path ? IMG + path : null;
       cache.set(key, url); persist();
       return url;

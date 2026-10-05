@@ -18,4 +18,5 @@ class CategoryManagerTest {
     @Test fun filtre_parBadgeEtLangue() { assertEquals(listOf("1"), CategoryManager.rows(cats, counts, "FR").map { it.remoteId }); assertEquals(listOf("2"), CategoryManager.rows(cats, counts, "ar").map { it.remoteId }) }
     @Test fun filtreCourt_motEntier() { assertEquals(true, CategoryManager.matches("FR| SPORT", "fr")); assertEquals(false, CategoryManager.matches("AFRICA SPORT", "fr")); assertEquals(true, CategoryManager.matches("AFRICA SPORT", "afric")) }
     @Test fun filtre_vide_toutAfficher() = assertEquals(4, CategoryManager.rows(cats, counts, "  ").size)
+    @Test fun cocheesDabord_ordreConserve() = assertEquals(listOf("1", "2", "4", "3"), CategoryManager.rows(cats, counts, "").map { it.remoteId })
 }

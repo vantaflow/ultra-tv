@@ -6,7 +6,9 @@ import { favKey, histKey } from "@/db/queries";
 import type { FavoriteRow, HistoryRow, Kind, Source } from "@/db/types";
 import { usePrefs } from "@/state/prefs";
 import { parseEpisodes } from "@/screens/Detail";
-import type { SeriesInfo } from "@/net/xtream";
+import { seriesInfo, type SeriesInfo } from "@/net/xtream";
+import { currentTransport } from "@/net/transport";
+import { credsOf } from "@/sync/core";
 import { syncState, type SharedFav, type SharedHist } from "./client";
 
 export const DEFAULT_PROFILE_NAME = "Principal";
@@ -96,9 +98,18 @@ async function historyRow(s: Source, profile: string, e: SharedHist): Promise<Hi
   if (e.k === "EPISODE" && e.par) {
     const seriesId = Number(e.par); const epId = Number(e.r);
     if (!Number.isFinite(seriesId) || !Number.isFinite(epId)) return null;
-    const det = await db.details.get(`series:${sid}:${seriesId}`);
+    // Série jamais ouverte sur cet appareil (installation neuve) : on télécharge sa fiche, sinon la reprise
+    // venue d'un autre appareil était ignorée indéfiniment.
+    let det = await db.details.get(`series:${sid}:${seriesId}`);
+    if (!det && s.type === "xtream") {
+      try {
+        const json = await seriesInfo(await currentTransport(), credsOf(s), seriesId);
+        det = { key: `series:${sid}:${seriesId}`, json, fetchedAt: Date.now() };
+        await db.details.put(det);
+      } catch { return null; } // réessayé à la prochaine synchro
+    }
     const ep = det ? parseEpisodes(det.json as SeriesInfo).seasons.flatMap((x) => x.eps).find((x) => x.id === epId) : undefined;
-    if (!ep) return null; // série jamais ouverte ici : réessayé à la prochaine synchro
+    if (!ep) return null;
     return { ...base, key: histKey(profile, sid, "series", seriesId) + `:${epId}`, kind: "series", refId: seriesId, epId, seriesId, season: ep.season, episode: ep.num, ext: ep.ext };
   }
   return null;
