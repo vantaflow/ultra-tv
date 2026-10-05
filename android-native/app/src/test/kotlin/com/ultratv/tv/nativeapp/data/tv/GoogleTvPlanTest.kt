@@ -17,6 +17,14 @@ class WatchNextPlanTest {
     @Test fun inProgress_direct_faux() = assertFalse(WatchNextPlan.inProgress(h(kind = "LIVE")))
     @Test fun inProgress_dureeInconnue_vrai() = assertTrue(WatchNextPlan.inProgress(h(dur = 0)))
 
+    @Test fun selectLive_chainesRecentes_sansDoublon_etAuPlusCinq() {
+        val now = 10L * 24 * 3_600_000
+        val list = (1..7).map { h("LIVE", "c$it", pos = 0, dur = 0, at = now - it * 60_000L) } + h("LIVE", "c1", pos = 0, dur = 0, at = now - 1_000) +
+            h("LIVE", "old", pos = 0, dur = 0, at = now - 8L * 24 * 3_600_000) + h("MOVIE", "m", at = now)
+        assertEquals(listOf("c1", "c2", "c3", "c4", "c5"), WatchNextPlan.selectLive(list, now).map { it.remoteId })
+    }
+    @Test fun deepLink_direct() = assertTrue(WatchNextPlan.deepLink(h("LIVE", "c9")).contains("/live/1/c9"))
+
     @Test fun select_unSeulEpisodeParSerie_leDernierRegarde_etRecentsDAbord() {
         val list = listOf(
             h("EPISODE", "e1", parent = "S", at = 10), h("EPISODE", "e2", parent = "S", at = 20),

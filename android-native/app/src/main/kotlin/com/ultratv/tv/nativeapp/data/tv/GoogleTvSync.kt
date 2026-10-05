@@ -63,13 +63,17 @@ class GoogleTvSync @Inject constructor(
         started = true
         scope.launch {
             scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else history.observeRecent(prof, pid, 40) }
-                .debounce(3_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it)) } }
+                .debounce(3_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it) + WatchNextPlan.selectLive(it)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) } }
         }
         scope.launch {
             scope_.flatMapLatest { (prof, pid) ->
                 if (pid == null) flowOf(emptyList())
-                else favorites.observeForKind(prof, pid, "LIVE").map { favs -> channels.byRemoteIds(pid, favs.map { it.remoteId }) }
-            }.debounce(3_000).collect { runCatching { syncFavoritesChannel(FavoritesChannelPlan.select(it)) } }
+                else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40)) { favs, hist ->
+                    val fav = orderedByRemote(pid, favs.map { it.remoteId })
+                    val recent = orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })
+                    FavoritesChannelPlan.select(fav, recent)
+                }
+            }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "home channel", e) } }
         }
     }
 
@@ -78,11 +82,19 @@ class GoogleTvSync @Inject constructor(
         if (!isTv) return
         val pid = activeProvider.first() ?: return
         val prof = profiles.currentIdNow
-        runCatching { syncWatchNext(WatchNextPlan.select(history.observeRecent(prof, pid, 40).first())) }
+        val hist = history.observeRecent(prof, pid, 40).first()
+        runCatching { syncWatchNext(WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist)) }
         runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
-            syncFavoritesChannel(FavoritesChannelPlan.select(channels.byRemoteIds(pid, favs.map { it.remoteId })))
+            syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
         }
+    }
+
+    /** Chaînes dans l'ordre des identifiants donnés (la requête par lot ne garantit pas l'ordre). */
+    private suspend fun orderedByRemote(pid: Long, ids: List<String>): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
+        if (ids.isEmpty()) return emptyList()
+        val byId = channels.byRemoteIds(pid, ids).associateBy { it.remoteId }
+        return ids.mapNotNull { byId[it] }
     }
 
     // ---- Watch Next -----------------------------------------------------------------
@@ -98,9 +110,28 @@ class GoogleTvSync @Inject constructor(
             }
         }
         val keep = HashSet<String>()
+        android.util.Log.i("UltraGoogleTv", "watch next: ${selected.size} (${selected.count { it.kind == "LIVE" }} live)")
         for (h in selected) {
             val key = WatchNextPlan.internalId(h)
             keep += key
+            if (h.kind == "LIVE") {
+                // Chaîne du direct : vignette 16:9 (logo), marquée « en direct », sans progression.
+                val live = WatchNextProgram.Builder()
+                    .setType(TvContractCompat.WatchNextPrograms.TYPE_CHANNEL)
+                    .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)
+                    .setLastEngagementTimeUtcMillis(h.watchedAt)
+                    .setTitle(h.title)
+                    .setLive(true)
+                    .setPosterArtUri(Uri.parse(h.poster?.takeIf { it.isNotBlank() } ?: "android.resource://${ctx.packageName}/drawable/banner"))
+                    .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
+                    .setInternalProviderId(key)
+                    .setIntentUri(Uri.parse(WatchNextPlan.deepLink(h)))
+                    .build()
+                val rowId = existing[key]
+                if (rowId == null) cr.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, live.toContentValues())
+                else cr.update(TvContractCompat.buildWatchNextProgramUri(rowId), live.toContentValues(), null, null)
+                continue
+            }
             val b = WatchNextProgram.Builder()
                 .setType(if (h.kind == "EPISODE") TvContractCompat.WatchNextPrograms.TYPE_TV_EPISODE else TvContractCompat.WatchNextPrograms.TYPE_MOVIE)
                 .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)

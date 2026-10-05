@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.17] — 2026-10-05 (Android TV)
+
+### Nouveautés
+- Google TV : les dernières chaînes du direct regardées apparaissent dans « Continuer à regarder » de l'accueil, et la chaîne d'accueil Ultra TV se remplit avec elles quand il n'y a pas (assez) de favoris.
+
+## [Bureau 1.2.14] — 2026-10-05
+
+### Corrections
+- « Catalogue vide » : le message indique qu'aucune catégorie n'est active (plus « pour les langues choisies »).
+
 ## [1.2.16] — 2026-10-05 (Android TV)
 
 ### Corrections

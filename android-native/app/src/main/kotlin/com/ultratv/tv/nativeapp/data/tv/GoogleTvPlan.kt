@@ -19,6 +19,7 @@ object WatchNextPlan {
     fun internalId(h: WatchHistoryEntity) = "${h.kind}:${h.providerId}:${h.remoteId}"
 
     fun deepLink(h: WatchHistoryEntity) = when (h.kind) {
+        "LIVE" -> DeepLink.live(h.providerId, h.remoteId)
         "EPISODE" -> DeepLink.episode(h.providerId, h.remoteId)
         else -> DeepLink.movie(h.providerId, h.remoteId)
     }
@@ -29,6 +30,16 @@ object WatchNextPlan {
             .sortedByDescending { it.watchedAt }
             .distinctBy { if (it.kind == "EPISODE") "S:${it.providerId}:${it.parentRemoteId ?: it.remoteId}" else internalId(it) }
             .take(MAX)
+
+    const val MAX_LIVE = 5
+    private const val LIVE_RECENT_MS = 7L * 24 * 3_600_000
+
+    /** Dernières chaînes du direct regardées (7 jours), les plus récentes d'abord : la plupart des usages sont en direct. */
+    fun selectLive(history: List<WatchHistoryEntity>, nowMs: Long = System.currentTimeMillis()): List<WatchHistoryEntity> =
+        history.filter { it.kind == "LIVE" && it.title.isNotBlank() && nowMs - it.watchedAt < LIVE_RECENT_MS }
+            .sortedByDescending { it.watchedAt }
+            .distinctBy { internalId(it) }
+            .take(MAX_LIVE)
 }
 
 object FavoritesChannelPlan {
@@ -36,6 +47,9 @@ object FavoritesChannelPlan {
 
     fun select(channels: List<ChannelEntity>): List<ChannelEntity> =
         channels.filter { it.title.isNotBlank() }.distinctBy { it.providerId to it.remoteId }.take(MAX)
+
+    /** Favoris d'abord, complétés par les dernières chaînes regardées (sans favori, la chaîne d'accueil restait vide). */
+    fun select(favorites: List<ChannelEntity>, recent: List<ChannelEntity>): List<ChannelEntity> = select(favorites + recent)
 
     fun deepLink(c: ChannelEntity) = DeepLink.live(c.providerId, c.remoteId)
 
