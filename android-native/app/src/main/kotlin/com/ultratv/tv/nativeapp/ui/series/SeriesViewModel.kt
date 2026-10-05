@@ -55,7 +55,9 @@ class SeriesDetailViewModel @Inject constructor(
         val title = "$seriesName · $tag · ${episode.title}"
         playback.set(PlaybackContext.Item(
             providerId = providerId, kind = "EPISODE", remoteId = episode.remoteId,
-            title = title, poster = null, streamUrl = episode.streamUrl,
+            // Affiche : celle de la série (l'image d'épisode manque souvent) — sans elle, carte vide à l'accueil et
+            // absence dans « Continuer à regarder » de Google TV, qui exige une image.
+            title = title, poster = episode.image ?: _series.value?.let { it.poster ?: it.backdrop }, streamUrl = episode.streamUrl,
             parentRemoteId = seriesRemoteId,
         ))
         onReady(episode.streamUrl, title)

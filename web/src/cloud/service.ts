@@ -16,6 +16,7 @@ import {
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
+import { syncSourceState } from "./sharedState";
 import { setPosterFinder } from "@/lib/posterFallback";
 import { createBatcher, fromPrefs, shouldApply, toPrefs } from "./prefs";
 
@@ -163,7 +164,9 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     if (res.config.self) { await setSetting(K.deviceId, res.config.self); patch({ deviceId: res.config.self }); }
     if (me) { await saveDeviceName(me.name, false); if (me.id) { await setSetting(K.deviceId, me.id); patch({ deviceId: me.id }); } }
     else if (res.config.deviceName) await saveDeviceName(res.config.deviceName, false);
-    return await applyProviders(res.config.providers, !!awaitSync);
+    const summary = await applyProviders(res.config.providers, !!awaitSync);
+    void syncSharedState();
+    return summary;
   } catch (e) {
     if (e instanceof TokenRejectedError) {
       await db.settings.bulkDelete([K.token, K.etag]);
@@ -343,12 +346,31 @@ export async function unshareSource(source: Source): Promise<boolean> {
   return true;
 }
 
+let stateRunning: Promise<void> | null = null;
+/** Favoris, reprises et derniers vus de chaque source du compte (en arrière-plan, n'échoue jamais). */
+export function syncSharedState(): Promise<void> {
+  stateRunning ??= (async () => {
+    const { worker, paired } = useCloud.getState();
+    if (!paired) return;
+    const token = await getToken();
+    if (!token) return;
+    for (const s of await listSources()) {
+      if (!s.cloudId) continue;
+      try { await syncSourceState(worker, token, s); } catch { /* réessayé au prochain passage */ }
+    }
+  })().finally(() => { stateRunning = null; });
+  return stateRunning;
+}
+
 let timer: ReturnType<typeof setInterval> | null = null;
+let stateTimer: ReturnType<typeof setInterval> | null = null;
 /** Synchro au lancement puis toutes les 6 h tant que l'application est ouverte. */
 export function startCloudSchedule(): () => void {
   if (timer) return () => undefined;
   const tick = () => { if (useCloud.getState().paired) void syncCloud().catch(() => undefined); };
   tick();
   timer = setInterval(tick, SYNC_EVERY_MS);
-  return () => { if (timer) clearInterval(timer); timer = null; };
+  // Favoris et reprises : plus souvent que le reste (changent pendant l'usage), sans relire la configuration.
+  stateTimer = setInterval(() => { void syncSharedState(); }, 5 * 60_000);
+  return () => { if (timer) clearInterval(timer); timer = null; if (stateTimer) clearInterval(stateTimer); stateTimer = null; };
 }

@@ -46,7 +46,8 @@ object FavoritesChannelPlan {
     const val MAX = 20
 
     fun select(channels: List<ChannelEntity>): List<ChannelEntity> =
-        channels.filter { it.title.isNotBlank() }.distinctBy { it.providerId to it.remoteId }.take(MAX)
+        // Un seul exemplaire par nom : « TF1 » HD / 4K / UHD apparaissaient trois fois sur l'accueil.
+        channels.filter { it.title.isNotBlank() }.distinctBy { it.providerId to it.remoteId }.distinctBy { it.title.trim().uppercase() }.take(MAX)
 
     /** Favoris d'abord, complétés par les dernières chaînes regardées (sans favori, la chaîne d'accueil restait vide). */
     fun select(favorites: List<ChannelEntity>, recent: List<ChannelEntity>): List<ChannelEntity> = select(favorites + recent)

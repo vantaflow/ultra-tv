@@ -2,6 +2,21 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.20] — 2026-10-05 (Android TV)
+
+### Nouveautés
+- Favoris, positions de reprise et derniers vus partagés entre la TV, le Mac et Windows (par source du compte, profils rapprochés par nom ; la modification la plus récente gagne, un favori retiré l'est partout).
+
+### Corrections
+- Textes tronqués : la taille de police système de la box n'agrandit plus les textes dans des cadres fixes.
+- Épisodes : affiche de la série quand l'épisode n'a pas d'image (carte « Reprendre » vide, absence dans Google TV).
+- Google TV : une seule tuile par chaîne (TF1 HD / 4K / UHD).
+
+## [Bureau 1.2.15] — 2026-10-05
+
+### Nouveautés
+- Favoris, positions de reprise et derniers vus partagés avec la TV (synchro au lancement, puis toutes les 5 min).
+
 ## [1.2.19] — 2026-10-05 (Android TV)
 
 ### Corrections

@@ -39,6 +39,12 @@ class CloudLinkStore @Inject constructor(@ApplicationContext ctx: Context) {
     fun setPendingPrefs(cloudId: String, json: String?) { sp.edit().apply { if (json == null) remove("prefs_pending_$cloudId") else putString("prefs_pending_$cloudId", json) }.apply() }
     fun pendingPrefsIds(): List<String> = sp.getAll().keys.filter { it.startsWith("prefs_pending_") }.map { it.removePrefix("prefs_pending_") }
 
+    /** Favoris tels que connus après le dernier échange (JSON), et horodatage du dernier historique envoyé. */
+    fun stateFavs(cloudId: String): String? = sp.getString("st_fav_$cloudId", null)
+    fun setStateFavs(cloudId: String, json: String) { sp.edit().putString("st_fav_$cloudId", json).apply() }
+    fun stateHistSince(cloudId: String): Long = sp.getLong("st_hist_$cloudId", 0L)
+    fun setStateHistSince(cloudId: String, at: Long) { sp.edit().putLong("st_hist_$cloudId", at).apply() }
+
     fun etag(): String? = sp.getString("etag", null)
     fun setEtag(v: String?) { sp.edit().putString("etag", v).apply() }
     /** Oublie la version connue : la prochaine synchro relit tout (appairage, changement de Worker). */

@@ -64,6 +64,18 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
+    /** Échange l'état partagé d'une source (favoris, reprises, derniers vus) ; renvoie l'état fusionné, null si 404. */
+    suspend fun syncState(base: String, token: String, cloudId: String, body: String): String? = withContext(Dispatchers.IO) {
+        require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }
+        val req = Request.Builder().url("$base/api/device/providers/$cloudId/state").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            if (r.code == 404) return@use null
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while syncing favorites and progress")
+            r.body?.string()
+        }
+    }
+
     /** Retire cet appareil de la source (`everywhere` = la supprime du compte). 404 = déjà retirée. */
     suspend fun delete(base: String, token: String, cloudId: String, everywhere: Boolean = false) = withContext(Dispatchers.IO) {
         require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }

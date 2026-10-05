@@ -62,7 +62,9 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
     ) {
         val wPx = constraints.maxWidth
         val hPx = constraints.maxHeight
-        val scaled = if (tv) Density(uiDensityFor(hPx, base.density), base.fontScale) else base
+        // TV : maquette en pixels fixes, police comprise. La taille de police système (« Grand » sur certaines box)
+        // agrandissait les textes dans des cadres de taille fixe : titres, boutons et libellés tronqués partout.
+        val scaled = if (tv) Density(uiDensityFor(hPx, base.density), 1f) else base
         val wDp = if (wPx > 0) wPx / scaled.density else 0f
         val hDp = if (hPx > 0) hPx / scaled.density else 0f
         val safe = if (tv) PaddingValues(

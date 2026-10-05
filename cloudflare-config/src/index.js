@@ -25,7 +25,7 @@ import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
-  MAX_PROVIDERS, MAX_DEVICES, iptvLink,
+  MAX_PROVIDERS, MAX_DEVICES, iptvLink, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
@@ -116,6 +116,8 @@ async function route(req, env) {
   if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
   const prefsProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/prefs$/);
   if (prefsProv && m === "PUT") return devicePutPrefs(req, env, prefsProv[1]);
+  const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
+  if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -224,6 +226,7 @@ async function route(req, env) {
   if (!del) return new Response("Not found", { status: 404 });
   const providers = await loadProviders(env, acct);
   await saveProviders(env, acct, providers.filter((p) => p.id !== del[1]));
+  await deleteState(env, acct.login, del[1]);
   await putAccount(env, acct);
   return redirect("/");
   });
@@ -529,6 +532,33 @@ async function devicePutPrefs(req, env, id) {
   });
 }
 
+const STATE_BODY_MAX = 512 * 1024;
+
+/**
+ * Favoris, positions de reprise et derniers vus d'une source, partagés entre les appareils du compte.
+ * Un seul aller-retour : l'appareil envoie ses changements, reçoit l'état fusionné (le plus récent gagne, par entrée).
+ */
+async function deviceSyncState(req, env, id) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pstate:ip:${clientIp(req)}`, 240, 600, true))
+    || (await limited(env, `pstate:dev:${auth.device.id}`, 120, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, STATE_BODY_MAX);
+  if (body.error) return body.error;
+  const incoming = parseStateBody(body.value);
+  if (incoming.error) return json({ error: "invalid", field: incoming.error }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+    const providers = await loadProviders(env, acct);
+    const p = providers.find((x) => x.id === id);
+    if (!p || !isVisibleTo(p, auth.device.id)) return json({ error: "not_found" }, 404);
+    const merged = mergeState(await loadState(env, acct.login, id), incoming);
+    if (incoming.fav.length || incoming.hist.length) await saveState(env, acct.login, id, merged);
+    return json(merged);
+  });
+}
+
 async function deviceDeleteProvider(req, env, id) {
   const { auth, res } = await deviceAuth(req, env);
   if (res) return res;
@@ -551,6 +581,7 @@ async function deviceDeleteProvider(req, env, id) {
   }
   await saveProviders(env, acct, next);
   await putAccount(env, acct);
+  if (!next.some((x) => x.id === id)) await deleteState(env, acct.login, id);
   return json({ version: acct.cfgVersion });
   });
 }

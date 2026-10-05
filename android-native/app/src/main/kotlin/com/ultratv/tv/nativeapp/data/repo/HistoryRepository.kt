@@ -11,6 +11,7 @@ import javax.inject.Singleton
 class HistoryRepository @Inject constructor(
     private val dao: WatchHistoryDao,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
 ) {
     fun recent(pid: Long, limit: Int = 30): Flow<List<WatchHistoryEntity>> =
         profiles.currentId.flatMapLatest { dao.observeRecent(it, pid, limit) }
@@ -41,7 +42,8 @@ class HistoryRepository @Inject constructor(
                 kind = kind,
                 remoteId = remoteId,
                 title = title,
-                poster = poster,
+                // Épisode sans image : affiche de la série (carte vide à l'accueil, refus de Google TV sans image).
+                poster = poster ?: parentRemoteId?.let { seriesDao.byRemoteId(providerId, it) }?.let { it.poster ?: it.backdrop },
                 streamUrl = streamUrl,
                 positionMs = positionMs,
                 durationMs = durationMs,

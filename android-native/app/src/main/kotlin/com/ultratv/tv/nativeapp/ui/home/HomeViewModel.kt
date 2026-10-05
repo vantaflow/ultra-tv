@@ -67,6 +67,8 @@ class HomeViewModel @Inject constructor(
 
     val continueWatching: StateFlow<List<WatchHistoryEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
+        // Reçu d'un autre appareil sans adresse locale (épisode d'une série jamais ouverte ici) : pas de carte cliquable.
+        .map { l -> l.filter { it.streamUrl.isNotBlank() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Derniers films / séries ajoutés par le fournisseur. */
@@ -82,6 +84,7 @@ class HomeViewModel @Inject constructor(
     /** Dernières chaînes regardées (historique du profil). */
     val recentChannels: StateFlow<List<WatchHistoryEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 12) }
+        .map { l -> l.filter { it.streamUrl.isNotBlank() } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** « À la une » : la série la mieux notée avec image paysage, à défaut le film le mieux noté. */

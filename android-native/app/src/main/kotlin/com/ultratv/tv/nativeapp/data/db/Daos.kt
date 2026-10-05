@@ -465,6 +465,12 @@ interface FavoriteDao {
     suspend fun add(f: FavoriteEntity)
 
     /** Favoris (tous profils) qui dépendent d'une source : sert à confirmer son retrait. */
+    @Query("SELECT * FROM favorite WHERE providerId = :pid")
+    suspend fun allForProvider(pid: Long): List<FavoriteEntity>
+
+    @Query("SELECT * FROM favorite")
+    fun observeAll(): Flow<List<FavoriteEntity>>
+
     @Query("SELECT COUNT(*) FROM favorite WHERE providerId = :pid")
     suspend fun countForProvider(pid: Long): Int
 
@@ -497,6 +503,15 @@ interface WatchHistoryDao {
     suspend fun remove(profileId: Long, pid: Long, kind: String, rid: String)
 
     /** Purge l'historique de TOUS les profils pour un fournisseur supprimé. */
+    @Query("SELECT * FROM watch_history WHERE providerId = :pid AND watchedAt > :since ORDER BY watchedAt DESC LIMIT :limit")
+    suspend fun changedSince(pid: Long, since: Long, limit: Int = 400): List<WatchHistoryEntity>
+
+    @Query("SELECT * FROM watch_history WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid LIMIT 1")
+    suspend fun get(profileId: Long, pid: Long, kind: String, rid: String): WatchHistoryEntity?
+
+    @Query("SELECT MAX(watchedAt) FROM watch_history")
+    fun observeLatestAt(): Flow<Long?>
+
     @Query("DELETE FROM watch_history WHERE providerId = :pid")
     suspend fun clearForProvider(pid: Long)
 }

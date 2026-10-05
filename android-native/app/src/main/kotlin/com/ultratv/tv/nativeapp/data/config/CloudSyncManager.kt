@@ -99,6 +99,7 @@ class CloudSyncManager @Inject constructor(
             val summary = apply(cfg)
             links.setEtag(fetched.etag)
             links.lastSyncAt = System.currentTimeMillis()
+            stateScope.launch { syncSharedState() }
             _state.value = CloudSyncState(
                 syncing = false, lastSyncAt = links.lastSyncAt, devices = cfg.devices, selfId = cfg.selfId,
                 pending = summary.pending, added = summary.added, updated = summary.updated, removed = summary.removed,
@@ -117,6 +118,91 @@ class CloudSyncManager @Inject constructor(
     }
 
     sealed interface Result { data object Done : Result; data object NotPaired : Result; data object Failed : Result }
+
+    // ── État partagé : favoris, positions de reprise, derniers vus (par source du compte, profils par NOM) ──
+
+    private val stateMutex = Mutex()
+
+    /** Échange l'état partagé de chaque source liée. Ne lève jamais. */
+    suspend fun syncSharedState() {
+        if (!tokens.isPaired) return
+        val base = workerBase() ?: return
+        stateMutex.withLock {
+            for (p in repo.observeProviders().first()) {
+                val cid = links.cloudIdOf(p.id) ?: continue
+                runCatching { syncStateOf(base, p.id, cid) }
+                    .onFailure { android.util.Log.w("UltraCloud", "shared state failed: ${it.javaClass.simpleName}") }
+            }
+        }
+    }
+
+    private suspend fun syncStateOf(base: String, pid: Long, cid: String) {
+        val profiles = db.profileDao().observeAll().first().ifEmpty { listOf(com.ultratv.tv.nativeapp.data.profile.ProfileEntity(id = 1, name = "Principal", color = 0, initial = "P")) }
+        val nameOf = profiles.associate { it.id to it.name.trim() }
+        val idOf = profiles.associate { it.name.trim().lowercase() to it.id }
+        val now = System.currentTimeMillis()
+        // Favoris : état connu (dernier échange) mis à jour par l'état local (ajouts, retraits = tombes).
+        val known = links.stateFavs(cid)?.let { SharedStateLogic.parseFavs(runCatching { org.json.JSONArray(it) }.getOrNull()) }.orEmpty().associateBy { it.key }
+        val localFavs = db.favoriteDao().allForProvider(pid).mapNotNull { f -> nameOf[f.profileId]?.let { Triple(it, f.kind, f.remoteId) } }.toSet()
+        val updated = SharedStateLogic.localFavorites(known, localFavs, now)
+        // Historique : lignes modifiées depuis le dernier envoi.
+        val since = links.stateHistSince(cid)
+        val hist = db.watchHistoryDao().changedSince(pid, since).mapNotNull { h ->
+            val pn = nameOf[h.profileId] ?: return@mapNotNull null
+            SharedHist(pn, h.kind, h.remoteId, h.title, h.poster?.takeIf { it.startsWith("http") }, h.positionMs, h.durationMs, h.watchedAt, h.parentRemoteId)
+        }
+        val body = org.json.JSONObject()
+            .put("fav", SharedStateLogic.favsToJson(updated.values))
+            .put("hist", org.json.JSONArray().apply { hist.forEach { put(SharedStateLogic.histToJson(it)) } })
+            .toString()
+        val raw = source.withToken(base) { t -> client.syncState(base, t, cid, body) } ?: return
+        val res = org.json.JSONObject(raw)
+        val remoteFavs = SharedStateLogic.parseFavs(res.optJSONArray("fav"))
+        // Favoris distants plus récents : appliqués aux profils du même nom.
+        for (e in SharedStateLogic.remoteFavChanges(updated, remoteFavs)) {
+            val prof = idOf[e.p.lowercase()] ?: continue
+            if (e.on) db.favoriteDao().add(com.ultratv.tv.nativeapp.data.db.FavoriteEntity(pid, e.k, e.r, prof))
+            else db.favoriteDao().remove(prof, pid, e.k, e.r)
+        }
+        links.setStateFavs(cid, SharedStateLogic.favsToJson((updated + remoteFavs.associateBy { it.key }).values).toString())
+        // Reprises / derniers vus distants plus récents que la ligne locale.
+        var maxAt = maxOf(since, hist.maxOfOrNull { it.at } ?: 0L)
+        for (e in SharedStateLogic.parseHists(res.optJSONArray("hist"))) {
+            val prof = idOf[e.p.lowercase()] ?: continue
+            val local = db.watchHistoryDao().get(prof, pid, e.k, e.r)
+            if (local != null && local.watchedAt >= e.at) continue
+            val url = local?.streamUrl ?: when (e.k) {
+                "LIVE" -> db.channelDao().byRemoteId(pid, e.r)?.streamUrl
+                "MOVIE" -> db.movieDao().byRemoteId(pid, e.r)?.streamUrl
+                "EPISODE" -> db.episodeDao().byRemoteId(pid, e.r)?.streamUrl
+                else -> null
+            } ?: ""
+            db.watchHistoryDao().upsert(com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity(
+                providerId = pid, kind = e.k, remoteId = e.r, title = e.t.ifBlank { local?.title.orEmpty() },
+                poster = e.img ?: local?.poster, streamUrl = url, positionMs = e.pos, durationMs = e.dur, watchedAt = e.at,
+                parentRemoteId = e.par ?: local?.parentRemoteId, profileId = prof,
+            ))
+            maxAt = maxOf(maxAt, e.at)
+        }
+        // Les lignes reçues ne doivent pas être renvoyées : le repère avance au plus récent vu.
+        links.setStateHistSince(cid, maxAt)
+    }
+
+    private val stateScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    @Volatile private var watchingState = false
+
+    /** Au démarrage : échange 60 s après chaque changement local de favoris ou d'historique, et toutes les 10 min. */
+    @OptIn(kotlinx.coroutines.FlowPreview::class)
+    fun watchSharedState() {
+        if (watchingState) return
+        watchingState = true
+        stateScope.launch {
+            // 60 s de calme : pendant une lecture la position est enregistrée toutes les 30 s, on n'envoie qu'après.
+            kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L })
+                .debounce(60_000).collect { syncSharedState() }
+        }
+        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); syncSharedState() } }
+    }
 
     private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     @Volatile private var watching = false

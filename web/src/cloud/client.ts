@@ -175,6 +175,21 @@ export async function putPrefs(base: string, token: string, providerId: string, 
   return { status: "ok" };
 }
 
+export interface SharedFav { p: string; k: string; r: string; on: boolean; at: number }
+export interface SharedHist { p: string; k: string; r: string; t: string; img: string | null; pos: number; dur: number; at: number; par: string | null }
+export interface SharedState { fav: SharedFav[]; hist: SharedHist[] }
+
+/** Échange l'état partagé d'une source (favoris, reprises, derniers vus) ; renvoie l'état fusionné, null si inconnue. */
+export async function syncState(base: string, token: string, providerId: string, body: SharedState): Promise<SharedState | null> {
+  const r = await http({ url: `${base}/api/device/providers/${encodeURIComponent(providerId)}/state`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(body) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("sync-state", r.status);
+  const o = parse<Partial<SharedState>>(r);
+  return { fav: Array.isArray(o.fav) ? o.fav : [], hist: Array.isArray(o.hist) ? o.hist : [] };
+}
+
 /** Renomme l'appareil courant dans le compte (le tableau de bord et les autres appareils le voient). */
 export async function renameDevice(base: string, token: string, name: string): Promise<void> {
   const r = await http({ url: `${base}/api/device`, method: "PATCH", headers: auth(token, { "content-type": "application/json" }), body: json({ name }) });

@@ -49,6 +49,9 @@ export async function saveProviders(env, acct, providers) {
 
 export async function deleteAccount(env, acct) {
   await Promise.all((acct.devices || []).map((d) => env.CONFIG.delete(`dev:${d.hash}`)));
+  // État partagé (favoris, reprises) de chaque source du compte.
+  const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
+  await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name)));
   await env.CONFIG.delete(`acct:${acct.login}`);
   await guardStub(env, `acct:${acct.login}`).release();
 }
@@ -264,3 +267,68 @@ export function parsePrefs(body, now = Date.now()) {
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
   return { prefs: { langs, disabled, updatedAt: Math.min(Math.floor(updatedAt), now + 60_000) } };
 }
+
+// ---- état partagé d'une source : favoris, positions de reprise, derniers vus -----------------------
+
+export const STATE_KINDS = new Set(["LIVE", "MOVIE", "EPISODE", "SERIES"]);
+export const STATE_MAX_FAV = 3000;
+export const STATE_MAX_HIST_PER_PROFILE = 200;
+const TOMBSTONE_TTL_MS = 90 * 24 * 3600 * 1000;
+
+const str = (v, max) => (typeof v === "string" && v.length > 0 && v.length <= max && !/[\u0000-\u001f\u007f]/.test(v) ? v : null);
+const int = (v) => (Number.isFinite(Number(v)) && Number(v) >= 0 ? Math.floor(Number(v)) : null);
+
+/** Clé d'une entrée : profil (par NOM, partagé entre appareils), type, identifiant du fournisseur. */
+export const stateKey = (e) => `${e.p}|${e.k}|${e.r}`;
+
+function parseEntry(e, now, hist) {
+  if (!e || typeof e !== "object") return null;
+  const p = str(e.p, 40); const k = str(e.k, 16); const r = str(e.r, 128);
+  if (!p || !k || !r || !STATE_KINDS.has(k)) return null;
+  const at = int(e.at);
+  if (!at) return null;
+  const base = { p, k, r, at: Math.min(at, now + 60_000) };
+  if (!hist) return { ...base, on: e.on !== false };
+  const img = typeof e.img === "string" && /^https?:\/\//i.test(e.img) ? str(e.img, 1000) : null;
+  return { ...base, t: str(e.t, 200) || "", img, pos: int(e.pos) ?? 0, dur: int(e.dur) ?? 0, par: str(e.par, 128) };
+}
+
+/** Corps envoyé par un appareil : entrées invalides ignorées une à une (une mauvaise ligne ne bloque pas les autres). */
+export function parseStateBody(body, now = Date.now()) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "body" };
+  const fav = Array.isArray(body.fav) ? body.fav : [];
+  const hist = Array.isArray(body.hist) ? body.hist : [];
+  if (fav.length > STATE_MAX_FAV || hist.length > STATE_MAX_HIST_PER_PROFILE * 10) return { error: "size" };
+  return {
+    fav: fav.map((e) => parseEntry(e, now, false)).filter(Boolean),
+    hist: hist.map((e) => parseEntry(e, now, true)).filter(Boolean),
+  };
+}
+
+/** Fusion « le plus récent gagne » par clé, puis élagage (tombes anciennes, historique borné par profil). */
+export function mergeState(cur, incoming, now = Date.now()) {
+  const fav = new Map((cur?.fav || []).map((e) => [stateKey(e), e]));
+  for (const e of incoming.fav) { const o = fav.get(stateKey(e)); if (!o || e.at >= o.at) fav.set(stateKey(e), e); }
+  const hist = new Map((cur?.hist || []).map((e) => [stateKey(e), e]));
+  for (const e of incoming.hist) { const o = hist.get(stateKey(e)); if (!o || e.at >= o.at) hist.set(stateKey(e), e); }
+  const favOut = [...fav.values()].filter((e) => e.on || now - e.at < TOMBSTONE_TTL_MS).sort((a, b) => b.at - a.at).slice(0, STATE_MAX_FAV);
+  const byProfile = new Map();
+  for (const e of [...hist.values()].sort((a, b) => b.at - a.at)) {
+    const l = byProfile.get(e.p) || []; if (l.length < STATE_MAX_HIST_PER_PROFILE) l.push(e); byProfile.set(e.p, l);
+  }
+  return { fav: favOut, hist: [...byProfile.values()].flat() };
+}
+
+const stateKvKey = (login, pid) => `st:${login}:${pid}`;
+
+export async function loadState(env, login, pid) {
+  const raw = await env.CONFIG.get(stateKvKey(login, pid));
+  if (!raw) return { fav: [], hist: [] };
+  try { return await decryptJson(keysFromEnv(env), raw, `${login}:st:${pid}`); } catch { return { fav: [], hist: [] }; }
+}
+
+export async function saveState(env, login, pid, state) {
+  await env.CONFIG.put(stateKvKey(login, pid), await encryptJson(keysFromEnv(env), state, `${login}:st:${pid}`));
+}
+
+export async function deleteState(env, login, pid) { await env.CONFIG.delete(stateKvKey(login, pid)); }

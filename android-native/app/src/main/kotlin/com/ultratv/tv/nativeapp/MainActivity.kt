@@ -253,6 +253,7 @@ class MainActivity : ComponentActivity() {
             // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
             com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
             cloudSync.watchDisplayPrefs()
+            cloudSync.watchSharedState()
             runCatching { cloudSync.sync() }
 
             // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
