@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.23] — 2026-10-05 (Android TV)
+
+### Corrections
+- Synchronisation : une réponse coupée en plein téléchargement (JSON tronqué) est réessayée ; si la liste complète d'une partie (direct, films, séries) est coupée et que le serveur filtre par catégorie, les catégories actives sont téléchargées une par une au lieu de faire échouer la synchro. L'ancien catalogue reste en place tant que le nouveau n'est pas complet.
+
 ## [Bureau 1.2.20] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections

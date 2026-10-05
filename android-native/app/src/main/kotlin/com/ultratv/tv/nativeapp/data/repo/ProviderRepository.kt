@@ -507,7 +507,26 @@ class ProviderRepository @Inject constructor(
         }
 
         // Requête globale en flux ; les éléments des catégories désactivées ne sont pas stockés.
-        val all = strategy == SyncStrategy.GLOBAL
+        // Transaction unique : une liste coupée en route est annulée (l'ancien catalogue reste) au lieu d'être gardée à moitié.
+        // Serveur qui filtre par catégorie : la coupure est rattrapée par une requête par catégorie active.
+        return try {
+            streamAllInto(p, spec, strategy == SyncStrategy.GLOBAL, enabledSet, langByCat, progress)
+        } catch (e: Exception) {
+            val cut = e is java.io.IOException || e is kotlinx.serialization.SerializationException
+            if (!cut || p.categoryFilter != 1 || enabledIds.isEmpty()) throw e
+            var count = 0
+            for ((i, id) in enabledIds.withIndex()) {
+                count += insertCategory(p, spec, id, fetchWithBackoff { spec.fetchOne(p, id) }, langByCat)
+                progress((i + 1f) / enabledIds.size, count)
+            }
+            count
+        }
+    }
+
+    private suspend fun <T : Any> streamAllInto(
+        p: ProviderEntity, spec: PartSpec<T>, all: Boolean, enabledSet: Set<String>, langByCat: Map<String, String>,
+        progress: (Float, Int) -> Unit,
+    ): Int {
         var n = 0
         spec.streamAll(p) { seq ->
             db.withTransaction {
@@ -532,13 +551,14 @@ class ProviderRepository @Inject constructor(
         return rows.size
     }
 
-    /** Respecte le serveur : nouvelle tentative avec délai croissant sur 429 / 5xx / coupure. */
+    /** Respecte le serveur : nouvelle tentative avec délai croissant sur 429 / 5xx / coupure (y compris JSON tronqué). */
     private suspend fun <R> fetchWithBackoff(block: suspend () -> R): R {
         var delayMs = 1_000L
         repeat(2) {
             try { return block() }
             catch (e: com.ultratv.tv.nativeapp.data.net.HttpStatusException) { if (e.code != 429 && e.code < 500) throw e }
             catch (e: java.io.IOException) { /* réessaie */ }
+            catch (e: kotlinx.serialization.SerializationException) { /* réponse coupée en plein tableau : réessaie */ }
             kotlinx.coroutines.delay(delayMs); delayMs *= 2
         }
         return block()
