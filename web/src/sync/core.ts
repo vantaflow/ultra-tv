@@ -9,7 +9,7 @@ import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
 import { firstString, normText, rating10, toNum } from "@/lib/text";
 import { parseM3u } from "@/lib/m3u";
-import { streamObjects } from "@/net/json";
+import { streamObjects, TruncatedError } from "@/net/json";
 import { transportFetch, type Transport } from "@/net/transport";
 import {
   handshake, xtreamArray, xtreamStream,
@@ -259,21 +259,46 @@ async function streamIntoDb<T>(
   onBatch: (items: T[]) => Promise<void>,
 ) {
   if (enabledCats.size === 0) return;
+  // Un même élément n'est jamais transmis deux fois (liste complète coupée, puis reprise par catégorie).
+  const seen = new Set<string>();
+  const perCat = new Map<string, number>();
+  let lastCat: string | null = null;
+  let contiguous = true; // la liste complète arrive groupée par catégorie
+  const deduped = async (items: T[]) => {
+    const fresh: T[] = [];
+    for (const o of items) {
+      const r = o as { stream_id?: unknown; series_id?: unknown; category_id?: unknown };
+      const id = String(r.stream_id ?? r.series_id ?? "");
+      if (id) { if (seen.has(id)) continue; seen.add(id); }
+      const cat = String(r.category_id);
+      if (cat !== lastCat) { if (perCat.has(cat)) contiguous = false; lastCat = cat; }
+      perCat.set(cat, (perCat.get(cat) ?? 0) + 1);
+      fresh.push(o);
+    }
+    if (fresh.length) await onBatch(fresh);
+  };
+  let todo = [...enabledCats];
   try {
     const res = await xtreamStream(t, c, action, {}, signal);
-    await streamObjects<T>(res, onBatch, { signal, batchSize: 3000 });
+    await streamObjects<T>(res, deduped, { signal, batchSize: 3000 });
     return;
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
-    // repli par catégorie
+    // Liste coupée et groupée par catégorie : on ne reprend que les catégories absentes et la dernière (incomplète).
+    if (e instanceof TruncatedError && contiguous) todo = todo.filter((id) => !perCat.has(id) || id === lastCat);
+    console.warn(`[sync] ${action} : liste complète indisponible (${e instanceof Error ? e.message : e}), reprise sur ${todo.length} catégorie(s)`);
   }
-  for (const id of enabledCats) {
-    assertNotAborted(signal);
-    try {
-      const res = await xtreamStream(t, c, action, { category_id: id }, signal);
-      await streamObjects<T>(res, onBatch, { signal, batchSize: 3000 });
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") throw e;
+  for (const id of todo) {
+    // Deux essais par catégorie (une coupure isolée ne doit pas la vider) ; les doublons sont filtrés.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      assertNotAborted(signal);
+      try {
+        const res = await xtreamStream(t, c, action, { category_id: id }, signal);
+        await streamObjects<T>(res, deduped, { signal, batchSize: 3000 });
+        break;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") throw e;
+      }
     }
   }
 }

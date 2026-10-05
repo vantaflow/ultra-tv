@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.20] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Direct, films, séries : quand le serveur coupait la liste complète en cours de téléchargement, seules les premières catégories étaient gardées, sans erreur (catégories cochées mais absentes). La coupure est maintenant détectée et les catégories manquantes sont téléchargées une par une, sans doublon.
+- Puces de catégories (Direct, Films, Séries) : défilement à la molette et flèches ‹ › au survol ; la catégorie choisie reste visible.
+- Rangées horizontales (Accueil, rangées de catégories) : flèches ‹ › au survol pour défiler à la souris.
+
 ## [Bureau 1.2.19] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections

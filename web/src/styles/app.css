@@ -448,3 +448,11 @@ input[type="checkbox"]:indeterminate::after { content: ""; width: 0.55rem; heigh
 .cat-row-more:hover, .cat-row-more:focus-visible { background: var(--surface-2, var(--surface)); outline: 2px solid var(--accent); }
 .update-ready { position: fixed; bottom: 1.5rem; inset-inline-end: 1.5rem; z-index: 101; display: flex; align-items: center; gap: 0.75rem; max-width: min(34rem, calc(100vw - 2rem)); padding: 0.875rem 1rem; border-radius: 1rem; background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .update-ready .sub { font-size: 0.8125rem; opacity: 0.75; }
+/* Bandes horizontales à la souris : flèches au survol (HScroll) */
+.hscroll { position: relative; min-width: 0; }
+.hs-btn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--surface); color: var(--text); box-shadow: var(--shadow); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.15s; }
+.hscroll:hover > .hs-btn { opacity: 1; }
+.hs-btn:hover { filter: brightness(0.95); }
+.hs-btn.start { inset-inline-start: 0.25rem; }
+.hs-btn.end { inset-inline-end: 0.25rem; }
+[dir="rtl"] .hs-btn svg { transform: scaleX(-1); }

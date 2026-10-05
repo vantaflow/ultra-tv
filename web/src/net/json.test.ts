@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ArrayObjectSplitter, asArray, parseTolerant, streamObjects } from "./json";
+import { ArrayObjectSplitter, asArray, parseTolerant, streamObjects, TruncatedError } from "./json";
 
 describe("parseTolerant", () => {
   it("accepte un JSON valide", () => expect(parseTolerant('[{"a":1}]')).toEqual([{ a: 1 }]));
@@ -45,6 +45,20 @@ describe("streamObjects", () => {
     expect(sizes).toEqual([1000, 1000, 500]);
   });
   it("renvoie 0 pour un corps non tableau", async () => {
+    expect(await streamObjects(new Response("false"), () => undefined)).toBe(0);
+  });
+});
+
+describe("réponse coupée", () => {
+  it("signale une liste interrompue au lieu de garder le début en silence", async () => {
+    const got: number[] = [];
+    const body = '[{"id":1},{"id":2},{"id":3';
+    await expect(streamObjects<{ id: number }>(new Response(body), (b) => { got.push(...b.map((x) => x.id)); })).rejects.toBeInstanceOf(TruncatedError);
+    expect(got).toEqual([1, 2]);
+  });
+  it("liste complète, objet indexé ou « false » : pas d'erreur", async () => {
+    expect(await streamObjects(new Response('[{"a":1}]'), () => undefined)).toBe(1);
+    expect(await streamObjects(new Response('{"x":{"a":1}}'), () => undefined)).toBe(1);
     expect(await streamObjects(new Response("false"), () => undefined)).toBe(0);
   });
 });

@@ -368,6 +368,8 @@ export const ar: Dict = {
   "cloud.badgeLocal": "خاص بهذا الجهاز",
   "a11y.day": "اليوم",
   "a11y.preview": "معاينة",
+  "a11y.scrollPrev": "التمرير للخلف",
+  "a11y.scrollNext": "التمرير للأمام",
   "a11y.mainNav": "التنقل الرئيسي",
   "a11y.progress": "التقدم",
   "a11y.progressAll": "التقدم الإجمالي",

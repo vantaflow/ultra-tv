@@ -368,6 +368,8 @@ export const es: Dict = {
   "cloud.badgeLocal": "Privada de este dispositivo",
   "a11y.day": "Día",
   "a11y.preview": "Vista previa",
+  "a11y.scrollPrev": "Desplazar hacia atrás",
+  "a11y.scrollNext": "Desplazar hacia delante",
   "a11y.mainNav": "Navegación principal",
   "a11y.progress": "Progreso",
   "a11y.progressAll": "Progreso total",

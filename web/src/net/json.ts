@@ -32,6 +32,13 @@ export class ArrayObjectSplitter {
   private esc = false;
   private start = -1;
   private scanned = 0;
+  private opened = false; // « [ » de premier niveau vu
+  private closed = false; // « ] » de premier niveau vu
+
+  /** Vrai si le texte reçu forme un tout (tableau refermé, ou pas de tableau du tout). Faux = réponse coupée. */
+  complete(): boolean {
+    return this.depth === 0 && !this.inStr && (!this.opened || this.closed);
+  }
 
   feed(chunk: string): string[] {
     this.buf += chunk;
@@ -46,6 +53,8 @@ export class ArrayObjectSplitter {
         continue;
       }
       if (c === 34) this.inStr = true;
+      else if (c === 91 && this.depth === 0) this.opened = true;
+      else if (c === 93 && this.depth === 0) this.closed = true;
       else if (c === 123) { if (this.depth === 0) this.start = i; this.depth++; }
       else if (c === 125) {
         this.depth--;
@@ -106,5 +115,12 @@ export async function streamObjects<T>(
     try { batch.push(parseTolerant<T>(raw)); total++; } catch { /* ignoré */ }
   }
   await flush();
+  // Connexion coupée en cours de route (serveur ou proxy) : sans cela, seul le début du catalogue était gardé, sans erreur.
+  if (!split.complete()) throw new TruncatedError(total);
   return total;
+}
+
+/** Réponse en flux interrompue avant la fin du tableau ; `received` objets ont déjà été transmis. */
+export class TruncatedError extends Error {
+  constructor(readonly received: number) { super(`réponse tronquée après ${received} éléments`); this.name = "TruncatedError"; }
 }

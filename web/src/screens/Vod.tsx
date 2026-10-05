@@ -11,6 +11,7 @@ import { normText } from "@/lib/text";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { CategoryList } from "@/ui/CategoryList";
+import { HScroll } from "@/ui/HScroll";
 import { Icon } from "@/ui/Icon";
 import { PosterCard, PosterSkeleton } from "@/ui/Poster";
 import { Seg } from "@/ui/common";
@@ -79,12 +80,12 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
             ]} />
           </div>
         </div>
-        <div className="chips scroll" role="tablist" aria-label={t("common.categories")}>
+        <HScroll wheel follow={cat} className="chips scroll" role="tablist" aria-label={t("common.categories")}>
           <button className="chip" role="tab" aria-selected={cat === ""} onClick={() => prefs.set({ liveCat: { ...prefs.liveCat, [key]: "" } })}>{t("common.all")}</button>
           {chips.map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={cat === c.extId} onClick={() => prefs.set({ liveCat: { ...prefs.liveCat, [key]: c.extId } })}>{c.label}</button>)}
           {cat !== "" && !chips.some((c) => c.extId === cat) && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
           <button className="chip" onClick={() => setPop(true)}>{t("common.allCategories")} ▾</button>
-        </div>
+        </HScroll>
       </div>
       {cat === "" && !arrayMode && (cats?.length ?? 0) > 0 ? (
         <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={sort}
@@ -164,7 +165,7 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
         <h2 className="ellipsis">{cat.label}</h2>
         <button className="btn sm" onClick={() => onSeeAll(cat.extId)}>{t("vod.seeAll")}</button>
       </div>
-      <div className="cat-row-scroll">
+      <HScroll className="cat-row-scroll">
         {(items ?? []).map((r) => (
           <div key={r.id} className="cat-row-item">
             <PosterCard kind={kind === "movie" ? "movie" : "tv"} year={r.year} title={r.title}
@@ -177,7 +178,7 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
         {items && items.length >= ROW_SIZE && (
           <button className="cat-row-more" onClick={() => onSeeAll(cat.extId)}>{t("vod.seeAll")}</button>
         )}
-      </div>
+      </HScroll>
     </section>
   );
 }

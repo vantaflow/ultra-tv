@@ -24,6 +24,7 @@ const vod = Array.from({ length: 50 }, (_, i) => ({
 const series = [{ series_id: 7, name: "FR - Une série (2020)", category_id: "1", cover: "http://x/y.jpg", backdrop_path: ["http://x/b.jpg"] }];
 
 let server: http.Server;
+let cutLive = false;
 let base = "";
 beforeAll(async () => {
   server = http.createServer((req, res) => {
@@ -34,7 +35,13 @@ beforeAll(async () => {
     switch (a) {
       case null: return send({ user_info: { auth: 1, status: "Active", max_connections: "1", exp_date: "1900000000" } });
       case "get_live_categories": case "get_vod_categories": case "get_series_categories": return send(cats);
-      case "get_live_streams": return send(live);
+      case "get_live_streams": {
+        const cat = u.searchParams.get("category_id");
+        if (cat) return send(live.filter((x) => x.category_id === cat));
+        // Serveur qui coupe la liste complète en cours de route.
+        if (cutLive) return send(JSON.stringify(live).slice(0, JSON.stringify(live.slice(0, 2)).length + 12), true);
+        return send(live);
+      }
       case "get_vod_streams": return send(JSON.stringify(vod).replace(/\\u0002/g, "\u0002"), true);
       case "get_series": return send(series);
       default: return send(false);
@@ -96,5 +103,17 @@ describe("synchronisation Xtream", () => {
     const { testConnection } = await import("./core");
     await expect(testConnection({ mode: "direct" }, { ...src(), password: "no" })).rejects.toThrow("auth");
     await expect(testConnection({ mode: "direct" }, src())).resolves.toMatchObject({ ok: true, maxConnections: 1 });
+  });
+
+  it("liste du direct coupée : reprend les catégories manquantes, sans doublon", async () => {
+    cutLive = true;
+    try {
+      await db.sources.put({ ...src() });
+      const counts = await runSync({ source: src(), transport: { mode: "direct" }, onProgress: () => undefined });
+      expect(counts.live).toBe(3);
+      const cid = (await db.sources.get(1))!.cid;
+      const ids = (await db.channels.where("[sourceId+ord]").between([cid, -1], [cid, Infinity]).toArray()).map((c) => c.streamId);
+      expect(ids.sort()).toEqual([10, 11, 12, 13]);
+    } finally { cutLive = false; }
   });
 });

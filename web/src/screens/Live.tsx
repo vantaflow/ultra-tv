@@ -18,6 +18,7 @@ import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
 import { CategoryList } from "@/ui/CategoryList";
 import { hhmm, QBadge, StateCard } from "@/ui/common";
+import { HScroll } from "@/ui/HScroll";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { VList, arrayRows, type Rows, type VListHandle } from "@/ui/Virtual";
@@ -149,12 +150,12 @@ function LiveInner({ source }: { source: Source }) {
             {wide && <h1 className="ellipsis" style={{ fontSize: "1.5rem" }}>{catLabel}</h1>}
           </div>
           {!wide && (
-            <div className="chips scroll" role="tablist" aria-label={t("common.categories")}>
+            <HScroll wheel follow={cat} className="chips scroll" role="tablist" aria-label={t("common.categories")}>
               <button className="chip" role="tab" aria-selected={cat === FAV} onClick={() => pickCat(FAV)}>{t("common.favorites")}</button>
               <button className="chip" role="tab" aria-selected={cat === ""} onClick={() => pickCat("")}>{t("common.all")}</button>
               {cat !== "" && cat !== FAV && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
               <button className="chip" onClick={() => setPop(true)}>{t("common.categories")} ▾</button>
-            </div>
+            </HScroll>
           )}
           <div className="search-box">
             <Icon name="search" size={16} />

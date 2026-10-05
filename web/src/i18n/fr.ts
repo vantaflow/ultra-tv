@@ -367,6 +367,8 @@ export const fr = {
   "cloud.badgeLocal": "Privée à cet appareil",
   "a11y.day": "Jour",
   "a11y.preview": "Aperçu",
+  "a11y.scrollPrev": "Défiler vers la gauche",
+  "a11y.scrollNext": "Défiler vers la droite",
   "a11y.mainNav": "Navigation principale",
   "a11y.progress": "Progression",
   "a11y.progressAll": "Progression globale",
