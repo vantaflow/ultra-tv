@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.19] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Accueil, « Reprendre la lecture » : une affiche de série (image haute) ne fait plus déborder la carte sur toute la largeur ; même correctif pour les vignettes d'épisodes et l'affiche de la fiche série.
+
 ## [Bureau 1.2.18] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Nouveautés

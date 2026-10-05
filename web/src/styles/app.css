@@ -126,9 +126,10 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .hero .meta { display: flex; align-items: center; gap: 0.75rem; font-size: 0.8125rem; font-weight: 700; color: var(--text-2); }
 .hero .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
 .row-scroll { display: flex; gap: 1.125rem; overflow-x: auto; padding: 4px 4px 0.75rem; margin: 0 -4px; scroll-snap-type: x proximity; }
-.thumb-card { flex: 0 0 15rem; display: flex; flex-direction: column; gap: 0.5rem; text-align: start; }
+.thumb-card { flex: 0 0 15rem; width: 15rem; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; text-align: start; }
 .thumb-card .t { aspect-ratio: 16 / 9; border-radius: 1rem; background: var(--tone); position: relative; overflow: hidden; transition: transform 0.12s; }
 .thumb-card:hover .t { transform: scale(1.02); }
+.thumb-card .t .img { position: absolute; inset: 0; } /* l’image (souvent une affiche haute) ne dicte plus la taille de la carte */
 .thumb-card .t .progress { position: absolute; inset-inline: 0; bottom: 0; border-radius: 0; height: 5px; }
 .thumb-card b { font-size: 0.9375rem; }
 .thumb-card span.s { font-size: 0.8125rem; color: var(--text-3); margin-top: -0.25rem; }
@@ -207,10 +208,12 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .cast .c { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 6rem; text-align: center; font-size: 0.8125rem; color: var(--text-2); }
 .cast .c i { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-style: normal; font-family: var(--font-title); font-weight: 700; color: var(--text-3); font-size: 1.25rem; }
 .serie-layout { position: relative; display: grid; grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr); gap: 2rem; padding: 1.75rem 2.25rem 2.5rem; min-height: 100%; }
-.serie-layout .poster-big { aspect-ratio: 2 / 3; border-radius: 1.25rem; background: var(--tone); overflow: hidden; width: min(14rem, 100%); }
+.serie-layout .poster-big { aspect-ratio: 2 / 3; border-radius: 1.25rem; background: var(--tone); overflow: hidden; width: min(14rem, 100%); position: relative; }
+.serie-layout .poster-big .img { position: absolute; inset: 0; }
 .episode { display: flex; gap: 1rem; padding: 0.625rem; border-radius: 1rem; background: var(--surface); text-align: start; width: 100%; align-items: center; }
 .episode:hover { background: var(--surface-2); }
 .episode .th { width: 10rem; aspect-ratio: 16 / 9; border-radius: 0.75rem; background: var(--tone); overflow: hidden; position: relative; flex: 0 0 auto; }
+.episode .th .img { position: absolute; inset: 0; }
 .episode .th .progress { position: absolute; inset-inline: 0; bottom: 0; border-radius: 0; height: 4px; }
 .episode b { font-size: 1rem; }
 .episode .m { color: var(--text-3); font-size: 0.8125rem; }
