@@ -6,7 +6,7 @@ import { favKey, histKey } from "@/db/queries";
 import type { FavoriteRow, HistoryRow, Kind, Source } from "@/db/types";
 import { usePrefs } from "@/state/prefs";
 import { parseEpisodes } from "@/screens/Detail";
-import { seriesInfo, type SeriesInfo } from "@/net/xtream";
+import { seriesInfo, vodInfo, type SeriesInfo } from "@/net/xtream";
 import { currentTransport } from "@/net/transport";
 import { credsOf } from "@/sync/core";
 import { syncState, type SharedFav, type SharedHist } from "./client";
@@ -16,12 +16,16 @@ const KIND_TO_WIRE: Record<Kind, string> = { live: "LIVE", movie: "MOVIE", serie
 const WIRE_TO_KIND: Record<string, Kind> = { LIVE: "live", MOVIE: "movie", SERIES: "series" };
 const fk = (e: { p: string; k: string; r: string }) => `${e.p}|${e.k}|${e.r}`;
 
-/** Favoris connus mis à jour par l'état local : ajout = « on » maintenant, retrait = tombe datée de maintenant. */
-export function localFavorites(known: Map<string, SharedFav>, current: Array<{ p: string; k: string; r: string }>, now: number): Map<string, SharedFav> {
+/**
+ * Favoris connus mis à jour par l'état local : ajout = « on » maintenant, retrait = tombe datée de maintenant.
+ * `wasLocal` : favoris réellement présents ici au dernier échange. Seuls ceux-là peuvent devenir des tombes — un favori
+ * reçu d'un autre appareil mais pas encore appliqué ici (élément absent du catalogue local) n'est pas un retrait.
+ */
+export function localFavorites(known: Map<string, SharedFav>, current: Array<{ p: string; k: string; r: string }>, now: number, wasLocal?: Set<string>): Map<string, SharedFav> {
   const out = new Map(known);
   const cur = new Set(current.map(fk));
   for (const c of current) { const o = out.get(fk(c)); if (!o || !o.on) out.set(fk(c), { ...c, on: true, at: now }); }
-  for (const [key, o] of known) if (o.on && !cur.has(key)) out.set(key, { ...o, on: false, at: now });
+  for (const [key, o] of known) if (o.on && !cur.has(key) && (!wasLocal || wasLocal.has(key))) out.set(key, { ...o, on: false, at: now });
   return out;
 }
 
@@ -45,10 +49,12 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   const sid = s.id;
   const { nameOf, idOf } = profileNames();
   const now = Date.now();
-  const kFav = `cloud.st.fav.${s.cloudId}`; const kHist = `cloud.st.hist.${s.cloudId}`;
+  const kFav = `cloud.st.fav.${s.cloudId}`; const kHist = `cloud.st.hist.${s.cloudId}`; const kLocal = `cloud.st.favLocal.${s.cloudId}`;
   const known = new Map((await getSetting<SharedFav[]>(kFav, [])).map((e) => [fk(e), e] as const));
   const favs = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => ({ p: nameOf(f.profile), k: KIND_TO_WIRE[f.kind], r: String(f.refId) }));
-  const updated = localFavorites(known, favs, now);
+  // Absent (première synchro avec cette version) : aucune tombe, plutôt que de retirer partout un favori jamais appliqué ici.
+  const wasLocal = new Set(await getSetting<string[]>(kLocal, []));
+  const updated = localFavorites(known, favs, now, wasLocal);
   const since = await getSetting<number>(kHist, 0);
   const hist: SharedHist[] = (await db.history.filter((h) => h.sourceId === sid && h.updatedAt > since).toArray()).map((h) => h.kind === "series"
     ? { p: nameOf(h.profile), k: "EPISODE", r: String(h.epId ?? h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: String(h.seriesId ?? h.refId) }
@@ -56,16 +62,21 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   const res = await syncState(worker, token, s.cloudId, { fav: [...updated.values()], hist });
   if (!res) return;
   // Favoris distants plus récents, appliqués au profil du même nom (nom/image pris dans le catalogue local).
+  // Non appliqués (profil inconnu, élément introuvable) : pas enregistrés comme connus, donc réessayés au prochain échange.
+  const pending = new Set<string>();
   for (const e of remoteFavChanges(updated, res.fav)) {
     const kind = WIRE_TO_KIND[e.k]; const profile = idOf(e.p); const refId = Number(e.r);
-    if (!kind || !profile || !Number.isFinite(refId)) continue;
+    if (!kind || !profile || !Number.isFinite(refId)) { pending.add(fk(e)); continue; }
     const key = favKey(profile, sid, kind, refId);
     if (!e.on) { await db.favorites.delete(key); continue; }
     const meta = await catalogMeta(s, kind, refId);
     if (meta) await db.favorites.put({ key, profile, sourceId: sid, kind, refId, name: meta.name, image: meta.image, addedAt: e.at } satisfies FavoriteRow);
+    else pending.add(fk(e));
   }
-  const merged = new Map(updated); for (const e of res.fav) merged.set(fk(e), e);
+  const merged = new Map(updated); for (const e of res.fav) if (!pending.has(fk(e))) merged.set(fk(e), e);
   await setSetting(kFav, [...merged.values()]);
+  const nowLocal = (await db.favorites.filter((f) => f.sourceId === sid).toArray()).map((f) => fk({ p: nameOf(f.profile), k: KIND_TO_WIRE[f.kind], r: String(f.refId) }));
+  await setSetting(kLocal, nowLocal);
   // Reprises distantes plus récentes que la ligne locale.
   let maxAt = Math.max(since, ...hist.map((h) => h.at));
   for (const e of res.hist) {
@@ -82,8 +93,20 @@ export async function syncSourceState(worker: string, token: string, s: Source):
 
 async function catalogMeta(s: Source, kind: Kind, refId: number): Promise<{ name: string; image: string | null } | null> {
   if (kind === "live") { const c = await db.channels.where("[sourceId+streamId]").equals([s.cid, refId]).first(); return c ? { name: c.display || c.name, image: c.logo } : null; }
-  if (kind === "movie") { const m = await db.movies.where("[sourceId+streamId]").equals([s.cid, refId]).first(); return m ? { name: m.title || m.name, image: m.poster } : null; }
-  const x = await db.series.where("[sourceId+seriesId]").equals([s.cid, refId]).first(); return x ? { name: x.title || x.name, image: x.poster } : null;
+  if (kind === "movie") {
+    const m = await db.movies.where("[sourceId+streamId]").equals([s.cid, refId]).first();
+    if (m) return { name: m.title || m.name, image: m.poster };
+  } else {
+    const x = await db.series.where("[sourceId+seriesId]").equals([s.cid, refId]).first();
+    if (x) return { name: x.title || x.name, image: x.poster };
+  }
+  // Catégorie non téléchargée sur cet appareil : fiche demandée au fournisseur (le favori s'affiche quand même).
+  if (s.type !== "xtream") return null;
+  try {
+    const t = await currentTransport(); const c = credsOf(s);
+    if (kind === "movie") { const i = (await vodInfo(t, c, refId)).info; return i?.name ? { name: i.name, image: i.cover_big || i.movie_image || null } : null; }
+    const i = (await seriesInfo(t, c, refId)).info; return i?.name ? { name: i.name, image: i.cover || null } : null;
+  } catch { return null; }
 }
 
 /** Ligne d'historique locale pour une reprise distante (le direct n'a pas de reprise ici). Épisode : détails de la série requis. */

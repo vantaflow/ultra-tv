@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.21] — 2026-10-05 (Mac, Windows, Linux)
+
+### Corrections
+- Favoris partagés : un favori ajouté sur un autre appareil (TV) pour un film ou une série absent du catalogue local était ignoré, puis renvoyé comme « retiré » au prochain échange (et pouvait disparaître de la TV). Il est maintenant appliqué avec la fiche demandée au fournisseur, ou réessayé plus tard, et n'est plus jamais transformé en retrait.
+- Favoris et reprises : échange immédiat au retour sur la fenêtre (au plus une fois par minute), en plus du passage toutes les 5 minutes.
+
 ## [1.2.23] — 2026-10-05 (Android TV)
 
 ### Corrections

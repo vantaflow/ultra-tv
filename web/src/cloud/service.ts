@@ -372,5 +372,12 @@ export function startCloudSchedule(): () => void {
   timer = setInterval(tick, SYNC_EVERY_MS);
   // Favoris et reprises : plus souvent que le reste (changent pendant l'usage), sans relire la configuration.
   stateTimer = setInterval(() => { void syncSharedState(); }, 5 * 60_000);
-  return () => { if (timer) clearInterval(timer); timer = null; if (stateTimer) clearInterval(stateTimer); stateTimer = null; };
+  // Retour sur la fenêtre (après avoir utilisé la TV, par exemple) : échange immédiat, au plus une fois par minute.
+  let lastFocus = 0;
+  const onFocus = () => { if (Date.now() - lastFocus > 60_000) { lastFocus = Date.now(); void syncSharedState(); } };
+  window.addEventListener("focus", onFocus);
+  return () => {
+    if (timer) clearInterval(timer); timer = null; if (stateTimer) clearInterval(stateTimer); stateTimer = null;
+    window.removeEventListener("focus", onFocus);
+  };
 }
