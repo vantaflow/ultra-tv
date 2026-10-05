@@ -36,6 +36,8 @@ class SubtitleViewModel @Inject constructor(
     suspend fun ensureLoaded() { if (!loaded) { _settings.value = store.flow.first(); loaded = true } }
 
     fun setStyle(s: SubtitleStyle) { _settings.value = _settings.value.copy(style = s); viewModelScope.launch { store.saveStyle(s) } }
+    /** Mémorise le dernier choix (piste choisie = on, « Désactivés » = off) pour la prochaine lecture. */
+    fun setAutoOn(on: Boolean) { if (_settings.value.autoOn == on) return; _settings.value = _settings.value.copy(autoOn = on); viewModelScope.launch { store.saveAutoOn(on) } }
     fun setLanguages(l: LanguagePrefs) { _settings.value = _settings.value.copy(languages = l); viewModelScope.launch { store.saveLanguages(l) } }
 
     private val _hits = MutableStateFlow<List<SubtitleHit>?>(null)

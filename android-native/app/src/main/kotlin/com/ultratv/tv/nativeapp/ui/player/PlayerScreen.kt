@@ -140,6 +140,7 @@ class PlayerViewModel @Inject constructor(
     private val adaptive: AdaptiveProfile,
     private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
+    private val episodeDao: com.ultratv.tv.nativeapp.data.db.EpisodeDao,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
 ) : ViewModel() {
@@ -267,6 +268,19 @@ class PlayerViewModel @Inject constructor(
         return resolved
     }
 
+    /** Épisode suivant (saison suivante comprise) devenu l'élément courant ; null en fin de série ou hors épisode. */
+    suspend fun nextEpisode(): PlaybackContext.Item? {
+        val c = playback.current.value ?: return null
+        if (c.kind != "EPISODE") return null
+        val cur = episodeDao.byRemoteId(c.providerId, c.remoteId) ?: return null
+        val all = episodeDao.observeForSeries(cur.seriesId).first()
+        val nx = all.getOrNull(all.indexOfFirst { it.id == cur.id } + 1) ?: return null
+        val tag = "S${"%02d".format(java.util.Locale.ROOT, nx.season)}E${"%02d".format(java.util.Locale.ROOT, nx.episode)}"
+        val item = c.copy(remoteId = nx.remoteId, title = "${c.title.substringBefore(" · ")} · $tag · ${nx.title}", streamUrl = nx.streamUrl, poster = nx.image ?: c.poster)
+        playback.set(item)
+        return item
+    }
+
     suspend fun prepareResume(): Long {
         val c = playback.current.value ?: return 0L
         if (c.kind == "LIVE") return 0L
@@ -389,6 +403,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     }
     DisposableEffect(Unit) {
         onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
+    }
+    // Épisode terminé : marqué vu, puis l'épisode suivant démarre (Réglages › Lecture › Épisode suivant automatique).
+    LaunchedEffect(state.phase) {
+        if (state.phase != Phase.ENDED || isLive || item?.kind != "EPISODE" || !latestPrefs.autoPlayNextEpisode) return@LaunchedEffect
+        session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) vm.recordProgress(d, d) }
+        vm.nextEpisode()?.let { currentUrl = it.streamUrl }
     }
     // Application quittée (Accueil, autre appli, veille) hors image dans l'image : plus de son en arrière-plan.
     // Au retour, le direct repart au bord du direct ; un film reprend où il en était.
@@ -712,7 +732,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             val closeSubs = { panel = Panel.None; if (needsRestart) session.retry() }     // VLC : le style se fixe à la création du moteur
             com.ultratv.tv.nativeapp.ui.player.subtitles.SubtitlePanel(
                 X, subVm, subTracks, delaySupported = eng?.kind == EngineKind.VLC, isMovie = item?.kind == "MOVIE", movieTitle = item?.title ?: title,
-                onSelectTrack = { id -> eng?.selectSubtitle(id); subTracks = subTracks.map { it.copy(selected = it.id == id) } },
+                onSelectTrack = { id -> eng?.selectSubtitle(id); subVm.setAutoOn(id != null); subTracks = subTracks.map { it.copy(selected = it.id == id) } },
                 onStyle = { st -> if (eng?.applySubtitleStyle(st) == false) needsRestart = true; eng?.setSubtitleDelay(st.delayMs) },
                 onDownloaded = { path -> if (eng?.addExternalSubtitle(path) == true) Toaster.ok(X.subtitleAdded) },
                 onClose = closeSubs,
@@ -725,8 +745,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             onSleep = { min -> sleepDeadline = if (min > 0) System.currentTimeMillis() + min * 60_000L else 0L },
             onSwitch = { c -> session.switchTo(c) }, onBuffer = { b -> session.setBufferPreset(b) },
             onExternal = { runCatching { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_VIEW).apply { setDataAndType(Uri.parse(currentUrl), "video/*"); flags = Intent.FLAG_ACTIVITY_NEW_TASK }, S.recordingsOpenWith)) } },
-            onClose = { panel = Panel.None },
-        )
+            onClose = { panel = Panel.None }, onSubsChoice = { subVm.setAutoOn(it) })
     }
 }
 
@@ -948,7 +967,7 @@ private fun PlayerSidePanel(
     initial: SideTab, title: String, p: UserPrefs, vm: PlayerViewModel, session: PlaybackSession, state: com.ultratv.tv.nativeapp.ui.player.engine.SessionState,
     aspect: AspectMode, speed: Float, isLive: Boolean, statsOpen: Boolean, sleepActive: Boolean, D: DesignStrings,
     onAspect: (AspectMode) -> Unit, onSpeed: (Float) -> Unit, onStats: () -> Unit, onSleep: (Int) -> Unit, onSwitch: (Combo) -> Unit, onBuffer: (BufferPreset) -> Unit,
-    onExternal: () -> Unit, onClose: () -> Unit,
+    onExternal: () -> Unit, onClose: () -> Unit, onSubsChoice: (Boolean) -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(initial) }
     val e = session.engine
@@ -982,8 +1001,8 @@ private fun PlayerSidePanel(
                             audio.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectAudio(t.id); onClose() } }
                         }
                         OptionGroup(D.subtitles) {
-                            OptionRow(D.off, null, subs.none { it.selected }) { e?.selectSubtitle(null); onClose() }
-                            subs.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectSubtitle(t.id); onClose() } }
+                            OptionRow(D.off, null, subs.none { it.selected }) { e?.selectSubtitle(null); onSubsChoice(false); onClose() }
+                            subs.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectSubtitle(t.id); onSubsChoice(true); onClose() } }
                         }
                     }
                     SideTab.DISPLAY -> {

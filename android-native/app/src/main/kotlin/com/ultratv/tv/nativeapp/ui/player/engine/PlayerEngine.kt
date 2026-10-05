@@ -57,6 +57,8 @@ data class EngineConfig(
     /** Langues préférées, ordonnées (codes ISO 639-1) : choix automatique de la piste audio / sous-titres. */
     val preferredAudio: List<String> = emptyList(),
     val preferredText: List<String> = emptyList(),
+    /** Aucune piste de sous-titres choisie automatiquement (même marquée « par défaut » dans le flux). */
+    val textOff: Boolean = false,
 )
 
 /**

@@ -104,7 +104,8 @@ class PlaybackSession(
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil.Coil.imageLoader(ctx).memoryCache?.clear() }
         val sub = subtitles()
-        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, sub.languages.audio, sub.languages.text)
+        // Sous-titres : jamais activés d'office ; seulement si l'utilisateur les avait activés la dernière fois.
+        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, sub.languages.audio, if (sub.autoOn) sub.languages.text else emptyList(), textOff = !sub.autoOn)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))

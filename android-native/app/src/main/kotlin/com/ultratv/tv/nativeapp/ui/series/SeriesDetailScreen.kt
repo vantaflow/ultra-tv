@@ -30,6 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.focusGroup
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +60,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
 /** Fiche série (maquette SerieDetail) : colonne gauche 560 px, saisons en onglets et épisodes 16:9 à droite. */
-@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun SeriesDetailScreen(
     seriesId: Long,
@@ -208,10 +211,31 @@ fun SeriesDetailScreen(
             when {
                 shown.isEmpty() && loading -> Text(S.detailLoading, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 shown.isEmpty() -> Text(S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
-                else -> LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.design)) {
-                    items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
-                        EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                else -> {
+                    // Entrer dans la liste (→ depuis « Lecture », en bas à gauche) : l'épisode à reprendre, sinon le premier —
+                    // et non l'épisode le plus proche à l'écran (souvent celui du milieu ou du bas).
+                    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                    val entryIndex = shown.indexOfFirst { it.remoteId == target?.remoteId }.takeIf { it >= 0 } ?: 0
+                    val entry = remember { FocusRequester() }
+                    LazyColumn(
+                        Modifier.fillMaxSize()
+                            .focusProperties {
+                                enter = {
+                                    val visible = listState.layoutInfo.visibleItemsInfo.any { it.index == entryIndex }
+                                    if (visible) entry else FocusRequester.Default
+                                }
+                            }
+                            .focusGroup(),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(14.design),
+                    ) {
+                        itemsIndexed(shown, key = { _, it -> "${it.season}:${it.episode}:${it.remoteId}" }) { i, ep ->
+                            EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D,
+                                modifier = if (i == entryIndex) Modifier.focusRequester(entry) else Modifier) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                        }
                     }
+                    // Épisode à reprendre hors écran : la liste s'y place pour qu'il soit le point d'entrée.
+                    LaunchedEffect(entryIndex) { if (entryIndex > 0) listState.scrollToItem(entryIndex) }
                 }
             }
         }
@@ -249,7 +273,7 @@ fun BackLink(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClick: () -> Unit) {
+private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val dur = h?.durationMs ?: 0L
     val pos = h?.positionMs ?: 0L
     val done = dur > 0 && pos >= dur - 60_000
@@ -261,7 +285,7 @@ private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?,
         else -> null
     }
     val meta = listOfNotNull(length, state).joinToString(" · ")
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(150.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(150.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
             Box(Modifier.width(240.design).aspectRatio(16f / 9f)) {
                 ThumbImage(ep.image ?: fallbackImage, "", Modifier.fillMaxSize(), radius = 14)

@@ -58,7 +58,8 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
             val tracks = mp.audioTracks.orEmpty().filter { it.id >= 0 }
             if (tracks.size > 1) picker.pick(tracks.map { it.id.toString() to it.name }, config.preferredAudio)?.let { mp.audioTrack = it.toInt() }
         }
-        if (config.preferredText.isNotEmpty()) {
+        if (config.textOff) mp.spuTrack = -1
+        else if (config.preferredText.isNotEmpty()) {
             val tracks = mp.spuTracks.orEmpty().filter { it.id >= 0 }
             picker.pick(tracks.map { it.id.toString() to it.name }, config.preferredText)?.let { mp.spuTrack = it.toInt() }
         }

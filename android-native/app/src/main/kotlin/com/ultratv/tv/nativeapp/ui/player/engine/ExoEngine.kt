@@ -90,6 +90,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setPreferredAudioLanguages(*config.preferredAudio.toTypedArray())
             .setPreferredTextLanguages(*config.preferredText.toTypedArray())
+            .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, config.textOff)
             .build()
     }
 

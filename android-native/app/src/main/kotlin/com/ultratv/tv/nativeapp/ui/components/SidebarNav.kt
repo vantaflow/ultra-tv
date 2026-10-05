@@ -197,14 +197,19 @@ fun SidebarNav(navController: NavController) {
                 Spacer(Modifier.height(20.design))
                 Box(Modifier.fillMaxWidth().height(2.design).background(Ux.Surface2))
                 Spacer(Modifier.height(12.design))
+                // Hauteur des entrées selon la place réelle : neuf entrées + synchro + profil ne tenaient plus en 64 px
+                // et la dernière (Paramètres) était écrasée en une barre.
+                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                val n = railItems.size
+                val gapPx = if (maxHeight >= (64 * n + 10 * (n - 1)).design) 10 else 4
+                val itemDp = ((maxHeight - (gapPx * (n - 1)).design) / n).coerceIn(40.design, 64.design)
                 Column(
-                    Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically),
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(gapPx.design, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.Start,
                 ) {
                     railItems.forEach { item ->
                         val active = isSelected(route, item.route)
-                        val h = 64
                         FocusSurface(
                             onClick = {
                                 // Choisir une page REFERME le menu : le nouvel écran prend le focus
@@ -222,7 +227,7 @@ fun SidebarNav(navController: NavController) {
                             bg = if (active) Ux.Accent else Color.Transparent,
                             focusedScale = 1.05f,
                             ringWidth = 5.design,
-                            modifier = Modifier.height(h.design).fillMaxWidth().then(if (active) Modifier.focusRequester(activeFocus) else Modifier),
+                            modifier = Modifier.height(itemDp).fillMaxWidth().then(if (active) Modifier.focusRequester(activeFocus) else Modifier),
                         ) { focused ->
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.width(16.design))
@@ -241,6 +246,7 @@ fun SidebarNav(navController: NavController) {
                             }
                         }
                     }
+                }
                 }
                 val p = pill
                 if (p != null) {
