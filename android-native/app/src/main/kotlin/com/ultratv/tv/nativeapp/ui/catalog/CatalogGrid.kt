@@ -27,6 +27,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -103,7 +105,8 @@ class CatalogGridViewModel @Inject constructor(
     private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
     /** Puces : « Tous » + les catégories NON vides (compteurs SQL), hors catégories masquées. */
-    val chips: StateFlow<List<CategoryChip>> = combine(pid, kind, hiddenStore.hidden) { p, k, h -> Triple(p, k, h) }
+    /** null = pas encore chargées (rien n'est affiché de faux pendant ce temps : ni « aucun film », ni grille à plat). */
+    val chips: StateFlow<List<CategoryChip>?> = combine(pid, kind, hiddenStore.hidden) { p, k, h -> Triple(p, k, h) }
         .flatMapLatest { (p, k, hidden) ->
             if (p == null) flowOf(emptyList())
             else {
@@ -115,7 +118,7 @@ class CatalogGridViewModel @Inject constructor(
                         .map { CategoryChip(it.remoteId, prettyCategoryName(it.name)) }
                 }
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val _langView = kotlinx.coroutines.flow.MutableStateFlow(com.ultratv.tv.nativeapp.data.repo.LangView.ALL)
     val langView: StateFlow<com.ultratv.tv.nativeapp.data.repo.LangView> = _langView
@@ -155,7 +158,8 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val vm: CatalogGridViewModel = hiltViewModel(key = kind.name)
     LaunchedEffect(kind) { vm.bind(kind) }
     val D = LocalDs.current
-    val chips by vm.chips.collectAsState()
+    val chipsOrNull by vm.chips.collectAsState()
+    val chips = chipsOrNull.orEmpty()
     val selected by vm.selected.collectAsState()
     val items = vm.items.collectAsLazyPagingItems()
     val langView by vm.langView.collectAsState()
@@ -180,12 +184,16 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
+        // Chargement : squelette de rangées à taille fixe (la mise en page ne saute plus quand les données arrivent).
+        if (chipsOrNull == null) { RowsSkeleton(touch); return@Column }
         // « Tous » : une rangée par catégorie (comme Netflix), « Voir tout » ouvre la grille de la catégorie.
         if (selected == null && chips.isNotEmpty()) {
             CategoryRows(vm, chips, touch, onOpen)
             return@Column
         }
         if (items.itemCount == 0) {
+            // Grille en cours de chargement : squelette, pas « aucun film ».
+            if (items.loadState.refresh is androidx.paging.LoadState.Loading) { RowsSkeleton(touch); return@Column }
             if (chips.isEmpty() && com.ultratv.tv.nativeapp.ui.common.NoDataStateCard()) return@Column
             Text(if (kind == CatalogKind.MOVIES) D.noMovies else D.noSeries, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
             return@Column
@@ -223,9 +231,11 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
     ) {
         items(chips.size, key = { chips[it].remoteId }, contentType = { "row" }) { idx ->
             val c = chips[idx]
-            val list by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState(initial = emptyList())
+            val loaded by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState(initial = null)
+            val list = loaded.orEmpty()
             Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
                 Text(c.name, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (loaded == null) { SkeletonRow(touch); return@Column }
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(end = if (touch) 16.dp else 96.design)) {
                     items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
                         val it = list[i]
@@ -241,6 +251,34 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** Rangée d'affiches vides, à la taille exacte d'une vraie rangée (affiche 2:3 + titre + méta). */
+@Composable
+private fun SkeletonRow(touch: Boolean) {
+    val w = if (touch) 120.dp else 200.design
+    Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design)) {
+        repeat(if (touch) 3 else 7) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design)) {
+                androidx.compose.foundation.layout.Box(Modifier.width(w).height(w * 1.5f).clip(RoundedCornerShape(if (touch) 12.dp else 18.design)).background(Ux.Surface))
+                androidx.compose.foundation.layout.Box(Modifier.width(w * 0.8f).height(if (touch) 12.dp else 22.design).clip(RoundedCornerShape(6.design)).background(Ux.Surface))
+                androidx.compose.foundation.layout.Box(Modifier.width(w * 0.5f).height(if (touch) 10.dp else 18.design).clip(RoundedCornerShape(6.design)).background(Ux.Surface))
+            }
+        }
+    }
+}
+
+/** Écran Films / Séries en chargement : deux rangées squelettes avec leur titre. */
+@Composable
+private fun RowsSkeleton(touch: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 18.dp else 36.design)) {
+        repeat(2) {
+            Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
+                androidx.compose.foundation.layout.Box(Modifier.width(if (touch) 140.dp else 320.design).height(if (touch) 16.dp else 30.design).clip(RoundedCornerShape(8.design)).background(Ux.Surface))
+                SkeletonRow(touch)
             }
         }
     }

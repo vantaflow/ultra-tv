@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -81,6 +82,9 @@ fun ScreenFocusHost(
     Box(
         modifier
             .fillMaxSize()
+            // Fond opaque : pendant l'image où l'écran sortant et l'écran entrant coexistent, le nouvel écran (encore
+            // vide ou en squelette) ne laisse plus voir l'ancien à travers lui (superposition visible en changeant de page).
+            .background(com.ultratv.tv.nativeapp.ui.design.Ux.Bg)
             .onFocusChanged { hasFocus = it.hasFocus }
             .focusRestorer()
             .focusRequester(requester)

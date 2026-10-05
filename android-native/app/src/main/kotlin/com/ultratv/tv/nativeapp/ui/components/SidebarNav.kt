@@ -216,6 +216,9 @@ fun SidebarNav(navController: NavController) {
                                 // (focus initial normal, pas de markNavDriven). Page déjà affichée :
                                 // on rend simplement le focus au contenu.
                                 if (route != item.route) {
+                                    // Refermé tout de suite : sinon le menu et son voile restaient sur l'ancien écran
+                                    // jusqu'à ce que la nouvelle page prenne le focus (superposition visible).
+                                    expanded = false
                                     navController.navigate(item.route) {
                                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                                         launchSingleTop = true

@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.27] — 2026-10-05 (Android TV)
+
+### Corrections
+- Fluidité en changeant d'écran : plus de superposition de l'ancien écran sous le nouveau (fond opaque), menu refermé
+  dès le choix d'une page, Films et Séries sans message « aucun film » ni grille à plat transitoires (squelettes de
+  rangées à taille fixe pendant le chargement).
+
 ## [Bureau 1.2.27] — 2026-10-05
 
 ### Corrections
