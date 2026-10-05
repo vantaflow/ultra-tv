@@ -50,7 +50,7 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .rail > * { -webkit-app-region: no-drag; }
 .rail .logo { width: 44px; height: 44px; border-radius: 12px; display: block; }
 .rail nav { flex: 1 1 auto; display: flex; flex-direction: column; gap: 4px; padding-top: 0.75rem; overflow-y: auto; scrollbar-width: none; }
-.rail-item { width: 64px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-3); font-size: 0.6875rem; font-weight: 700; padding: 3px 0; border-radius: 12px; }
+.rail-item { width: 80px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-3); font-size: 0.6875rem; font-weight: 700; padding: 3px 0; border-radius: 12px; }
 .rail-item .pill { width: 52px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; transition: background 0.12s; }
 .rail-item:hover .pill { background: var(--surface-2); }
 .rail-item.active { color: var(--text); }
