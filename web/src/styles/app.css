@@ -456,3 +456,13 @@ input[type="checkbox"]:indeterminate::after { content: ""; width: 0.55rem; heigh
 .hs-btn.start { inset-inline-start: 0.25rem; }
 .hs-btn.end { inset-inline-end: 0.25rem; }
 [dir="rtl"] .hs-btn svg { transform: scaleX(-1); }
+/* Page Abonnement (compte IPTV) */
+.acc-grid { display: grid; gap: 1.25rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); align-items: start; max-width: 64rem; }
+.acc-card { background: var(--surface); border-radius: 1.25rem; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.acc-card h2 { font-size: 1.125rem; margin: 0 0 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+.acc-row { display: flex; justify-content: space-between; gap: 1rem; padding: 0.625rem 0; border-bottom: 1px solid var(--surface-2); font-size: 0.9375rem; }
+.acc-row:last-of-type { border-bottom: 0; }
+.acc-pill { font-weight: 700; padding: 2px 10px; border-radius: 999px; background: var(--surface-2); }
+.acc-pill.ok { background: #1f8a4c22; color: #1f8a4c; }
+.acc-pill.bad { background: #d91e2b22; color: var(--accent); }
+.acc-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }

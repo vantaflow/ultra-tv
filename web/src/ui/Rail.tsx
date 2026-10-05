@@ -11,6 +11,7 @@ const ITEMS: { to: string; icon: IconName; label: Key; match: string }[] = [
   { to: "/movies", icon: "movies", label: "nav.movies", match: "/movie" },
   { to: "/series", icon: "series", label: "nav.series", match: "/serie" },
   { to: "/favorites", icon: "heart", label: "nav.favorites", match: "/favorites" },
+  { to: "/account", icon: "user", label: "nav.account", match: "/account" },
   { to: "/settings", icon: "settings", label: "nav.settings", match: "/settings" },
 ];
 

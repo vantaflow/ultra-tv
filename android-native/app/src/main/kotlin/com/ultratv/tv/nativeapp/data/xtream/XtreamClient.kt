@@ -292,6 +292,18 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         }.getOrNull()
     }
 
+    /** Compte IPTV (`user_info`) : statut, expiration, connexions. null si injoignable. Aucun identifiant n'est journalisé. */
+    suspend fun fetchAccount(p: ProviderEntity): XtreamAccount? = withContext(Dispatchers.IO) {
+        runCatching {
+            val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}"
+            ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) return@use null
+                val root = json.parseToJsonElement(resp.body?.string().orEmpty()) as? JsonObject ?: return@use null
+                XtreamAccount.parse(root)
+            }
+        }.getOrNull()
+    }
+
     // ---- Helpers ----
 
     /** Petite liste (catégories) : les erreurs réseau REMONTENT (avant : avalées => catalogue vidé). */
@@ -395,5 +407,34 @@ internal object ShortEpgTime {
             return if (local != null && offsetMs != 0L && kotlin.math.abs(timestampMs - local) < 60_000L) timestampMs - offsetMs else timestampMs
         }
         return local?.minus(offsetMs)
+    }
+}
+
+/** Informations du compte IPTV renvoyées par le serveur Xtream (`user_info`, `server_info`). */
+data class XtreamAccount(
+    val status: String?,
+    val expiresAt: Long?,
+    val activeConnections: Int?,
+    val maxConnections: Int?,
+    val createdAt: Long?,
+    val trial: Boolean,
+    val server: String?,
+) {
+    companion object {
+        /** Les serveurs envoient chiffres en chaîne ou en nombre, et « null » en texte : tout est toléré. null sans `user_info`. */
+        fun parse(root: JsonObject): XtreamAccount? {
+            val ui = root["user_info"] as? JsonObject ?: return null
+            fun str(k: String) = (ui[k] as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() && it != "null" }
+            val srv = root["server_info"] as? JsonObject
+            return XtreamAccount(
+                status = str("status"),
+                expiresAt = str("exp_date")?.toLongOrNull()?.takeIf { it > 0 }?.times(1000),
+                activeConnections = str("active_cons")?.toIntOrNull(),
+                maxConnections = str("max_connections")?.toIntOrNull(),
+                createdAt = str("created_at")?.toLongOrNull()?.takeIf { it > 0 }?.times(1000),
+                trial = str("is_trial") == "1",
+                server = (srv?.get("url") as? JsonPrimitive)?.contentOrNull?.takeIf { it.isNotBlank() },
+            )
+        }
     }
 }

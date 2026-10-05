@@ -7,7 +7,7 @@ import org.junit.Test
 
 /** Le rail est piloté par des identifiants de route explicites, jamais par des index : chaque item vise SA route. */
 class SidebarRoutesTest {
-    private val expected = listOf(Routes.HOME, Routes.LIVE, Routes.GUIDE, Routes.MOVIES, Routes.SERIES, Routes.FAVORITES, "recordings", Routes.SETTINGS)
+    private val expected = listOf(Routes.HOME, Routes.LIVE, Routes.GUIDE, Routes.MOVIES, Routes.SERIES, Routes.FAVORITES, "recordings", "account", Routes.SETTINGS)
 
     @Test fun rail_chaqueItemVisaSaRoute_dansLOrdreDeLaMaquette() = assertEquals(expected, railItems.map { it.route })
 

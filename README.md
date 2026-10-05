@@ -54,6 +54,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
 - **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage).
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
+- **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
 - **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes), recherche vocale et globale, liens profonds `ultratv://`.
 - **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).

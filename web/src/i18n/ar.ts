@@ -10,6 +10,7 @@ export const ar: Dict = {
   "nav.search": "بحث",
   "nav.favorites": "المفضلة",
   "nav.settings": "الإعدادات",
+  "nav.account": "الاشتراك",
 
   "common.watch": "مشاهدة",
   "common.play": "تشغيل",

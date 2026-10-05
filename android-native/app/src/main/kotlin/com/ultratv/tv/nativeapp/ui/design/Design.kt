@@ -202,6 +202,7 @@ object Icons {
     const val Heart = "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"
     const val Record = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"
     const val Settings = "M4 6h16M4 12h16M4 18h16M8 4v4M16 10v4M10 16v4"
+    const val Account = "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0"
 }
 
 /** Logo Ultra TV (icône « écran » : fond #0A0A0C, écran blanc, lecture rouge, pied), dessiné en vectoriel sur la grille 512 de l'icône. */

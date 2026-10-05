@@ -54,6 +54,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Two playback engines**: ExoPlayer (Media3) and **LibVLC**; Auto / ExoPlayer / VLC, decoding Auto / Hardware / Software, automatic fallback and per-channel memory.
 - **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset).
 - **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
+- **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
 - **Google TV**: "Continue watching" (movies, episodes and recent live channels), Ultra TV home channel (favourites then recent channels), voice and global search, `ultratv://` deep links.
 - **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).

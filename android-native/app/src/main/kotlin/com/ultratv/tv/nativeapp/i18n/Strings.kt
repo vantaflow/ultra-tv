@@ -35,6 +35,7 @@ data class Strings(
     val navCategories: String,
     val navRecordings: String,
     val navSettings: String,
+    val navAccount: String,
 
     // Home
     val homeWelcome: String,
@@ -416,7 +417,7 @@ private val EN = Strings(
     navHome = "Home", navLive = "Live TV", navGuide = "Guide", navMovies = "Movies",
     navSeries = "Series", navFavorites = "Favorites", navSearch = "Search",
     navCategories = "Categories",
-    navRecordings = "Recordings", navSettings = "Settings",
+    navRecordings = "Recordings", navSettings = "Settings", navAccount = "Subscription",
 
     homeWelcome = "Welcome to Ultra TV",
     homeSubtitle = "Native build · D-pad ready",
@@ -718,7 +719,7 @@ private val FR = Strings(
     navHome = "Accueil", navLive = "TV en direct", navGuide = "Guide", navMovies = "Films",
     navSeries = "Séries", navFavorites = "Favoris", navSearch = "Recherche",
     navCategories = "Catégories",
-    navRecordings = "Enregistrements", navSettings = "Paramètres",
+    navRecordings = "Enregistrements", navSettings = "Paramètres", navAccount = "Abonnement",
 
     homeWelcome = "Bienvenue dans Ultra TV",
     homeSubtitle = "Build native · prêt pour la télécommande",
@@ -1020,7 +1021,7 @@ private val ES = Strings(
     navHome = "Inicio", navLive = "TV en vivo", navGuide = "Guía", navMovies = "Películas",
     navSeries = "Series", navFavorites = "Favoritos", navSearch = "Buscar",
     navCategories = "Categorías",
-    navRecordings = "Grabaciones", navSettings = "Ajustes",
+    navRecordings = "Grabaciones", navSettings = "Ajustes", navAccount = "Suscripción",
 
     homeWelcome = "Bienvenido a Ultra TV",
     homeSubtitle = "Build nativo · listo para mando a distancia",
@@ -1322,7 +1323,7 @@ private val AR = Strings(
     navHome = "الرئيسية", navLive = "البث المباشر", navGuide = "الدليل", navMovies = "الأفلام",
     navSeries = "المسلسلات", navFavorites = "المفضلة", navSearch = "بحث",
     navCategories = "الفئات",
-    navRecordings = "التسجيلات", navSettings = "الإعدادات",
+    navRecordings = "التسجيلات", navSettings = "الإعدادات", navAccount = "الاشتراك",
 
     homeWelcome = "مرحبًا بكم في Ultra TV",
     homeSubtitle = "نسخة أصلية · جاهزة لجهاز التحكم",

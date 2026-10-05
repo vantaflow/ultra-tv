@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.24] — 2026-10-05 (Android TV) · Bureau 1.2.23
+
+### Nouveautés
+- Menu **Abonnement** (Android, Windows, macOS) : état de l'abonnement IPTV de la source active tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, date de création, compte d'essai, serveur. Lu en direct, bouton Actualiser.
+
 ## [Bureau 1.2.22] — 2026-10-05 (Mac, Windows, Linux)
 
 ### Corrections

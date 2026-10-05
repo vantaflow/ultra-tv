@@ -542,6 +542,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             )
         }
         screen("categories") { CategoriesScreen(onBack = { nav.popBackStack() }) }
+        screen("account") { com.ultratv.tv.nativeapp.ui.account.AccountScreen() }
         screen("diagnostic") { com.ultratv.tv.nativeapp.ui.settings.DiagnosticScreen() }
         screen("locked-channels") { com.ultratv.tv.nativeapp.ui.parental.LockedChannelsScreen(onBack = { nav.popBackStack() }) }
         screen("recordings") {

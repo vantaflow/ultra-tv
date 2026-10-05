@@ -72,6 +72,7 @@ internal val railItems = listOf(
     RailItem("series", Icons.Series) { it.navSeries },
     RailItem("favorites", Icons.Heart) { it.navFavorites },
     RailItem("recordings", Icons.Record) { it.navRecordings },
+    RailItem("account", Icons.Account) { it.navAccount },
     RailItem("settings", Icons.Settings) { it.navSettings },
 )
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Account } from "@/screens/Account";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { dirOf, useT } from "@/i18n";
 import { initTransport, bridge } from "@/net/transport";
@@ -144,6 +145,7 @@ function Shell() {
           <Route path="/serie/:id" element={<SeriesDetail />} />
           <Route path="/search" element={<Search />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/account" element={<Account />} />
           <Route path="/settings/:section?" element={<Settings />} />
           <Route path="/welcome/*" element={<Onboarding />} />
           <Route path="/profiles" element={<Profiles />} />

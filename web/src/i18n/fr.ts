@@ -9,6 +9,7 @@ export const fr = {
   "nav.search": "Recherche",
   "nav.favorites": "Favoris",
   "nav.settings": "Réglages",
+  "nav.account": "Abonnement",
 
   "common.watch": "Regarder",
   "common.play": "Lecture",

@@ -10,6 +10,7 @@ export const es: Dict = {
   "nav.search": "Buscar",
   "nav.favorites": "Favoritos",
   "nav.settings": "Ajustes",
+  "nav.account": "Suscripción",
 
   "common.watch": "Ver",
   "common.play": "Reproducir",
