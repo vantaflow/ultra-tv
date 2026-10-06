@@ -144,6 +144,7 @@ export const ar: Dict = {
   "player.retry": "إعادة المحاولة",
   "player.tryOther": "جرّب صيغة أخرى",
   "player.buffering": "جارٍ التخزين المؤقت…",
+  "player.reconnecting": "إعادة الاتصال…",
   "player.noTracks": "لا توجد مسارات بديلة",
   "player.shortcuts": "الاختصارات",
   "player.sk.space": "تشغيل / إيقاف مؤقت",

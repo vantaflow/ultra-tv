@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.28] — 2026-10-06
+
+### Corrigé
+- Direct : reconnexion automatique quand le serveur ferme la session (serveurs Xtream faibles), que le réseau coupe ou
+  que le flux reste figé plus de 12 s (délais croissants, 8 tentatives, message « Reconnexion… »). Avant, l'image
+  s'arrêtait avec un bouton « Réessayer » à cliquer soi-même.
+
 ## [1.2.39] — 2026-10-06 (Android TV)
 
 ### Amélioré

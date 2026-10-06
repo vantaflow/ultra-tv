@@ -143,6 +143,7 @@ export const fr = {
   "player.retry": "Réessayer",
   "player.tryOther": "Essayer un autre format",
   "player.buffering": "Mise en mémoire tampon…",
+  "player.reconnecting": "Reconnexion…",
   "player.noTracks": "Aucune piste alternative",
   "player.shortcuts": "Raccourcis",
   "player.sk.space": "Lecture / pause",

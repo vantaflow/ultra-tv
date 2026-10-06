@@ -144,6 +144,7 @@ export const es: Dict = {
   "player.retry": "Reintentar",
   "player.tryOther": "Probar otro formato",
   "player.buffering": "Almacenando en búfer…",
+  "player.reconnecting": "Reconectando…",
   "player.noTracks": "No hay pistas alternativas",
   "player.shortcuts": "Atajos",
   "player.sk.space": "Reproducir / pausa",

@@ -468,3 +468,5 @@ input[type="checkbox"]:indeterminate::after { content: ""; width: 0.55rem; heigh
 .acc-pill.ok { background: #1f8a4c22; color: #1f8a4c; }
 .acc-pill.bad { background: #d91e2b22; color: var(--accent); }
 .acc-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
+
+.pstate .reconnecting { margin: 0.75rem 0 0; color: #e4e4e7; font-size: 0.875rem; font-weight: 600; text-align: center; }

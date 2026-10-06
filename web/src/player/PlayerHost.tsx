@@ -18,6 +18,7 @@ import { hhmm, QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { parseEpisodes } from "@/screens/Detail";
 import type { SeriesInfo } from "@/net/xtream";
+import { LiveReconnect } from "./reconnect";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { candidates, type Candidate } from "./resolve";
 import { usePlayer } from "./store";
@@ -65,13 +66,25 @@ export function PlayerHost() {
   const [rate, setRate] = useState(1);
   const hideTimer = useRef<number>();
   const live = target?.kind === "live" && !target.replay;
+  const liveRef = useRef(live);
+  liveRef.current = live;
+  const [reconnecting, setReconnecting] = useState(false);
+  // Direct coupé (session fermée par le serveur, réseau, flux figé) : on rouvre la même adresse tout seul.
+  const reconRef = useRef<LiveReconnect | null>(null);
 
   // --- moteur ---
   useEffect(() => {
     const v = videoRef.current!;
+    const recon = new LiveReconnect({
+      reload: () => { const c = candRef.current; const a = c.list[c.i]; if (a) void startCandidate(a); },
+      giveUp: () => { setReconnecting(false); setError(true); setState("error"); },
+      onReconnecting: () => setReconnecting(true),
+    });
+    reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
-      onState: (s) => { setState(s); if (s === "playing") setError(false); },
+      onState: (s) => { setState(s); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
       onError: () => {
+        if (recon.onError(liveRef.current)) return;
         const c = candRef.current;
         if (c.i + 1 < c.list.length) {
           c.i += 1;
@@ -84,7 +97,7 @@ export function PlayerHost() {
     engineRef.current = eng;
     v.volume = usePrefs.getState().volume;
     v.muted = usePrefs.getState().muted;
-    return () => { eng.stop(); engineRef.current = null; };
+    return () => { recon.dispose(); eng.stop(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,6 +113,8 @@ export function PlayerHost() {
   }, []);
 
   useEffect(() => {
+    reconRef.current?.reset();
+    setReconnecting(false);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setPanel(null);
@@ -299,7 +314,10 @@ export function PlayerHost() {
       <div className="shade-top" /><div className="shade-bot" />
 
       {(state === "loading" || state === "buffering") && !error && (
-        <div className="pstate"><div className="spinner" role="status" aria-label={t("player.buffering")} /></div>
+        <div className="pstate">
+          <div className="spinner" role="status" aria-label={t(reconnecting ? "player.reconnecting" : "player.buffering")} />
+          {reconnecting && <p className="reconnecting">{t("player.reconnecting")}</p>}
+        </div>
       )}
       {error && (
         <div className="pstate">

@@ -144,6 +144,7 @@ export const en: Dict = {
   "player.retry": "Retry",
   "player.tryOther": "Try another format",
   "player.buffering": "Buffering…",
+  "player.reconnecting": "Reconnecting…",
   "player.noTracks": "No alternative tracks",
   "player.shortcuts": "Shortcuts",
   "player.sk.space": "Play / pause",

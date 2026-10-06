@@ -1,7 +1,7 @@
 {
   "name": "ultratv-web",
   "private": true,
-  "version": "1.2.27",
+  "version": "1.2.28",
   "type": "module",
   "description": "Ultra TV — IPTV player web app.",
   "scripts": {
