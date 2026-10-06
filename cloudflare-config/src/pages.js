@@ -533,7 +533,7 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
      var f=Math.min(1,Math.max(0,(Date.now()-a.createdAt)/(a.expiresAt-a.createdAt)));requestAnimationFrame(function(){i.style.width=Math.round(f*100)+'%';});}
     tally();
    })
-   .catch(function(){set(el,'<span class="muted">Abonnement : '+ERR.unreachable+'</span>');tally();});
+   .catch(function(e){var c=e&&/^\\d+$/.test(e.message)?e.message:'';set(el,'<span class="muted">Abonnement : '+(c==='429'?'trop de vérifications, réessaie dans un moment':c?'vérification impossible (erreur '+c+' du site)':ERR.unreachable)+'</span>');tally();});
  });};
 })();
 // Recherche + pagination des listes (utile au-delà de quelques éléments ; sans JavaScript, tout reste affiché).

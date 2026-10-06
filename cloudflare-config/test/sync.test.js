@@ -113,6 +113,18 @@ describe("affectations", () => {
     await post({ all: "1" });
     expect(await names(phone)).toEqual(["Dash"]);
   });
+  it("abonnementDepuisLeTableauDeBord_routeJoignable_reponseJson", async () => {
+    // La page interroge /providers/:id/account : la route doit passer le filtre du routeur (sinon 404 → « ne répond pas »).
+    const { acct, tv } = await twoDevices();
+    await addProvider(acct, m3u("Dash"));
+    const id = (await (await cfg(tv)).json()).providers[0].id;
+    const r = await call(`/providers/${id}/account`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf } });
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ error: "unsupported" });
+    const other = await newAccount();
+    const r2 = await call(`/providers/${id}/account`, { method: "POST", ip: other.ip, cookie: other.cookie, form: { csrf: other.csrf } });
+    expect(r2.status).toBe(404);
+  });
   it("affectationDashboard_idDAutreCompte_refuse", async () => {
     const { acct } = await twoDevices();
     const other = await newAccount();
