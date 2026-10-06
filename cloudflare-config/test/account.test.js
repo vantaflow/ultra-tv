@@ -15,7 +15,8 @@ describe("xtreamAccount", () => {
   });
   it("identifiants refusés", async () => {
     expect(await xtreamAccount(P, fake(200, { user_info: { auth: 0 } }))).toEqual({ error: "denied" });
-    expect(await xtreamAccount(P, fake(403, "no"))).toMatchObject({ error: "denied" });
+    // 403 HTTP : pare-feu (Cloudflare bloqué), pas un refus d'identifiants
+    expect(await xtreamAccount(P, fake(403, "no"))).toMatchObject({ error: "unreachable", detail: expect.stringContaining("HTTP 403") });
   });
   it("serveur injoignable ou réponse invalide", async () => {
     expect(await xtreamAccount(P, async () => { throw new Error("net"); })).toEqual({ error: "unreachable", detail: "connexion impossible depuis Cloudflare" });

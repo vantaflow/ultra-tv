@@ -248,7 +248,9 @@ export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
         url = next.toString();
         continue;
       }
-      if (res.status === 401 || res.status === 403) return { error: "denied", detail: `HTTP ${res.status}` };
+      // 401/403 en HTTP : souvent un pare-feu qui refuse les adresses Cloudflare, pas les identifiants (le vrai refus
+      // d'identifiants arrive en JSON, auth = 0).
+      if (res.status === 401 || res.status === 403) return { error: "unreachable", detail: `accès refusé par le serveur (HTTP ${res.status}) : il bloque sans doute les serveurs Cloudflare` };
       if (!res.ok) return { error: "unreachable", detail: `HTTP ${res.status}` };
       const text = await res.text();
       try { body = JSON.parse(text); } catch { return { error: "unreachable", detail: "réponse non reconnue (pas une API Xtream)" }; }
