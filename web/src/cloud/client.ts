@@ -143,9 +143,10 @@ export interface ProviderInput {
   password?: string;
   /** « all » ou liste d'identifiants d'appareils. */
   shareWith?: "all" | string[];
+  /** Édition Pro : source posée par le revendeur (ni lien IPTV ni suppression sur le tableau de bord). */
+  managed?: "reseller";
 }
 
-/** Ajoute (ou met à jour avec `id`) un fournisseur du compte. 404 sans `id` = endpoint absent du Worker. */
 /**
  * Édition Pro : transmet le statut de licence SIGNÉ par le panneau revendeur ({ payload, sig } tels quels), vérifié et
  * affiché par le tableau de bord du compte. Sans effet en édition standard.
@@ -156,6 +157,7 @@ export async function postLicense(base: string, token: string, payload: string, 
   if (r.status < 200 || r.status >= 300) throw new Error(`HTTP ${r.status}`);
 }
 
+/** Ajoute (ou met à jour avec `id`) un fournisseur du compte. 404 sans `id` = endpoint absent du Worker. */
 export async function putProvider(base: string, token: string, input: ProviderInput): Promise<CloudProvider> {
   const r = await http({ url: `${base}/api/device/providers`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(input) });
   if (r.status === 401) throw new TokenRejectedError();
