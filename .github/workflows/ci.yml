@@ -9,7 +9,9 @@ on:
 # Cancel superseded runs on the same ref to save CI minutes.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # Annulation réservée aux pull requests : sur main, un run annulé par le commit suivant s'affichait « CI failing »
+  # (badge et commit en rouge) alors que rien n'était cassé.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:
