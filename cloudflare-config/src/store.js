@@ -6,8 +6,10 @@
 
 import { encryptJson, decryptJson, keysFromEnv, sha256Hex, randomToken, timingSafeEqual } from "./crypto.js";
 
-export const MAX_PROVIDERS = 20;
-export const MAX_DEVICES = 10;
+// Plafonds par compte (taille du compte en KV, configuration téléchargée par chaque appareil : ~50 Ko à 100 sources).
+// Le tableau de bord pagine et filtre ses listes au-delà de quelques éléments.
+export const MAX_PROVIDERS = 100;
+export const MAX_DEVICES = 50;
 
 export function guardStub(env, name) {
   return env.GUARD.get(env.GUARD.idFromName(name));

@@ -187,6 +187,10 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px ui-monos
 .content{padding:20px 0 40px}.hello h1{font-size:24px}}
 .kind.pro{background:linear-gradient(135deg,var(--acc),#8f1019);color:#fff;margin:0 0 0 6px}.kind.std{background:var(--s2);color:var(--fg2);margin:0 0 0 6px}
 .brand .kind.pro{font-size:10px;min-height:20px}
+.listbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
+.listbar .lsearch{flex:1 1 240px;min-height:44px}
+.pager{display:inline-flex;align-items:center;gap:8px}.pager button{min-height:44px;min-width:44px;padding:0 12px}
+.pinfo{color:var(--mut);font-size:13px;font-weight:600;white-space:nowrap}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
@@ -449,7 +453,7 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
     const sh = sharing(p, devices, csrfInput);
     const origin = p.originName ? `Ajouté depuis ${e(p.originName === "dashboard" ? "le tableau de bord" : p.originName)}` : "Origine inconnue";
     return `
-<article class="card"><div class="card-top"><div class="badge-ico">${ico("list")}</div>
+<article class="card" data-q="${e(`${p.name} ${displayUrl(p.url)} ${p.kind}`.toLowerCase())}"><div class="card-top"><div class="badge-ico">${ico("list")}</div>
 <div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
 ${sh.chips}${p.managed === "reseller" ? `<div class="chips"><span class="chip acc">Gérée par ton revendeur (Pro)</span></div>` : ""}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
@@ -463,7 +467,7 @@ ${p.managed === "reseller"
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form>`}</div></article>`;
   }).join("");
   const devRows = devices.map((d) => `
-<article class="card"><div class="card-top"><div class="badge-ico">${ico("tv")}</div>
+<article class="card" data-q="${e(`${d.name} ${d.label || ""} ${d.edition || ""}`.toLowerCase())}"><div class="card-top"><div class="badge-ico">${ico("tv")}</div>
 <div class="grow"><div class="card-title">${e(d.name)} ${d.edition === "pro" ? `<span class="kind pro">PRO</span>` : d.edition === "standard" ? `<span class="kind std">STANDARD</span>` : ""}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
 ${d.edition === "pro" ? licenseLine(d.license) : ""}
 <div class="actions"><details><summary>${ico("edit")}Renommer</summary><form method="post" action="/devices/${e(d.id)}/rename" class="drop">${csrfInput}
@@ -495,13 +499,17 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
  // Le statut vient du serveur du FOURNISSEUR (non fiable) : toujours échappé avant insertion.
  var x=function(v){return String(v).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});};
  var set=function(el,html,cls){el.innerHTML=html;el.className='acct card-meta mt10'+(cls?' '+cls:'');};
- var els=document.querySelectorAll('.acct[data-id]'),done=0,soon=0,expired=0,ok=0;
- var tally=function(){if(++done<els.length)return;var n=document.getElementById('sub-n'),l=document.getElementById('sub-l'),t=document.getElementById('sub-tile');if(!n)return;
-  if(expired){n.textContent=String(expired);l.textContent='abonnement'+(expired>1?'s':'')+' expiré'+(expired>1?'s':'');t.classList.add('bad');}
-  else if(soon){n.textContent=String(soon);l.textContent='expire'+(soon>1?'nt':'')+' dans moins de 15 jours';t.classList.add('warn');}
-  else if(ok){n.textContent=String(ok);l.textContent='abonnement'+(ok>1?'s':'')+' actif'+(ok>1?'s':'');}
-  else{n.textContent='—';l.textContent='abonnements : infos indisponibles';}};
- els.forEach(function(el){
+ // Chargé à la DEMANDE : seulement pour les cartes affichées (pagination) — un compte avec beaucoup de fournisseurs ne
+ // lance pas des dizaines de requêtes d'un coup. La tuile résume ce qui a été vérifié.
+ var total=document.querySelectorAll('.acct[data-id]').length,done=0,soon=0,expired=0,ok=0;
+ var tally=function(){done++;var n=document.getElementById('sub-n'),l=document.getElementById('sub-l'),t=document.getElementById('sub-tile');if(!n)return;
+  var of=done<total?' (sur '+done+' vérifié'+(done>1?'s':'')+')':'';t.classList.remove('bad','warn');
+  if(expired){n.textContent=String(expired);l.textContent='abonnement'+(expired>1?'s':'')+' expiré'+(expired>1?'s':'')+of;t.classList.add('bad');}
+  else if(soon){n.textContent=String(soon);l.textContent='expire'+(soon>1?'nt':'')+' dans moins de 15 jours'+of;t.classList.add('warn');}
+  else if(ok){n.textContent=String(ok);l.textContent='abonnement'+(ok>1?'s':'')+' actif'+(ok>1?'s':'')+of;}
+  else if(done>=total){n.textContent='—';l.textContent='abonnements : infos indisponibles';}};
+ window.utvLoadAccounts=function(root){(root||document).querySelectorAll('.acct[data-id]:not([data-loaded])').forEach(function(el){
+  if(el.closest('[hidden]'))return;el.setAttribute('data-loaded','1');
   fetch('/providers/'+el.dataset.id+'/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
    .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
    .then(function(a){
@@ -526,7 +534,30 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
     tally();
    })
    .catch(function(){set(el,'<span class="muted">Abonnement : '+ERR.unreachable+'</span>');tally();});
+ });};
+})();
+// Recherche + pagination des listes (utile au-delà de quelques éléments ; sans JavaScript, tout reste affiché).
+(function(){var SIZE=10;
+ document.querySelectorAll('.listbar[data-list]').forEach(function(bar){
+  var list=document.getElementById(bar.dataset.list);if(!list)return;
+  var cards=Array.prototype.slice.call(list.querySelectorAll(':scope>article.card'));
+  var q=bar.querySelector('.lsearch'),pg=bar.querySelector('.pager'),info=bar.querySelector('.pinfo'),prev=bar.querySelector('.pprev'),next=bar.querySelector('.pnext');
+  if(cards.length<=6){if(window.utvLoadAccounts)window.utvLoadAccounts(list);return;}
+  bar.hidden=false;var page=0;
+  var render=function(){var term=(q.value||'').trim().toLowerCase();
+   var hits=cards.filter(function(c){return !term||(c.dataset.q||'').indexOf(term)>=0;});
+   var pages=Math.max(1,Math.ceil(hits.length/SIZE));if(page>=pages)page=pages-1;
+   cards.forEach(function(c){c.hidden=true;});
+   hits.slice(page*SIZE,page*SIZE+SIZE).forEach(function(c){c.hidden=false;});
+   pg.hidden=hits.length<=SIZE;info.textContent=hits.length?('Page '+(page+1)+' / '+pages+' · '+hits.length+' élément'+(hits.length>1?'s':'')):'Aucun résultat';
+   prev.disabled=page===0;next.disabled=page>=pages-1;
+   if(window.utvLoadAccounts)window.utvLoadAccounts(list);};
+  q.addEventListener('input',function(){page=0;render();});
+  prev.addEventListener('click',function(){page--;render();});
+  next.addEventListener('click',function(){page++;render();});
+  render();
  });
+ if(window.utvLoadAccounts)window.utvLoadAccounts();
 })();
 // Barre latérale : la section visible est mise en avant.
 (function(){var links=document.querySelectorAll('.side nav a');if(!('IntersectionObserver' in window)||!links.length)return;
@@ -590,10 +621,12 @@ ${pairForm(csrfInput)}</section>
 </div>
 
 <div class="section-h" id="fournisseurs"><h2 id="h-src">Fournisseurs <span class="count">${providers.length}</span></h2><span class="muted small">Tes sources de chaînes, leur abonnement, et les appareils qui les reçoivent.</span></div>
-<div class="cards c2">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>Aucun fournisseur</strong><span class="small">Ajoute une source Xtream Codes ou une playlist M3U ci-dessus.</span></div>`}</div>
+<div class="listbar" data-list="prov-list" hidden><input type="search" class="lsearch" placeholder="Rechercher un fournisseur" aria-label="Rechercher un fournisseur" autocomplete="off"/><span class="pager"><button type="button" class="secondary pprev" aria-label="Page précédente">‹</button><span class="pinfo" aria-live="polite"></span><button type="button" class="secondary pnext" aria-label="Page suivante">›</button></span></div>
+<div class="cards c2" id="prov-list">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>Aucun fournisseur</strong><span class="small">Ajoute une source Xtream Codes ou une playlist M3U ci-dessus.</span></div>`}</div>
 
 <div class="section-h" id="appareils"><h2 id="h-dev">Appareils <span class="count">${devices.length}</span></h2><span class="muted small">Les TV qui lisent ta configuration.</span></div>
-<div class="cards c2">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div>
+<div class="listbar" data-list="dev-list" hidden><input type="search" class="lsearch" placeholder="Rechercher un appareil" aria-label="Rechercher un appareil" autocomplete="off"/><span class="pager"><button type="button" class="secondary pprev" aria-label="Page précédente">‹</button><span class="pinfo" aria-live="polite"></span><button type="button" class="secondary pnext" aria-label="Page suivante">›</button></span></div>
+<div class="cards c2" id="dev-list">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div>
 
 <div class="section-h" id="compte"><h2>Compte</h2></div>
 <div class="two">
