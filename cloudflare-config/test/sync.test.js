@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { env } from "cloudflare:workers";
+import { MAX_PROVIDERS, getAccount, saveProviders, putAccount } from "../src/store.js";
 import { call, newAccount, pairDevice, addProvider, bearer, freshIp, csrfOf } from "./helpers.js";
 
 const m3u = (name, host = "m3u.example") => ({ kind: "M3U", name, url: `https://${host}/list.m3u` });
@@ -194,8 +196,12 @@ describe("POST /api/device/providers : validation et attaques", () => {
     expect(r.status).toBe(400);
   });
   it("limiteDeFournisseurs_409", async () => {
-    const { phone } = await twoDevices();
-    for (let i = 0; i < 20; i++) expect((await putProv(phone, m3u(`p${i}`))).status).toBe(201);
+    const { acct, phone } = await twoDevices();
+    // Compte rempli jusqu'au plafond directement en base (l'API des appareils est limitée en débit avant d'y arriver).
+    const a = await getAccount(env, acct.login);
+    const full = Array.from({ length: MAX_PROVIDERS }, (_, i) => ({ id: i.toString(16).padStart(8, "0"), kind: "M3U", name: `p${i}`, url: `https://h.example.test/${i}.m3u`, createdAt: 1 }));
+    await saveProviders(env, a, full);
+    await putAccount(env, a);
     expect((await putProv(phone, m3u("de trop"))).status).toBe(409);
   });
   it("limiteDeDebitParAppareil_429", async () => {
