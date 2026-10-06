@@ -374,7 +374,6 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val X = com.ultratv.tv.nativeapp.ui.player.playerExtras()
     val zapPreview by zap.preview.collectAsState()
     val zapRecent by zap.recent.collectAsState()
-    var lastRecallMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(item) { zap.onPlaying(item) }
     LaunchedEffect(zapPreview != null) { if (zapPreview != null) zap.loadRecent() }
     // [B2·timeshift] pause du direct : tampon disque via un relais local (une seule connexion fournisseur).
@@ -529,12 +528,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     BackHandler {
         when {
             zap.isEntering -> zap.cancelEntry()
-            // [B2·zapping] Retour = chaîne précédente ; un 2e Retour dans les 3 s quitte (sinon on ne sortirait jamais).
-            isLive && (!overlayVisible || !controlsEngaged) && panel == Panel.None && !drawerOpen && state.phase == Phase.PLAYING && zap.hasPrevious() &&
-                System.currentTimeMillis() - lastRecallMs > 3_000 -> { lastRecallMs = System.currentTimeMillis(); zap.recallPrevious { currentUrl = it } }
+            // Retour ferme ce qui est ouvert puis QUITTE le lecteur (retour au menu). Il ne ramène plus à la chaîne
+            // précédente : touche « chaîne précédente » de la télécommande pour cela (KEYCODE_LAST_CHANNEL).
             panel != Panel.None -> panel = Panel.None
             drawerOpen -> drawerOpen = false
-            overlayVisible && state.phase == Phase.PLAYING -> overlayVisible = false
+            // Direct : seul le panneau de commandes (gauche/droite/menu) se referme d'abord ; le simple bandeau
+            // d'information affiché après un zap ne retient pas Retour.
+            overlayVisible && state.phase == Phase.PLAYING && (!isLive || controlsEngaged) -> overlayVisible = false
             else -> onBack()
         }
     }
@@ -555,6 +555,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
                 val okKey = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter || ev.key == Key.ButtonSelect || ev.key == Key.ButtonA
                 if (isLive && panel == Panel.None && !drawerOpen) {
+                    // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
+                    if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_LAST_CHANNEL) {
+                        if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }
+                        return@onPreviewKeyEvent true
+                    }
                     // Touche TV (télécommandes Google TV, ex. Mecool G10) : liste des chaînes.
                     if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_TV || ev.key == Key.Guide) { drawerOpen = true; return@onPreviewKeyEvent true }
                     // Touches chaîne +/- : zap, quel que soit l'état de la surcouche.

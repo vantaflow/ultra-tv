@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.33] — 2026-10-06 (Android TV)
+
+### Modifié
+- Lecteur (direct) : Retour ferme le panneau ouvert puis revient au menu ; il ne ramène plus à la chaîne précédente
+  (touche « chaîne précédente » de la télécommande pour cela). Le bandeau d'information affiché après un zap ne retient
+  plus Retour.
+
 ## [1.2.32] — 2026-10-06 (Android TV)
 
 ### Corrigé

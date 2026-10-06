@@ -46,7 +46,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 ## Features
 
 - **Search** from any screen: a button at the top of the side rail, plus the remote's Search and microphone keys.
-- **Live TV**: Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, back to the previous channel, 20 recent channels, instant search (FTS).
+- **Live TV**: Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, Back returns to the menu (Last channel key recalls the previous one), 20 recent channels, instant search (FTS).
 - **Categories**: names and playlist order exactly as the source provides them, enable / disable / reorder, text filter ("FR" = whole word); quality badges (SD, HD, FHD, 4K, RAW, HEVC…) to tell apart streams of the same channel.
 - **Guide**: time grid, reminders, scheduled recordings, **replay** (Xtream catch-up) from the guide when the source allows it. Programme borrowed from a channel with the same name when the provider only tags one category (HEVC, General…), "+1 / +2" channels shifted accordingly, the provider's short EPG as a fallback, and a **free additional guide** (XMLTV France by default, epgshare01 beIN Sports / Saudi Arabia / UAE) for channels still without a programme.
 - **Live pause** (timeshift): circular disk buffer for MPEG-TS streams.
