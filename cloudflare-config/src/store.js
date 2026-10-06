@@ -221,26 +221,56 @@ export function xtreamCredsOf(p) {
 }
 
 /**
+ * fetch() passant par le relais d'abonnement (relay/, hébergé hors Cloudflare) : même interface qu'un fetch sans
+ * redirection automatique, pour réutiliser la logique de sauts et de contrôle. Erreur du relais → exception `relay`.
+ */
+export function relayFetch(relay, fetchImpl = fetch, timeoutMs = 8000) {
+  return async (url, init) => {
+    let res;
+    try {
+      res = await fetchImpl(relay.url, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-relay-key": relay.key },
+        body: JSON.stringify({ url, ua: init && init.headers ? init.headers["user-agent"] : undefined }),
+        signal: AbortSignal.timeout(timeoutMs + 4000),
+      });
+    } catch (e) {
+      if (e && (e.name === "TimeoutError" || e.name === "AbortError")) throw e;
+      throw Object.assign(new Error("relay"), { relay: true });
+    }
+    let j = null;
+    try { j = res.ok ? await res.json() : null; } catch { /* réponse invalide */ }
+    if (!j || typeof j !== "object") throw Object.assign(new Error("relay"), { relay: true });
+    if (j.error === "timeout") throw Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    if (j.error) throw new Error(String(j.error));
+    const status = Number(j.status);
+    if (!Number.isInteger(status) || status < 200 || status > 599) throw Object.assign(new Error("relay"), { relay: true });
+    const nullBody = status === 204 || status === 205 || status === 304;
+    return new Response(nullBody ? null : String(j.body ?? ""), { status, headers: j.location ? { location: String(j.location) } : {} });
+  };
+}
+
+/**
  * Abonnement d'un fournisseur Xtream (player_api.php → user_info), interrogé PAR LE WORKER : les identifiants ne
  * quittent jamais le serveur. Renvoie un objet normalisé, ou { error, detail? } : "unsupported" (M3U sans identifiants
  * Xtream), "port" (port non joignable depuis Cloudflare, y compris après redirection), "denied" (identifiants refusés),
  * "unreachable" (réseau, délai, réponse invalide ; `detail` dit pourquoi).
  */
-export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
+export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000, relay = null) {
   const c = xtreamCredsOf(p);
   if (!c) return { error: p.kind === "XTREAM" ? "unreachable" : "unsupported", ...(p.kind === "XTREAM" ? { detail: "adresse invalide" } : {}) };
   if (c.u.protocol !== "http:" && c.u.protocol !== "https:") return { error: "unreachable", detail: "adresse invalide" };
-  if (!WORKER_PORTS.has(c.u.port)) return { error: "port", port: c.u.port };
   const q = new URLSearchParams({ username: c.username, password: c.password });
   const first = `${c.base}/player_api.php?${q}`;
   // Une interrogation complète avec une identité (user-agent) donnée : { body } ou { error, detail?, port?, http? }.
-  const probe = async (ua) => {
+  const probe = async (ua, f, viaRelay) => {
     let url = first;
+    if (!viaRelay && !WORKER_PORTS.has(c.u.port)) return { error: "port", port: c.u.port };
     try {
       // Redirections suivies À LA MAIN : beaucoup de serveurs renvoient vers un autre hôte ou port ; un port que Cloudflare
       // ne peut pas joindre est signalé comme tel (sinon : échec muet « ne répond pas »).
       for (let hop = 0; ; hop++) {
-        const res = await fetchImpl(url, {
+        const res = await f(url, {
           headers: { "user-agent": ua, accept: "*/*" },
           signal: AbortSignal.timeout(timeoutMs),
           redirect: "manual",
@@ -249,26 +279,35 @@ export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
           if (hop >= 3) return { error: "unreachable", detail: "trop de redirections" };
           const next = new URL(res.headers.get("location"), url);
           if (next.protocol !== "http:" && next.protocol !== "https:") return { error: "unreachable", detail: "redirection invalide" };
-          if (!WORKER_PORTS.has(next.port)) return { error: "port", port: next.port };
+          if (!viaRelay && !WORKER_PORTS.has(next.port)) return { error: "port", port: next.port };
           url = next.toString();
           continue;
         }
         // 401/403 en HTTP : souvent un pare-feu (adresses Cloudflare ou user-agent refusés), pas les identifiants (le vrai
         // refus d'identifiants arrive en JSON, auth = 0).
-        if (res.status === 401 || res.status === 403) return { error: "unreachable", http: res.status, detail: `accès refusé par le serveur (HTTP ${res.status}), qui bloque sans doute les serveurs Cloudflare` };
+        if (res.status === 401 || res.status === 403) return { error: "unreachable", http: res.status, detail: viaRelay ? `accès refusé par le serveur (HTTP ${res.status}), même hors Cloudflare` : `accès refusé par le serveur (HTTP ${res.status}), qui bloque sans doute les serveurs Cloudflare` };
         if (!res.ok) return { error: "unreachable", detail: `HTTP ${res.status}` };
         const text = await res.text();
         try { return { body: JSON.parse(text) }; } catch { return { error: "unreachable", detail: "réponse non reconnue (pas une API Xtream)" }; }
       }
     } catch (e) {
-      return { error: "unreachable", detail: e && (e.name === "TimeoutError" || e.name === "AbortError") ? "délai dépassé (8 s)" : "connexion impossible depuis Cloudflare" };
+      if (e && e.relay) return { error: "unreachable", detail: "relais d'abonnement indisponible" };
+      return { error: "unreachable", detail: e && (e.name === "TimeoutError" || e.name === "AbortError") ? "délai dépassé (8 s)" : viaRelay ? "connexion impossible" : "connexion impossible depuis Cloudflare" };
     }
   };
   // Beaucoup de panneaux ne laissent passer que les lecteurs IPTV connus : refus HTTP → on réessaie sous leur identité.
-  let r;
-  for (const ua of XTREAM_USER_AGENTS) {
-    r = await probe(ua);
-    if (!r.http) break;
+  const attempt = async (f, viaRelay) => {
+    let r;
+    for (const ua of XTREAM_USER_AGENTS) {
+      r = await probe(ua, f, viaRelay);
+      if (!r.http) break;
+    }
+    return r;
+  };
+  let r = await attempt(fetchImpl, false);
+  // Bloqué depuis Cloudflare (refus HTTP, port fermé, connexion coupée) : nouvel essai par le relais hors Cloudflare.
+  if (relay && relay.url && relay.key && (r.http || r.error === "port" || r.detail === "connexion impossible depuis Cloudflare")) {
+    r = await attempt(relayFetch(relay, fetchImpl, timeoutMs), true);
   }
   if (!r.body) { const { http: _h, ...err } = r; return err; }
   const body = r.body;

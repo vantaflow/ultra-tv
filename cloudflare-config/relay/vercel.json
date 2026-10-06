@@ -1,0 +1,3 @@
+{
+  "functions": { "api/xtream.js": { "maxDuration": 15 } }
+}

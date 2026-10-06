@@ -90,11 +90,13 @@ async function withAccountLock(env, login, fn) {
  * compte, au fournisseur et à ses identifiants : un changement d'identifiants relit tout de suite.
  */
 const accountCache = new Map();
-async function cachedAccount(login, p, now = Date.now()) {
+async function cachedAccount(env, login, p, now = Date.now()) {
   const key = `${login}|${p.id}|${p.url}|${p.username || ""}|${p.password || ""}`;
   const hit = accountCache.get(key);
   if (hit && now - hit.at < 600_000) return hit.value;
-  const value = await xtreamAccount(p);
+  // Relais hors Cloudflare (facultatif) pour les fournisseurs qui bloquent les serveurs Cloudflare.
+  const relay = env.ACCOUNT_RELAY_URL && env.ACCOUNT_RELAY_KEY ? { url: env.ACCOUNT_RELAY_URL, key: env.ACCOUNT_RELAY_KEY } : null;
+  const value = await xtreamAccount(p, fetch, 8000, relay);
   if (accountCache.size > 500) accountCache.clear();
   // Les erreurs passagères ne sont gardées qu'1 min.
   accountCache.set(key, { at: value.error === "unreachable" ? now - 540_000 : now, value });
@@ -201,7 +203,7 @@ async function route(req, env) {
     if (rla) return rla;
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
     if (!p) return new Response("Not found", { status: 404 });
-    return new Response(JSON.stringify(await cachedAccount(sess.acct.login, p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+    return new Response(JSON.stringify(await cachedAccount(env, sess.acct.login, p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   const rl = await limited(env, `dash:${sess.acct.login}`, 120, 3600);
