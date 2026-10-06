@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.36] — 2026-10-06 (Android TV)
+
+### Amélioré
+- Zapping plus rapide : le lecteur (Media3) enchaîne la chaîne suivante sur le moteur en place au lieu d'être détruit
+  et recréé à chaque appui (lecteur, vue vidéo, décodeurs) ; l'ancien flux est libéré avant d'ouvrir le suivant
+  (connexion unique). Recréé seulement si le moteur, le décodage ou le tampon changent, ou après une erreur.
+- La liste des chaînes du lecteur n'est plus recalculée (chaînes + guide) à chaque zap.
+
 ## [1.2.35] — 2026-10-06 (Android TV)
 
 ### Corrigé

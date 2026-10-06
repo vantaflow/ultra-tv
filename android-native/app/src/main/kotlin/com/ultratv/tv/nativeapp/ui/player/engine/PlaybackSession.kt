@@ -80,8 +80,19 @@ class PlaybackSession(
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
-        combo = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
-        launch(combo)
+        val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
+        val e = engine
+        // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
+        // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
+        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && _state.value.phase != Phase.ERROR) {
+            watchdog?.cancel(); rememberJob?.cancel()
+            tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
+            _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false)
+            e.load(url, resumeMs)
+        } else {
+            combo = next
+            launch(combo)
+        }
         adaptJob?.cancel()
         adaptJob = scope.launch { while (true) { delay(5_000); applyQualityLimit(adapter.tick(System.currentTimeMillis())) } }
     }
@@ -98,8 +109,8 @@ class PlaybackSession(
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
-        val preset = presetOverride
-        val buffer = if (preset != null) BufferPlanner.resolve(preset, CustomBuffer(), s.heapClassMb, s.lowRam) else s.buffer
+        val buffer = bufferFor(s)
+        launchedBuffer = buffer
         _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil.Coil.imageLoader(ctx).memoryCache?.clear() }
@@ -112,6 +123,14 @@ class PlaybackSession(
         e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
         eventsJob = scope.launch { e.events.collect { onEvent(it, e) } }
         e.load(url, resumeMs)
+    }
+
+    /** Tampon effectif du moteur lancé : un zap ne réutilise le moteur que si ce tampon n'a pas changé. */
+    private var launchedBuffer: BufferParams? = null
+
+    private fun bufferFor(s: ResolvedPlayback): BufferParams {
+        val preset = presetOverride
+        return if (preset != null) BufferPlanner.resolve(preset, CustomBuffer(), s.heapClassMb, s.lowRam) else s.buffer
     }
 
     private fun applyQualityLimit(level: Int) {
@@ -175,6 +194,7 @@ class PlaybackSession(
     private fun releaseEngine() {
         engine?.let { runCatching { it.release() } }
         engine = null
+        launchedBuffer = null
         container.removeAllViews()
     }
 

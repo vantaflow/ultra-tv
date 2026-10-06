@@ -73,6 +73,8 @@ interface PlayerEngine {
     val events: Flow<EngineEvent>
 
     fun load(url: String, startPositionMs: Long = 0)
+    /** Vrai si [load] peut enchaîner un autre flux sur le MÊME moteur (zapping sans recréer lecteur, vue et décodeurs). */
+    val reusable: Boolean get() = false
     fun play()
     fun pause()
     fun seekTo(ms: Long)

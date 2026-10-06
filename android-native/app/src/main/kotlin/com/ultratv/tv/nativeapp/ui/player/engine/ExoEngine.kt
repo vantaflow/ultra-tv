@@ -115,7 +115,11 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         return true
     }
 
+    override val reusable: Boolean get() = true
+
     override fun load(url: String, startPositionMs: Long) {
+        // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
+        if (player.mediaItemCount > 0) player.stop()
         val item = MediaItem.Builder().setUri(url).apply {
             if (config.isLive) setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(config.buffer.liveOffsetMs).build())
         }.build()

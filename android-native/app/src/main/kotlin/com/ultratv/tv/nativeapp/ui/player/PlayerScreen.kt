@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.player
 
+import kotlinx.coroutines.flow.distinctUntilChanged
 import android.content.Intent
 import android.net.Uri
 import android.widget.FrameLayout
@@ -210,9 +211,12 @@ class PlayerViewModel @Inject constructor(
     }
 
     /** File de zapping courante (la liste que l'utilisateur parcourait avant d'ouvrir le lecteur). */
-    private val queueEntries: StateFlow<List<DrawerEntry>> = zapQueue.state.map { s ->
-        if (s == null) emptyList() else entriesFor(s.channels, s.channels.getOrNull(s.index)?.id)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    // Recalculée quand la LISTE change, pas à chaque zap (seule la position bouge alors) : la chaîne en cours est
+    // marquée dans `queue` d'après la lecture. Avant : jusqu'à 400 chaînes + leur guide relus en base à chaque appui.
+    private val queueEntries: StateFlow<List<DrawerEntry>> = zapQueue.state.map { it?.channels.orEmpty() }
+        .distinctUntilChanged { a, b -> a.size == b.size && a.map { it.id } == b.map { it.id } }
+        .map { list -> entriesFor(list, null) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Catégorie parcourue dans le tiroir (null = la file de zapping courante). */
     private val browsedCategory = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
@@ -222,7 +226,7 @@ class PlayerViewModel @Inject constructor(
     private val shortProgrammes = kotlinx.coroutines.flow.MutableStateFlow<Map<Long, Pair<EpgEntity?, EpgEntity?>>>(emptyMap())
 
     val queue: StateFlow<List<DrawerEntry>> = kotlinx.coroutines.flow.combine(queueEntries, browsedEntries, playback.current, shortProgrammes) { q, b, cur, sp ->
-        val base = if (b == null) q else b.map { it.copy(isCurrent = it.channel.remoteId == cur?.remoteId) }
+        val base = (b ?: q).map { it.copy(isCurrent = it.channel.remoteId == cur?.remoteId) }
         if (sp.isEmpty()) base else base.map { e -> if (e.now == null) sp[e.channel.id]?.let { (n, x) -> e.copy(now = n, next = x) } ?: e else e }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
