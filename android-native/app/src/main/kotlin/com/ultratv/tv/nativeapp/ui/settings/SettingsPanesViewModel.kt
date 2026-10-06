@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
@@ -50,14 +51,14 @@ class SettingsPanesViewModel @Inject constructor(
     private val pid = provider.map { it?.id }.distinctUntilChanged()
 
     val counts: StateFlow<Counts> = pid.flatMapLatest { id ->
-        if (id == null) flowOf(Counts()) else combine(channelDao.observeCount(id), movieDao.observeCount(id), seriesDao.observeCount(id)) { a, b, c -> Counts(a, b, c) }
+        if (id == null) flowOf(Counts()) else combine(channelDao.observeCount(id), movieDao.observeCount(id), seriesDao.observeCount(id)) { a, b, c -> Counts(a, b, c) }.atMostEvery(1_000)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Counts())
 
     val categoryTotals: StateFlow<CategoryTotals> = pid.flatMapLatest { id ->
-        if (id == null) flowOf(CategoryTotals()) else categoryDao.observeEnabledCounts(id).map { rows -> CategoryTotals(rows.filter { it.enabled }.sumOf { it.n }, rows.filter { !it.enabled }.sumOf { it.n }) }
+        if (id == null) flowOf(CategoryTotals()) else categoryDao.observeEnabledCounts(id).atMostEvery(1_000).map { rows -> CategoryTotals(rows.filter { it.enabled }.sumOf { it.n }, rows.filter { !it.enabled }.sumOf { it.n }) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), CategoryTotals())
 
-    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else categoryDao.observeLangCounts(id) }
+    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else categoryDao.observeLangCounts(id).atMostEvery(1_000) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     fun syncNow() { provider.value?.let { sync.request(it.id, force = true) } }

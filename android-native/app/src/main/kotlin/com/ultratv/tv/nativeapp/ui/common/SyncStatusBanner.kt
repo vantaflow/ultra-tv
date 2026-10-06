@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.common
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.ultratv.tv.nativeapp.ui.design.Ux
 
 import androidx.compose.animation.AnimatedVisibility
@@ -48,6 +50,9 @@ class SyncStatusViewModel @Inject constructor(
         }
     }
     val status = bus.status
+    /** La bannière ne regarde que « synchro en cours ou non » : pas de recomposition à chaque message de progression. */
+    val syncing: kotlinx.coroutines.flow.StateFlow<Boolean> = bus.status.map { it != null }.distinctUntilChanged()
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), false)
     /** Pastille du rail : au plus 2 mises à jour par seconde. */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     val pill: kotlinx.coroutines.flow.StateFlow<SyncStatusBus.Status?> = bus.status.let { f -> kotlinx.coroutines.flow.flow { f.sample(500).collect { emit(it) } } }
@@ -68,12 +73,12 @@ class SyncStatusViewModel @Inject constructor(
 @Composable
 fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hiltViewModel()) {
     OfflineBar()
-    val status by vm.status.collectAsState()
+    val syncing by vm.syncing.collectAsState()
     val failure by vm.failure.collectAsState()
     // L'application reste utilisable (base locale, favoris, réglages) : l'échec n'est
     // qu'une bannière avec « Corriger la source » / « Réessayer », jamais un blocage.
     val f = failure
-    if (f != null && status == null) {
+    if (f != null && !syncing) {
         val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current.sync
         Row(
             modifier = Modifier

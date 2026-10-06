@@ -200,6 +200,13 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         val act = (ctx as? Activity) ?: return
         val fps = player.videoFormat?.frameRate?.takeIf { it > 0f } ?: return
         @Suppress("DEPRECATION") val display = act.windowManager.defaultDisplay ?: return
+        // Fréquence actuelle déjà compatible (multiple entier, ex. 50 Hz pour 25 i/s) : pas de bascule HDMI — elle
+        // coûte 1 à 3 s d'écran noir et se produisait à chaque zap entre chaînes à 25 et 50 i/s.
+        val currentHz = display.mode?.refreshRate ?: 0f
+        if (currentHz > 0f) {
+            val ratio = currentHz / fps
+            if (ratio >= 0.99f && kotlin.math.abs(ratio - kotlin.math.round(ratio)) < 0.01f) return
+        }
         val target = display.supportedModes.minByOrNull { m ->
             val multiple = (m.refreshRate / fps).coerceAtLeast(1f)
             kotlin.math.abs(m.refreshRate - fps * kotlin.math.round(multiple))

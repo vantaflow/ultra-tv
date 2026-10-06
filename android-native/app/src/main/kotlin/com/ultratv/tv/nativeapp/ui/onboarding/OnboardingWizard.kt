@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.onboarding
 
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -122,7 +123,7 @@ class OnboardingViewModel @Inject constructor(
         val p = ps.lastOrNull() ?: return@flatMapLatest flowOf(null)
         combine(channelDao.observeCount(p.id), movieDao.observeCount(p.id), seriesDao.observeCount(p.id)) { c, m, s ->
             SourceSummary(p.name, p.kind, c, m, s)
-        }
+        }.atMostEvery(500)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val syncStatus = bus.status

@@ -237,7 +237,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val now = remember(windowStart) { System.currentTimeMillis() }
     val focus = LocalFocusManager.current
     var inGrid by remember { mutableStateOf(false) }
-    var focusedProg by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    // Programme focalisé : lu SEULEMENT par le panneau du bas (FocusedInfo) — lu ici, chaque déplacement recomposait
+    // tout l'écran et ses lignes.
+    val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     val recordingRunning by vm.recordingRunning.collectAsState()
 
@@ -288,9 +290,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
 
         val state = rememberLazyListState()
         LaunchedEffect(state, channels) {
-            snapshotFlow { state.layoutInfo.visibleItemsInfo.map { it.index } }.collect { idx ->
-                vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.id })
-            }
+            // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
+            snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channels.itemCount) channels.peek(it.index)?.id else null } }
+                .distinctUntilChanged().collect { vm.setVisible(it) }
         }
         val first = remember { FocusRequester() }
         var firstFocused by remember { mutableStateOf(false) }
@@ -304,7 +306,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                         GuideRow(
                             c, programmes[c.id].orEmpty(), windowStart, gridW, D,
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg = c to p },
+                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg.value = c to p },
                         )
                     } else Spacer(Modifier.height(84.design))
                 }
@@ -313,7 +315,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             val nowFrac = (now - windowStart).toFloat() / GUIDE_WINDOW_MS
             if (nowFrac in 0f..1f) Box(Modifier.offset(x = 260.design + gridW * nowFrac).width(3.design).fillMaxHeight().background(Ux.Accent))
         }
-        focusedProg?.let { (ch, pr) -> InfoPanel(ch, pr) }
+        FocusedInfo(focusedProg)
     }
     actionTarget?.let { (ch, pr) ->
         val nowMs = System.currentTimeMillis()
@@ -344,6 +346,11 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
 }
 
 /** Panneau d'information du programme focalisé (les cellules courtes n'affichent pas de texte). */
+@Composable
+private fun FocusedInfo(s: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>) {
+    s.value?.let { (ch, pr) -> InfoPanel(ch, pr) }
+}
+
 @Composable
 private fun InfoPanel(ch: ChannelEntity, p: EpgEntity) {
     Row(Modifier.fillMaxWidth().height(120.design).clip(RoundedCornerShape(20.design)).background(Ux.SurfaceDeep).padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
@@ -390,9 +397,11 @@ private fun GuideRow(
             val q = remember(c.id) { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(c.name, live = true).quality }
             if (q != null) { Spacer(Modifier.width(8.design)); Text(q, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 7.design, vertical = 2.design)) }
         }
+        // Cases calculées une fois par (programmes, fenêtre), pas à chaque recomposition de la ligne.
+        val slots = remember(progs, windowStart) { progs.map { slotFor(it.startMs, it.endMs, windowStart) } }
         Box(Modifier.width(gridW).fillMaxHeight()) {
             progs.forEachIndexed { idx, p ->
-                val slot = slotFor(p.startMs, p.endMs, windowStart) ?: return@forEachIndexed
+                val slot = slots[idx] ?: return@forEachIndexed
                 val isNow = p.startMs <= nowMs && p.endMs > nowMs
                 val w = (gridW * slot.widthFrac - 8.design).coerceAtLeast(24.design)
                 FocusSurface(
@@ -468,9 +477,9 @@ private fun GuideTouch(
         }
         val state = rememberLazyListState()
         LaunchedEffect(state, channels) {
-            snapshotFlow { state.layoutInfo.visibleItemsInfo.map { it.index } }.collect { idx ->
-                vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.id })
-            }
+            // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
+            snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channels.itemCount) channels.peek(it.index)?.id else null } }
+                .distinctUntilChanged().collect { vm.setVisible(it) }
         }
         com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
             Box(Modifier.fillMaxSize().horizontalScroll(hScroll)) {

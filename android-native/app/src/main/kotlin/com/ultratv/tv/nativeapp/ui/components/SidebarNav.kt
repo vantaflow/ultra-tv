@@ -97,7 +97,6 @@ fun SidebarNav(navController: NavController) {
     val S = LocalStrings.current
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val syncVm: com.ultratv.tv.nativeapp.ui.common.SyncStatusViewModel = androidx.hilt.navigation.compose.hiltViewModel()
-    val pill by syncVm.pill.collectAsState()
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -261,19 +260,7 @@ fun SidebarNav(navController: NavController) {
                     }
                 }
                 }
-                val p = pill
-                if (p != null) {
-                    Spacer(Modifier.height(20.design))
-                    Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
-                            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
-                        }
-                        if (showLabels) {
-                            Spacer(Modifier.width(16.design))
-                            Text("${D.syncing} · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value })
-                        }
-                    }
-                }
+                SyncPill(syncVm.pill, showLabels, labelAlphaState, D.syncing)
                 Spacer(Modifier.height(40.design))
                 val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
                 val prof by profileVm.current.collectAsState()
@@ -308,4 +295,28 @@ internal fun isSelected(route: String, candidate: String): Boolean = when {
     candidate == "movies" && route.startsWith("movies/") -> true
     candidate == "series" && route.startsWith("series/") -> true
     else -> false
+}
+
+/**
+ * Pastille de synchro du rail, dans son PROPRE composable : lue dans SidebarNav, chaque progression (2 par seconde)
+ * recomposait tout le menu.
+ */
+@Composable
+private fun SyncPill(
+    pillFlow: kotlinx.coroutines.flow.StateFlow<com.ultratv.tv.nativeapp.data.repo.SyncStatusBus.Status?>,
+    showLabels: Boolean,
+    labelAlpha: androidx.compose.runtime.State<Float>,
+    syncing: String,
+) {
+    val p = pillFlow.collectAsState().value ?: return
+    Spacer(Modifier.height(20.design))
+    Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
+            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
+        }
+        if (showLabels) {
+            Spacer(Modifier.width(16.design))
+            Text("$syncing · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.graphicsLayer { alpha = labelAlpha.value })
+        }
+    }
 }

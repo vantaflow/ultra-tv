@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.live
 
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -85,7 +86,7 @@ class LiveViewModel @Inject constructor(
             if (id == null) flowOf(emptyList())
             else combine(
                 catalog.categories(id, "LIVE"),
-                channelDao.observeCategoryCounts(id),
+                channelDao.observeCategoryCounts(id).atMostEvery(1_000),
                 catalog.favoriteCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
                 val byId = counts.associate { it.categoryId to it.n }
@@ -106,7 +107,7 @@ class LiveViewModel @Inject constructor(
     val langView: StateFlow<com.ultratv.tv.nativeapp.data.repo.LangView> = _langView
     fun toggleLang(code: String) { _langView.value = _langView.value.toggle(code) }
     fun clearLangView() { _langView.value = com.ultratv.tv.nativeapp.data.repo.LangView.ALL }
-    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else channelDao.observeLangCounts(id) }
+    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else channelDao.observeLangCounts(id).atMostEvery(1_000) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */

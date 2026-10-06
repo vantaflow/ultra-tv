@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.live
 
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -93,13 +94,15 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     var langPanel by remember { mutableStateOf(false) }
     var pinPrompt by remember { mutableStateOf<ChannelEntity?>(null) }
     var actionsFor by remember { mutableStateOf<ChannelEntity?>(null) }
-    var focusedChannel by remember { mutableStateOf<ChannelEntity?>(null) }
+    // Chaîne focalisée : flux HORS composition — un état lu ici recomposait tout l'écran (catégories, liste, aperçu)
+    // à chaque déplacement du D-pad ; seul l'aperçu change, une fois le focus posé depuis 300 ms.
+    val focusedChannel = remember { kotlinx.coroutines.flow.MutableStateFlow<ChannelEntity?>(null) }
     // Le focus initial (programmatique) ne doit PAS changer de catégorie : seule une action de la télécommande le fait.
     var userMoved by remember { mutableStateOf(false) }
     // L'aperçu suit la chaîne focalisée avec ~300 ms de recul ; dans les catégories : première chaîne de la catégorie.
     var previewChannel by remember { mutableStateOf<ChannelEntity?>(null) }
-    LaunchedEffect(focusedChannel) { kotlinx.coroutines.delay(300); previewChannel = focusedChannel }
-    LaunchedEffect(selected) { focusedChannel = null; previewChannel = null }
+    LaunchedEffect(Unit) { focusedChannel.debounce(300).collect { previewChannel = it } }
+    LaunchedEffect(selected) { focusedChannel.value = null; previewChannel = null }
     val firstChannel = remember { FocusRequester() }
     LaunchedEffect(selected, channels.itemCount > 0) {
         if (!userMoved && channels.itemCount > 0) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
@@ -114,10 +117,10 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     if (touch) MobileLiveLayout(
         cats = cats, selected = selected, onSelect = { vm.selectCategory(it) }, channels = channels, locked = locked, favs = favs, nowNext = nowNext, vm = vm,
         langView = langView, onLang = { langPanel = true }, twoPane = twoPane, D = D,
-        selectedChannel = previewChannel ?: focusedChannel,
+        selectedChannel = previewChannel ?: focusedChannel.value,
         onTapChannel = { c ->
             // Téléphone : un appui lit. Tablette : un appui choisit (aperçu), « Regarder » lit.
-            if (twoPane) { focusedChannel = c; previewChannel = c } else if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay)
+            if (twoPane) { focusedChannel.value = c; previewChannel = c } else if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay)
         },
         onWatch = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay) },
         onActions = { actionsFor = it },
@@ -152,7 +155,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 modifier = Modifier.padding(bottom = 4.design),
             )
             ChannelList(channels, locked, favs, nowNext, selected, vm,
-                onFocusChannel = { focusedChannel = it },
+                onFocusChannel = { focusedChannel.value = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else vm.resolveAndPlay(c, onReady = onPlay) },
                 onActions = { actionsFor = it },
                 emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel)

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.catalog
 
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import androidx.compose.foundation.layout.Arrangement
@@ -113,7 +114,7 @@ class CatalogGridViewModel @Inject constructor(
             if (p == null) flowOf(emptyList())
             else {
                 val kindName = if (k == CatalogKind.MOVIES) "MOVIE" else "SERIES"
-                val counts: Flow<List<CategoryCount>> = if (k == CatalogKind.MOVIES) movieDao.observeCategoryCounts(p) else seriesDao.observeCategoryCounts(p)
+                val counts: Flow<List<CategoryCount>> = if (k == CatalogKind.MOVIES) movieDao.observeCategoryCounts(p).atMostEvery(1_000) else seriesDao.observeCategoryCounts(p).atMostEvery(1_000)
                 combine(catalog.categories(p, kindName), counts) { cats: List<CategoryEntity>, cnt ->
                     val nonEmpty = cnt.filter { it.n > 0 }.mapNotNull { it.categoryId }.toSet()
                     cats.filter { it.remoteId in nonEmpty && hiddenStore.keyFor(kindName, p, it.remoteId) !in hidden }
@@ -127,14 +128,21 @@ class CatalogGridViewModel @Inject constructor(
     fun toggleLang(code: String) { _langView.value = _langView.value.toggle(code) }
     fun clearLangView() { _langView.value = com.ultratv.tv.nativeapp.data.repo.LangView.ALL }
     val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = combine(pid, kind) { p, k -> p to k }
-        .flatMapLatest { (p, k) -> if (p == null) flowOf(emptyList()) else if (k == CatalogKind.MOVIES) movieDao.observeLangCounts(p) else seriesDao.observeLangCounts(p) }
+        .flatMapLatest { (p, k) -> if (p == null) flowOf(emptyList()) else if (k == CatalogKind.MOVIES) movieDao.observeLangCounts(p).atMostEvery(1_000) else seriesDao.observeLangCounts(p).atMostEvery(1_000) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Rangée d'une catégorie pour la vue « Tous » (les 20 plus récents). */
-    fun rowItems(cat: String): Flow<List<PosterItem>> = combine(pid, kind) { p, k -> p to k }.flatMapLatest { (p, k) ->
-        if (p == null) flowOf(emptyList())
-        else if (k == CatalogKind.MOVIES) movieDao.observeRow(p, cat, ROW_SIZE).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
-        else seriesDao.observeRow(p, cat, ROW_SIZE).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+    /**
+     * Rangée d'une catégorie pour la vue « Tous » (les 20 plus récents), MISE EN CACHE par catégorie : une rangée
+     * qui sort puis revient à l'écran en défilant retrouve sa dernière valeur tout de suite (avant : nouvelle requête,
+     * squelette puis clignotement). Pendant une synchro, au plus une relecture par seconde.
+     */
+    private val rowCache = java.util.concurrent.ConcurrentHashMap<String, StateFlow<List<PosterItem>?>>()
+    fun rowItems(cat: String): StateFlow<List<PosterItem>?> = rowCache.getOrPut(cat) {
+        combine(pid, kind) { p, k -> p to k }.flatMapLatest { (p, k) ->
+            if (p == null) flowOf(emptyList())
+            else if (k == CatalogKind.MOVIES) movieDao.observeRow(p, cat, ROW_SIZE).atMostEvery(1_000).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+            else seriesDao.observeRow(p, cat, ROW_SIZE).atMostEvery(1_000).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(30_000), null)
     }
 
     val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> arrayOf<Any?>(p, k, c, lv) }
@@ -233,7 +241,7 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
     ) {
         items(chips.size, key = { chips[it].remoteId }, contentType = { "row" }) { idx ->
             val c = chips[idx]
-            val loaded by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState(initial = null)
+            val loaded by remember(c.remoteId) { vm.rowItems(c.remoteId) }.collectAsState()
             val list = loaded.orEmpty()
             Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
                 Text(c.name, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

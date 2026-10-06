@@ -2,6 +2,24 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.41] — 2026-10-06 (Android TV)
+
+### Amélioré
+- Compteurs (catégories, langues, totaux) : au plus une mise à jour par seconde pendant une synchro, au lieu d'une à
+  chaque écriture en base. CategoryManager ne lance plus sa requête deux fois.
+- Films / Séries : rangées de la vue « Tous » mises en cache ; une rangée qui revient à l'écran s'affiche tout de suite,
+  sans squelette ni clignotement.
+- Direct : un déplacement du D-pad ne recompose plus tout l'écran (seul l'aperçu suit, après 300 ms).
+- Guide : le panneau du programme focalisé est isolé, les cases de chaque ligne sont calculées une fois, et les lignes
+  visibles sont suivies sans copier toute la liste.
+- Lecteur :
+  - le programme en cours est relu à la fin du programme et non toutes les 20 s ;
+  - le guide court du fournisseur est demandé 2 s après le zap, pas pendant l'ouverture du flux ;
+  - la fréquence d'écran ne bascule plus quand celle de l'écran convient déjà (ex. 50 Hz pour du 25 i/s), ce qui
+    évite 1 à 3 s d'écran noir au zap ;
+  - l'enregistrement de progression en double est retiré.
+- Menu et bannière de synchro : la progression ne recompose plus tout le menu.
+
 ## [1.2.40] — 2026-10-06 (Android TV)
 
 ### Amélioré

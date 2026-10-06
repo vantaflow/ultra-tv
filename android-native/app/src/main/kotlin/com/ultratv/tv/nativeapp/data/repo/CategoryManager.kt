@@ -39,7 +39,7 @@ class CategoryManager @Inject constructor(
         val counts: Flow<List<CategoryCount>> = when (kind) { "LIVE" -> channelDao.observeCategoryCounts(pid); "MOVIE" -> movieDao.observeCategoryCounts(pid); else -> seriesDao.observeCategoryCounts(pid) }
         // Pendant une synchro la table des chaînes change sans arrêt : compteurs recalculés au plus une fois par seconde
         // (le premier tout de suite), sinon l'écran se fige sur une box modeste.
-        val throttled = kotlinx.coroutines.flow.merge(counts.take(1), counts.drop(1).sample(1_000))
+        val throttled = counts.atMostEvery(1_000)
         return combine(categoryDao.observeOrdered(pid, kind), throttled) { cats, cnt -> rows(cats, cnt, query) }.conflate()
     }
 

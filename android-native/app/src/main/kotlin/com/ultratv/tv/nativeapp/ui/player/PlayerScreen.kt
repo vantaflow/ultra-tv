@@ -156,22 +156,32 @@ class PlayerViewModel @Inject constructor(
 
     val current: StateFlow<PlaybackContext.Item?> = playback.current
 
-    /** Programme en cours de la chaîne regardée (guide), rafraîchi toutes les 20 s. */
+    /**
+     * Programme en cours de la chaîne regardée (guide). Relu à la FIN du programme (borné 15 s – 2 min), pas toutes les
+     * 20 s. Sans guide : programme court du fournisseur demandé 2 s après le zap, pas pendant l'ouverture du flux.
+     */
     val nowProgramme: StateFlow<EpgEntity?> = playback.current.flatMapLatest { item ->
         if (item == null || item.kind != "LIVE") flowOf(null)
         else flow<EpgEntity?> {
+            var first = true
             while (true) {
                 val ch = channelDao.byRemoteId(item.providerId, item.remoteId)
                 val now = System.currentTimeMillis()
                 var cur = ch?.let { epgDao.rangeForChannels(listOf(it.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now } }
-                // Pas de guide pour cette chaîne : programme court du fournisseur (limité, voir ensureShortEpg).
-                if (cur == null && ch != null && catalogRepo.ensureShortEpg(listOf(ch.id)))
-                    cur = epgDao.rangeForChannels(listOf(ch.id), now, now + 1).firstOrNull { p -> p.startMs <= now && p.endMs > now }
+                if (cur == null && ch != null) {
+                    if (first) { emit(null); delay(2_000) }
+                    // Pas de guide pour cette chaîne : programme court du fournisseur (limité, voir ensureShortEpg).
+                    if (catalogRepo.ensureShortEpg(listOf(ch.id))) {
+                        val t = System.currentTimeMillis()
+                        cur = epgDao.rangeForChannels(listOf(ch.id), t, t + 1).firstOrNull { p -> p.startMs <= t && p.endMs > t }
+                    }
+                }
+                first = false
                 emit(cur)
-                delay(20_000)
+                delay(((cur?.endMs ?: 0L) - System.currentTimeMillis() + 1_000).coerceIn(15_000L, 120_000L))
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun recordLive(maxMinutes: Int = 120, toastTemplate: String = "Recording queued (max %1\$d min)") {
         val c = playback.current.value ?: return
@@ -458,7 +468,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         session.start(currentUrl, it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)
     }
     // Progression enregistrée toutes les 10 s (« Reprendre la lecture »).
-    LaunchedEffect(Unit) { while (true) { delay(10_000); session.engine?.let { e -> if (e.durationMs > 0) vm.recordProgress(e.positionMs, e.durationMs) } } }
+    // (La progression VOD est enregistrée toutes les 30 s par la boucle de la surcouche ; plus de doublon à 10 s.)
     // Minuterie de sommeil.
     LaunchedEffect(sleepDeadline) {
         if (sleepDeadline <= 0L) return@LaunchedEffect

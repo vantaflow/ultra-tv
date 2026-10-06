@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.sync
 
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
@@ -83,7 +84,7 @@ class FirstSyncViewModel @Inject constructor(
     /** `null` = pas encore résolu (Room n'a pas répondu) ; `Resolved(null)` = aucun écran de chargement à montrer. */
     private val counts = provider.observeProviders().flatMapLatest { ps ->
         val id = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id ?: return@flatMapLatest kotlinx.coroutines.flow.flowOf(Triple(0, 0, 0))
-        combine(channelDao.observeCount(id), movieDao.observeCount(id), seriesDao.observeCount(id)) { c, m, s -> Triple(c, m, s) }
+        combine(channelDao.observeCount(id), movieDao.observeCount(id), seriesDao.observeCount(id)) { c, m, s -> Triple(c, m, s) }.atMostEvery(500)
     }
 
     val state: StateFlow<Resolved?> = combine(provider.observeProviders(), statusThrottled, bus.failure, dismissed, counts) { ps, st, fail, gone, cnt ->
