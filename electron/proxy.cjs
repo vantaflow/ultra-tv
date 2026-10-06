@@ -23,6 +23,10 @@ const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_POST_BYTES = 2 * 1024 * 1024;
 const MAX_REDIRECTS = 5;
 const UPSTREAM_TIMEOUT_MS = 30000;
+// Les pages d'API et le guide XMLTV sont générés à la demande : certains panneaux mettent plus de 30 s avant le premier octet.
+const SLOW_HEADERS_TIMEOUT_MS = 150000;
+// Zapping : temps maximal d'attente de la fermeture de l'ancien flux avant d'ouvrir le nouveau.
+const UPSTREAM_RELEASE_WAIT_MS = 400;
 const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1", "[::1]", "0.0.0.0", "[::]"]);
 
 // ---------------------------------------------------------------------------
@@ -70,6 +74,40 @@ function parseProxyPath(pathname, token) {
   const target = decodeTarget(segs[2]);
   if (!target) return { error: 400 };
   return { target };
+}
+
+/** Pages générées à la demande (API Xtream, guide, liste M3U) : délai d'en-têtes long. */
+function isSlowEndpoint(url) {
+  return /\/(player_api|xmltv|get)\.php$/i.test(url.pathname);
+}
+
+/** Flux « direct » : segments/manifestes HLS, flux TS, chemin /live/. Seuls eux sont coupés sur inactivité. */
+function isLivePath(url) {
+  return /^\/live\//i.test(url.pathname) || /\.(ts|m3u8?)$/i.test(url.pathname);
+}
+
+/**
+ * Ouverture d'un flux Xtream (/live/, /movie/, /series/) : un compte à connexion unique n'en tolère qu'une.
+ * Les manifestes .m3u8 sont exclus : un rechargement de playlist ne doit jamais couper un segment en cours.
+ */
+function isStreamOpen(url) {
+  return /^\/(live|movie|series)\//i.test(url.pathname) && !/\.m3u8?$/i.test(url.pathname);
+}
+
+/** Seul un flux direct brut est « tenu » ouvert et remplacé au zapping (les VOD font des Range parallèles légitimes). */
+function isTrackedLive(url) {
+  return /^\/live\//i.test(url.pathname) && isStreamOpen(url);
+}
+
+/**
+ * Délais d'une requête sortante : `headersMs` = attente de la réponse ; `bodyMs` = inactivité tolérée pendant
+ * le corps (0 = aucune : une VOD en pause ne doit pas être coupée, le client qui part ferme déjà l'amont).
+ */
+function timeoutPolicy(url) {
+  return {
+    headersMs: isSlowEndpoint(url) ? SLOW_HEADERS_TIMEOUT_MS : UPSTREAM_TIMEOUT_MS,
+    bodyMs: isLivePath(url) ? UPSTREAM_TIMEOUT_MS : 0,
+  };
 }
 
 /** Vrai si la cible pointe sur le proxy lui-meme (boucle). */
@@ -240,6 +278,41 @@ function createProxyServer({ allowedOrigin, token, onError } = {}) {
 
   let port = 0;
   let base = "";
+  // Flux direct en cours, par hôte : au zapping on ferme l'ancien amont (et on attend sa fermeture) avant d'ouvrir le suivant.
+  const activeLive = new Map();
+
+  function trackLive(host, state, res) {
+    const entry = { state, res, closed: false, waiters: [] };
+    const markClosed = () => {
+      if (entry.closed) return;
+      entry.closed = true;
+      for (const w of entry.waiters) w();
+      if (activeLive.get(host) === entry) activeLive.delete(host);
+    };
+    entry.markClosed = markClosed;
+    state.onUpstream = (u) => u.once("close", markClosed);
+    activeLive.set(host, entry);
+    res.once("close", () => {
+      // Client parti sans amont créé (ou déjà fermé) : rien à attendre.
+      if (!state.upstream && !state.upRes) markClosed();
+    });
+    return entry;
+  }
+
+  /** Détruit l'amont précédent du même hôte et attend son « close » (au plus UPSTREAM_RELEASE_WAIT_MS). */
+  async function releaseEntry(prev) {
+    if (!prev || prev.closed) return;
+    prev.state.aborted = true;
+    if (prev.state.upRes) prev.state.upRes.destroy();
+    if (prev.state.upstream) prev.state.upstream.destroy();
+    if (!prev.state.upRes && !prev.state.upstream) prev.markClosed();
+    try { prev.res.destroy(); } catch { /* déjà fermée */ }
+    if (prev.closed) return;
+    await new Promise((resolve) => {
+      const t = setTimeout(resolve, UPSTREAM_RELEASE_WAIT_MS);
+      prev.waiters.push(() => { clearTimeout(t); resolve(); });
+    });
+  }
 
   function corsHeaders(req) {
     const h = {
@@ -283,17 +356,24 @@ function createProxyServer({ allowedOrigin, token, onError } = {}) {
   function requestOnce(target, method, headers, body, state) {
     return new Promise((resolve, reject) => {
       const lib = target.protocol === "https:" ? https : http;
+      const policy = timeoutPolicy(target);
       const options = {
         method,
         headers,
         agent: target.protocol === "https:" ? httpsAgent : httpAgent,
-        timeout: UPSTREAM_TIMEOUT_MS,
+        timeout: policy.headersMs,
       };
       if (target.username) {
         options.auth = `${decodeURIComponent(target.username)}:${decodeURIComponent(target.password)}`;
       }
-      const up = lib.request(target, options, resolve);
+      const up = lib.request(target, options, (res) => {
+        if (state.onUpstream) state.onUpstream(res);
+        // Réponse reçue : le délai d'en-têtes ne vaut plus, on applique celui du corps (aucun pour une VOD).
+        try { if (res.socket) res.socket.setTimeout(policy.bodyMs); } catch { /* socket déjà fermé */ }
+        resolve(res);
+      });
       state.upstream = up;
+      if (state.onUpstream) state.onUpstream(up);
       up.on("timeout", () => up.destroy(Object.assign(new Error("timeout"), { code: "ETIMEDOUT" })));
       up.on("error", reject);
       if (body && body.length) up.write(body);
@@ -394,6 +474,15 @@ function createProxyServer({ allowedOrigin, token, onError } = {}) {
         if (state.upstream) state.upstream.destroy();
       }
     });
+
+    // Ouverture d'un flux : l'ancien flux direct du même hôte est libéré d'abord (comptes à connexion unique).
+    if (req.method === "GET" && isStreamOpen(target)) {
+      const host = target.host.toLowerCase();
+      const prev = activeLive.get(host);
+      if (isTrackedLive(target)) trackLive(host, state, res);
+      await releaseEntry(prev);
+      if (state.aborted) return;
+    }
 
     try {
       const body = req.method === "POST" ? await readBody(req, MAX_POST_BYTES) : undefined;
@@ -523,6 +612,9 @@ module.exports = {
   buildProxyUrl,
   parseProxyPath,
   isSelfTarget,
+  timeoutPolicy,
+  isStreamOpen,
+  isTrackedLive,
   looksLikeHlsManifest,
   rewriteManifest,
   createProxyServer,

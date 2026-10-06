@@ -93,4 +93,31 @@ describe("LiveReconnect", () => {
     vi.advanceTimersByTime(20_000);
     expect(hooks.reload).not.toHaveBeenCalled();
   });
+
+  it("rechargement qui reste en « loading » : reconnexion au bout de 12 s", () => {
+    const { hooks, r } = setup();
+    r.onState("playing", true);
+    r.onState("ended", true);
+    vi.advanceTimersByTime(LIVE_RECONNECT_MS[0]!);
+    expect(hooks.reload).toHaveBeenCalledTimes(1);
+    r.onState("loading", true);
+    vi.advanceTimersByTime(STALL_MS + LIVE_RECONNECT_MS[1]!);
+    expect(hooks.reload).toHaveBeenCalledTimes(2);
+  });
+
+  it("« loading » avant toute lecture : pas de chronomètre de gel", () => {
+    const { hooks, r } = setup();
+    r.onState("loading", true);
+    vi.advanceTimersByTime(60_000);
+    expect(hooks.onReconnecting).not.toHaveBeenCalled();
+  });
+
+  it("lecteur rétabli seul : la reconnexion en attente est annulée", () => {
+    const { hooks, r } = setup();
+    r.onState("playing", true);
+    r.onState("ended", true);
+    r.onState("playing", true);
+    vi.advanceTimersByTime(20_000);
+    expect(hooks.reload).not.toHaveBeenCalled();
+  });
 });

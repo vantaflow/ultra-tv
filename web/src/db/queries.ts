@@ -1,4 +1,6 @@
 import { liveQuery } from "dexie";
+import type { Table } from "dexie";
+import { searchTokens } from "@/lib/text";
 import { db } from "./db";
 import type { CategoryRow, ChannelRow, FavoriteRow, HistoryRow, Kind, MovieRow, ProgramRow, SeriesRow } from "./types";
 
@@ -9,12 +11,19 @@ export const channelsCol = (cid: number, cat: string | null) =>
     ? db.channels.where("[sourceId+ord]").between([cid, -1], [cid, MAXK])
     : db.channels.where("[sourceId+catExt+ord]").between([cid, cat, -1], [cid, cat, MAXK]);
 
+/** Chaînes d'une catégorie (ou de toutes) dont l'ordre est dans [fromOrd, toOrd], servies par l'index. */
+export const channelsFrom = (cid: number, cat: string | null, fromOrd: number, toOrd: number) =>
+  cat == null
+    ? db.channels.where("[sourceId+ord]").between([cid, fromOrd], [cid, toOrd], true, true)
+    : db.channels.where("[sourceId+catExt+ord]").between([cid, cat, fromOrd], [cid, cat, toOrd], true, true);
+
 export type VodSort = "recent" | "provider" | "rating";
 
 function vodCol<T>(table: "movies" | "series", cid: number, cat: string | null, sort: VodSort) {
   const t = db[table] as unknown as import("dexie").Table<T, number>;
   if (cat != null) {
     if (sort === "recent") return t.where("[sourceId+catExt+added]").between([cid, cat, -1], [cid, cat, MAXK]).reverse();
+    if (sort === "rating") return t.where("[sourceId+catExt+rating]").between([cid, cat, -1], [cid, cat, MAXK]).reverse();
     return t.where("[sourceId+catExt+ord]").between([cid, cat, -1], [cid, cat, MAXK]);
   }
   if (sort === "recent") return t.where("[sourceId+added]").between([cid, -1], [cid, MAXK]).reverse();
@@ -26,6 +35,28 @@ export const seriesCol = (cid: number, cat: string | null, sort: VodSort) => vod
 
 export const categoriesOf = (cid: number, kind: Kind): Promise<CategoryRow[]> =>
   db.categories.where("[sourceId+kind]").equals([cid, kind]).sortBy("ord");
+
+export const LEGACY_SCAN_LIMIT = 2000;
+
+/**
+ * Recherche texte par préfixe de mot via l'index multiEntry `words` : on lit l'index sur le mot le plus long saisi
+ * (le plus sélectif), puis on affine sur `norm` (tous les mots saisis doivent y figurer). Au plus `limit` lignes.
+ * Repli : lignes d'avant la migration du schéma (champ `words` absent) -> ancien balayage par `norm`.
+ */
+export async function searchByWords<T extends { norm: string; words?: string[] }>(
+  table: Table<T, number>, cid: number, query: string, limit = 200, accept?: (r: T) => boolean,
+): Promise<T[]> {
+  const tokens = searchTokens(query);
+  if (tokens.length === 0) return [];
+  const fine = (r: T) => tokens.every((k) => r.norm.includes(k)) && (!accept || accept(r));
+  const longest = tokens.reduce((a, b) => (b.length > a.length ? b : a));
+  const hits = await table.where("words").startsWith(`${cid}|${longest}`).distinct().filter(fine).limit(limit).toArray();
+  if (hits.length) return hits;
+  // Aucun résultat : vrai « rien » ou catalogue sans index ? On regarde une ligne de la génération.
+  const sample = await table.where("[sourceId+ord]").between([cid, -1], [cid, MAXK]).first();
+  if (!sample || sample.words) return [];
+  return table.where("[sourceId+ord]").between([cid, -1], [cid, MAXK]).filter(fine).limit(limit).toArray();
+}
 
 export const live$ = <T>(fn: () => Promise<T> | T) => liveQuery(fn);
 

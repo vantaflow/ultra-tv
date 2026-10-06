@@ -84,18 +84,36 @@ function createMacUnsignedUpdater({ app, publish }) {
     const total = Number(res.headers.get("content-length")) || 0;
     const out = fs.createWriteStream(dest);
     let got = 0; let lastPct = -1;
-    for await (const chunk of res.body) {
-      got += chunk.length;
-      if (!out.write(chunk)) await new Promise((r) => out.once("drain", r));
-      const pct = total ? Math.floor((got / total) * 100) : 0;
-      if (pct !== lastPct) { lastPct = pct; onPct(pct); }
+    // Flux d'écriture : une erreur disque (plein, droits) sans écouteur 'error' ferait planter le processus.
+    const failed = new Promise((_, j) => out.once("error", j));
+    failed.catch(() => undefined);
+    const write = async () => {
+      for await (const chunk of res.body) {
+        got += chunk.length;
+        if (!out.write(chunk)) await Promise.race([new Promise((r) => out.once("drain", r)), failed]);
+        const pct = total ? Math.floor((got / total) * 100) : 0;
+        if (pct !== lastPct) { lastPct = pct; onPct(pct); }
+      }
+      await Promise.race([new Promise((r, j) => out.end((e) => (e ? j(e) : r()))), failed]);
+    };
+    try {
+      await write();
+    } catch (e) {
+      out.destroy();
+      throw e;
     }
-    await new Promise((r, j) => out.end((e) => (e ? j(e) : r())));
   }
 
   const run = (cmd, args) => new Promise((resolve, reject) => execFile(cmd, args, { timeout: 5 * 60_000 }, (e) => (e ? reject(e) : resolve())));
 
-  async function check() {
+  let running = null;
+  // Non ré-entrant : un second appel (clic + vérification périodique) rejoint le téléchargement en cours.
+  function check() {
+    if (!running) running = doCheck().finally(() => { running = null; });
+    return running;
+  }
+
+  async function doCheck() {
     if (!writable()) { publish({ state: "unavailable", message: "not-writable" }); return; }
     publish({ state: "checking" });
     const tag = await latestDesktopTag();
@@ -104,15 +122,22 @@ function createMacUnsignedUpdater({ app, publish }) {
     if (downloaded && downloaded.version === version) { publish({ state: "downloaded", version }); return; }
     publish({ state: "available", version });
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "ultratv-update-"));
-    const zip = path.join(dir, "update.zip");
-    await download(`https://github.com/${REPO}/releases/download/${tag}/UltraTV-${version}-mac-universal.zip`, zip, (percent) => publish({ state: "downloading", percent, version }));
-    const extract = path.join(dir, "app");
-    fs.mkdirSync(extract);
-    await run("ditto", ["-x", "-k", zip, extract]);
-    const name = fs.readdirSync(extract).find((f) => f.endsWith(".app"));
-    if (!name) throw new Error("no-app-in-zip");
-    downloaded = { version, appPath: path.join(extract, name) };
-    publish({ state: "downloaded", version });
+    let ok = false;
+    try {
+      const zip = path.join(dir, "update.zip");
+      await download(`https://github.com/${REPO}/releases/download/${tag}/UltraTV-${version}-mac-universal.zip`, zip, (percent) => publish({ state: "downloading", percent, version }));
+      const extract = path.join(dir, "app");
+      fs.mkdirSync(extract);
+      await run("ditto", ["-x", "-k", zip, extract]);
+      const name = fs.readdirSync(extract).find((f) => f.endsWith(".app"));
+      if (!name) throw new Error("no-app-in-zip");
+      downloaded = { version, appPath: path.join(extract, name) };
+      ok = true;
+      publish({ state: "downloaded", version });
+    } finally {
+      // Échec : on ne laisse pas un zip partiel de plusieurs centaines de Mo dans /tmp. Succès : le .app extrait sert à l'installation.
+      if (!ok) fs.rmSync(dir, { recursive: true, force: true });
+    }
   }
 
   function install() {
@@ -181,7 +206,14 @@ function createUpdater({ app, send }) {
     }
   }
 
-  async function check() {
+  let checking = null;
+  // Non ré-entrant : deux vérifications simultanées (bouton + minuterie) partagent la même promesse.
+  function check() {
+    if (!checking) checking = doCheck().finally(() => { checking = null; });
+    return checking;
+  }
+
+  async function doCheck() {
     if (!initPromise) initPromise = init();
     const ok = await initPromise;
     if (ok && macUpdater) {
@@ -207,7 +239,9 @@ function createUpdater({ app, send }) {
   function install() {
     if (macUpdater) return last.state === "downloaded" ? macUpdater.install() : false;
     if (!autoUpdater || last.state !== "downloaded") return false;
-    setImmediate(() => autoUpdater.quitAndInstall(true, true));
+    setImmediate(() => {
+      try { autoUpdater.quitAndInstall(true, true); } catch { publish({ state: "error", message: "update-failed" }); }
+    });
     return true;
   }
 

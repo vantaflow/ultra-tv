@@ -2,6 +2,32 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.29] — 2026-10-06
+
+### Corrigé
+- Guide : un identifiant de guide numérique (certains panels) faisait échouer tout le guide.
+- Guide : une coupure pendant son téléchargement ne vide plus le guide existant (remplacé seulement après réception).
+- Première synchro qui échoue après le direct : la source n'est plus laissée sur un catalogue vide.
+- Synchro interrompue (fermeture, plantage) : les catalogues orphelins (jusqu'à 180 000 films) sont supprimés.
+- Lecteur : hls.js ne boucle plus indéfiniment sur un flux au codec cassé ; une reprise de position ne s'applique plus
+  à la vidéo suivante.
+- Reconnexion du direct : un rechargement resté muet ne bloque plus sur « Reconnexion… » ; un flux rétabli seul n'est
+  plus rechargé.
+- Mise à jour Mac : erreur d'écriture gérée, pas de double téléchargement, fichiers temporaires supprimés en cas
+  d'échec.
+- Proxy : les API lentes (player_api, xmltv, get.php) ont 150 s pour répondre ; une VOD en pause n'est plus coupée.
+- Suppression d'une source : sa playlist M3U et ses fiches en cache sont supprimées aussi.
+
+### Amélioré
+- Comptes à connexion unique : au zap, l'ancien flux est fermé côté serveur avant l'ouverture du nouveau ; les zaps
+  rapprochés sont regroupés.
+- Liste des chaînes du lecteur : virtualisée (elle rendait jusqu'à 5 000 boutons d'un coup).
+- Recherche : par index de mots au lieu de parcourir tout le catalogue à chaque frappe. La recherche porte désormais
+  sur le début des mots.
+- Lecteur : il n'est plus redessiné en permanence ; l'aperçu n'est plus remesuré toutes les 400 ms.
+- Films / Séries, vue « Tout » : seules les rangées proches de l'écran sont montées ; tri par note servi par un index.
+- Zapping par index ; délais d'inactivité sur les téléchargements ; divers allègements.
+
 ## [1.2.44] — 2026-10-06 (Android TV)
 
 ### Corrigé (relecture des versions 1.2.28 à 1.2.43)

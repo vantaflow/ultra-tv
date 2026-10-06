@@ -1,7 +1,8 @@
 import { useLiveQuery } from "dexie-react-hooks";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { moviesCol, seriesCol, type VodSort } from "@/db/queries";
+import { db } from "@/db/db";
+import { moviesCol, searchByWords, seriesCol, type VodSort } from "@/db/queries";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
@@ -39,19 +40,22 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const [filter, setFilter] = useState("");
   const [pop, setPop] = useState(false);
   const dq = useDebounced(filter, 250);
-  // « Mieux notés » dans une catégorie : pas d'index dédié, tri en mémoire (mode tableau).
-  const ratingInCat = cat !== "" && sort === "rating";
   const total = kind === "movie" ? source.counts.movie : source.counts.series;
 
   const make = () => (kind === "movie" ? moviesCol(source.cid, cat || null, sort) : seriesCol(source.cid, cat || null, sort)) as import("dexie").Collection<Item, unknown>;
-  const arrayMode = dq.trim().length > 0 || ratingInCat;
+  // Filtre texte = mode tableau. Dans « Tout » : index par mot (200 résultats, retriés selon le tri choisi) ;
+  // dans une catégorie : balayage de la catégorie seule (déjà bornée par l'index).
+  const arrayMode = dq.trim().length > 0;
   const arr = useLiveQuery(async () => {
     if (!arrayMode) return [];
     const q = normText(dq.trim());
-    const col = q ? make().filter((r) => r.norm.includes(q)) : make();
-    return ratingInCat ? byRating(await col.toArray()).slice(0, 5000) : col.limit(2000).toArray();
-  }, [arrayMode, ratingInCat, dq, cat, sort, source.cid, kind]);
-  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, cat, sort, kind, arrayMode], 96);
+    if (q && cat === "") {
+      const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
+      return sortHits(await searchByWords(table, source.cid, q, 200), sort);
+    }
+    return (q ? make().filter((r) => r.norm.includes(q)) : make()).limit(2000).toArray();
+  }, [arrayMode, dq, cat, sort, source.cid, kind]);
+  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, source.lastSyncAt, cat, sort, kind, arrayMode], 96);
   const rows: Rows<Item> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
 
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
@@ -126,6 +130,13 @@ export function byRating<T extends { rating: number }>(items: T[]): T[] {
   return [...items].sort((a, b) => (b.rating || 0) - (a.rating || 0));
 }
 
+/** Résultats d'une recherche par index, remis dans l'ordre du tri choisi (l'index les rend par mot, pas par tri). */
+export function sortHits<T extends { rating: number; added: number; ord: number }>(items: T[], sort: VodSort): T[] {
+  if (sort === "rating") return byRating(items);
+  if (sort === "recent") return [...items].sort((a, b) => b.added - a.added);
+  return [...items].sort((a, b) => a.ord - b.ord);
+}
+
 /** Vue « Tout » : une rangée défilante par catégorie (20 premiers selon le tri choisi), « Voir tout » ouvre la grille. Chargement progressif. */
 function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen }: {
   source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>; sort: VodSort;
@@ -142,10 +153,33 @@ function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen }: {
   }, [cats.length]);
   return (
     <div className="cat-rows">
-      {cats.slice(0, shown).map((c) => <CategoryRowView key={c.extId} source={source} kind={kind} cat={c} favSet={favSet} sort={sort} onSeeAll={onSeeAll} onOpen={onOpen} />)}
+      {cats.slice(0, shown).map((c) => <LazyRow key={c.extId}><CategoryRowView source={source} kind={kind} cat={c} favSet={favSet} sort={sort} onSeeAll={onSeeAll} onOpen={onOpen} /></LazyRow>)}
       <div ref={sentinel} style={{ height: 1 }} />
     </div>
   );
+}
+
+/**
+ * Ne monte son contenu que près de l'écran : `shown` ne fait qu'augmenter, et chaque rangée garde sinon sa requête
+ * Dexie et ses centaines de cartes pour toute la session. Hors écran, on garde la hauteur mesurée (pas de saut de défilement).
+ */
+function LazyRow({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [near, setNear] = useState(false);
+  const height = useRef(300);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver((entries) => {
+      const e = entries[entries.length - 1];
+      if (!e) return;
+      if (!e.isIntersecting) height.current = el.offsetHeight || height.current;
+      setNear(e.isIntersecting);
+    }, { rootMargin: "700px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  return <div ref={ref} className={near ? "lazy-row on" : "lazy-row"} style={near ? undefined : { minHeight: height.current }}>{near ? children : null}</div>;
 }
 
 function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: {
@@ -155,7 +189,8 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
   const t = useT();
   const items = useLiveQuery(async () => {
     const col = (kind === "movie" ? moviesCol(source.cid, cat.extId, sort) : seriesCol(source.cid, cat.extId, sort)) as import("dexie").Collection<Item, unknown>;
-    return sort === "rating" ? byRating(await col.toArray()).slice(0, ROW_SIZE) : col.limit(ROW_SIZE).toArray();
+    // Tri « note » servi par l'index [sourceId+catExt+rating] : plus de lecture de la catégorie entière.
+    return col.limit(ROW_SIZE).toArray();
   }, [source.cid, cat.extId, kind, sort]);
   if (items && items.length === 0) return null;
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);

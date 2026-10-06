@@ -43,3 +43,23 @@ export function fmtClock(sec: number): string {
   const mm = String(m).padStart(h > 0 ? 2 : 1, "0");
   return h > 0 ? `${h}:${mm}:${String(s).padStart(2, "0")}` : `${mm}:${String(s).padStart(2, "0")}`;
 }
+
+/** Mots d'une saisie, après normalisation (accents, casse, ponctuation). */
+export function searchTokens(q: string): string[] {
+  return normText(q).split(" ").filter(Boolean);
+}
+
+/**
+ * Clés de l'index multiEntry `words` : « génération|mot » pour chaque mot distinct de `norm`.
+ * Dexie ne permet pas le multiEntry dans un index composé : la génération est donc portée par la clé elle-même,
+ * ce qui borne la recherche à la source active sans balayer les autres catalogues. Plafonné pour garder l'index maigre.
+ */
+export function wordKeys(sourceId: number, norm: string, max = 12): string[] {
+  const out = new Set<string>();
+  for (const w of norm.split(" ")) {
+    if (!w) continue;
+    out.add(`${sourceId}|${w}`);
+    if (out.size >= max) break;
+  }
+  return [...out];
+}

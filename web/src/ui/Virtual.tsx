@@ -7,7 +7,7 @@ export interface Rows<T> { count: number | null; get: (i: number) => T | undefin
 
 export const arrayRows = <T,>(a: T[]): Rows<T> => ({ count: a.length, get: (i) => a[i], want: () => undefined });
 
-export interface VListHandle { scrollTo: (i: number) => void; el: HTMLDivElement | null }
+export interface VListHandle { scrollTo: (i: number, align?: "auto" | "center" | "start") => void; el: HTMLDivElement | null }
 
 interface VListProps<T> {
   rows: Rows<T>;
@@ -23,7 +23,7 @@ function VListInner<T>({ rows, rowH, render, className = "vlist", overscan = 8, 
   const el = useRef<HTMLDivElement>(null);
   const count = rows.count ?? 0;
   const v = useVirtualizer({ count, getScrollElement: () => el.current, estimateSize: () => rowH, overscan });
-  useImperativeHandle(ref, () => ({ scrollTo: (i) => v.scrollToIndex(i, { align: "auto" }), el: el.current }), [v]);
+  useImperativeHandle(ref, () => ({ scrollTo: (i, align = "auto") => v.scrollToIndex(i, { align }), el: el.current }), [v]);
   const items = v.getVirtualItems();
   const first = items[0]?.index ?? 0;
   const last = items[items.length - 1]?.index ?? 0;

@@ -2,12 +2,12 @@
 // bloquer l'interface, même avec 55 000 chaînes, 180 000 films et 48 000 séries.
 // Lecture en flux (net/json.ts) + écriture par lots dans IndexedDB.
 
-import { clearCatalog, db, nextCid } from "@/db/db";
+import { clearCatalog, db, nextCid, purgeOrphanGenerations, setGenerationPending } from "@/db/db";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
 import { parseChannelName } from "@/lib/channelName";
 import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
-import { firstString, normText, rating10, toNum } from "@/lib/text";
+import { firstString, normText, rating10, toNum, wordKeys } from "@/lib/text";
 import { parseM3u } from "@/lib/m3u";
 import { streamObjects, TruncatedError } from "@/net/json";
 import { transportFetch, type Transport } from "@/net/transport";
@@ -112,11 +112,16 @@ interface Ctx {
   counts: { live: number; movie: number; series: number };
   flags: Map<string, 0 | 1> | null;
   report: ReportFn;
+  /** Première génération : `sources.cid` a été basculé avant la fin (direct utilisable pendant l'arrivée des films). */
+  switched: boolean;
 }
 
 export async function runSync({ source, transport: t, onProgress, signal, preserveFlags }: SyncOptions): Promise<{ live: number; movie: number; series: number }> {
   const oldCid = source.cid;
+  // Générations laissées par une synchro interrompue : jamais reprises, elles occuperaient l'espace disque pour toujours.
+  await purgeOrphanGenerations().catch(() => undefined);
   const cid = await nextCid();
+  await setGenerationPending(cid, true);
   const counts = { live: 0, movie: 0, series: 0 };
   const th = new Throttle(onProgress);
   const report: ReportFn = (phase, ratio, force = false) => th.push({ phase, ratio, counts: { ...counts } }, force);
@@ -126,27 +131,35 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
     flags = new Map();
     await db.categories.where("[sourceId+kind]").between([oldCid, ""], [oldCid, "\uffff"]).each((c) => { flags!.set(`${c.kind}:${c.extId}`, c.enabled); });
   }
-  const ctx: Ctx = { source, cid, firstGeneration: oldCid === 0, counts, flags, report };
+  const ctx: Ctx = { source, cid, firstGeneration: oldCid === 0, counts, flags, report, switched: false };
 
   report("categories", 0, true);
   try {
-    if (source.type === "m3u") await syncM3u(ctx, t, signal);
-    else await syncXtream(ctx, t, signal);
-    assertNotAborted(signal);
-  } catch (e) {
-    // Échec ou annulation : la nouvelle génération est jetée, l'ancienne reste intacte.
-    await clearCatalog(cid).catch(() => undefined);
-    throw e;
+    try {
+      if (source.type === "m3u") await syncM3u(ctx, t, signal);
+      else await syncXtream(ctx, t, signal);
+      assertNotAborted(signal);
+    } catch (e) {
+      // Échec ou annulation : la nouvelle génération est jetée, l'ancienne reste intacte.
+      // Première synchro déjà basculée sur le direct : on débranche d'abord la source du catalogue qu'on va vider,
+      // sinon elle pointerait vers rien (liste vide, compteurs faux). Le direct partiel est perdu : la reprise repart à zéro.
+      if (ctx.switched) await db.sources.update(source.id!, { cid: 0, counts: { live: 0, movie: 0, series: 0 } }).catch(() => undefined);
+      await clearCatalog(cid).catch(() => undefined);
+      throw e;
+    }
+    await db.sources.update(source.id!, { cid, counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
+    if (oldCid) await clearCatalog(oldCid);
+  } finally {
+    await setGenerationPending(cid, false).catch(() => undefined);
   }
-  await db.sources.update(source.id!, { cid, counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
-  if (oldCid) await clearCatalog(oldCid);
   report("done", 1, true);
   return counts;
 }
 
 type ReportFn = (phase: SyncProgress["phase"], ratio: number, force?: boolean) => void;
 
-async function syncXtream({ source, cid: sourceId, counts, report, flags, firstGeneration }: Ctx, t: Transport, signal?: AbortSignal) {
+async function syncXtream(ctx: Ctx, t: Transport, signal?: AbortSignal) {
+  const { source, cid: sourceId, counts, report, flags, firstGeneration } = ctx;
   const c = credsOf(source);
   const langs = source.langs;
 
@@ -183,8 +196,10 @@ async function syncXtream({ source, cid: sourceId, counts, report, flags, firstG
       bump("live", String(s.category_id));
       rows.push({
         sourceId, catExt: String(s.category_id), ord: liveOrd++, streamId: toNum(s.stream_id), num: toNum(s.num, liveOrd),
-        name: String(s.name ?? ""), display: p.displayName, norm: normText(p.displayName), country: p.country, q: p.quality, flags: p.flags,
-        sep: p.isSeparator ? 1 : 0, logo: s.stream_icon || null, epg: s.epg_channel_id || null, archive: toNum(s.tv_archive) === 1 ? 1 : 0,
+        name: String(s.name ?? ""), display: p.displayName, norm: normText(p.displayName), words: p.isSeparator ? [] : wordKeys(sourceId, normText(p.displayName)), country: p.country, q: p.quality, flags: p.flags,
+        sep: p.isSeparator ? 1 : 0, logo: s.stream_icon ? String(s.stream_icon) : null,
+        // Certains panels envoient un identifiant de guide NUMÉRIQUE : sans String(), le guide entier échouait (toLowerCase).
+        epg: s.epg_channel_id ? String(s.epg_channel_id) : null, archive: toNum(s.tv_archive) === 1 ? 1 : 0,
       });
     }
     if (rows.length) await db.channels.bulkAdd(rows);
@@ -193,7 +208,7 @@ async function syncXtream({ source, cid: sourceId, counts, report, flags, firstG
   });
   counts.live = (await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).filter((r) => r.sep === 0).count());
   // Première synchro : on bascule dès maintenant pour permettre de regarder le direct pendant que films et séries arrivent.
-  if (firstGeneration) await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } });
+  if (firstGeneration) { await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } }); ctx.switched = true; }
   report("live", 1, true);
 
   // --- Films ---
@@ -207,7 +222,7 @@ async function syncXtream({ source, cid: sourceId, counts, report, flags, firstG
       bump("movie", String(m.category_id));
       rows.push({
         sourceId, catExt: String(m.category_id), ord: movieOrd++, streamId: toNum(m.stream_id), name: String(m.name ?? ""),
-        title: ct.title, norm: normText(ct.title), year: ct.year, poster: m.stream_icon || null,
+        title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)), year: ct.year, poster: m.stream_icon || null,
         rating: rating10(m.rating, m.rating_5based), ext: m.container_extension || "mp4", added: toNum(m.added) * 1000,
       });
     }
@@ -230,7 +245,7 @@ async function syncXtream({ source, cid: sourceId, counts, report, flags, firstG
       const rel = String(s.releaseDate ?? s.release_date ?? "");
       rows.push({
         sourceId, catExt: String(s.category_id), ord: serOrd++, seriesId: toNum(s.series_id), name: String(s.name ?? ""),
-        title: ct.title, norm: normText(ct.title), year: ct.year ?? (/^\d{4}/.test(rel) ? parseInt(rel.slice(0, 4), 10) : null),
+        title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)), year: ct.year ?? (/^\d{4}/.test(rel) ? parseInt(rel.slice(0, 4), 10) : null),
         poster: s.cover || null, backdrop: firstString(s.backdrop_path), plot: s.plot ? String(s.plot).slice(0, 600) : null,
         rating: rating10(s.rating, s.rating_5based), added: toNum(s.last_modified) * 1000,
       });
@@ -314,7 +329,7 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
     const p = parseChannelName(e.name);
     rows.push({
       sourceId, catExt: group, ord: i, streamId: i + 1, num: e.tvgChno ?? i + 1, name: e.name, display: p.displayName,
-      norm: normText(p.displayName), country: p.country, q: p.quality, flags: p.flags, sep: p.isSeparator ? 1 : 0,
+      norm: normText(p.displayName), words: p.isSeparator ? [] : wordKeys(sourceId, normText(p.displayName)), country: p.country, q: p.quality, flags: p.flags, sep: p.isSeparator ? 1 : 0,
       logo: e.tvgLogo, epg: e.tvgId, archive: e.catchUp ? 1 : 0, url: e.url,
     });
   });
@@ -324,10 +339,13 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
     report("live", Math.min(0.99, i / Math.max(1, rows.length)));
   }
   counts.live = rows.filter((r) => !r.sep).length;
+  // Effectifs par groupe en un seul passage (avant : un filter() sur toutes les lignes pour chaque groupe).
+  const perGroup = new Map<string, number>();
+  for (const r of rows) perGroup.set(r.catExt, (perGroup.get(r.catExt) ?? 0) + 1);
   const cats: CategoryRow[] = [...groups].map(([name, ord]) => {
     return {
       sourceId, kind: "live" as const, extId: name, name, label: prettyCategoryName(name), badge: categoryLang(name) === OTHER_LANG ? null : categoryLang(name),
-      count: rows.filter((r) => r.catExt === name).length, enabled: 1 as const, adult: 0 as const, ord,
+      count: perGroup.get(name) ?? 0, enabled: 1 as const, adult: 0 as const, ord,
     };
   });
   await db.categories.bulkAdd(cats);

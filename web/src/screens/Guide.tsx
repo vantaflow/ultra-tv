@@ -23,6 +23,9 @@ const PX_MIN = 5;
 const HOURS = 6;
 const TOTAL_W = HOURS * 60 * PX_MIN;
 
+/** Nombre maximal de chaînes affichées dans une catégorie (au-delà, une mention le signale). */
+const GUIDE_MAX_CHANNELS = 400;
+
 export function Guide() {
   const source = useActiveSource();
   if (!source) return <NoSource />;
@@ -102,7 +105,7 @@ function Inner({ source }: { source: Source }) {
   const chans = useLiveQuery(async () => {
     if (!source.cid) return [];
     if (effCat === "__fav") return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg);
-    return channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg).limit(400).toArray();
+    return channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg).limit(GUIDE_MAX_CHANNELS).toArray();
   }, [source.cid, effCat, favs.length]) ?? [];
   const hasEpg = useLiveQuery(() => db.programs.where("[sourceId+end]").between([source.cid, 0], [source.cid, Infinity]).count(), [source.cid, loading]) ?? 0;
 
@@ -135,7 +138,7 @@ function Inner({ source }: { source: Source }) {
       <header className="page-head">
         <div>
           <h1>{t("guide.title")}</h1>
-          <div className="sub">{new Date(from).toLocaleDateString(prefs.lang, { weekday: "long", day: "numeric", month: "long" })} · {hhmm(from)} – {hhmm(to)}</div>
+          <div className="sub">{new Date(from).toLocaleDateString(prefs.lang, { weekday: "long", day: "numeric", month: "long" })} · {hhmm(from)} – {hhmm(to)}{chans.length >= GUIDE_MAX_CHANNELS && effCat !== "__fav" ? ` · ${t("guide.capped", { n: GUIDE_MAX_CHANNELS })}` : ""}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
           <button className="chip" onClick={() => setPop(true)}>{label} ▾</button>

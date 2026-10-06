@@ -2,6 +2,7 @@
 import { liveQuery } from "dexie";
 import { create } from "zustand";
 import type { Source } from "@/db/types";
+import { purgeOrphanGenerations } from "@/db/db";
 import { listSources, migrateCategoryLabels, migrateM3uToXtream } from "@/db/sources";
 import { usePrefs } from "./prefs";
 
@@ -13,7 +14,11 @@ export function startSourcesWatcher() {
   if (started) return;
   started = true;
   // Réparation des sources M3U « get.php » avant le premier affichage ; en cas d'échec on continue normalement.
-  void migrateM3uToXtream().catch(() => 0).then(() => migrateCategoryLabels().catch(() => 0)).then(() => liveQuery(() => listSources()).subscribe({
+  // Puis purge des générations de catalogue orphelines (synchro interrompue) : avant « ready », donc avant toute synchro,
+  // car au démarrage aucune génération n'est légitimement « en cours ».
+  void migrateM3uToXtream().catch(() => 0).then(() => migrateCategoryLabels().catch(() => 0))
+    .then(() => purgeOrphanGenerations({ startup: true }).catch(() => []))
+    .then(() => liveQuery(() => listSources()).subscribe({
     next: (list) => {
       useSources.setState({ ready: true, list });
       const { activeSourceId, set } = usePrefs.getState();

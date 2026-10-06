@@ -9,6 +9,9 @@ const {
   buildProxyUrl,
   parseProxyPath,
   isSelfTarget,
+  timeoutPolicy,
+  isStreamOpen,
+  isTrackedLive,
   rewriteManifest,
   looksLikeHlsManifest,
   createProxyServer,
@@ -242,4 +245,56 @@ test("proxy : fermeture du client => amont annule", async () => {
     for (let i = 0; i < 40 && !seen.some((s) => s.closed); i++) await new Promise((r2) => setTimeout(r2, 50));
     assert.ok(seen.some((s) => s.closed), "la connexion amont devrait etre fermee");
   });
+});
+
+test("timeoutPolicy : en-têtes longs pour l'API/XMLTV, inactivité du corps seulement pour le direct", () => {
+  const api = timeoutPolicy(new URL("http://h.example/player_api.php?username=a"));
+  assert.ok(api.headersMs >= 120000 && api.headersMs <= 180000);
+  assert.equal(api.bodyMs, 0);
+  assert.ok(timeoutPolicy(new URL("http://h.example/xmltv.php")).headersMs >= 120000);
+  const live = timeoutPolicy(new URL("http://h.example/live/u/p/1.ts"));
+  assert.equal(live.headersMs, 30000);
+  assert.equal(live.bodyMs, 30000);
+  assert.equal(timeoutPolicy(new URL("http://h.example/index.m3u8")).bodyMs, 30000);
+  const vod = timeoutPolicy(new URL("http://h.example/movie/u/p/9.mkv"));
+  assert.equal(vod.headersMs, 30000);
+  assert.equal(vod.bodyMs, 0);
+});
+
+test("isStreamOpen / isTrackedLive : ouvertures de flux, hors manifestes et VOD pour le suivi", () => {
+  assert.equal(isStreamOpen(new URL("http://h/live/u/p/1.ts")), true);
+  assert.equal(isStreamOpen(new URL("http://h/movie/u/p/1.mkv")), true);
+  assert.equal(isStreamOpen(new URL("http://h/live/u/p/1.m3u8")), false);
+  assert.equal(isStreamOpen(new URL("http://h/player_api.php")), false);
+  assert.equal(isTrackedLive(new URL("http://h/live/u/p/1.ts")), true);
+  assert.equal(isTrackedLive(new URL("http://h/movie/u/p/1.mkv")), false);
+});
+
+test("proxy : nouvelle ouverture de flux direct => ancien amont fermé avant la nouvelle requête", async () => {
+  const events = [];
+  const upstream = http.createServer((req, res) => {
+    const id = req.url;
+    events.push(`open:${id}`);
+    res.writeHead(200, { "content-type": "video/mp2t" });
+    res.write("x");
+    req.on("close", () => events.push(`close:${id}`));
+  });
+  await new Promise((r) => upstream.listen(0, "127.0.0.1", r));
+  const up = `http://127.0.0.1:${upstream.address().port}`;
+  const proxy = createProxyServer({ allowedOrigin: ORIGIN });
+  await proxy.start();
+  try {
+    const u = (t) => buildProxyUrl(`http://127.0.0.1:${proxy.port}/`, proxy.token, t);
+    const a = await fetch(u(up + "/live/u/p/1.ts"));
+    assert.equal(a.status, 200);
+    const b = await fetch(u(up + "/live/u/p/2.ts"));
+    assert.equal(b.status, 200);
+    assert.ok(events.indexOf("close:/live/u/p/1.ts") !== -1, "ancien flux fermé");
+    assert.ok(events.indexOf("close:/live/u/p/1.ts") < events.indexOf("open:/live/u/p/2.ts"), "fermeture avant ouverture du suivant");
+    await b.body.cancel();
+  } finally {
+    await proxy.stop();
+    upstream.closeAllConnections();
+    await new Promise((r) => upstream.close(r));
+  }
 });

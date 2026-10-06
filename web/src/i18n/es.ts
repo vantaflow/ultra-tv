@@ -85,6 +85,7 @@ export const es: Dict = {
   "guide.empty": "La guía TV aún no está cargada. Se descarga después del catálogo; también puedes lanzarla en Ajustes → Sincronización.",
   "guide.loadEpg": "Cargar la guía",
   "guide.withEpg": "Canales con guía",
+  "guide.capped": "Se muestran los primeros {n} canales; elija una categoría para ver más.",
 
   "vod.sortBy": "Ordenar",
   "vod.empty": "Nada que mostrar en esta categoría.",

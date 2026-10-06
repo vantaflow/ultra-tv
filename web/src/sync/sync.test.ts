@@ -116,4 +116,28 @@ describe("synchronisation Xtream", () => {
       expect(ids.sort()).toEqual([10, 11, 12, 13]);
     } finally { cutLive = false; }
   });
+
+  it("écrit l'index de recherche par mot (clé « génération|mot »), vide pour les séparateurs", async () => {
+    await db.sources.put({ ...src() });
+    await runSync({ source: src(), transport: { mode: "direct" }, onProgress: () => undefined });
+    const cid = (await db.sources.get(1))!.cid;
+    const m = await db.movies.where("[sourceId+ord]").equals([cid, 0]).first();
+    expect(m!.words).toEqual([`${cid}|film`, `${cid}|numero`, `${cid}|0`]);
+    const sep = await db.channels.where("[sourceId+ord]").equals([cid, 0]).first();
+    expect(sep!.words).toEqual([]);
+  });
+
+  it("première synchro interrompue après le direct : la source ne pointe plus vers un catalogue vidé", async () => {
+    await db.sources.put({ ...src(), id: 2, name: "neuve" });
+    const ctrl = new AbortController();
+    await expect(runSync({
+      source: { ...src(), id: 2 }, transport: { mode: "direct" }, signal: ctrl.signal,
+      onProgress: (x) => { if (x.phase === "movie") ctrl.abort(); },
+    })).rejects.toThrow();
+    const after = (await db.sources.get(2))!;
+    expect(after.cid).toBe(0);
+    expect(after.counts).toEqual({ live: 0, movie: 0, series: 0 });
+    // Aucune génération résiduelle : la marque « en cours » est retirée.
+    expect((await db.settings.get("cid.pending"))?.value).toEqual([]);
+  });
 });

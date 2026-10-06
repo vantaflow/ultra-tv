@@ -53,7 +53,7 @@ export function scanXmltv(
   // (« TF1.fr » dans le guide, « tf1.fr » dans les chaînes) : on compare sans casse et on écrit l'identifiant du catalogue.
   // Un même identifiant peut exister sous plusieurs casses dans le catalogue (« tf1.fr » et « TF1.fr ») : une ligne par variante.
   const index = new Map<string, string[]>();
-  for (const w of wanted) { const k = w.toLowerCase(); index.set(k, [...(index.get(k) ?? []), w]); }
+  for (const w0 of wanted) { const w = String(w0); const k = w.toLowerCase(); index.set(k, [...(index.get(k) ?? []), w]); }
   const drain = (final: boolean) => {
     PROG.lastIndex = 0;
     let last = 0;
@@ -119,7 +119,10 @@ export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal
   const now = Date.now();
   const from = now - 3 * 3600_000;
   const to = now + 48 * 3600_000;
-  await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).delete();
+  // L'ancien guide n'est retiré qu'une fois le nouveau reçu en entier : avant, la purge précédait la lecture du flux
+  // et une coupure laissait un guide vide. Les nouvelles lignes ont des identifiants supérieurs à `oldMax`.
+  const oldMax = ((await db.programs.orderBy(":id").last())?.id as number | undefined) ?? 0;
+  const dropNew = () => db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).filter((p) => (p.id ?? 0) > oldMax).delete();
 
   let written = 0;
   const pending: Promise<unknown>[] = [];
@@ -127,20 +130,28 @@ export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal
     written += rows.length;
     pending.push(db.programs.bulkAdd(rows.map((r) => ({ ...r, sourceId }))));
   });
-  const reader = stream.getReader();
-  const dec = new TextDecoder("utf-8");
-  let read = 0;
-  for (;;) {
-    if (signal?.aborted) { void reader.cancel(); throw new DOMException("Annulé", "AbortError"); }
-    const { done, value } = await reader.read();
-    if (done) break;
-    read += value.byteLength;
-    if (total && !gz) onProgress?.(Math.min(0.99, read / total));
-    scan.push(dec.decode(value, { stream: true }));
+  try {
+    const reader = stream.getReader();
+    const dec = new TextDecoder("utf-8");
+    let read = 0;
+    for (;;) {
+      if (signal?.aborted) { void reader.cancel(); throw new DOMException("Annulé", "AbortError"); }
+      const { done, value } = await reader.read();
+      if (done) break;
+      read += value.byteLength;
+      if (total && !gz) onProgress?.(Math.min(0.99, read / total));
+      scan.push(dec.decode(value, { stream: true }));
+    }
+    scan.push(dec.decode());
+    scan.end();
+    await Promise.all(pending);
+  } catch (e) {
+    // Flux coupé ou annulé : on garde l'ancien guide et on retire ce qui vient d'être écrit.
+    await Promise.allSettled(pending);
+    await dropNew().catch(() => undefined);
+    throw e;
   }
-  scan.push(dec.decode());
-  scan.end();
-  await Promise.all(pending);
+  await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).filter((p) => (p.id ?? 0) <= oldMax).delete();
   onProgress?.(1);
   return written;
 }

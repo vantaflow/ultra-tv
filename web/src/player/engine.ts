@@ -48,6 +48,10 @@ export class PlayerEngine {
   private codec = "";
   private token = 0;
   private lastLevel = -1;
+  /** Récupérations d'erreur média hls.js récentes (au-delà, on passe au format suivant au lieu de boucler). */
+  private mediaRecoveries: number[] = [];
+  /** Écouteur de reprise (startAt) du lecteur natif : retiré au changement de média. */
+  private pendingSeek: (() => void) | null = null;
 
   constructor(private video: HTMLVideoElement, private getTransport: () => Transport, private ev: EngineEvents) {
     const v = video;
@@ -79,7 +83,8 @@ export class PlayerEngine {
     const v = this.video;
     v.src = wrapUrl(t, a.url);
     if (a.startAt && a.startAt > 1) {
-      const seek = () => { v.currentTime = a.startAt!; v.removeEventListener("loadedmetadata", seek); };
+      const seek = () => { v.currentTime = a.startAt!; v.removeEventListener("loadedmetadata", seek); this.pendingSeek = null; };
+      this.pendingSeek = seek;
       v.addEventListener("loadedmetadata", seek);
     }
     void v.play().catch(() => undefined);
@@ -119,7 +124,16 @@ export class PlayerEngine {
     hls.on(HlsCtor.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
       if (d.type === HlsCtor.ErrorTypes.NETWORK_ERROR && d.response?.code === undefined && d.details === "manifestLoadError") { this.ev.onError("manifest"); return; }
-      if (d.type === HlsCtor.ErrorTypes.MEDIA_ERROR) { hls.recoverMediaError(); return; }
+      if (d.type === HlsCtor.ErrorTypes.MEDIA_ERROR) {
+        // Flux au codec cassé : recoverMediaError sans limite bouclait indéfiniment et le repli de format ne venait jamais.
+        const now = Date.now();
+        this.mediaRecoveries = this.mediaRecoveries.filter((t) => now - t < 30_000);
+        this.mediaRecoveries.push(now);
+        if (this.mediaRecoveries.length > 3) { this.ev.onError("hls:media"); return; }
+        if (this.mediaRecoveries.length === 2) hls.swapAudioCodec();
+        hls.recoverMediaError();
+        return;
+      }
       this.ev.onError(`hls:${d.details}`);
     });
     hls.attachMedia(this.video);
@@ -183,6 +197,8 @@ export class PlayerEngine {
     }
     this.codec = "";
     this.lastLevel = -1;
+    this.mediaRecoveries = [];
+    if (this.pendingSeek) { this.video.removeEventListener("loadedmetadata", this.pendingSeek); this.pendingSeek = null; }
     this.video.removeAttribute("src");
     this.video.load();
   }

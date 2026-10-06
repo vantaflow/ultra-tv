@@ -245,15 +245,21 @@ function registerIpc() {
   handle("ut:cloud:request", (req) => cloudRequest(req, (u, init) => net.fetch(u, init)));
   handle("ut:encrypt", (plain) => secrets.encrypt(plain));
   handle("ut:decrypt", (cipher) => secrets.decrypt(cipher));
+  // Fenêtre fermée (macOS : application encore vivante) : mainWindow vaut null, on ne lève pas d'exception.
+  const win = () => (mainWindow && !mainWindow.isDestroyed() ? mainWindow : null);
   handle("ut:fullscreen:toggle", () => {
-    mainWindow.setFullScreen(!mainWindow.isFullScreen());
-    return mainWindow.isFullScreen();
+    const w = win();
+    if (!w) return false;
+    w.setFullScreen(!w.isFullScreen());
+    return w.isFullScreen();
   });
   handle("ut:fullscreen:set", (value) => {
-    mainWindow.setFullScreen(!!value);
+    const w = win();
+    if (!w) return false;
+    w.setFullScreen(!!value);
     return !!value;
   });
-  handle("ut:fullscreen:get", () => mainWindow.isFullScreen());
+  handle("ut:fullscreen:get", () => { const w = win(); return w ? w.isFullScreen() : false; });
   handle("ut:update:check", () => updater.check());
   handle("ut:update:install", () => updater.install());
   handle("ut:open-external", async (url) => {
@@ -396,7 +402,13 @@ if (!app.requestSingleInstanceLock()) {
       allowedOrigin: ALLOWED_ORIGIN,
       onError: (code) => console.warn(`[ultra-tv] proxy error ${code}`),
     });
-    await proxy.start();
+    try {
+      await proxy.start();
+    } catch {
+      // Sans proxy local, l'application démarre quand même (proxyBase vide : le renderer passe en accès direct).
+      console.warn("[ultra-tv] proxy start failed");
+      proxy = null;
+    }
 
     updater = createUpdater({
       app,

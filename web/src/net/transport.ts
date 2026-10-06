@@ -100,10 +100,48 @@ export function requestHeaders(t: Transport, o: ReqOptions): Record<string, stri
   return h;
 }
 
+/** Inactivité tolérée (en-têtes puis entre deux morceaux du corps) avant d'abandonner une requête. */
+export const IDLE_TIMEOUT_MS = 120_000;
+
+/**
+ * Signal combiné : annulation de l'appelant OU inactivité de `ms`. `touch()` réarme le délai, `stop()` le désarme.
+ * Le délai échoue avec une TimeoutError (et non AbortError) : l'appelant ne la confond pas avec une annulation volontaire.
+ */
+export function idleSignal(parent: AbortSignal | undefined, ms: number): { signal: AbortSignal; touch: () => void; stop: () => void } {
+  const ctrl = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const onParent = () => { stop(); ctrl.abort(parent!.reason); };
+  const stop = () => { if (timer !== null) { clearTimeout(timer); timer = null; } parent?.removeEventListener("abort", onParent); };
+  const touch = () => {
+    if (ctrl.signal.aborted) return;
+    if (timer !== null) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; ctrl.abort(new DOMException("Délai d'inactivité dépassé", "TimeoutError")); }, ms);
+  };
+  if (parent) {
+    if (parent.aborted) ctrl.abort(parent.reason);
+    else parent.addEventListener("abort", onParent, { once: true });
+  }
+  touch();
+  return { signal: ctrl.signal, touch, stop };
+}
+
 export async function transportFetch(t: Transport, url: string, o: ReqOptions = {}): Promise<Response> {
-  const res = await fetch(wrapUrl(t, url), { signal: o.signal, headers: requestHeaders(t, o) });
-  if (!res.ok) throw new HttpError(res.status);
-  return res;
+  // Sans délai, un fournisseur qui n'envoie plus rien figeait la synchro indéfiniment (modes direct et proxy distant).
+  const idle = idleSignal(o.signal, IDLE_TIMEOUT_MS);
+  try {
+    const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers: requestHeaders(t, o) });
+    if (!res.ok) { idle.stop(); throw new HttpError(res.status); }
+    if (!res.body) { idle.stop(); return res; }
+    // Corps en flux : le délai est réarmé à chaque morceau reçu (un gros fichier lent n'est pas coupé, un flux muet l'est).
+    const watched = res.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, ctrl) { idle.touch(); ctrl.enqueue(chunk); },
+      flush() { idle.stop(); },
+    }));
+    return new Response(watched, { status: res.status, statusText: res.statusText, headers: res.headers });
+  } catch (e) {
+    idle.stop();
+    throw e;
+  }
 }
 
 export class HttpError extends Error {

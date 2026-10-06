@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
+import { searchByWords } from "@/db/queries";
 import type { ChannelRow, MovieRow, ProgramRow, SeriesRow, Source } from "@/db/types";
 import { useDebounced } from "@/hooks/misc";
 import { useT } from "@/i18n";
@@ -54,15 +55,16 @@ function Inner({ source }: { source: Source }) {
   useEffect(() => {
     const nq = normText(dq);
     if (nq.length < 2) { setRes(null); return; }
+    // Réponse périmée (frappe suivante, changement de source) : ignorée grâce à `dead`, positionné par le cleanup.
     let dead = false;
     setBusy(true);
-    const R = [[source.cid, -1], [source.cid, Infinity]] as const;
+    // Index par mot (préfixe du mot le plus long saisi) puis affinage sur la clé : plus de balayage des 180 000 lignes à chaque frappe.
     void Promise.all([
-      db.channels.where("[sourceId+ord]").between(...R).filter((c) => !c.sep && c.norm.includes(nq)).limit(24).toArray(),
-      db.movies.where("[sourceId+ord]").between(...R).filter((c) => c.norm.includes(nq)).limit(30).toArray(),
-      db.series.where("[sourceId+ord]").between(...R).filter((c) => c.norm.includes(nq)).limit(30).toArray(),
+      searchByWords(db.channels, source.cid, nq, 24, (c) => !c.sep),
+      searchByWords(db.movies, source.cid, nq, 30),
+      searchByWords(db.series, source.cid, nq, 30),
       searchPrograms(source.cid, nq).catch(() => []),
-    ]).then(([channels, movies, series, programs]) => { if (!dead) { setRes({ channels, movies, series, programs }); setBusy(false); } });
+    ]).then(([channels, movies, series, programs]) => { if (!dead) { setRes({ channels, movies, series, programs }); setBusy(false); } }, () => { if (!dead) setBusy(false); });
     return () => { dead = true; };
   }, [dq, source.cid]);
 

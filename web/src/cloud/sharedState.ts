@@ -56,7 +56,7 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   const wasLocal = new Set(await getSetting<string[]>(kLocal, []));
   const updated = localFavorites(known, favs, now, wasLocal);
   const since = await getSetting<number>(kHist, 0);
-  const hist: SharedHist[] = (await db.history.filter((h) => h.sourceId === sid && h.updatedAt > since).toArray()).map((h) => h.kind === "series"
+  const hist: SharedHist[] = (await db.history.where("updatedAt").above(since).filter((h) => h.sourceId === sid).toArray()).map((h) => h.kind === "series"
     ? { p: nameOf(h.profile), k: "EPISODE", r: String(h.epId ?? h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: String(h.seriesId ?? h.refId) }
     : { p: nameOf(h.profile), k: KIND_TO_WIRE[h.kind], r: String(h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: null });
   const res = await syncState(worker, token, s.cloudId, { fav: [...updated.values()], hist });

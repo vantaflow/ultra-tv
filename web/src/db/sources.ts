@@ -32,6 +32,10 @@ export async function saveSource(s: Source): Promise<number> {
 export async function deleteSource(id: number): Promise<void> {
   const src = await db.sources.get(id);
   if (src?.cid) await clearCatalog(src.cid);
+  // Playlist M3U importée depuis un fichier et fiches détail (films/séries) de cette source : sinon elles restent à vie.
+  await db.details.delete(`m3ufile:${id}`);
+  await db.details.where("key").startsWith(`vod:${id}:`).delete();
+  await db.details.where("key").startsWith(`series:${id}:`).delete();
   await db.favorites.where("addedAt").above(-1).filter((f) => f.sourceId === id).delete();
   await db.history.where("updatedAt").above(-1).filter((h) => h.sourceId === id).delete();
   await db.sources.delete(id);

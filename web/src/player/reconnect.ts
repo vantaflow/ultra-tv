@@ -45,8 +45,11 @@ export class LiveReconnect {
       this.everPlayed = true;
       this.cancel("stall");
       this.cancel("stable");
+      // Le lecteur s'est rétabli seul pendant l'attente : la reconnexion programmée ne sert plus.
+      if (this.pending !== null) { clearTimeout(this.pending); this.pending = null; }
       this.stable = setTimeout(() => { this.stable = null; this.attempts = 0; }, STABLE_MS);
-    } else if (s === "buffering" && this.everPlayed && this.stall === null) {
+    } else if ((s === "buffering" || s === "loading") && this.everPlayed && this.stall === null && this.pending === null) {
+      // « loading » aussi : après un reload le moteur l'émet, et un flux muet restait sur « Reconnexion… » sans fin.
       this.stall = setTimeout(() => { this.stall = null; this.trigger(); }, STALL_MS);
     } else if (s === "ended") {
       // Direct : une « fin » est une session fermée par le serveur.

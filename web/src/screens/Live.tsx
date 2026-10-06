@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
-import { channelsCol, toggleFavorite } from "@/db/queries";
+import { channelsCol, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
@@ -75,9 +75,11 @@ function LiveInner({ source }: { source: Source }) {
       return rows.filter((r): r is ChannelRow => !!r && (!nq || r.norm.includes(nq)));
     }
     const nq = normText(dq);
+    // Toutes les chaînes : index par mot (au plus 3000, remis dans l'ordre du fournisseur) ; une catégorie : balayage borné par l'index.
+    if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep)).sort((a, b) => a.ord - b.ord);
     return channelsCol(source.cid, cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
   }, [arrayMode, cat, dq, source.cid, favs]);
-  const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : channelsCol(source.cid, cat || null)), [source.cid, cat, arrayMode], 120);
+  const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : channelsCol(source.cid, cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode], 120);
   const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
   const count = rows.count;
 

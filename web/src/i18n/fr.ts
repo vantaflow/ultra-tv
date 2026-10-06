@@ -84,6 +84,7 @@ export const fr = {
   "guide.empty": "Le guide TV n’est pas encore chargé. Il se télécharge après le catalogue ; vous pouvez aussi le relancer dans Réglages → Synchronisation.",
   "guide.loadEpg": "Charger le guide",
   "guide.withEpg": "Chaînes avec guide",
+  "guide.capped": "Les {n} premières chaînes sont affichées ; choisissez une catégorie pour en voir d’autres.",
 
   "vod.sortBy": "Trier",
   "vod.empty": "Rien à afficher dans cette catégorie.",

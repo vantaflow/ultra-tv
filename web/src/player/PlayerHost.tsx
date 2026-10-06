@@ -2,9 +2,10 @@
 // (la plupart des abonnements n'en autorisent qu'une). Il s'affiche soit dans l'aperçu du Direct
 // (mode inline, calé sur un emplacement), soit en plein écran (mode full) avec la surcouche de la maquette.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { channelsCol } from "@/db/queries";
 import { Img } from "@/ui/Img";
+import { VList, arrayRows, type VListHandle } from "@/ui/Virtual";
 import { db } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
@@ -21,7 +22,7 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { candidates, type Candidate } from "./resolve";
-import { usePlayer } from "./store";
+import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
 
 const NO_TRACKS: Tracks = { audio: [], activeAudio: -1, text: [], activeText: -1, levels: [], activeLevel: -1 };
 
@@ -41,7 +42,12 @@ async function isOsFullscreen(): Promise<boolean> {
 
 export function PlayerHost() {
   const t = useT();
-  const { target, mode, slot, nonce, zapCat } = usePlayer();
+  // Sélecteurs ciblés : s'abonner au store entier re-rendait tout le lecteur à chaque mise à jour (ex. position de l'aperçu).
+  const target = usePlayer((s) => s.target);
+  const mode = usePlayer((s) => s.mode);
+  const slot = usePlayer((s) => s.slot);
+  const nonce = usePlayer((s) => s.nonce);
+  const zapCat = usePlayer((s) => s.zapCat);
   const prefs = usePrefs();
   const sources = useSources((s) => s.list);
   const source = sources.find((s) => s.id === target?.sourceId);
@@ -121,24 +127,18 @@ export function PlayerHost() {
     setCur({ t: 0, d: 0, buf: 0 });
     const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4 });
     candRef.current = { list, i: 0 };
-    if (list[0]) void startCandidate(list[0]);
-    else { setError(true); setState("error"); }
+    if (!list[0]) { setError(true); setState("error"); return; }
+    if (usePlayer.getState().zapNonce === nonce) {
+      // Zap : on coupe l'ancien flux tout de suite (libère la connexion du fournisseur) et on n'ouvre le nouveau
+      // qu'après une courte pause ; un zap suivant annule celui-ci (cleanup) au lieu d'empiler des connexions.
+      engineRef.current?.stop();
+      setState("loading");
+      const to = setTimeout(() => void startCandidate(list[0]!), ZAP_DEBOUNCE_MS);
+      return () => clearTimeout(to);
+    }
+    void startCandidate(list[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, nonce, source?.id]);
-
-  // --- horloge, progression, statistiques, historique ---
-  useEffect(() => {
-    if (mode === "closed") return;
-    const v = videoRef.current!;
-    const iv = setInterval(() => {
-      setClock(new Date());
-      let buf = 0;
-      for (let i = 0; i < v.buffered.length; i++) if (v.currentTime >= v.buffered.start(i) && v.currentTime <= v.buffered.end(i)) buf = v.buffered.end(i);
-      setCur({ t: v.currentTime, d: Number.isFinite(v.duration) ? v.duration : 0, buf });
-      if (panel === "stats") setStats(engineRef.current?.stats() ?? null);
-    }, 500);
-    return () => clearInterval(iv);
-  }, [mode, panel]);
 
   const saveHistory = useCallback(() => {
     const tg = usePlayer.getState().target;
@@ -186,6 +186,37 @@ export function PlayerHost() {
   }, []);
   useEffect(() => { poke(); }, [mode, target?.refId, poke]);
   const showUi = ui || state !== "playing" || panel !== null;
+
+  // --- progression et statistiques : seulement en plein écran avec l'interface visible (rien à afficher sinon) ---
+  const tickOn = mode === "full" && showUi;
+  useEffect(() => {
+    if (!tickOn) return;
+    const v = videoRef.current!;
+    const tick = () => {
+      let buf = 0;
+      for (let i = 0; i < v.buffered.length; i++) if (v.currentTime >= v.buffered.start(i) && v.currentTime <= v.buffered.end(i)) buf = v.buffered.end(i);
+      const d = Number.isFinite(v.duration) ? v.duration : 0;
+      // Même valeur : on garde l'objet, pas de re-rendu.
+      setCur((p) => (Math.abs(p.t - v.currentTime) < 0.25 && p.d === d && Math.abs(p.buf - buf) < 0.5 ? p : { t: v.currentTime, d, buf }));
+      if (panel === "stats") setStats(engineRef.current?.stats() ?? null);
+    };
+    tick();
+    const iv = setInterval(tick, 500);
+    return () => clearInterval(iv);
+  }, [tickOn, panel]);
+
+  // --- horloge : l'affichage est à la minute, on ne se réveille qu'au changement de minute ---
+  useEffect(() => {
+    if (mode !== "full") return;
+    let to: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      const now = new Date();
+      setClock(now);
+      to = setTimeout(arm, 60_000 - (now.getTime() % 60_000) + 50);
+    };
+    arm();
+    return () => clearTimeout(to);
+  }, [mode]);
 
   // --- plein écran ---
   useEffect(() => {
@@ -465,11 +496,23 @@ export function PlayerHost() {
   );
 }
 
+/** Ligne de la liste « Chaînes » : mémoïsée, seule la chaîne courante change d'état au zapping. */
+const ChannelRowBtn = memo(function ChannelRowBtn({ c, on, onPick }: { c: ChannelRow; on: boolean; onPick: (c: ChannelRow) => void }) {
+  return (
+    <button className="opt ch" role="radio" aria-checked={on} data-cur={on ? "1" : undefined} onClick={() => onPick(c)}>
+      <span className="logo" aria-hidden="true"><Img src={c.logo} contain /></span>
+      <span className="num">{c.num}</span>
+      <span className="ellipsis nm">{c.display}</span>
+    </button>
+  );
+});
+
 function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; onZap: () => void }) {
   const t = useT();
   const [rows, setRows] = useState<ChannelRow[]>([]);
   const cur = usePlayer((s) => s.target);
-  const curRef = useRef<HTMLButtonElement | null>(null);
+  const list = useRef<VListHandle>(null);
+  const curId = cur?.refId;
   // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
   // Catégorie de la chaîne en cours si aucune n'a été choisie (lancée depuis l'accueil, la recherche…).
   const effCat = cat ?? cur?.channel?.catExt ?? null;
@@ -479,27 +522,34 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
     if (effCat == null) { setCatLabel(null); return; }
     void db.categories.where("[sourceId+kind]").equals([cid, "live"]).filter((c) => c.extId === effCat).first().then((c) => setCatLabel(c?.label ?? null));
   }, [cid, effCat]);
+  // Liste virtualisée : seules les lignes visibles existent dans le DOM (jusqu'à 5000 chaînes).
+  const arr = useMemo(() => arrayRows(rows), [rows]);
+  const pick = useCallback((c: ChannelRow) => {
+    const tg = usePlayer.getState().target;
+    if (!tg) return;
+    usePlayer.getState().open({
+      ...tg, refId: c.streamId, title: c.display, image: c.logo, url: c.url, replay: undefined,
+      channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
+    }, "full");
+    onZap();
+  }, [onZap]);
   // À l'ouverture : centré sur la chaîne regardée, qui a le focus (Entrée = rester, ↑↓ = parcourir).
-  useEffect(() => { const el = curRef.current; if (el) { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); } }, [rows.length]);
+  const centered = useRef(false);
+  useEffect(() => {
+    if (centered.current || rows.length === 0) return;
+    const k = rows.findIndex((c) => c.streamId === curId);
+    if (k < 0) return;
+    centered.current = true;
+    list.current?.scrollTo(k, "center");
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      list.current?.el?.querySelector<HTMLButtonElement>("button[data-cur]")?.focus({ preventScroll: true });
+    }));
+  }, [rows, curId]);
   return (
-    <aside className="pside" aria-label={t("player.channels")}>
+    <aside className="pside pch" aria-label={t("player.channels")}>
       <div className="grp-t">{(catLabel ?? t("player.channels")).toUpperCase()} · {rows.length}</div>
-      {rows.map((c) => {
-        const on = cur?.refId === c.streamId;
-        return (
-          <button key={c.id} ref={on ? curRef : undefined} className="opt ch" role="radio" aria-checked={on} onClick={() => {
-            usePlayer.getState().open({
-              ...cur!, refId: c.streamId, title: c.display, image: c.logo, url: c.url, replay: undefined,
-              channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
-            }, "full");
-            onZap();
-          }}>
-            <span className="logo" aria-hidden="true"><Img src={c.logo} contain /></span>
-            <span className="num">{c.num}</span>
-            <span className="ellipsis nm">{c.display}</span>
-          </button>
-        );
-      })}
+      <VList ref={list} rows={arr} rowH={58} className="vlist pch-list" label={t("player.channels")}
+        render={(c) => (c ? <ChannelRowBtn c={c} on={curId === c.streamId} onPick={pick} /> : null)} />
     </aside>
   );
 }
