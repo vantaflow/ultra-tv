@@ -67,4 +67,16 @@ jobs:
           chmod +x gradlew
           ./gradlew compileDebugKotlin testDebugUnitTest --console=plain --stacktrace
 
+      # En cas d'échec, rapports complets en artefact : un échec qui dépend de l'ordre des tests (ex.
+      # UncaughtExceptionsBeforeTest) n'est diagnosticable qu'avec la pile « Suppressed » qu'ils contiennent.
+      - name: Upload test reports (on failure)
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-test-reports
+          path: |
+            android-native/app/build/reports/tests
+            android-native/app/build/test-results
+          retention-days: 14
+
   # Le Worker est testé par .github/workflows/worker.yml (vitest + wrangler dry-run).
