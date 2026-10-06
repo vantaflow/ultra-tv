@@ -316,7 +316,9 @@ private fun SyncPill(
         }
         if (showLabels) {
             Spacer(Modifier.width(16.design))
-            Text("$syncing · ${p.percent ?: 0} %", fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1, softWrap = false, modifier = Modifier.graphicsLayer { alpha = labelAlpha.value })
+            // Le pourcentage est déjà dans la pastille : le libellé seul (« Synchronisation · 25 % » était coupé dans le menu).
+            Text(syncing, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).graphicsLayer { alpha = labelAlpha.value })
         }
     }
 }

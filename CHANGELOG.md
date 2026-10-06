@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.45] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Menu : la pastille de synchro sous « Paramètres » affichait « Synchronisation · 25 % » coupé. Le pourcentage étant
+  déjà dans la pastille, le libellé n'affiche plus que « Synchronisation » (points de suspension si nécessaire).
+
 ## [Bureau 1.2.29] — 2026-10-06
 
 ### Corrigé
