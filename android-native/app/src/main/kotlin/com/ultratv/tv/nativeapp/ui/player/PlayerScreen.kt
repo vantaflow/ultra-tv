@@ -378,6 +378,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         )
     }
     val state by session.state.collectAsState()
+    // Quitter le lecteur : la vidéo est une couche à part (SurfaceView) qui restait affichée jusqu'à la destruction de
+    // l'écran — après la composition de l'écran suivant et la libération du moteur. On la met en pause et on la MASQUE
+    // tout de suite, puis on quitte (la libération se fait ensuite, dans onDispose).
+    val leave: () -> Unit = {
+        session.engine?.pause()
+        session.container.visibility = android.view.View.INVISIBLE
+        onBack()
+    }
     // Liste des chaînes (OK) maintenue À JOUR pendant toute la lecture du direct : abonnée seulement à l'ouverture du
     // tiroir, elle relisait la file, son guide et les compteurs de catégories à chaque OK (tiroir vide un moment).
     // Collecte sans lecture de valeur : aucune recomposition du lecteur.
@@ -559,7 +567,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // Direct : seul le panneau de commandes (gauche/droite/menu) se referme d'abord ; le simple bandeau
             // d'information affiché après un zap ne retient pas Retour.
             overlayVisible && state.phase == Phase.PLAYING && (!isLive || controlsEngaged) -> overlayVisible = false
-            else -> onBack()
+            else -> leave()
         }
     }
     val rootFocus = remember { FocusRequester() }
@@ -684,13 +692,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
                         if (state.phase == Phase.ERROR) ErrorPanel(
                             kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
-                            onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = onBack,
+                            onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = leave,
                         )
                         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
                             MobileControls(
                                 isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = null, playing = playing,
                                 fraction = fraction, startLabel = startLabel, endLabel = endLabel, seekable = !isLive && dur > 0, compact = portrait,
-                                onBack = onBack, onTogglePlay = togglePlay,
+                                onBack = leave, onTogglePlay = togglePlay,
                                 onSeekBy = { d -> if (tsActive) { tsJump((d / 1000).toInt()) } else session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, d, it.durationMs)) }; touch() },
                                 onSeekTo = { f -> if (dur > 0) session.engine?.seekTo((dur * f).toLong()); touch() },
                                 onSettings = { panel = Panel.Options }, pills = pillList, jumpSec = if (tsActive) 30 else 10,
@@ -721,7 +729,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
             onRetry = { session.retry() },
             onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } },
-            onClose = onBack,
+            onClose = leave,
         )
 
         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) {

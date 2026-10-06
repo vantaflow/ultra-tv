@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.account
 
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,13 +78,30 @@ class AccountViewModel @Inject constructor(private val providers: ProviderReposi
     private val _state = MutableStateFlow(AccountState())
     val state: StateFlow<AccountState> = _state
 
-    init { refresh() }
+    private var job: kotlinx.coroutines.Job? = null
+
+    // Suit la source ACTIVE : changer de source (ou ses identifiants) recharge l'abonnement tout seul. Avant, il n'était
+    // lu qu'à la création de l'écran, gardé en mémoire par la navigation : il fallait « Actualiser ».
+    init {
+        viewModelScope.launch {
+            providers.observeProviders()
+                .map { l -> l.firstOrNull { it.active } ?: l.firstOrNull() }
+                .distinctUntilChanged { a, b -> a?.id == b?.id && a?.kind == b?.kind && a?.baseUrl == b?.baseUrl && a?.username == b?.username && a?.password == b?.password }
+                .collect { load(it) }
+        }
+    }
 
     fun refresh() {
-        _state.value = _state.value.copy(loading = true)
         viewModelScope.launch {
             val list = providers.observeProviders().first()
-            val p = list.firstOrNull { it.active } ?: list.firstOrNull()
+            load(list.firstOrNull { it.active } ?: list.firstOrNull())
+        }
+    }
+
+    private fun load(p: com.ultratv.tv.nativeapp.data.db.ProviderEntity?) {
+        job?.cancel()
+        _state.value = _state.value.copy(loading = true)
+        job = viewModelScope.launch {
             val isX = p?.kind == "XTREAM"
             val acc = if (p != null && isX) xtream.fetchAccount(p) else null
             _state.value = AccountState(p?.name, isX, acc, failed = isX && acc == null, loading = false)

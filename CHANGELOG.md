@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.47] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Lecteur : en appuyant sur Retour, l'image restait affichée un moment avant le menu. La vidéo (couche à part) est
+  maintenant mise en pause et masquée immédiatement, puis le lecteur se ferme. Même chose pour la fermeture par la
+  minuterie de sommeil et par l'écran d'erreur.
+- Abonnement : il se recharge tout seul quand on change de source par défaut (ou ses identifiants), sans avoir à
+  appuyer sur « Actualiser ».
+
 ## [1.2.46] — 2026-10-06 (Android TV)
 
 ### Corrigé
