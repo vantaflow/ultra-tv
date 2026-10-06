@@ -189,7 +189,16 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                     onStartMove = { moving = r.remoteId; local = rows },
                     onMove = { delta ->
                         val i = local.indexOfFirst { it.remoteId == r.remoteId }; val j = (i + delta).coerceIn(0, local.lastIndex)
-                        if (i >= 0 && i != j) local = local.toMutableList().also { l -> l.add(j, l.removeAt(i)) }
+                        if (i >= 0 && i != j) {
+                            local = local.toMutableList().also { l -> l.add(j, l.removeAt(i)) }
+                            // La ligne déplacée doit RESTER à l'écran : sortie du haut (ou du bas) de la liste, elle était
+                            // retirée de la composition et le focus disparaissait avec elle. Défilement appliqué à la même
+                            // mise en page que le nouvel ordre (pas d'image intermédiaire sans la ligne), une ligne de marge.
+                            val first = state.firstVisibleItemIndex
+                            val last = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: first
+                            if (j <= first) state.requestScrollToItem((j - 1).coerceAtLeast(0))
+                            else if (j >= last) state.requestScrollToItem((first + (j - last) + 1).coerceAtMost(local.lastIndex))
+                        }
                     },
                     onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
                 )

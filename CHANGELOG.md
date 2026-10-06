@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.31] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Réglages › Catégories : en déplaçant une catégorie au-delà du haut (ou du bas) de l'écran, la liste défile avec
+  elle ; la sélection et la position ne disparaissent plus.
+
 ## [1.2.30] — 2026-10-06 (Android TV)
 
 ### Corrigé
