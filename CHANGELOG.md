@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.48] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Lecteur VLC : la lecture saccadait.
+  - L'affichage direct du décodeur matériel était désactivé en mode Auto : chaque image était recopiée par le
+    processeur. Il n'est désormais désactivé qu'en mode Logiciel.
+  - VLC peut de nouveau sauter une image en retard au lieu d'accumuler le retard.
+  - Le tampon réseau du direct passe à 2 s (1 s depuis la 1.2.37 : trop peu de marge).
+
 ## [1.2.47] — 2026-10-06 (Android TV)
 
 ### Corrigé

@@ -27,18 +27,25 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     private val mp: MediaPlayer
     private var firstFrame = false
 
-    /** Direct : tampon de DÉMARRAGE (comme Media3), pas le tampon minimum — 5 s d'attente avant l'image sinon. */
-    private val networkCachingMs = if (config.isLive) config.buffer.startMs.coerceAtLeast(1_000) else config.buffer.vlcNetworkCachingMs
+    /**
+     * Direct : 2 s (borné par le tampon minimum) — 1 s (1.2.37) laissait trop peu de marge sur un fournisseur irrégulier
+     * (saccades), 5 s (avant) retardait la première image.
+     */
+    private val networkCachingMs = if (config.isLive) maxOf(config.buffer.startMs, 2_000).coerceAtMost(maxOf(config.buffer.minMs, 2_000)) else config.buffer.vlcNetworkCachingMs
     @Volatile private var released = false
 
     init {
         val b = config.buffer
         val opts = arrayListOf(
-            "--quiet", "--no-drop-late-frames", "--no-skip-frames",
+            // VLC peut SAUTER une image en retard (par défaut) : l'interdire faisait s'accumuler le retard sur une box
+            // modeste — lecture qui « lague ».
+            "--quiet",
             "--network-caching=$networkCachingMs", "--live-caching=${b.vlcLiveCachingMs}", "--file-caching=${b.vlcFileCachingMs}",
             "--http-user-agent=${config.userAgent}", "--codec=all",
         )
-        if (config.decoder != DecoderMode.HARDWARE) opts += "--no-mediacodec-dr"
+        // Affichage direct du décodeur matériel (MediaCodec DR) GARDÉ : le désactiver (avant, en mode Auto) recopiait
+        // chaque image par le processeur — très lourd sur une box. Seul le mode Logiciel n'utilise pas MediaCodec.
+        if (config.decoder == DecoderMode.SOFTWARE) opts += "--no-mediacodec-dr"
         opts += com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyleMapper.toVlcOptions(config.subtitleStyle)
         libVlc = LibVLC(ctx, opts)
         mp = MediaPlayer(libVlc)
