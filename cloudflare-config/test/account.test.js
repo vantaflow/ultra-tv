@@ -22,6 +22,21 @@ describe("xtreamAccount", () => {
     expect(await xtreamAccount(P, async () => { throw new Error("net"); })).toEqual({ error: "unreachable", detail: "connexion impossible depuis Cloudflare" });
     expect(await xtreamAccount(P, fake(200, "<html>"))).toMatchObject({ error: "unreachable", detail: expect.stringContaining("pas une API Xtream") });
   });
+  it("HTTP 403 : réessaie sous l'identité d'un lecteur IPTV", async () => {
+    const uas = [];
+    const a = await xtreamAccount(P, async (_u, init) => {
+      uas.push(init.headers["user-agent"]);
+      return uas.length < 3 ? new Response("blocked", { status: 403 }) : new Response(JSON.stringify({ user_info: { auth: 1, status: "Active", exp_date: "1893456000" } }));
+    });
+    expect(uas).toEqual(["UltraTV/1.0", "IPTVSmartersPro", "okhttp/4.12.0"]);
+    expect(a.expiresAt).toBe(1893456000000);
+  });
+  it("HTTP 403 pour toutes les identités : cause affichée, pas de champ interne", async () => {
+    let n = 0;
+    const a = await xtreamAccount(P, async () => { n++; return new Response("no", { status: 403 }); });
+    expect(n).toBe(4);
+    expect(a).toEqual({ error: "unreachable", detail: expect.stringContaining("HTTP 403") });
+  });
   it("port non joignable depuis Cloudflare : pas d'appel", async () => {
     let called = false;
     const a = await xtreamAccount({ ...P, url: "http://iptv.example.test:25461" }, async () => { called = true; return new Response("{}"); });

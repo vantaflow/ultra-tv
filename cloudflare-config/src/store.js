@@ -201,6 +201,9 @@ export function iptvLink(p) {
 }
 
 /** Ports HTTP(S) qu'un Worker Cloudflare peut joindre (les autres échouent : on le dit plutôt que d'attendre). */
+/** Identités essayées tour à tour quand le serveur refuse (HTTP 401/403) : la nôtre, puis des lecteurs IPTV courants. */
+const XTREAM_USER_AGENTS = ["UltraTV/1.0", "IPTVSmartersPro", "okhttp/4.12.0", "VLC/3.0.20 LibVLC/3.0.20"];
+
 const WORKER_PORTS = new Set(["", "80", "443", "8080", "8880", "2052", "2082", "2086", "2095", "2053", "2083", "2087", "2096", "8443"]);
 
 /**
@@ -229,36 +232,46 @@ export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
   if (c.u.protocol !== "http:" && c.u.protocol !== "https:") return { error: "unreachable", detail: "adresse invalide" };
   if (!WORKER_PORTS.has(c.u.port)) return { error: "port", port: c.u.port };
   const q = new URLSearchParams({ username: c.username, password: c.password });
-  let url = `${c.base}/player_api.php?${q}`;
-  let body;
-  try {
-    // Redirections suivies À LA MAIN : beaucoup de serveurs renvoient vers un autre hôte ou port ; un port que Cloudflare
-    // ne peut pas joindre est signalé comme tel (sinon : échec muet « ne répond pas »).
-    for (let hop = 0; ; hop++) {
-      const res = await fetchImpl(url, {
-        headers: { "user-agent": "UltraTV/1.0", accept: "application/json" },
-        signal: AbortSignal.timeout(timeoutMs),
-        redirect: "manual",
-      });
-      if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
-        if (hop >= 3) return { error: "unreachable", detail: "trop de redirections" };
-        const next = new URL(res.headers.get("location"), url);
-        if (next.protocol !== "http:" && next.protocol !== "https:") return { error: "unreachable", detail: "redirection invalide" };
-        if (!WORKER_PORTS.has(next.port)) return { error: "port", port: next.port };
-        url = next.toString();
-        continue;
+  const first = `${c.base}/player_api.php?${q}`;
+  // Une interrogation complète avec une identité (user-agent) donnée : { body } ou { error, detail?, port?, http? }.
+  const probe = async (ua) => {
+    let url = first;
+    try {
+      // Redirections suivies À LA MAIN : beaucoup de serveurs renvoient vers un autre hôte ou port ; un port que Cloudflare
+      // ne peut pas joindre est signalé comme tel (sinon : échec muet « ne répond pas »).
+      for (let hop = 0; ; hop++) {
+        const res = await fetchImpl(url, {
+          headers: { "user-agent": ua, accept: "*/*" },
+          signal: AbortSignal.timeout(timeoutMs),
+          redirect: "manual",
+        });
+        if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+          if (hop >= 3) return { error: "unreachable", detail: "trop de redirections" };
+          const next = new URL(res.headers.get("location"), url);
+          if (next.protocol !== "http:" && next.protocol !== "https:") return { error: "unreachable", detail: "redirection invalide" };
+          if (!WORKER_PORTS.has(next.port)) return { error: "port", port: next.port };
+          url = next.toString();
+          continue;
+        }
+        // 401/403 en HTTP : souvent un pare-feu (adresses Cloudflare ou user-agent refusés), pas les identifiants (le vrai
+        // refus d'identifiants arrive en JSON, auth = 0).
+        if (res.status === 401 || res.status === 403) return { error: "unreachable", http: res.status, detail: `accès refusé par le serveur (HTTP ${res.status}), qui bloque sans doute les serveurs Cloudflare` };
+        if (!res.ok) return { error: "unreachable", detail: `HTTP ${res.status}` };
+        const text = await res.text();
+        try { return { body: JSON.parse(text) }; } catch { return { error: "unreachable", detail: "réponse non reconnue (pas une API Xtream)" }; }
       }
-      // 401/403 en HTTP : souvent un pare-feu qui refuse les adresses Cloudflare, pas les identifiants (le vrai refus
-      // d'identifiants arrive en JSON, auth = 0).
-      if (res.status === 401 || res.status === 403) return { error: "unreachable", detail: `accès refusé par le serveur (HTTP ${res.status}) : il bloque sans doute les serveurs Cloudflare` };
-      if (!res.ok) return { error: "unreachable", detail: `HTTP ${res.status}` };
-      const text = await res.text();
-      try { body = JSON.parse(text); } catch { return { error: "unreachable", detail: "réponse non reconnue (pas une API Xtream)" }; }
-      break;
+    } catch (e) {
+      return { error: "unreachable", detail: e && (e.name === "TimeoutError" || e.name === "AbortError") ? "délai dépassé (8 s)" : "connexion impossible depuis Cloudflare" };
     }
-  } catch (e) {
-    return { error: "unreachable", detail: e && (e.name === "TimeoutError" || e.name === "AbortError") ? "délai dépassé (8 s)" : "connexion impossible depuis Cloudflare" };
+  };
+  // Beaucoup de panneaux ne laissent passer que les lecteurs IPTV connus : refus HTTP → on réessaie sous leur identité.
+  let r;
+  for (const ua of XTREAM_USER_AGENTS) {
+    r = await probe(ua);
+    if (!r.http) break;
   }
+  if (!r.body) { const { http: _h, ...err } = r; return err; }
+  const body = r.body;
   const ui = body && typeof body === "object" ? body.user_info : null;
   if (!ui || typeof ui !== "object") return { error: "unreachable", detail: "réponse sans informations d'abonnement" };
   if (String(ui.auth) === "0") return { error: "denied" };

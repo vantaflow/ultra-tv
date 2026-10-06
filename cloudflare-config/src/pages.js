@@ -513,7 +513,7 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
   fetch('/providers/'+el.dataset.id+'/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
    .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
    .then(function(a){
-    if(a.error){set(el,'<span class="muted">Abonnement : '+(a.error==='port'&&a.port?'port '+x(a.port)+' non joignable depuis Cloudflare : informations visibles seulement dans l\\'application':a.error==='unreachable'&&a.detail?'indisponible ('+x(a.detail)+')':(ERR[a.error]||ERR.unreachable))+'</span>');tally();return;}
+    if(a.error){set(el,'<span class="muted">Abonnement : '+(a.error==='port'&&a.port?'port '+x(a.port)+' non joignable depuis Cloudflare : informations visibles seulement dans l\\'application':a.error==='unreachable'&&a.detail?x(a.detail):(ERR[a.error]||ERR.unreachable))+'</span>');tally();return;}
     var parts=[],cls='';
     var st=(a.status||'').toLowerCase();
     var active=st==='active'||st==='';
