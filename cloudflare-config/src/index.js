@@ -85,6 +85,22 @@ async function withAccountLock(env, login, fn) {
   }
 }
 
+/**
+ * Abonnement d'un fournisseur, gardé 10 min en mémoire de l'isolat (au mieux : aucune écriture KV). Clé liée au
+ * compte, au fournisseur et à ses identifiants : un changement d'identifiants relit tout de suite.
+ */
+const accountCache = new Map();
+async function cachedAccount(login, p, now = Date.now()) {
+  const key = `${login}|${p.id}|${p.url}|${p.username || ""}|${p.password || ""}`;
+  const hit = accountCache.get(key);
+  if (hit && now - hit.at < 600_000) return hit.value;
+  const value = await xtreamAccount(p);
+  if (accountCache.size > 500) accountCache.clear();
+  // Les erreurs passagères ne sont gardées qu'1 min.
+  accountCache.set(key, { at: value.error === "unreachable" ? now - 540_000 : now, value });
+  return value;
+}
+
 // ---- point d'entrée -----------------------------------------------------------
 
 export default {
@@ -177,6 +193,17 @@ async function route(req, env) {
   if (parsed.error) return parsed.error;
   const form = parsed.form;
   if (!timingSafeEqual(form.get("csrf") || "", sess.csrf)) return new Response("Forbidden (csrf)", { status: 403 });
+  // Abonnements : une requête par fournisseur Xtream à chaque ouverture du tableau de bord (jusqu'à 20) — limite
+  // PROPRE, sinon quelques rechargements épuisaient celle des actions (appairage, partage, suppression).
+  const acc = path.match(/^\/providers\/([0-9a-f]+)\/account$/);
+  if (acc) {
+    const rla = await limited(env, `acctinfo:${sess.acct.login}`, 600, 3600);
+    if (rla) return rla;
+    const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
+    if (!p) return new Response("Not found", { status: 404 });
+    return new Response(JSON.stringify(await cachedAccount(sess.acct.login, p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
+
   const rl = await limited(env, `dash:${sess.acct.login}`, 120, 3600);
   if (rl) return rl;
 
@@ -188,14 +215,6 @@ async function route(req, env) {
     // Source du revendeur : ses identifiants ne sont pas ceux du client, ils ne sont jamais révélés.
     if (p.managed === "reseller") return new Response(JSON.stringify({ error: "managed" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
     return new Response(JSON.stringify({ link: iptvLink(p) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
-  }
-
-  // Abonnement (statut, validité, connexions) lu par le Worker auprès du fournisseur ; identifiants jamais renvoyés.
-  const acc = path.match(/^\/providers\/([0-9a-f]+)\/account$/);
-  if (acc) {
-    const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
-    if (!p) return new Response("Not found", { status: 404 });
-    return new Response(JSON.stringify(await xtreamAccount(p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   return withAccountLock(env, sess.acct.login, async (acct) => {

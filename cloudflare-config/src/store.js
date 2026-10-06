@@ -202,31 +202,61 @@ export function iptvLink(p) {
 const WORKER_PORTS = new Set(["", "80", "443", "8080", "8880", "2052", "2082", "2086", "2095", "2053", "2083", "2087", "2096", "8443"]);
 
 /**
+ * Identifiants Xtream d'un fournisseur : un Xtream, ou une liste M3U qui est en fait un lien Xtream
+ * (…/get.php?username=…&password=…). null sinon.
+ */
+export function xtreamCredsOf(p) {
+  let u;
+  try { u = new URL(p.url); } catch { return null; }
+  if (p.kind === "XTREAM") return { u, username: p.username || "", password: p.password || "", base: `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, "")}` };
+  if (/\/get\.php$/i.test(u.pathname) && u.searchParams.get("username") && u.searchParams.get("password")) {
+    return { u, username: u.searchParams.get("username"), password: u.searchParams.get("password"), base: `${u.protocol}//${u.host}${u.pathname.replace(/\/get\.php$/i, "")}` };
+  }
+  return null;
+}
+
+/**
  * Abonnement d'un fournisseur Xtream (player_api.php → user_info), interrogé PAR LE WORKER : les identifiants ne
- * quittent jamais le serveur. Renvoie un objet normalisé, ou { error } : "unsupported" (M3U), "port" (port non
- * joignable depuis Cloudflare), "unreachable" (réseau, délai, refus), "denied" (identifiants refusés).
+ * quittent jamais le serveur. Renvoie un objet normalisé, ou { error, detail? } : "unsupported" (M3U sans identifiants
+ * Xtream), "port" (port non joignable depuis Cloudflare, y compris après redirection), "denied" (identifiants refusés),
+ * "unreachable" (réseau, délai, réponse invalide ; `detail` dit pourquoi).
  */
 export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
-  if (p.kind !== "XTREAM") return { error: "unsupported" };
-  let u;
-  try { u = new URL(p.url); } catch { return { error: "unreachable" }; }
-  if (u.protocol !== "http:" && u.protocol !== "https:") return { error: "unreachable" };
-  if (!WORKER_PORTS.has(u.port)) return { error: "port", port: u.port };
-  const base = `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
-  const q = new URLSearchParams({ username: p.username || "", password: p.password || "" });
+  const c = xtreamCredsOf(p);
+  if (!c) return { error: p.kind === "XTREAM" ? "unreachable" : "unsupported", ...(p.kind === "XTREAM" ? { detail: "adresse invalide" } : {}) };
+  if (c.u.protocol !== "http:" && c.u.protocol !== "https:") return { error: "unreachable", detail: "adresse invalide" };
+  if (!WORKER_PORTS.has(c.u.port)) return { error: "port", port: c.u.port };
+  const q = new URLSearchParams({ username: c.username, password: c.password });
+  let url = `${c.base}/player_api.php?${q}`;
   let body;
   try {
-    const res = await fetchImpl(`${base}/player_api.php?${q}`, {
-      headers: { "user-agent": "UltraTV/1.0", accept: "application/json" },
-      signal: AbortSignal.timeout(timeoutMs),
-      redirect: "follow",
-    });
-    if (res.status === 401 || res.status === 403) return { error: "denied" };
-    if (!res.ok) return { error: "unreachable" };
-    body = await res.json();
-  } catch { return { error: "unreachable" }; }
+    // Redirections suivies À LA MAIN : beaucoup de serveurs renvoient vers un autre hôte ou port ; un port que Cloudflare
+    // ne peut pas joindre est signalé comme tel (sinon : échec muet « ne répond pas »).
+    for (let hop = 0; ; hop++) {
+      const res = await fetchImpl(url, {
+        headers: { "user-agent": "UltraTV/1.0", accept: "application/json" },
+        signal: AbortSignal.timeout(timeoutMs),
+        redirect: "manual",
+      });
+      if (res.status >= 300 && res.status < 400 && res.headers.get("location")) {
+        if (hop >= 3) return { error: "unreachable", detail: "trop de redirections" };
+        const next = new URL(res.headers.get("location"), url);
+        if (next.protocol !== "http:" && next.protocol !== "https:") return { error: "unreachable", detail: "redirection invalide" };
+        if (!WORKER_PORTS.has(next.port)) return { error: "port", port: next.port };
+        url = next.toString();
+        continue;
+      }
+      if (res.status === 401 || res.status === 403) return { error: "denied", detail: `HTTP ${res.status}` };
+      if (!res.ok) return { error: "unreachable", detail: `HTTP ${res.status}` };
+      const text = await res.text();
+      try { body = JSON.parse(text); } catch { return { error: "unreachable", detail: "réponse non reconnue (pas une API Xtream)" }; }
+      break;
+    }
+  } catch (e) {
+    return { error: "unreachable", detail: e && (e.name === "TimeoutError" || e.name === "AbortError") ? "délai dépassé (8 s)" : "connexion impossible depuis Cloudflare" };
+  }
   const ui = body && typeof body === "object" ? body.user_info : null;
-  if (!ui || typeof ui !== "object") return { error: "unreachable" };
+  if (!ui || typeof ui !== "object") return { error: "unreachable", detail: "réponse sans informations d'abonnement" };
   if (String(ui.auth) === "0") return { error: "denied" };
   const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
   const exp = num(ui.exp_date);

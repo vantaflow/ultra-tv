@@ -3,7 +3,7 @@
 
 import { escapeHtml as e, html } from "./http.js";
 import { parsePairQr } from "./qr.js";
-import { displayUrl } from "./store.js";
+import { displayUrl, xtreamCredsOf } from "./store.js";
 
 const CSS = `
 @font-face{font-family:Sora;src:url(/assets/sora.woff2) format("woff2");font-weight:100 800;font-display:swap}
@@ -453,7 +453,7 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
 <div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
 ${sh.chips}${p.managed === "reseller" ? `<div class="chips"><span class="chip acc">Gérée par ton revendeur (Pro)</span></div>` : ""}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
-${p.kind === "XTREAM" ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria-live="polite"><span class="muted">Abonnement : chargement…</span></div>` : ""}
+${xtreamCredsOf(p) ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria-live="polite"><span class="muted">Abonnement : chargement…</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">Lien IPTV</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">Copier</button></div></div>
 <div class="actions">${sh.form}
@@ -505,7 +505,7 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
   fetch('/providers/'+el.dataset.id+'/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
    .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
    .then(function(a){
-    if(a.error){set(el,'<span class="muted">Abonnement : '+(ERR[a.error]||ERR.unreachable)+'</span>');tally();return;}
+    if(a.error){set(el,'<span class="muted">Abonnement : '+(a.error==='port'&&a.port?'port '+x(a.port)+' non joignable depuis Cloudflare : informations visibles seulement dans l\\'application':a.error==='unreachable'&&a.detail?'indisponible ('+x(a.detail)+')':(ERR[a.error]||ERR.unreachable))+'</span>');tally();return;}
     var parts=[],cls='';
     var st=(a.status||'').toLowerCase();
     var active=st==='active'||st==='';
@@ -540,7 +540,7 @@ document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('
 ${PAIR_JS}
 ${SCAN_JS}
 </script>`;
-  const xtreamCount = providers.filter((p) => p.kind === "XTREAM").length;
+  const xtreamCount = providers.filter((p) => xtreamCredsOf(p)).length;
   // Compte « Pro » : au moins un appareil de l'édition Pro (déclarée par l'appli, licence vérifiée à la réception).
   const proDevices = devices.filter((d) => d.edition === "pro");
   const isPro = proDevices.length > 0;
