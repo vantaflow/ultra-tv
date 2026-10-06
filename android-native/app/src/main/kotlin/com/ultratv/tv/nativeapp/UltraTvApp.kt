@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp
 
+import kotlinx.coroutines.cancel
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
@@ -116,7 +117,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
         // Google TV : Watch Next + chaîne Favoris, alimentés par la base (sans effet hors Android TV).
         // Démarrée après le premier écran : ses observateurs de base n'ont rien d'urgent.
-        bgScope.launch { kotlinx.coroutines.delay(8_000); googleTv.get().start(bgScope) }
+        // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
+        // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
+        bgScope.launch { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
         bgScope.launch { runCatching { secretsMigrator.get().migrate() } }
@@ -151,6 +154,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     override fun onTerminate() {
         // Rarely called on real devices, but useful when the simulator quits.
         RemoteLog.info("app", "onTerminate")
+        // Jamais appelé en production ; appelé par Robolectric à la fin de chaque test : les tâches de fond (différées
+        // jusqu'à 8 s) ne doivent pas survivre à leur application.
+        bgScope.cancel()
+        anrWatchdog.interrupt()
         super.onTerminate()
     }
 
@@ -161,8 +168,11 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
      * the active thread dump. Beats getting silent "app closed" reports with
      * no logs (Android kills frozen UIs without going through our crash hook).
      */
+    /** Fil de surveillance des blocages : interrompu dans [onTerminate] (tests : une application par test). */
+    private val anrWatchdog: Thread
+
     init {
-        Thread({
+        anrWatchdog = Thread({
             val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
             while (true) {
                 // Toutes les 5 s (et en veille longue si la télémétrie est coupée : le rapport n'irait nulle part) —

@@ -98,7 +98,7 @@ object RemoteLog {
         // synchronous POST can be cut short by the dying process; this is the
         // safety net that runs from the next clean start.
         // 20 s après le démarrage : pas de requête réseau pendant l'affichage du premier écran.
-        scope.launch { kotlinx.coroutines.delay(20_000); flushPendingCrash() }
+        scope.launch { kotlinx.coroutines.delay(20_000); runCatching { flushPendingCrash() } }
     }
 
     private fun pendingCrashFile(): java.io.File? {
