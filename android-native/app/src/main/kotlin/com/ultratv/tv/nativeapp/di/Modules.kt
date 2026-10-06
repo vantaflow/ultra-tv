@@ -30,6 +30,16 @@ object DatabaseModule {
             .addMigrations(*com.ultratv.tv.nativeapp.data.db.ALL_MIGRATIONS)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
             .addCallback(com.ultratv.tv.nativeapp.data.db.DefaultProfileCallback())
+            // WAL imposé : Room le désactive sur les appareils « low RAM » (beaucoup de box), et alors la synchro du
+            // catalogue bloque toute lecture (écrans figés). synchronous=NORMAL est sûr en WAL et évite un fsync
+            // par transaction sur l'eMMC lente ; le journal est borné à 32 Mo.
+            .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addCallback(object : androidx.room.RoomDatabase.Callback() {
+                override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                    runCatching { db.query("PRAGMA synchronous = NORMAL").close() }
+                    runCatching { db.query("PRAGMA journal_size_limit = 33554432").close() }
+                }
+            })
             .build()
 
     @Provides fun provideProviderRawDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.ProviderRawDao = db.providerDao()

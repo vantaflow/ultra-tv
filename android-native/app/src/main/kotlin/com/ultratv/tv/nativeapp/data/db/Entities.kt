@@ -104,9 +104,12 @@ data class CategoryEntity(
 
 @Entity(
     tableName = "movie",
+    // Les listes paginées trient par id (ordre du fournisseur) : un index (providerId[, categoryId]) le sert
+    // directement (le rowid suit la clé). Les anciens index sur sortKey ne servaient aucune requête : chaque page
+    // retriait toute la catégorie (jusqu'à 180 000 lignes pour « Tout »).
     indices = [
-        Index(value = ["providerId", "sortKey"]),
-        Index(value = ["providerId", "categoryId", "sortKey"]),
+        Index(value = ["providerId"]),
+        Index(value = ["providerId", "categoryId"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -134,9 +137,12 @@ data class MovieEntity(
 
 @Entity(
     tableName = "series",
+    // Les listes paginées trient par id (ordre du fournisseur) : un index (providerId[, categoryId]) le sert
+    // directement (le rowid suit la clé). Les anciens index sur sortKey ne servaient aucune requête : chaque page
+    // retriait toute la catégorie (jusqu'à 180 000 lignes pour « Tout »).
     indices = [
-        Index(value = ["providerId", "sortKey"]),
-        Index(value = ["providerId", "categoryId", "sortKey"]),
+        Index(value = ["providerId"]),
+        Index(value = ["providerId", "categoryId"]),
         Index(value = ["providerId", "remoteId"], unique = true),
     ],
 )
@@ -232,7 +238,9 @@ data class RecordingEntity(
 
 @Entity(
     tableName = "epg",
-    indices = [Index("channelId"), Index(value = ["channelId", "startMs"])],
+    // Un programme par (chaîne, début) : les réinsertions (guide court, complément) remplacent au lieu de dupliquer.
+    // endMs : purge des programmes passés et « jusqu'où va le guide » sans parcourir toute la table.
+    indices = [Index(value = ["channelId", "startMs"], unique = true), Index("endMs")],
 )
 data class EpgEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

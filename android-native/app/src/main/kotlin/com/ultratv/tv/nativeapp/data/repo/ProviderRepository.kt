@@ -155,6 +155,7 @@ class ProviderRepository @Inject constructor(
             step("Fetching xmltv…", 10)
             val total = syncXmltvInternal(p) { c -> step("EPG: $c programmes", null) }
             providerDao.markSynced(p.id, SyncPart.EPG, System.currentTimeMillis())
+            purgePastEpg()
             step("Done — $total programmes", 100)
             return total
         } catch (t: Throwable) {
@@ -622,12 +623,18 @@ class ProviderRepository @Inject constructor(
         if (now - epgCheckAt < 15 * 60_000L || epgRefreshJob?.isActive == true) return
         epgCheckAt = now
         epgRefreshJob = epgScope.launch {
+            purgePastEpg()
             if (!prefs.flow.first().syncEpg) return@launch
             for (p in providerDao.observeAll().first().filter { it.kind == "XTREAM" }) {
                 if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
                     runCatching { syncXmltv(p.id) }
             }
         }
+    }
+
+    /** Programmes terminés depuis plus de 3 h supprimés (le guide ne retenait jamais rien : la base grossissait). */
+    private suspend fun purgePastEpg() {
+        runCatching { epgDao.deletePast(System.currentTimeMillis() - 3 * 3_600_000L) }
     }
 
     /** Langues détectées dans les catégories du serveur (3 requêtes légères, aucun contenu téléchargé). */

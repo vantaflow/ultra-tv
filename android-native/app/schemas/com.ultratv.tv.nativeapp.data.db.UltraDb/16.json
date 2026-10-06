@@ -1,0 +1,1539 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 16,
+    "identityHash": "4b4f2910af35d941972948b49584f673",
+    "entities": [
+      {
+        "tableName": "provider",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `kind` TEXT NOT NULL, `baseUrl` TEXT NOT NULL, `username` TEXT NOT NULL, `password` TEXT NOT NULL, `active` INTEGER NOT NULL, `lastLiveSyncAt` INTEGER NOT NULL, `lastVodSyncAt` INTEGER NOT NULL, `lastSeriesSyncAt` INTEGER NOT NULL, `lastEpgSyncAt` INTEGER NOT NULL, `categoryFilter` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "baseUrl",
+            "columnName": "baseUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "username",
+            "columnName": "username",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "password",
+            "columnName": "password",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "active",
+            "columnName": "active",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastLiveSyncAt",
+            "columnName": "lastLiveSyncAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastVodSyncAt",
+            "columnName": "lastVodSyncAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastSeriesSyncAt",
+            "columnName": "lastSeriesSyncAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastEpgSyncAt",
+            "columnName": "lastEpgSyncAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryFilter",
+            "columnName": "categoryFilter",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "channel",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `logo` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `epgChannelId` TEXT, `catchupSource` TEXT, `catchupDays` INTEGER NOT NULL, `userPosition` INTEGER NOT NULL, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `num` INTEGER NOT NULL, `seq` INTEGER NOT NULL, `junk` INTEGER NOT NULL, `isSeparator` INTEGER NOT NULL, `country` TEXT, `quality` INTEGER NOT NULL, `flags` INTEGER NOT NULL, `lang` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "logo",
+            "columnName": "logo",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "streamUrl",
+            "columnName": "streamUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "epgChannelId",
+            "columnName": "epgChannelId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "catchupSource",
+            "columnName": "catchupSource",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "catchupDays",
+            "columnName": "catchupDays",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "userPosition",
+            "columnName": "userPosition",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortKey",
+            "columnName": "sortKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "num",
+            "columnName": "num",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "junk",
+            "columnName": "junk",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSeparator",
+            "columnName": "isSeparator",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "quality",
+            "columnName": "quality",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "flags",
+            "columnName": "flags",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_channel_providerId_num_sortKey",
+            "unique": false,
+            "columnNames": [
+              "providerId",
+              "num",
+              "sortKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_num_sortKey` ON `${TABLE_NAME}` (`providerId`, `num`, `sortKey`)"
+          },
+          {
+            "name": "index_channel_providerId_categoryId_num_sortKey",
+            "unique": false,
+            "columnNames": [
+              "providerId",
+              "categoryId",
+              "num",
+              "sortKey"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_channel_providerId_categoryId_num_sortKey` ON `${TABLE_NAME}` (`providerId`, `categoryId`, `num`, `sortKey`)"
+          },
+          {
+            "name": "index_channel_providerId_remoteId",
+            "unique": true,
+            "columnNames": [
+              "providerId",
+              "remoteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_channel_providerId_remoteId` ON `${TABLE_NAME}` (`providerId`, `remoteId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "movie",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `streamUrl` TEXT NOT NULL, `container` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT, `duration` TEXT, `lang` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "streamUrl",
+            "columnName": "streamUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "container",
+            "columnName": "container",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortKey",
+            "columnName": "sortKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "backdrop",
+            "columnName": "backdrop",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cast",
+            "columnName": "cast",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_movie_providerId",
+            "unique": false,
+            "columnNames": [
+              "providerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_providerId` ON `${TABLE_NAME}` (`providerId`)"
+          },
+          {
+            "name": "index_movie_providerId_categoryId",
+            "unique": false,
+            "columnNames": [
+              "providerId",
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_movie_providerId_categoryId` ON `${TABLE_NAME}` (`providerId`, `categoryId`)"
+          },
+          {
+            "name": "index_movie_providerId_remoteId",
+            "unique": true,
+            "columnNames": [
+              "providerId",
+              "remoteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_movie_providerId_remoteId` ON `${TABLE_NAME}` (`providerId`, `remoteId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "series",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `poster` TEXT, `categoryId` TEXT, `year` INTEGER, `rating` REAL, `plot` TEXT, `title` TEXT NOT NULL, `sortKey` TEXT NOT NULL, `backdrop` TEXT, `genre` TEXT, `cast` TEXT, `lang` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "categoryId",
+            "columnName": "categoryId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "year",
+            "columnName": "year",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortKey",
+            "columnName": "sortKey",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "backdrop",
+            "columnName": "backdrop",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cast",
+            "columnName": "cast",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_series_providerId",
+            "unique": false,
+            "columnNames": [
+              "providerId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_providerId` ON `${TABLE_NAME}` (`providerId`)"
+          },
+          {
+            "name": "index_series_providerId_categoryId",
+            "unique": false,
+            "columnNames": [
+              "providerId",
+              "categoryId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_series_providerId_categoryId` ON `${TABLE_NAME}` (`providerId`, `categoryId`)"
+          },
+          {
+            "name": "index_series_providerId_remoteId",
+            "unique": true,
+            "columnNames": [
+              "providerId",
+              "remoteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_series_providerId_remoteId` ON `${TABLE_NAME}` (`providerId`, `remoteId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "episode",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `seriesId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `season` INTEGER NOT NULL, `episode` INTEGER NOT NULL, `title` TEXT NOT NULL, `streamUrl` TEXT NOT NULL, `container` TEXT, `plot` TEXT, `image` TEXT, `duration` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "seriesId",
+            "columnName": "seriesId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "season",
+            "columnName": "season",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "episode",
+            "columnName": "episode",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "streamUrl",
+            "columnName": "streamUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "container",
+            "columnName": "container",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "image",
+            "columnName": "image",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_episode_seriesId",
+            "unique": false,
+            "columnNames": [
+              "seriesId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_episode_seriesId` ON `${TABLE_NAME}` (`seriesId`)"
+          },
+          {
+            "name": "index_episode_seriesId_remoteId",
+            "unique": true,
+            "columnNames": [
+              "seriesId",
+              "remoteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_episode_seriesId_remoteId` ON `${TABLE_NAME}` (`seriesId`, `remoteId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "category",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `name` TEXT NOT NULL, `locked` INTEGER NOT NULL, `enabled` INTEGER NOT NULL, `position` INTEGER NOT NULL, `lang` TEXT NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "locked",
+            "columnName": "locked",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "enabled",
+            "columnName": "enabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "position",
+            "columnName": "position",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_category_providerId_kind_remoteId",
+            "unique": true,
+            "columnNames": [
+              "providerId",
+              "kind",
+              "remoteId"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_category_providerId_kind_remoteId` ON `${TABLE_NAME}` (`providerId`, `kind`, `remoteId`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "favorite",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `profileId` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`profileId`, `providerId`, `kind`, `remoteId`))",
+        "fields": [
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "providerId",
+            "kind",
+            "remoteId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "epg",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `channelId` INTEGER NOT NULL, `title` TEXT NOT NULL, `description` TEXT, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelId",
+            "columnName": "channelId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "description",
+            "columnName": "description",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "startMs",
+            "columnName": "startMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endMs",
+            "columnName": "endMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_epg_channelId_startMs",
+            "unique": true,
+            "columnNames": [
+              "channelId",
+              "startMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_epg_channelId_startMs` ON `${TABLE_NAME}` (`channelId`, `startMs`)"
+          },
+          {
+            "name": "index_epg_endMs",
+            "unique": false,
+            "columnNames": [
+              "endMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_epg_endMs` ON `${TABLE_NAME}` (`endMs`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "watch_history",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `title` TEXT NOT NULL, `poster` TEXT, `streamUrl` TEXT NOT NULL, `positionMs` INTEGER NOT NULL, `durationMs` INTEGER NOT NULL, `watchedAt` INTEGER NOT NULL, `parentRemoteId` TEXT, `profileId` INTEGER NOT NULL DEFAULT 1, PRIMARY KEY(`profileId`, `providerId`, `kind`, `remoteId`))",
+        "fields": [
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "poster",
+            "columnName": "poster",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "streamUrl",
+            "columnName": "streamUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "positionMs",
+            "columnName": "positionMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "durationMs",
+            "columnName": "durationMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "watchedAt",
+            "columnName": "watchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "parentRemoteId",
+            "columnName": "parentRemoteId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "1"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "providerId",
+            "kind",
+            "remoteId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "recording",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `title` TEXT NOT NULL, `sourceUrl` TEXT NOT NULL, `filePath` TEXT NOT NULL, `status` TEXT NOT NULL, `downloadedBytes` INTEGER NOT NULL, `totalBytes` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `errorMessage` TEXT, `scheduledStartMs` INTEGER NOT NULL, `scheduledEndMs` INTEGER NOT NULL, `channelName` TEXT)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sourceUrl",
+            "columnName": "sourceUrl",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "filePath",
+            "columnName": "filePath",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "status",
+            "columnName": "status",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "downloadedBytes",
+            "columnName": "downloadedBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "totalBytes",
+            "columnName": "totalBytes",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completedAt",
+            "columnName": "completedAt",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "errorMessage",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "scheduledStartMs",
+            "columnName": "scheduledStartMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "scheduledEndMs",
+            "columnName": "scheduledEndMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelName",
+            "columnName": "channelName",
+            "affinity": "TEXT",
+            "notNull": false
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "reminder",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, `channelRemoteId` TEXT NOT NULL, `channelName` TEXT NOT NULL, `programmeTitle` TEXT NOT NULL, `startMs` INTEGER NOT NULL, `endMs` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelRemoteId",
+            "columnName": "channelRemoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "channelName",
+            "columnName": "channelName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "programmeTitle",
+            "columnName": "programmeTitle",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startMs",
+            "columnName": "startMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endMs",
+            "columnName": "endMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_reminder_channelRemoteId_startMs",
+            "unique": true,
+            "columnNames": [
+              "channelRemoteId",
+              "startMs"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_reminder_channelRemoteId_startMs` ON `${TABLE_NAME}` (`channelRemoteId`, `startMs`)"
+          }
+        ],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [],
+          "contentTable": "channel",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_channel_fts_BEFORE_UPDATE BEFORE UPDATE ON `channel` BEGIN DELETE FROM `channel_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_channel_fts_BEFORE_DELETE BEFORE DELETE ON `channel` BEGIN DELETE FROM `channel_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_channel_fts_AFTER_UPDATE AFTER UPDATE ON `channel` BEGIN INSERT INTO `channel_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_channel_fts_AFTER_INSERT AFTER INSERT ON `channel` BEGIN INSERT INTO `channel_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END"
+        ],
+        "tableName": "channel_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, tokenize=unicode61, content=`channel`)",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [],
+          "contentTable": "movie",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movie_fts_BEFORE_UPDATE BEFORE UPDATE ON `movie` BEGIN DELETE FROM `movie_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movie_fts_BEFORE_DELETE BEFORE DELETE ON `movie` BEGIN DELETE FROM `movie_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movie_fts_AFTER_UPDATE AFTER UPDATE ON `movie` BEGIN INSERT INTO `movie_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_movie_fts_AFTER_INSERT AFTER INSERT ON `movie` BEGIN INSERT INTO `movie_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END"
+        ],
+        "tableName": "movie_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, tokenize=unicode61, content=`movie`)",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "ftsVersion": "FTS4",
+        "ftsOptions": {
+          "tokenizer": "unicode61",
+          "tokenizerArgs": [],
+          "contentTable": "series",
+          "languageIdColumnName": "",
+          "matchInfo": "FTS4",
+          "notIndexedColumns": [],
+          "prefixSizes": [],
+          "preferredOrder": "ASC"
+        },
+        "contentSyncTriggers": [
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_BEFORE_UPDATE BEFORE UPDATE ON `series` BEGIN DELETE FROM `series_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_BEFORE_DELETE BEFORE DELETE ON `series` BEGIN DELETE FROM `series_fts` WHERE `docid`=OLD.`rowid`; END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_UPDATE AFTER UPDATE ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END",
+          "CREATE TRIGGER IF NOT EXISTS room_fts_content_sync_series_fts_AFTER_INSERT AFTER INSERT ON `series` BEGIN INSERT INTO `series_fts`(`docid`, `name`) VALUES (NEW.`rowid`, NEW.`name`); END"
+        ],
+        "tableName": "series_fts",
+        "createSql": "CREATE VIRTUAL TABLE IF NOT EXISTS `${TABLE_NAME}` USING FTS4(`name` TEXT NOT NULL, tokenize=unicode61, content=`series`)",
+        "fields": [
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": []
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "vod_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `plot` TEXT, `cast` TEXT, `director` TEXT, `genre` TEXT, `duration` TEXT, `releaseDate` TEXT, `rating` REAL, `backdrop` TEXT, `trailer` TEXT, `tmdbId` TEXT, `country` TEXT, `originalName` TEXT, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`providerId`, `remoteId`))",
+        "fields": [
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "plot",
+            "columnName": "plot",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cast",
+            "columnName": "cast",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "director",
+            "columnName": "director",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "genre",
+            "columnName": "genre",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "duration",
+            "columnName": "duration",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "releaseDate",
+            "columnName": "releaseDate",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "backdrop",
+            "columnName": "backdrop",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "trailer",
+            "columnName": "trailer",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "tmdbId",
+            "columnName": "tmdbId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "country",
+            "columnName": "country",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "originalName",
+            "columnName": "originalName",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "providerId",
+            "remoteId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "tmdb_info",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`kind` TEXT NOT NULL, `providerId` INTEGER NOT NULL, `remoteId` TEXT NOT NULL, `tmdbId` INTEGER, `overview` TEXT, `posterPath` TEXT, `backdropPath` TEXT, `rating` REAL, `cast` TEXT, `trailerKey` TEXT, `originalLanguage` TEXT, `lang` TEXT NOT NULL, `fetchedAt` INTEGER NOT NULL, PRIMARY KEY(`kind`, `providerId`, `remoteId`))",
+        "fields": [
+          {
+            "fieldPath": "kind",
+            "columnName": "kind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "providerId",
+            "columnName": "providerId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "remoteId",
+            "columnName": "remoteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tmdbId",
+            "columnName": "tmdbId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "overview",
+            "columnName": "overview",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "posterPath",
+            "columnName": "posterPath",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "backdropPath",
+            "columnName": "backdropPath",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "rating",
+            "columnName": "rating",
+            "affinity": "REAL",
+            "notNull": false
+          },
+          {
+            "fieldPath": "cast",
+            "columnName": "cast",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "trailerKey",
+            "columnName": "trailerKey",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "originalLanguage",
+            "columnName": "originalLanguage",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "lang",
+            "columnName": "lang",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fetchedAt",
+            "columnName": "fetchedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "kind",
+            "providerId",
+            "remoteId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "profile",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `color` INTEGER NOT NULL, `initial` TEXT NOT NULL, `isKids` INTEGER NOT NULL, `pinHash` TEXT, `createdAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "color",
+            "columnName": "color",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "initial",
+            "columnName": "initial",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isKids",
+            "columnName": "isKids",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pinHash",
+            "columnName": "pinHash",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "profile_pref",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` INTEGER NOT NULL, `key` TEXT NOT NULL, `value` TEXT NOT NULL, PRIMARY KEY(`profileId`, `key`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "key",
+            "columnName": "key",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "value",
+            "columnName": "value",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "key"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "profile_hidden_category",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`profileId` INTEGER NOT NULL, `categoryKey` TEXT NOT NULL, PRIMARY KEY(`profileId`, `categoryKey`))",
+        "fields": [
+          {
+            "fieldPath": "profileId",
+            "columnName": "profileId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "categoryKey",
+            "columnName": "categoryKey",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "profileId",
+            "categoryKey"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      }
+    ],
+    "views": [],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '4b4f2910af35d941972948b49584f673')"
+    ]
+  }
+}

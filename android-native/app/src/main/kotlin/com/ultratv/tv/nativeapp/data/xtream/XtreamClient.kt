@@ -273,7 +273,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         return listings.mapNotNull { el ->
             val o = el as? JsonObject ?: return@mapNotNull null
             val title = decodeBase64(o["title"]?.str()) ?: return@mapNotNull null
-            val desc = decodeBase64(o["description"]?.str())
+            val desc = decodeBase64(o["description"]?.str())?.take(400)
             val start = ShortEpgTime.resolve(o["start_timestamp"]?.str()?.toLongOrNull()?.times(1000), o["start"]?.str(), offset) ?: return@mapNotNull null
             val end = ShortEpgTime.resolve(o["stop_timestamp"]?.str()?.toLongOrNull()?.times(1000), o["end"]?.str() ?: o["stop"]?.str(), offset) ?: (start + 30 * 60_000)
             EpgEntity(channelId = channelLocalId, title = title, description = desc, startMs = start, endMs = end)

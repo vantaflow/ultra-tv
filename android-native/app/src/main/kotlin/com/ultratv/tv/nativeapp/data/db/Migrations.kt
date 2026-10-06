@@ -121,7 +121,28 @@ val MIGRATION_14_15 = object : Migration(14, 15) {
 }
 
 /** Chaîne complète 10 → version courante : source UNIQUE pour l'application et pour les tests de migration. */
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+/**
+ * 15 → 16 (performances) : index des films / séries alignés sur leur tri réel (id), guide sans doublons
+ * (unique chaîne+début, doublons existants supprimés) et purgeable (index endMs), programmes passés supprimés.
+ */
+val MIGRATION_15_16 = object : Migration(15, 16) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        for (t in listOf("movie", "series")) {
+            db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId_sortKey`")
+            db.execSQL("DROP INDEX IF EXISTS `index_${t}_providerId_categoryId_sortKey`")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId` ON `$t` (`providerId`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_categoryId` ON `$t` (`providerId`, `categoryId`)")
+        }
+        db.execSQL("DELETE FROM epg WHERE endMs < (CAST(strftime('%s','now') AS INTEGER) * 1000 - 3 * 3600000)")
+        db.execSQL("DELETE FROM epg WHERE id NOT IN (SELECT MAX(id) FROM epg GROUP BY channelId, startMs)")
+        db.execSQL("DROP INDEX IF EXISTS `index_epg_channelId`")
+        db.execSQL("DROP INDEX IF EXISTS `index_epg_channelId_startMs`")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_epg_channelId_startMs` ON `epg` (`channelId`, `startMs`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_epg_endMs` ON `epg` (`endMs`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =
