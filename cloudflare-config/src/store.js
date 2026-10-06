@@ -193,6 +193,50 @@ export function iptvLink(p) {
   } catch { return ""; }
 }
 
+/** Ports HTTP(S) qu'un Worker Cloudflare peut joindre (les autres échouent : on le dit plutôt que d'attendre). */
+const WORKER_PORTS = new Set(["", "80", "443", "8080", "8880", "2052", "2082", "2086", "2095", "2053", "2083", "2087", "2096", "8443"]);
+
+/**
+ * Abonnement d'un fournisseur Xtream (player_api.php → user_info), interrogé PAR LE WORKER : les identifiants ne
+ * quittent jamais le serveur. Renvoie un objet normalisé, ou { error } : "unsupported" (M3U), "port" (port non
+ * joignable depuis Cloudflare), "unreachable" (réseau, délai, refus), "denied" (identifiants refusés).
+ */
+export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
+  if (p.kind !== "XTREAM") return { error: "unsupported" };
+  let u;
+  try { u = new URL(p.url); } catch { return { error: "unreachable" }; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return { error: "unreachable" };
+  if (!WORKER_PORTS.has(u.port)) return { error: "port", port: u.port };
+  const base = `${u.protocol}//${u.host}${u.pathname.replace(/\/+$/, "")}`;
+  const q = new URLSearchParams({ username: p.username || "", password: p.password || "" });
+  let body;
+  try {
+    const res = await fetchImpl(`${base}/player_api.php?${q}`, {
+      headers: { "user-agent": "UltraTV/1.0", accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+      redirect: "follow",
+    });
+    if (res.status === 401 || res.status === 403) return { error: "denied" };
+    if (!res.ok) return { error: "unreachable" };
+    body = await res.json();
+  } catch { return { error: "unreachable" }; }
+  const ui = body && typeof body === "object" ? body.user_info : null;
+  if (!ui || typeof ui !== "object") return { error: "unreachable" };
+  if (String(ui.auth) === "0") return { error: "denied" };
+  const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : null; };
+  const exp = num(ui.exp_date);
+  const created = num(ui.created_at);
+  return {
+    status: String(ui.status || "").slice(0, 20) || null,
+    // exp_date absent / 0 / null = illimité.
+    expiresAt: exp && exp > 0 ? exp * 1000 : null,
+    createdAt: created && created > 0 ? created * 1000 : null,
+    trial: String(ui.is_trial) === "1",
+    activeCons: num(ui.active_cons),
+    maxCons: num(ui.max_connections),
+  };
+}
+
 // ---- affectations (quel appareil reçoit quel fournisseur) ---------------------
 
 /** Fournisseur sans champ `assign` (données antérieures) = « tous les appareils ». */

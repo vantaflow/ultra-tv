@@ -105,7 +105,7 @@ button.block{width:100%}
 .card-top{display:flex;gap:12px;align-items:center}
 .badge-ico{width:44px;height:44px;flex:none;border-radius:14px;background:var(--bg);border:1px solid var(--bd);display:grid;place-items:center;color:var(--acc-fg)}
 .card-title{font-weight:700;font-size:16px;line-height:1.3}
-.card-meta{color:var(--mut);font-size:13px}
+.card-meta{color:var(--mut);font-size:13px}.acct strong{color:var(--fg)}.acct.warn,.acct.warn strong{color:#d08a00}.acct.bad,.acct.bad strong{color:#d6334a}
 .grow{min-width:0;flex:1}
 .kind{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:7px;background:var(--acc-soft);color:var(--acc-fg);font:700 11px var(--ff);letter-spacing:.06em;margin-right:6px;vertical-align:1px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
@@ -390,6 +390,7 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
 <div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
 ${sh.chips}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
+${p.kind === "XTREAM" ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria-live="polite"><span class="muted">Abonnement : chargement…</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">Lien IPTV</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">Copier</button></div></div>
 <div class="actions">${sh.form}
@@ -420,6 +421,36 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
   .catch(function(){alert('Impossible de récupérer le lien.');})
   .then(function(){b.disabled=false;});
 });});
+// Abonnement de chaque fournisseur Xtream : lu par le serveur (identifiants jamais exposés), un appel par carte.
+(function(){
+ var MOIS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+ var dt=function(ms){var d=new Date(ms);return d.getDate()+' '+MOIS[d.getMonth()]+' '+d.getFullYear();};
+ var ERR={unsupported:'non disponible pour une liste M3U',port:'port non joignable depuis Cloudflare : informations visibles seulement dans l\\'application',denied:'identifiants refusés par le serveur',unreachable:'le serveur ne répond pas (essaie plus tard)'};
+ // Le statut vient du serveur du FOURNISSEUR (non fiable) : toujours échappé avant insertion.
+ var x=function(v){return String(v).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});};
+ var set=function(el,html,cls){el.innerHTML=html;el.className='acct card-meta mt10'+(cls?' '+cls:'');};
+ document.querySelectorAll('.acct[data-id]').forEach(function(el){
+  fetch('/providers/'+el.dataset.id+'/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
+   .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
+   .then(function(a){
+    if(a.error){set(el,'<span class="muted">Abonnement : '+(ERR[a.error]||ERR.unreachable)+'</span>');return;}
+    var parts=[],cls='';
+    var st=(a.status||'').toLowerCase();
+    var active=st==='active'||st==='';
+    if(a.expiresAt){
+     var days=Math.ceil((a.expiresAt-Date.now())/86400000);
+     if(days<0){parts.push('<strong>Expiré</strong> le '+dt(a.expiresAt));cls='bad';}
+     else{parts.push((active?'<strong>Actif</strong>':'<strong>'+x(a.status||'')+'</strong>')+' · expire le '+dt(a.expiresAt)+' ('+(days===0?'aujourd\\'hui':'dans '+days+' j')+')');if(days<=15)cls='warn';}
+    }else parts.push((active?'<strong>Actif</strong>':'<strong>'+x(a.status||'')+'</strong>')+' · sans date d\\'expiration');
+    if(!active&&cls!=='bad')cls='bad';
+    if(a.maxCons!=null)parts.push((a.activeCons!=null?a.activeCons+'/':'')+a.maxCons+' connexion'+(a.maxCons>1?'s':''));
+    if(a.trial)parts.push('essai');
+    if(a.createdAt)parts.push('créé le '+dt(a.createdAt));
+    set(el,'Abonnement : '+parts.join(' · '),cls);
+   })
+   .catch(function(){set(el,'<span class="muted">Abonnement : '+ERR.unreachable+'</span>');});
+ });
+})();
 document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('click',function(){
  var i=document.getElementById(c.dataset.for);i.select();
  var done=function(){c.textContent='Copié';setTimeout(function(){c.textContent='Copier';},1500);};

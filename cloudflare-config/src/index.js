@@ -25,7 +25,7 @@ import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
-  MAX_PROVIDERS, MAX_DEVICES, iptvLink, parseStateBody, mergeState, loadState, saveState, deleteState,
+  MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
@@ -185,6 +185,14 @@ async function route(req, env) {
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === lnk[1]);
     if (!p) return new Response("Not found", { status: 404 });
     return new Response(JSON.stringify({ link: iptvLink(p) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
+
+  // Abonnement (statut, validité, connexions) lu par le Worker auprès du fournisseur ; identifiants jamais renvoyés.
+  const acc = path.match(/^\/providers\/([0-9a-f]+)\/account$/);
+  if (acc) {
+    const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
+    if (!p) return new Response("Not found", { status: 404 });
+    return new Response(JSON.stringify(await xtreamAccount(p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
   return withAccountLock(env, sess.acct.login, async (acct) => {
