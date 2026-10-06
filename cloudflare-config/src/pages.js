@@ -149,6 +149,42 @@ th{color:var(--mut);text-transform:uppercase;letter-spacing:.06em;font-size:10px
 pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px ui-monospace,Menlo,monospace;color:var(--fg2)}
 .lvl-error td.level,.lvl-warn td.level{color:var(--dng)}
 .mt0{margin-top:0}.mt6{margin-top:6px}.mt10{margin-top:10px}.mt16{margin-top:16px}.mb16{margin-bottom:16px}
+/* Console (refonte) : barre latérale + contenu */
+.shell{display:flex;min-height:100vh;margin:0 -16px}
+.side{width:248px;flex:none;position:sticky;top:0;height:100vh;padding:24px 16px;display:flex;flex-direction:column;gap:4px;background:var(--s1);border-right:1px solid var(--bd)}
+.side .brand{padding:0 8px 20px}
+.side nav{display:flex;flex-direction:column;gap:4px;flex:1}
+.side nav a{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:12px;color:var(--fg2);font-weight:600;font-size:14px;text-decoration:none}
+.side nav a:hover{background:var(--s2);color:var(--fg);text-decoration:none}
+.side nav a.on{background:var(--s2);color:var(--fg);box-shadow:inset 3px 0 0 var(--acc)}
+.side .me{border-top:1px solid var(--bd);padding:14px 8px 0;display:grid;gap:10px}
+.side .me .login{display:flex;align-items:center;gap:8px;color:var(--fg2);font-weight:600;font-size:13px;min-width:0}
+.side .me .login span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.side .me button{width:100%;min-height:44px}
+.content{flex:1;min-width:0;padding:32px 40px 56px;max-width:1180px}
+.hello h1{font-size:30px}
+.tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:22px 0 8px}
+.tile{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:16px 18px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow)}
+.tile b{font:700 30px var(--fh);color:var(--fg);line-height:1.15}
+.tile span{color:var(--mut);font-size:13px;font-weight:600}
+.tile.hero{background:linear-gradient(135deg,var(--acc),#8f1019);border-color:transparent}
+.tile.hero b,.tile.hero span{color:#fff}
+.tile.warn b{color:#d08a00}.tile.bad b{color:#d6334a}
+.section-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:34px 0 12px;flex-wrap:wrap;scroll-margin-top:16px}
+.section-h h2{font-size:21px}
+.two{display:grid;gap:16px;align-items:start}
+@media (min-width:1000px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.cards{display:grid;gap:12px}
+@media (min-width:1100px){.cards.c2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+.content .card{background:var(--s1);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+.meter{height:6px;border-radius:999px;background:var(--s2);overflow:hidden;margin-top:8px}
+.meter i{display:block;height:100%;width:0;background:var(--ok);border-radius:999px;transition:width .4s}
+.acct.warn .meter i{background:#d08a00}.acct.bad .meter i{background:#d6334a}
+@media (max-width:899px){.shell{flex-direction:column;margin:0;min-width:0;max-width:100%}.side,.content{min-width:0;max-width:100%}
+.side{width:auto;height:auto;position:sticky;top:0;z-index:5;flex-direction:row;align-items:center;flex-wrap:wrap;padding:10px 12px;gap:8px;border-right:0;border-bottom:1px solid var(--bd)}
+.side .brand{padding:0}.side nav{flex-direction:row;flex:1 1 100%;min-width:0;max-width:100%;order:3;overflow-x:auto;gap:2px;scrollbar-width:none}.side nav a{min-height:38px;padding:0 10px;white-space:nowrap}
+.side .me{border:0;padding:0;display:flex;align-items:center;margin-left:auto}.side .me .login{display:none}.side .me button{width:auto;min-height:38px}
+.content{padding:20px 0 40px}.hello h1{font-size:24px}}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
@@ -164,6 +200,8 @@ const ICONS = {
   scan: '<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M7 12h10"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
+  home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
 };
 const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
 
@@ -429,11 +467,17 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
  // Le statut vient du serveur du FOURNISSEUR (non fiable) : toujours échappé avant insertion.
  var x=function(v){return String(v).replace(/[&<>"']/g,function(c){return '&#'+c.charCodeAt(0)+';';});};
  var set=function(el,html,cls){el.innerHTML=html;el.className='acct card-meta mt10'+(cls?' '+cls:'');};
- document.querySelectorAll('.acct[data-id]').forEach(function(el){
+ var els=document.querySelectorAll('.acct[data-id]'),done=0,soon=0,expired=0,ok=0;
+ var tally=function(){if(++done<els.length)return;var n=document.getElementById('sub-n'),l=document.getElementById('sub-l'),t=document.getElementById('sub-tile');if(!n)return;
+  if(expired){n.textContent=String(expired);l.textContent='abonnement'+(expired>1?'s':'')+' expiré'+(expired>1?'s':'');t.classList.add('bad');}
+  else if(soon){n.textContent=String(soon);l.textContent='expire'+(soon>1?'nt':'')+' dans moins de 15 jours';t.classList.add('warn');}
+  else if(ok){n.textContent=String(ok);l.textContent='abonnement'+(ok>1?'s':'')+' actif'+(ok>1?'s':'');}
+  else{n.textContent='—';l.textContent='abonnements : infos indisponibles';}};
+ els.forEach(function(el){
   fetch('/providers/'+el.dataset.id+'/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})})
    .then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();})
    .then(function(a){
-    if(a.error){set(el,'<span class="muted">Abonnement : '+(ERR[a.error]||ERR.unreachable)+'</span>');return;}
+    if(a.error){set(el,'<span class="muted">Abonnement : '+(ERR[a.error]||ERR.unreachable)+'</span>');tally();return;}
     var parts=[],cls='';
     var st=(a.status||'').toLowerCase();
     var active=st==='active'||st==='';
@@ -447,10 +491,19 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
     if(a.trial)parts.push('essai');
     if(a.createdAt)parts.push('créé le '+dt(a.createdAt));
     set(el,'Abonnement : '+parts.join(' · '),cls);
+    if(cls==='bad')expired++;else if(cls==='warn')soon++;else ok++;
+    // Jauge : part de la période (création → expiration) déjà écoulée ; largeur posée par le CSSOM (pas d'attribut style).
+    if(a.expiresAt&&a.createdAt&&a.expiresAt>a.createdAt){var m=document.createElement('div');m.className='meter';var i=document.createElement('i');m.appendChild(i);el.appendChild(m);
+     var f=Math.min(1,Math.max(0,(Date.now()-a.createdAt)/(a.expiresAt-a.createdAt)));requestAnimationFrame(function(){i.style.width=Math.round(f*100)+'%';});}
+    tally();
    })
-   .catch(function(){set(el,'<span class="muted">Abonnement : '+ERR.unreachable+'</span>');});
+   .catch(function(){set(el,'<span class="muted">Abonnement : '+ERR.unreachable+'</span>');tally();});
  });
 })();
+// Barre latérale : la section visible est mise en avant.
+(function(){var links=document.querySelectorAll('.side nav a');if(!('IntersectionObserver' in window)||!links.length)return;
+ var io=new IntersectionObserver(function(es){es.forEach(function(en){if(!en.isIntersecting)return;links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id);});});},{rootMargin:'-30% 0px -60% 0px'});
+ ['apercu','fournisseurs','appareils','compte'].forEach(function(id){var el=document.getElementById(id);if(el)io.observe(el);});})();
 document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('click',function(){
  var i=document.getElementById(c.dataset.for);i.select();
  var done=function(){c.textContent='Copié';setTimeout(function(){c.textContent='Copier';},1500);};
@@ -459,35 +512,34 @@ document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('
 ${PAIR_JS}
 ${SCAN_JS}
 </script>`;
+  const xtreamCount = providers.filter((p) => p.kind === "XTREAM").length;
   return layout(`Ultra TV — ${acct.login}`, `
-<div class="layout">
-<header class="topbar"><div class="brand">${LOGO}<span>Ultra TV</span></div>
-<div class="who"><span class="pill" title="Compte connecté">${ico("user")}<span>${e(acct.login)}</span></span>
-<form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div></header>
-<main id="main">
+<div class="shell">
+<aside class="side" aria-label="Navigation">
+<div class="brand">${LOGO}<span>Ultra TV</span></div>
+<nav>
+<a href="#apercu" class="on">${ico("home")}Vue d'ensemble</a>
+<a href="#fournisseurs">${ico("list")}Fournisseurs</a>
+<a href="#appareils">${ico("tv")}Appareils</a>
+<a href="#compte">${ico("gear")}Compte</a>
+</nav>
+<div class="me"><div class="login" title="Compte connecté">${ico("user")}<span>${e(acct.login)}</span></div>
+<form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div>
+</aside>
+<main id="main" class="content">
 ${msg}
-<section class="panel" aria-labelledby="h-pair"><div class="pair">
-<div><h1 id="h-pair">Appairer un appareil</h1><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
-<ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol></div>
-${pairForm(csrfInput)}
-</div></section>
-<div class="grid">
-<div class="col"><section class="panel o1" aria-labelledby="h-dev"><div class="panel-h"><h2 id="h-dev">Appareils</h2><span class="count" aria-label="${devices.length} appareil${devices.length > 1 ? "s" : ""}">${devices.length}</span></div>
-<p class="muted small">Les TV qui lisent ta configuration.</p>
-<div class="stack">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div></section>
-<section class="panel o4" aria-labelledby="h-pw"><h2 id="h-pw">Mot de passe</h2>
-<form method="post" action="/password">${csrfInput}
-<label for="cur">Mot de passe actuel</label><input id="cur" name="current" type="password" required autocomplete="current-password"/>
-<label for="npw">Nouveau mot de passe <span class="hint">(10 caractères minimum)</span></label><input id="npw" name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password"/>
-<div class="row"><button type="submit">Mettre à jour</button></div></form></section>
-<section class="panel danger-zone o5" aria-labelledby="h-dz"><h2 id="h-dz">Zone dangereuse</h2><p class="muted small mt6">Supprime le compte, ses fournisseurs et révoque tous ses appareils.</p>
-<form method="post" action="/account/delete" data-confirm="Supprimer définitivement ce compte ?">${csrfInput}
-<label for="dpw">Mot de passe</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
-<div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section></div>
-<div class="col"><section class="panel o2" aria-labelledby="h-src"><div class="panel-h"><h2 id="h-src">Fournisseurs</h2><span class="count" aria-label="${providers.length} fournisseur${providers.length > 1 ? "s" : ""}">${providers.length}</span></div>
-<p class="muted small">Tes sources de chaînes, et les appareils qui les reçoivent.</p>
-<div class="stack">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>Aucun fournisseur</strong><span class="small">Ajoute une source Xtream Codes ou une playlist M3U ci-dessous.</span></div>`}</div></section>
-<section class="panel o3" aria-labelledby="h-add"><h2 id="h-add">Ajouter un fournisseur</h2>
+<div class="hello" id="apercu"><h1>Bonjour ${e(acct.login)}</h1><p class="sub">Ta configuration Ultra TV : sources, appareils et abonnements.</p></div>
+<div class="tiles">
+<div class="tile hero"><b>${providers.length}</b><span>fournisseur${providers.length > 1 ? "s" : ""}</span></div>
+<div class="tile"><b>${devices.length}</b><span>appareil${devices.length > 1 ? "s" : ""} appairé${devices.length > 1 ? "s" : ""}</span></div>
+<div class="tile" id="sub-tile"><b id="sub-n">${xtreamCount ? "…" : "—"}</b><span id="sub-l">${xtreamCount ? "abonnements : vérification" : "aucun abonnement Xtream"}</span></div>
+</div>
+
+<div class="two">
+<section class="panel" aria-labelledby="h-pair"><h2 id="h-pair">Appairer un appareil</h2><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
+<ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol>
+${pairForm(csrfInput)}</section>
+<section class="panel" aria-labelledby="h-add"><h2 id="h-add">Ajouter un fournisseur</h2>
 <div class="tabbed"><input type="radio" name="tab" id="t-xtream" checked aria-label="Xtream Codes"/><input type="radio" name="tab" id="t-m3u" aria-label="Playlist M3U"/><div class="seg" aria-hidden="true"><label for="t-xtream">Xtream Codes</label><label for="t-m3u">Playlist M3U</label></div>
 <form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
 <label for="xn">Nom <span class="hint">(facultatif)</span></label><input id="xn" name="name" maxlength="64" placeholder="Mon fournisseur"/>
@@ -499,8 +551,28 @@ ${pairForm(csrfInput)}
 <label for="mn">Nom <span class="hint">(facultatif)</span></label><input id="mn" name="name" maxlength="64" placeholder="Ma playlist"/>
 <label for="mu">URL de la playlist</label><input id="mu" name="url" type="url" required maxlength="2048" placeholder="https://exemple.com/liste.m3u" autocapitalize="none" spellcheck="false"/>
 <div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form></div>
-<p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section></div>
-</div></main></div>`, n, script, true);
+<p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section>
+</div>
+
+<div class="section-h" id="fournisseurs"><h2 id="h-src">Fournisseurs <span class="count">${providers.length}</span></h2><span class="muted small">Tes sources de chaînes, leur abonnement, et les appareils qui les reçoivent.</span></div>
+<div class="cards c2">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>Aucun fournisseur</strong><span class="small">Ajoute une source Xtream Codes ou une playlist M3U ci-dessus.</span></div>`}</div>
+
+<div class="section-h" id="appareils"><h2 id="h-dev">Appareils <span class="count">${devices.length}</span></h2><span class="muted small">Les TV qui lisent ta configuration.</span></div>
+<div class="cards c2">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div>
+
+<div class="section-h" id="compte"><h2>Compte</h2></div>
+<div class="two">
+<section class="panel" aria-labelledby="h-pw"><h2 id="h-pw">Mot de passe</h2>
+<form method="post" action="/password">${csrfInput}
+<label for="cur">Mot de passe actuel</label><input id="cur" name="current" type="password" required autocomplete="current-password"/>
+<label for="npw">Nouveau mot de passe <span class="hint">(10 caractères minimum)</span></label><input id="npw" name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password"/>
+<div class="row"><button type="submit">Mettre à jour</button></div></form></section>
+<section class="panel danger-zone" aria-labelledby="h-dz"><h2 id="h-dz">Zone dangereuse</h2><p class="muted small mt6">Supprime le compte, ses fournisseurs et révoque tous ses appareils.</p>
+<form method="post" action="/account/delete" data-confirm="Supprimer définitivement ce compte ?">${csrfInput}
+<label for="dpw">Mot de passe</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
+<div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section>
+</div>
+</main></div>`, n, script, true);
 }
 
 const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
