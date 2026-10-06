@@ -157,9 +157,11 @@ object SyncScheduler {
      * repoussait la fenêtre de déclenchement de la synchro quotidienne.
      */
     private fun alreadyApplied(context: Context, name: String, sig: String): Boolean {
-        val sp = context.getSharedPreferences("sync_schedule", Context.MODE_PRIVATE)
-        if (sp.getString(name, null) == sig) return true
-        sp.edit().putString(name, sig).apply()
+        // Dans noBackupFilesDir, comme la base de WorkManager : une restauration de sauvegarde sur un autre appareil ne
+        // doit pas faire croire que la planification y est déjà en place.
+        val f = java.io.File(context.noBackupFilesDir, "sync_schedule_$name")
+        if (runCatching { f.readText() }.getOrNull() == sig) return true
+        runCatching { f.writeText(sig) }
         return false
     }
 

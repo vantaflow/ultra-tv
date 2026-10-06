@@ -11,6 +11,7 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.cancel
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -56,6 +57,9 @@ class PlaybackSessionReconnectTest {
         manualEngine = false, manualDecoder = false, manualBuffer = false,
     )
     private val scope = TestScope(StandardTestDispatcher())
+
+    @org.junit.Before fun visible() { com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true }
+    @org.junit.After fun hidden() { com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false; scope.cancel() }
     private val created = mutableListOf<FakeEngine>()
 
     private fun session(isLive: Boolean = true) = PlaybackSession(
@@ -136,5 +140,47 @@ class PlaybackSessionReconnectTest {
         emit(EngineEvent.Error(PlayErrorKind.NOT_FOUND))
         scope.advanceTimeBy(15_000); scope.runCurrent()
         assertEquals(Phase.ERROR, s.state.value.phase)
+    }
+
+    @Test
+    fun replay_finNormale_pasDeReconnexion() {
+        val s = session(); s.liveReconnect = false; s.start("http://a/replay", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Ended)
+        scope.advanceTimeBy(15_000); scope.runCurrent()
+        assertEquals(Phase.ENDED, s.state.value.phase)
+        assertEquals(1, created.single().loads.size)
+    }
+
+    @Test
+    fun appliEnArrierePlan_pasDeRechargement() {
+        val s = session(); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false
+        emit(EngineEvent.Ended)
+        scope.advanceTimeBy(15_000); scope.runCurrent()
+        assertEquals(1, created.single().loads.size)
+    }
+
+    @Test
+    fun vlc_erreurApresRechargement_resteUneReconnexion() {
+        val s = session(); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Error(PlayErrorKind.FORMAT))   // moteur EXO ici : FORMAT reste un vrai format (repli)
+        scope.advanceTimeBy(2_000); scope.runCurrent()
+        assertEquals(2, created.size)                    // repli de moteur, pas une reconnexion
+    }
+
+    @Test
+    fun reessayer_apresAbandon_repartDeZero() {
+        val s = session(); s.start("http://a/1", "1:a"); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        repeat(9) { emit(EngineEvent.Ended); scope.advanceTimeBy(11_000); scope.runCurrent() }
+        assertEquals(Phase.ERROR, s.state.value.phase)
+        s.retry(); scope.runCurrent()
+        emit(EngineEvent.FirstFrame)
+        emit(EngineEvent.Ended)
+        scope.advanceTimeBy(600); scope.runCurrent()
+        assertEquals(Phase.LOADING == s.state.value.phase || s.state.value.phase == Phase.PLAYING, true)
     }
 }

@@ -2,6 +2,28 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.44] — 2026-10-06 (Android TV)
+
+### Corrigé (relecture des versions 1.2.28 à 1.2.43)
+- Replay « Depuis le début » et différé : à leur fin, l'application se « reconnectait » huit fois puis affichait une
+  erreur. La reconnexion automatique ne s'applique plus qu'au vrai direct.
+- Reconnexion :
+  - une reconnexion en attente est annulée par un changement de moteur ou de tampon ;
+  - « Réessayer » repart de zéro ;
+  - une nouvelle tentative après erreur est annulée par un zap (plus de double connexion) ;
+  - une erreur VLC survenue après un rechargement compte comme une coupure ;
+  - aucun rechargement quand l'application est en arrière-plan (pas de son qui repart).
+- Zap avec moteur réutilisé :
+  - un sous-titre ou une piste audio choisis à la main ne suivent plus sur la chaîne suivante ;
+  - le moteur est recréé si les réglages de sous-titres ont changé.
+- Guide au retour sur l'appli : jamais pendant une synchro, sous le même verrou, et retéléchargé au plus une fois par
+  heure quand le fournisseur publie un guide court.
+- Images : elles ne faussent plus la mesure de débit du lecteur et ne passent plus derrière les téléchargements de la
+  synchro.
+- « Reprendre au lancement » n'attend plus les 3 s du démarrage différé.
+- Planification de la synchro : décidée une seule fois par mode, mémorisée hors des sauvegardes Android.
+- Liste des chaînes du lecteur : les programmes sont rafraîchis chaque minute ; plus de 900 favoris sont gérés.
+
 ## [1.2.43] — 2026-10-06 (Android TV)
 
 ### Corrigé

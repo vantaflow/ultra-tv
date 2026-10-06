@@ -121,7 +121,14 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
 
     override fun load(url: String, startPositionMs: Long) {
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
-        if (player.mediaItemCount > 0) player.stop()
+        if (player.mediaItemCount > 0) {
+            player.stop()
+            // Moteur réutilisé (zap) : les choix de pistes faits à la main sur la chaîne précédente ne la suivent pas.
+            player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+                .clearOverrides()
+                .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, config.textOff)
+                .build()
+        }
         val item = MediaItem.Builder().setUri(url).apply {
             if (config.isLive) setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(config.buffer.liveOffsetMs).build())
         }.build()

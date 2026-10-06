@@ -646,9 +646,13 @@ class ProviderRepository @Inject constructor(
         epgRefreshJob = epgScope.launch {
             purgePastEpg()
             if (!prefs.flow.first().syncEpg) return@launch
-            for (p in providerDao.observeAll().first().filter { it.kind == "XTREAM" }) {
-                if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
-                    runCatching { syncXmltv(p.id) }
+            // Synchro en cours : elle s'occupe du guide (et effacer sa bannière de progression serait une gêne).
+            if (syncMutex.isLocked) return@launch
+            syncMutex.withLock {
+                for (p in providerDao.observeAll().first().filter { it.kind == "XTREAM" }) {
+                    if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
+                        runCatching { syncXmltv(p.id) }
+                }
             }
         }
     }

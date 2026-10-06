@@ -58,10 +58,13 @@ class CatalogRepository @Inject constructor(
     fun topSeries(pid: Long, limit: Int): Flow<List<SeriesEntity>> = seriesDao.observeTop(pid, limit)
     fun channelsForCategory(pid: Long, categoryRemoteId: String): Flow<List<ChannelEntity>> =
         channelDao.observeForCategory(pid, categoryRemoteId)
+    // Par paquets de 900 identifiants (limite de variables SQLite) : aucun favori n'est perdu au-delà.
     fun moviesByRemoteIds(pid: Long, ids: List<String>): Flow<List<MovieEntity>> =
-        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList()) else movieDao.observeByRemoteIds(pid, ids.take(900))
+        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
+        else kotlinx.coroutines.flow.combine(ids.chunked(900).map { movieDao.observeByRemoteIds(pid, it) }) { parts -> parts.flatMap { it } }
     fun seriesByRemoteIds(pid: Long, ids: List<String>): Flow<List<SeriesEntity>> =
-        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList()) else seriesDao.observeByRemoteIds(pid, ids.take(900))
+        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
+        else kotlinx.coroutines.flow.combine(ids.chunked(900).map { seriesDao.observeByRemoteIds(pid, it) }) { parts -> parts.flatMap { it } }
     fun episodes(seriesId: Long): Flow<List<EpisodeEntity>> = episodeDao.observeForSeries(seriesId)
 
     fun categories(pid: Long, kind: String): Flow<List<CategoryEntity>> =

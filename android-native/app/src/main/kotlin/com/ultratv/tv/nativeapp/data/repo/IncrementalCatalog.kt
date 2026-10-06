@@ -64,6 +64,7 @@ class IncrementalTable<T>(
             del.bindLong(1, providerId)
             val n = del.executeUpdateDelete()
             db.execSQL("DELETE FROM temp.`sync_seen`")
+            for (st in listOf(ins, upd, seen, del)) runCatching { st.close() }
             return n
         }
     }

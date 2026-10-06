@@ -58,7 +58,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             }
             // Client réseau PARTAGÉ (un seul pool de connexions et de fils) ; décodages limités à 2 sur l'entrée de gamme
             // (défilement rapide d'une grille de logos : pics de mémoire sinon).
-            .okHttpClient { okHttp.get() }
+            // Connexions partagées avec le reste de l'appli, mais SANS l'intercepteur de mesure du débit (les images ne
+            // doivent pas fausser le profil adaptatif du lecteur ni appeler ConnectivityManager à chaque vignette) et avec
+            // sa propre file de requêtes (les logos n'attendent pas derrière une synchro).
+            .okHttpClient { okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build() }
             .apply { if (low) decoderDispatcher(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
             .respectCacheHeaders(false)
             .memoryCachePolicy(CachePolicy.ENABLED)

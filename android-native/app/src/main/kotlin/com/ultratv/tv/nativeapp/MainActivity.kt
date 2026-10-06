@@ -258,27 +258,7 @@ class MainActivity : ComponentActivity() {
     private fun kickoffStartupTasks() {
         lifecycleScope.launch(Dispatchers.IO) {
             val prefs = prefsStore.flow.first()
-            // Appli déjà remplie : synchro cloud, catalogue, rappels… attendent que l'accueil soit affiché (3 s) au lieu
-            // de concurrencer son premier rendu sur un CPU modeste. Première installation : rien n'est retardé.
-            if (providerRepo.observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
-
-            // (Re-)apply the background sync schedule from the stored prefs
-            // every time the app starts so a re-install / OS restart picks up
-            // where we left off.
-            SyncScheduler.schedule(this@MainActivity, prefs.syncIntervalHours)
-            // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
-            com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
-            cloudSync.watchDisplayPrefs()
-            cloudSync.watchSharedState()
-            runCatching { cloudSync.sync() }
-
-            // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
-            // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
-            val all = providerRepo.observeProviders().first()
-            // Mode : auto (TTL selon l'appareil/le réseau) · à chaque lancement · planifiée (travail périodique) · manuelle.
-            all.forEach { p -> if (p.lastLiveSyncAt == 0L || (prefs.syncMode != "manual" && prefs.syncMode != "scheduled" && prefs.autoSyncOnLaunch)) syncCoordinator.request(p.id) }
-            if (prefs.syncMode == "scheduled") SyncScheduler.scheduleDaily(this@MainActivity, prefs.syncHour, prefs.syncUnmeteredOnly) else if (prefs.syncMode != "auto") SyncScheduler.schedule(this@MainActivity, 0)
-
+            // « Reprendre au lancement » : tout de suite (avant le délai et la synchro cloud qui suivent).
             if (prefs.autoPlayLastOnLaunch) {
                 val firstProvider = providerRepo.observeProviders().first().firstOrNull()
                 if (firstProvider != null) {
@@ -293,6 +273,29 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+
+            // Appli déjà remplie : synchro cloud, catalogue, rappels… attendent que l'accueil soit affiché (3 s) au lieu
+            // de concurrencer son premier rendu sur un CPU modeste. Première installation : rien n'est retardé.
+            if (providerRepo.observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
+
+            // (Re-)apply the background sync schedule from the stored prefs
+            // every time the app starts so a re-install / OS restart picks up
+            // where we left off.
+            // Une seule décision par mode (avant : posé puis annulé à chaque lancement en mode manuel).
+            SyncScheduler.schedule(this@MainActivity, if (prefs.syncMode == "auto" || prefs.syncMode == "scheduled") prefs.syncIntervalHours else 0)
+            // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
+            com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
+            cloudSync.watchDisplayPrefs()
+            cloudSync.watchSharedState()
+            runCatching { cloudSync.sync() }
+
+            // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
+            // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
+            val all = providerRepo.observeProviders().first()
+            // Mode : auto (TTL selon l'appareil/le réseau) · à chaque lancement · planifiée (travail périodique) · manuelle.
+            all.forEach { p -> if (p.lastLiveSyncAt == 0L || (prefs.syncMode != "manual" && prefs.syncMode != "scheduled" && prefs.autoSyncOnLaunch)) syncCoordinator.request(p.id) }
+            if (prefs.syncMode == "scheduled") SyncScheduler.scheduleDaily(this@MainActivity, prefs.syncHour, prefs.syncUnmeteredOnly)
+
         }
     }
 }

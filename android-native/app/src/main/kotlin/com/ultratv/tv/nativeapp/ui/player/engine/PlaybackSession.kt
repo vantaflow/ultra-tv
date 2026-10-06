@@ -82,19 +82,30 @@ class PlaybackSession(
     private var reconnectJob: Job? = null
     private var stallJob: Job? = null
     private var stableJob: Job? = null
+    /** Nouvelle tentative / repli programmés par [onError] : annulés par un zap ou un nouveau moteur (double connexion sinon). */
+    private var errorJob: Job? = null
+
+    /**
+     * Reconnexion automatique autorisée pour la lecture en cours : VRAI direct seulement. Un replay (« Depuis le
+     * début ») ou le relais du différé ont une FIN normale — les relancer en boucle n'aurait pas de sens.
+     * Fixé par le lecteur avant chaque [start].
+     */
+    var liveReconnect: Boolean = true
+    private val reconnectAllowed get() = isLive && liveReconnect
 
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel()
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
         val e = engine
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
-        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && _state.value.phase != Phase.ERROR) {
+        // Réglages de sous-titres changés depuis la création du moteur : on le recrée (ils sont fixés à sa création).
+        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && _state.value.phase != Phase.ERROR) {
             watchdog?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false)
@@ -107,7 +118,8 @@ class PlaybackSession(
         adaptJob = scope.launch { while (true) { delay(5_000); applyQualityLimit(adapter.tick(System.currentTimeMillis())) } }
     }
 
-    fun retry() { tried = mutableSetOf(); sameRetries = 0; launch(combo) }
+    /** « Réessayer » / retour sur l'appli : tout repart de zéro (sinon, compteur à 8 = écran d'erreur à la 1re coupure). */
+    fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; launch(combo) }
 
     /** Changement manuel (pilule « Lecteur ») : on le mémorise tout de suite pour cette chaîne. */
     fun switchTo(c: Combo) { manualSwitch = true; tried = mutableSetOf(); combo = c; key?.let { memory.remember(it, c, null) }; launch(c) }
@@ -116,6 +128,8 @@ class PlaybackSession(
 
     private fun launch(c: Combo) {
         eventsJob?.cancel(); watchdog?.cancel(); rememberJob?.cancel()
+        // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -125,6 +139,7 @@ class PlaybackSession(
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil.Coil.imageLoader(ctx).memoryCache?.clear() }
         val sub = subtitles()
+        launchedSubs = sub
         // Sous-titres : jamais activés d'office ; seulement si l'utilisateur les avait activés la dernière fois.
         val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, sub.languages.audio, if (sub.autoOn) sub.languages.text else emptyList(), textOff = !sub.autoOn)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
@@ -137,6 +152,7 @@ class PlaybackSession(
 
     /** Tampon effectif du moteur lancé : un zap ne réutilise le moteur que si ce tampon n'a pas changé. */
     private var launchedBuffer: BufferParams? = null
+    private var launchedSubs: com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings? = null
 
     private fun bufferFor(s: ResolvedPlayback): BufferParams {
         val preset = presetOverride
@@ -153,7 +169,7 @@ class PlaybackSession(
             EngineEvent.Buffering -> if (firstFrame) {
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
-                if (isLive && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
+                if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
             } else Unit
             EngineEvent.Ready -> { stallJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
@@ -170,7 +186,7 @@ class PlaybackSession(
                 sameRetries = 0
             }
             // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
-            EngineEvent.Ended -> if (isLive) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
+            EngineEvent.Ended -> if (reconnectAllowed) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
             is EngineEvent.Error -> onError(ev.kind)
         }
     }
@@ -186,10 +202,14 @@ class PlaybackSession(
     private fun onError(kind: PlayErrorKind) {
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
         // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
-        if (isLive && everPlayed && PlaybackPlanner.shouldReconnectLive(kind)) { reconnectLive(); return }
+        // VLC ne donne pas de code : après un rechargement, une coupure serveur arrive classée FORMAT ; si le flux a déjà
+        // joué, c'est une coupure, pas un format illisible.
+        val k = if (everPlayed && kind == PlayErrorKind.FORMAT && combo.engine == EngineKind.VLC) PlayErrorKind.NETWORK else kind
+        if (reconnectAllowed && everPlayed && PlaybackPlanner.shouldReconnectLive(k)) { reconnectLive(); return }
         network.onError()
         val settingsNow = settings()
-        scope.launch {
+        errorJob?.cancel()
+        errorJob = scope.launch {
             if (PlaybackPlanner.shouldRetrySame(kind) && sameRetries < 1) {
                 sameRetries++
                 _notices.tryEmit(Notice.RETRYING)
@@ -215,6 +235,9 @@ class PlaybackSession(
     private fun reconnectLive() {
         stallJob?.cancel(); stableJob?.cancel()
         if (reconnectJob?.isActive == true) return
+        // Appli en arrière-plan (lecteur en pause) : surtout pas de rechargement — le son repartirait. Le retour sur
+        // l'appli relance la lecture (retry) de toute façon.
+        if (!com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) return
         val wait = PlaybackPlanner.liveReconnectDelayMs(reconnects) ?: run {
             releaseEngine()
             _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK)
@@ -240,7 +263,7 @@ class PlaybackSession(
 
     fun release() {
         eventsJob?.cancel(); watchdog?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
         releaseEngine()
     }
 }

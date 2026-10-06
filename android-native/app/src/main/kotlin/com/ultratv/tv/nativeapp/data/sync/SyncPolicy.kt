@@ -57,5 +57,8 @@ object SyncPolicy {
      * plus les 6 prochaines heures ([lastEndMs] = fin du dernier programme, null si guide vide).
      */
     fun epgNeedsRefresh(lastSyncAt: Long, lastEndMs: Long?, now: Long): Boolean =
-        lastSyncAt <= 0L || now < lastSyncAt || now - lastSyncAt >= 12 * HOUR || lastEndMs == null || lastEndMs < now + 6 * HOUR
+        lastSyncAt <= 0L || now < lastSyncAt || now - lastSyncAt >= 12 * HOUR ||
+            // Guide vide ou trop court : retéléchargé, mais au plus une fois par heure (un fournisseur qui ne publie que
+            // quelques heures ne doit pas provoquer un téléchargement à chaque retour sur l'appli).
+            ((lastEndMs == null || lastEndMs < now + 6 * HOUR) && now - lastSyncAt >= HOUR)
 }

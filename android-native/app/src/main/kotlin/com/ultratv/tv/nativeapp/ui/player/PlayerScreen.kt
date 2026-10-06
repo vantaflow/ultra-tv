@@ -226,7 +226,8 @@ class PlayerViewModel @Inject constructor(
     // marquée dans `queue` d'après la lecture. Avant : jusqu'à 400 chaînes + leur guide relus en base à chaque appui.
     private val queueEntries: StateFlow<List<DrawerEntry>> = zapQueue.state.map { it?.channels.orEmpty() }
         .distinctUntilChanged { a, b -> a.size == b.size && a.map { it.id } == b.map { it.id } }
-        .map { list -> entriesFor(list, null) }
+        // Programmes relus chaque minute : la liste reste abonnée pendant la lecture, ils ne doivent pas rester figés.
+        .flatMapLatest { list -> flow { while (true) { emit(entriesFor(list, null)); delay(60_000) } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Catégorie parcourue dans le tiroir (null = la file de zapping courante). */
@@ -482,6 +483,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val guideReplay = remember { replayVm.takePending() }
     var replayProg by remember { mutableStateOf<EpgEntity?>(guideReplay?.first) }
     var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
+    // Reconnexion automatique : vrai direct seulement (pas un replay « Depuis le début » ni le relais du différé).
+    // SideEffect : appliqué à chaque composition, avant le démarrage du lancement (LaunchedEffect(currentUrl)).
+    androidx.compose.runtime.SideEffect { session.liveReconnect = replayProg == null && !tsActive }
     var canReplay by remember { mutableStateOf(false) }
     LaunchedEffect(nowProg?.id) { canReplay = replayVm.canReplay(nowProg) }
     LaunchedEffect(item?.remoteId) { if (replayProg !== guideReplay?.first) replayProg = null }
