@@ -37,9 +37,11 @@ data class ProviderEntity(
 @Entity(
     tableName = "channel",
     indices = [
-        Index(value = ["providerId", "num", "sortKey"]),
-        Index(value = ["providerId", "categoryId", "num", "sortKey"]),
+        // Tri réel des listes : num puis id (le rowid suit la clé) ; sortKey en fin de clé empêchait de servir l'ordre.
+        Index(value = ["providerId", "num"]),
+        Index(value = ["providerId", "categoryId", "num"]),
         Index(value = ["providerId", "remoteId"], unique = true),
+        Index(value = ["providerId", "lang"]),
     ],
 )
 data class ChannelEntity(
@@ -107,10 +109,16 @@ data class CategoryEntity(
     // Les listes paginées trient par id (ordre du fournisseur) : un index (providerId[, categoryId]) le sert
     // directement (le rowid suit la clé). Les anciens index sur sortKey ne servaient aucune requête : chaque page
     // retriait toute la catégorie (jusqu'à 180 000 lignes pour « Tout »).
+    // addedKey : « derniers ajoutés » servis par index (avant : CAST(remoteId) calculé sur toute la table) ;
+    // rating : élément « à la une » ; lang : compteurs par langue sans lire les lignes.
     indices = [
         Index(value = ["providerId"]),
         Index(value = ["providerId", "categoryId"]),
         Index(value = ["providerId", "remoteId"], unique = true),
+        Index(value = ["providerId", "addedKey"]),
+        Index(value = ["providerId", "categoryId", "addedKey"]),
+        Index(value = ["providerId", "rating"]),
+        Index(value = ["providerId", "lang"]),
     ],
 )
 data class MovieEntity(
@@ -133,6 +141,8 @@ data class MovieEntity(
     val cast: String? = null,
     val duration: String? = null,
     val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
+    /** Identifiant numérique du fournisseur (stream_id / series_id, croissant à chaque ajout) : tri « derniers ajoutés ». */
+    @androidx.room.ColumnInfo(defaultValue = "0") val addedKey: Long = remoteId.toLongOrNull() ?: 0L,
 )
 
 @Entity(
@@ -140,10 +150,16 @@ data class MovieEntity(
     // Les listes paginées trient par id (ordre du fournisseur) : un index (providerId[, categoryId]) le sert
     // directement (le rowid suit la clé). Les anciens index sur sortKey ne servaient aucune requête : chaque page
     // retriait toute la catégorie (jusqu'à 180 000 lignes pour « Tout »).
+    // addedKey : « derniers ajoutés » servis par index (avant : CAST(remoteId) calculé sur toute la table) ;
+    // rating : élément « à la une » ; lang : compteurs par langue sans lire les lignes.
     indices = [
         Index(value = ["providerId"]),
         Index(value = ["providerId", "categoryId"]),
         Index(value = ["providerId", "remoteId"], unique = true),
+        Index(value = ["providerId", "addedKey"]),
+        Index(value = ["providerId", "categoryId", "addedKey"]),
+        Index(value = ["providerId", "rating"]),
+        Index(value = ["providerId", "lang"]),
     ],
 )
 data class SeriesEntity(
@@ -162,11 +178,14 @@ data class SeriesEntity(
     val genre: String? = null,
     val cast: String? = null,
     val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
+    /** Identifiant numérique du fournisseur (stream_id / series_id, croissant à chaque ajout) : tri « derniers ajoutés ». */
+    @androidx.room.ColumnInfo(defaultValue = "0") val addedKey: Long = remoteId.toLongOrNull() ?: 0L,
 )
 
 @Entity(
     tableName = "episode",
-    indices = [Index("seriesId"), Index(value = ["seriesId", "remoteId"], unique = true)],
+    // (seriesId) seul était redondant : préfixe de l'index unique (seriesId, remoteId).
+    indices = [Index(value = ["seriesId", "remoteId"], unique = true)],
 )
 data class EpisodeEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,

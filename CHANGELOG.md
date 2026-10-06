@@ -2,6 +2,27 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.40] — 2026-10-06 (Android TV)
+
+### Amélioré
+- Synchro du catalogue incrémentale (films, séries) :
+  - les nouveaux éléments sont insérés, et seules les lignes réellement modifiées sont réécrites ;
+  - les disparus sont supprimés en fin de passe ;
+  - avant, les 180 000 films étaient supprimés puis réinsérés à chaque synchro, avec leurs index et leur index de
+    recherche ;
+  - les identifiants sont conservés, et les informations enrichies (fond, genre, distribution, durée) ne sont plus
+    effacées ;
+  - compatible avec le SQLite d'Android 9.
+- Base de données (version 17) :
+  - « Derniers ajouts » et les rangées de l'accueil sont servis par un index (colonne addedKey) au lieu d'un calcul sur
+    toute la table ;
+  - index sur la note (élément à la une) et sur la langue (compteurs) ;
+  - index des chaînes alignés sur leur tri réel ;
+  - un index d'épisodes redondant et trois anciennes recherches inutilisées sont retirés.
+- Guide : la liste des chaînes ayant des programmes ne parcourt plus tout le guide.
+- Synchro : identifiants de la source encodés une fois par passe (au lieu de deux fois par élément) ; langue calculée
+  une seule fois par élément.
+
 ## [Bureau 1.2.28] — 2026-10-06
 
 ### Corrigé

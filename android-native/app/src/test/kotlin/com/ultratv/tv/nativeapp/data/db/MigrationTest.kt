@@ -60,7 +60,7 @@ class MigrationTest {
             .addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             val sdb = db.openHelper.writableDatabase     // ouvre ET valide le schéma contre le schéma courant
-            assertEquals(16, sdb.version)
+            assertEquals(17, sdb.version)
             // Données conservées
             sdb.query("SELECT name, title, sortKey, lang FROM channel").use { c ->
                 assertTrue(c.moveToFirst()); assertEquals("FR | TF1 HD", c.getString(0)); assertEquals("FR | TF1 HD", c.getString(1)); assertEquals("fr | tf1 hd", c.getString(2))
@@ -82,7 +82,7 @@ class MigrationTest {
         val db = Room.databaseBuilder(ctx, UltraDb::class.java, "m11.db").addMigrations(*ALL_MIGRATIONS).allowMainThreadQueries().build()
         try {
             val sdb = db.openHelper.writableDatabase
-            assertEquals(16, sdb.version)
+            assertEquals(17, sdb.version)
             sdb.query("SELECT COUNT(*) FROM provider").use { c -> c.moveToFirst(); assertEquals(1, c.getInt(0)) }
         } finally { db.close() }
     }

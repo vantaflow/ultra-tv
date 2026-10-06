@@ -142,7 +142,31 @@ val MIGRATION_15_16 = object : Migration(15, 16) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16)
+/**
+ * 16 → 17 (performances) : addedKey (tri « derniers ajoutés » par index), index note / langue, index des chaînes
+ * alignés sur leur tri (num, id), index d'épisode redondant retiré.
+ */
+val MIGRATION_16_17 = object : Migration(16, 17) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        for (t in listOf("movie", "series")) {
+            db.execSQL("ALTER TABLE `$t` ADD COLUMN `addedKey` INTEGER NOT NULL DEFAULT 0")
+            // Même règle que String.toLongOrNull() : uniquement des chiffres, sinon 0.
+            db.execSQL("UPDATE `$t` SET `addedKey` = CAST(`remoteId` AS INTEGER) WHERE `remoteId` != '' AND `remoteId` NOT GLOB '*[^0-9]*'")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_addedKey` ON `$t` (`providerId`, `addedKey`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_categoryId_addedKey` ON `$t` (`providerId`, `categoryId`, `addedKey`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_rating` ON `$t` (`providerId`, `rating`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_${t}_providerId_lang` ON `$t` (`providerId`, `lang`)")
+        }
+        db.execSQL("DROP INDEX IF EXISTS `index_channel_providerId_num_sortKey`")
+        db.execSQL("DROP INDEX IF EXISTS `index_channel_providerId_categoryId_num_sortKey`")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_num` ON `channel` (`providerId`, `num`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_categoryId_num` ON `channel` (`providerId`, `categoryId`, `num`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_lang` ON `channel` (`providerId`, `lang`)")
+        db.execSQL("DROP INDEX IF EXISTS `index_episode_seriesId`")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

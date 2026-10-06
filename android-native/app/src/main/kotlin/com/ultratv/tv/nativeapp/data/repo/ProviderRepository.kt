@@ -395,6 +395,8 @@ class ProviderRepository @Inject constructor(
         val deleteCat: suspend (Long, String) -> Unit,
         val insert: suspend (List<T>) -> Unit,
         val postBatch: (List<T>) -> List<T> = { it },
+        /** Films / séries : écriture incrémentale (voir [IncrementalTable]) au lieu de tout supprimer et réinsérer. */
+        val incremental: IncrementalTable<T>? = null,
     )
 
     private fun livePart() = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
@@ -414,6 +416,7 @@ class ProviderRepository @Inject constructor(
         { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
+        incremental = IncrementalTable.MOVIES,
     )
 
     private fun seriesPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
@@ -421,6 +424,7 @@ class ProviderRepository @Inject constructor(
         { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
+        incremental = IncrementalTable.SERIES,
     )
 
     /**
@@ -529,6 +533,23 @@ class ProviderRepository @Inject constructor(
         progress: (Float, Int) -> Unit,
     ): Int {
         var n = 0
+        val inc = spec.incremental
+        if (inc != null) {
+            spec.streamAll(p) { seq ->
+                db.withTransaction {
+                    val pass = inc.begin(db.openHelper.writableDatabase, p.id)
+                    for (batch in seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
+                        .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }.chunked(adaptive.state.value.auto.insertBatch)) {
+                        pass.write(batch)
+                        n += batch.size
+                        progress((n / 60_000f).coerceAtMost(0.95f), n)
+                    }
+                    val removed = pass.finish()
+                    android.util.Log.i("UltraSync", "${spec.kind}: ${pass.inserted} new, ${pass.updated} changed, $removed removed, ${n - pass.inserted - pass.updated} unchanged")
+                }
+            }
+            return n
+        }
         spec.streamAll(p) { seq ->
             db.withTransaction {
                 spec.deleteAll(p.id)

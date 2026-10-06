@@ -150,8 +150,6 @@ interface ChannelDao {
     @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
     suspend fun byRemoteId(pid: Long, rid: String): ChannelEntity?
 
-    @Query("SELECT * FROM channel WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
-    suspend fun search(pid: Long, q: String): List<ChannelEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<ChannelEntity>)
@@ -273,11 +271,11 @@ interface MovieDao {
     fun observeTop(pid: Long, limit: Int): Flow<List<MovieEntity>>
 
     /** Derniers ajoutés : l'identifiant Xtream (stream_id) croît à chaque ajout du fournisseur. */
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY addedKey DESC LIMIT :limit")
     fun observeLatest(pid: Long, limit: Int): Flow<List<MovieEntity>>
 
     /** Rangée d'une catégorie (accueil Films) : les plus récents d'abord. */
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
     fun observeRow(pid: Long, cat: String, limit: Int): Flow<List<MovieEntity>>
 
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY id")
@@ -289,8 +287,6 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE id = :id")
     suspend fun byId(id: Long): MovieEntity?
 
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
-    suspend fun search(pid: Long, q: String): List<MovieEntity>
 
     @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
@@ -347,11 +343,11 @@ interface SeriesDao {
     fun observeTop(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     /** Dernières ajoutées : l'identifiant Xtream (series_id) croît à chaque ajout du fournisseur. */
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY addedKey DESC LIMIT :limit")
     fun observeLatest(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     /** Rangée d'une catégorie (accueil Séries) : les plus récentes d'abord. */
-    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY CAST(remoteId AS INTEGER) DESC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
     fun observeRow(pid: Long, cat: String, limit: Int): Flow<List<SeriesEntity>>
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY id")
@@ -363,8 +359,6 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): SeriesEntity?
 
-    @Query("SELECT * FROM series WHERE providerId = :pid AND name LIKE '%' || :q || '%' ORDER BY name LIMIT 50")
-    suspend fun search(pid: Long, q: String): List<SeriesEntity>
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>
@@ -583,7 +577,8 @@ interface EpgDao {
     suspend fun searchPrograms(pid: Long, pattern: String, nowMs: Long, toMs: Long, limit: Int): List<com.ultratv.tv.nativeapp.data.repo.ProgramHitRow>
 
     /** Chaînes de la source qui ont au moins un programme encore à venir ou en cours. */
-    @Query("SELECT DISTINCT e.channelId FROM epg e JOIN channel c ON c.id = e.channelId WHERE c.providerId = :pid AND e.endMs >= :nowMs")
+    // Index endMs : seuls les programmes en cours / à venir sont parcourus (avant : jointure sur tout le guide).
+    @Query("SELECT DISTINCT e.channelId FROM epg e WHERE e.endMs >= :nowMs AND e.channelId IN (SELECT id FROM channel WHERE providerId = :pid)")
     suspend fun channelsWithProgrammes(pid: Long, nowMs: Long): List<Long>
 
     @Query("DELETE FROM epg WHERE channelId = :cid")

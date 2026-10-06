@@ -71,10 +71,23 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     suspend fun liveOfCategory(p: ProviderEntity, categoryId: String): List<ChannelEntity> =
         withStream(p, "get_live_streams", ::liveOf, categoryId) { it.toList() }
 
+    /**
+     * « base/type/utilisateur/motdepasse/ » encodé UNE fois par source et par type : la boucle de synchro l'appelait
+     * deux fois par élément (≈ 400 000 encodages sur un gros catalogue).
+     */
+    @Volatile private var prefixCache: Triple<String, String, String>? = null
+    private fun pathPrefix(p: ProviderEntity, type: String): String {
+        val key = "${p.id}|${p.baseUrl}|${p.username}|${p.password}|$type"
+        prefixCache?.let { (k, _, v) -> if (k == key) return v }
+        val v = "${p.baseUrl}/$type/${p.username.urlEnc()}/${p.password.urlEnc()}/"
+        prefixCache = Triple(key, type, v)
+        return v
+    }
+
     private fun liveOf(p: ProviderEntity, o: JsonObject): ChannelEntity? {
         val sid = o["stream_id"]?.str() ?: return null
         val name = o["name"]?.str() ?: return null
-        val url = "${p.baseUrl}/live/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.ts"
+        val url = "${pathPrefix(p, "live")}$sid.ts"
         val parsed = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name)
         val tvArchive = o["tv_archive"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
         val archiveDuration = o["tv_archive_duration"]?.let { e -> e.str()?.toIntOrNull() ?: 0 } ?: 0
@@ -92,6 +105,8 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             title = parsed.displayName,
             junk = !parsed.isSeparator && com.ultratv.tv.nativeapp.data.repo.JunkFilter.isJunk(name),
             isSeparator = parsed.isSeparator, country = parsed.country, quality = parsed.quality, flags = parsed.flags,
+            // Langue calculée par la synchro (withLang, avec la langue de la catégorie) : pas deux fois.
+            lang = "",
         )
     }
 
@@ -113,7 +128,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         val sid = o["stream_id"]?.str() ?: return null
         val name = o["name"]?.str() ?: return null
         val cont = o["container_extension"]?.str() ?: "mp4"
-        val url = "${p.baseUrl}/movie/${p.username.urlEnc()}/${p.password.urlEnc()}/$sid.$cont"
+        val url = "${pathPrefix(p, "movie")}$sid.$cont"
         val cleaned = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name)
         return MovieEntity(
             providerId = p.id,
@@ -127,6 +142,8 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             rating = normalizeRating(o["rating"]?.str()?.toDoubleOrNull()),
             plot = null,
             title = cleaned.title,
+            // Langue calculée par la synchro (withLang, avec la langue de la catégorie) : pas deux fois.
+            lang = "",
         )
     }
 
@@ -193,6 +210,8 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             backdrop = (o["backdrop_path"] as? JsonArray)?.firstOrNull()?.str()?.takeIf { it.isNotBlank() },
             genre = o["genre"]?.str()?.takeIf { it.isNotBlank() },
             cast = o["cast"]?.str()?.takeIf { it.isNotBlank() },
+            // Langue calculée par la synchro (withLang, avec la langue de la catégorie) : pas deux fois.
+            lang = "",
         )
     }
 
