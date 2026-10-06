@@ -252,6 +252,9 @@ class MainActivity : ComponentActivity() {
     private fun kickoffStartupTasks() {
         lifecycleScope.launch(Dispatchers.IO) {
             val prefs = prefsStore.flow.first()
+            // Appli déjà remplie : synchro cloud, catalogue, rappels… attendent que l'accueil soit affiché (3 s) au lieu
+            // de concurrencer son premier rendu sur un CPU modeste. Première installation : rien n'est retardé.
+            if (providerRepo.observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
 
             // (Re-)apply the background sync schedule from the stored prefs
             // every time the app starts so a re-install / OS restart picks up

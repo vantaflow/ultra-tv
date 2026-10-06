@@ -65,7 +65,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
      * injoignable échoue avant toute suppression de données locales.
      */
     suspend fun <R> withLiveStreams(p: ProviderEntity, block: suspend (Sequence<ChannelEntity>) -> R): R =
-        withStream(p, "get_live_streams", ::liveOf, null, block)
+        withStream(p, "get_live_streams", ::liveOf, null, spool = true, block = block)
 
     /** Une seule catégorie (le serveur filtre : ~15 Ko au lieu de 20 Mo pour tout le direct). */
     suspend fun liveOfCategory(p: ProviderEntity, categoryId: String): List<ChannelEntity> =
@@ -104,7 +104,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     }
 
     suspend fun <R> withVodStreams(p: ProviderEntity, block: suspend (Sequence<MovieEntity>) -> R): R =
-        withStream(p, "get_vod_streams", ::vodOf, null, block)
+        withStream(p, "get_vod_streams", ::vodOf, null, spool = true, block = block)
 
     suspend fun vodOfCategory(p: ProviderEntity, categoryId: String): List<MovieEntity> =
         withStream(p, "get_vod_streams", ::vodOf, categoryId) { it.toList() }
@@ -171,7 +171,7 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     }
 
     suspend fun <R> withSeries(p: ProviderEntity, block: suspend (Sequence<SeriesEntity>) -> R): R =
-        withStream(p, "get_series", ::seriesOf, null, block)
+        withStream(p, "get_series", ::seriesOf, null, spool = true, block = block)
 
     suspend fun seriesOfCategory(p: ProviderEntity, categoryId: String): List<SeriesEntity> =
         withStream(p, "get_series", ::seriesOf, categoryId) { it.toList() }
@@ -316,17 +316,36 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         action: String,
         transform: (ProviderEntity, JsonObject) -> T?,
         categoryId: String? = null,
+        /**
+         * Grosses listes (tout le direct / les films / les séries) : la réponse est d'abord écrite dans un fichier
+         * temporaire, PUIS lue. Le [block] ouvre une transaction d'écriture : sans cela, il la gardait ouverte pendant
+         * tout le téléchargement (des minutes sur une box lente) et bloquait les autres écritures (reprise, favoris).
+         */
+        spool: Boolean = false,
         block: suspend (Sequence<T>) -> R,
     ): R = withContext(Dispatchers.IO) {
         val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action" +
             (categoryId?.let { "&category_id=${it.urlEnc()}" } ?: "")
-        ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw HttpStatusException(resp.code)
-            val input = resp.body?.byteStream()?.let { ControlCharFilter(it) }?.buffered() ?: return@use block(emptySequence())
-            // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
-            val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
-                .mapNotNull { transform(p, it) }
-            block(items)
+        var tmp: java.io.File? = null
+        try {
+            ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) throw HttpStatusException(resp.code)
+                val body = resp.body?.byteStream() ?: return@withContext block(emptySequence())
+                val raw: java.io.InputStream = if (!spool) body else {
+                    val f = java.io.File.createTempFile("xtream-", ".json").also { tmp = it }
+                    f.outputStream().buffered().use { out -> body.copyTo(out) }
+                    f.inputStream()
+                }
+                raw.use { stream ->
+                    val input = ControlCharFilter(stream).buffered()
+                    // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
+                    val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
+                        .mapNotNull { transform(p, it) }
+                    block(items)
+                }
+            }
+        } finally {
+            tmp?.delete()
         }
     }
 

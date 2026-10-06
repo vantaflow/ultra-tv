@@ -279,6 +279,8 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
         mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
         else -> D.minLeft.format(mins)
     }
+    // Nettoyage (plusieurs regex) fait une fois par titre, pas à chaque recomposition due au focus.
+    val cleanTitle = androidx.compose.runtime.remember(e.title) { TitleCleaner.clean(e.title).title }
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Color.Transparent, modifier = Modifier.width(360.design)) { f ->
         Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
             Box(Modifier.fillMaxWidth().height(202.design)) {
@@ -288,7 +290,7 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
             Column(Modifier.padding(horizontal = 12.design).padding(bottom = 16.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 // Titre sur deux lignes (hauteur fixe : les cartes de la rangée restent alignées) — un titre d'épisode
                 // « Série : Épisode » ne tient presque jamais sur une seule.
-                Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 23.spx, lineHeight = 29.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(cleanTitle, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 23.spx, lineHeight = 29.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

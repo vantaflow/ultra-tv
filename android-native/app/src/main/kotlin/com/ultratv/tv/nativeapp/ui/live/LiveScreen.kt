@@ -159,10 +159,12 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         }
 
         // ── Aperçu ──
+        // Une seule recherche (avant : trois copies complètes de la liste paginée à chaque recomposition).
+        val shown = previewChannel ?: (0 until minOf(channels.itemCount, 20)).firstNotNullOfOrNull { i -> channels.peek(i)?.takeIf { !it.isSeparator } }
         Preview(
-            channel = previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false },
-            now = (previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false })?.let { nowNext[it.id]?.first },
-            next = (previewChannel ?: channels.itemSnapshotList.firstOrNull { it?.isSeparator == false })?.let { nowNext[it.id]?.second },
+            channel = shown,
+            now = shown?.let { nowNext[it.id]?.first },
+            next = shown?.let { nowNext[it.id]?.second },
             D = D, modifier = Modifier.weight(1f).fillMaxHeight(),
         )
     }
@@ -251,7 +253,9 @@ private fun ChannelList(
         androidx.compose.runtime.derivedStateOf {
             var i = state.firstVisibleItemIndex
             var label: String? = null
-            while (i >= 0 && label == null) { channels.itemSnapshotList.getOrNull(i)?.takeIf { it.isSeparator }?.let { label = it.title }; i-- }
+            // peek(i) en O(1) : relire itemSnapshotList (copie de toute la liste) à chaque pas rendait cette remontée
+            // quadratique sur les longues listes sans sections.
+            while (i >= 0 && label == null) { if (i < channels.itemCount) channels.peek(i)?.takeIf { it.isSeparator }?.let { label = it.title }; i-- }
             label?.takeIf { !sameLabel(it, categoryName) }
         }
     }

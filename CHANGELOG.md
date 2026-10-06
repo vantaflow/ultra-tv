@@ -2,6 +2,22 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.39] — 2026-10-06 (Android TV)
+
+### Amélioré
+- Synchro du catalogue : les grosses listes (direct, films, séries) sont téléchargées dans un fichier temporaire avant
+  l'écriture en base ; la transaction ne reste plus ouverte pendant tout le téléchargement (reprise, favoris et
+  historique ne sont plus bloqués des minutes sur une box lente).
+- Démarrage :
+  - l'intégration Google TV, la migration des secrets et l'import des anciennes catégories ne sont plus construits avant
+    le premier écran ;
+  - la synchro cloud et du catalogue attend 3 s quand l'appli est déjà remplie ;
+  - la version est lue sans appel système.
+- Images : le mode mémoire réduite (RGB_565) s'applique enfin sur les box modestes ; il était neutralisé par les bitmaps
+  matériels.
+- Direct : l'aperçu et l'en-tête de section collant ne recopient plus toute la liste à chaque mise à jour (défilement
+  fluide sur les longues listes) ; expressions régulières créées une fois, titre de « Reprendre » nettoyé une fois.
+
 ## [1.2.38] — 2026-10-06 (Android TV)
 
 ### Amélioré

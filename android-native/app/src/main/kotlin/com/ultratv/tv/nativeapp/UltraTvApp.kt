@@ -28,12 +28,14 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
-    @Inject lateinit var secretsMigrator: com.ultratv.tv.nativeapp.data.security.ProviderSecretsMigrator
+    // Lazy : résolus en tâche de fond, pas pendant Application.onCreate (graphe Hilt — base, réseau — construit avant
+    // le premier écran sinon).
+    @Inject lateinit var secretsMigrator: dagger.Lazy<com.ultratv.tv.nativeapp.data.security.ProviderSecretsMigrator>
     @Inject lateinit var adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
     @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 
-    @Inject lateinit var googleTv: com.ultratv.tv.nativeapp.data.tv.GoogleTvSync
-    @Inject lateinit var hiddenCategories: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore
+    @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
+    @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -55,9 +57,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             .respectCacheHeaders(false)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
-            // Bitmaps matériels (GPU) : moins de RAM et décodage plus rapide.
-            .allowHardware(true)
-            // Entrée de gamme : bitmaps RGB_565 (moitié moins de mémoire).
+            // Entrée de gamme : bitmaps logiciels RGB_565 (moitié moins de mémoire). Les bitmaps matériels l'empêchaient
+            // (un bitmap HARDWARE n'est jamais converti en RGB_565) : on ne les garde que sur les appareils confortables.
+            .allowHardware(!auto.imageRgb565)
             .allowRgb565(auto.imageRgb565)
             // Pas de fondu sur l'entrée de gamme : c'est une animation par image chargée.
             .crossfade(!low)
@@ -80,13 +82,12 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         super.onCreate()
 
         // Tell RemoteLog who we are before anyone calls it.
-        val pkg = packageManager.getPackageInfo(packageName, 0)
-        @Suppress("DEPRECATION")
+        // Version lue dans BuildConfig : pas d'appel système (Binder) synchrone avant le premier écran.
         RemoteLog.init(
             ctx = this,
             mac = deviceMac.mac,
-            versionName = pkg.versionName ?: "",
-            versionCode = pkg.versionCode,
+            versionName = BuildConfig.VERSION_NAME,
+            versionCode = BuildConfig.VERSION_CODE,
         )
         RemoteLog.info("app", "onCreate")
 
@@ -104,12 +105,13 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         }
 
         // Google TV : Watch Next + chaîne Favoris, alimentés par la base (sans effet hors Android TV).
-        googleTv.start(bgScope)
+        // Démarrée après le premier écran : ses observateurs de base n'ont rien d'urgent.
+        bgScope.launch { kotlinx.coroutines.delay(8_000); googleTv.get().start(bgScope) }
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
-        bgScope.launch { runCatching { secretsMigrator.migrate() } }
+        bgScope.launch { runCatching { secretsMigrator.get().migrate() } }
         // Anciennes catégories masquées (globales) → profil Principal, une seule fois.
-        bgScope.launch { runCatching { hiddenCategories.importLegacyOnce() } }
+        bgScope.launch { runCatching { hiddenCategories.get().importLegacyOnce() } }
 
         // Pipe every uncaught crash straight to the worker. crashSync blocks
         // briefly (≤ 3 s) so the request actually leaves the device before the

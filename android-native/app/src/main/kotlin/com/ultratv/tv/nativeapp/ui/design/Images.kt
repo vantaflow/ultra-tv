@@ -30,6 +30,9 @@ import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.common.design
 
+/** Créée une fois (et non à chaque vignette sans image affichée). */
+private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
+
 /**
  * RÈGLE : une image ne dicte JAMAIS la taille de son emplacement. Chaque emplacement est une boîte
  * à taille fixe (imposée par l'appelant : aspectRatio, size, fillMaxSize d'une cellule de hauteur
@@ -42,7 +45,7 @@ enum class SlotFit { Crop, Fit }
 
 /** Initiales d'affichage : 2 lettres/chiffres, Unicode (arabe, cyrillique…) conservés. */
 fun initialsOf(name: String): String {
-    val words = name.split(Regex("[^\\p{L}\\p{N}]+")).filter { it.isNotEmpty() }
+    val words = name.split(NON_WORD).filter { it.isNotEmpty() }
     return when {
         words.isEmpty() -> "·"
         words.size == 1 -> words[0].take(2)
