@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.home
 
+import com.ultratv.tv.nativeapp.ui.common.RowBleed
+import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -131,7 +133,7 @@ fun HomeScreen(
         }
 
         if (resume.isNotEmpty()) Section(D.continueWatching) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                 items(resume, key = { "${it.kind}-${it.remoteId}" }, contentType = { "resume" }) { e ->
                     ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
                 }
@@ -139,7 +141,7 @@ fun HomeScreen(
         }
 
         if (recentChannels.isNotEmpty()) Section(D.recentlyWatched) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                 items(recentChannels, key = { "rc-${it.remoteId}" }, contentType = { "resume" }) { e ->
                     ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
                 }
@@ -148,7 +150,7 @@ fun HomeScreen(
 
         if (latestMovies.isNotEmpty()) Section(D.latestMovies) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                     items(latestMovies, key = { "lm-${it.id}" }, contentType = { "poster" }) { m ->
                         com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenMovie(m.id) }
                     }
@@ -158,7 +160,7 @@ fun HomeScreen(
 
         if (latestSeries.isNotEmpty()) Section(D.latestSeries) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                     items(latestSeries, key = { "ls-${it.id}" }, contentType = { "poster" }) { m ->
                         com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenSeries(m.id) }
                     }
@@ -167,7 +169,7 @@ fun HomeScreen(
         }
 
         if (channels.isNotEmpty()) Section(if (favorites) D.favoriteChannels else LocalStrings.current.navLive) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(end = 96.design)) {
+            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                 items(channels, key = { it.id }, contentType = { "channel" }) { c ->
                     ChannelCard(c, nowPlaying[c.id]) { onPlay(c.streamUrl, c.title) }
                 }

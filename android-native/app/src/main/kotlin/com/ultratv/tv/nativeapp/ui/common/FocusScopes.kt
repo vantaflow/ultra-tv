@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.background
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -184,3 +185,20 @@ fun Modifier.leaveOnVerticalDpad(): Modifier = composed {
         }
     }
 }
+
+/**
+ * Marge de débordement à gauche d'une rangée horizontale (LazyRow) : une LazyRow rogne tout ce qui dépasse de ses
+ * bords, donc la PREMIÈRE carte, agrandie et cerclée au focus, était coupée à gauche. La rangée est élargie de [bleed]
+ * vers la gauche puis décalée d'autant : les cartes restent à la même position, mais la zone de rognage commence
+ * [bleed] plus tôt. À combiner avec `contentPadding(start = bleed)`. Le parent doit disposer de cette marge.
+ */
+fun Modifier.rowBleedStart(bleed: androidx.compose.ui.unit.Dp): Modifier = this.layout { measurable, constraints ->
+    val extra = bleed.roundToPx()
+    val maxW = if (constraints.hasBoundedWidth) constraints.maxWidth + extra else constraints.maxWidth
+    val placeable = measurable.measure(constraints.copy(minWidth = (constraints.minWidth + extra).coerceAtMost(maxW), maxWidth = maxW))
+    val w = (placeable.width - extra).coerceAtLeast(0)
+    layout(w, placeable.height) { placeable.place(-extra, 0) }
+}
+
+/** Débordement standard des rangées d'affiches : agrandissement au focus (≈ 6 %) + liseré. */
+val RowBleed: androidx.compose.ui.unit.Dp get() = 24.design

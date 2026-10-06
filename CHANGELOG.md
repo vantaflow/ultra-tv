@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.29] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Films / Séries et accueil : la première carte d'une rangée n'est plus rognée à gauche quand elle prend le focus
+  (agrandissement et liseré coupés par le bord de la rangée).
+
 ## [1.2.28] — 2026-10-06 (Android TV)
 
 ### Corrigé

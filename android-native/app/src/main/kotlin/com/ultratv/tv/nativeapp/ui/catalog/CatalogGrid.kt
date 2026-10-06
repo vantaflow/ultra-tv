@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.catalog
 
+import com.ultratv.tv.nativeapp.ui.common.RowBleed
+import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -180,7 +182,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
                 com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             }
         }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design)) {
+        LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
@@ -236,7 +238,7 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
             Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
                 Text(c.name, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (loaded == null) { SkeletonRow(touch); return@Column }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(end = if (touch) 16.dp else 96.design)) {
+                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(start = RowBleed, end = if (touch) 16.dp else 96.design)) {
                     items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
                         val it = list[i]
                         val m = Modifier.width(if (touch) 120.dp else 200.design)
