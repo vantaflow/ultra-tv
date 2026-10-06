@@ -185,6 +185,8 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px ui-monos
 .side .brand{padding:0}.side nav{flex-direction:row;flex:1 1 100%;min-width:0;max-width:100%;order:3;overflow-x:auto;gap:2px;scrollbar-width:none}.side nav a{min-height:38px;padding:0 10px;white-space:nowrap}
 .side .me{border:0;padding:0;display:flex;align-items:center;margin-left:auto}.side .me .login{display:none}.side .me button{width:auto;min-height:38px}
 .content{padding:20px 0 40px}.hello h1{font-size:24px}}
+.kind.pro{background:linear-gradient(135deg,var(--acc),#8f1019);color:#fff;margin:0 0 0 6px}.kind.std{background:var(--s2);color:var(--fg2);margin:0 0 0 6px}
+.brand .kind.pro{font-size:10px;min-height:20px}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
@@ -416,6 +418,29 @@ ${pairForm(csrfInput, code || "")}
 <p class="alt"><a href="/">Annuler</a></p></div></main>`, n, `<script nonce="${n}">${PAIR_JS}${SCAN_JS}</script>`, true);
 }
 
+const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const frDate = (ms) => { const d = new Date(ms); return `${d.getUTCDate()} ${MOIS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
+const LIC_STATUS = { active: "Active", trial: "Essai", expired: "Expirée", suspended: "Suspendue", revoked: "Révoquée" };
+
+/** Licence d'un appareil Pro (statut signé par le revendeur, vérifié à la réception). */
+function licenseLine(lic, now = Date.now()) {
+  if (!lic) return `<div class="card-meta mt10 muted">Licence Pro : en attente de la prochaine synchronisation de l'appareil.</div>`;
+  const left = lic.until ? Math.ceil((lic.until - now) / 86_400_000) : null;
+  const expired = lic.status === "expired" || (left !== null && left < 0);
+  const cls = expired || lic.status === "suspended" || lic.status === "revoked" ? " bad" : left !== null && left <= 15 ? " warn" : "";
+  const parts = [`<strong>${e(LIC_STATUS[lic.status] || lic.status || "?")}</strong>`];
+  if (lic.until) parts.push(expired ? `expirée le ${e(frDate(lic.until))}` : `jusqu'au ${e(frDate(lic.until))} (${left === 0 ? "aujourd'hui" : `dans ${left} j`})`);
+  if (lic.devices) parts.push(`${lic.devices.used}/${lic.devices.max} appareil${lic.devices.max > 1 ? "s" : ""}`);
+  const r = lic.reseller;
+  const contact = r ? [
+    r.name ? `revendeur <strong>${e(r.name)}</strong>` : "",
+    r.whatsapp && /^\+?[0-9 ]{6,20}$/.test(r.whatsapp) ? `<a href="https://wa.me/${e(r.whatsapp.replace(/[^0-9]/g, ""))}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : "",
+    r.telegram && /^@?[A-Za-z0-9_]{4,32}$/.test(r.telegram) ? `<a href="https://t.me/${e(r.telegram.replace(/^@/, ""))}" target="_blank" rel="noopener noreferrer">Telegram</a>` : "",
+  ].filter(Boolean).join(" · ") : "";
+  const stale = now - lic.issuedAt > 2 * 86_400_000 ? ` <span class="muted">(vérifiée le ${e(frDate(lic.issuedAt))})</span>` : "";
+  return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
+}
+
 export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
   const devices = acct.devices || [];
@@ -426,18 +451,21 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok }) {
     return `
 <article class="card"><div class="card-top"><div class="badge-ico">${ico("list")}</div>
 <div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
-${sh.chips}
+${sh.chips}${p.managed === "reseller" ? `<div class="chips"><span class="chip acc">Gérée par ton revendeur (Pro)</span></div>` : ""}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
 ${p.kind === "XTREAM" ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria-live="polite"><span class="muted">Abonnement : chargement…</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">Lien IPTV</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">Copier</button></div></div>
 <div class="actions">${sh.form}
-<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">Afficher le lien IPTV</button>
-<form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
+${p.managed === "reseller"
+    ? `<span class="muted small">Ses identifiants appartiennent à ton revendeur : ni affichés ni supprimables ici.</span>`
+    : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">Afficher le lien IPTV</button>
+<form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form>`}</div></article>`;
   }).join("");
   const devRows = devices.map((d) => `
 <article class="card"><div class="card-top"><div class="badge-ico">${ico("tv")}</div>
-<div class="grow"><div class="card-title">${e(d.name)}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
+<div class="grow"><div class="card-title">${e(d.name)} ${d.edition === "pro" ? `<span class="kind pro">PRO</span>` : d.edition === "standard" ? `<span class="kind std">STANDARD</span>` : ""}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
+${d.edition === "pro" ? licenseLine(d.license) : ""}
 <div class="actions"><details><summary>${ico("edit")}Renommer</summary><form method="post" action="/devices/${e(d.id)}/rename" class="drop">${csrfInput}
 <label class="mt0" for="rn-${e(d.id)}">Nom de l'appareil</label><input id="rn-${e(d.id)}" name="name" maxlength="40" value="${e(d.name)}"/>
 <div class="row"><button type="submit">Renommer</button></div></form></details>
@@ -513,10 +541,14 @@ ${PAIR_JS}
 ${SCAN_JS}
 </script>`;
   const xtreamCount = providers.filter((p) => p.kind === "XTREAM").length;
+  // Compte « Pro » : au moins un appareil de l'édition Pro (déclarée par l'appli, licence vérifiée à la réception).
+  const proDevices = devices.filter((d) => d.edition === "pro");
+  const isPro = proDevices.length > 0;
+  const nextLic = proDevices.map((d) => d.license?.until).filter((u) => typeof u === "number").sort((a, b) => a - b)[0];
   return layout(`Ultra TV — ${acct.login}`, `
 <div class="shell">
 <aside class="side" aria-label="Navigation">
-<div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="brand">${LOGO}<span>Ultra TV</span>${isPro ? `<span class="kind pro">PRO</span>` : ""}</div>
 <nav>
 <a href="#apercu" class="on">${ico("home")}Vue d'ensemble</a>
 <a href="#fournisseurs">${ico("list")}Fournisseurs</a>
@@ -528,10 +560,13 @@ ${SCAN_JS}
 </aside>
 <main id="main" class="content">
 ${msg}
-<div class="hello" id="apercu"><h1>Bonjour ${e(acct.login)}</h1><p class="sub">Ta configuration Ultra TV : sources, appareils et abonnements.</p></div>
+<div class="hello" id="apercu"><h1>Bonjour ${e(acct.login)}</h1><p class="sub">${isPro
+    ? `Compte <strong>Ultra TV Pro</strong> : ${proDevices.length} appareil${proDevices.length > 1 ? "s" : ""} sous licence revendeur. Sources, appareils, abonnements et licences.`
+    : "Ta configuration Ultra TV : sources, appareils et abonnements."}</p></div>
 <div class="tiles">
 <div class="tile hero"><b>${providers.length}</b><span>fournisseur${providers.length > 1 ? "s" : ""}</span></div>
 <div class="tile"><b>${devices.length}</b><span>appareil${devices.length > 1 ? "s" : ""} appairé${devices.length > 1 ? "s" : ""}</span></div>
+${isPro ? `<div class="tile${nextLic && nextLic < Date.now() ? " bad" : nextLic && nextLic - Date.now() < 15 * 86_400_000 ? " warn" : ""}"><b>${nextLic ? e(frDate(nextLic)) : "—"}</b><span>${nextLic ? "prochaine échéance de licence Pro" : "licence Pro : en attente de l'appareil"}</span></div>` : ""}
 <div class="tile" id="sub-tile"><b id="sub-n">${xtreamCount ? "…" : "—"}</b><span id="sub-l">${xtreamCount ? "abonnements : vérification" : "aucun abonnement Xtream"}</span></div>
 </div>
 

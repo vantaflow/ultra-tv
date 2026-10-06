@@ -2,6 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.49] — 2026-10-06 (Android TV) · [Bureau 1.2.30]
+
+### Ajouté
+- Tableau de bord du compte (ultratv-config) : distinction utilisateurs standard / Pro.
+  - Chaque appareil affiche son édition (STANDARD / PRO) ; un compte avec au moins un appareil Pro est marqué
+    « Ultra TV Pro ».
+  - Licence Pro : statut, échéance, appareils, revendeur et contacts WhatsApp / Telegram. Le statut est signé par le
+    panneau revendeur et sa signature est vérifiée par le site.
+  - Sources posées par le revendeur : marquées comme telles, sans lien IPTV ni suppression (leurs identifiants
+    appartiennent au revendeur).
+- Applications Android et bureau : elles déclarent leur édition au site (en-tête X-Ultra-Edition) ; points d'entrée
+  postLicense et `managed: "reseller"` prêts pour l'édition Pro.
+
 ## [1.2.48] — 2026-10-06 (Android TV)
 
 ### Corrigé

@@ -156,6 +156,8 @@ export function syncProvider(p) {
     // Réglages d'affichage partagés (langues, catégories désactivées), null si jamais publiés.
     prefs: p.prefs || null,
     sharedWith: p.assign === undefined ? "all" : p.assign,
+    // Source posée par le revendeur (édition Pro) : signalée comme telle aux appareils.
+    managed: p.managed === "reseller" ? "reseller" : null,
     id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
   };
@@ -170,7 +172,10 @@ export function parseDeviceProvider(body, origin) {
   for (const k of FIELDS) {
     if (body[k] !== undefined && typeof body[k] !== "string") return { error: k };
   }
-  return parseProvider({ get: (k) => body[k] }, origin);
+  const r = parseProvider({ get: (k) => body[k] }, origin);
+  // Édition Pro : source posée par le revendeur (seule valeur acceptée).
+  if (!r.error && body.managed === "reseller") r.provider.managed = "reseller";
+  return r;
 }
 
 /** URL affichable : schéma + hôte seulement (le chemin et la requête peuvent contenir des identifiants). */
@@ -235,6 +240,52 @@ export async function xtreamAccount(p, fetchImpl = fetch, timeoutMs = 8000) {
     activeCons: num(ui.active_cons),
     maxCons: num(ui.max_connections),
   };
+}
+
+// ---- édition Pro : licence signée par le panneau revendeur ---------------------
+
+/** Clé publique Ed25519 (SPKI, base64) des licences Ultra TV Pro — publique, la même que celle des applications Pro. */
+export const PRO_LICENSE_PUBLIC_KEY = "MCowBQYDK2VwAyEAct7h7rfzeaA4nLuL2k0R14nTdc/IrzxStqx8+jdnF4M=";
+const LICENSE_MAX_AGE_MS = 8 * 86_400_000;
+
+const b64uBytes = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((s.length + 3) % 4)), (c) => c.charCodeAt(0));
+
+/**
+ * Statut de licence Pro transmis par un appareil : { payload, sig } tel que signé par le panneau revendeur
+ * (payload = JSON en base64url, sig = Ed25519(payload)). La signature et la fraîcheur sont VÉRIFIÉES : un appareil ne
+ * peut pas s'attribuer une licence. Renvoie les seuls champs affichés, ou null.
+ */
+export async function verifyProLicense(payload, sig, now = Date.now(), publicKey = PRO_LICENSE_PUBLIC_KEY) {
+  if (typeof payload !== "string" || typeof sig !== "string" || payload.length > 4096 || sig.length > 200) return null;
+  try {
+    const key = await crypto.subtle.importKey("spki", Uint8Array.from(atob(publicKey), (c) => c.charCodeAt(0)), { name: "Ed25519" }, false, ["verify"]);
+    const ok = await crypto.subtle.verify({ name: "Ed25519" }, key, b64uBytes(sig), new TextEncoder().encode(payload));
+    if (!ok) return null;
+    const v = JSON.parse(new TextDecoder().decode(b64uBytes(payload)));
+    if (!v || v.v !== 1 || typeof v.issuedAt !== "number") return null;
+    if (v.issuedAt > now + 3_600_000 || now - v.issuedAt > LICENSE_MAX_AGE_MS) return null;
+    const str = (x, n) => (typeof x === "string" && x.trim() ? x.trim().slice(0, n) : null);
+    const r = v.reseller && typeof v.reseller === "object" ? v.reseller : null;
+    return {
+      status: str(v.status, 20),
+      until: typeof v.until === "number" ? v.until : null,
+      code: str(v.code, 16),
+      reseller: r ? { name: str(r.name, 60), whatsapp: str(r.whatsapp, 32), telegram: str(r.telegram, 64) } : null,
+      devices: v.devices && typeof v.devices.used === "number" && typeof v.devices.max === "number" ? { used: v.devices.used, max: v.devices.max } : null,
+      issuedAt: v.issuedAt,
+    };
+  } catch { return null; }
+}
+
+/** Met à jour les métadonnées d'un appareil (édition, licence) ; n'écrit que si quelque chose change. */
+export async function setDeviceInfo(env, acct, deviceId, patch) {
+  const d = (acct.devices || []).find((x) => x.id === deviceId);
+  if (!d) return false;
+  const next = { ...d, ...patch };
+  if (JSON.stringify(next) === JSON.stringify(d)) return true;
+  acct.devices = acct.devices.map((x) => (x.id === deviceId ? next : x));
+  await putAccount(env, acct);
+  return true;
 }
 
 // ---- affectations (quel appareil reçoit quel fournisseur) ---------------------

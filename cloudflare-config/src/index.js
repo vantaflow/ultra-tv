@@ -25,7 +25,7 @@ import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
-  MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, parseStateBody, mergeState, loadState, saveState, deleteState,
+  MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
@@ -118,6 +118,7 @@ async function route(req, env) {
   if (prefsProv && m === "PUT") return devicePutPrefs(req, env, prefsProv[1]);
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
+  if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -184,6 +185,8 @@ async function route(req, env) {
   if (lnk) {
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === lnk[1]);
     if (!p) return new Response("Not found", { status: 404 });
+    // Source du revendeur : ses identifiants ne sont pas ceux du client, ils ne sont jamais révélés.
+    if (p.managed === "reseller") return new Response(JSON.stringify({ error: "managed" }), { status: 403, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" } });
     return new Response(JSON.stringify({ link: iptvLink(p) }), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
   }
 
@@ -444,9 +447,38 @@ async function deviceAuth(req, env) {
   return { auth };
 }
 
+const EDITIONS = new Set(["standard", "pro"]);
+
+/** Édition de l'appli (en-tête X-Ultra-Edition) : enregistrée seulement quand elle change (écriture rare). */
+async function noteEdition(req, env, auth) {
+  const ed = (req.headers.get("x-ultra-edition") || "").trim().toLowerCase();
+  if (!EDITIONS.has(ed) || auth.device.edition === ed) return;
+  await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { edition: ed }));
+}
+
+/**
+ * Édition Pro : l'appareil transmet son statut de licence SIGNÉ par le panneau revendeur. Vérifié (signature,
+ * fraîcheur) puis gardé avec l'appareil pour le tableau de bord ; l'appareil devient « pro ».
+ */
+async function deviceLicense(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = await limited(env, `lic:dev:${auth.device.id}`, 20, 3600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 6 * 1024);
+  if (body.error) return body.error;
+  const lic = await verifyProLicense(body.value.payload, body.value.sig);
+  if (!lic) return json({ error: "invalid", field: "license" }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!(await setDeviceInfo(env, acct, auth.device.id, { edition: "pro", license: lic }))) return json({ error: "unauthorized" }, 401);
+    return json({ ok: true });
+  });
+}
+
 async function deviceConfig(req, env) {
   const { auth, res } = await deviceAuth(req, env);
   if (res) return res;
+  await noteEdition(req, env, auth);
   const rl = (await limited(env, `cfg:ip:${clientIp(req)}`, 300, 600, true))
     || (await limited(env, `cfg:dev:${auth.device.id}`, 60, 600, true));
   if (rl) return rl;

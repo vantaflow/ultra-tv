@@ -29,6 +29,8 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
 
     suspend fun fetch(base: String, token: String, etag: String?): ConfigFetch = withContext(Dispatchers.IO) {
         val b = Request.Builder().url("$base/api/config").header("Authorization", "Bearer $token")
+            // Édition de l'appli (standard / pro) : affichée sur le tableau de bord du compte.
+            .header("X-Ultra-Edition", com.ultratv.tv.nativeapp.BuildConfig.EDITION)
         if (etag != null) b.header("If-None-Match", etag)
         http.newCall(b.get().build()).execute().use { r ->
             if (r.code == 304) return@use ConfigFetch(true, "", etag)
@@ -38,7 +40,23 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
-    /** Crée ou met à jour une source ; renvoie le corps JSON (`provider.id` = identifiant cloud). */
+    /**
+     * Édition Pro : transmet le statut de licence SIGNÉ par le panneau revendeur ({payload, sig} tels quels). Le
+     * tableau de bord du compte le vérifie et l'affiche (statut, échéance, revendeur). Sans effet en édition standard.
+     */
+    suspend fun postLicense(base: String, token: String, payload: String, sig: String) = withContext(Dispatchers.IO) {
+        val body = org.json.JSONObject().put("payload", payload).put("sig", sig).toString()
+        val req = Request.Builder().url("$base/api/device/license").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while sending the license")
+        }
+    }
+
+    /**
+     * Crée ou met à jour une source ; renvoie le corps JSON (`provider.id` = identifiant cloud). Édition Pro : une
+     * source posée par le revendeur ajoute `"managed": "reseller"` au corps (ni lien ni suppression sur le tableau de bord).
+     */
     suspend fun put(base: String, token: String, body: String): String = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$base/api/device/providers").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
         http.newCall(req).execute().use { r ->

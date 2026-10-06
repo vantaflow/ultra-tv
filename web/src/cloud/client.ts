@@ -91,6 +91,8 @@ export interface CloudProvider {
   url: string;
   username?: string;
   password?: string;
+  /** Édition Pro : source posée par le revendeur (ni lien ni suppression sur le tableau de bord). */
+  managed?: "reseller";
   originDeviceId?: string;
   originName?: string;
   createdAt?: number;
@@ -107,7 +109,9 @@ export interface CloudConfig { version: number; devices: number | CloudDevice[];
 
 export type ConfigResult = { unchanged: true } | { unchanged: false; config: CloudConfig; etag: string };
 
-const auth = (token: string, extra: Record<string, string> = {}) => ({ authorization: `Bearer ${token}`, accept: "application/json", ...extra });
+/** Édition de l'appli (standard / pro, fixée à la compilation par VITE_EDITION) : affichée sur le tableau de bord du compte. */
+const EDITION_HEADER = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_EDITION === "pro" ? "pro" : "standard";
+const auth = (token: string, extra: Record<string, string> = {}) => ({ authorization: `Bearer ${token}`, accept: "application/json", "x-ultra-edition": EDITION_HEADER, ...extra });
 
 export async function fetchConfig(base: string, token: string, etag?: string | null): Promise<ConfigResult> {
   const r = await http({ url: `${base}/api/config`, headers: auth(token, etag ? { "if-none-match": etag } : {}) });
@@ -142,6 +146,16 @@ export interface ProviderInput {
 }
 
 /** Ajoute (ou met à jour avec `id`) un fournisseur du compte. 404 sans `id` = endpoint absent du Worker. */
+/**
+ * Édition Pro : transmet le statut de licence SIGNÉ par le panneau revendeur ({ payload, sig } tels quels), vérifié et
+ * affiché par le tableau de bord du compte. Sans effet en édition standard.
+ */
+export async function postLicense(base: string, token: string, payload: string, sig: string): Promise<void> {
+  const r = await http({ url: `${base}/api/device/license`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json({ payload, sig }) });
+  if (r.status === 401) throw new TokenRejectedError();
+  if (r.status < 200 || r.status >= 300) throw new Error(`HTTP ${r.status}`);
+}
+
 export async function putProvider(base: string, token: string, input: ProviderInput): Promise<CloudProvider> {
   const r = await http({ url: `${base}/api/device/providers`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(input) });
   if (r.status === 401) throw new TokenRejectedError();

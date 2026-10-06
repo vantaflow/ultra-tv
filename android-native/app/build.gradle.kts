@@ -44,6 +44,9 @@ val ultraWorkerUrl = resolveBuildConfigValue(
     resolveBuildConfigValue("ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev"),
 )
 
+// Édition : « standard » (app publique) ou « pro » (variante revendeur : -PULTRA_EDITION=pro).
+val ultraEdition = resolveBuildConfigValue("ULTRA_EDITION", "standard")
+
 android {
     namespace = "com.ultratv.tv.nativeapp"
     compileSdk = 35
@@ -60,6 +63,8 @@ android {
 
         // URL par défaut du Worker — voir resolveBuildConfigValue() ci-dessus.
         buildConfigField("String", "WORKER_URL", "\"$ultraWorkerUrl\"")
+        // Édition déclarée au tableau de bord du compte (en-tête X-Ultra-Edition) ; « pro » dans la variante revendeur.
+        buildConfigField("String", "EDITION", "\"$ultraEdition\"")
     }
 
     // Release signing — reads ULTRA_KEYSTORE / ULTRA_KEYSTORE_PASSWORD /
