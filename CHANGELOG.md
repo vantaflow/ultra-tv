@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.32] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Lecteur : la liste des chaînes (OK pendant une chaîne en direct) s'ouvre tout de suite ; elle est tenue à jour
+  pendant la lecture au lieu d'être recalculée (file, guide, compteurs de catégories) à chaque ouverture.
+
 ## [1.2.31] — 2026-10-06 (Android TV)
 
 ### Corrigé

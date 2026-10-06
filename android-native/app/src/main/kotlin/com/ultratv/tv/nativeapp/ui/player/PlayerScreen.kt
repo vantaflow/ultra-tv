@@ -328,6 +328,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var currentUrl by remember { mutableStateOf(url) }
     var panel by remember { mutableStateOf(Panel.None) }
     var drawerOpen by remember { mutableStateOf(false) }
+    // Liste des chaînes (OK) maintenue À JOUR pendant toute la lecture du direct : abonnée seulement à l'ouverture du
+    // tiroir, elle relisait la file, son guide et les compteurs de catégories à chaque OK (tiroir vide un moment).
+    // Collecte sans lecture de valeur : aucune recomposition du lecteur.
+    if (isLive) LaunchedEffect(Unit) {
+        launch { vm.queue.collect {} }
+        launch { vm.categories.collect {} }
+    }
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }

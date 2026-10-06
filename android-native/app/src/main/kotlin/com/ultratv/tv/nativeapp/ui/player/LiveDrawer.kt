@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.player
 
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -100,8 +101,8 @@ internal fun LiveDrawer(
                     val title = cats.firstOrNull { it.remoteId == currentCat }?.label ?: D.channelsWord
                     Label("${title.uppercase()} · ${entries.size}", Modifier.padding(bottom = 8.design))
                     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                        items(entries, key = { it.channel.id }) { e ->
-                            ChannelLine(e, index = entries.indexOf(e) + 1, variant = run { val k = entries.indexOf(e); var n = 1; var j = k - 1; while (j >= 0 && n < 9 && com.ultratv.tv.nativeapp.ui.live.sameStream(entries[j].channel, e.channel)) { n++; j-- }; n }, D = D, onFocus = { selected = e; if (e.now == null) vm.fillProgrammes(listOf(e.channel)) }, onClick = { onPick(e.channel) },
+                        itemsIndexed(entries, key = { _, it -> it.channel.id }) { k, e ->
+                            ChannelLine(e, index = k + 1, variant = run { var n = 1; var j = k - 1; while (j >= 0 && n < 9 && com.ultratv.tv.nativeapp.ui.live.sameStream(entries[j].channel, e.channel)) { n++; j-- }; n }, D = D, onFocus = { selected = e; if (e.now == null) vm.fillProgrammes(listOf(e.channel)) }, onClick = { onPick(e.channel) },
                                 modifier = if (e.isCurrent) Modifier.focusRequester(currentFocus) else Modifier)
                         }
                     }
