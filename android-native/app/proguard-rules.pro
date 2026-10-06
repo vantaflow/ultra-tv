@@ -41,3 +41,13 @@
 # Don't obfuscate annotation classes — needed by Hilt/Compose tooling.
 -keep @interface androidx.compose.runtime.Composable
 -keep class kotlin.Metadata { *; }
+
+# LibVLC : sa couche JNI (libvlcjni.so) retrouve classes, champs (mInstance) et méthodes (dispatchEventFromNative,
+# create*FromNative…) Java PAR LEUR NOM. L'AAR ne fournit aucune règle : sans celles-ci, R8 les renomme ou les retire
+# et l'application plante dès que le lecteur VLC est créé — en release seulement (le debug n'est pas minifié).
+-keep class org.videolan.libvlc.** { *; }
+-keep interface org.videolan.libvlc.** { *; }
+-dontwarn org.videolan.libvlc.**
+
+# Client RTMP (AAR sans règles) : même mécanique JNI.
+-keep class io.antmedia.rtmp_client.** { *; }

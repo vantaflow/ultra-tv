@@ -53,7 +53,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .setPrioritizeTimeOverSizeThresholds(false)
             .build()
         val http = DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
-            .setConnectTimeoutMs(10_000).setReadTimeoutMs(15_000)
+            // Direct : délais courts — une chaîne morte ou un serveur qui ne répond plus est détecté vite, puis la
+            // session se reconnecte toute seule (avant : 10 s + 1,5 s + 10 s avant l'écran d'erreur).
+            .setConnectTimeoutMs(if (config.isLive) 6_000 else 10_000).setReadTimeoutMs(if (config.isLive) 8_000 else 15_000)
         val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
         )

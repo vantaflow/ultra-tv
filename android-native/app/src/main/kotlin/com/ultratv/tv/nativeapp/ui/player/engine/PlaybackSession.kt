@@ -35,6 +35,9 @@ data class SessionState(
  * précède toujours l'ouverture suivante). Gère le repli automatique moteur/décodage, la mémorisation par
  * chaîne, la nouvelle tentative après un 403 et l'adaptation du débit pendant la lecture.
  */
+/** Direct bloqué en chargement après avoir joué : délai avant reconnexion. */
+private const val STALL_MS = 12_000L
+
 @UnstableApi
 class PlaybackSession(
     private val ctx: Context,
@@ -73,11 +76,18 @@ class PlaybackSession(
     private var adaptJob: Job? = null
     private var manualSwitch = false
     private var launchedAtNs = 0L
+    // Reconnexion automatique du direct (serveurs qui ferment la session, flux gelé).
+    private var reconnects = 0
+    private var everPlayed = false
+    private var reconnectJob: Job? = null
+    private var stallJob: Job? = null
+    private var stableJob: Job? = null
 
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
@@ -140,10 +150,17 @@ class PlaybackSession(
 
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {
         when (ev) {
-            EngineEvent.Buffering -> if (firstFrame) { android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis())) } else Unit
-            EngineEvent.Ready -> if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e)
+            EngineEvent.Buffering -> if (firstFrame) {
+                android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
+                // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
+                if (isLive && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
+            } else Unit
+            EngineEvent.Ready -> { stallJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
-                firstFrame = true; watchdog?.cancel()
+                firstFrame = true; watchdog?.cancel(); stallJob?.cancel()
+                everPlayed = true
+                // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
+                stableJob?.cancel(); stableJob = scope.launch { delay(30_000); reconnects = 0 }
                 // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
                 android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
@@ -152,7 +169,8 @@ class PlaybackSession(
                 rememberJob = scope.launch { delay(5_000); if (tried.size > 1 || manualSwitch) key?.let { memory.remember(it, combo, null) } }
                 sameRetries = 0
             }
-            EngineEvent.Ended -> _state.value = _state.value.copy(phase = Phase.ENDED)
+            // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
+            EngineEvent.Ended -> if (isLive) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
             is EngineEvent.Error -> onError(ev.kind)
         }
     }
@@ -167,6 +185,8 @@ class PlaybackSession(
 
     private fun onError(kind: PlayErrorKind) {
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
+        // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
+        if (isLive && everPlayed && PlaybackPlanner.shouldReconnectLive(kind)) { reconnectLive(); return }
         network.onError()
         val settingsNow = settings()
         scope.launch {
@@ -191,6 +211,26 @@ class PlaybackSession(
         }
     }
 
+    /** Reconnexion du direct sur la même adresse (délais croissants) ; au-delà, écran d'erreur. */
+    private fun reconnectLive() {
+        stallJob?.cancel(); stableJob?.cancel()
+        if (reconnectJob?.isActive == true) return
+        val wait = PlaybackPlanner.liveReconnectDelayMs(reconnects) ?: run {
+            releaseEngine()
+            _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.NETWORK)
+            return
+        }
+        reconnects++
+        android.util.Log.i("UltraPlay", "live reconnect #$reconnects in ${wait}ms engine=${combo.engine}")
+        _notices.tryEmit(Notice.RETRYING)
+        reconnectJob = scope.launch {
+            delay(wait)
+            firstFrame = false; launchedAtNs = System.nanoTime(); watchdog?.cancel()
+            val e = engine
+            if (e != null && e.reusable) e.load(url, 0) else launch(combo)
+        }
+    }
+
     private fun releaseEngine() {
         engine?.let { runCatching { it.release() } }
         engine = null
@@ -200,6 +240,7 @@ class PlaybackSession(
 
     fun release() {
         eventsJob?.cancel(); watchdog?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel()
         releaseEngine()
     }
 }

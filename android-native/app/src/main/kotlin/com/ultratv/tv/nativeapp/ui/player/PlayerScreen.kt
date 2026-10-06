@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.player
 
+import androidx.compose.ui.draw.alpha
 import kotlinx.coroutines.flow.distinctUntilChanged
 import android.content.Intent
 import android.net.Uri
@@ -332,13 +333,6 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var currentUrl by remember { mutableStateOf(url) }
     var panel by remember { mutableStateOf(Panel.None) }
     var drawerOpen by remember { mutableStateOf(false) }
-    // Liste des chaînes (OK) maintenue À JOUR pendant toute la lecture du direct : abonnée seulement à l'ouverture du
-    // tiroir, elle relisait la file, son guide et les compteurs de catégories à chaque OK (tiroir vide un moment).
-    // Collecte sans lecture de valeur : aucune recomposition du lecteur.
-    if (isLive) LaunchedEffect(Unit) {
-        launch { vm.queue.collect {} }
-        launch { vm.categories.collect {} }
-    }
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
@@ -373,6 +367,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         )
     }
     val state by session.state.collectAsState()
+    // Liste des chaînes (OK) maintenue À JOUR pendant toute la lecture du direct : abonnée seulement à l'ouverture du
+    // tiroir, elle relisait la file, son guide et les compteurs de catégories à chaque OK (tiroir vide un moment).
+    // Collecte sans lecture de valeur : aucune recomposition du lecteur.
+    // Préparée 1,5 s APRÈS la première image : pas de lecture de la base pendant le démarrage du flux.
+    if (isLive) LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { state.phase }.first { it == Phase.PLAYING }
+        delay(1_500)
+        launch { vm.queue.collect {} }
+        launch { vm.categories.collect {} }
+    }
     // [B2·zapping] saisie du numéro, chaîne précédente, récentes (ZapViewModel).
     val zap: com.ultratv.tv.nativeapp.ui.player.zap.ZapViewModel = hiltViewModel()
     val X = com.ultratv.tv.nativeapp.ui.player.playerExtras()
@@ -503,7 +507,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(Unit) {
         var lastSave = System.currentTimeMillis()
         while (true) {
-            session.engine?.let { pos = it.positionMs; dur = it.durationMs; playing = it.isPlaying }
+            // Position écrite seulement en VOD (le direct affiche l'horaire du programme) et arrondie à la seconde :
+            // chaque écriture recompose tout le lecteur — avant, 2 fois par seconde y compris en direct.
+            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying }
             // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())
@@ -886,10 +892,14 @@ private fun OptionPill(label: String, icon: String, onClick: () -> Unit) {
 @Composable
 private fun LoadingVisual(logo: String?, name: String) {
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (!logo.isNullOrBlank()) {
+        // Flou plein écran affiché à CHAQUE zap, au moment où le décodeur démarre : réservé aux appareils qui le
+        // rendent vraiment (API 31+, hors low-RAM), comme BlurredFill ; ailleurs un simple fond.
+        val richBackdrop = !com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current && android.os.Build.VERSION.SDK_INT >= 31
+        if (richBackdrop && !logo.isNullOrBlank()) {
             coil.compose.AsyncImage(
-                model = logo, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().blur(48.dp).graphicsLayer { alpha = 0.45f },
+                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(logo).size(320, 180).build(),
+                contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize().blur(48.dp).alpha(0.45f),
             )
         }
         Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color(0x660A0A0C), Color(0xE60A0A0C)))))

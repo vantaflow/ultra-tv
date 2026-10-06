@@ -58,8 +58,10 @@ class CatalogRepository @Inject constructor(
     fun topSeries(pid: Long, limit: Int): Flow<List<SeriesEntity>> = seriesDao.observeTop(pid, limit)
     fun channelsForCategory(pid: Long, categoryRemoteId: String): Flow<List<ChannelEntity>> =
         channelDao.observeForCategory(pid, categoryRemoteId)
-    fun movies(pid: Long): Flow<List<MovieEntity>> = movieDao.observeForProvider(pid)
-    fun seriesList(pid: Long): Flow<List<SeriesEntity>> = seriesDao.observeForProvider(pid)
+    fun moviesByRemoteIds(pid: Long, ids: List<String>): Flow<List<MovieEntity>> =
+        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList()) else movieDao.observeByRemoteIds(pid, ids.take(900))
+    fun seriesByRemoteIds(pid: Long, ids: List<String>): Flow<List<SeriesEntity>> =
+        if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList()) else seriesDao.observeByRemoteIds(pid, ids.take(900))
     fun episodes(seriesId: Long): Flow<List<EpisodeEntity>> = episodeDao.observeForSeries(seriesId)
 
     fun categories(pid: Long, kind: String): Flow<List<CategoryEntity>> =

@@ -84,20 +84,15 @@ class FavoritesViewModel @Inject constructor(
     val movies: StateFlow<List<MovieEntity>> = pid.flatMapLatest { id ->
         if (id == null) return@flatMapLatest flowOf(emptyList())
         catalog.favoritesByKind(id, "MOVIE").flatMapLatest { favs ->
-            catalog.movies(id).map { list ->
-                val ids = favs.map { it.remoteId }.toSet()
-                list.filter { it.remoteId in ids }
-            }
+            // Seuls les favoris sont lus (avant : les 180 000 films chargés puis filtrés, à chaque écriture de la synchro).
+            catalog.moviesByRemoteIds(id, favs.map { it.remoteId })
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val series: StateFlow<List<SeriesEntity>> = pid.flatMapLatest { id ->
         if (id == null) return@flatMapLatest flowOf(emptyList())
         catalog.favoritesByKind(id, "SERIES").flatMapLatest { favs ->
-            catalog.seriesList(id).map { list ->
-                val ids = favs.map { it.remoteId }.toSet()
-                list.filter { it.remoteId in ids }
-            }
+            catalog.seriesByRemoteIds(id, favs.map { it.remoteId })
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

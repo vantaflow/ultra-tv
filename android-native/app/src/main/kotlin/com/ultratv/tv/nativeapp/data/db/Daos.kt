@@ -258,8 +258,9 @@ interface ChannelDao {
 
 @Dao
 interface MovieDao {
-    @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY id")
-    fun observeForProvider(pid: Long): Flow<List<MovieEntity>>
+    /** Favoris : seulement les films demandés (index unique providerId+remoteId), jamais tout le catalogue. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND remoteId IN (:remoteIds) ORDER BY id")
+    fun observeByRemoteIds(pid: Long, remoteIds: List<String>): Flow<List<MovieEntity>>
 
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
@@ -327,8 +328,9 @@ interface MovieDao {
 
 @Dao
 interface SeriesDao {
-    @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY id")
-    fun observeForProvider(pid: Long): Flow<List<SeriesEntity>>
+    /** Favoris : seulement les séries demandées (index unique providerId+remoteId), jamais tout le catalogue. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND remoteId IN (:remoteIds) ORDER BY id")
+    fun observeByRemoteIds(pid: Long, remoteIds: List<String>): Flow<List<SeriesEntity>>
 
     /** Complète la fiche série avec ce que renvoie get_series_info (sans écraser par du vide). */
     @Query("UPDATE series SET plot = COALESCE(:plot, plot), genre = COALESCE(:genre, genre), `cast` = COALESCE(:cast, `cast`), backdrop = COALESCE(:backdrop, backdrop), year = COALESCE(:year, year), rating = COALESCE(:rating, rating) WHERE id = :id")

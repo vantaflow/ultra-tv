@@ -27,11 +27,15 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     private val mp: MediaPlayer
     private var firstFrame = false
 
+    /** Direct : tampon de DÉMARRAGE (comme Media3), pas le tampon minimum — 5 s d'attente avant l'image sinon. */
+    private val networkCachingMs = if (config.isLive) config.buffer.startMs.coerceAtLeast(1_000) else config.buffer.vlcNetworkCachingMs
+    @Volatile private var released = false
+
     init {
         val b = config.buffer
         val opts = arrayListOf(
             "--quiet", "--no-drop-late-frames", "--no-skip-frames",
-            "--network-caching=${b.vlcNetworkCachingMs}", "--live-caching=${b.vlcLiveCachingMs}", "--file-caching=${b.vlcFileCachingMs}",
+            "--network-caching=$networkCachingMs", "--live-caching=${b.vlcLiveCachingMs}", "--file-caching=${b.vlcFileCachingMs}",
             "--http-user-agent=${config.userAgent}", "--codec=all",
         )
         if (config.decoder != DecoderMode.HARDWARE) opts += "--no-mediacodec-dr"
@@ -72,15 +76,21 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun addExternalSubtitle(path: String): Boolean =
         mp.addSlave(org.videolan.libvlc.interfaces.IMedia.Slave.Type.Subtitle, Uri.fromFile(java.io.File(path)), true)
 
+    /** Zapping : le MÊME LibVLC / MediaPlayer enchaîne le média suivant (options de cache posées par média). */
+    override val reusable: Boolean get() = true
+
     override fun load(url: String, startPositionMs: Long) {
+        if (released) return
         firstFrame = false
+        // Flux précédent arrêté AVANT d'ouvrir le suivant (connexion unique du fournisseur).
+        if (mp.media != null) runCatching { mp.stop() }
         val media = Media(libVlc, Uri.parse(url)).apply {
             when (config.decoder) {
                 DecoderMode.HARDWARE -> setHWDecoderEnabled(true, true)
                 DecoderMode.SOFTWARE -> setHWDecoderEnabled(false, false)
                 DecoderMode.AUTO -> setHWDecoderEnabled(true, false)
             }
-            addOption(":network-caching=${config.buffer.vlcNetworkCachingMs}")
+            addOption(":network-caching=$networkCachingMs")
             addOption(":live-caching=${config.buffer.vlcLiveCachingMs}")
             addOption(":file-caching=${config.buffer.vlcFileCachingMs}")
             if (maxHeight != Int.MAX_VALUE) addOption(":preferred-resolution=${maxHeight.coerceAtLeast(240)}")
@@ -95,9 +105,10 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun play() { mp.play() }
     override fun pause() { mp.pause() }
     override fun seekTo(ms: Long) { mp.time = ms }
-    override val isPlaying get() = mp.isPlaying
-    override val positionMs get() = mp.time.coerceAtLeast(0)
-    override val durationMs get() = mp.length.takeIf { it > 0 } ?: -1L
+    // Lus par les boucles du lecteur (500 ms, 10 s) : jamais sur un MediaPlayer natif déjà libéré (plantage natif).
+    override val isPlaying get() = !released && mp.isPlaying
+    override val positionMs get() = if (released) 0L else mp.time.coerceAtLeast(0)
+    override val durationMs get() = if (released) -1L else mp.length.takeIf { it > 0 } ?: -1L
 
     override fun audioTracks(): List<TrackInfo> = mp.audioTracks.orEmpty().filter { it.id >= 0 }.map { TrackInfo(it.id.toString(), it.name, it.id == mp.audioTrack) }
     override fun subtitleTracks(): List<TrackInfo> = mp.spuTracks.orEmpty().filter { it.id >= 0 }.map { TrackInfo(it.id.toString(), it.name, it.id == mp.spuTrack) }
@@ -115,7 +126,7 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         }
     }
     override fun setSpeed(speed: Float) { mp.rate = speed }
-    override val hasVideo get() = mp.videoTracksCount > 0
+    override val hasVideo get() = !released && mp.videoTracksCount > 0
     private var maxHeight = Int.MAX_VALUE
     private var maxBitrateBps: Int? = null
 
@@ -123,6 +134,7 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) { this.maxHeight = maxHeight; this.maxBitrateBps = maxBitrateBps }
 
     override fun stats(): EngineStats {
+        if (released) return EngineStats()
         val v = mp.currentVideoTrack
         val s = mp.media?.stats
         return EngineStats(
@@ -134,6 +146,8 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     override fun release() {
+        if (released) return
+        released = true
         runCatching { mp.setEventListener(null) }
         runCatching { mp.stop() }
         runCatching { mp.detachViews() }
