@@ -284,7 +284,9 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
                 ProgressLine(progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), heightPx = 6, track = Color(0x66000000))
             }
             Column(Modifier.padding(horizontal = 12.design).padding(bottom = 16.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
-                Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Titre sur deux lignes (hauteur fixe : les cartes de la rangée restent alignées) — un titre d'épisode
+                // « Série : Épisode » ne tient presque jamais sur une seule.
+                Text(TitleCleaner.clean(e.title).title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 23.spx, lineHeight = 29.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (meta != null) Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }

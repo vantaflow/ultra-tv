@@ -305,7 +305,9 @@ internal fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Uni
                 com.ultratv.tv.nativeapp.ui.common.LangBadge(item.lang, modifier = Modifier.align(Alignment.TopStart).padding(10.design))
             }
         }
-        Text(item.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // Deux lignes réservées (cellules alignées dans la rangée / la grille) : un titre long n'est plus coupé à 15 caractères.
+        Text(item.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx,
+            lineHeight = if (touch) 16.sp else 27.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
         val meta = listOfNotNull(item.year?.toString(), item.rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
         Text(meta, color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.height(if (touch) 16.dp else 30.design))
     }

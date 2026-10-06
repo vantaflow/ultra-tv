@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.28] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Menu latéral : ouverture de nouveau fluide (les neuf entrées étaient recomposées à chaque image de l'animation
+  depuis la 1.2.25) et libellés affichés sans temps mort.
+- Titres coupés sur une ligne : carte « Reprendre la lecture », « Derniers films / séries ajoutés » et grilles
+  Films / Séries affichent désormais le titre sur deux lignes.
+
 ## [1.2.27] — 2026-10-05 (Android TV)
 
 ### Corrections

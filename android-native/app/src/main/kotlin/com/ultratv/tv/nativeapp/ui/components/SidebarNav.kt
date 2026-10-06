@@ -43,6 +43,7 @@ import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
@@ -122,7 +123,9 @@ fun SidebarNav(navController: NavController) {
         }
     }
     val labelAlphaState = androidx.compose.animation.core.animateFloatAsState(if (labels) 1f else 0f, tween(if (noAnim) 0 else 80), label = "railLabels")
-    val showLabels by remember { androidx.compose.runtime.derivedStateOf { labelAlphaState.value > 0f } }
+    // Libellés COMPOSÉS dès le début de l'ouverture (transparents jusqu'au seuil) : les créer seulement au seuil
+    // coûtait une image de mise en page sur une box modeste, d'où des entrées vides un instant avant le texte.
+    val showLabels by remember { androidx.compose.runtime.derivedStateOf { expanded || labelAlphaState.value > 0f } }
 
     val activeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val hasActive = route == "search" || railItems.any { isSelected(route, it.route) }
@@ -199,8 +202,14 @@ fun SidebarNav(navController: NavController) {
                 Spacer(Modifier.height(12.design))
                 // Hauteur des entrées selon la place réelle : neuf entrées + synchro + profil ne tenaient plus en 64 px
                 // et la dernière (Paramètres) était écrasée en une barre.
-                androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                // Seule la HAUTEUR est mesurée (onSizeChanged, état modifié seulement si elle change) : un BoxWithConstraints
+                // recomposait les neuf entrées à chaque image de l'élargissement du menu (largeur animée) → ouverture
+                // ralentie et libellés affichés en retard.
+                val density = androidx.compose.ui.platform.LocalDensity.current
+                var areaPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
+                Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { if (it.height != areaPx) areaPx = it.height }) {
                 val n = railItems.size
+                val maxHeight = if (areaPx > 0) with(density) { areaPx.toDp() } else (64 * n + 10 * (n - 1)).design
                 val gapPx = if (maxHeight >= (64 * n + 10 * (n - 1)).design) 10 else 4
                 val itemDp = ((maxHeight - (gapPx * (n - 1)).design) / n).coerceIn(40.design, 64.design)
                 Column(
