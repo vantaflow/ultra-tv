@@ -93,7 +93,8 @@ fun NavController.navigateTopLevel(route: String) {
     navigate(route) {
         popUpTo(graph.startDestinationId) { saveState = true }
         launchSingleTop = true
-        restoreState = true
+        // Paramètres rouvre toujours SON accueil, pas la sous-page quittée (ex. gestion des catégories).
+        restoreState = route != com.ultratv.tv.nativeapp.nav.Routes.SETTINGS
     }
 }
 

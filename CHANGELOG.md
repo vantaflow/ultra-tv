@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.34] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Paramètres : y revenir par le menu ouvre toujours l'accueil des paramètres, plus la sous-page quittée (ex. gestion
+  des catégories).
+
 ## [1.2.33] — 2026-10-06 (Android TV)
 
 ### Modifié

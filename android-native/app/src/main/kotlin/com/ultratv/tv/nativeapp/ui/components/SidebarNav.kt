@@ -231,7 +231,8 @@ fun SidebarNav(navController: NavController) {
                                     navController.navigate(item.route) {
                                         popUpTo(navController.graph.startDestinationId) { saveState = true }
                                         launchSingleTop = true
-                                        restoreState = true
+                                        // Paramètres rouvre toujours SON accueil, pas la sous-page quittée (ex. gestion des catégories).
+                                        restoreState = item.route != com.ultratv.tv.nativeapp.nav.Routes.SETTINGS
                                     }
                                 } else leaveRail()
                             },
