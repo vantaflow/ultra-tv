@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.35] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Direct › Tout : la liste n'est plus remplie d'en-têtes de sections vides (les séparateurs de la source, sans numéro,
+  remontaient tous en tête) ; « Tout » n'affiche que les chaînes.
+
+### Modifié
+- Direct › Tout : chaînes rangées dans l'ordre des catégories (celui choisi dans Paramètres › Catégories), puis dans
+  l'ordre de la playlist ; Haut/Bas suivent exactement cet ordre en lecture.
+
 ## [1.2.34] — 2026-10-06 (Android TV)
 
 ### Corrigé

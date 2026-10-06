@@ -93,7 +93,7 @@ class LiveViewModel @Inject constructor(
                 val visible = cats.filter { hiddenStore.keyFor("LIVE", id, it.remoteId) !in hidden }
                     .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
                 val total = visible.sumOf { it.count }
-                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total, sections = visible.sumOf { it.sections })) + visible
+                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -227,7 +227,7 @@ class LiveViewModel @Inject constructor(
                 val window = when (cat) {
                     CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId, profiles.currentIdNow)
                     CATEGORY_ALL -> {
-                        val rank = channelDao.rankAll(channel.providerId, channel.num, channel.id)
+                        val rank = channelDao.orderedAllIds(channel.providerId).indexOf(channel.id).coerceAtLeast(0)
                         channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
