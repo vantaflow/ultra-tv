@@ -151,7 +151,20 @@ object SyncScheduler {
     private const val DAILY = "ultratv-daily-sync"
 
     /** Synchro quotidienne à [hour] h (réseau, batterie non faible, appareil au repos ; non facturé si demandé). */
+    /**
+     * Configuration déjà appliquée (par nom de travail) : au lancement, rien n'est réécrit si elle n'a pas changé.
+     * Avant, chaque démarrage remplaçait les travaux (UPDATE), ce qui écrivait dans la base de WorkManager et
+     * repoussait la fenêtre de déclenchement de la synchro quotidienne.
+     */
+    private fun alreadyApplied(context: Context, name: String, sig: String): Boolean {
+        val sp = context.getSharedPreferences("sync_schedule", Context.MODE_PRIVATE)
+        if (sp.getString(name, null) == sig) return true
+        sp.edit().putString(name, sig).apply()
+        return false
+    }
+
     fun scheduleDaily(context: Context, hour: Int, unmeteredOnly: Boolean) {
+        if (alreadyApplied(context, DAILY, "daily:$hour:$unmeteredOnly")) return
         val now = java.util.Calendar.getInstance()
         val next = (now.clone() as java.util.Calendar).apply {
             set(java.util.Calendar.HOUR_OF_DAY, hour); set(java.util.Calendar.MINUTE, 0); set(java.util.Calendar.SECOND, 0)
@@ -171,6 +184,7 @@ object SyncScheduler {
 
     /** (Re-)schedules background sync. Pass 0 to cancel. */
     fun schedule(context: Context, intervalHours: Int) {
+        if (alreadyApplied(context, UNIQUE_NAME, "every:${intervalHours.coerceAtLeast(0)}")) return
         val wm = WorkManager.getInstance(context)
         if (intervalHours <= 0) {
             wm.cancelUniqueWork(UNIQUE_NAME)

@@ -36,6 +36,8 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
+    @Inject lateinit var okHttp: dagger.Lazy<okhttp3.OkHttpClient>
+    @Inject lateinit var posters: dagger.Lazy<com.ultratv.tv.nativeapp.data.tmdb.PosterResolver>
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -54,6 +56,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                     .maxSizeBytes(if (low) 96L * 1024 * 1024 else 256L * 1024 * 1024)
                     .build()
             }
+            // Client réseau PARTAGÉ (un seul pool de connexions et de fils) ; décodages limités à 2 sur l'entrée de gamme
+            // (défilement rapide d'une grille de logos : pics de mémoire sinon).
+            .okHttpClient { okHttp.get() }
+            .apply { if (low) decoderDispatcher(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
             .respectCacheHeaders(false)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
@@ -72,6 +78,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         val low = runCatching { adaptive.state.value.auto.lowRam }.getOrDefault(false)
         if (level >= TRIM_MEMORY_RUNNING_LOW || (low && level >= TRIM_MEMORY_UI_HIDDEN)) {
             runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+            runCatching { posters.get().trim() }
         }
     }
 
@@ -155,7 +162,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         Thread({
             val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
             while (true) {
-                try { Thread.sleep(2_000) } catch (_: InterruptedException) { return@Thread }
+                // Toutes les 5 s (et en veille longue si la télémétrie est coupée : le rapport n'irait nulle part) —
+                // avant : un réveil toutes les 2 s en permanence, y compris box en veille.
+                try { Thread.sleep(if (RemoteLog.telemetryEnabled) 5_000 else 30_000) } catch (_: InterruptedException) { return@Thread }
+                if (!RemoteLog.telemetryEnabled) continue
                 val ack = java.util.concurrent.atomic.AtomicBoolean(false)
                 mainHandler.post { ack.set(true) }
                 var waited = 0

@@ -201,7 +201,9 @@ class CloudSyncManager @Inject constructor(
             kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L })
                 .debounce(60_000).collect { syncSharedState() }
         }
-        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); syncSharedState() } }
+        // Changements venus des autres appareils : toutes les 10 min, seulement quand l'appli est affichée (box en veille :
+        // plus de requête réseau toutes les 10 min ; le travail périodique de 6 h et le retour sur l'appli suffisent).
+        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) syncSharedState() } }
     }
 
     private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)

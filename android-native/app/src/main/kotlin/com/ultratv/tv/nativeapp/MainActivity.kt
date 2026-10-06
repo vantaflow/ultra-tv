@@ -104,8 +104,14 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
     @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
+    override fun onStop() {
+        super.onStop()
+        com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false
+    }
+
     override fun onStart() {
         super.onStart()
+        com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true
         // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire
         // des jours sur une box et le guide ne couvre que les 24 h suivant sa synchro.
         if (::providerRepo.isInitialized) providerRepo.refreshEpgIfStale()

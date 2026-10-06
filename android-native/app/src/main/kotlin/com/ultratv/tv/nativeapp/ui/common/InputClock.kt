@@ -10,3 +10,8 @@ object InputClock {
     /** Une touche a été pressée il y a moins de [windowMs]. */
     fun recentKey(windowMs: Long = 600): Boolean = android.os.SystemClock.uptimeMillis() - lastKeyMs < windowMs
 }
+
+/** Application affichée à l'écran (MainActivity onStart / onStop) : les tâches périodiques « confort » s'y limitent. */
+object AppForeground {
+    @Volatile var visible: Boolean = false
+}

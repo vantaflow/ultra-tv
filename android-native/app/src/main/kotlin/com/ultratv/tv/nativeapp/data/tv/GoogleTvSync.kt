@@ -63,7 +63,9 @@ class GoogleTvSync @Inject constructor(
         started = true
         scope.launch {
             scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else history.observeRecent(prof, pid, 40) }
-                .debounce(3_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it) + WatchNextPlan.selectLive(it)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) } }
+                // 45 s de calme : pendant une lecture la position est enregistrée toutes les 30 s ; avant (3 s), chaque
+                // enregistrement réécrivait Watch Next dans Google TV. Maintenant : une écriture à l'arrêt de la lecture.
+                .debounce(45_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it) + WatchNextPlan.selectLive(it)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) } }
         }
         scope.launch {
             scope_.flatMapLatest { (prof, pid) ->

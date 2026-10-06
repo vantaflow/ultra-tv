@@ -35,7 +35,15 @@ class PosterResolver internal constructor(
         this(api, dao, { defaultLang(prefs) }, System::currentTimeMillis)
 
     private val gate = Semaphore(POSTER_MAX_PARALLEL)
-    private val memory = ConcurrentHashMap<String, String>()   // « » = rien trouvé
+    // « » = rien trouvé. BORNÉ (LRU, 1 500 titres) : sur une box allumée des jours, il grossissait à chaque titre vu.
+    private val memory: MutableMap<String, String> = java.util.Collections.synchronizedMap(
+        object : LinkedHashMap<String, String>(256, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 1_500
+        },
+    )
+
+    /** Pression mémoire : le cache est vidé (la base TMDB locale reste, rien n'est redemandé au réseau). */
+    fun trim() = memory.clear()
 
     /** URL de l'affiche TMDB (w342) ou null. À appeler hors du fil principal (la requête réseau est en IO). */
     suspend fun resolve(kind: TmdbKind, rawTitle: String, year: Int?): String? {
