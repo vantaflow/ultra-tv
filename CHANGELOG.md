@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.46] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Paramètres › Sources : « Définir par défaut » ou « Synchroniser » ouvraient le menu latéral. À la fermeture de la
+  fenêtre de choix, le focus perdu partait vers le menu, qui croyait à une navigation (une touche venait d'être
+  pressée). Le menu ne s'ouvre plus que sur une touche de déplacement (flèches, Menu) ; sinon, le focus revient à la
+  ligne de la page.
+
 ## [1.2.45] — 2026-10-06 (Android TV)
 
 ### Corrigé

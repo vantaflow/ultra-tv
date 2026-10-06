@@ -152,7 +152,7 @@ fun SidebarNav(navController: NavController) {
                     // en arrière-plan) ouvrait le menu sans action de l'utilisateur ; on rend alors le focus à la page.
                     .onFocusChanged { st ->
                         if (!st.hasFocus) expanded = false
-                        else if (com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey()) expanded = true
+                        else if (com.ultratv.tv.nativeapp.ui.common.InputClock.recentNavKey()) expanded = true
                         else if (!expanded) leaveRail()
                     }
                     .onPreviewKeyEvent { ev -> if (!expanded && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) expanded = true; false }
