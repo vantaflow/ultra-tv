@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.30] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Direct : le programme en cours s'affiche dès l'ouverture de la page et au changement de catégorie (il n'arrivait
+  qu'au premier défilement ou après une minute).
+- Guide rechargé en arrière-plan au retour sur l'application (sortie de veille comprise) s'il a plus de 12 h ou ne
+  couvre plus les 6 prochaines heures : sur une box, l'appli reste en mémoire des jours sans redémarrer.
+- Chaînes en double (même nom, même qualité) : les flux de secours sont numérotés « #2 », « #3 »… en Direct et dans
+  la liste des chaînes du lecteur.
+
 ## [1.2.29] — 2026-10-06 (Android TV)
 
 ### Corrigé

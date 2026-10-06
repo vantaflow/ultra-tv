@@ -73,4 +73,30 @@ class SyncPolicyTest {
         assertEquals(3 * h, t.liveMs)
         assertEquals(24 * h, t.vodMs)
     }
+
+    @Test
+    fun epgNeedsRefresh_guideRecentEtCouvrant_neRechargePas() {
+        assertEquals(false, SyncPolicy.epgNeedsRefresh(lastSyncAt = now - 2 * h, lastEndMs = now + 20 * h, now = now))
+    }
+
+    @Test
+    fun epgNeedsRefresh_synchroDePlusDe12h_recharge() {
+        assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = now - 13 * h, lastEndMs = now + 20 * h, now = now))
+    }
+
+    @Test
+    fun epgNeedsRefresh_guideQuiNeCouvrePlusLes6ProchainesHeures_recharge() {
+        assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = now - 2 * h, lastEndMs = now + 3 * h, now = now))
+    }
+
+    @Test
+    fun epgNeedsRefresh_guideVideOuJamaisSynchronise_recharge() {
+        assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = now - h, lastEndMs = null, now = now))
+        assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = 0, lastEndMs = now + 20 * h, now = now))
+    }
+
+    @Test
+    fun epgNeedsRefresh_horlogeQuiARecule_recharge() {
+        assertEquals(true, SyncPolicy.epgNeedsRefresh(lastSyncAt = now + h, lastEndMs = now + 20 * h, now = now))
+    }
 }

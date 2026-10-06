@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.live
 
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -237,10 +238,13 @@ private fun ChannelList(
     val state = rememberLazyListState()
     LaunchedEffect(selected) { state.scrollToItem(0) }
     // Seules les lignes visibles interrogent le guide.
+    // Les IDENTIFIANTS visibles sont suivis (pas seulement les positions) : à l'arrivée des données ou au changement de
+    // catégorie, les positions visibles restent 0…8 et le guide n'était demandé qu'au premier défilement.
     LaunchedEffect(state, channels) {
-        snapshotFlow { state.layoutInfo.visibleItemsInfo.map { it.index } }.collect { idx ->
-            vm.setVisible(idx.mapNotNull { channels.itemSnapshotList.getOrNull(it)?.takeIf { c -> !c.isSeparator }?.id })
-        }
+        snapshotFlow {
+            val snap = channels.itemSnapshotList
+            state.layoutInfo.visibleItemsInfo.mapNotNull { snap.getOrNull(it.index)?.takeIf { c -> !c.isSeparator }?.id }
+        }.distinctUntilChanged().collect { ids -> vm.setVisible(ids) }
     }
     // Section courante : le dernier séparateur au-dessus (ou à) la première ligne visible (en-tête collant).
     val stickyLabel by remember(state, channels) {
@@ -268,6 +272,7 @@ private fun ChannelList(
                         c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first,
                         highlighted = c.id == highlightId,
+                        variant = run { var n = 1; var j = i - 1; while (j >= 0 && n < 9) { val p = channels.peek(j) ?: break; if (!sameStream(p, c)) break; n++; j-- }; n },
                         modifier = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
                     )
@@ -328,10 +333,16 @@ internal fun flagsLabel(flags: Int): String? {
     return parts.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 }
 
+/** Même flux affiché à l'identique (nom, qualité, mentions) : les doublons du fournisseur se suivent dans la liste. */
+internal fun sameStream(a: ChannelEntity, b: ChannelEntity) =
+    !a.isSeparator && !b.isSeparator && a.quality == b.quality && a.flags == b.flags && a.title.trim().equals(b.title.trim(), ignoreCase = true)
+
 /** Qualité + mentions techniques : ce qui différencie les doublons d'une même chaîne. */
 @Composable
-internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean) {
+internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean, variant: Int = 1) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.design), verticalAlignment = Alignment.CenterVertically) {
+        // Flux de secours : même nom, même qualité, mêmes mentions que la ligne précédente → numéroté (« 2 », « 3 »…).
+        if (variant > 1) Text("#$variant", color = if (focused) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1)
         flagsLabel(flags)?.let { Text(it, color = if (focused) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1) }
         QualityBadge(quality, focused)
     }
@@ -341,9 +352,9 @@ internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean) {
 @Composable
 private fun ChannelRow(
     c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?,
-    modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, highlighted: Boolean = false,
+    modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, highlighted: Boolean = false, variant: Int = 1,
 ) {
-    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) { TouchChannelRow(c, position, locked, favorite, now, highlighted, onClick, onLongClick); return }
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) { TouchChannelRow(c, position, locked, favorite, now, highlighted, onClick, onLongClick, variant); return }
     FocusSurface(
         onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep,
         focusedScale = 1.03f, ringWidth = 5.design,
@@ -361,7 +372,7 @@ private fun ChannelRow(
             if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
             Spacer(Modifier.width(8.design))
-            StreamBadges(c.quality, c.flags, f)
+            StreamBadges(c.quality, c.flags, f, variant)
         }
     }
 }
@@ -418,7 +429,7 @@ private fun qualityName(q: Int) = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1
 
 /** Ligne chaîne tactile (maquette MobileDirect) : numéro, logo 48×32, nom + progression + programme, qualité. Sélectionnée (tablette) = fond plein. */
 @Composable
-private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit) {
+private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?, selected: Boolean, onClick: () -> Unit, onLongClick: () -> Unit, variant: Int = 1) {
     val ink = if (selected) Ux.TextOnLight else Ux.Text
     val sub = if (selected) Ux.OnFocus2 else Ux.Text3
     val frac = now?.let { ((System.currentTimeMillis() - it.startMs).toFloat() / (it.endMs - it.startMs).coerceAtLeast(1)).coerceIn(0f, 1f) }
@@ -436,7 +447,7 @@ private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, fa
             }
             if (favorite) Text("♥", color = Ux.Accent, fontSize = 13.sp, maxLines = 1)
             com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, false)
-            StreamBadges(c.quality, c.flags, selected)
+            StreamBadges(c.quality, c.flags, selected, variant)
         }
     }
 }

@@ -583,6 +583,10 @@ interface EpgDao {
     @Query("DELETE FROM epg WHERE channelId IN (SELECT id FROM channel WHERE providerId = :pid)")
     suspend fun deleteForProvider(pid: Long)
 
+    /** Fin du dernier programme du guide de la source (null si guide vide) : le guide couvre-t-il encore les heures à venir ? */
+    @Query("SELECT MAX(e.endMs) FROM epg e JOIN channel c ON c.id = e.channelId WHERE c.providerId = :pid")
+    suspend fun lastEndForProvider(pid: Long): Long?
+
     @Query("SELECT * FROM epg WHERE channelId IN (:channelIds) AND endMs >= :nowMs AND startMs <= :windowEndMs ORDER BY startMs")
     suspend fun rangeForChannels(channelIds: List<Long>, nowMs: Long, windowEndMs: Long): List<EpgEntity>
 

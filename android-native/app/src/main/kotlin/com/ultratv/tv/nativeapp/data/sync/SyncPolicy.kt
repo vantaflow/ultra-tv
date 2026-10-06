@@ -49,4 +49,13 @@ object SyncPolicy {
         // Contenus désactivés par l'utilisateur ; VOD / séries / guide seulement si le réseau le permet (non facturé) sauf demande explicite.
         return parts.filter { it in enabled && (heavyAllowed || force || it == SyncPart.LIVE) }
     }
+
+    /**
+     * Guide à recharger au RETOUR sur l'application (sortie de veille comprise) : une box TV garde l'appli en mémoire
+     * des jours sans la relancer, et le guide de la source ne couvre que −2 h / +24 h — au-delà, plus aucun programme
+     * « en cours ». Rechargé si la dernière synchro a plus de 12 h, si l'horloge a reculé, ou si le guide ne couvre
+     * plus les 6 prochaines heures ([lastEndMs] = fin du dernier programme, null si guide vide).
+     */
+    fun epgNeedsRefresh(lastSyncAt: Long, lastEndMs: Long?, now: Long): Boolean =
+        lastSyncAt <= 0L || now < lastSyncAt || now - lastSyncAt >= 12 * HOUR || lastEndMs == null || lastEndMs < now + 6 * HOUR
 }

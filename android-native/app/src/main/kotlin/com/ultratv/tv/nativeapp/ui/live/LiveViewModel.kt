@@ -158,7 +158,7 @@ class LiveViewModel @Inject constructor(
     }
 
     init {
-        viewModelScope.launch { visibleIds.debounce(200).collect { loadNowNext(it) } }
+        viewModelScope.launch { visibleIds.debounce(120).collect { loadNowNext(it) } }
         viewModelScope.launch { while (true) { delay(60_000); loadNowNext(visibleIds.value) } }
     }
 

@@ -104,6 +104,13 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
     @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
 
+    override fun onStart() {
+        super.onStart()
+        // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire
+        // des jours sur une box et le guide ne couvre que les 24 h suivant sa synchro.
+        if (::providerRepo.isInitialized) providerRepo.refreshEpgIfStale()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // SplashScreen API : affiche le thème de lancement tout de suite et évite
         // l'écran noir pendant l'init Hilt/Room.

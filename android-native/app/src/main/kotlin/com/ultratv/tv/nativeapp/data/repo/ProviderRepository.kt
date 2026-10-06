@@ -609,6 +609,27 @@ class ProviderRepository @Inject constructor(
         }
     }
 
+    @Volatile private var epgCheckAt = 0L
+    @Volatile private var epgRefreshJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Au retour sur l'application : recharge en arrière-plan le guide des sources Xtream périmé ou qui ne couvre plus
+     * les prochaines heures (voir [SyncPolicy.epgNeedsRefresh]). Au plus une vérification toutes les 15 min, jamais
+     * deux téléchargements en parallèle ; ne fait rien si le guide est désactivé dans les réglages.
+     */
+    fun refreshEpgIfStale() {
+        val now = System.currentTimeMillis()
+        if (now - epgCheckAt < 15 * 60_000L || epgRefreshJob?.isActive == true) return
+        epgCheckAt = now
+        epgRefreshJob = epgScope.launch {
+            if (!prefs.flow.first().syncEpg) return@launch
+            for (p in providerDao.observeAll().first().filter { it.kind == "XTREAM" }) {
+                if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
+                    runCatching { syncXmltv(p.id) }
+            }
+        }
+    }
+
     /** Langues détectées dans les catégories du serveur (3 requêtes légères, aucun contenu téléchargé). */
     suspend fun previewLanguages(providerId: Long): List<Pair<String, Int>> {
         val p = providerDao.byId(providerId) ?: return emptyList()

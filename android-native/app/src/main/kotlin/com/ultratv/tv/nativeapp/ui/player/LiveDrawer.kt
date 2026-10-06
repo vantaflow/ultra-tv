@@ -101,7 +101,7 @@ internal fun LiveDrawer(
                     Label("${title.uppercase()} · ${entries.size}", Modifier.padding(bottom = 8.design))
                     LazyColumn(state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
                         items(entries, key = { it.channel.id }) { e ->
-                            ChannelLine(e, index = entries.indexOf(e) + 1, D = D, onFocus = { selected = e; if (e.now == null) vm.fillProgrammes(listOf(e.channel)) }, onClick = { onPick(e.channel) },
+                            ChannelLine(e, index = entries.indexOf(e) + 1, variant = run { val k = entries.indexOf(e); var n = 1; var j = k - 1; while (j >= 0 && n < 9 && com.ultratv.tv.nativeapp.ui.live.sameStream(entries[j].channel, e.channel)) { n++; j-- }; n }, D = D, onFocus = { selected = e; if (e.now == null) vm.fillProgrammes(listOf(e.channel)) }, onClick = { onPick(e.channel) },
                                 modifier = if (e.isCurrent) Modifier.focusRequester(currentFocus) else Modifier)
                         }
                     }
@@ -132,7 +132,7 @@ private fun Label(text: String, modifier: Modifier = Modifier, color: Color = Ux
     Text(text, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.8f, TextUnitType.Sp), maxLines = 1, modifier = modifier)
 
 @Composable
-private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, variant: Int = 1, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val now = e.now
     val fraction = if (now != null && now.endMs > now.startMs) ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs)).coerceIn(0f, 1f) else 0f
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(96.design).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
@@ -144,7 +144,7 @@ private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, D: com.ultra
                 ProgressLine(fraction, Modifier.fillMaxWidth().clip(RoundedCornerShape(2.design)), heightPx = 4, track = if (f) Ux.OnFocus2.copy(alpha = 0.4f) else Ux.Surface2)
                 Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            com.ultratv.tv.nativeapp.ui.live.StreamBadges(e.channel.quality, e.channel.flags, f)
+            com.ultratv.tv.nativeapp.ui.live.StreamBadges(e.channel.quality, e.channel.flags, f, variant)
             if (e.isCurrent) Text(D.onAirPill, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
         }
     }
