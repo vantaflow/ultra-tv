@@ -96,7 +96,7 @@ fun HomeScreen(
     val channels by vm.channels.collectAsState()
     val favorites by vm.showingFavorites.collectAsState()
     val nowPlaying by vm.nowPlaying.collectAsState()
-    val sync by vm.syncStatus.collectAsState()
+    val syncPct by vm.syncPercent.collectAsState()
     val dataState: com.ultratv.tv.nativeapp.ui.common.DataStateViewModel = hiltViewModel()
     val failure by dataState.failure.collectAsState()
 
@@ -104,7 +104,7 @@ fun HomeScreen(
         val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
         val prof by profileVm.current.collectAsState()
         com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
-            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, sync?.percent, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
+            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, syncPct, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
             onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites,
             onPlay = onPlay, onPlayHistory = { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) },
             onOpenHero = { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) },
@@ -129,7 +129,7 @@ fun HomeScreen(
                     action2 = D.retry, onAction2 = { dataState.retry(f.providerId) }, takeFocus = false,
                 )
             }
-            loaded -> LoadingCard(D.homeEmpty, sync?.percent)
+            loaded -> LoadingCard(D.homeEmpty, syncPct)
         }
 
         if (resume.isNotEmpty()) Section(D.continueWatching) {

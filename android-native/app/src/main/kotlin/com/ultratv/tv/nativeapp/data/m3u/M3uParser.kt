@@ -53,6 +53,7 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
         var seq = 0
 
         var pending: String? = null   // dernière ligne #EXTINF en attente d'URL
+        val usedIds = HashSet<String>()
         while (true) {
             val raw = reader.readLine() ?: break
             val line = raw.trim()
@@ -72,9 +73,17 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
                 )
             }
             val tvgId = attrs["tvg-id"]?.takeIf { it.isNotBlank() }
+            // Un tvg-id est souvent RÉPÉTÉ (variantes HD/SD, même chaîne dans plusieurs groupes) : l'identifiant est unique
+            // en base, donc les suivantes écrasaient la première. La première garde le tvg-id (favoris existants), les
+            // autres reçoivent un suffixe ; toutes gardent tvg-id pour le guide.
+            val rid = when {
+                tvgId == null -> "m3u-${seq++}"
+                usedIds.add(tvgId) -> tvgId
+                else -> "$tvgId#${seq++}"
+            }
             channels += ChannelEntity(
                 providerId = providerId,
-                remoteId = tvgId ?: "m3u-${seq++}",
+                remoteId = rid,
                 name = displayName,
                 logo = attrs["tvg-logo"],
                 categoryId = group?.let { "g:$it" },

@@ -43,7 +43,8 @@ class PosterResolver internal constructor(
     )
 
     /** Pression mémoire : le cache est vidé (la base TMDB locale reste, rien n'est redemandé au réseau). */
-    fun trim() = memory.clear()
+    fun trim() { memory.clear(); failedAt.clear() }
+    private val failedAt = ConcurrentHashMap<String, Long>()
 
     /** URL de l'affiche TMDB (w342) ou null. À appeler hors du fil principal (la requête réseau est en IO). */
     suspend fun resolve(kind: TmdbKind, rawTitle: String, year: Int?): String? {
@@ -54,6 +55,9 @@ class PosterResolver internal constructor(
         if (key.startsWith("|")) return null
         val mk = "$rowKind/$key"
         memory[mk]?.let { return it.ifEmpty { null } }
+        // Erreur réseau récente pour ce titre : pas de nouvel essai avant 2 min (hors ligne, chaque cellule qui revenait à
+        // l'écran relançait une requête et attendait le délai réseau).
+        failedAt[mk]?.let { if (clock() - it < 120_000L) return dao.get(rowKind, 0L, key)?.posterPath?.let { p -> TmdbImages.poster342(p) } }
         val cached = dao.get(rowKind, 0L, key)
         if (cached != null && clock() - cached.fetchedAt < POSTER_TTL_MS) {
             val p = cached.posterPath
@@ -66,7 +70,9 @@ class PosterResolver internal constructor(
                 api.searchPoster(kind, q, l) ?: if (q.year != null) api.searchPoster(kind, q.copy(year = null), l) else null
             }
         } catch (e: java.io.IOException) {
-            return cached?.posterPath?.let { TmdbImages.poster342(it) }   // erreur transitoire : on ne mémorise pas
+            if (failedAt.size > 2_000) failedAt.clear()
+            failedAt[mk] = clock()                                            // erreur transitoire : cache négatif court
+            return cached?.posterPath?.let { TmdbImages.poster342(it) }
         }
         dao.upsert(TmdbInfoEntity(kind = rowKind, providerId = 0L, remoteId = key, posterPath = path, fetchedAt = clock()))
         val url = path?.let { TmdbImages.poster342(it) }

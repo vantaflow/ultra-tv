@@ -257,7 +257,7 @@ fun resumeTarget(eps: List<EpisodeEntity>, watched: List<com.ultratv.tv.nativeap
 fun cleanEpisodeTitle(raw: String, seriesName: String, seriesTitle: String): String {
     var t = raw
     for (n in listOf(seriesName, seriesTitle)) if (n.isNotBlank()) t = t.replace(n, "", ignoreCase = true)
-    t = t.replace(Regex("\\bS\\d{1,2}\\s?E\\d{1,3}\\b", RegexOption.IGNORE_CASE), "")
+    t = t.replace(SXXEXX, "")
     return t.trim().trim('-', '–', '·', ':', ' ').trim()
 }
 
@@ -301,3 +301,6 @@ private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?,
         }
     }
 }
+
+/** Créée une fois (et non à chaque ligne d'épisode composée). */
+private val SXXEXX = Regex("\\bS\\d{1,2}\\s?E\\d{1,3}\\b", RegexOption.IGNORE_CASE)

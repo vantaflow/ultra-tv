@@ -111,7 +111,7 @@ class LiveViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId) { id, cat, hidden, lv, prof -> arrayOf(id, cat, hidden, lv, prof) }
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId) { id, cat, hidden, lv, prof -> listOf<Any?>(id, cat, hidden, lv, prof) }   // liste : égalité par contenu (un Array se compare par référence)
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView

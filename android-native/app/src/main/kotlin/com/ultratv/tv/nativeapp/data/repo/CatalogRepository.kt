@@ -82,17 +82,28 @@ class CatalogRepository @Inject constructor(
     suspend fun loadEpisodes(seriesId: Long) {
         val s = seriesDao.byId(seriesId) ?: return
         val p = providerDao.byId(s.providerId) ?: return
+        val now = System.currentTimeMillis()
+        // Fiche déjà chargée il y a moins de 30 min et épisodes présents : pas de nouveau get_series_info à chaque ouverture.
+        val last = episodesFetchedAt[seriesId]
+        if (last != null && now - last < 30 * 60_000L && episodeDao.forSeries(seriesId).isNotEmpty()) return
         val eps = when (p.kind) {
             "XTREAM" -> {
                 val d = xtream.fetchSeriesDetail(p, s.remoteId, s.id) ?: return
-                seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
+                // Mise à jour seulement si quelque chose change : chaque écriture de « series » relance les requêtes de l'accueil.
+                if (d.plot != s.plot || d.genre != s.genre || d.cast != s.cast || d.backdrop != s.backdrop || d.year != s.year || d.rating != s.rating)
+                    seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
                 d.episodes
             }
             else -> return
         }
-        episodeDao.deleteForSeries(seriesId)
-        episodeDao.upsertAll(eps)
+        episodesFetchedAt[seriesId] = now
+        // Liste identique (hors identifiants internes) : rien à réécrire, pas de clignotement ni de perte de focus.
+        val current = episodeDao.forSeries(seriesId).map { it.copy(id = 0) }
+        if (current.sortedWith(EPISODE_ORDER) == eps.map { it.copy(id = 0) }.sortedWith(EPISODE_ORDER)) return
+        episodeDao.replaceForSeries(seriesId, eps)
     }
+
+    private val episodesFetchedAt = java.util.concurrent.ConcurrentHashMap<Long, Long>()
 
     /**
      * Détails d'un film : cache Room (TTL 7 jours ; 1 jour si la source n'a rien renvoyé), sinon get_vod_info.
@@ -118,13 +129,14 @@ class CatalogRepository @Inject constructor(
      * Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. Une seule entrée par œuvre
      * ([SearchDedup]) ; les programmes EPG (7 jours, une ligne par chaîne) s'ajoutent aux chaînes/films/séries.
      */
-    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis()): SearchResults {
+    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
         return SearchResults(
             channels = channelDao.searchFts(pid, match, limit),
             movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit),
             series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit),
-            programs = searchPrograms(pid, query, nowMs),
+            // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
+            programs = if (includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
         )
     }
 
@@ -222,3 +234,5 @@ private const val DAY_MS = 24L * 3_600_000
 /** Durée de validité d'une ligne de cache : 7 jours si elle porte des détails, 1 jour si elle est vide. */
 internal fun vodInfoTtlMs(v: VodInfoEntity): Long =
     if (v.plot == null && v.cast == null && v.genre == null && v.backdrop == null) DAY_MS else 7 * DAY_MS
+
+private val EPISODE_ORDER = compareBy<com.ultratv.tv.nativeapp.data.db.EpisodeEntity>({ it.season }, { it.episode }, { it.remoteId })

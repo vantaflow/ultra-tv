@@ -88,8 +88,11 @@ class SearchViewModel @Inject constructor(
         job = viewModelScope.launch {
             delay(220)
             val pid = provider.firstActive()?.id ?: return@launch
-            _results.value = catalog.search(pid, s)
+            // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
+            val quick = catalog.search(pid, s, includePrograms = false)
+            _results.value = quick
             _searching.value = false
+            if (s.trim().length >= 3) _results.value = quick.copy(programs = catalog.searchPrograms(pid, s))
             if (s.length >= 3) history.record(s)
         }
     }

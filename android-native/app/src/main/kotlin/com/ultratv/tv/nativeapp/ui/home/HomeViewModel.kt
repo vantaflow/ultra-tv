@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.home
 
+import kotlinx.coroutines.flow.take
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
@@ -58,10 +60,14 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** `null` tant que Room n'a pas répondu (évite de montrer « aucune source » une fraction de seconde). */
-    val providersLoaded: StateFlow<Boolean> = provider.observeProviders().map { true }
+    // Dérivé de [providers] (même observateur Room) plutôt qu'une seconde souscription à la table.
+    val providersLoaded: StateFlow<Boolean> = provider.observeProviders().take(1).map { true }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val syncStatus = bus.status
+    /** Seul le pourcentage est affiché : l'accueil n'est plus recomposé à chaque message de progression. */
+    val syncPercent: StateFlow<Int?> = bus.status.map { it?.percent }.distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
@@ -78,11 +84,11 @@ class HomeViewModel @Inject constructor(
 
     /** Derniers films / séries ajoutés par le fournisseur. */
     val latestMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestMovies(id, 15) }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestMovies(id, 15).atMostEvery(1_000) }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     val latestSeries: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestSeries(id, 15) }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.latestSeries(id, 15).atMostEvery(1_000) }
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -95,7 +101,8 @@ class HomeViewModel @Inject constructor(
     /** « À la une » : la série la mieux notée avec image paysage, à défaut le film le mieux noté. */
     val hero: StateFlow<HeroItem?> = pid.flatMapLatest { id ->
         if (id == null) flowOf(null)
-        else combine(catalog.heroSeries(id), catalog.heroMovie(id)) { s, m ->
+        // Pendant la synchro, les tables changent sans arrêt : au plus une relecture par seconde.
+        else combine(catalog.heroSeries(id).atMostEvery(1_000), catalog.heroMovie(id).atMostEvery(1_000)) { s, m ->
             when {
                 s != null -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop, s.poster)
                 m != null -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop, m.poster)
@@ -106,13 +113,14 @@ class HomeViewModel @Inject constructor(
 
     /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
     val favoriteChannels: StateFlow<List<ChannelEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 12) }
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.favoriteChannels(id, 12).atMostEvery(1_000) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    private val fallbackChannels: Flow<List<ChannelEntity>> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.channelsWithLogo(id, 12) }
-
-    val channels: StateFlow<List<ChannelEntity>> = combine(favoriteChannels, fallbackChannels) { fav, other -> fav.ifEmpty { other } }
+    // Chaînes de repli observées SEULEMENT quand il n'y a aucun favori (avant : toujours abonnées).
+    val channels: StateFlow<List<ChannelEntity>> = combine(pid, favoriteChannels) { id, fav -> id to fav }
+        .flatMapLatest { (id, fav) ->
+            if (fav.isNotEmpty() || id == null) flowOf(fav) else catalog.channelsWithLogo(id, 12).atMostEvery(1_000)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val showingFavorites: StateFlow<Boolean> = favoriteChannels.map { it.isNotEmpty() }

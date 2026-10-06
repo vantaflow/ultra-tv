@@ -10,6 +10,12 @@ package com.ultratv.tv.nativeapp.data.repo
 object TitleCleaner {
     data class Cleaned(val title: String, val year: Int?, val quality: String?)
 
+    // Créés une fois : le nettoyeur est appelé pour chaque titre affiché ou synchronisé (avant : recréés à chaque appel).
+    private val COUNTRY_CODE = Regex("[A-Z]{2,3}")
+    private val MULTI_SPACE = Regex("""\s{2,}""")
+    private val DOTS_UNDERSCORES = Regex("""[._]+""")
+    private val ABSENT_VALUES = setOf("none", "null", "undefined", "n/a", "0", "0000-00-00", "-")
+    private val QUALITY_TOKENS = setOf("8K", "4K", "UHD", "FHD", "HD", "SD")
     private val bracketPrefix = Regex("""^\s*(?:\[[^\]]{1,12}]|\|[\p{L}\p{N}+ \-]{1,10}\||\([A-Za-z]{2,4}\))\s*""")
     private val pipePrefix = Regex("""^\s*[\p{L}\p{N}+]{1,8}(?:[- ][\p{L}\p{N}+]{1,8}){0,2}\s*\|\s*""")
     private val colonPrefix = Regex("""^[A-Z0-9][A-Z0-9+/ \-]{0,11}:\s+""")
@@ -27,11 +33,11 @@ object TitleCleaner {
     fun prefixBadge(raw: String, cleaned: String): String? {
         val i = raw.indexOf(cleaned)
         if (i <= 0) return null
-        return Regex("[A-Z]{2,3}").find(raw.substring(0, i))?.value
+        return COUNTRY_CODE.find(raw.substring(0, i))?.value
     }
 
     /** Retire lettres modificatrices / symboles décoratifs (« ᴿᴬᵂ », « ◉ », « ³⁸⁴⁰ᴾ »). */
-    fun stripDecorations(s: String): String = s.filterNot(::isDecoration).replace(Regex("""\s{2,}"""), " ").trim()
+    fun stripDecorations(s: String): String = s.filterNot(::isDecoration).replace(MULTI_SPACE, " ").trim()
 
     private val absentTail = Regex("""[.\s_]+(?:None|null|undefined|N/A)\s*$""", RegexOption.IGNORE_CASE)
     private val dottedYear = Regex("""[.\s_]+(19\d{2}|20\d{2})\s*$""")
@@ -46,7 +52,7 @@ object TitleCleaner {
     fun tidy(title: String): String {
         var s = title.trim()
         s = s.replace(absentTail, "").trim()
-        if (!s.contains(' ') && (s.contains('.') || s.contains('_'))) s = s.replace(Regex("""[._]+"""), " ").trim()
+        if (!s.contains(' ') && (s.contains('.') || s.contains('_'))) s = s.replace(DOTS_UNDERSCORES, " ").trim()
         s = s.replace(dottedYear, "").trim()
         val letters = s.filter { it.isLetter() }
         if (letters.length >= 4 && letters.none { it.isLowerCase() }) {
@@ -65,7 +71,7 @@ object TitleCleaner {
     fun presentable(v: String?): String? {
         val t = v?.trim().orEmpty()
         if (t.isEmpty()) return null
-        return if (t.lowercase() in setOf("none", "null", "undefined", "n/a", "0", "0000-00-00", "-")) null else t
+        return if (t.lowercase() in ABSENT_VALUES) null else t
     }
 
     fun clean(raw: String, live: Boolean = false): Cleaned {
@@ -98,11 +104,11 @@ object TitleCleaner {
             while (true) {
                 val q = trailingQuality.find(s) ?: break
                 val tok = q.value.trim().uppercase()
-                if (quality == null && tok in setOf("8K", "4K", "UHD", "FHD", "HD", "SD")) quality = tok
+                if (quality == null && tok in QUALITY_TOKENS) quality = tok
                 s = s.substring(0, q.range.first).trim()
             }
         }
-        s = s.trim('#', ' ', '-', '_', '|', ':').replace(Regex("""\s{2,}"""), " ")
+        s = s.trim('#', ' ', '-', '_', '|', ':').replace(MULTI_SPACE, " ")
         if (!live) {
             val d = dottedYear.find(s)
             if (year == null && d != null) year = d.groupValues[1].toInt()

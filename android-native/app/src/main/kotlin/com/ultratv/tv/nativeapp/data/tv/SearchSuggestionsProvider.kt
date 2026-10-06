@@ -37,15 +37,16 @@ class SearchSuggestionsProvider : ContentProvider() {
         if (q.length < 2) return cursor
         val deps = EntryPointAccessors.fromApplication(context!!.applicationContext, Deps::class.java)
         runCatching {
-            runBlocking {
+            // Fil Binder du lanceur : jamais plus de 0,8 s (sinon ANR possible côté appelant) ; pas de recherche dans le guide.
+            runBlocking { kotlinx.coroutines.withTimeoutOrNull(800) {
                 val ps = deps.providers().observeProviders().first()
-                val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id ?: return@runBlocking
-                val r = deps.catalog().search(pid, q, limit = 8)
+                val pid = (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id ?: return@withTimeoutOrNull
+                val r = deps.catalog().search(pid, q, limit = 8, includePrograms = false)
                 var id = 0L
                 r.movies.forEach { m -> cursor.addRow(row(id++, m.title, "Film", m.poster, DeepLink.movie(m.providerId, m.remoteId))) }
                 r.series.forEach { s -> cursor.addRow(row(id++, s.title, "Série", s.poster, DeepLink.series(s.providerId, s.remoteId))) }
                 r.channels.forEach { c -> cursor.addRow(row(id++, c.title, "Direct", c.logo, DeepLink.live(c.providerId, c.remoteId))) }
-            }
+            } }
         }
         return cursor
     }

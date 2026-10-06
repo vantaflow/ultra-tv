@@ -408,6 +408,16 @@ interface EpisodeDao {
 
     @Query("DELETE FROM episode WHERE seriesId = :sid")
     suspend fun deleteForSeries(sid: Long)
+
+    @Query("SELECT * FROM episode WHERE seriesId = :sid ORDER BY season, episode")
+    suspend fun forSeries(sid: Long): List<EpisodeEntity>
+
+    /** Remplacement ATOMIQUE : l'écran ne voit jamais la liste vide entre la suppression et la réinsertion. */
+    @androidx.room.Transaction
+    suspend fun replaceForSeries(sid: Long, eps: List<EpisodeEntity>) {
+        deleteForSeries(sid)
+        upsertAll(eps)
+    }
 }
 
 @Dao

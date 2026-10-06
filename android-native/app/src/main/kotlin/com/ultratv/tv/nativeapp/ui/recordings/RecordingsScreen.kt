@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -96,8 +97,8 @@ fun RecordingsScreen(
     val D = LocalDs.current
     val ctx = LocalContext.current
     // En cours d'abord, puis les programmés par heure de début, puis le reste (file, échecs).
-    val active = list.filter { it.status != "done" }.sortedWith(compareBy({ rank(it.status) }, { it.scheduledStartMs }))
-    val done = list.filter { it.status == "done" }
+    val active = remember(list) { list.filter { it.status != "done" }.sortedWith(compareBy({ rank(it.status) }, { it.scheduledStartMs })) }
+    val done = remember(list) { list.filter { it.status == "done" } }
     val used = list.sumOf { if (it.status == "done") it.totalBytes.coerceAtLeast(it.downloadedBytes) else it.downloadedBytes }
     val free = remember(list) { runCatching { StatFs((ctx.getExternalFilesDir(null) ?: ctx.filesDir).path).availableBytes }.getOrDefault(0L) }
     val total = used + free
@@ -136,7 +137,9 @@ fun RecordingsScreen(
         if (active.isNotEmpty()) {
             GroupLabel(D.recActive)
             LazyColumn(Modifier.heightIn(max = 380.design), verticalArrangement = Arrangement.spacedBy(14.design)) {
-                items(active.size) { i -> ActiveRow(active[i], S, D) { vm.remove(active[i].id) } }
+                // Action selon l'état (arrêter / annuler la programmation / supprimer) : avant, toujours « supprimer » —
+                // la ligne d'un enregistrement EN COURS disparaissait pendant que l'enregistrement continuait.
+                items(active, key = { it.id }) { r -> ActiveRow(r, S, D) { vm.act(r) } }
             }
         }
         if (done.isNotEmpty()) {

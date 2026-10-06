@@ -13,7 +13,8 @@ object ProfileColors {
 
 /** Heuristique « catégorie adulte » : la même que celle qui verrouille les catégories à l'import. */
 object AdultHeuristic {
-    val regex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
+    // « ero » seul attrapait « Hero », « Heroes », « Zero »… : mot entier (ero, erotic, érotique, erotik…).
+    val regex = Regex("xxx|adult|18\\+|porn|\\b[eé]ro(tic|tica|tique|tik|tico)?\\b|adulte|للكبار", RegexOption.IGNORE_CASE)
     fun isAdult(categoryName: String): Boolean = regex.containsMatchIn(categoryName)
 }
 

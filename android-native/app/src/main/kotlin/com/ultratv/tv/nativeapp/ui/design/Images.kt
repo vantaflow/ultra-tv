@@ -75,11 +75,12 @@ fun SlotImage(
             )
         }
         if (!url.isNullOrBlank()) {
+            val ctx = LocalContext.current
+            // Requête construite une fois par (url, mode) : la recréer à chaque recomposition (focus) coûtait une allocation
+            // et une comparaison de modèle par vignette visible.
+            val request = androidx.compose.runtime.remember(url, lowRam) { ImageRequest.Builder(ctx).data(url).crossfade(!lowRam).build() }
             AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(url)
-                    .crossfade(!lowRam)
-                    .build(),
+                model = request,
                 contentDescription = null,
                 contentScale = if (fit == SlotFit.Crop) ContentScale.Crop else ContentScale.Fit,
                 alignment = Alignment.Center,

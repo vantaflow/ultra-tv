@@ -211,7 +211,7 @@ private fun ResumeCard(e: WatchHistoryEntity, D: DesignStrings, onClick: () -> U
         mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
         else -> D.minLeft.format(mins)
     }
-    val title = TitleCleaner.clean(e.title).title
+    val title = androidx.compose.runtime.remember(e.title) { TitleCleaner.clean(e.title).title }
     Column(Modifier.width(200.dp).clip(RoundedCornerShape(14.dp)).clickable(onClickLabel = title, onClick = onClick), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Box(Modifier.fillMaxWidth().height(112.dp)) {
             ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 28)

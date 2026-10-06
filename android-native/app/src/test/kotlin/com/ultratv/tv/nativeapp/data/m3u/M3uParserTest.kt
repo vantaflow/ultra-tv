@@ -52,4 +52,22 @@ class M3uParserTest {
         assertEquals(50_000, r.channels.size)
         assertEquals(100, r.categories.size)
     }
+
+    @Test fun parse_tvgIdRepete_chaqueChaineGardeUnIdentifiantUnique() {
+        val r = parser.parse(
+            """
+            #EXTM3U
+            #EXTINF:-1 tvg-id="tf1.fr" group-title="HD",TF1 HD
+            http://s/1.ts
+            #EXTINF:-1 tvg-id="tf1.fr" group-title="SD",TF1 SD
+            http://s/2.ts
+            #EXTINF:-1 tvg-id="tf1.fr" group-title="4K",TF1 4K
+            http://s/3.ts
+            """.trimIndent(),
+            providerId = 7,
+        )
+        assertEquals(3, r.channels.map { it.remoteId }.toSet().size)
+        assertEquals("tf1.fr", r.channels.first().remoteId)                 // la première garde son identifiant (favoris)
+        assertEquals(listOf("tf1.fr", "tf1.fr", "tf1.fr"), r.channels.map { it.epgChannelId })   // toutes gardent le guide
+    }
 }

@@ -145,7 +145,7 @@ class CatalogGridViewModel @Inject constructor(
         }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(30_000), null)
     }
 
-    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> arrayOf<Any?>(p, k, c, lv) }
+    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> listOf<Any?>(p, k, c, lv) }
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val p = arr[0] as Long?; val k = arr[1] as CatalogKind; val cat = arr[2] as String?; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView

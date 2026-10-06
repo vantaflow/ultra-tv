@@ -19,7 +19,15 @@ object EpgClock {
 
     /** Fuseau choisi dans les réglages ("" = système). Lu à chaque formatage : un changement s'applique tout de suite. */
     @Volatile var zoneId: String = ""
-    private fun zone(): java.util.TimeZone = zoneId.takeIf { it.isNotBlank() }?.let { java.util.TimeZone.getTimeZone(it) } ?: java.util.TimeZone.getDefault()
+    /** Fuseau mis en cache tant que [zoneId] ne change pas (getTimeZone recrée l'objet ; appelé des centaines de fois par écran). */
+    @Volatile private var zoneCache: Pair<String, java.util.TimeZone>? = null
+    private fun zone(): java.util.TimeZone {
+        val id = zoneId
+        zoneCache?.let { (k, z) -> if (k == id) return z }
+        val z = id.takeIf { it.isNotBlank() }?.let { java.util.TimeZone.getTimeZone(it) } ?: java.util.TimeZone.getDefault()
+        zoneCache = id to z
+        return z
+    }
 
     fun apply(ms: Long): Long = ms + offsetMinutes * 60_000L
 

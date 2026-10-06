@@ -2,6 +2,29 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.43] — 2026-10-06 (Android TV)
+
+### Corrigé
+- Enregistrements : appuyer sur un enregistrement en cours l'arrête, et sur un enregistrement programmé l'annule. Avant,
+  la ligne était supprimée pendant que l'enregistrement continuait.
+- Playlists M3U : les chaînes partageant un même tvg-id (variantes HD / SD, plusieurs groupes) ne s'écrasent plus.
+- Fiche série : plus de clignotement ni de perte du focus à l'ouverture. Les épisodes sont remplacés en une transaction,
+  et seulement s'ils ont changé ; la fiche est retéléchargée au plus toutes les 30 min.
+- Direct : la liste ne se recharge plus en boucle pendant une synchro (filtre de dédoublonnage inopérant sur un tableau).
+- Contrôle parental : « Hero », « Heroes », « Zero »… ne sont plus pris pour des catégories adultes.
+
+### Amélioré
+- Recherche :
+  - chaînes, films et séries s'affichent tout de suite, les programmes du guide (plus lents) ensuite et à partir de
+    3 caractères ;
+  - les suggestions Google TV ne bloquent plus le lanceur (0,8 s au plus, sans le guide).
+- Accueil :
+  - rangées relues au plus une fois par seconde pendant la synchro ;
+  - chaînes de repli observées seulement sans favori ;
+  - seul le pourcentage de synchro est suivi.
+- Affiches TMDB : une erreur réseau n'est pas réessayée pendant 2 min pour un même titre.
+- Divers : fuseau horaire et requêtes d'images mis en cache ; expressions régulières des titres créées une seule fois.
+
 ## [1.2.42] — 2026-10-06 (Android TV)
 
 ### Amélioré

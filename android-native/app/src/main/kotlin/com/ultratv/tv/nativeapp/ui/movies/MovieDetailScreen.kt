@@ -335,7 +335,7 @@ fun movieDuration(raw: String?, hUnit: String = "h", minUnit: String = "min"): S
     if (t.isEmpty()) return null
     val mins = when {
         t.all { it.isDigit() } -> t.toIntOrNull()
-        Regex("""\d{1,2}:\d{2}(:\d{2})?""").matches(t) -> t.split(':').let { it[0].toInt() * 60 + it[1].toInt() }
+        HMS.matches(t) -> t.split(':').let { it[0].toInt() * 60 + it[1].toInt() }
         else -> return t.takeIf { it.length <= 12 }
     } ?: return null
     if (mins <= 0) return null
@@ -348,3 +348,6 @@ fun formatClock(ms: Long): String {
     val h = t / 3600; val mi = (t % 3600) / 60; val se = t % 60
     return if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, mi, se) else String.format(java.util.Locale.ROOT, "%d:%02d", mi, se)
 }
+
+/** Créée une fois (movieDuration est appelée pour chaque ligne d'épisode). */
+private val HMS = Regex("""\d{1,2}:\d{2}(:\d{2})?""")

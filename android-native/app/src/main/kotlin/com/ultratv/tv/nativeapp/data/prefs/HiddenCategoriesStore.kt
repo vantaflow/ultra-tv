@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.prefs
 
+import kotlinx.coroutines.flow.distinctUntilChanged
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -28,7 +29,9 @@ class HiddenCategoriesStore @Inject constructor(
     private val legacyKey = stringSetPreferencesKey("hidden_category_ids")
     private val importedKey = booleanPreferencesKey("imported_into_profiles")
 
-    val hidden: Flow<Set<String>> = profiles.hiddenCategoryKeys
+    // Dédoublonné : la source relit la table des catégories à CHAQUE écriture (synchro) ; sans cela, la liste Direct
+    // (Pager) et les catalogues étaient recréés en boucle pendant une synchro.
+    val hidden: Flow<Set<String>> = profiles.hiddenCategoryKeys.distinctUntilChanged()
 
     suspend fun set(id: String, hidden: Boolean) = profiles.setCategoryHidden(id, hidden)
 
