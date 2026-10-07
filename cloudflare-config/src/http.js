@@ -54,7 +54,9 @@ export function html(body, n, status = 200, { camera = false } = {}) {
     "img-src 'self' data:",
     "connect-src 'self'",
     "font-src 'self'",
-    "form-action 'self'",
+    // trakt.tv : « Connecter Trakt » est un formulaire POST redirigé vers la page d'autorisation Trakt (form-action
+    // s'applique aussi aux redirections).
+    "form-action 'self' https://trakt.tv",
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join("; ");

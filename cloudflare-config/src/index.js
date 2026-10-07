@@ -30,6 +30,10 @@ import {
 import { tmdbProxy } from "./tmdb.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
+import {
+  TRAKT_STATE_TTL_S, pkcePair, authorizeUrl, exchangeCode, refreshTokens, traktUsername, revokeToken,
+  parseScrobble, resolveTmdb, traktScrobbleBody, sendScrobble,
+} from "./trakt.js";
 import { fontResponse } from "./fonts.js";
 import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
@@ -137,6 +141,7 @@ async function route(req, env) {
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
+  if (path === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -168,9 +173,10 @@ async function route(req, env) {
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink"].includes(path)
+  const traktCallback = path === "/trakt/callback" && m === "GET";
+  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account))$/.test(path));
-  if (!dashboardRoute && !pairRoute && !mutating) return new Response("Not found", { status: 404 });
+  if (!dashboardRoute && !pairRoute && !traktCallback && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
     return redirect(c ? `/login?next=${encodeURIComponent(`/pair?code=${c}`)}` : "/login");
@@ -182,6 +188,8 @@ async function route(req, env) {
     const c = normalizeCode(raw);
     return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c });
   }
+
+  if (traktCallback) return traktFinish(env, sess.acct, url);
 
   if (dashboardRoute) {
     const n = nonce();
@@ -229,6 +237,17 @@ async function route(req, env) {
   if (path === "/providers") return addProvider(env, acct, form);
   if (path === "/password") return changePassword(env, acct, form, req);
   if (path === "/subtitles/link") return linkOpenSubtitles(env, acct, form);
+  if (path === "/trakt/connect") return traktStart(env, acct, url);
+  if (path === "/trakt/disconnect") {
+    if (acct.traktEnc && env.TRAKT_CLIENT_ID) {
+      const t = await decryptJson(keysFromEnv(env), acct.traktEnc, acct.login).catch(() => null);
+      if (t) await revokeToken(env.TRAKT_CLIENT_ID, t.access);
+    }
+    delete acct.traktEnc;
+    delete acct.trakt;
+    await putAccount(env, acct);
+    return redirect("/?m=trakt_off#compte");
+  }
   if (path === "/subtitles/unlink") {
     delete acct.osEnc;
     delete acct.os;
@@ -447,6 +466,99 @@ async function changePassword(env, acct, form, req) {
   acct.sessEpoch = (acct.sessEpoch || 0) + 1; // toutes les anciennes sessions meurent
   await putAccount(env, acct);
   return startSession(env, acct, "/?m=pw");
+}
+
+// ---- Trakt (facultatif) ---------------------------------------------------------
+// Connexion depuis l'espace client : OAuth 2 + PKCE (client public, sans secret). Jetons chiffrés dans le compte,
+// renouvelés par le Worker ; les appareils n'envoient que « ce que je lis » (POST /api/device/trakt/scrobble).
+
+const traktRedirect = (url) => `${url.origin}/trakt/callback`;
+const traktStateKey = (state) => `traktst:${state}`;
+
+async function traktStart(env, acct, url) {
+  if (!env.TRAKT_CLIENT_ID) return redirect("/?e=trakt_na#compte");
+  const rl = await limited(env, `traktlink:${acct.login}`, 10, 3600);
+  if (rl) return rl;
+  const state = randomToken(24);
+  const { verifier, challenge } = await pkcePair();
+  // Le vérificateur ne quitte jamais le Worker ; l'état lie le retour de Trakt à CE compte (anti-CSRF du retour).
+  await env.CONFIG.put(traktStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: TRAKT_STATE_TTL_S });
+  return redirect(authorizeUrl(env.TRAKT_CLIENT_ID, traktRedirect(url), state, challenge));
+}
+
+async function traktFinish(env, sessAcct, url) {
+  const state = url.searchParams.get("state") || "";
+  const code = url.searchParams.get("code") || "";
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) return redirect("/?e=trakt#compte");
+  const raw = await env.CONFIG.get(traktStateKey(state));
+  if (raw) await env.CONFIG.delete(traktStateKey(state));
+  let st = null;
+  try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
+  // Retour d'un autre compte, état expiré ou déjà utilisé, refus chez Trakt : rien n'est enregistré.
+  if (!st || st.login !== sessAcct.login || !code || code.length > 512 || !env.TRAKT_CLIENT_ID) return redirect("/?e=trakt#compte");
+  const t = await exchangeCode(env.TRAKT_CLIENT_ID, traktRedirect(url), code, st.verifier);
+  if (t.error) return redirect("/?e=trakt#compte");
+  const user = await traktUsername(env.TRAKT_CLIENT_ID, t.access);
+  return withAccountLock(env, sessAcct.login, async (acct) => {
+    acct.traktEnc = await encryptJson(keysFromEnv(env), t, acct.login);
+    acct.trakt = { user, at: Date.now() };
+    await putAccount(env, acct);
+    return redirect("/?m=trakt#compte");
+  });
+}
+
+/** Jeton d'accès Trakt valide pour le compte (renouvelé sous verrou si besoin), ou null (non relié / révoqué). */
+async function traktAccess(env, login, redirectUri, force = false) {
+  const keys = keysFromEnv(env);
+  const acct0 = await getAccount(env, login);
+  if (!acct0 || !acct0.traktEnc) return null;
+  const t0 = await decryptJson(keys, acct0.traktEnc, login).catch(() => null);
+  if (!t0) return null;
+  if (!force && t0.expiresAt - Date.now() > 86_400_000) return t0.access;
+  return withAccountLock(env, login, async (acct) => {
+    if (!acct.traktEnc) return null;
+    const cur = await decryptJson(keys, acct.traktEnc, login).catch(() => null);
+    if (!cur) return null;
+    // Un autre appareil l'a déjà renouvelé pendant l'attente du verrou.
+    if (cur.access !== t0.access && cur.expiresAt - Date.now() > 86_400_000) return cur.access;
+    const nt = await refreshTokens(env.TRAKT_CLIENT_ID, redirectUri, cur.refresh);
+    if (nt.error === "revoked") {
+      // Accès retiré chez Trakt : on oublie les jetons, l'espace client propose de reconnecter.
+      delete acct.traktEnc;
+      acct.trakt = { ...(acct.trakt || {}), revoked: true };
+      await putAccount(env, acct);
+      return null;
+    }
+    if (nt.error) return force ? null : cur.access;
+    acct.traktEnc = await encryptJson(keys, nt, login);
+    await putAccount(env, acct);
+    return nt.access;
+  });
+}
+
+async function deviceTraktScrobble(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = await limited(env, `trakt:dev:${auth.device.id}`, 120, 600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 4 * 1024);
+  if (body.error) return body.error;
+  const s = parseScrobble(body.value);
+  if (!s) return json({ error: "invalid" }, 400);
+  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const tmdb = s.tmdb || (await resolveTmdb(env, s.kind === "movie" ? "movie" : "tv", s.title, s.year));
+  const payload = traktScrobbleBody(s, tmdb);
+  if (!payload) return json({ linked: true, matched: false });
+  const redirectUri = traktRedirect(new URL(req.url));
+  let access = await traktAccess(env, auth.acct.login, redirectUri);
+  if (!access) return json({ linked: false });
+  let r = await sendScrobble(env.TRAKT_CLIENT_ID, access, s.action, payload);
+  if (r === "unauthorized") {
+    access = await traktAccess(env, auth.acct.login, redirectUri, true);
+    if (!access) return json({ linked: false });
+    r = await sendScrobble(env.TRAKT_CLIENT_ID, access, s.action, payload);
+  }
+  return json({ linked: true, matched: r !== "unmatched", ok: r === "ok" });
 }
 
 // ---- compte OpenSubtitles du client (facultatif) ------------------------------
