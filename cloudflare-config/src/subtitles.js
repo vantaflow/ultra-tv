@@ -70,20 +70,67 @@ export async function subtitlesSearch(searchParams, env, { fetchFn = fetch, cach
   return res;
 }
 
-export async function subtitlesDownload(searchParams, env, { fetchFn = fetch, cache = globalThis.caches?.default } = {}) {
+/**
+ * Connexion à un compte OpenSubtitles (compte du client, lié depuis l'espace client) : ses téléchargements sont alors
+ * décomptés sur SON quota et non sur celui, partagé, de la clé. → { token, base, level, allowed } ou { error }.
+ * `base` : hôte d'API que le compte doit utiliser (vip-api.opensubtitles.com pour un VIP), en liste blanche.
+ */
+export async function osLogin(env, username, password, fetchFn = fetch) {
+  if (!env.OPENSUBTITLES_API_KEY) return { error: "not_configured" };
+  let r;
+  try {
+    r = await fetchFn(API + "login", {
+      method: "POST", redirect: "manual",
+      headers: { "api-key": env.OPENSUBTITLES_API_KEY, "user-agent": USER_AGENT, "content-type": "application/json", accept: "application/json" },
+      body: JSON.stringify({ username, password }),
+    });
+  } catch { return { error: "upstream" }; }
+  if (r.status === 401 || r.status === 400 || r.status === 403) return { error: "denied" };
+  if (r.status === 429) return { error: "busy" };
+  if (r.status !== 200) return { error: "upstream" };
+  let d;
+  try { d = await r.json(); } catch { return { error: "upstream" }; }
+  if (!d || typeof d.token !== "string" || !d.token) return { error: "upstream" };
+  const host = typeof d.base_url === "string" ? d.base_url.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase() : "";
+  const u = d.user || {};
+  return {
+    token: d.token.slice(0, 2048),
+    base: /^(vip-)?api\.opensubtitles\.com$/.test(host) ? host : "api.opensubtitles.com",
+    level: String(u.level || "").slice(0, 40),
+    allowed: Number.isFinite(Number(u.allowed_downloads)) ? Number(u.allowed_downloads) : null,
+    vip: Boolean(u.vip),
+  };
+}
+
+/**
+ * `session` (facultatif) : compte OpenSubtitles du client, { get(force) → { token, base } | null }. Avec lui, le
+ * téléchargement est fait AU NOM du client ; un jeton expiré est renouvelé une fois. Sans lui (ou s'il échoue à se
+ * connecter), la clé seule sert, comme avant.
+ */
+export async function subtitlesDownload(searchParams, env, { fetchFn = fetch, cache = globalThis.caches?.default, session = null } = {}) {
   if (!env.OPENSUBTITLES_API_KEY) return notConfigured();
   const id = searchParams.get("id") ?? "";
   if (!FILE_ID.test(id)) return jsonRes({ error: "bad_request" }, 400);
   const key = cacheKey("download", id);
   const hit = cache ? await cache.match(key) : undefined;
   if (hit) return hit;
+  const ask = (user) => fetchFn((user ? `https://${user.base}/api/v1/` : API) + "download", {
+    method: "POST", redirect: "manual",
+    headers: {
+      "api-key": env.OPENSUBTITLES_API_KEY, "user-agent": USER_AGENT, "content-type": "application/json", accept: "application/json",
+      ...(user ? { authorization: `Bearer ${user.token}` } : {}),
+    },
+    body: JSON.stringify({ file_id: Number(id), sub_format: "srt" }),
+  });
   let link;
   try {
-    const r = await fetchFn(API + "download", {
-      method: "POST", redirect: "manual",
-      headers: { "api-key": env.OPENSUBTITLES_API_KEY, "user-agent": USER_AGENT, "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify({ file_id: Number(id), sub_format: "srt" }),
-    });
+    let user = session ? await session.get(false).catch(() => null) : null;
+    let r = await ask(user);
+    // Jeton du client expiré : une reconnexion, puis un nouvel essai.
+    if (user && r.status === 401) {
+      user = await session.get(true).catch(() => null);
+      r = await ask(user);
+    }
     if (r.status === 429 || r.status === 406) return jsonRes({ error: "quota" }, 429);
     if (r.status !== 200) return jsonRes({ error: "upstream" }, 502);
     link = (await r.json()).link;

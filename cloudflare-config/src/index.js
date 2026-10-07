@@ -15,7 +15,7 @@
 
 import { JSQR_SOURCE } from "./jsqr-bundle.js";
 import { Guard } from "./guard.js";
-import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual } from "./crypto.js";
+import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual, keysFromEnv, encryptJson, decryptJson } from "./crypto.js";
 import {
   ConfigError, json, redirect, tooMany, nonce, readJson, readForm, readLimited, sameOrigin, clientIp,
   withSecurityHeaders, readCookie, sessionCookieHeader, clearCookieHeader, COOKIE, signSession, verifySession,
@@ -28,7 +28,7 @@ import {
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
-import { subtitlesSearch, subtitlesDownload } from "./subtitles.js";
+import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
 import { fontResponse } from "./fonts.js";
 import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
@@ -168,7 +168,7 @@ async function route(req, env) {
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout"].includes(path)
+  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account))$/.test(path));
   if (!dashboardRoute && !pairRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
@@ -228,6 +228,14 @@ async function route(req, env) {
   if (path === "/pair") return confirmPairing(env, acct, form);
   if (path === "/providers") return addProvider(env, acct, form);
   if (path === "/password") return changePassword(env, acct, form, req);
+  if (path === "/subtitles/link") return linkOpenSubtitles(env, acct, form);
+  if (path === "/subtitles/unlink") {
+    delete acct.osEnc;
+    delete acct.os;
+    await putAccount(env, acct);
+    await env.CONFIG.delete(osTokenKey(acct.login));
+    return redirect("/?m=os_off#compte");
+  }
   if (path === "/account/delete") return removeAccount(env, acct, form);
   const rev = path.match(/^\/devices\/([0-9a-f]+)\/revoke$/);
   if (rev) {
@@ -439,6 +447,50 @@ async function changePassword(env, acct, form, req) {
   acct.sessEpoch = (acct.sessEpoch || 0) + 1; // toutes les anciennes sessions meurent
   await putAccount(env, acct);
   return startSession(env, acct, "/?m=pw");
+}
+
+// ---- compte OpenSubtitles du client (facultatif) ------------------------------
+// Lié depuis l'espace client : identifiants chiffrés dans le compte (AES-GCM, lié au login), jeton de session gardé
+// 20 h en KV (chiffré lui aussi). Les appareils n'en savent rien : le Worker télécharge au nom du client.
+
+const OS_TOKEN_TTL_S = 20 * 3600;
+const osTokenKey = (login) => `ostok:${login}`;
+
+async function linkOpenSubtitles(env, acct, form) {
+  const username = (form.get("os_user") || "").trim().slice(0, 100);
+  const password = (form.get("os_pass") || "").slice(0, 200);
+  if (!username || !password) return redirect("/?e=os_denied#compte");
+  const rl = await limited(env, `oslink:${acct.login}`, 10, 3600);
+  if (rl) return rl;
+  const r = await osLogin(env, username, password);
+  if (r.error) return redirect(`/?e=${r.error === "denied" ? "os_denied" : r.error === "busy" ? "os_busy" : "os_upstream"}#compte`);
+  const keys = keysFromEnv(env);
+  acct.osEnc = await encryptJson(keys, { username, password }, acct.login);
+  acct.os = { user: username, level: r.level, allowed: r.allowed, vip: r.vip, at: Date.now() };
+  await putAccount(env, acct);
+  await env.CONFIG.put(osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
+  return redirect("/?m=os#compte");
+}
+
+/** Session OpenSubtitles d'un compte pour subtitlesDownload, ou null si aucun compte n'est lié. */
+function osSession(env, acct) {
+  if (!acct.osEnc) return null;
+  const keys = keysFromEnv(env);
+  return {
+    async get(force) {
+      if (!force) {
+        const blob = await env.CONFIG.get(osTokenKey(acct.login));
+        if (blob) return decryptJson(keys, blob, acct.login);
+      }
+      // Reconnexion bornée : un mot de passe changé chez OpenSubtitles ne déclenche pas une connexion par téléchargement.
+      if (await limited(env, `oslogin:${acct.login}`, 6, 3600, true)) return null;
+      const { username, password } = await decryptJson(keys, acct.osEnc, acct.login);
+      const r = await osLogin(env, username, password);
+      if (r.error) return null;
+      await env.CONFIG.put(osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
+      return { token: r.token, base: r.base };
+    },
+  };
 }
 
 async function removeAccount(env, acct, form) {
@@ -680,7 +732,7 @@ async function deviceSubtitles(req, env, isSearch, url) {
   const rl = (await limited(env, `sub:ip:${clientIp(req)}`, 120, 600, true))
     || (await limited(env, `sub:dev:${auth.device.id}`, 40, 600, true));
   if (rl) return rl;
-  return isSearch ? subtitlesSearch(url.searchParams, env) : subtitlesDownload(url.searchParams, env);
+  return isSearch ? subtitlesSearch(url.searchParams, env) : subtitlesDownload(url.searchParams, env, { session: osSession(env, auth.acct) });
 }
 
 async function deviceRotate(req, env) {

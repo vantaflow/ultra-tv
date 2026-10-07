@@ -54,6 +54,7 @@ export async function deleteAccount(env, acct) {
   // État partagé (favoris, reprises) de chaque source du compte.
   const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
   await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name)));
+  await env.CONFIG.delete(`ostok:${acct.login}`);
   await env.CONFIG.delete(`acct:${acct.login}`);
   await guardStub(env, `acct:${acct.login}`).release();
 }

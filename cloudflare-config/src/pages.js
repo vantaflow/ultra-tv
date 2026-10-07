@@ -267,7 +267,10 @@ ${authErr(err)}
 const DASH_MSG = {
   err: {
     code: "Code d'appairage invalide, expiré ou déjà utilisé.",
-    limit: "Limite atteinte (20 fournisseurs, 10 appareils).",
+    limit: "Limite atteinte (100 fournisseurs, 50 appareils).",
+    os_denied: "OpenSubtitles a refusé ces identifiants.",
+    os_busy: "OpenSubtitles est saturé : réessaie dans une minute.",
+    os_upstream: "OpenSubtitles ne répond pas : réessaie plus tard.",
     kind: "Type de fournisseur inconnu.",
     url: "URL invalide : seules les URL http:// et https:// sont acceptées.",
     creds: "Utilisateur et mot de passe requis pour Xtream.",
@@ -275,7 +278,7 @@ const DASH_MSG = {
     pw: "Mot de passe actuel incorrect.",
     assign: "Choisis au moins un appareil de ton compte.",
   },
-  ok: { paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour." },
+  ok: { os: "Compte OpenSubtitles relié : tes téléchargements de sous-titres utilisent ton quota.", os_off: "Compte OpenSubtitles délié.", paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour." },
 };
 
 /** « il y a 3 jours » : durée relative lisible, calculée côté serveur. */
@@ -630,6 +633,7 @@ ${pairForm(csrfInput)}</section>
 
 <div class="section-h" id="compte"><h2>Compte</h2></div>
 <div class="two">
+${osPanel(acct.os, csrfInput)}
 <section class="panel" aria-labelledby="h-pw"><h2 id="h-pw">Mot de passe</h2>
 <form method="post" action="/password">${csrfInput}
 <label for="cur">Mot de passe actuel</label><input id="cur" name="current" type="password" required autocomplete="current-password"/>
@@ -641,6 +645,24 @@ ${pairForm(csrfInput)}</section>
 <div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section>
 </div>
 </main></div>`, n, script, true);
+}
+
+/**
+ * Compte OpenSubtitles du client (facultatif) : sans lui, les sous-titres passent par la clé commune (quota partagé) ;
+ * avec lui, par SON quota. Le mot de passe n'est jamais réaffiché.
+ */
+function osPanel(os, csrfInput) {
+  const quota = (o) => [o.vip ? "VIP" : o.level ? e(o.level) : "", o.allowed != null ? `${e(o.allowed)} téléchargements par jour` : ""].filter(Boolean).join(" · ");
+  return `<section class="panel" aria-labelledby="h-os"><h2 id="h-os">Sous-titres · OpenSubtitles <span class="hint">(facultatif)</span></h2>
+${os ? `<p class="mt6">Relié au compte <strong>${e(os.user)}</strong>${quota(os) ? ` · ${quota(os)}` : ""}.</p>
+<p class="muted small mt6">Les sous-titres téléchargés par tes appareils sont décomptés sur ce compte, pas sur le quota commun.</p>
+<form method="post" action="/subtitles/unlink">${csrfInput}<div class="row"><button class="secondary" type="submit">Délier ce compte</button></div></form>`
+    : `<p class="muted small mt6">Les sous-titres fonctionnent déjà sur tes appareils, avec un quota commun limité. Relie ton compte OpenSubtitles (gratuit ou VIP) pour utiliser ton propre quota. Pas de compte ? <a href="https://www.opensubtitles.com/fr/users/sign_up" target="_blank" rel="noopener noreferrer">En créer un</a>.</p>
+<form method="post" action="/subtitles/link">${csrfInput}
+<label for="osu">Identifiant OpenSubtitles</label><input id="osu" name="os_user" required maxlength="100" autocomplete="off"/>
+<label for="osp">Mot de passe OpenSubtitles</label><input id="osp" name="os_pass" type="password" required maxlength="200" autocomplete="off"/>
+<div class="row"><button type="submit">Relier</button></div></form>
+<p class="secure">${ico("lock")}<span>Chiffré au repos, jamais réaffiché ni envoyé aux appareils.</span></p>`}</section>`;
 }
 
 const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
