@@ -2,6 +2,21 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.50] — 2026-10-07 (Android TV) · [Bureau 1.2.31]
+
+### Ajouté
+- **Trakt** : films et épisodes regardés sont envoyés à Trakt (en cours, pause, puis vu à la fin). La connexion se
+  fait une fois depuis le tableau de bord du compte (Compte › Trakt › *Connecter Trakt*) ; rien à régler sur la TV ni
+  sur l'ordinateur. Les appareils signalent seulement ce qu'ils lisent au site, qui relaie à Trakt : aucun jeton
+  Trakt sur les appareils. Le direct et le replay ne sont jamais envoyés.
+- Tableau de bord du compte :
+  - **Abonnement de chaque fournisseur** (statut, expiration, jours restants, connexions), y compris les listes M3U
+    de type Xtream ; cause précise quand il est illisible ; relais hors Cloudflare pour les fournisseurs qui
+    bloquent Cloudflare.
+  - **Compte OpenSubtitles personnel** (facultatif) : les sous-titres téléchargés par les appareils sont décomptés
+    sur le quota du client plutôt que sur le quota commun.
+  - Recherche et pagination des fournisseurs et appareils ; jusqu'à 100 fournisseurs et 50 appareils par compte.
+
 ## [1.2.49] — 2026-10-06 (Android TV) · [Bureau 1.2.30]
 
 ### Ajouté

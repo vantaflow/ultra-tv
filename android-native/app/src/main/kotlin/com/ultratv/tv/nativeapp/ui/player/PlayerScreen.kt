@@ -143,6 +143,7 @@ class PlayerViewModel @Inject constructor(
     private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     private val episodeDao: com.ultratv.tv.nativeapp.data.db.EpisodeDao,
+    private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktScrobbler,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
 ) : ViewModel() {
@@ -303,6 +304,11 @@ class PlayerViewModel @Inject constructor(
         return history.resumePositionMs(c.providerId, c.kind, c.remoteId)
     }
 
+    /** Scrobble Trakt (film / épisode seulement ; sans effet sur le direct). Jamais bloquant. */
+    fun scrobbleTick(playing: Boolean, positionMs: Long, durationMs: Long) = trakt.onTick(playback.current.value, playing, positionMs, durationMs)
+    fun scrobblePause(positionMs: Long, durationMs: Long) = trakt.onPause(playback.current.value, positionMs, durationMs)
+    fun scrobbleStop(positionMs: Long, durationMs: Long) = trakt.onStop(playback.current.value, positionMs, durationMs)
+
     fun recordProgress(positionMs: Long, durationMs: Long) {
         val c = playback.current.value ?: return
         if (positionMs < 5_000 && c.kind != "LIVE") return
@@ -435,12 +441,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     DisposableEffect(Unit) {
-        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
+        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)); vm.scrobbleStop(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
     }
     // Épisode terminé : marqué vu, puis l'épisode suivant démarre (Réglages › Lecture › Épisode suivant automatique).
     LaunchedEffect(state.phase) {
         if (state.phase != Phase.ENDED || isLive || item?.kind != "EPISODE" || !latestPrefs.autoPlayNextEpisode) return@LaunchedEffect
-        session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) vm.recordProgress(d, d) }
+        session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
         vm.nextEpisode()?.let { currentUrl = it.streamUrl }
     }
     // Application quittée (Accueil, autre appli, veille) hors image dans l'image : plus de son en arrière-plan.
@@ -452,7 +458,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             when (ev) {
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> {
                     val inPip = (context as? android.app.Activity)?.isInPictureInPictureMode == true
-                    if (!inPip) session.engine?.let { e -> vm.recordProgress(e.positionMs, e.durationMs.coerceAtLeast(0)); e.pause(); stoppedByApp = true }
+                    if (!inPip) session.engine?.let { e -> vm.recordProgress(e.positionMs, e.durationMs.coerceAtLeast(0)); vm.scrobblePause(e.positionMs, e.durationMs.coerceAtLeast(0)); e.pause(); stoppedByApp = true }
                 }
                 androidx.lifecycle.Lifecycle.Event.ON_START -> if (stoppedByApp) {
                     stoppedByApp = false
@@ -531,7 +537,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         while (true) {
             // Position écrite seulement en VOD (le direct affiche l'horaire du programme) et arrondie à la seconde :
             // chaque écriture recompose tout le lecteur — avant, 2 fois par seconde y compris en direct.
-            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying }
+            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying; if (!isLive) vm.scrobbleTick(e.isPlaying, e.positionMs, e.durationMs.coerceAtLeast(0)) }
             // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())

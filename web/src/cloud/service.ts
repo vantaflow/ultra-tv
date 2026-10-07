@@ -68,7 +68,7 @@ export async function loadCloud(): Promise<void> {
   } : null);
 }
 
-async function getToken(): Promise<string> {
+export async function getToken(): Promise<string> {
   return decryptSecret(await getSetting<string>(K.token, ""));
 }
 

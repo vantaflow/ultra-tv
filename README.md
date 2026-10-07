@@ -52,7 +52,8 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Pause du direct** (timeshift) : tampon disque circulaire pour les flux MPEG-TS.
 - **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution), **reprise automatique** (position enregistrée toutes les 30 s), saisons en onglets, rangées par catégorie.
 - **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
-- **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage).
+- **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage). Rien à configurer sur l'appareil ; un compte OpenSubtitles personnel se relie, au besoin, depuis le tableau de bord cloud.
+- **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin). Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
 - **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
 - **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes), recherche vocale et globale, liens profonds `ultratv://`.
@@ -108,7 +109,11 @@ Gérez appareils et sources depuis un navigateur : **<https://ultratv-config.kha
   <img src="docs/screenshots/cloud/sharing.png" alt="Partage des sources par appareil" width="48%" />
 </p>
 
-Chaque source a un bouton **Afficher le lien IPTV** (lien M3U complet, à la demande, avec bouton Copier).
+Chaque source a un bouton **Afficher le lien IPTV** (lien M3U complet, à la demande, avec bouton Copier) et son **abonnement** (statut, date d'expiration, jours restants, connexions), lu chez le fournisseur ; listes paginées avec recherche quand elles s'allongent.
+
+Rubrique **Compte** :
+- **Trakt** : bouton *Connecter Trakt*, autorisation chez Trakt ; vos appareils y envoient ensuite ce que vous regardez. Le mot de passe Trakt ne passe jamais par le site.
+- **Sous-titres · OpenSubtitles** (facultatif) : reliez votre compte OpenSubtitles, gratuit ou VIP, pour utiliser votre propre quota de téléchargements au lieu du quota commun.
 
 Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvre la page d'appairage avec le code déjà rempli. Le code se saisit aussi à la main, avec ou sans tiret.
 
@@ -209,10 +214,11 @@ wrangler secret put OPS_TOKEN                      # mot de passe de /crashes et
 wrangler secret put TMDB_READ_TOKEN                # jeton de lecture TMDB v4 (fiches enrichies)
 wrangler secret put TMDB_API_KEY                   # clé TMDB v3 (repli si pas de jeton v4)
 wrangler secret put OPENSUBTITLES_API_KEY          # clé OpenSubtitles (sous-titres en ligne)
+wrangler secret put ACCOUNT_RELAY_KEY              # facultatif : relais d'abonnement hors Cloudflare (cloudflare-config/relay)
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
+TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
 
 ## Limites connues
 

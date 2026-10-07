@@ -6,6 +6,7 @@
 //   POST /api/device/providers Bearer               -> ajoute / met à jour un fournisseur du compte
 //   DELETE /api/device/providers/:id Bearer
 //   PATCH /api/device {name} Bearer                  -> renomme l'appareil courant
+//   POST /api/device/trakt/scrobble Bearer           -> {linked:false} · {linked:true, matched, ok}
 // HTTPS obligatoire, aucune redirection suivie (un 30x vers http:// ferait fuiter le jeton).
 // Dans Electron, les requêtes sont faites par le processus principal (`window.ultratv.cloudRequest`).
 
@@ -273,4 +274,30 @@ export async function tmdbPosterPath(base: string, token: string, kind: "movie" 
   const o = parse<{ results?: { poster_path?: string | null }[] }>(r);
   const hit = (o.results ?? []).find((x) => typeof x.poster_path === "string" && /^\/[\w.-]+$/.test(x.poster_path));
   return hit?.poster_path ?? null;
+}
+
+export type ScrobbleAction = "start" | "pause" | "stop";
+export interface ScrobbleBody {
+  action: ScrobbleAction;
+  /** 0..100. */
+  progress: number;
+  kind: "movie" | "episode";
+  /** Titre du film, ou de la SÉRIE pour un épisode. */
+  title: string;
+  year?: number;
+  /** Identifiant TMDB du film, ou de la série pour un épisode (le Worker le retrouve par titre + année sinon). */
+  tmdb?: number;
+  season?: number;
+  episode?: number;
+}
+export interface ScrobbleResult { linked: boolean; matched?: boolean; ok?: boolean }
+
+/** Scrobble Trakt via le Worker. Lève sur erreur (401 / 429 / réseau) : l'appelant (le lecteur) les ignore. */
+export async function traktScrobble(base: string, token: string, body: ScrobbleBody): Promise<ScrobbleResult> {
+  const r = await http({ url: `${base}/api/device/trakt/scrobble`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(body) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status < 200 || r.status >= 300) throw new CloudError("scrobble", r.status);
+  const o = parse<Partial<ScrobbleResult>>(r);
+  return { linked: o.linked === true, matched: o.matched, ok: o.ok };
 }

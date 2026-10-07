@@ -52,7 +52,8 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Live pause** (timeshift): circular disk buffer for MPEG-TS streams.
 - **Movies and series**: rich details through **TMDB** (poster, plot, cast), **automatic resume** (position saved every 30 s), seasons as tabs, rows by category.
 - **Two playback engines**: ExoPlayer (Media3) and **LibVLC**; Auto / ExoPlayer / VLC, decoding Auto / Hardware / Software, automatic fallback and per-channel memory.
-- **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset).
+- **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset). Nothing to set up on the device; a personal OpenSubtitles account can be linked from the cloud dashboard if needed.
+- **Trakt**: movies and episodes you watch are sent to Trakt (watching, then watched at the end). Connect from the cloud dashboard, nothing to set on the TV.
 - **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
 - **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
 - **Google TV**: "Continue watching" (movies, episodes and recent live channels), Ultra TV home channel (favourites then recent channels), voice and global search, `ultratv://` deep links.
@@ -108,7 +109,11 @@ Manage devices and sources from a browser: **<https://ultratv-config.khalilbenaz
   <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
 </p>
 
-Each source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button).
+Each source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button) and its **subscription** (status, expiry date, days left, connections), read from the provider; lists are paginated and searchable as they grow.
+
+**Account** section:
+- **Trakt**: *Connect Trakt* button, authorise on Trakt; your devices then send what you watch. Your Trakt password never goes through the site.
+- **Subtitles · OpenSubtitles** (optional): link your OpenSubtitles account, free or VIP, to use your own download quota instead of the shared one.
 
 Pair in one scan: the TV shows a QR, the phone camera opens the pairing page with the code already filled in. The code can also be typed by hand, with or without the dash.
 
@@ -209,10 +214,11 @@ wrangler secret put OPS_TOKEN                      # password for /crashes and /
 wrangler secret put TMDB_READ_TOKEN                # TMDB v4 read token (rich details)
 wrangler secret put TMDB_API_KEY                   # TMDB v3 key (fallback without a v4 token)
 wrangler secret put OPENSUBTITLES_API_KEY          # OpenSubtitles key (online subtitles)
+wrangler secret put ACCOUNT_RELAY_KEY              # optional: subscription relay outside Cloudflare (cloudflare-config/relay)
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
+TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
 
 ## Known limitations
 

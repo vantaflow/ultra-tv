@@ -23,6 +23,7 @@ import { LiveReconnect } from "./reconnect";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { candidates, type Candidate } from "./resolve";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
+import { startScrobble, type Scrobbler } from "./trakt";
 
 const NO_TRACKS: Tracks = { audio: [], activeAudio: -1, text: [], activeText: -1, levels: [], activeLevel: -1 };
 
@@ -78,6 +79,9 @@ export function PlayerHost() {
   // Direct coupé (session fermée par le serveur, réseau, flux figé) : on rouvre la même adresse tout seul.
   const reconRef = useRef<LiveReconnect | null>(null);
 
+  // Scrobble Trakt du média en cours (null : direct, rediffusion, non appairé).
+  const scrobRef = useRef<Scrobbler | null>(null);
+
   // --- moteur ---
   useEffect(() => {
     const v = videoRef.current!;
@@ -88,7 +92,7 @@ export function PlayerHost() {
     });
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
-      onState: (s) => { setState(s); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
+      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
       onError: () => {
         if (recon.onError(liveRef.current)) return;
         const c = candRef.current;
@@ -139,6 +143,21 @@ export function PlayerHost() {
     void startCandidate(list[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, nonce, source?.id]);
+
+  // Scrobble : une session par film / épisode ; la fermeture (changement de cible, fermeture du lecteur) envoie « stop ».
+  useEffect(() => {
+    if (!target || !source) return;
+    const sc = startScrobble(target, source);
+    scrobRef.current = sc;
+    const iv = sc ? setInterval(() => { const v = videoRef.current; if (v) sc.note(v.currentTime, v.duration); }, 10_000) : undefined;
+    return () => {
+      clearInterval(iv);
+      const v = videoRef.current;
+      sc?.close(v?.currentTime ?? 0, v?.duration ?? NaN);
+      if (scrobRef.current === sc) scrobRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.refId, target?.kind, target?.replay?.start, source?.id]);
 
   const saveHistory = useCallback(() => {
     const tg = usePlayer.getState().target;

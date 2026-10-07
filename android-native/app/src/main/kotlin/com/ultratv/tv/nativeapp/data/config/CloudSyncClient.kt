@@ -27,6 +27,31 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         if (code in 300..399) throw CloudSyncException("Unexpected redirect (HTTP $code) from the Worker")
     }
 
+    /**
+     * Scrobble Trakt (POST /api/device/trakt/scrobble). Ne lève jamais : tout échec (réseau, 401, 429, 5xx) donne
+     * [com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.FAILED] ; `{linked:false}` donne NOT_LINKED.
+     */
+    suspend fun traktScrobble(base: String, token: String, r: com.ultratv.tv.nativeapp.data.trakt.ScrobbleRequest): com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult = withContext(Dispatchers.IO) {
+        try {
+            val id = r.identity
+            val body = org.json.JSONObject().put("action", r.action).put("progress", r.progress).put("kind", id.kind).put("title", id.title)
+            id.year?.let { body.put("year", it) }
+            id.tmdb?.let { body.put("tmdb", it) }
+            id.season?.let { body.put("season", it) }
+            id.episode?.let { body.put("episode", it) }
+            val req = Request.Builder().url("$base/api/device/trakt/scrobble").header("Authorization", "Bearer $token").post(body.toString().toRequestBody(json)).build()
+            http.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@use com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.FAILED
+                val linked = org.json.JSONObject(resp.body?.string().orEmpty()).optBoolean("linked", true)
+                if (linked) com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.LINKED else com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.NOT_LINKED
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.FAILED
+        }
+    }
+
     suspend fun fetch(base: String, token: String, etag: String?): ConfigFetch = withContext(Dispatchers.IO) {
         val b = Request.Builder().url("$base/api/config").header("Authorization", "Bearer $token")
             // Édition de l'appli (standard / pro) : affichée sur le tableau de bord du compte.

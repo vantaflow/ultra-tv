@@ -63,7 +63,8 @@ wrangler secret put PROVIDER_ENC_KEY   # clé AES-256 en base64      : openssl r
 wrangler secret put OPS_TOKEN          # >= 32 caractères : mot de passe de /crashes et /logs
 wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (fiches enrichies)
 wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
-wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne
+wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
+wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 
 # 3) Vérifier puis déployer
@@ -101,6 +102,27 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |
 | POST | `/pair`, `/providers`, `/providers/:id/delete`, `/devices/:id/revoke`, `/password`, `/account/delete`, `/logout` | session + CSRF + Origin | Mutations |
+| POST | `/providers/:id/account` | session + CSRF | Abonnement du fournisseur (cache 10 min, limite propre 600/h) |
+| POST | `/subtitles/link`, `/subtitles/unlink` | session + CSRF | Compte OpenSubtitles du client (chiffré ; jeton 20 h en KV) |
+| POST | `/trakt/connect`, `/trakt/disconnect` | session + CSRF | Connexion Trakt (OAuth PKCE, état lié au compte, 10 min) |
+| GET | `/trakt/callback` | session | Retour de Trakt : jetons chiffrés dans le compte |
+| POST | `/api/device/trakt/scrobble` | `Bearer` | L'appareil signale sa lecture ; le Worker relaie à Trakt |
+| GET | `/api/subtitles/search`, `/api/subtitles/download` | `Bearer` | Sous-titres (au nom du compte OpenSubtitles relié s'il y en a un) |
+
+## Relais d'abonnement
+
+Certains fournisseurs refusent toute requête venant de Cloudflare. Le Worker délègue alors la lecture de
+`player_api.php` à `relay/` (fonction Vercel, projet `utv-relay`) : une seule requête, uniquement ce chemin, sans
+redirection suivie, hôtes locaux et privés refusés, rien de conservé. Il n'est appelé que si `ACCOUNT_RELAY_URL`
+(`wrangler.toml`) et le secret `ACCOUNT_RELAY_KEY` (même valeur que `RELAY_KEY` sur Vercel) sont présents.
+
+```bash
+cd relay && npx vercel deploy --prod
+KEY=$(openssl rand -hex 32)
+printf %s "$KEY" | npx vercel env add RELAY_KEY production
+(cd .. && printf %s "$KEY" | npx wrangler secret put ACCOUNT_RELAY_KEY); unset KEY
+npx vercel deploy --prod
+```
 
 ## Rotation des secrets et des jetons
 
