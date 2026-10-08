@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -165,10 +167,13 @@ class TraktCatalogMatcher(
     private val series: SeriesDao,
     private val repo: TraktLibraryRepository,
     private val store: TraktStore,
+    /** Change quand une synchro du catalogue se TERMINE (films + séries) ; null = source inconnue. */
+    private val catalogStamp: (Long) -> Flow<Long?>,
 ) {
-    @Inject constructor(movies: MovieDao, series: SeriesDao, repo: TraktLibraryRepository, store: FileTraktStore) : this(movies, series, repo, store as TraktStore)
+    @Inject constructor(movies: MovieDao, series: SeriesDao, repo: TraktLibraryRepository, store: FileTraktStore, providers: com.ultratv.tv.nativeapp.data.db.ProviderDao) :
+        this(movies, series, repo, store as TraktStore, { id -> providers.observeCatalogStamp(id) })
 
-    private data class Sig(val pid: Long, val movies: Int, val series: Int, val lib: TraktLibrary)
+    private data class Sig(val pid: Long, val stamp: Long, val lib: TraktLibrary)
     @Volatile private var cached: Pair<Sig, TraktRows>? = null
     private val computeLock = Mutex()
     // Dernières rangées calculées par source, aussi écrites sur disque : affichées instantanément au prochain lancement.
@@ -187,26 +192,27 @@ class TraktCatalogMatcher(
     fun rows(pid: Flow<Long?>): Flow<TraktRows> = flow {
         repo.restore()
         emitAll(
-            combine(pid, repo.library) { id, lib -> id to lib }.flatMapLatest { (id, lib) ->
+            combine(pid.distinctUntilChanged(), repo.library) { id, lib -> id to lib }.flatMapLatest { (id, lib) ->
                 if (id == null || !lib.linked || lib.isNoList) {
                     if (!lib.linked) forget()
                     flowOf(TraktRows.EMPTY)
                 } else {
-                    // Pendant une synchro les tables changent sans cesse : première valeur tout de suite, puis au plus un calcul / 3 s.
-                    val counts = combine(movies.observeCount(id), series.observeCount(id)) { m, s -> m to s }.distinctUntilChanged()
+                    // Recalcul seulement à la FIN d'une synchro du catalogue (horodatage), plus à chaque tranche insérée :
+                    // pendant une synchro de 50 000 films, le parcours complet toutes les 3 s saturait les box modestes.
+                    val stamps = catalogStamp(id).map { it ?: 0L }.distinctUntilChanged()
                     flow {
                         // Affichage immédiat : dernier calcul en mémoire, sinon celui du lancement précédent (sur disque).
                         instant(id)?.let { emit(it) }
                         var first = true
-                        emitAll(counts.transformLatest { c ->
+                        emitAll(stamps.transformLatest { st ->
                             if (first) first = false else delay(SETTLE_MS)
-                            emit(compute(Sig(id, c.first, c.second, lib)))
+                            emit(compute(Sig(id, st, lib)))
                         })
                     }
                 }
             },
         )
-    }.distinctUntilChanged().flowOn(Dispatchers.Default)
+    }.distinctUntilChanged().flowOn(MATCH_DISPATCHER)
 
     private val TraktLibrary.isNoList get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty()
 
@@ -236,15 +242,12 @@ class TraktCatalogMatcher(
         val wantedSeries = TraktAvailability.wantedKeys(lists, shows = true)
         val movieIdx = HashMap<String, MutableList<CatalogLite>>()
         val seriesIdx = HashMap<String, MutableList<CatalogLite>>()
-        // Films et séries en parallèle (deux lectures de base indépendantes).
-        coroutineScope {
-            val m = async { if (wantedMovies.isNotEmpty() && sig.movies > 0) scan(movieIdx, wantedMovies) { after -> movies.liteChunk(sig.pid, after, CHUNK) } }
-            val s = async { if (wantedSeries.isNotEmpty() && sig.series > 0) scan(seriesIdx, wantedSeries) { after -> series.liteChunk(sig.pid, after, CHUNK) } }
-            m.await(); s.await()
-        }
+        // L'un après l'autre, sur un seul fil de basse priorité : l'interface et la lecture passent toujours avant.
+        if (wantedMovies.isNotEmpty()) scan(movieIdx, wantedMovies) { after -> movies.liteChunk(sig.pid, after, CHUNK) }
+        if (wantedSeries.isNotEmpty()) scan(seriesIdx, wantedSeries) { after -> series.liteChunk(sig.pid, after, CHUNK) }
         val rows = TraktAvailability.rows(lib, movieIdx, seriesIdx)
         cached = sig to rows
-        if ((sig.movies > 0 || sig.series > 0) && persisted[sig.pid] != rows) {
+        if (sig.stamp > 0 && persisted[sig.pid] != rows) {
             persisted[sig.pid] = rows
             val snapshot = TraktRowsCodec.encode(persisted)
             withContext(Dispatchers.IO) { store.writeRows(snapshot) }
@@ -266,7 +269,12 @@ class TraktCatalogMatcher(
     }
 
     private companion object {
-        const val CHUNK = 4_000
+        const val CHUNK = 2_000
         const val SETTLE_MS = 3_000L
+
+        /** Un seul fil, priorité minimale : le rapprochement ne prend que le processeur laissé libre. */
+        val MATCH_DISPATCHER: kotlinx.coroutines.CoroutineDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+            Thread(r, "trakt-match").apply { isDaemon = true; priority = Thread.MIN_PRIORITY }
+        }.asCoroutineDispatcher()
     }
 }

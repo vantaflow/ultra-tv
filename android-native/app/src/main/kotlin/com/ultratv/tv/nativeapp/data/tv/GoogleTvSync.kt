@@ -65,11 +65,26 @@ class GoogleTvSync @Inject constructor(
     /** (profil courant, source active) : Watch Next et la chaîne Favoris suivent le profil, pas seulement la source. */
     private val scope_ = combine(profiles.currentId, activeProvider) { prof, pid -> prof to pid }.distinctUntilChanged()
 
+    private val gate = TelemetryGate()
+
+    /** Télémétrie « googletv » : émise seulement quand le message change pour sa clé (échecs et changements d'état). */
+    private fun report(key: String, message: String, warn: Boolean = false) {
+        if (!gate.shouldEmit(key, message)) return
+        if (warn) com.ultratv.tv.nativeapp.RemoteLog.warn("googletv", message) else com.ultratv.tv.nativeapp.RemoteLog.info("googletv", message)
+    }
+
+    private fun fail(key: String, what: String, e: Throwable) {
+        android.util.Log.w("UltraGoogleTv", what, e)
+        report("fail:$key", "$what failed: ${e.javaClass.simpleName} ${e.message?.take(160)}", warn = true)
+    }
+
     fun start(scope: CoroutineScope) {
-        if (!isTv || started) return
+        if (!isTv) { report("skip", "sync skipped: not a leanback device"); return }
+        if (started) return
         started = true
+        report("start", "sync started")
         scope.launch {
-            scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else history.observeRecent(prof, pid, 40) }
+            scope_.flatMapLatest { (prof, pid) -> if (pid == null) { report("skip:wn", "watch next skipped: no active provider"); flowOf(emptyList()) } else history.observeRecent(prof, pid, 40) }
                 // 1.2.42 avait mis un debounce de 45 s : tant que l'historique bouge (position enregistrée toutes les 30 s,
                 // synchro d'appareils), RIEN n'était publié, et rien non plus si l'appli était quittée / tuée dans les 45 s
                 // suivant la fin d'une lecture — « Continuer à regarder » restait vide. Maintenant : 2 s de calme, puis
@@ -77,7 +92,7 @@ class GoogleTvSync @Inject constructor(
                 // une écriture toutes les 45 s dans Google TV, mais la première ne se fait jamais attendre).
                 .debounce(2_000).collectLatest { plan ->
                     delay(WatchNextPlan.waitMs(lastWatchNextSync, System.currentTimeMillis()))
-                    runCatching { syncWatchNext(WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) }
+                    runCatching { syncWatchNext(WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan)) }.onFailure { e -> fail("watchnext", "watch next", e) }
                     lastWatchNextSync = System.currentTimeMillis()
                 }
         }
@@ -89,13 +104,13 @@ class GoogleTvSync @Inject constructor(
                     val recent = orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })
                     FavoritesChannelPlan.select(fav, recent)
                 }
-            }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "home channel", e) } }
+            }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> fail("favorites", "favorites channel", e) } }
         }
         // Chaîne « Nouveautés » : suit la source active. Les tables film / série bougent pendant toute la synchro du
         // catalogue : on attend 5 s de calme (fin de synchro), puis la signature évite toute réécriture inutile.
         scope.launch {
-            activeProvider.flatMapLatest { pid -> if (pid == null) flowOf(emptyList()) else latestFlow(pid) }
-                .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "news channel", e) } }
+            activeProvider.flatMapLatest { pid -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
+                .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> fail("news", "news channel", e) } }
         }
     }
 
@@ -122,12 +137,13 @@ class GoogleTvSync @Inject constructor(
         val pid = activeProvider.first() ?: return
         val prof = profiles.currentIdNow
         val hist = history.observeRecent(prof, pid, 40).first()
-        runCatching { syncWatchNext(WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist)) }
+        report("once", "initialize-programs broadcast received")
+        runCatching { syncWatchNext(WatchNextPlan.select(hist) + WatchNextPlan.selectLive(hist)) }.onFailure { fail("watchnext", "watch next", it) }
         runCatching {
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
             syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
-        }
-        runCatching { syncNewsChannel(latestFlow(pid).first()) }
+        }.onFailure { fail("favorites", "favorites channel", it) }
+        runCatching { syncNewsChannel(latestFlow(pid).first()) }.onFailure { fail("news", "news channel", it) }
     }
 
     /** Chaînes dans l'ordre des identifiants donnés (la requête par lot ne garantit pas l'ordre). */
@@ -150,6 +166,7 @@ class GoogleTvSync @Inject constructor(
             }
         }
         val keep = HashSet<String>()
+        var failed = 0
         android.util.Log.i("UltraGoogleTv", "watch next: ${selected.size} (${selected.count { it.kind == "LIVE" }} live)")
         for (h in selected) {
             val key = WatchNextPlan.internalId(h)
@@ -168,8 +185,9 @@ class GoogleTvSync @Inject constructor(
                     .setIntentUri(Uri.parse(WatchNextPlan.deepLink(h)))
                     .build()
                 val rowId = existing[key]
-                if (rowId == null) cr.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, live.toContentValues())
-                else cr.update(TvContractCompat.buildWatchNextProgramUri(rowId), live.toContentValues(), null, null)
+                val ok = if (rowId == null) cr.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, live.toContentValues()) != null
+                else cr.update(TvContractCompat.buildWatchNextProgramUri(rowId), live.toContentValues(), null, null) > 0
+                if (!ok) failed++
                 continue
             }
             val b = WatchNextProgram.Builder()
@@ -185,11 +203,13 @@ class GoogleTvSync @Inject constructor(
             if (h.durationMs > 0) b.setDurationMillis(h.durationMs.toInt())
             val program = b.build()
             val rowId = existing[key]
-            if (rowId == null) cr.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, program.toContentValues())
-            else cr.update(TvContractCompat.buildWatchNextProgramUri(rowId), program.toContentValues(), null, null)
+            val ok = if (rowId == null) cr.insert(TvContractCompat.WatchNextPrograms.CONTENT_URI, program.toContentValues()) != null
+            else cr.update(TvContractCompat.buildWatchNextProgramUri(rowId), program.toContentValues(), null, null) > 0
+            if (!ok) failed++
         }
         // Terminé, supprimé de l'historique ou éclipsé par un épisode plus récent : on le retire de l'accueil.
         existing.filterKeys { it !in keep }.values.forEach { cr.delete(TvContractCompat.buildWatchNextProgramUri(it), null, null) }
+        report("watchnext", "watch next published ${selected.size - failed}/${selected.size} (${selected.count { it.kind == "LIVE" }} live, ${existing.size} existing)", warn = failed > 0)
     }
 
     // ---- Chaîne de prévisualisation « Favoris » -------------------------------------------
@@ -197,7 +217,12 @@ class GoogleTvSync @Inject constructor(
     private fun syncFavoritesChannel(selected: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
         val helper = PreviewChannelHelper(ctx)
         var channelId = prefs.getLong(K_CHANNEL, -1L)
-        if (selected.isEmpty() && channelId < 0) return
+        if (ChannelPublishPlan.mustRecreate(channelId, helper.getPreviewChannel(channelId) != null)) {
+            report("favorites:gone", "favorites channel $channelId missing in provider: recreating", warn = true)
+            prefs.edit().remove(K_CHANNEL).remove(K_SIGNATURE).apply()
+            channelId = -1L
+        }
+        if (selected.isEmpty() && channelId < 0) { report("skip:fav", "favorites channel skipped: no favorites nor recent live"); return }
         if (channelId < 0) {
             val logo = ContextCompat.getDrawable(ctx, com.ultratv.tv.nativeapp.R.mipmap.ic_launcher)!!.toBitmap(160, 160)
             val channel = PreviewChannel.Builder()
@@ -205,8 +230,9 @@ class GoogleTvSync @Inject constructor(
                 .setAppLinkIntentUri(Uri.parse("${com.ultratv.tv.nativeapp.nav.DeepLink.SCHEME}://home"))
                 .setLogo(logo)
                 .build()
-            channelId = helper.publishDefaultChannel(channel)
+            channelId = publishChannel(helper, channel)
             prefs.edit().putLong(K_CHANNEL, channelId).remove(K_SIGNATURE).apply()
+            report("favorites:created", "favorites channel created id=$channelId default=${prefs.getBoolean(K_DEFAULT_DONE, false)}")
         }
         val signature = FavoritesChannelPlan.signature(selected)
         if (prefs.getString(K_SIGNATURE, null) == signature) return
@@ -223,7 +249,39 @@ class GoogleTvSync @Inject constructor(
             helper.publishPreviewProgram(b.build())
         }
         prefs.edit().putString(K_SIGNATURE, signature).apply()
+        report("favorites:programs", "favorites channel id=$channelId programs=${selected.size}")
     }
+
+    /** La première chaîne publiée par l'appli est la chaîne par défaut (affichée d'office) ; les suivantes sont ordinaires. */
+    private fun publishChannel(helper: PreviewChannelHelper, channel: PreviewChannel): Long {
+        val hasDefault = prefs.getBoolean(K_DEFAULT_DONE, false) || prefs.getLong(K_CHANNEL, -1L) >= 0
+        return when (ChannelPublishPlan.mode(hasDefault)) {
+            ChannelPublishPlan.Mode.DEFAULT -> helper.publishDefaultChannel(channel).also { prefs.edit().putBoolean(K_DEFAULT_DONE, true).apply() }
+            ChannelPublishPlan.Mode.NORMAL -> helper.publishChannel(channel)
+        }
+    }
+
+    /**
+     * Intent de l'invite système « Afficher la chaîne Nouveautés sur l'accueil ? » (à lancer avec startActivityForResult
+     * depuis une Activity), ou null : pas de chaîne, déjà affichée, déjà demandée une fois, ou invite indisponible.
+     */
+    fun browsableRequest(): Intent? {
+        if (!isTv) return null
+        val channelId = prefs.getLong(K_NEWS_CHANNEL, -1L)
+        if (channelId < 0) return null
+        val browsable = runCatching {
+            ctx.contentResolver.query(TvContractCompat.buildChannelUri(channelId), arrayOf(TvContractCompat.Channels.COLUMN_BROWSABLE), null, null, null)
+                ?.use { if (it.moveToFirst()) it.getInt(0) == 1 else null }
+        }.getOrNull() ?: return null
+        if (!ChannelPublishPlan.shouldAskBrowsable(channelId, browsable, prefs.getBoolean(K_BROWSABLE_ASKED, false))) return null
+        val intent = Intent(TvContractCompat.ACTION_REQUEST_CHANNEL_BROWSABLE).putExtra(TvContractCompat.EXTRA_CHANNEL_ID, channelId)
+        if (intent.resolveActivity(ctx.packageManager) == null) { report("browsable:na", "browsable prompt unavailable on this system", warn = true); return null }
+        prefs.edit().putBoolean(K_BROWSABLE_ASKED, true).apply()
+        report("browsable:ask", "browsable prompt shown for news channel $channelId")
+        return intent
+    }
+
+    fun onBrowsableResult(resultOk: Boolean) = report("browsable:result", "browsable prompt result=${if (resultOk) "accepted" else "declined"}")
 
     // ---- Chaîne de prévisualisation « Nouveautés » ------------------------------------------
 
@@ -233,7 +291,12 @@ class GoogleTvSync @Inject constructor(
     private suspend fun syncNewsChannel(selected: List<NewsChannelPlan.Item>) = newsLock.withLock {
         val helper = PreviewChannelHelper(ctx)
         var channelId = prefs.getLong(K_NEWS_CHANNEL, -1L)
-        if (selected.isEmpty() && channelId < 0) return@withLock
+        if (ChannelPublishPlan.mustRecreate(channelId, helper.getPreviewChannel(channelId) != null)) {
+            report("news:gone", "news channel $channelId missing in provider: recreating", warn = true)
+            prefs.edit().remove(K_NEWS_CHANNEL).remove(K_NEWS_SIGNATURE).apply()
+            channelId = -1L
+        }
+        if (selected.isEmpty() && channelId < 0) { report("skip:news0", "news channel skipped: no movie/series with poster yet"); return@withLock }
         val name = newsChannelName()
         if (channelId < 0) {
             val logo = ContextCompat.getDrawable(ctx, com.ultratv.tv.nativeapp.R.mipmap.ic_launcher)!!.toBitmap(160, 160)
@@ -244,8 +307,9 @@ class GoogleTvSync @Inject constructor(
                 .build()
             // Chaîne ordinaire : l'utilisateur l'ajoute à l'accueil depuis « Personnaliser les chaînes » (seule la
             // première chaîne de l'application est affichée d'office par le système).
-            channelId = helper.publishChannel(channel)
+            channelId = publishChannel(helper, channel)
             prefs.edit().putLong(K_NEWS_CHANNEL, channelId).putString(K_NEWS_NAME, name).remove(K_NEWS_SIGNATURE).apply()
+            report("news:created", "news channel created id=$channelId default=${prefs.getBoolean(K_DEFAULT_DONE, false)} items=${selected.size}")
         } else if (prefs.getString(K_NEWS_NAME, null) != name) {
             // Langue de l'appli changée : on renomme la chaîne.
             runCatching {
@@ -255,7 +319,6 @@ class GoogleTvSync @Inject constructor(
             prefs.edit().putString(K_NEWS_NAME, name).apply()
         }
         val signature = NewsChannelPlan.signature(selected)
-        if (prefs.getString(K_NEWS_SIGNATURE, null) == signature) return@withLock
         val cr = ctx.contentResolver
         val existing = HashMap<String, Long>()
         cr.query(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), PreviewProgram.PROJECTION, null, null, null)?.use { c ->
@@ -264,6 +327,7 @@ class GoogleTvSync @Inject constructor(
                 p.internalProviderId?.let { existing[it] = p.id }
             }
         }
+        if (!ChannelPublishPlan.mustRewrite(prefs.getString(K_NEWS_SIGNATURE, null) == signature, existing.size, selected.size)) return@withLock
         fun program(i: NewsChannelPlan.Item, index: Int) = PreviewProgram.Builder()
             .setChannelId(channelId)
             .setType(if (i.kind == NewsChannelPlan.Kind.MOVIE) TvContractCompat.PreviewPrograms.TYPE_MOVIE else TvContractCompat.PreviewPrograms.TYPE_TV_SERIES)
@@ -275,13 +339,16 @@ class GoogleTvSync @Inject constructor(
             .setIntentUri(Uri.parse(NewsChannelPlan.deepLink(i)))
             .build()
         val diff = NewsChannelPlan.diff(existing, selected)
+        var failed = 0
         diff.deleteRowIds.forEach { cr.delete(TvContractCompat.buildPreviewProgramUri(it), null, null) }
         selected.forEachIndexed { index, i ->
             val rowId = diff.update.firstOrNull { it.second === i }?.first
             if (rowId != null) cr.update(TvContractCompat.buildPreviewProgramUri(rowId), program(i, index).toContentValues(), null, null)
-            else helper.publishPreviewProgram(program(i, index))
+            else if (helper.publishPreviewProgram(program(i, index)) < 0) failed++
         }
-        prefs.edit().putString(K_NEWS_SIGNATURE, signature).apply()
+        // Signature mémorisée seulement si tout est passé : un échec partiel est retenté à la synchro suivante.
+        if (failed == 0) prefs.edit().putString(K_NEWS_SIGNATURE, signature).apply()
+        report("news:programs", "news channel id=$channelId programs=${selected.size} (+${diff.insert.size} -${diff.deleteRowIds.size}) failed=$failed", warn = failed > 0)
         android.util.Log.i("UltraGoogleTv", "news channel: ${selected.size} (+${diff.insert.size} -${diff.deleteRowIds.size})")
     }
 
@@ -289,6 +356,8 @@ class GoogleTvSync @Inject constructor(
         const val K_NEWS_CHANNEL = "news_channel_id"
         const val K_NEWS_SIGNATURE = "news_signature"
         const val K_NEWS_NAME = "news_name"
+        const val K_DEFAULT_DONE = "default_channel_published"
+        const val K_BROWSABLE_ASKED = "news_browsable_asked"
         const val K_CHANNEL = "favorites_channel_id"
         const val K_SIGNATURE = "favorites_signature"
     }

@@ -94,6 +94,8 @@ object StartupNav {
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    private companion object { const val REQ_CHANNEL_BROWSABLE = 4107 }
+
     @Inject lateinit var prefsStore: UserPreferencesStore
     @Inject lateinit var providerRepo: ProviderRepository
     @Inject lateinit var historyRepo: HistoryRepository
@@ -103,6 +105,7 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
     @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
     @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
+    @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
 
     override fun onStop() {
         super.onStop()
@@ -151,6 +154,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         kickoffStartupTasks()
+        // Google TV : invite système « Afficher la chaîne Nouveautés sur l'accueil ? », une seule fois, quand la chaîne
+        // existe sans être affichée. Après l'accueil (30 s), jamais pendant une lecture ni appli en arrière-plan.
+        lifecycleScope.launch {
+            kotlinx.coroutines.delay(45_000)
+            if (!com.ultratv.tv.nativeapp.ui.common.AppForeground.visible || com.ultratv.tv.nativeapp.ui.design.Ux.playerActive) return@launch
+            runCatching {
+                val intent = kotlinx.coroutines.withContext(Dispatchers.IO) { googleTv.get().browsableRequest() } ?: return@runCatching
+                @Suppress("DEPRECATION") startActivityForResult(intent, REQ_CHANNEL_BROWSABLE)
+            }
+        }
         // Auto-update flow: query GitHub Releases on launch and, if a newer
         // version is found, download + fire the system install Intent without
         // asking the user first. They still get the OS's "Install this app?"
@@ -175,6 +188,12 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_CHANNEL_BROWSABLE) runCatching { googleTv.get().onBrowsableResult(resultCode == RESULT_OK) }
     }
 
     override fun onNewIntent(intent: android.content.Intent) {

@@ -122,3 +122,37 @@ object NewsChannelPlan {
     fun signature(selected: List<Item>): String =
         selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}" }.hashCode().toString()
 }
+
+/** Règles pures de publication des chaînes d'accueil (testables sans Android). */
+object ChannelPublishPlan {
+    enum class Mode { DEFAULT, NORMAL }
+
+    /**
+     * Google TV n'affiche d'office que la PREMIÈRE chaîne de l'application, et seulement si elle est publiée comme chaîne
+     * par défaut (requestChannelBrowsable). La chaîne « Nouveautés », publiée comme chaîne ordinaire quand aucune chaîne
+     * « Favoris » n'existait (aucun favori ni historique), n'était donc jamais visible : la première publiée est la
+     * chaîne par défaut, les suivantes sont ordinaires.
+     */
+    fun mode(hasDefaultChannel: Boolean) = if (hasDefaultChannel) Mode.NORMAL else Mode.DEFAULT
+
+    /** Une chaîne enregistrée mais disparue du fournisseur (retirée par l'utilisateur, base TV réinitialisée) est recréée. */
+    fun mustRecreate(storedId: Long, existsInProvider: Boolean) = storedId >= 0 && !existsInProvider
+
+    /** Les programmes sont republiés si la sélection a changé OU si le système en a effacé (nombre différent). */
+    fun mustRewrite(sameSignature: Boolean, publishedCount: Int, wantedCount: Int) = !sameSignature || publishedCount != wantedCount
+
+    /** Invite « Afficher cette chaîne sur l'accueil » : une seule fois, chaîne existante et pas encore affichée. */
+    fun shouldAskBrowsable(channelId: Long, browsable: Boolean, alreadyAsked: Boolean) = channelId >= 0 && !browsable && !alreadyAsked
+}
+
+/** Limite la télémétrie : un message n'est émis que s'il change pour sa clé (pas de répétition à chaque synchro). */
+class TelemetryGate {
+    private val last = HashMap<String, String>()
+
+    @Synchronized
+    fun shouldEmit(key: String, message: String): Boolean {
+        if (last[key] == message) return false
+        last[key] = message
+        return true
+    }
+}

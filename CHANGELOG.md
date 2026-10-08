@@ -2,6 +2,18 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.55] — 2026-10-08 (Android TV)
+
+### Corrigé
+- Lenteurs sur les box modestes : pendant une synchronisation, les rangées Trakt reparcouraient tout le catalogue
+  toutes les 3 s, sur tous les cœurs. Elles ne sont plus recalculées qu'à la fin d'une synchronisation, sur un seul
+  fil de basse priorité.
+- Google TV : la chaîne « Ultra TV · Nouveautés » restait invisible — publiée comme chaîne ordinaire alors que seule la
+  première chaîne d'une application (« par défaut ») s'affiche d'office. La première chaîne publiée est désormais la
+  chaîne par défaut ; sinon l'application propose une fois de l'ajouter à l'écran d'accueil. Une chaîne supprimée
+  par le système est recréée (Nouveautés et Favoris).
+- Google TV : journal de diagnostic (création des chaînes, programmes publiés, « Continuer à regarder », erreurs).
+
 ## [1.2.54] — 2026-10-08 (Android TV)
 
 ### Ajouté

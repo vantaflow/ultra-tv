@@ -47,6 +47,10 @@ interface ProviderRawDao {
     @Query("UPDATE provider SET lastLiveSyncAt = :t WHERE id = :id")
     suspend fun setLiveSyncAt(id: Long, t: Long)
 
+    /** Horodatage du catalogue films + séries : change à la FIN d'une synchro (pas à chaque ligne insérée). */
+    @Query("SELECT lastVodSyncAt + lastSeriesSyncAt FROM provider WHERE id = :id")
+    fun observeCatalogStamp(id: Long): kotlinx.coroutines.flow.Flow<Long?>
+
     @Query("UPDATE provider SET lastVodSyncAt = :t WHERE id = :id")
     suspend fun setVodSyncAt(id: Long, t: Long)
 
@@ -84,6 +88,7 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
     suspend fun delete(id: Long) = raw.delete(id)
     suspend fun deactivateAll() = raw.deactivateAll()
     suspend fun activate(id: Long) = raw.activate(id)
+    fun observeCatalogStamp(id: Long): Flow<Long?> = raw.observeCatalogStamp(id)
     suspend fun markSynced(id: Long, part: SyncPart, t: Long) = when (part) {
         SyncPart.LIVE -> raw.setLiveSyncAt(id, t)
         SyncPart.VOD -> raw.setVodSyncAt(id, t)
