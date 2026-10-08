@@ -53,7 +53,7 @@ const apiHeaders = (clientId, access) => ({
 async function traktGet(clientId, access, path, fetchFn) {
   const r = await fetchFn(`${TRAKT_API}${path}`, { headers: apiHeaders(clientId, access), redirect: "manual" });
   if (r.status === 401 || r.status === 403) throw Object.assign(new Error("unauthorized"), { unauthorized: true });
-  if (r.status !== 200) throw new Error(`trakt ${r.status}`);
+  if (r.status !== 200) throw Object.assign(new Error(`trakt ${r.status}`), { status: r.status });
   const d = await r.json();
   return Array.isArray(d) ? d : [];
 }
@@ -70,13 +70,22 @@ const item = (type, o) => ({ type, tmdb: tmdbOf(o), year: yearOf(o?.year), title
  * Un appel en échec (autre qu'un refus d'accès) laisse simplement sa liste vide.
  */
 export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
-  const get = (p) => traktGet(clientId, access, p, fetchFn).catch((e) => { if (e.unauthorized) throw e; return []; });
+  // Une liste en échec reste vide ; TOUTES en échec : erreur (sinon une panne de Trakt passerait pour un compte vide,
+  // et ce vide serait gardé 15 min en cache).
+  let failed = 0;
+  const get = (p) => traktGet(clientId, access, p, fetchFn).catch((e) => {
+    if (e.unauthorized) throw e;
+    failed++;
+    console.log(JSON.stringify({ trakt: "library", path: p.split("?")[0], status: e.status ?? "network" }));
+    return [];
+  });
   const [wm, ws, rm, rs, hm, hs] = await Promise.all([
     get("/sync/watchlist/movies"), get("/sync/watchlist/shows"),
     get(`/recommendations/movies?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
     get(`/recommendations/shows?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
     get("/sync/watched/movies"), get("/sync/watched/shows"),
   ]);
+  if (failed === 6) throw Object.assign(new Error("trakt indisponible"), { upstream: true });
   const watchlist = [...wm.map((x) => item("movie", x.movie)), ...ws.map((x) => item("show", x.show))]
     .filter((x) => x.title).slice(0, MAX_WATCHLIST);
   const recommendations = [...rm.map((x) => item("movie", x)), ...rs.map((x) => item("show", x))].filter((x) => x.title);

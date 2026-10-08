@@ -577,7 +577,7 @@ async function deviceTraktScrobble(req, env) {
   if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
   const tmdb = s.tmdb || (await resolveTmdb(env, s.kind === "movie" ? "movie" : "tv", s.title, s.year));
   const payload = traktScrobbleBody(s, tmdb);
-  if (!payload) return json({ linked: true, matched: false });
+  if (!payload) { console.log(JSON.stringify({ trakt: "scrobble", unmatched: s.kind })); return json({ linked: true, matched: false }); }
   const redirectUri = traktRedirect(new URL(req.url));
   let access = await traktAccess(env, auth.acct.login, redirectUri);
   if (!access) return json({ linked: false });

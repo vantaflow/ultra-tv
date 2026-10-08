@@ -166,6 +166,8 @@ export async function sendScrobble(clientId, access, action, body, fetchFn = fet
   try {
     r = await fetchFn(`${TRAKT_API}/scrobble/${action}`, { method: "POST", redirect: "manual", headers: apiHeaders(clientId, access), body: JSON.stringify(body) });
   } catch { return "upstream"; }
+  // Statut seul (jamais de jeton ni de titre) : diagnostic via `wrangler tail`.
+  console.log(JSON.stringify({ trakt: "scrobble", action, status: r.status }));
   // 409 : déjà scrobblé il y a peu (Trakt dédoublonne) — sans gravité.
   if (r.status === 200 || r.status === 201 || r.status === 409) return "ok";
   if (r.status === 401 || r.status === 403) return "unauthorized";
