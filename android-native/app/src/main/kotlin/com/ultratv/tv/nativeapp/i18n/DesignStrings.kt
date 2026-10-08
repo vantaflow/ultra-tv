@@ -83,6 +83,8 @@ class DesignStrings(val lang: AppLang) {
     val recentlyWatched get() = t("Recently watched", "Dernières chaînes regardées", "Vistos recientemente", "شوهدت مؤخرًا")
     val latestMovies get() = t("Latest movies", "Derniers films ajoutés", "Últimas películas", "أحدث الأفلام")
     val latestSeries get() = t("Latest series", "Dernières séries ajoutées", "Últimas series", "أحدث المسلسلات")
+    /** Nom de la chaîne d'accueil Google TV des derniers ajouts. */
+    val newsChannelName get() = t("Ultra TV · New releases", "Ultra TV · Nouveautés", "Ultra TV · Novedades", "Ultra TV · الجديد")
     val seeAll get() = t("See all", "Voir tout", "Ver todo", "عرض الكل")
     val loadingLabel get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
     val dashboardScan get() = t("Scan with your phone", "À scanner avec votre téléphone", "Escanea con tu teléfono", "امسح الرمز بهاتفك")

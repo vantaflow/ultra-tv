@@ -56,7 +56,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin) ; à l'accueil, **watchlist**, **recommandations**, **tendances** et **populaires** Trakt limitées aux titres disponibles dans la playlist chargée ; marque **« Vu »** sur les films et épisodes déjà vus. Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
 - **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
-- **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes), recherche vocale et globale, liens profonds `ultratv://`.
+- **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes) et chaîne **Ultra TV · Nouveautés** (derniers films et séries ajoutés), recherche vocale et globale, liens profonds `ultratv://`.
 - **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.

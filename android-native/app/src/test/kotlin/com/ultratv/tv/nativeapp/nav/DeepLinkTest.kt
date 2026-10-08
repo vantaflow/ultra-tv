@@ -15,6 +15,12 @@ class DeepLinkTest {
         assertEquals(DeepLink.PlayEpisode(1, "9"), DeepLink.parse(DeepLink.episode(1, "9")))
     }
 
+    @Test fun fiche_film_et_serie_sont_distinguees_de_la_lecture() {
+        assertEquals(DeepLink.OpenMovie(2, "a/b 1"), DeepLink.parse(DeepLink.movieDetail(2, "a/b 1")))
+        assertEquals(DeepLink.OpenSeries(2, "7"), DeepLink.parse(DeepLink.series(2, "7")))
+        assertNull(DeepLink.parse("ultratv://moviedetail/x/1"))
+    }
+
     @Test fun recherche_decode_la_requete() {
         assertEquals(DeepLink.Search("le journal & co"), DeepLink.parse(DeepLink.search("le journal & co")))
     }

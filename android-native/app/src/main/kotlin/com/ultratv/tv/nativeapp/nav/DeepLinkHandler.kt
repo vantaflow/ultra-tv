@@ -32,6 +32,11 @@ class DeepLinkHandler @Inject constructor(
             if (s != null) StartupNav.pendingRoute.value = Routes.seriesDetail(s.id)
             s != null
         }
+        is DeepLink.OpenMovie -> {
+            val m = movieDao.byRemoteId(link.providerId, link.remoteId)
+            if (m != null) StartupNav.pendingRoute.value = Routes.movieDetail(m.id)
+            m != null
+        }
         // Recherche vocale / globale : l'écran Recherche ouvre avec la requête déjà saisie.
         is DeepLink.Search -> { StartupNav.debugQuery.value = link.query; StartupNav.pendingRoute.value = Routes.SEARCH; true }
     }

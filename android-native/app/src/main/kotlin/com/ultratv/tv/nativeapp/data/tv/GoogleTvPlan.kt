@@ -64,3 +64,61 @@ object FavoritesChannelPlan {
     fun signature(selected: List<ChannelEntity>): String =
         selected.joinToString("|") { "${it.providerId}:${it.remoteId}:${it.title}:${it.logo.orEmpty()}" }.hashCode().toString()
 }
+
+/** Chaîne d'accueil « Ultra TV · Nouveautés » : derniers films et séries ajoutés par la source active. */
+object NewsChannelPlan {
+    const val MAX = 20
+    /** Nombre de lignes lues par type (même source que les rangées de l'accueil, avec de la marge pour les sans-affiche). */
+    const val FETCH = 30
+
+    enum class Kind { MOVIE, SERIES }
+
+    /** Élément candidat, indépendant de Room (testable sans Android). */
+    data class Item(val kind: Kind, val providerId: Long, val remoteId: String, val title: String, val poster: String?, val addedKey: Long)
+
+    fun internalId(i: Item) = "NEWS:${i.kind.name}:${i.providerId}:${i.remoteId}"
+
+    fun deepLink(i: Item) = when (i.kind) {
+        Kind.MOVIE -> DeepLink.movieDetail(i.providerId, i.remoteId)
+        Kind.SERIES -> DeepLink.series(i.providerId, i.remoteId)
+    }
+
+    /**
+     * Films et séries entrelacés (un film, une série, un film…), chacun dans l'ordre addedKey décroissant (l'ordre de
+     * l'accueil) ; un type épuisé laisse la place à l'autre. Sans affiche ou sans titre : écartés (un programme
+     * d'aperçu exige une image). Sans doublon, au plus [MAX].
+     */
+    fun select(movies: List<Item>, series: List<Item>): List<Item> {
+        fun clean(l: List<Item>) = l.filter { it.title.isNotBlank() && !it.poster.isNullOrBlank() }.sortedByDescending { it.addedKey }
+        val m = clean(movies)
+        val s = clean(series)
+        val out = ArrayList<Item>(MAX)
+        var a = 0
+        var b = 0
+        while (out.size < MAX && (a < m.size || b < s.size)) {
+            if (a < m.size) out += m[a++]
+            if (out.size < MAX && b < s.size) out += s[b++]
+        }
+        return out.distinctBy { internalId(it) }
+    }
+
+    /** Opérations à appliquer à la chaîne : ids stables ([internalId]) ; l'ordre d'affichage passe par le poids. */
+    data class Diff(val insert: List<Item>, val update: List<Pair<Long, Item>>, val deleteRowIds: List<Long>)
+
+    /** [existing] : identifiant interne -> identifiant de ligne déjà publié. Rien n'est supprimé puis recréé pour rien. */
+    fun diff(existing: Map<String, Long>, wanted: List<Item>): Diff {
+        val keys = wanted.map { internalId(it) }.toSet()
+        return Diff(
+            insert = wanted.filter { internalId(it) !in existing },
+            update = wanted.mapNotNull { i -> existing[internalId(i)]?.let { it to i } },
+            deleteRowIds = existing.filterKeys { it !in keys }.values.toList(),
+        )
+    }
+
+    /** Poids d'affichage : le premier élément a le poids le plus fort (le système trie par poids décroissant). */
+    fun weight(index: Int, size: Int) = size - index
+
+    /** Empreinte de la sélection (ordre, titres, affiches) : on ne touche à la chaîne que si elle a changé. */
+    fun signature(selected: List<Item>): String =
+        selected.joinToString("|") { "${internalId(it)}:${it.title}:${it.poster.orEmpty()}" }.hashCode().toString()
+}

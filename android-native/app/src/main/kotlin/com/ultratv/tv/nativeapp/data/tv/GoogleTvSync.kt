@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Intégration Google TV / Android TV : « Continuer à regarder » (Watch Next) et chaîne de prévisualisation
@@ -50,6 +51,9 @@ class GoogleTvSync @Inject constructor(
     private val favorites: FavoriteDao,
     private val channels: ChannelDao,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val movies: com.ultratv.tv.nativeapp.data.db.MovieDao,
+    private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
+    private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
 ) {
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
@@ -87,6 +91,29 @@ class GoogleTvSync @Inject constructor(
                 }
             }.debounce(3_000).collect { runCatching { syncFavoritesChannel(it) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "home channel", e) } }
         }
+        // Chaîne « Nouveautés » : suit la source active. Les tables film / série bougent pendant toute la synchro du
+        // catalogue : on attend 5 s de calme (fin de synchro), puis la signature évite toute réécriture inutile.
+        scope.launch {
+            activeProvider.flatMapLatest { pid -> if (pid == null) flowOf(emptyList()) else latestFlow(pid) }
+                .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "news channel", e) } }
+        }
+    }
+
+    private fun latestFlow(pid: Long) = combine(movies.observeLatest(pid, NewsChannelPlan.FETCH), seriesDao.observeLatest(pid, NewsChannelPlan.FETCH)) { ms, ss ->
+        NewsChannelPlan.select(
+            ms.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.MOVIE, it.providerId, it.remoteId, it.title, it.poster, it.addedKey) },
+            ss.map { NewsChannelPlan.Item(NewsChannelPlan.Kind.SERIES, it.providerId, it.remoteId, it.title, it.poster, it.addedKey) },
+        )
+    }
+
+    /** Nom de la chaîne dans la langue de l'appli (« système » : langue de l'appareil). */
+    private suspend fun newsChannelName(): String {
+        val code = prefsStore.flow.first().language
+        val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(code).let { l ->
+            if (l != com.ultratv.tv.nativeapp.i18n.AppLang.System) l
+            else com.ultratv.tv.nativeapp.i18n.AppLang.entries.firstOrNull { it.code == java.util.Locale.getDefault().language } ?: com.ultratv.tv.nativeapp.i18n.AppLang.English
+        }
+        return com.ultratv.tv.nativeapp.i18n.DesignStrings(lang).newsChannelName
     }
 
     /** Synchro ponctuelle (demande du système à l'initialisation des programmes). */
@@ -100,6 +127,7 @@ class GoogleTvSync @Inject constructor(
             val favs = favorites.observeForKind(prof, pid, "LIVE").first()
             syncFavoritesChannel(FavoritesChannelPlan.select(orderedByRemote(pid, favs.map { it.remoteId }), orderedByRemote(pid, WatchNextPlan.selectLive(hist).map { it.remoteId })))
         }
+        runCatching { syncNewsChannel(latestFlow(pid).first()) }
     }
 
     /** Chaînes dans l'ordre des identifiants donnés (la requête par lot ne garantit pas l'ordre). */
@@ -197,7 +225,70 @@ class GoogleTvSync @Inject constructor(
         prefs.edit().putString(K_SIGNATURE, signature).apply()
     }
 
+    // ---- Chaîne de prévisualisation « Nouveautés » ------------------------------------------
+
+    /** Les écritures dans le fournisseur de contenu sont sérialisées (collecte continue + demande du système). */
+    private val newsLock = kotlinx.coroutines.sync.Mutex()
+
+    private suspend fun syncNewsChannel(selected: List<NewsChannelPlan.Item>) = newsLock.withLock {
+        val helper = PreviewChannelHelper(ctx)
+        var channelId = prefs.getLong(K_NEWS_CHANNEL, -1L)
+        if (selected.isEmpty() && channelId < 0) return@withLock
+        val name = newsChannelName()
+        if (channelId < 0) {
+            val logo = ContextCompat.getDrawable(ctx, com.ultratv.tv.nativeapp.R.mipmap.ic_launcher)!!.toBitmap(160, 160)
+            val channel = PreviewChannel.Builder()
+                .setDisplayName(name)
+                .setAppLinkIntentUri(Uri.parse("${com.ultratv.tv.nativeapp.nav.DeepLink.SCHEME}://home"))
+                .setLogo(logo)
+                .build()
+            // Chaîne ordinaire : l'utilisateur l'ajoute à l'accueil depuis « Personnaliser les chaînes » (seule la
+            // première chaîne de l'application est affichée d'office par le système).
+            channelId = helper.publishChannel(channel)
+            prefs.edit().putLong(K_NEWS_CHANNEL, channelId).putString(K_NEWS_NAME, name).remove(K_NEWS_SIGNATURE).apply()
+        } else if (prefs.getString(K_NEWS_NAME, null) != name) {
+            // Langue de l'appli changée : on renomme la chaîne.
+            runCatching {
+                val current = helper.getPreviewChannel(channelId)
+                if (current != null) helper.updatePreviewChannel(channelId, PreviewChannel.Builder(current).setDisplayName(name).build())
+            }
+            prefs.edit().putString(K_NEWS_NAME, name).apply()
+        }
+        val signature = NewsChannelPlan.signature(selected)
+        if (prefs.getString(K_NEWS_SIGNATURE, null) == signature) return@withLock
+        val cr = ctx.contentResolver
+        val existing = HashMap<String, Long>()
+        cr.query(TvContractCompat.buildPreviewProgramsUriForChannel(channelId), PreviewProgram.PROJECTION, null, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                val p = PreviewProgram.fromCursor(c)
+                p.internalProviderId?.let { existing[it] = p.id }
+            }
+        }
+        fun program(i: NewsChannelPlan.Item, index: Int) = PreviewProgram.Builder()
+            .setChannelId(channelId)
+            .setType(if (i.kind == NewsChannelPlan.Kind.MOVIE) TvContractCompat.PreviewPrograms.TYPE_MOVIE else TvContractCompat.PreviewPrograms.TYPE_TV_SERIES)
+            .setTitle(i.title)
+            .setPosterArtUri(Uri.parse(i.poster))
+            .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3)
+            .setWeight(NewsChannelPlan.weight(index, selected.size))
+            .setInternalProviderId(NewsChannelPlan.internalId(i))
+            .setIntentUri(Uri.parse(NewsChannelPlan.deepLink(i)))
+            .build()
+        val diff = NewsChannelPlan.diff(existing, selected)
+        diff.deleteRowIds.forEach { cr.delete(TvContractCompat.buildPreviewProgramUri(it), null, null) }
+        selected.forEachIndexed { index, i ->
+            val rowId = diff.update.firstOrNull { it.second === i }?.first
+            if (rowId != null) cr.update(TvContractCompat.buildPreviewProgramUri(rowId), program(i, index).toContentValues(), null, null)
+            else helper.publishPreviewProgram(program(i, index))
+        }
+        prefs.edit().putString(K_NEWS_SIGNATURE, signature).apply()
+        android.util.Log.i("UltraGoogleTv", "news channel: ${selected.size} (+${diff.insert.size} -${diff.deleteRowIds.size})")
+    }
+
     private companion object {
+        const val K_NEWS_CHANNEL = "news_channel_id"
+        const val K_NEWS_SIGNATURE = "news_signature"
+        const val K_NEWS_NAME = "news_name"
         const val K_CHANNEL = "favorites_channel_id"
         const val K_SIGNATURE = "favorites_signature"
     }

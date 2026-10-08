@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.54] — 2026-10-08 (Android TV)
+
+### Ajouté
+- Google TV / Android TV : chaîne d'accueil **« Ultra TV · Nouveautés »** — derniers films et séries ajoutés par la
+  source active (même ordre que l'accueil de l'application, affiche obligatoire), mise à jour après chaque
+  synchronisation ; un programme ouvre la fiche du film ou de la série. À ajouter depuis « Personnaliser les chaînes »
+  de l'écran d'accueil.
+
 ## [1.2.53] — 2026-10-08 (Android TV) · [Bureau 1.2.33]
 
 ### Ajouté
