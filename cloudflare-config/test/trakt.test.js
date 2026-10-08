@@ -82,17 +82,28 @@ describe("trakt : routes", () => {
     expect(u.searchParams.get("code_challenge_method")).toBe("S256");
     expect(u.searchParams.get("state")).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
   });
-  it("retour de Trakt : état inconnu ou d'un autre compte refusé, sans session renvoyé à la connexion", async () => {
+  it("retour de Trakt : sans cookie de session (SameSite=Strict absent), lié au navigateur par le cookie Lax", async () => {
     const a = await newAccount();
-    const b = await newAccount();
     const start = await call("/trakt/connect", { method: "POST", ip: a.ip, cookie: a.cookie, form: { csrf: a.csrf } });
     const state = new URL(start.headers.get("location")).searchParams.get("state");
-    const other = await call(`/trakt/callback?code=abc&state=${state}`, { cookie: b.cookie, ip: b.ip });
-    expect(other.headers.get("location")).toBe("/?e=trakt#compte");
-    // État consommé : même le bon compte ne peut plus le rejouer.
-    expect((await call(`/trakt/callback?code=abc&state=${state}`, { cookie: a.cookie, ip: a.ip })).headers.get("location")).toBe("/?e=trakt#compte");
-    expect((await call("/trakt/callback?code=abc&state=zz", { cookie: a.cookie, ip: a.ip })).headers.get("location")).toBe("/?e=trakt#compte");
-    expect((await call("/trakt/callback?code=abc&state=zzzzzzzzzzzzzzzzzzzz", { ip: freshIp() })).headers.get("location")).toBe("/login");
+    const setCookie = start.headers.get("set-cookie");
+    expect(setCookie).toContain(`utv_trakt=${state}`);
+    expect(setCookie).toContain("SameSite=Lax");
+    expect(setCookie).toContain("Path=/trakt");
+    const back = (cookie, st = state) => call(`/trakt/callback?code=abc&state=${st}`, { cookie, ip: freshIp() });
+    // Navigateur sans le cookie de départ (lien fabriqué par un tiers) : refusé, et jamais renvoyé à /login.
+    const foreign = await back(undefined);
+    expect(foreign.status).toBe(200);
+    expect(await foreign.text()).toContain('url=/?e=trakt#compte');
+    expect((await back(`utv_trakt=${"x".repeat(32)}`)).status).toBe(200);
+    // Bon navigateur, sans session : traité (ici l'échange échoue faute de vrai Trakt → e=trakt), pas de boucle /login.
+    const r = await back(`utv_trakt=${state}`);
+    expect(r.status).toBe(200);
+    expect(r.headers.get("location")).toBeNull();
+    expect(r.headers.get("set-cookie")).toContain("Max-Age=0");
+    // État consommé : rejeu refusé.
+    expect(await (await back(`utv_trakt=${state}`)).text()).toContain("e=trakt");
+    expect(await (await back("utv_trakt=zz", "zz")).text()).toContain("e=trakt");
   });
   it("scrobble d'un appareil : compte non relié → linked:false ; corps invalide → 400 ; sans jeton → 401", async () => {
     const acct = await newAccount();

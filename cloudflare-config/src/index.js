@@ -169,14 +169,17 @@ async function route(req, env) {
   if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/signup" && m === "POST") return doSignup(req, env);
 
+  // Retour de Trakt : AVANT la session. Le cookie de session est SameSite=Strict, donc absent d'une navigation venue
+  // de trakt.tv ; le retour est authentifié par l'état à usage unique ET le cookie SameSite=Lax posé au départ.
+  if (path === "/trakt/callback" && m === "GET") return traktFinish(req, env, url);
+
   // ---- tableau de bord (session) ----
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const traktCallback = path === "/trakt/callback" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account))$/.test(path));
-  if (!dashboardRoute && !pairRoute && !traktCallback && !mutating) return new Response("Not found", { status: 404 });
+  if (!dashboardRoute && !pairRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
     return redirect(c ? `/login?next=${encodeURIComponent(`/pair?code=${c}`)}` : "/login");
@@ -188,8 +191,6 @@ async function route(req, env) {
     const c = normalizeCode(raw);
     return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c });
   }
-
-  if (traktCallback) return traktFinish(env, sess.acct, url);
 
   if (dashboardRoute) {
     const n = nonce();
@@ -483,27 +484,52 @@ async function traktStart(env, acct, url) {
   const { verifier, challenge } = await pkcePair();
   // Le vérificateur ne quitte jamais le Worker ; l'état lie le retour de Trakt à CE compte (anti-CSRF du retour).
   await env.CONFIG.put(traktStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: TRAKT_STATE_TTL_S });
-  return redirect(authorizeUrl(env.TRAKT_CLIENT_ID, traktRedirect(url), state, challenge));
+  // Cookie lié au navigateur (Lax : renvoyé par la navigation de retour depuis trakt.tv) : un lien d'autorisation
+  // fabriqué sur le compte d'un tiers et ouvert par la victime ne relie pas son Trakt au compte du tiers.
+  return redirect(authorizeUrl(env.TRAKT_CLIENT_ID, traktRedirect(url), state, challenge), {
+    "set-cookie": `${TRAKT_COOKIE}=${state}; Path=/trakt; HttpOnly; Secure; SameSite=Lax; Max-Age=${TRAKT_STATE_TTL_S}`,
+  });
 }
 
-async function traktFinish(env, sessAcct, url) {
+const TRAKT_COOKIE = "utv_trakt";
+
+/**
+ * Fin du parcours Trakt : page relais qui renvoie au tableau de bord par une navigation INTERNE au site (le cookie
+ * de session Strict est alors renvoyé ; une redirection 302 dans la chaîne venue de trakt.tv ne le serait pas).
+ */
+function traktDone(query) {
+  const to = `/?${query}#compte`;
+  return new Response(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${to}"><title>Ultra TV</title><p><a href="${to}">Retour au tableau de bord</a></p>`, {
+    headers: {
+      "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
+      "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+      "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
+      "set-cookie": `${TRAKT_COOKIE}=; Path=/trakt; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+    },
+  });
+}
+
+async function traktFinish(req, env, url) {
   const state = url.searchParams.get("state") || "";
   const code = url.searchParams.get("code") || "";
-  if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) return redirect("/?e=trakt#compte");
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) return traktDone("e=trakt");
+  // Même navigateur que celui qui a lancé la connexion.
+  if (!timingSafeEqual(readCookie(req, TRAKT_COOKIE) || "", state)) return traktDone("e=trakt");
   const raw = await env.CONFIG.get(traktStateKey(state));
   if (raw) await env.CONFIG.delete(traktStateKey(state));
   let st = null;
   try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
-  // Retour d'un autre compte, état expiré ou déjà utilisé, refus chez Trakt : rien n'est enregistré.
-  if (!st || st.login !== sessAcct.login || !code || code.length > 512 || !env.TRAKT_CLIENT_ID) return redirect("/?e=trakt#compte");
+  // État expiré ou déjà utilisé, refus chez Trakt : rien n'est enregistré.
+  if (!st || typeof st.login !== "string" || !code || code.length > 512 || !env.TRAKT_CLIENT_ID) return traktDone("e=trakt");
   const t = await exchangeCode(env.TRAKT_CLIENT_ID, traktRedirect(url), code, st.verifier);
-  if (t.error) return redirect("/?e=trakt#compte");
+  if (t.error) return traktDone("e=trakt");
   const user = await traktUsername(env.TRAKT_CLIENT_ID, t.access);
-  return withAccountLock(env, sessAcct.login, async (acct) => {
+  return withAccountLock(env, st.login, async (acct) => {
+    if (!acct) return traktDone("e=trakt");
     acct.traktEnc = await encryptJson(keysFromEnv(env), t, acct.login);
     acct.trakt = { user, at: Date.now() };
     await putAccount(env, acct);
-    return redirect("/?m=trakt#compte");
+    return traktDone("m=trakt");
   });
 }
 
