@@ -25,6 +25,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -52,6 +54,7 @@ class GoogleTvSync @Inject constructor(
     private val isTv = ctx.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
     private var started = false
+    @Volatile private var lastWatchNextSync = 0L
 
     private val activeProvider = providers.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
@@ -63,9 +66,16 @@ class GoogleTvSync @Inject constructor(
         started = true
         scope.launch {
             scope_.flatMapLatest { (prof, pid) -> if (pid == null) flowOf(emptyList()) else history.observeRecent(prof, pid, 40) }
-                // 45 s de calme : pendant une lecture la position est enregistrée toutes les 30 s ; avant (3 s), chaque
-                // enregistrement réécrivait Watch Next dans Google TV. Maintenant : une écriture à l'arrêt de la lecture.
-                .debounce(45_000).collect { runCatching { syncWatchNext(WatchNextPlan.select(it) + WatchNextPlan.selectLive(it)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) } }
+                // 1.2.42 avait mis un debounce de 45 s : tant que l'historique bouge (position enregistrée toutes les 30 s,
+                // synchro d'appareils), RIEN n'était publié, et rien non plus si l'appli était quittée / tuée dans les 45 s
+                // suivant la fin d'une lecture — « Continuer à regarder » restait vide. Maintenant : 2 s de calme, puis
+                // publication immédiate si la dernière écriture date de plus de 45 s, sinon au terme de ce délai (au plus
+                // une écriture toutes les 45 s dans Google TV, mais la première ne se fait jamais attendre).
+                .debounce(2_000).collectLatest { plan ->
+                    delay(WatchNextPlan.waitMs(lastWatchNextSync, System.currentTimeMillis()))
+                    runCatching { syncWatchNext(WatchNextPlan.select(plan) + WatchNextPlan.selectLive(plan)) }.onFailure { e -> android.util.Log.w("UltraGoogleTv", "watch next", e) }
+                    lastWatchNextSync = System.currentTimeMillis()
+                }
         }
         scope.launch {
             scope_.flatMapLatest { (prof, pid) ->

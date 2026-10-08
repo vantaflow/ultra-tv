@@ -312,7 +312,9 @@ class PlayerViewModel @Inject constructor(
     fun recordProgress(positionMs: Long, durationMs: Long) {
         val c = playback.current.value ?: return
         if (positionMs < 5_000 && c.kind != "LIVE") return
-        viewModelScope.launch {
+        // NonCancellable : à la sortie du lecteur le ViewModel est détruit juste après onDispose et son viewModelScope annulé —
+        // la dernière position (celle qui alimente « Continuer à regarder ») pouvait être perdue avant d'être écrite.
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
             history.record(
                 providerId = c.providerId, kind = c.kind, remoteId = c.remoteId, title = c.title, poster = c.poster, streamUrl = c.streamUrl,
                 positionMs = if (c.kind == "LIVE") 0 else positionMs, durationMs = if (c.kind == "LIVE") 0 else durationMs, parentRemoteId = c.parentRemoteId,

@@ -48,13 +48,41 @@ interface TraktIdentityResolver {
     suspend fun resolve(item: PlaybackContext.Item): TraktIdentity?
 }
 
+/**
+ * Booléen coûteux à lire (Keystore, disque) exposé SANS jamais bloquer l'appelant : `get()` renvoie la dernière valeur
+ * connue (`false` tant que rien n'a été lu) et relance une lecture en arrière-plan quand elle a plus de [ttlMs].
+ * Avant : le tick du lecteur (fil principal, toutes les 500 ms) déchiffrait le jeton par le Keystore à chaque appel.
+ */
+class CachedFlag(
+    private val ttlMs: Long,
+    private val scope: CoroutineScope,
+    private val clock: () -> Long = System::currentTimeMillis,
+    private val load: () -> Boolean,
+) {
+    @Volatile private var value = false
+    @Volatile private var loadedAt = -1L
+    private val refreshing = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    fun get(): Boolean {
+        if ((loadedAt < 0 || clock() - loadedAt >= ttlMs) && refreshing.compareAndSet(false, true)) {
+            scope.launch {
+                try { value = runCatching(load).getOrDefault(false); loadedAt = clock() } finally { refreshing.set(false) }
+            }
+        }
+        return value
+    }
+}
+
 @Singleton
 class WorkerTraktTransport @Inject constructor(
     private val client: CloudSyncClient,
     private val tokens: DeviceTokenStore,
     private val prefs: UserPreferencesStore,
 ) : TraktTransport {
-    override val isPaired get() = tokens.isPaired
+    private val paired = CachedFlag(ttlMs = 30_000, scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)) { tokens.isPaired }
+
+    /** Lue depuis le fil principal (tick du lecteur) : valeur en cache, jamais d'accès Keystore ici. */
+    override val isPaired get() = paired.get()
 
     override suspend fun send(req: ScrobbleRequest): ScrobbleResult {
         val token = tokens.token() ?: return ScrobbleResult.FAILED

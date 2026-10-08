@@ -22,6 +22,7 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { candidates, type Candidate } from "./resolve";
+import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
 import { startScrobble, type Scrobbler } from "./trakt";
 
@@ -62,6 +63,11 @@ export function PlayerHost() {
 
   const [state, setState] = useState<PlayState>("idle");
   const [error, setError] = useState(false);
+  // Image sans son (AC-3/DTS non décodables) : message non bloquant, jamais l'écran d'erreur.
+  const [noAudio, setNoAudio] = useState(false);
+  const silentIdxRef = useRef<number | null>(null);
+  const skipProbeRef = useRef(false);
+  const resumeAtRef = useRef<number | null>(null);
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
@@ -100,7 +106,12 @@ export function PlayerHost() {
           c.i += 1;
           const a = c.list[c.i]!;
           void startCandidate(a);
-        } else { setError(true); setState("error"); }
+        } else {
+          // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
+          const back = revertToSilent(silentIdxRef.current, c.list.length);
+          if (back >= 0) { c.i = back; skipProbeRef.current = true; setNoAudio(true); void startCandidate(c.list[back]!); return; }
+          setError(true); setState("error");
+        }
       },
       onTracks: setTracks,
     });
@@ -116,9 +127,11 @@ export function PlayerHost() {
     const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
     if (!tg || !src || !engineRef.current) return;
     setError(false);
+    const resume = resumeAtRef.current;
+    resumeAtRef.current = null;
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
-      userAgent: src.userAgent || null, referer: src.referer || null, startAt: tg.startAt,
+      userAgent: src.userAgent || null, referer: src.referer || null, startAt: resume ?? tg.startAt,
     });
   }, []);
 
@@ -131,6 +144,8 @@ export function PlayerHost() {
     setCur({ t: 0, d: 0, buf: 0 });
     const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4 });
     candRef.current = { list, i: 0 };
+    silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+    setNoAudio(false);
     if (!list[0]) { setError(true); setState("error"); return; }
     if (usePlayer.getState().zapNonce === nonce) {
       // Zap : on coupe l'ancien flux tout de suite (libère la connexion du fournisseur) et on n'ouvre le nouveau
@@ -143,6 +158,29 @@ export function PlayerHost() {
     void startCandidate(list[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, nonce, source?.id]);
+
+  // Sonde audio (VOD) : image qui défile mais aucun octet audio décodé -> candidat suivant, à la même position.
+  useEffect(() => {
+    if (state !== "playing" || !target || target.kind === "live" || skipProbeRef.current) return;
+    const v = videoRef.current;
+    if (!v) return;
+    const w = new AudioWatcher();
+    const iv = setInterval(() => {
+      const verdict = w.tick(readAudioSample(v));
+      if (verdict === "wait") return;
+      clearInterval(iv);
+      if (verdict !== "silent") return;
+      const c = candRef.current;
+      if (silentIdxRef.current === null) silentIdxRef.current = c.i;
+      const nx = nextAudioFallback(c.list.length, c.i);
+      if (nx < 0) { skipProbeRef.current = true; setNoAudio(true); return; }
+      c.i = nx;
+      resumeAtRef.current = v.currentTime > 1 ? v.currentTime : null;
+      void startCandidate(c.list[nx]!);
+    }, 1000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, target?.refId, target?.kind]);
 
   // Scrobble : une session par film / épisode ; la fermeture (changement de cible, fermeture du lecteur) envoie « stop ».
   useEffect(() => {
@@ -378,6 +416,7 @@ export function PlayerHost() {
           </div>
         </div>
       )}
+      {noAudio && !error && <div className="noaudio" role="status">{t("player.noAudio")}</div>}
       {zapFlash && <div className="zap">{zapFlash}</div>}
 
       <div className="ptop">

@@ -24,7 +24,7 @@ import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
 import { loadCloud, startCloudSchedule } from "@/cloud/service";
 import { cloudAvailable } from "@/cloud/client";
-import { useTraktSync } from "@/trakt/hooks";
+import { useTraktPrewarm, useTraktSync } from "@/trakt/hooks";
 
 function Effects() {
   const { theme, accent, lang, syncOn } = usePrefs();
@@ -33,6 +33,7 @@ function Effects() {
   const { ready, list } = useSources();
   const active = useActiveSource();
   useTraktSync(active?.id);
+  useTraktPrewarm(active);
 
   useEffect(() => {
     const apply = () => {

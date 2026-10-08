@@ -46,7 +46,9 @@ import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.traktPopular
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
+import com.ultratv.tv.nativeapp.i18n.traktTrending
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -154,6 +156,8 @@ fun HomeScreen(
         // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
         if (trakt.watchlist.isNotEmpty()) Section(D.traktWatchlist) { TraktRow(trakt.watchlist, "tw", onOpenMovie, onOpenSeries) }
         if (trakt.recommendations.isNotEmpty()) Section(D.traktRecommended) { TraktRow(trakt.recommendations, "tr", onOpenMovie, onOpenSeries) }
+        if (trakt.trending.isNotEmpty()) Section(D.traktTrending) { TraktRow(trakt.trending, "tt", onOpenMovie, onOpenSeries) }
+        if (trakt.popular.isNotEmpty()) Section(D.traktPopular) { TraktRow(trakt.popular, "tp", onOpenMovie, onOpenSeries) }
 
         if (recentChannels.isNotEmpty()) Section(D.recentlyWatched) {
             LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {

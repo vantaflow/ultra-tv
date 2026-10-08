@@ -19,7 +19,7 @@ describe("candidates", () => {
   });
   it("film mkv : essaie mp4 d'abord", () => {
     const c = candidates(source, { ...base, kind: "movie", refId: 7, ext: "mkv" }, { liveFormat: "m3u8", preferMp4: true });
-    expect(c.map((x) => x.url.split(".").pop())).toEqual(["mp4", "mkv"]);
+    expect(c.map((x) => x.url.split(".").pop())).toEqual(["mp4", "mkv", "m3u8"]);
     expect(c[0]!.url).toContain("/movie/u/p%20w/7.");
   });
   it("film : conteneur annoncé seul si mp4 non préféré", () => {

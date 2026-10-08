@@ -99,3 +99,32 @@ class XtreamControlCharsTest {
         assertEquals("Sport", cats.single().name)
     }
 }
+
+/** Tri « derniers ajoutés » : date d'ajout du fournisseur, pas l'identifiant de flux. */
+class XtreamAddedKeyTest {
+    private val provider = ProviderEntity(id = 1, name = "f", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "t", password = "t")
+    private fun client(body: String) = XtreamClient(
+        OkHttpClient.Builder().addInterceptor(Interceptor { chain ->
+            Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("m")
+                .body(body.toResponseBody("application/json".toMediaType())).build()
+        }).build(),
+    )
+
+    @Test fun vod_idPlusGrandMaisAjoutPlusAncien_nEstPasLePlusRecent() = runBlocking {
+        val r = client("""[{"stream_id":9000,"name":"Ancien","added":"1600000000"},{"stream_id":12,"name":"Recent","added":"1760000000"}]""")
+            .withVodStreams(provider) { it.toList() }
+        val byName = r.associateBy { it.name }
+        assertTrue(byName.getValue("Recent").addedKey > byName.getValue("Ancien").addedKey)
+        assertEquals(1_760_000_000L, byName.getValue("Recent").addedKey)
+    }
+
+    @Test fun vod_sansDateAjout_replieSurIdentifiant() = runBlocking {
+        val r = client("""[{"stream_id":42,"name":"X"},{"stream_id":43,"name":"Y","added":"0"}]""").withVodStreams(provider) { it.toList() }
+        assertEquals(listOf(42L, 43L), r.map { it.addedKey })
+    }
+
+    @Test fun series_lastModified_pilotLeTri() = runBlocking {
+        val r = client("""[{"series_id":5,"name":"S","last_modified":"1750000000"}]""").withSeries(provider) { it.toList() }
+        assertEquals(1_750_000_000L, r.single().addedKey)
+    }
+}

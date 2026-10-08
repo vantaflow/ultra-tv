@@ -156,9 +156,15 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         released = true
         runCatching { mp.setEventListener(null) }
-        runCatching { mp.stop() }
-        runCatching { mp.detachViews() }
-        runCatching { mp.release() }
-        runCatching { libVlc.release() }
+        // Arrêt / détachement / libération NATIFS hors du fil principal : avec l'affichage direct MediaCodec (gardé en
+        // 1.2.48), mp.stop() et detachViews() attendent le fil de sortie vidéo de LibVLC, parfois plusieurs secondes —
+        // le fil principal bloqué, l'écran suivant restait sur « chargement » et la relance de l'appli ne répondait plus.
+        // C'est la pratique de VLC lui-même (libération dans un fil dédié).
+        Thread({
+            runCatching { mp.stop() }
+            runCatching { mp.detachViews() }
+            runCatching { mp.release() }
+            runCatching { libVlc.release() }
+        }, "vlc-release").apply { isDaemon = true }.start()
     }
 }

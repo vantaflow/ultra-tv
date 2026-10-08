@@ -10,6 +10,12 @@ object WatchNextPlan {
     /** Moins d'une minute vue : pas encore « en cours ». */
     const val MIN_POSITION_MS = 60_000L
     private const val END_MARGIN_MS = 60_000L
+    /** Intervalle minimal entre deux écritures de Watch Next dans Google TV. */
+    const val MIN_SYNC_INTERVAL_MS = 45_000L
+
+    /** Délai à attendre avant d'écrire : 0 si la dernière écriture est ancienne (ou n'a jamais eu lieu). */
+    fun waitMs(lastSyncMs: Long, nowMs: Long, minIntervalMs: Long = MIN_SYNC_INTERVAL_MS): Long =
+        if (lastSyncMs <= 0L) 0L else (minIntervalMs - (nowMs - lastSyncMs)).coerceIn(0L, minIntervalMs)
 
     /** Film ou épisode commencé et pas terminé (même règle que « Continuer à regarder »). */
     fun inProgress(h: WatchHistoryEntity): Boolean =

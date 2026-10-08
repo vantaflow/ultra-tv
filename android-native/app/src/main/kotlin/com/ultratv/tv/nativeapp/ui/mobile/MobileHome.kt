@@ -47,7 +47,9 @@ import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.traktPopular
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
+import com.ultratv.tv.nativeapp.i18n.traktTrending
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.design.BackdropImage
 import com.ultratv.tv.nativeapp.ui.design.DIcon
@@ -151,6 +153,8 @@ fun MobileHomeScreen(
             }
             if (state.trakt.watchlist.isNotEmpty()) TraktPosterRow(D.traktWatchlist, state.trakt.watchlist, wide, onOpenMovie, onOpenSeries)
             if (state.trakt.recommendations.isNotEmpty()) TraktPosterRow(D.traktRecommended, state.trakt.recommendations, wide, onOpenMovie, onOpenSeries)
+            if (state.trakt.trending.isNotEmpty()) TraktPosterRow(D.traktTrending, state.trakt.trending, wide, onOpenMovie, onOpenSeries)
+            if (state.trakt.popular.isNotEmpty()) TraktPosterRow(D.traktPopular, state.trakt.popular, wide, onOpenMovie, onOpenSeries)
             if (state.channels.isNotEmpty()) {
                 SectionHeader(if (state.showingFavorites) D.favoriteChannels else D.directTitle, LocalMobileStrings.current.seeAll, if (state.showingFavorites) onGoFavorites else onGoLive)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {

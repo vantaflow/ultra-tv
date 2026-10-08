@@ -2,6 +2,29 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.53] — 2026-10-08 (Android TV) · [Bureau 1.2.33]
+
+### Ajouté
+- Trakt : rangées **« Tendances (Trakt) »** et **« Populaires (Trakt) »** à l'accueil, avec la même règle que la
+  watchlist et les recommandations : uniquement les titres disponibles dans la playlist active.
+
+### Amélioré
+- Trakt s'affiche bien plus vite : dernière bibliothèque et dernières rangées gardées sur l'appareil (affichées dès le
+  lancement, puis mises à jour), recherche dans le catalogue lancée au démarrage et écrémée (seuls les titres qui
+  peuvent correspondre sont analysés). Côté site, la bibliothèque est servie tout de suite et rafraîchie en
+  arrière-plan.
+
+### Corrigé
+- Android : « Derniers films / séries ajoutés » triés par numéro du fournisseur au lieu de la date d'ajout (le Mac
+  triait par date). Un appui sur Synchroniser remet l'ordre.
+- Google TV : « Continuer à regarder » ne recevait souvent rien (publication retardée de 45 s après la dernière
+  écriture) ; première publication immédiate. La dernière position d'un film pouvait aussi être perdue en quittant
+  le lecteur.
+- Android : blocage possible en quittant un film (écran « chargement », appli impossible à relancer sans arrêt
+  forcé) — libération de VLC hors du fil principal, état d'appairage lu hors du fil principal pendant la lecture.
+- Bureau : film sans son (MKV en AC3 / E-AC3 / DTS, que le lecteur ne décode pas) — détection après ~3 s et
+  bascule automatique vers un autre format du fournisseur (HLS), sinon bandeau explicatif.
+
 ## [1.2.52] — 2026-10-08 (Android TV)
 
 ### Corrigé

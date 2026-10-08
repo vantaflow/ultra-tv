@@ -144,8 +144,17 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             title = cleaned.title,
             // Langue calculée par la synchro (withLang, avec la langue de la catégorie) : pas deux fois.
             lang = "",
+            addedKey = addedKeyOf(o["added"]?.str(), sid),
         )
     }
+
+    /**
+     * Clé de tri « derniers ajoutés » : date d'ajout du fournisseur (`added`, secondes Unix) comme le Mac, et non le
+     * stream_id (qui n'est pas croissant avec l'ajout : ids réutilisés, remplissage de trous, re-téléversements).
+     * Sans date exploitable : repli sur l'identifiant numérique (rang bas, donc après les éléments datés).
+     */
+    internal fun addedKeyOf(added: String?, remoteId: String): Long =
+        added?.trim()?.toLongOrNull()?.takeIf { it > 0 } ?: remoteId.toLongOrNull() ?: 0L
 
     /** Détails d'un film (get_vod_info) : synopsis, distribution, réalisateur, genre, durée, date, note, image paysage, bande-annonce… */
     data class VodInfo(
@@ -212,6 +221,8 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
             cast = o["cast"]?.str()?.takeIf { it.isNotBlank() },
             // Langue calculée par la synchro (withLang, avec la langue de la catégorie) : pas deux fois.
             lang = "",
+            // Série : `last_modified` (comme le Mac), repli sur `added` puis series_id.
+            addedKey = addedKeyOf(o["last_modified"]?.str() ?: o["added"]?.str(), rid),
         )
     }
 

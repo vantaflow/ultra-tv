@@ -5,6 +5,7 @@ import androidx.room.withTransaction
 import androidx.test.core.app.ApplicationProvider
 import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.db.UltraDb
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -59,5 +60,14 @@ class IncrementalCatalogTest {
         pass(emptyList())
         assertEquals(null, db.movieDao().byRemoteId(7, "1"))
         assertEquals("Autre source", db.movieDao().byRemoteId(8, "1")!!.name)
+    }
+
+    @Test
+    fun deuxiemeSynchro_addedKeyChange_metAJourLOrdreDesDerniersAjouts() = runBlocking {
+        // Avant le correctif, addedKey valait l'identifiant : « 2 » (ajouté récemment) passait après « 1 ».
+        pass(listOf(movie("1", "Alpha"), movie("2", "Bravo")))
+        pass(listOf(movie("1", "Alpha").copy(addedKey = 1_700_000_000), movie("2", "Bravo").copy(addedKey = 1_600_000_000), movie("3", "Charlie").copy(addedKey = 1_760_000_000)))
+        val latest = db.movieDao().observeLatest(7, 15).first().map { it.remoteId }
+        assertEquals(listOf("3", "1", "2"), latest)
     }
 }

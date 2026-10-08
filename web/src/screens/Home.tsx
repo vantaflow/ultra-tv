@@ -114,6 +114,8 @@ function HomeInner({ source }: { source: Source }) {
 
       <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />
+      <TraktRowSection title={t("home.traktTrending")} rows={trakt.trending} seen={seen} onOpen={openTrakt} />
+      <TraktRowSection title={t("home.traktPopular")} rows={trakt.popular} seen={seen} onOpen={openTrakt} />
 
       {favChans.length > 0 && (
         <section>

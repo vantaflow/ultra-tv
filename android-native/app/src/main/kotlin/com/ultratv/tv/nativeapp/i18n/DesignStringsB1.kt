@@ -63,4 +63,6 @@ val DesignStrings.locale: java.util.Locale get() = when (lang) {
 // Trakt : rangées de l'accueil (seulement ce qui est disponible dans la playlist) et marque « vu »
 val DesignStrings.traktWatchlist get() = t("My Trakt watchlist", "Ma watchlist Trakt", "Mi lista de seguimiento de Trakt", "قائمة المشاهدة على Trakt")
 val DesignStrings.traktRecommended get() = t("Recommended for you (Trakt)", "Recommandé pour toi (Trakt)", "Recomendado para ti (Trakt)", "موصى به لك (Trakt)")
+val DesignStrings.traktTrending get() = t("Trending (Trakt)", "Tendances (Trakt)", "Tendencias (Trakt)", "الأكثر رواجاً (Trakt)")
+val DesignStrings.traktPopular get() = t("Popular (Trakt)", "Populaires (Trakt)", "Populares (Trakt)", "الأكثر شعبية (Trakt)")
 val DesignStrings.traktWatched get() = t("Watched", "Vu", "Visto", "تمت المشاهدة")

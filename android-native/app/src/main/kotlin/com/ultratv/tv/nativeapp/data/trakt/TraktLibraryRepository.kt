@@ -28,6 +28,12 @@ import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.yield
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -62,9 +68,10 @@ class WorkerTraktLibrarySource @Inject constructor(
 @Singleton
 class TraktLibraryRepository(
     private val source: TraktLibrarySource,
+    private val store: TraktStore = NoTraktStore,
     private val clock: () -> Long,
 ) {
-    @Inject constructor(source: WorkerTraktLibrarySource) : this(source, System::currentTimeMillis)
+    @Inject constructor(source: WorkerTraktLibrarySource, store: FileTraktStore) : this(source, store, System::currentTimeMillis)
 
     private val _library = MutableStateFlow(TraktLibrary.EMPTY)
     val library: StateFlow<TraktLibrary> = _library.asStateFlow()
@@ -73,15 +80,43 @@ class TraktLibraryRepository(
     private var lastOkAt = 0L
     private var lastFailAt = 0L
     private var lastLang: String? = null
+    private var restored = false
+
+    /**
+     * Recharge la dernière bibliothèque enregistrée sur disque (une fois) : les rangées peuvent ainsi être calculées
+     * tout de suite au lancement, sans attendre le réseau. L'âge du fichier compte pour la règle des 15 min. Sans effet
+     * si une valeur plus récente est déjà là, si l'appareil n'est pas appairé ou si le fichier est illisible.
+     */
+    suspend fun restore() {
+        if (restored || !source.isPaired) return
+        mutex.withLock {
+            if (restored) return
+            restored = true
+            if (_library.value.linked) return
+            val env = withContext(Dispatchers.IO) { store.readLibrary() } ?: return
+            try {
+                val o = JSONObject(env)
+                val lib = TraktLibrary.parse(o.getString("body"))
+                if (!lib.linked) return
+                _library.value = lib
+                lastOkAt = o.optLong("savedAt", 0L).takeIf { it in 1..clock() } ?: 0L
+                lastLang = o.optString("lang", "").takeIf { it.isNotEmpty() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Throwable) { /* fichier abîmé : ignoré, le réseau reprendra */ }
+        }
+    }
 
     /** Relit la bibliothèque si elle a plus de 15 min (ou [force]). Ne lève jamais (hors annulation). */
     suspend fun refreshIfStale(lang: String, force: Boolean = false) {
         if (!source.isPaired) {
             // Appareil désappairé : on oublie le compte précédent.
             if (_library.value !== TraktLibrary.EMPTY) _library.value = TraktLibrary.EMPTY
-            lastOkAt = 0L; lastLang = null
+            lastOkAt = 0L; lastLang = null; restored = false
+            withContext(Dispatchers.IO) { store.clear() }
             return
         }
+        restore()
         mutex.withLock {
             val now = clock()
             if (!force) {
@@ -94,6 +129,10 @@ class TraktLibraryRepository(
                 if (lib == null) { lastFailAt = now; return }
                 _library.value = lib
                 lastOkAt = now; lastLang = lang
+                withContext(Dispatchers.IO) {
+                    if (lib.linked) store.writeLibrary(JSONObject().put("savedAt", now).put("lang", lang).put("body", body).toString())
+                    else store.clear()
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Throwable) {
@@ -121,55 +160,105 @@ class TraktLibraryRepository(
  * gardées. Le résultat est mémorisé tant que ni le catalogue (nombre de films / séries) ni la bibliothèque ne changent.
  */
 @Singleton
-class TraktCatalogMatcher @Inject constructor(
+class TraktCatalogMatcher(
     private val movies: MovieDao,
     private val series: SeriesDao,
     private val repo: TraktLibraryRepository,
+    private val store: TraktStore,
 ) {
+    @Inject constructor(movies: MovieDao, series: SeriesDao, repo: TraktLibraryRepository, store: FileTraktStore) : this(movies, series, repo, store as TraktStore)
+
     private data class Sig(val pid: Long, val movies: Int, val series: Int, val lib: TraktLibrary)
     @Volatile private var cached: Pair<Sig, TraktRows>? = null
+    private val computeLock = Mutex()
+    // Dernières rangées calculées par source, aussi écrites sur disque : affichées instantanément au prochain lancement.
+    private val persisted = java.util.concurrent.ConcurrentHashMap<Long, TraktRows>()
+    @Volatile private var persistedLoaded = false
+
+    /**
+     * Démarre le calcul dès le lancement de l'appli pour la source active (au lieu d'attendre que l'accueil s'abonne) :
+     * le résultat est mémorisé et l'accueil l'affiche aussitôt. Sans effet tant que la bibliothèque n'est pas liée.
+     */
+    fun warmUp(scope: CoroutineScope, pid: Flow<Long?>) {
+        scope.launch { rows(pid).collect { } }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    fun rows(pid: Flow<Long?>): Flow<TraktRows> =
-        combine(pid, repo.library) { id, lib -> id to lib }.flatMapLatest { (id, lib) ->
-            if (id == null || !lib.linked || (lib.watchlist.isEmpty() && lib.recommendations.isEmpty())) flowOf(TraktRows.EMPTY)
-            else {
-                // Pendant une synchro les tables changent sans cesse : première valeur tout de suite, puis au plus un calcul / 3 s.
-                val counts = combine(movies.observeCount(id), series.observeCount(id)) { m, s -> m to s }.distinctUntilChanged()
-                flow {
-                    var first = true
-                    emitAll(counts.transformLatest { c ->
-                        if (first) first = false else delay(SETTLE_MS)
-                        emit(compute(Sig(id, c.first, c.second, lib)))
-                    })
+    fun rows(pid: Flow<Long?>): Flow<TraktRows> = flow {
+        repo.restore()
+        emitAll(
+            combine(pid, repo.library) { id, lib -> id to lib }.flatMapLatest { (id, lib) ->
+                if (id == null || !lib.linked || lib.isNoList) {
+                    if (!lib.linked) forget()
+                    flowOf(TraktRows.EMPTY)
+                } else {
+                    // Pendant une synchro les tables changent sans cesse : première valeur tout de suite, puis au plus un calcul / 3 s.
+                    val counts = combine(movies.observeCount(id), series.observeCount(id)) { m, s -> m to s }.distinctUntilChanged()
+                    flow {
+                        // Affichage immédiat : dernier calcul en mémoire, sinon celui du lancement précédent (sur disque).
+                        instant(id)?.let { emit(it) }
+                        var first = true
+                        emitAll(counts.transformLatest { c ->
+                            if (first) first = false else delay(SETTLE_MS)
+                            emit(compute(Sig(id, c.first, c.second, lib)))
+                        })
+                    }
                 }
-            }
-        }.distinctUntilChanged().flowOn(Dispatchers.Default)
+            },
+        )
+    }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
-    private suspend fun compute(sig: Sig): TraktRows {
+    private val TraktLibrary.isNoList get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty()
+
+    /** Compte délié / appareil désappairé : aucune rangée de l'ancien compte ne doit réapparaître. */
+    private suspend fun forget() {
+        if (cached == null && persisted.isEmpty()) return
+        cached = null
+        persisted.clear()
+        withContext(Dispatchers.IO) { store.writeRows("{}") }
+    }
+
+    private suspend fun instant(pid: Long): TraktRows? {
+        cached?.let { (s, r) -> if (s.pid == pid) return r }
+        if (!persistedLoaded) {
+            val saved = withContext(Dispatchers.IO) { TraktRowsCodec.decode(store.readRows()) }
+            persisted.putAll(saved)
+            persistedLoaded = true
+        }
+        return persisted[pid]?.takeIf { !it.isEmpty }
+    }
+
+    private suspend fun compute(sig: Sig): TraktRows = computeLock.withLock {
         cached?.let { (s, r) -> if (s == sig) return r }
         val lib = sig.lib
-        val lists = listOf(lib.watchlist, lib.recommendations)
-        val movieIdx = HashMap<String, MutableList<CatalogLite>>()
-        val seriesIdx = HashMap<String, MutableList<CatalogLite>>()
+        val lists = listOf(lib.watchlist, lib.recommendations, lib.trending, lib.popular)
         val wantedMovies = TraktAvailability.wantedKeys(lists, shows = false)
         val wantedSeries = TraktAvailability.wantedKeys(lists, shows = true)
-        if (wantedMovies.isNotEmpty() && sig.movies > 0) scan(movieIdx, wantedMovies) { after -> movies.liteChunk(sig.pid, after, CHUNK) }
-        if (wantedSeries.isNotEmpty() && sig.series > 0) scan(seriesIdx, wantedSeries) { after -> series.liteChunk(sig.pid, after, CHUNK) }
-        val rows = TraktRows(
-            TraktAvailability.resolve(lib.watchlist, movieIdx, seriesIdx),
-            TraktAvailability.resolve(lib.recommendations, movieIdx, seriesIdx),
-        )
+        val movieIdx = HashMap<String, MutableList<CatalogLite>>()
+        val seriesIdx = HashMap<String, MutableList<CatalogLite>>()
+        // Films et séries en parallèle (deux lectures de base indépendantes).
+        coroutineScope {
+            val m = async { if (wantedMovies.isNotEmpty() && sig.movies > 0) scan(movieIdx, wantedMovies) { after -> movies.liteChunk(sig.pid, after, CHUNK) } }
+            val s = async { if (wantedSeries.isNotEmpty() && sig.series > 0) scan(seriesIdx, wantedSeries) { after -> series.liteChunk(sig.pid, after, CHUNK) } }
+            m.await(); s.await()
+        }
+        val rows = TraktAvailability.rows(lib, movieIdx, seriesIdx)
         cached = sig to rows
-        return rows
+        if ((sig.movies > 0 || sig.series > 0) && persisted[sig.pid] != rows) {
+            persisted[sig.pid] = rows
+            val snapshot = TraktRowsCodec.encode(persisted)
+            withContext(Dispatchers.IO) { store.writeRows(snapshot) }
+        }
+        rows
     }
 
     private suspend fun scan(index: MutableMap<String, MutableList<CatalogLite>>, wanted: Set<String>, chunk: suspend (afterId: Long) -> List<CatalogLite>) {
         var after = 0L
+        val firstWords = TraktAvailability.firstWordsOf(wanted)
         while (true) {
             val page = chunk(after)
             if (page.isEmpty()) break
-            TraktAvailability.indexInto(index, wanted, page)
+            TraktAvailability.indexInto(index, wanted, page, firstWords)
             after = page.last().id
             if (page.size < CHUNK) break
             yield()   // laisse la main entre deux tranches : jamais de longue occupation du processeur

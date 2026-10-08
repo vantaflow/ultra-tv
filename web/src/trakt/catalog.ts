@@ -4,15 +4,20 @@
 import { useEffect, useState } from "react";
 import { db } from "@/db/db";
 import type { Source } from "@/db/types";
-import { addToIndex, type CatIndex } from "./availability";
+import type { TraktItem } from "@/cloud/client";
+import { addToIndex, firstTokens, type CatIndex } from "./availability";
 
 export interface CatalogIndex { movies: CatIndex; series: CatIndex }
 const CHUNK = 4000;
 const cache = new Map<string, Promise<CatalogIndex>>();
 const yieldUi = () => new Promise<void>((r) => setTimeout(r, 0));
 
-export function buildCatalogIndex(cid: number): Promise<CatalogIndex> {
-  const key = String(cid);
+/** Pré-filtre : premiers mots des clés voulues (null = pas de filtre, indexation complète). */
+export function wantedTokens(lists: TraktItem[][]): Set<string> { return firstTokens(lists); }
+const sig = (w: Set<string> | null) => (w ? `${w.size}:${[...w].sort().join(",")}` : "*");
+
+export function buildCatalogIndex(cid: number, wanted: Set<string> | null = null): Promise<CatalogIndex> {
+  const key = `${cid}|${sig(wanted)}`;
   const hit = cache.get(key);
   if (hit) return hit;
   const p = (async () => {
@@ -23,7 +28,7 @@ export function buildCatalogIndex(cid: number): Promise<CatalogIndex> {
       for (;;) {
         // `ord` est unique par source : borne basse exclusive = reprise sans doublon ni saut.
         const rows = await (table as typeof db.movies).where("[sourceId+ord]").between([cid, from], [cid, Infinity], false, true).limit(CHUNK).toArray();
-        for (const r of rows) addToIndex(idx, [r.title, r.name], (r as unknown as Record<string, number>)[ref]!, r.year);
+        for (const r of rows) addToIndex(idx, [r.title, r.name], (r as unknown as Record<string, number>)[ref]!, r.year, wanted);
         if (rows.length < CHUNK) break;
         from = rows[rows.length - 1]!.ord;
         await yieldUi();
@@ -39,14 +44,14 @@ export function buildCatalogIndex(cid: number): Promise<CatalogIndex> {
 }
 
 /** null tant que l'index se construit (ou sans catalogue). */
-export function useCatalogIndex(source: Source | undefined): CatalogIndex | null {
+export function useCatalogIndex(source: Source | undefined, wanted: Set<string> | null): CatalogIndex | null {
   const cid = source?.cid ?? 0;
-  const [st, setSt] = useState<{ cid: number; idx: CatalogIndex } | null>(null);
+  const [st, setSt] = useState<{ cid: number; idx: CatalogIndex; w: Set<string> | null } | null>(null);
   useEffect(() => {
-    if (!cid) { setSt(null); return; }
+    if (!cid || !wanted) { setSt(null); return; }
     let live = true;
-    void buildCatalogIndex(cid).then((idx) => { if (live) setSt({ cid, idx }); }, () => {});
+    void buildCatalogIndex(cid, wanted).then((idx) => { if (live) setSt({ cid, idx, w: wanted }); }, () => {});
     return () => { live = false; };
-  }, [cid]);
-  return st && st.cid === cid ? st.idx : null;
+  }, [cid, wanted]);
+  return st && st.cid === cid && st.w === wanted ? st.idx : null;
 }

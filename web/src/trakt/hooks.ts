@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCloud } from "@/cloud/service";
 import { db } from "@/db/db";
 import type { MovieRow, SeriesRow, Source } from "@/db/types";
 import { usePrefs } from "@/state/prefs";
 import { availableItems, isWatchedMovie, watchedEpisodes, type Available } from "./availability";
-import { useCatalogIndex } from "./catalog";
+import { buildCatalogIndex, useCatalogIndex, wantedTokens } from "./catalog";
 import { refreshTraktLibrary, TRAKT_REFRESH_MS, useTraktLibrary } from "./library";
 
 /** À monter une fois (App) : charge la bibliothèque à l'appairage, au changement de langue ou de worker, puis toutes les 15 min. */
@@ -44,20 +44,79 @@ async function rowsOf(source: Source, av: Available[]): Promise<TraktRow[]> {
   return out;
 }
 
-/** Watchlist et recommandations Trakt, réduites à ce qui est disponible dans la source active. Vides tant que rien n'est prêt. */
-export function useTraktRows(source: Source | undefined): { watchlist: TraktRow[]; recommendations: TraktRow[] } {
+export interface TraktRows { watchlist: TraktRow[]; recommendations: TraktRow[]; trending: TraktRow[]; popular: TraktRow[] }
+const NONE: TraktRows = { watchlist: [], recommendations: [], trending: [], popular: [] };
+const LISTS = ["watchlist", "recommendations", "trending", "popular"] as const;
+type Refs = Record<(typeof LISTS)[number], [("movie" | "show"), number][]>;
+
+// Dernières rangées résolues, par génération de catalogue (cid) : réaffichées tout de suite au lancement
+// (simple lecture par clé en base), puis recalculées en arrière-plan quand l'index est prêt.
+export const ROWS_STORAGE_KEY = "utv.trakt.rows.v1";
+export function loadSavedRefs(cid: number): Refs | null {
+  try {
+    const o = JSON.parse(localStorage.getItem(ROWS_STORAGE_KEY) ?? "null") as { cid?: number; refs?: Refs } | null;
+    if (!o || o.cid !== cid || !o.refs) return null;
+    const out = {} as Refs;
+    for (const k of LISTS) out[k] = Array.isArray(o.refs[k]) ? o.refs[k].filter((p) => Array.isArray(p) && (p[0] === "movie" || p[0] === "show") && typeof p[1] === "number") : [];
+    return out;
+  } catch { return null; }
+}
+export function saveRefs(cid: number, rows: TraktRows): void {
+  try {
+    const refs = {} as Refs;
+    for (const k of LISTS) refs[k] = rows[k].map((r) => [r.kind, r.ref]);
+    localStorage.setItem(ROWS_STORAGE_KEY, JSON.stringify({ cid, refs }));
+  } catch { /* stockage indisponible : sans effet */ }
+}
+const rowsFromRefs = async (source: Source, refs: Refs): Promise<TraktRows> => {
+  const o = {} as TraktRows;
+  const all = await Promise.all(LISTS.map((k) => rowsOf(source, refs[k].map(([kind, ref]) => ({ kind, ref, item: null as never })))));
+  LISTS.forEach((k, n) => { o[k] = all[n]!; });
+  return o;
+};
+
+/** Premiers mots des clés de la bibliothèque (pré-filtre d'indexation), stable tant que la bibliothèque ne change pas. */
+export function useWantedTokens(): Set<string> | null {
   const lib = useTraktLibrary((s) => s.lib);
-  const idx = useCatalogIndex(source);
-  const [out, setOut] = useState<{ watchlist: TraktRow[]; recommendations: TraktRow[] }>({ watchlist: [], recommendations: [] });
+  return useMemo(() => (lib ? wantedTokens([lib.watchlist, lib.recommendations, lib.trending, lib.popular]) : null), [lib]);
+}
+
+/** À monter une fois (App) : construit l'index du catalogue de la source active dès le démarrage, sans attendre l'accueil. */
+export function useTraktPrewarm(source: Source | undefined): void {
+  const wanted = useWantedTokens();
+  const cid = source?.cid ?? 0;
+  useEffect(() => { if (cid && wanted) void buildCatalogIndex(cid, wanted).catch(() => {}); }, [cid, wanted]);
+}
+
+/** Rangées Trakt (watchlist, recommandations, tendances, populaires), réduites à ce qui est disponible dans la source active. */
+export function useTraktRows(source: Source | undefined): TraktRows {
+  const lib = useTraktLibrary((s) => s.lib);
+  const wanted = useWantedTokens();
+  const idx = useCatalogIndex(source, wanted);
+  const [out, setOut] = useState<TraktRows>(NONE);
+  const computed = useRef(false);
+  const cid = source?.cid ?? 0;
+  // Affichage instantané : dernières rangées connues, tant que l'index n'est pas prêt.
+  useEffect(() => {
+    computed.current = false;
+    if (!lib || !source?.cid) return;
+    const refs = loadSavedRefs(source.cid);
+    if (!refs) return;
+    let live = true;
+    void rowsFromRefs(source, refs).then((r) => { if (live && !computed.current) setOut(r); }).catch(() => {});
+    return () => { live = false; };
+  }, [cid, !!lib]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     let live = true;
-    if (!lib || !idx || !source?.cid) { setOut({ watchlist: [], recommendations: [] }); return; }
+    if (!lib || !source?.cid) { setOut(NONE); return; }
+    if (!idx) return;
     void (async () => {
-      const [watchlist, recommendations] = await Promise.all([
-        rowsOf(source, availableItems(lib.watchlist, idx.movies, idx.series)),
-        rowsOf(source, availableItems(lib.recommendations, idx.movies, idx.series)),
-      ]);
-      if (live) setOut({ watchlist, recommendations });
+      const all = await Promise.all(LISTS.map((k) => rowsOf(source, availableItems(lib[k], idx.movies, idx.series))));
+      const r = { watchlist: all[0]!, recommendations: all[1]!, trending: all[2]!, popular: all[3]! };
+      if (!live) return;
+      computed.current = true;
+      setOut(r);
+      saveRefs(source.cid, r);
     })().catch(() => {});
     return () => { live = false; };
   }, [lib, idx, source]);

@@ -307,7 +307,7 @@ export interface TraktItem { type: "movie" | "show"; tmdb: number | null; year: 
 export type TraktShowItem = TraktItem & { episodes: string[] };
 export type TraktLibraryResult =
   | { linked: false }
-  | { linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; watched: { movies: TraktItem[]; shows: TraktShowItem[] } };
+  | { linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; trending: TraktItem[]; popular: TraktItem[]; watched: { movies: TraktItem[]; shows: TraktShowItem[] } };
 
 const asItems = (v: unknown): TraktItem[] => (Array.isArray(v) ? (v as TraktItem[]).filter((i) => i && (i.type === "movie" || i.type === "show") && Array.isArray(i.keys)) : []);
 
@@ -323,6 +323,7 @@ export async function traktLibrary(base: string, token: string, lang: string): P
   return {
     linked: true, updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
     watchlist: asItems(o.watchlist), recommendations: asItems(o.recommendations),
+    trending: asItems(o.trending), popular: asItems(o.popular),
     watched: {
       movies: asItems(w.movies),
       shows: asItems(w.shows).map((i) => ({ ...i, episodes: Array.isArray((i as TraktShowItem).episodes) ? (i as TraktShowItem).episodes.filter((e) => typeof e === "string") : [] })),

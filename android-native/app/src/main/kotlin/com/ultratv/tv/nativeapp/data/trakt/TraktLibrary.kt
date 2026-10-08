@@ -21,6 +21,9 @@ class TraktLibrary(
     val recommendations: List<TraktItem>,
     val watchedMovies: List<TraktItem>,
     val watchedShows: List<TraktWatchedShow>,
+    /** Tendances et populaires de Trakt (films et séries mêlés, ordre de Trakt) ; absents de l'ancienne réponse = vides. */
+    val trending: List<TraktItem> = emptyList(),
+    val popular: List<TraktItem> = emptyList(),
 ) {
     // Clé de rapprochement → années des films vus (une clé peut couvrir un remake : on compare l'année).
     private val movieIndex: Map<String, List<Int?>> by lazy {
@@ -98,6 +101,8 @@ class TraktLibrary(
                 recommendations = items(o.optJSONArray("recommendations")),
                 watchedMovies = items(watched?.optJSONArray("movies")),
                 watchedShows = watchedShows,
+                trending = items(o.optJSONArray("trending")),
+                popular = items(o.optJSONArray("popular")),
             )
         }
     }
@@ -106,10 +111,60 @@ class TraktLibrary(
 /** Carte Trakt affichable : un élément du catalogue de l'utilisateur. */
 data class TraktCard(val isShow: Boolean, val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?)
 
-/** Les deux rangées de l'accueil : UNIQUEMENT des éléments disponibles dans la playlist chargée. */
-data class TraktRows(val watchlist: List<TraktCard>, val recommendations: List<TraktCard>) {
-    val isEmpty: Boolean get() = watchlist.isEmpty() && recommendations.isEmpty()
+/** Les rangées Trakt de l'accueil : UNIQUEMENT des éléments disponibles dans la playlist chargée. */
+data class TraktRows(
+    val watchlist: List<TraktCard>,
+    val recommendations: List<TraktCard>,
+    val trending: List<TraktCard> = emptyList(),
+    val popular: List<TraktCard> = emptyList(),
+) {
+    val isEmpty: Boolean get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty()
     companion object { val EMPTY = TraktRows(emptyList(), emptyList()) }
+}
+
+/** Sérialisation des rangées calculées (par source) : affichées tout de suite au lancement suivant, recalculées ensuite. */
+object TraktRowsCodec {
+    private fun enc(cards: List<TraktCard>) = JSONArray().also { a ->
+        for (c in cards) a.put(JSONObject().put("s", c.isShow).put("id", c.id).put("t", c.title)
+            .put("p", c.poster ?: JSONObject.NULL).put("y", c.year ?: JSONObject.NULL).put("r", c.rating ?: JSONObject.NULL))
+    }
+
+    private fun dec(a: JSONArray?): List<TraktCard> {
+        if (a == null) return emptyList()
+        val out = ArrayList<TraktCard>(a.length())
+        for (i in 0 until a.length()) {
+            val o = a.optJSONObject(i) ?: continue
+            out += TraktCard(
+                isShow = o.optBoolean("s"),
+                id = o.optLong("id"),
+                title = o.optString("t", ""),
+                poster = if (o.isNull("p")) null else o.optString("p").takeIf { it.isNotEmpty() },
+                year = if (o.isNull("y")) null else o.optInt("y"),
+                rating = if (o.isNull("r")) null else o.optDouble("r"),
+            )
+        }
+        return out
+    }
+
+    fun encode(byProvider: Map<Long, TraktRows>): String = JSONObject().also { root ->
+        for ((pid, r) in byProvider) root.put(pid.toString(), JSONObject()
+            .put("w", enc(r.watchlist)).put("r", enc(r.recommendations)).put("t", enc(r.trending)).put("p", enc(r.popular)))
+    }.toString()
+
+    /** Jamais d'exception : un fichier illisible donne une table vide (les rangées sont alors simplement recalculées). */
+    fun decode(json: String?): Map<Long, TraktRows> {
+        if (json.isNullOrBlank()) return emptyMap()
+        return try {
+            val root = JSONObject(json)
+            val out = HashMap<Long, TraktRows>()
+            for (k in root.keys()) {
+                val pid = k.toLongOrNull() ?: continue
+                val o = root.optJSONObject(k) ?: continue
+                out[pid] = TraktRows(dec(o.optJSONArray("w")), dec(o.optJSONArray("r")), dec(o.optJSONArray("t")), dec(o.optJSONArray("p")))
+            }
+            out
+        } catch (_: Exception) { emptyMap() }
+    }
 }
 
 /** Rapprochement pur Trakt ↔ catalogue (testé sans Android ni base). */
@@ -121,12 +176,76 @@ object TraktAvailability {
         return out
     }
 
+    /** Premiers mots des clés recherchées : ensemble de l'écrémage de [mayMatch]. */
+    fun firstWordsOf(wanted: Set<String>): Set<String> =
+        wanted.mapNotNullTo(HashSet()) { k -> k.substringBefore(' ').takeIf { it.isNotEmpty() } }
+
+    /**
+     * Condition NÉCESSAIRE (jamais de faux négatif) pour que `matchKey(title)` soit l'une des clés recherchées : la clé
+     * ne fait que RETIRER des mots du titre (préfixe pays, qualité, année, article) hormis « & » (devenu « and », d'où
+     * l'acceptation d'office). Son premier mot est donc un mot du titre normalisé (accents retirés, minuscules).
+     */
+    fun mayMatch(title: String, firstWords: Set<String>): Boolean {
+        if (firstWords.isEmpty()) return false
+        if (title.indexOf('&') >= 0) return true
+        var s = title
+        if (s.any { it.code >= 0x80 }) {
+            val nfd = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            val sb = StringBuilder(nfd.length)
+            var i = 0
+            while (i < nfd.length) {
+                val cp = nfd.codePointAt(i)
+                val t = Character.getType(cp)
+                if (t != Character.NON_SPACING_MARK.toInt() && t != Character.COMBINING_SPACING_MARK.toInt() && t != Character.ENCLOSING_MARK.toInt()) sb.appendCodePoint(cp)
+                i += Character.charCount(cp)
+            }
+            s = sb.toString()
+        }
+        s = s.lowercase(java.util.Locale.ROOT)
+        var start = -1
+        var i = 0
+        while (i < s.length) {
+            val cp = s.codePointAt(i)
+            val n = Character.charCount(cp)
+            if (isAlnum(cp)) {
+                if (start < 0) start = i
+            } else if (start >= 0) {
+                if (s.substring(start, i) in firstWords) return true
+                start = -1
+            }
+            i += n
+        }
+        return start >= 0 && s.substring(start) in firstWords
+    }
+
+    private fun isAlnum(cp: Int): Boolean = when (Character.getType(cp).toByte()) {
+        Character.UPPERCASE_LETTER, Character.LOWERCASE_LETTER, Character.TITLECASE_LETTER, Character.MODIFIER_LETTER, Character.OTHER_LETTER,
+        Character.DECIMAL_DIGIT_NUMBER, Character.LETTER_NUMBER, Character.OTHER_NUMBER -> true
+        else -> false
+    }
+
+    /** Les quatre rangées d'après les index du catalogue (pur, testé sans base). */
+    fun rows(lib: TraktLibrary, movies: Map<String, List<CatalogLite>>, series: Map<String, List<CatalogLite>>) = TraktRows(
+        resolve(lib.watchlist, movies, series),
+        resolve(lib.recommendations, movies, series),
+        resolve(lib.trending, movies, series),
+        resolve(lib.popular, movies, series),
+    )
+
     /**
      * Indexe les entrées du catalogue dont la clé figure dans [wanted] (clé → entrées). Les 50 000 titres d'un gros
      * catalogue ne sont donc jamais tous conservés : seul l'utile reste en mémoire.
      */
-    fun indexInto(index: MutableMap<String, MutableList<CatalogLite>>, wanted: Set<String>, entries: List<CatalogLite>) {
+    fun indexInto(
+        index: MutableMap<String, MutableList<CatalogLite>>,
+        wanted: Set<String>,
+        entries: List<CatalogLite>,
+        firstWords: Set<String>? = firstWordsOf(wanted),
+    ) {
         for (e in entries) {
+            // Écrémage bon marché : le coûteux matchKey (une dizaine d'expressions régulières) n'est calculé que pour les
+            // titres qui peuvent correspondre. Résultat identique à la règle complète (voir mayMatch).
+            if (firstWords != null && !mayMatch(e.title, firstWords)) continue
             val k = TraktMatch.matchKey(e.title)
             if (k.isNotEmpty() && k in wanted) index.getOrPut(k) { mutableListOf() }.add(e)
         }

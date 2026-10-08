@@ -23,6 +23,11 @@ class WatchNextPlanTest {
             h("LIVE", "old", pos = 0, dur = 0, at = now - 8L * 24 * 3_600_000) + h("MOVIE", "m", at = now)
         assertEquals(listOf("c1", "c2", "c3", "c4", "c5"), WatchNextPlan.selectLive(list, now).map { it.remoteId })
     }
+    @Test fun waitMs_jamaisSynchronise_publieToutDeSuite() = assertEquals(0L, WatchNextPlan.waitMs(0L, 1_000_000L))
+    @Test fun waitMs_derniereEcritureAncienne_publieToutDeSuite() = assertEquals(0L, WatchNextPlan.waitMs(1_000L, 1_000L + 45_000L))
+    @Test fun waitMs_ecritureRecente_attendLeReste() = assertEquals(35_000L, WatchNextPlan.waitMs(1_000L, 11_000L))
+    @Test fun waitMs_horlogeReculee_neDepasseJamaisLIntervalle() = assertEquals(45_000L, WatchNextPlan.waitMs(100_000L, 1_000L))
+
     @Test fun deepLink_direct() = assertTrue(WatchNextPlan.deepLink(h("LIVE", "c9")).contains("/live/1/c9"))
 
     @Test fun select_unSeulEpisodeParSerie_leDernierRegarde_etRecentsDAbord() {

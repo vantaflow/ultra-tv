@@ -4,7 +4,9 @@ import com.ultratv.tv.nativeapp.data.db.CatalogLite
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.json.JSONObject
 import org.junit.Test
+import java.io.File
 
 class TraktLibraryTest {
     private fun movie(title: String, year: Int?, vararg keys: String) = TraktItem(false, null, year, title, keys.toList())
@@ -124,5 +126,93 @@ class TraktLibraryTest {
         assertFalse(lib.isMovieWatched("Dune", 1984))
         assertFalse(lib.isMovieWatched("Alien", 1979))
         assertFalse(TraktLibrary.EMPTY.isMovieWatched("Dune", 2021))
+    }
+
+    @Test
+    fun parse_trendingEtPopular_sontLus() {
+        val lib = TraktLibrary.parse(
+            """{"linked":true,"watchlist":[],"recommendations":[],"watched":{"movies":[],"shows":[]},
+            "trending":[{"type":"movie","tmdb":1,"year":2020,"title":"A","keys":["a"]},{"type":"show","tmdb":2,"year":2019,"title":"B","keys":["b"]}],
+            "popular":[{"type":"show","title":"C","keys":["c","c2"]}]}""",
+        )
+        assertEquals(listOf("A", "B"), lib.trending.map { it.title })
+        assertEquals(listOf(false, true), lib.trending.map { it.isShow })
+        assertEquals(listOf("c", "c2"), lib.popular.single().keys)
+    }
+
+    @Test
+    fun parse_trendingEtPopularAbsents_donnentDesListesVides() {
+        val lib = TraktLibrary.parse("""{"linked":true,"watchlist":[],"recommendations":[]}""")
+        assertTrue(lib.trending.isEmpty())
+        assertTrue(lib.popular.isEmpty())
+    }
+
+    @Test
+    fun rows_tendancesEtPopulaires_neGardentQueLeDisponible() {
+        val lib = TraktLibrary(
+            true, 1, emptyList(), emptyList(), emptyList(), emptyList(),
+            trending = listOf(movie("Alien", 1979, "alien"), show("Absent", 2000, "absent"), show("Lost", 2004, "lost")),
+            popular = listOf(movie("Dune", 2021, "dune"), movie("Nope", 1999, "nope")),
+        )
+        val movies = index(setOf("alien", "dune", "nope"), CatalogLite(1, "FR - Alien (1979)", "p", 1979, 8.0), CatalogLite(2, "Dune", null, 2021, null))
+        val series = index(setOf("absent", "lost"), CatalogLite(7, "Lost", null, 2004, null))
+        val rows = TraktAvailability.rows(lib, movies, series)
+        assertEquals(listOf(1L, 7L), rows.trending.map { it.id })
+        assertEquals(listOf(2L), rows.popular.map { it.id })
+        assertTrue(rows.watchlist.isEmpty() && rows.recommendations.isEmpty())
+        assertFalse(rows.isEmpty)
+        assertTrue(TraktAvailability.rows(lib, emptyMap(), emptyMap()).isEmpty)
+    }
+
+    @Test
+    fun rowsCodec_aller_retour_conserveTout() {
+        val c = TraktCard(true, 42, "Titre é", "http://x/p.jpg", 2020, 7.5)
+        val bare = TraktCard(false, 1, "Sans rien", null, null, null)
+        val rows = TraktRows(listOf(c), listOf(bare), listOf(c, bare), emptyList())
+        val back = TraktRowsCodec.decode(TraktRowsCodec.encode(mapOf(3L to rows, 9L to TraktRows.EMPTY)))
+        assertEquals(rows, back[3L])
+        assertEquals(TraktRows.EMPTY, back[9L])
+        assertTrue(TraktRowsCodec.decode("pas du json").isEmpty())
+        assertTrue(TraktRowsCodec.decode(null).isEmpty())
+    }
+
+    // Titres de test variés : préfixes, qualité, accents, article, année, « & », chiffres, non latin.
+    private val sampleTitles = listOf(
+        "FR - Alien (1979) 4K", "|FR| The Dune", "[VOD] Le Père Noël est une ordure", "L'Étrange Noël de Monsieur Jack", "Amélie 2001",
+        "Fast & Furious", "WALL·E", "Œdipe roi", "Ça", "Se7en", "2012", "Les Misérables HD", "  ", "", "ÉCOLE VF", "Ünïcödé Ştrange",
+        "الفيل الأزرق", "Αθήνα Σ", "Spider-Man: No Way Home (2021)", "UHD - the lord of the rings", "An American Tail", "El Camino 1080p",
+    )
+
+    @Test
+    fun indexInto_ecremagePremierMot_donneLeMemeIndexQueLaRegleComplete() {
+        val entries = sampleTitles.mapIndexed { i, t -> CatalogLite(i.toLong(), t, null, null, null) }
+        val vectorKeys = File("../../cloudflare-config/test/fixtures/trakt-match-vectors.json").let { f ->
+            val a = JSONObject(f.readText()).getJSONArray("keys")
+            List(a.length()) { a.getJSONArray(it).getString(0) to a.getJSONArray(it).getString(1) }
+        }
+        val all = entries + vectorKeys.mapIndexed { i, (raw, _) -> CatalogLite(1000L + i, raw, null, null, null) }
+        val wantedAll = all.map { TraktMatch.matchKey(it.title) }.filter { it.isNotEmpty() }.toSet() + setOf("zzz inconnu", "alien")
+        // Plusieurs jeux de clés recherchées : tout, une moitié, un seul, aucun.
+        val sets = listOf(wantedAll, wantedAll.filterIndexed { i, _ -> i % 2 == 0 }.toSet(), setOf("alien"), setOf("dune"), setOf("and furious"), emptySet())
+        for (w in sets) {
+            val full = HashMap<String, MutableList<CatalogLite>>().also { TraktAvailability.indexInto(it, w, all, null) }
+            val fast = HashMap<String, MutableList<CatalogLite>>().also { TraktAvailability.indexInto(it, w, all) }
+            assertEquals("wanted=$w", full, fast)
+        }
+        // Aucun faux négatif titre par titre : toute clé recherchée trouvée par la règle complète passe l'écrémage.
+        val fw = TraktAvailability.firstWordsOf(wantedAll)
+        for (e in all) {
+            val k = TraktMatch.matchKey(e.title)
+            if (k.isNotEmpty() && k in wantedAll) assertTrue("« ${e.title} » → « $k »", TraktAvailability.mayMatch(e.title, fw))
+        }
+    }
+
+    @Test
+    fun mayMatch_motInconnu_ecarteSansCalculerLaCle() {
+        val fw = TraktAvailability.firstWordsOf(setOf("alien", "the thing".removePrefix("the ")))
+        assertTrue(TraktAvailability.mayMatch("FR - ALIEN (1979)", fw))
+        assertTrue(TraktAvailability.mayMatch("Alién HD", fw))
+        assertFalse(TraktAvailability.mayMatch("Predator 1987", fw))
+        assertFalse(TraktAvailability.mayMatch("anything", emptySet()))
     }
 }

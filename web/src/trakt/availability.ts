@@ -8,7 +8,27 @@ export interface CatRef { ref: number; year: number | null }
 /** matchKey du titre → lignes du catalogue (ordre d'insertion conservé). */
 export type CatIndex = Map<string, CatRef[]>;
 
-export function addToIndex(idx: CatIndex, titles: (string | null | undefined)[], ref: number, year: number | null): void {
+/** Mots (minuscules, sans accents) d'un titre brut : sur-ensemble des mots de matchKey (qui ne fait que retirer / « & » → « and »). */
+const NON_WORD = /[^\p{L}\p{N}]+/u;
+function cheapTokens(t: string): string[] {
+  return t.normalize("NFD").replace(/\p{M}+/gu, "").toLowerCase().replace(/&/g, " and ").split(NON_WORD);
+}
+
+/** Premiers mots des clés voulues : sert de pré-filtre bon marché à l'indexation. */
+export function firstTokens(items: TraktItem[][]): Set<string> {
+  const s = new Set<string>();
+  for (const list of items) for (const i of list) for (const k of i.keys) { const f = k.split(" ", 1)[0]; if (f) s.add(f); }
+  return s;
+}
+
+/** Faux seulement si AUCUNE des clés de ces titres ne peut commencer par un mot voulu (jamais de faux négatif). */
+export function mayMatch(titles: (string | null | undefined)[], wanted: Set<string>): boolean {
+  for (const t of titles) if (t) for (const w of cheapTokens(t)) if (wanted.has(w)) return true;
+  return false;
+}
+
+export function addToIndex(idx: CatIndex, titles: (string | null | undefined)[], ref: number, year: number | null, wanted?: Set<string> | null): void {
+  if (wanted && !mayMatch(titles, wanted)) return;
   const seen = new Set<string>();
   for (const t of titles) {
     const k = matchKey(t);

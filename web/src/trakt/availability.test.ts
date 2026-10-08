@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TraktItem, TraktShowItem } from "@/cloud/client";
 import { matchKey } from "./match";
-import { addToIndex, availableItems, buildWatched, isWatchedMovie, watchedEpisodes, type CatIndex } from "./availability";
+import { addToIndex, availableItems, buildWatched, firstTokens, mayMatch, resolveItem, isWatchedMovie, watchedEpisodes, type CatIndex } from "./availability";
 
 const item = (type: "movie" | "show", title: string, year: number | null, extra: string[] = []): TraktItem =>
   ({ type, tmdb: null, year, title, keys: [...new Set([title, ...extra].map(matchKey))] });
@@ -56,5 +56,35 @@ describe("déjà vu", () => {
   });
   it("sans bibliothèque : rien de vu", () => {
     expect(isWatchedMovie(buildWatched(null), "Alien", 1979)).toBe(false);
+  });
+});
+
+describe("pré-filtre par premier mot", () => {
+  const titles = ["FR - Alien (1979) 4K", "Dune", "The Dark Knight", "Léon", "Tom & Jerry", "|FR| La Casa de Papel HD", "L'Auberge espagnole", "Amélie", "Heat", "", "Zorro 2020"];
+  const wanted = [item("movie", "Alien", 1979), item("movie", "Dark Knight", 2008), item("movie", "Leon", 1994), item("show", "Tom and Jerry", 1940), item("show", "Casa de Papel", 2017), item("movie", "Auberge espagnole", 2002), item("movie", "Zorro", 2020)];
+  it("même index avec et sans pré-filtre", () => {
+    const full: CatIndex = new Map(); const fast: CatIndex = new Map();
+    const w = firstTokens([wanted]);
+    titles.forEach((t, n) => { addToIndex(full, [t], n, 2000); addToIndex(fast, [t], n, 2000, w); });
+    // Le pré-filtre ne retire que des clés sans demande : les résolutions sont identiques.
+    for (const it of wanted) expect(resolveItem(fast, it)).toBe(resolveItem(full, it));
+    expect(availableItems(wanted, full, full).map((a) => a.ref)).toEqual(availableItems(wanted, fast, fast).map((a) => a.ref));
+    expect(fast.size).toBeLessThan(full.size);
+  });
+  it("mayMatch garde « & » et les accents", () => {
+    expect(mayMatch(["Tom & Jerry"], new Set(["and"]))).toBe(true);
+    expect(mayMatch(["Léon"], new Set(["leon"]))).toBe(true);
+    expect(mayMatch(["Heat"], new Set(["alien"]))).toBe(false);
+  });
+  it("aléatoire : toute clé voulue reste résolue", () => {
+    const words = ["the", "la", "alien", "dune", "heat", "x", "2049", "uhd", "fr", "über", "ça", "go"];
+    let seed = 7; const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const pick = () => Array.from({ length: 1 + Math.floor(rnd() * 3) }, () => words[Math.floor(rnd() * words.length)]!).join(" ");
+    for (let r = 0; r < 200; r++) {
+      const rows = Array.from({ length: 12 }, pick); const want = Array.from({ length: 3 }, () => item("movie", pick(), null));
+      const full: CatIndex = new Map(); const fast: CatIndex = new Map(); const w = firstTokens([want]);
+      rows.forEach((t, n) => { addToIndex(full, [t], n, null); addToIndex(fast, [t], n, null, w); });
+      expect(availableItems(want, fast, null)).toEqual(availableItems(want, full, null));
+    }
   });
 });

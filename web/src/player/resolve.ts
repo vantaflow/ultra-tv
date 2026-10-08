@@ -49,6 +49,10 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
   const exts = [t.ext || "mp4"];
   if (opts.preferMp4 && exts[0] !== "mp4") exts.unshift("mp4");
   if (!exts.includes("mkv")) exts.push("mkv");
-  for (const ext of exts) add(t.kind === "movie" ? movieUrl(c, t.refId, ext) : episodeUrl(c, t.refId, ext), "native", ext.toUpperCase());
+  const vod = (ext: string) => (t.kind === "movie" ? movieUrl(c, t.refId, ext) : episodeUrl(c, t.refId, ext));
+  for (const ext of exts) add(vod(ext), "native", ext.toUpperCase());
+  // Dernier recours : beaucoup de panneaux Xtream servent aussi le VOD en HLS (remux/transcodage audio AAC),
+  // seule voie quand le conteneur natif joue sans son (AC-3/DTS non décodables par Chromium).
+  add(vod("m3u8"), "hls", "M3U8");
   return out;
 }

@@ -8,11 +8,13 @@ vi.mock("@/cloud/service", async () => {
 
 import { setCloudHttp, traktLibrary, TokenRejectedError, RateLimitedError } from "@/cloud/client";
 import { usePrefs } from "@/state/prefs";
-import { refreshTraktLibrary, traktLang, useTraktLibrary } from "./library";
+import { refreshTraktLibrary, traktLang, useTraktLibrary, hydrateTraktLibrary, LIB_STORAGE_KEY } from "./library";
 import { useCloud } from "@/cloud/service";
+import { installMemStorage } from "./memstorage";
+installMemStorage();
 
 const item = { type: "movie", tmdb: 1, year: 1979, title: "Alien", keys: ["alien"] };
-const linked = { linked: true, updatedAt: 5, watchlist: [item], recommendations: [], watched: { movies: [item], shows: [{ type: "show", tmdb: 2, year: 2008, title: "BB", keys: ["breaking bad"], episodes: ["1x1"] }] } };
+const linked = { linked: true, updatedAt: 5, watchlist: [item], recommendations: [], trending: [{ ...item, title: "Heat", keys: ["heat"] }, { bad: 1 }], popular: [{ type: "show", tmdb: 2, year: 2008, title: "BB", keys: ["breaking bad"] }], watched: { movies: [item], shows: [{ type: "show", tmdb: 2, year: 2008, title: "BB", keys: ["breaking bad"], episodes: ["1x1"] }] } };
 let calls: { url: string; headers?: Record<string, string> }[] = [];
 let reply: { status: number; body: unknown } = { status: 200, body: linked };
 const http = async (r: { url: string; headers?: Record<string, string> }) => {
@@ -80,5 +82,44 @@ describe("refreshTraktLibrary", () => {
     await refreshTraktLibrary(true);
     expect(calls.length).toBe(0);
     expect(useTraktLibrary.getState().lib).toBeNull();
+  });
+});
+
+describe("tendances / populaires et persistance", () => {
+  it("parse trending et popular, absents -> []", async () => {
+    const r = await traktLibrary("https://w.example", "tok", "fr");
+    expect(r.linked && r.trending.map((i) => i.title)).toEqual(["Heat"]);
+    expect(r.linked && r.popular.length).toBe(1);
+    reply = { status: 200, body: { linked: true, updatedAt: 1, watchlist: [], recommendations: [], watched: {} } };
+    const r2 = await traktLibrary("https://w.example", "tok", "fr");
+    expect(r2.linked && r2.trending).toEqual([]);
+    expect(r2.linked && r2.popular).toEqual([]);
+  });
+  it("persiste la bibliothèque puis la réhydrate", async () => {
+    localStorage.clear();
+    await refreshTraktLibrary(true);
+    expect(localStorage.getItem(LIB_STORAGE_KEY)).toContain("Alien");
+    const at = useTraktLibrary.getState().loadedAt;
+    useTraktLibrary.setState({ lib: null, loadedAt: 0, key: "" });
+    expect(hydrateTraktLibrary()).toBe(true);
+    const s = useTraktLibrary.getState();
+    expect(s.lib?.watchlist[0]!.title).toBe("Alien");
+    expect(s.loadedAt).toBe(at);
+    expect(s.watched.movies.size).toBeGreaterThan(0);
+    // clé identique et récent : aucun appel réseau au démarrage
+    calls = []; await refreshTraktLibrary(); expect(calls.length).toBe(0);
+  });
+  it("ancienne sauvegarde sans trending : []; JSON corrompu ignoré", () => {
+    localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify({ key: "k", loadedAt: 1, lib: { linked: true, updatedAt: 1, watchlist: [], recommendations: [], watched: { movies: [], shows: [] } } }));
+    expect(hydrateTraktLibrary()).toBe(true);
+    expect(useTraktLibrary.getState().lib?.trending).toEqual([]);
+    localStorage.setItem(LIB_STORAGE_KEY, "{oops");
+    expect(hydrateTraktLibrary()).toBe(false);
+  });
+  it("non lié ou non appairé : efface la sauvegarde", async () => {
+    localStorage.setItem(LIB_STORAGE_KEY, "x");
+    reply = { status: 200, body: { linked: false } };
+    await refreshTraktLibrary(true);
+    expect(localStorage.getItem(LIB_STORAGE_KEY)).toBeNull();
   });
 });

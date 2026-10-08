@@ -14,6 +14,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -38,6 +41,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
     @Inject lateinit var okHttp: dagger.Lazy<okhttp3.OkHttpClient>
+    @Inject lateinit var traktRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository>
+    @Inject lateinit var traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>
+    @Inject lateinit var providerRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProviderRepository>
     @Inject lateinit var posters: dagger.Lazy<com.ultratv.tv.nativeapp.data.tmdb.PosterResolver>
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -120,6 +126,22 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
         // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
         bgScope.launch { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
+
+        // Trakt : recharge la dernière bibliothèque du disque et calcule les rangées de la source active dès le lancement
+        // (l'accueil les trouve déjà prêtes), puis relit le réseau selon la règle des 15 min. runCatching : jamais bloquant.
+        bgScope.launch {
+            runCatching {
+                val repo = traktRepo.get()
+                repo.restore()
+                if (repo.library.value.linked) {
+                    val pid = providerRepo.get().observeProviders()
+                        .map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
+                    traktMatcher.get().warmUp(bgScope, pid)
+                    val p = prefsStore.flow.first()
+                    repo.refreshIfStale(com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository.langParam(p.language, java.util.Locale.getDefault().language))
+                }
+            }
+        }
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
         bgScope.launch { runCatching { secretsMigrator.get().migrate() } }
