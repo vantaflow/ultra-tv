@@ -72,6 +72,7 @@ fun SeriesDetailScreen(
     val eps by vm.episodes.collectAsState()
     val loading by vm.loading.collectAsState()
     val watched by vm.watched.collectAsState()
+    val traktSeen by vm.traktWatchedEpisodes.collectAsState()
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
     val series = s
@@ -125,7 +126,7 @@ fun SeriesDetailScreen(
             }
             if (shown.isEmpty()) item(key = "empty") { Text(if (loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 14.sp) }
             items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
-                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
             }
         }
         if (twoPane) Box(Modifier.fillMaxSize().background(Ux.Bg)) {
@@ -230,7 +231,7 @@ fun SeriesDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(14.design),
                     ) {
                         itemsIndexed(shown, key = { _, it -> "${it.season}:${it.episode}:${it.remoteId}" }) { i, ep ->
-                            EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D,
+                            EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen,
                                 modifier = if (i == entryIndex) Modifier.focusRequester(entry) else Modifier) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
                         }
                     }
@@ -273,14 +274,15 @@ fun BackLink(label: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun EpisodeRow(ep: EpisodeEntity, title: String, fallbackImage: String?, h: com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity?, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, modifier: Modifier = Modifier, traktSeen: Boolean = false, onClick: () -> Unit) {
     val dur = h?.durationMs ?: 0L
     val pos = h?.positionMs ?: 0L
     val done = dur > 0 && pos >= dur - 60_000
     val fraction = if (done) 1f else if (dur > 0) pos.toFloat() / dur else 0f
     val length = com.ultratv.tv.nativeapp.ui.movies.movieDuration(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.presentable(ep.duration), D.hourShort.replace("%d", "").trim(), D.minShort.replace("%d", "").trim())
     val state = when {
-        done -> D.watchedLabel
+        // Terminé ici, ou vu sur Trakt (sans progression locale) : même marque « vu ».
+        done || (traktSeen && dur <= 0) -> D.watchedLabel
         dur > 0 && pos > 0 -> D.remainingMin(((dur - pos) / 60_000L).toInt().coerceAtLeast(1))
         else -> null
     }

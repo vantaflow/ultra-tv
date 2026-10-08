@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -54,6 +55,9 @@ class HomeViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val epgDao: EpgDao,
     bus: SyncStatusBus,
+    private val traktLibrary: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
+    traktMatcher: com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher,
+    private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
 ) : ViewModel() {
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
@@ -81,6 +85,28 @@ class HomeViewModel @Inject constructor(
             else h
         } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Rangées Trakt (watchlist, recommandations) : UNIQUEMENT les éléments présents dans la source active, dans l'ordre
+     * de Trakt. Vides si le compte n'est pas lié à Trakt, si l'appareil n'est pas appairé ou si rien n'est disponible.
+     */
+    val trakt: StateFlow<com.ultratv.tv.nativeapp.data.trakt.TraktRows> = traktMatcher.rows(pid)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.ultratv.tv.nativeapp.data.trakt.TraktRows.EMPTY)
+
+    init {
+        // Changement de source active → relecture si la bibliothèque a plus de 15 min (sinon sans effet).
+        viewModelScope.launch { pid.collect { refreshTrakt() } }
+    }
+
+    /** Appelé aussi au retour au premier plan : la bibliothèque n'est relue qu'au bout de 15 min. */
+    fun refreshTrakt() {
+        viewModelScope.launch {
+            val lang = com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository.langParam(
+                prefsStore.flow.first().language, java.util.Locale.getDefault().language,
+            )
+            traktLibrary.refreshIfStale(lang)
+        }
+    }
 
     /** Derniers films / séries ajoutés par le fournisseur. */
     val latestMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid

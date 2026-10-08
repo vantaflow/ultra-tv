@@ -107,6 +107,7 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/trakt/connect`, `/trakt/disconnect` | session + CSRF | Connexion Trakt (OAuth PKCE, état lié au compte, 10 min) |
 | GET | `/trakt/callback` | session | Retour de Trakt : jetons chiffrés dans le compte |
 | POST | `/api/device/trakt/scrobble` | `Bearer` | L'appareil signale sa lecture ; le Worker relaie à Trakt |
+| GET | `/api/device/trakt/library?lang=` | `Bearer` | Watchlist, recommandations et vus, avec clés de rapprochement (cache chiffré 15 min) |
 | GET | `/api/subtitles/search`, `/api/subtitles/download` | `Bearer` | Sous-titres (au nom du compte OpenSubtitles relié s'il y en a un) |
 
 ## Relais d'abonnement

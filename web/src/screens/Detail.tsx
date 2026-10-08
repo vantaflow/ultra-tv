@@ -19,6 +19,7 @@ import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { StateCard } from "@/ui/common";
 import { credsOf } from "@/sync/core";
+import { useIsWatchedMovie, useWatchedEpisodes } from "@/trakt/hooks";
 import { NoSource } from "./states";
 
 const WEEK = 7 * 86400_000;
@@ -79,6 +80,7 @@ function MovieInner({ source }: { source: Source }) {
   const { info, error } = useInfo<VodInfo>(source, "vod", sid);
   const favs = useFavorites(source, "movie");
   const hist = useLiveQuery(() => db.history.get(histKey(prefs.profileId, source.id!, "movie", sid)), [sid, prefs.profileId]);
+  const seenMovie = useIsWatchedMovie();
   if (movie === undefined) return <div className="detail" />;
   if (!movie) return <StateCard icon="alert" title={t("vod.empty")} actions={<button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button>} />;
   const i = info?.info;
@@ -95,7 +97,7 @@ function MovieInner({ source }: { source: Source }) {
       <div className="body">
         <button className="back" onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.movies")}</button>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <h1>{m.title}</h1>
+          <h1>{m.title}{seenMovie(m.title, m.year) && <span className="seen-badge" title={t("trakt.watched")}><Icon name="check" size={16} stroke={3} />{t("trakt.watched")}</span>}</h1>
           <Facts items={[m.year ?? presentable(i?.releasedate ?? i?.release_date)?.slice(0, 4), dur, presentable(i?.genre), m.rating > 0 ? `★ ${m.rating.toFixed(1)}` : null, m.ext.toUpperCase()]} />
           <p className="plot clamp-4">{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}
@@ -152,6 +154,7 @@ function SeriesInner({ source }: { source: Source }) {
   const favs = useFavorites(source, "series");
   const hist = useLiveQuery(() => db.history.where("[profile+sourceId]").equals([prefs.profileId, source.id!]).filter((h) => h.seriesId === sid).toArray(), [sid, prefs.profileId]) ?? [];
   const parsed = useMemo(() => parseEpisodes(info), [info]);
+  const seenEps = useWatchedEpisodes(row?.title, row?.year);
   const [season, setSeason] = useState<number | null>(null);
   const histBy = useMemo(() => new Map(hist.map((h) => [h.epId ?? -1, h] as [number, HistoryRow])), [hist]);
   const last = useMemo(() => [...hist].sort((a, b) => b.updatedAt - a.updatedAt)[0], [hist]);
@@ -208,8 +211,8 @@ function SeriesInner({ source }: { source: Source }) {
               <button key={e.id} className="episode" onClick={() => playEp(e, h && h.pos > 20 ? h.pos : undefined)}>
                 <span className="th"><Img src={e.img ?? s.poster} />{ratio > 0 && <span className="progress"><i style={{ width: `${ratio * 100}%` }} /></span>}</span>
                 <span className="grow">
-                  <b className="ellipsis" style={{ display: "block" }}>{t("common.episodeShort", { n: e.num })} · {e.title}</b>
-                  <span className="m">{[e.secs ? fmtDuration(e.secs) : null, h ? (ratio > 0.95 ? t("common.watched") : t("common.minLeft", { t: fmtDuration(h.dur - h.pos) })) : null].filter(Boolean).join(" · ")}</span>
+                  <b className="ellipsis" style={{ display: "block" }}>{seenEps?.has(`${e.season}x${e.num}`) && <Icon name="check" size={14} stroke={3} className="seen-ep" />}{t("common.episodeShort", { n: e.num })} · {e.title}</b>
+                  <span className="m">{[e.secs ? fmtDuration(e.secs) : null, seenEps?.has(`${e.season}x${e.num}`) ? t("trakt.watched") : null, h ? (ratio > 0.95 ? t("common.watched") : t("common.minLeft", { t: fmtDuration(h.dur - h.pos) })) : null].filter(Boolean).join(" · ")}</span>
                   {e.plot && <span className="p clamp-2" style={{ display: "block" }}>{e.plot}</span>}
                 </span>
               </button>

@@ -46,6 +46,8 @@ import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.traktRecommended
+import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -90,6 +92,7 @@ fun HomeScreen(
     val loaded by vm.providersLoaded.collectAsState()
     val hero by vm.hero.collectAsState()
     val resume by vm.continueWatching.collectAsState()
+    val trakt by vm.trakt.collectAsState()
     val latestMovies by vm.latestMovies.collectAsState()
     val latestSeries by vm.latestSeries.collectAsState()
     val recentChannels by vm.recentChannels.collectAsState()
@@ -97,6 +100,13 @@ fun HomeScreen(
     val favorites by vm.showingFavorites.collectAsState()
     val nowPlaying by vm.nowPlaying.collectAsState()
     val syncPct by vm.syncPercent.collectAsState()
+    // Retour au premier plan : relecture de la bibliothèque Trakt si elle a plus de 15 min (sinon sans effet).
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_START) vm.refreshTrakt() }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+    }
     val dataState: com.ultratv.tv.nativeapp.ui.common.DataStateViewModel = hiltViewModel()
     val failure by dataState.failure.collectAsState()
 
@@ -104,7 +114,8 @@ fun HomeScreen(
         val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
         val prof by profileVm.current.collectAsState()
         com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
-            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, syncPct, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
+            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, syncPct, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt(), trakt),
+            onOpenMovie = onOpenMovie, onOpenSeries = onOpenSeries,
             onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites,
             onPlay = onPlay, onPlayHistory = { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) },
             onOpenHero = { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) },
@@ -140,6 +151,10 @@ fun HomeScreen(
             }
         }
 
+        // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
+        if (trakt.watchlist.isNotEmpty()) Section(D.traktWatchlist) { TraktRow(trakt.watchlist, "tw", onOpenMovie, onOpenSeries) }
+        if (trakt.recommendations.isNotEmpty()) Section(D.traktRecommended) { TraktRow(trakt.recommendations, "tr", onOpenMovie, onOpenSeries) }
+
         if (recentChannels.isNotEmpty()) Section(D.recentlyWatched) {
             LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                 items(recentChannels, key = { "rc-${it.remoteId}" }, contentType = { "resume" }) { e ->
@@ -172,6 +187,22 @@ fun HomeScreen(
             LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
                 items(channels, key = { it.id }, contentType = { "channel" }) { c ->
                     ChannelCard(c, nowPlaying[c.id]) { onPlay(c.streamUrl, c.title) }
+                }
+            }
+        }
+    }
+}
+
+/** Rangée d'affiches Trakt (films et séries mêlés, ordre de Trakt) ; sélectionner ouvre la fiche existante. */
+@Composable
+private fun TraktRow(cards: List<com.ultratv.tv.nativeapp.data.trakt.TraktCard>, keyPrefix: String, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit) {
+    LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
+        items(cards, key = { "$keyPrefix-${it.isShow}-${it.id}" }, contentType = { "poster" }) { c ->
+            androidx.compose.runtime.CompositionLocalProvider(
+                com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides if (c.isShow) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE,
+            ) {
+                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(c.id, c.title, c.poster, c.year, c.rating), Modifier.width(200.design)) {
+                    if (c.isShow) onOpenSeries(c.id) else onOpenMovie(c.id)
                 }
             }
         }

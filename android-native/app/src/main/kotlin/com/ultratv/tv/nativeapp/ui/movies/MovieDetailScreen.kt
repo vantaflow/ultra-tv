@@ -49,6 +49,7 @@ import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
+import com.ultratv.tv.nativeapp.i18n.traktWatched
 import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -69,6 +70,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -80,6 +82,7 @@ class MovieDetailViewModel @Inject constructor(
     private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
+    private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
 ) : ViewModel() {
 
     /** Position de reprise en ms (0 = jamais commencé). */
@@ -109,6 +112,10 @@ class MovieDetailViewModel @Inject constructor(
     }
     private val _m = MutableStateFlow<MovieEntity?>(null)
     val movie: StateFlow<MovieEntity?> = _m.asStateFlow()
+
+    /** Film vu sur Trakt (historique du compte lié) : affiche la marque « Vu » sur la fiche. */
+    val traktWatched: StateFlow<Boolean> = kotlinx.coroutines.flow.combine(_m, trakt.library) { m, lib -> m != null && lib.isMovieWatched(m.title, m.year) }
+                .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), false)
     fun load(id: Long) {
         viewModelScope.launch {
             val m = catalog.movieById(id)
@@ -153,6 +160,7 @@ fun MovieDetailScreen(
 ) {
     val m by vm.movie.collectAsState()
     val resume by vm.resumeMs.collectAsState()
+    val traktSeen by vm.traktWatched.collectAsState()
     LaunchedEffect(movieId) { vm.load(movieId) }
 
     val movie = m
@@ -174,6 +182,7 @@ fun MovieDetailScreen(
     val backdrop = T.presentable(info?.backdrop) ?: T.presentable(movie.backdrop)
     val quality = remember(movie.id) { T.clean(movie.name).quality }
     val langBadge = movie.lang.takeIf { it.isNotBlank() }?.uppercase()
+    val seenBadge = if (traktSeen) "✓ " + D.traktWatched else null
     val people = remember(info, movie.id) {
         (listOfNotNull(T.presentable(info?.director)) + (T.presentable(info?.cast) ?: T.presentable(movie.cast)).orEmpty().split(',').map { it.trim() })
             .filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
@@ -190,7 +199,7 @@ fun MovieDetailScreen(
         com.ultratv.tv.nativeapp.ui.mobile.MobileDetailFrame(backdrop, movie.poster, title, onBack) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 33.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             if (skeleton) Skeleton(Modifier.width(220.dp).height(18.dp))
-            else com.ultratv.tv.nativeapp.ui.mobile.MetaRow(listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }), listOfNotNull(quality, langBadge))
+            else com.ultratv.tv.nativeapp.ui.mobile.MetaRow(listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }), listOfNotNull(quality, langBadge, seenBadge))
             com.ultratv.tv.nativeapp.ui.mobile.MobilePrimaryButton(S.play, { if (resume > 0) vm.restart(movie, onPlay) else vm.play(movie, onPlay) })
             if (resume > 0) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -242,7 +251,7 @@ fun MovieDetailScreen(
                         if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
                         Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 360.design))
                     }
-                    for (badge in listOfNotNull(quality, langBadge)) {
+                    for (badge in listOfNotNull(quality, langBadge, seenBadge)) {
                         Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
                             Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
                         }

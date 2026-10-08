@@ -66,6 +66,9 @@ export const es: Dict = {
   "home.newMovies": "Últimas películas",
   "home.newSeries": "Últimas series",
   "home.until": "{c} · hasta las {t}",
+  "home.traktWatchlist": "Mi watchlist de Trakt",
+  "home.traktRecs": "Recomendado para ti (Trakt)",
+  "trakt.watched": "Visto",
   "home.guide": "Guía TV",
   "home.emptyHero": "Elige un canal en directo para empezar.",
 

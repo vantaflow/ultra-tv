@@ -287,6 +287,10 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE id = :id")
     suspend fun byId(id: Long): MovieEntity?
 
+    /** Rapprochement Trakt : colonnes minimales, par tranches (pagination par clé, sans OFFSET). */
+    @Query("SELECT id, title, poster, year, rating FROM movie WHERE providerId = :pid AND id > :afterId ORDER BY id LIMIT :limit")
+    suspend fun liteChunk(pid: Long, afterId: Long, limit: Int): List<CatalogLite>
+
 
     @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
@@ -358,6 +362,10 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE id = :id")
     suspend fun byId(id: Long): SeriesEntity?
+
+    /** Rapprochement Trakt : colonnes minimales, par tranches (pagination par clé, sans OFFSET). */
+    @Query("SELECT id, title, poster, year, rating FROM series WHERE providerId = :pid AND id > :afterId ORDER BY id LIMIT :limit")
+    suspend fun liteChunk(pid: Long, afterId: Long, limit: Int): List<CatalogLite>
 
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
@@ -618,6 +626,9 @@ interface EpgDao {
 }
 
 data class LangCount(val lang: String, val n: Int)
+
+/** Projection légère d'un film / d'une série (rapprochement Trakt). `title` = titre déjà nettoyé. */
+data class CatalogLite(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?)
 
 data class EnabledCount(val kind: String, val enabled: Boolean, val n: Int)
 

@@ -37,7 +37,15 @@ class SeriesDetailViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
+    private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
 ) : ViewModel() {
+
+    /** Épisodes de cette série vus sur Trakt (« SxE »), vide si non lié / série absente de l'historique Trakt. */
+    val traktWatchedEpisodes: StateFlow<Set<String>> by lazy {
+        combine(_series, trakt.library) { s, lib -> if (s == null) emptySet() else lib.watchedEpisodes(s.title, s.year) }
+            .distinctUntilChanged()
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    }
 
     /** Historique des épisodes de cette série, le plus récent d'abord (progression + « Reprendre »). */
     @kotlinx.coroutines.ExperimentalCoroutinesApi

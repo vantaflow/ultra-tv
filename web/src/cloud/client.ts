@@ -7,6 +7,7 @@
 //   DELETE /api/device/providers/:id Bearer
 //   PATCH /api/device {name} Bearer                  -> renomme l'appareil courant
 //   POST /api/device/trakt/scrobble Bearer           -> {linked:false} · {linked:true, matched, ok}
+//   GET  /api/device/trakt/library?lang= Bearer       -> {linked:false} · {linked:true, updatedAt, watchlist, recommendations, watched}
 // HTTPS obligatoire, aucune redirection suivie (un 30x vers http:// ferait fuiter le jeton).
 // Dans Electron, les requêtes sont faites par le processus principal (`window.ultratv.cloudRequest`).
 
@@ -300,4 +301,31 @@ export async function traktScrobble(base: string, token: string, body: ScrobbleB
   if (r.status < 200 || r.status >= 300) throw new CloudError("scrobble", r.status);
   const o = parse<Partial<ScrobbleResult>>(r);
   return { linked: o.linked === true, matched: o.matched, ok: o.ok };
+}
+
+export interface TraktItem { type: "movie" | "show"; tmdb: number | null; year: number | null; title: string; keys: string[] }
+export type TraktShowItem = TraktItem & { episodes: string[] };
+export type TraktLibraryResult =
+  | { linked: false }
+  | { linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; watched: { movies: TraktItem[]; shows: TraktShowItem[] } };
+
+const asItems = (v: unknown): TraktItem[] => (Array.isArray(v) ? (v as TraktItem[]).filter((i) => i && (i.type === "movie" || i.type === "show") && Array.isArray(i.keys)) : []);
+
+/** Bibliothèque Trakt (watchlist, recommandations, déjà vu) via le Worker. Lève sur 401 / 429 / erreur : l'appelant garde sa dernière valeur. */
+export async function traktLibrary(base: string, token: string, lang: string): Promise<TraktLibraryResult> {
+  const r = await http({ url: `${base}/api/device/trakt/library?lang=${encodeURIComponent(lang)}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status < 200 || r.status >= 300) throw new CloudError("trakt-library", r.status);
+  const o = parse<Record<string, unknown>>(r);
+  if (o.linked !== true) return { linked: false };
+  const w = (o.watched ?? {}) as { movies?: unknown; shows?: unknown };
+  return {
+    linked: true, updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+    watchlist: asItems(o.watchlist), recommendations: asItems(o.recommendations),
+    watched: {
+      movies: asItems(w.movies),
+      shows: asItems(w.shows).map((i) => ({ ...i, episodes: Array.isArray((i as TraktShowItem).episodes) ? (i as TraktShowItem).episodes.filter((e) => typeof e === "string") : [] })),
+    },
+  };
 }

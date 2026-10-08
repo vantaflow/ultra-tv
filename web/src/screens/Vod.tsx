@@ -17,6 +17,7 @@ import { Icon } from "@/ui/Icon";
 import { PosterCard, PosterSkeleton } from "@/ui/Poster";
 import { Seg } from "@/ui/common";
 import { VGrid, arrayRows, type Rows } from "@/ui/Virtual";
+import { useIsWatchedMovie } from "@/trakt/hooks";
 import { EmptyCatalog, NoSource } from "./states";
 
 export function VodScreen({ kind }: { kind: "movie" | "series" }) {
@@ -33,6 +34,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const prefs = usePrefs();
   const cats = useCategories(source, kind);
   const favs = useFavorites(source, kind);
+  const seen = useIsWatchedMovie();
   const favSet = useMemo(() => new Set(favs.map((f) => f.refId)), [favs]);
   const key = `${source.id}:${kind}`;
   const cat = prefs.liveCat[key] ?? "";
@@ -103,7 +105,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
               kind={kind === "movie" ? "movie" : "tv"} year={r.year}
               title={r.title} image={kind === "movie" ? (r as MovieRow).poster : (r as SeriesRow).poster}
               meta={[r.year, r.rating > 0 ? `★ ${r.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}
-              fav={favSet.has(idOf(r))} onClick={() => nav(`/${kind === "movie" ? "movie" : "serie"}/${idOf(r)}`)}
+              fav={favSet.has(idOf(r))} watched={kind === "movie" && seen(r.title, r.year)} onClick={() => nav(`/${kind === "movie" ? "movie" : "serie"}/${idOf(r)}`)}
             />
           ) : <PosterSkeleton />}
         />
@@ -187,6 +189,7 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
   onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
 }) {
   const t = useT();
+  const seen = useIsWatchedMovie();
   const items = useLiveQuery(async () => {
     const col = (kind === "movie" ? moviesCol(source.cid, cat.extId, sort) : seriesCol(source.cid, cat.extId, sort)) as import("dexie").Collection<Item, unknown>;
     // Tri « note » servi par l'index [sourceId+catExt+rating] : plus de lecture de la catégorie entière.
@@ -206,7 +209,7 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
             <PosterCard kind={kind === "movie" ? "movie" : "tv"} year={r.year} title={r.title}
               image={kind === "movie" ? (r as MovieRow).poster : (r as SeriesRow).poster}
               meta={[r.year, r.rating > 0 ? `★ ${r.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}
-              fav={favSet.has(idOf(r))} onClick={() => onOpen(idOf(r))} />
+              fav={favSet.has(idOf(r))} watched={kind === "movie" && seen(r.title, r.year)} onClick={() => onOpen(idOf(r))} />
           </div>
         ))}
         {!items && Array.from({ length: 6 }, (_, i) => <div key={i} className="cat-row-item"><PosterSkeleton /></div>)}

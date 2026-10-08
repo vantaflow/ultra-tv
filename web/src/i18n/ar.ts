@@ -66,6 +66,9 @@ export const ar: Dict = {
   "home.newMovies": "أحدث الأفلام",
   "home.newSeries": "أحدث المسلسلات",
   "home.until": "{c} · حتى {t}",
+  "home.traktWatchlist": "قائمة المشاهدة على Trakt",
+  "home.traktRecs": "موصى به لك (Trakt)",
+  "trakt.watched": "تمت المشاهدة",
   "home.guide": "دليل البرامج",
   "home.emptyHero": "اختر قناة من البث المباشر للبدء.",
 

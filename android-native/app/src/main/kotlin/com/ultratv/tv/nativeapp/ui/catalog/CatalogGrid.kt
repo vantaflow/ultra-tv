@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.catalog
 
+import com.ultratv.tv.nativeapp.i18n.traktWatched
 import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
@@ -83,7 +84,7 @@ import javax.inject.Inject
 enum class CatalogKind { MOVIES, SERIES }
 
 /** Carte de la grille : seulement des champs RÉELS de la source. */
-data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "")
+data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "", val watched: Boolean = false)
 
 data class CategoryChip(val remoteId: String, val name: String)
 
@@ -97,6 +98,7 @@ class CatalogGridViewModel @Inject constructor(
     private val hiddenStore: HiddenCategoriesStore,
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
+    private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
 ) : ViewModel() {
     private val kind = MutableStateFlow(CatalogKind.MOVIES)
     fun bind(k: CatalogKind) { kind.value = k }
@@ -140,7 +142,7 @@ class CatalogGridViewModel @Inject constructor(
     fun rowItems(cat: String): StateFlow<List<PosterItem>?> = rowCache.getOrPut(cat) {
         combine(pid, kind) { p, k -> p to k }.flatMapLatest { (p, k) ->
             if (p == null) flowOf(emptyList())
-            else if (k == CatalogKind.MOVIES) movieDao.observeRow(p, cat, ROW_SIZE).atMostEvery(1_000).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+            else if (k == CatalogKind.MOVIES) movieDao.observeRow(p, cat, ROW_SIZE).atMostEvery(1_000).map { l -> val lib = trakt.library.value; l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, watched = lib.isMovieWatched(it.title, it.year)) } }
             else seriesDao.observeRow(p, cat, ROW_SIZE).atMostEvery(1_000).map { l -> l.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(30_000), null)
     }
@@ -152,7 +154,7 @@ class CatalogGridViewModel @Inject constructor(
             if (p == null) flowOf(PagingData.empty())
             else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
                 if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
-            }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
+            }.flow.map { pd -> val lib = trakt.library.value; pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang, lib.isMovieWatched(it.title, it.year)) } }
             else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
                 if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
@@ -313,6 +315,7 @@ internal fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Uni
             Box(Modifier.fillMaxSize()) {
                 PosterImage(item.poster, item.title, Modifier.fillMaxSize(), radius = 18)
                 com.ultratv.tv.nativeapp.ui.common.LangBadge(item.lang, modifier = Modifier.align(Alignment.TopStart).padding(10.design))
+                if (item.watched) WatchedBadge(Modifier.align(Alignment.BottomEnd).padding(8.design))
             }
         }
         // Deux lignes réservées (cellules alignées dans la rangée / la grille) : un titre long n'est plus coupé à 15 caractères.
@@ -325,3 +328,14 @@ internal fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Uni
 
 private val Color0xE4E4E7 = androidx.compose.ui.graphics.Color(0xFFE4E4E7)
 private fun Modifier.aspectRatio23() = this.aspectRatio(2f / 3f)
+
+/** Pastille « ✓ Vu » (film vu sur Trakt) : discrète, en bas à droite de l'affiche. */
+@Composable
+internal fun WatchedBadge(modifier: Modifier = Modifier) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    Text(
+        "✓ " + com.ultratv.tv.nativeapp.i18n.LocalDs.current.traktWatched, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold,
+        fontSize = if (touch) 10.sp else 20.spx, maxLines = 1,
+        modifier = modifier.clip(RoundedCornerShape(6.design)).background(androidx.compose.ui.graphics.Color(0xCC0A0A0C)).padding(horizontal = 8.design, vertical = 3.design),
+    )
+}

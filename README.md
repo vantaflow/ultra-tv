@@ -53,7 +53,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution), **reprise automatique** (position enregistrée toutes les 30 s), saisons en onglets, rangées par catégorie.
 - **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
 - **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage). Rien à configurer sur l'appareil ; un compte OpenSubtitles personnel se relie, au besoin, depuis le tableau de bord cloud.
-- **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin). Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
+- **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin) ; à l'accueil, **watchlist** et **recommandations** Trakt limitées aux titres disponibles dans la playlist chargée ; marque **« Vu »** sur les films et épisodes déjà vus. Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
 - **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
 - **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes), recherche vocale et globale, liens profonds `ultratv://`.

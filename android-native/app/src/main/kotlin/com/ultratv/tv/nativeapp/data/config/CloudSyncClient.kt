@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.data.config
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -49,6 +50,22 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
             throw e
         } catch (_: Throwable) {
             com.ultratv.tv.nativeapp.data.trakt.ScrobbleResult.FAILED
+        }
+    }
+
+    /**
+     * Bibliothèque Trakt (GET /api/device/trakt/library?lang=…). Renvoie le corps JSON, ou null pour tout échec
+     * (réseau, 401, 429, 5xx) : l'appelant garde alors sa dernière valeur valide. Ne lève jamais (hors annulation).
+     */
+    suspend fun traktLibrary(base: String, token: String, lang: String): String? = withContext(Dispatchers.IO) {
+        try {
+            val url = "$base/api/device/trakt/library".toHttpUrl().newBuilder().addQueryParameter("lang", lang).build()
+            val req = Request.Builder().url(url).header("Authorization", "Bearer $token").get().build()
+            http.newCall(req).execute().use { resp -> if (resp.isSuccessful) resp.body?.string() else null }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
         }
     }
 

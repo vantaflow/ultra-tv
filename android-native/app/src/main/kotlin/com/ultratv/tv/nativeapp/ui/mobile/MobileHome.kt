@@ -47,6 +47,8 @@ import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.traktRecommended
+import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.design.BackdropImage
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
@@ -74,6 +76,8 @@ data class MobileHomeState(
     val syncPercent: Int?,
     val profileInitial: String,
     val profileColor: Int,
+    /** Rangées Trakt (éléments disponibles dans la playlist seulement). */
+    val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktRows = com.ultratv.tv.nativeapp.data.trakt.TraktRows.EMPTY,
 )
 
 /** En-tête commun aux écrans principaux tactiles : logo, recherche, profil (maquette MobileAccueil). */
@@ -125,6 +129,8 @@ fun MobileHomeScreen(
     onPlay: (url: String, title: String) -> Unit,
     onPlayHistory: (WatchHistoryEntity) -> Unit,
     onOpenHero: (HeroItem) -> Unit,
+    onOpenMovie: (Long) -> Unit = {},
+    onOpenSeries: (Long) -> Unit = {},
 ) {
     val D = LocalDs.current
     val wide = rememberWindowClass() != WindowClass.COMPACT
@@ -143,10 +149,29 @@ fun MobileHomeScreen(
                     items(state.resume, key = { "${it.kind}-${it.remoteId}" }, contentType = { "resume" }) { e -> ResumeCard(e, D) { onPlayHistory(e) } }
                 }
             }
+            if (state.trakt.watchlist.isNotEmpty()) TraktPosterRow(D.traktWatchlist, state.trakt.watchlist, wide, onOpenMovie, onOpenSeries)
+            if (state.trakt.recommendations.isNotEmpty()) TraktPosterRow(D.traktRecommended, state.trakt.recommendations, wide, onOpenMovie, onOpenSeries)
             if (state.channels.isNotEmpty()) {
                 SectionHeader(if (state.showingFavorites) D.favoriteChannels else D.directTitle, LocalMobileStrings.current.seeAll, if (state.showingFavorites) onGoFavorites else onGoLive)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
                     items(state.channels, key = { it.id }, contentType = { "channel" }) { c -> FavChannelCard(c, state.nowPlaying[c.id]) { onPlay(c.streamUrl, c.title) } }
+                }
+            }
+        }
+    }
+}
+
+/** Rangée d'affiches Trakt (films et séries mêlés, ordre de Trakt) ; toucher ouvre la fiche existante. */
+@Composable
+private fun TraktPosterRow(title: String, cards: List<com.ultratv.tv.nativeapp.data.trakt.TraktCard>, wide: Boolean, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit) {
+    SectionHeader(title, null, {})
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+        items(cards, key = { "${it.isShow}-${it.id}" }, contentType = { "poster" }) { c ->
+            androidx.compose.runtime.CompositionLocalProvider(
+                com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides if (c.isShow) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE,
+            ) {
+                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(c.id, c.title, c.poster, c.year, c.rating), Modifier.width(if (wide) 150.dp else 110.dp)) {
+                    if (c.isShow) onOpenSeries(c.id) else onOpenMovie(c.id)
                 }
             }
         }

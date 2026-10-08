@@ -16,6 +16,7 @@ import { hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
+import { useIsWatchedMovie, useTraktRows, type TraktRow } from "@/trakt/hooks";
 import { EmptyCatalog, NoSource } from "./states";
 
 export function Home() {
@@ -43,6 +44,24 @@ function resumeOf(source: Source, h: HistoryRow) {
   }, "full");
 }
 
+/** Rangée Trakt : uniquement des titres présents dans la playlist (films et séries mêlés, ordre Trakt). */
+function TraktRowSection({ title, rows, seen, onOpen }: { title: string; rows: TraktRow[]; seen: (t: string, y?: number | null) => boolean; onOpen: (r: TraktRow) => void }) {
+  if (!rows.length) return null;
+  return (
+    <section>
+      <h2 className="section-title">{title}</h2>
+      <HScroll className="row-scroll">
+        {rows.map((r) => (
+          <div key={`${r.kind}${r.ref}`} style={{ flex: "0 0 9.5rem" }}>
+            <PosterCard kind={r.kind === "movie" ? "movie" : "tv"} year={r.row.year} title={r.row.title} image={r.row.poster} meta={r.row.year ? String(r.row.year) : undefined}
+              watched={r.kind === "movie" && seen(r.row.title, r.row.year)} onClick={() => onOpen(r)} />
+          </div>
+        ))}
+      </HScroll>
+    </section>
+  );
+}
+
 function HomeInner({ source }: { source: Source }) {
   const t = useT();
   const nav = useNavigate();
@@ -52,6 +71,9 @@ function HomeInner({ source }: { source: Source }) {
   const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c), [favs, source.cid]) ?? [];
   const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep).first()), [favChans, source.cid]);
   const nn = useNowNext(source, featured?.epg, featured?.streamId);
+  const trakt = useTraktRows(source);
+  const seen = useIsWatchedMovie();
+  const openTrakt = (r: TraktRow) => nav(r.kind === "movie" ? `/movie/${r.ref}` : `/serie/${r.ref}`);
   const movies = useLiveQuery(() => db.movies.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
   const series = useLiveQuery(() => db.series.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
 
@@ -90,6 +112,9 @@ function HomeInner({ source }: { source: Source }) {
         </section>
       )}
 
+      <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
+      <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />
+
       {favChans.length > 0 && (
         <section>
           <h2 className="section-title">{t("home.favChannels")}</h2>
@@ -101,7 +126,7 @@ function HomeInner({ source }: { source: Source }) {
         <section>
           <h2 className="section-title">{t("home.newMovies")}<button className="btn sm" onClick={() => nav("/movies")}>{t("common.all")}</button></h2>
           <HScroll className="row-scroll">
-            {movies.map((m) => <div key={m.id} style={{ flex: "0 0 9.5rem" }}><PosterCard kind="movie" year={m.year} title={m.title} image={m.poster} meta={m.year ? String(m.year) : undefined} onClick={() => nav(`/movie/${m.streamId}`)} /></div>)}
+            {movies.map((m) => <div key={m.id} style={{ flex: "0 0 9.5rem" }}><PosterCard kind="movie" year={m.year} title={m.title} image={m.poster} meta={m.year ? String(m.year) : undefined} watched={seen(m.title, m.year)} onClick={() => nav(`/movie/${m.streamId}`)} /></div>)}
           </HScroll>
         </section>
       )}

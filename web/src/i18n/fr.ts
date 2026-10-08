@@ -65,6 +65,9 @@ export const fr = {
   "home.newMovies": "Derniers films ajoutés",
   "home.newSeries": "Dernières séries ajoutées",
   "home.until": "{c} · jusqu’à {t}",
+  "home.traktWatchlist": "Ma watchlist Trakt",
+  "home.traktRecs": "Recommandé pour toi (Trakt)",
+  "trakt.watched": "Vu",
   "home.guide": "Guide TV",
   "home.emptyHero": "Choisissez une chaîne dans le direct pour démarrer.",
 
