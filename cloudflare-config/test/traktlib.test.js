@@ -55,6 +55,22 @@ describe("bibliothèque Trakt", () => {
     expect(tmdb).toHaveBeenCalledTimes(TMDB_PER_REFRESH);
     expect(Object.keys(dict)).toHaveLength(TMDB_PER_REFRESH);
   });
+  it("tendances et populaires : films et séries entrelacés, transmis à l'appareil", async () => {
+    const f = async (u) => {
+      const p = new URL(u).pathname;
+      if (p === "/movies/trending") return res(200, [{ movie: { title: "M1", year: 2026, ids: { tmdb: 1 } } }, { movie: { title: "M2", year: 2026, ids: { tmdb: 2 } } }]);
+      if (p === "/shows/trending") return res(200, [{ show: { title: "S1", year: 2025, ids: { tmdb: 3 } } }]);
+      if (p === "/movies/popular") return res(200, [{ title: "P1", year: 2010, ids: { tmdb: 4 } }]);
+      if (p === "/shows/popular") return res(200, [{ title: "PS1", year: 2008, ids: { tmdb: 5 } }]);
+      return res(200, []);
+    };
+    const lib = await fetchTraktLibrary("C", "T", f);
+    expect(lib.trending.map((x) => x.title)).toEqual(["M1", "S1", "M2"]);
+    expect(lib.popular.map((x) => `${x.type}:${x.title}`)).toEqual(["movie:P1", "show:PS1"]);
+    const out = libraryForDevice(lib, {}, 1);
+    expect(out.trending[1]).toEqual({ type: "show", tmdb: 3, year: 2025, title: "S1", keys: ["s1"] });
+    expect(out.popular).toHaveLength(2);
+  });
   it("route appareil : compte non relié → linked:false ; sans jeton → 401", async () => {
     const acct = await newAccount();
     const dev = await pairDevice(acct, "Salon");

@@ -1,5 +1,7 @@
-// Bibliothèque Trakt d'un compte, préparée pour les appareils : watchlist, recommandations, films et épisodes vus.
-//   GET /api/device/trakt/library?lang=fr → { linked, updatedAt, watchlist[], recommendations[], watched{movies[], shows[]} }
+// Bibliothèque Trakt d'un compte, préparée pour les appareils : watchlist, recommandations, tendances, populaires,
+// films et épisodes vus.
+//   GET /api/device/trakt/library?lang=fr
+//     → { linked, updatedAt, watchlist[], recommendations[], trending[], popular[], watched{movies[], shows[]} }
 // Chaque titre porte ses clés de rapprochement (`keys`, voir matchKey) : titre Trakt (anglais), titre localisé et
 // titre original TMDB. L'appareil n'affiche que ce que SA playlist contient (rapprochement titre + année).
 
@@ -10,10 +12,11 @@ const USER_AGENT = "UltraTV/1.0";
 export const LIB_TTL_S = 15 * 60;
 const MAX_WATCHLIST = 200;
 const MAX_RECS = 20; // par type
+const MAX_PUBLIC = 40; // tendances / populaires, par type
 const MAX_WATCHED_MOVIES = 1500;
 const MAX_WATCHED_SHOWS = 400;
 /** Titres TMDB complétés par rafraîchissement (borne de sous-requêtes ; le reste suit au rafraîchissement suivant). */
-export const TMDB_PER_REFRESH = 30;
+export const TMDB_PER_REFRESH = 25;
 export const LANGS = new Set(["fr", "en", "es", "ar"]);
 
 const QUALITY = new RegExp(String.raw`(?<![\p{L}\p{N}])(4k|uhd|fhd|hd|sd|hevc|h26[45]|x26[45]|multi|vostfr|vost|vff|vf|vo|truefrench|subfrench|french)(?![\p{L}\p{N}])`, "giu");
@@ -79,13 +82,15 @@ export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
     console.log(JSON.stringify({ trakt: "library", path: p.split("?")[0], status: e.status ?? "network" }));
     return [];
   });
-  const [wm, ws, rm, rs, hm, hs] = await Promise.all([
+  const [wm, ws, rm, rs, hm, hs, tm, ts, pm, ps] = await Promise.all([
     get("/sync/watchlist/movies"), get("/sync/watchlist/shows"),
     get(`/recommendations/movies?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
     get(`/recommendations/shows?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
     get("/sync/watched/movies"), get("/sync/watched/shows"),
+    get(`/movies/trending?limit=${MAX_PUBLIC}`), get(`/shows/trending?limit=${MAX_PUBLIC}`),
+    get(`/movies/popular?limit=${MAX_PUBLIC}`), get(`/shows/popular?limit=${MAX_PUBLIC}`),
   ]);
-  if (failed === 6) throw Object.assign(new Error("trakt indisponible"), { upstream: true });
+  if (failed === 10) throw Object.assign(new Error("trakt indisponible"), { upstream: true });
   const watchlist = [...wm.map((x) => item("movie", x.movie)), ...ws.map((x) => item("show", x.show))]
     .filter((x) => x.title).slice(0, MAX_WATCHLIST);
   const recommendations = [...rm.map((x) => item("movie", x)), ...rs.map((x) => item("show", x))].filter((x) => x.title);
@@ -99,7 +104,11 @@ export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
     }
     return { ...item("show", x.show), episodes };
   }).filter((x) => x.title).slice(0, MAX_WATCHED_SHOWS);
-  return { watchlist, recommendations, watched: { movies, shows } };
+  // Tendances (regardés en ce moment) et populaires : listes publiques, films et séries entrelacés.
+  const mix = (a, b) => { const out = []; for (let i = 0; i < Math.max(a.length, b.length); i++) { if (a[i]) out.push(a[i]); if (b[i]) out.push(b[i]); } return out.filter((x) => x.title); };
+  const trending = mix(tm.map((x) => item("movie", x.movie)), ts.map((x) => item("show", x.show)));
+  const popular = mix(pm.map((x) => item("movie", x)), ps.map((x) => item("show", x)));
+  return { watchlist, recommendations, watched: { movies, shows }, trending, popular };
 }
 
 /** Titres localisé + original d'un élément TMDB, ou null. */
@@ -124,7 +133,7 @@ export async function tmdbTitles(env, type, tmdb, lang, fetchFn = fetch) {
  */
 export async function enrichTitles(env, lib, known, lang, fetchFn = fetch) {
   const dict = { ...known };
-  const order = [...lib.watchlist, ...lib.recommendations, ...lib.watched.shows, ...lib.watched.movies];
+  const order = [...lib.watchlist, ...lib.recommendations, ...(lib.trending || []), ...(lib.popular || []), ...lib.watched.shows, ...lib.watched.movies];
   const todo = [];
   const seen = new Set();
   for (const x of order) {
@@ -152,9 +161,12 @@ export function libraryForDevice(lib, dict, updatedAt) {
     updatedAt,
     watchlist: lib.watchlist.map(out),
     recommendations: lib.recommendations.map(out),
+    trending: (lib.trending || []).map(out),
+    popular: (lib.popular || []).map(out),
     watched: {
       movies: lib.watched.movies.map(out),
       shows: lib.watched.shows.map((x) => ({ ...out(x), episodes: x.episodes })),
     },
   };
 }
+
