@@ -90,6 +90,12 @@ private val tabs = listOf(
 
 /** Navigation d'un onglet / d'une entrée de rail : mêmes réglages de pile que la TV (état sauvegardé, un seul exemplaire). */
 fun NavController.navigateTopLevel(route: String) {
+    // Accueil (destination de départ) : on DÉPILE jusqu'à lui. Avec saveState + restoreState, naviguer vers le départ
+    // restaurait la pile qu'on venait de sauvegarder (fiche, page de films…) : le bouton Accueil semblait sans effet.
+    if (route == com.ultratv.tv.nativeapp.nav.Routes.HOME) {
+        if (!popBackStack(route, inclusive = false, saveState = true)) navigate(route) { launchSingleTop = true }
+        return
+    }
     navigate(route) {
         popUpTo(graph.startDestinationId) { saveState = true }
         launchSingleTop = true

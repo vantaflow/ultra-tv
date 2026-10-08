@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.components
 
+import com.ultratv.tv.nativeapp.ui.mobile.navigateTopLevel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -227,12 +228,8 @@ fun SidebarNav(navController: NavController) {
                                     // Refermé tout de suite : sinon le menu et son voile restaient sur l'ancien écran
                                     // jusqu'à ce que la nouvelle page prenne le focus (superposition visible).
                                     expanded = false
-                                    navController.navigate(item.route) {
-                                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                                        launchSingleTop = true
-                                        // Paramètres rouvre toujours SON accueil, pas la sous-page quittée (ex. gestion des catégories).
-                                        restoreState = item.route != com.ultratv.tv.nativeapp.nav.Routes.SETTINGS
-                                    }
+                                    // Mêmes règles de pile que le mobile (Accueil : retour réel au départ).
+                                    navController.navigateTopLevel(item.route)
                                 } else leaveRail()
                             },
                             shape = RoundedCornerShape(16.design),

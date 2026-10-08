@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.52] — 2026-10-08 (Android TV)
+
+### Corrigé
+- Menu : choisir **Accueil** depuis une fiche ou une autre page ne faisait rien (il fallait appuyer sur Retour). La
+  navigation vers l'accueil restaurait la pile qu'elle venait de sauvegarder ; elle revient désormais réellement à
+  l'accueil, et chaque onglet garde sa propre pile. TV et mobile.
+
 ## [1.2.51] — 2026-10-08 (Android TV) · [Bureau 1.2.32]
 
 ### Ajouté
