@@ -111,9 +111,9 @@ async function cachedAccount(env, login, p, now = Date.now()) {
 // ---- point d'entrée -----------------------------------------------------------
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     try {
-      return withSecurityHeaders(await route(req, env));
+      return withSecurityHeaders(await route(req, env, ctx));
     } catch (err) {
       console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : err?.message);
       return withSecurityHeaders(json({ error: err instanceof ConfigError ? "server_misconfigured" : "internal" }, 500));
@@ -121,7 +121,7 @@ export default {
   },
 };
 
-async function route(req, env) {
+async function route(req, env, ctx) {
   const url = new URL(req.url);
   const { pathname: path } = url;
   const m = req.method;
@@ -143,7 +143,7 @@ async function route(req, env) {
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
   if (path === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
-  if (path === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url);
+  if (path === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url, ctx);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -600,8 +600,11 @@ async function forgetTraktLibrary(env, login, all = false) {
   await Promise.all([...LANGS].flatMap((l) => [env.CONFIG.delete(traktLibKey(login, l)), ...(all ? [env.CONFIG.delete(traktDictKey(login, l))] : [])]));
 }
 
-// Bibliothèque Trakt pour l'appareil (watchlist, recommandations, vus), gardée 15 min chiffrée en KV.
-async function deviceTraktLibrary(req, env, url) {
+// Bibliothèque Trakt pour l'appareil, gardée chiffrée en KV. Au-delà de 15 min, la version gardée est servie TOUT DE
+// SUITE et rafraîchie en arrière-plan (l'appareil n'attend pas les 10 appels Trakt) ; au-delà de 24 h, relue d'abord.
+const TRAKT_LIB_KEEP_S = 24 * 3600;
+
+async function deviceTraktLibrary(req, env, url, ctx) {
   const { auth, res } = await deviceAuth(req, env);
   if (res) return res;
   const rl = await limited(env, `traktlib:dev:${auth.device.id}`, 30, 600, true);
@@ -609,23 +612,33 @@ async function deviceTraktLibrary(req, env, url) {
   if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
   const login = auth.acct.login;
   const lang = LANGS.has(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "en";
-  const keys = keysFromEnv(env);
   const cached = await env.CONFIG.get(traktLibKey(login, lang));
-  if (cached) {
-    const v = await decryptJson(keys, cached, login).catch(() => null);
-    if (v) return json(v);
+  const v = cached ? await decryptJson(keysFromEnv(env), cached, login).catch(() => null) : null;
+  // Ancien format (données seules) : traité comme périmé.
+  const at = v && typeof v.at === "number" ? v.at : 0;
+  const data = v && v.data ? v.data : null;
+  if (data && Date.now() - at < LIB_TTL_S * 1000) return json(data);
+  if (data && ctx && typeof ctx.waitUntil === "function") {
+    ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url)).catch(() => {}));
+    return json(data);
   }
-  const redirectUri = traktRedirect(url);
+  const fresh = await buildTraktLibrary(env, login, lang, traktRedirect(url));
+  return json(fresh.body, fresh.status);
+}
+
+/** Relit Trakt, complète les titres, garde le résultat (chiffré) → { status, body }. */
+async function buildTraktLibrary(env, login, lang, redirectUri) {
+  const keys = keysFromEnv(env);
   let access = await traktAccess(env, login, redirectUri);
-  if (!access) return json({ linked: false });
+  if (!access) return { status: 200, body: { linked: false } };
   let lib;
   try {
     lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access);
   } catch (e) {
-    if (!e.unauthorized) return json({ error: "upstream" }, 502);
+    if (!e.unauthorized) return { status: 502, body: { error: "upstream" } };
     access = await traktAccess(env, login, redirectUri, true);
-    if (!access) return json({ linked: false });
-    try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return json({ error: "upstream" }, 502); }
+    if (!access) return { status: 200, body: { linked: false } };
+    try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return { status: 502, body: { error: "upstream" } }; }
   }
   let known = {};
   try { known = JSON.parse((await env.CONFIG.get(traktDictKey(login, lang))) || "{}") || {}; } catch { known = {}; }
@@ -634,8 +647,8 @@ async function deviceTraktLibrary(req, env, url) {
     await env.CONFIG.put(traktDictKey(login, lang), JSON.stringify(dict), { expirationTtl: 90 * 86400 });
   }
   const data = libraryForDevice(lib, dict, Date.now());
-  await env.CONFIG.put(traktLibKey(login, lang), await encryptJson(keys, data, login), { expirationTtl: LIB_TTL_S });
-  return json(data);
+  await env.CONFIG.put(traktLibKey(login, lang), await encryptJson(keys, { at: Date.now(), data }, login), { expirationTtl: TRAKT_LIB_KEEP_S });
+  return { status: 200, body: data };
 }
 
 // ---- compte OpenSubtitles du client (facultatif) ------------------------------
