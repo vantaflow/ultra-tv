@@ -34,6 +34,7 @@ import {
   TRAKT_STATE_TTL_S, pkcePair, authorizeUrl, exchangeCode, refreshTokens, traktUsername, revokeToken,
   parseScrobble, resolveTmdb, traktScrobbleBody, sendScrobble,
 } from "./trakt.js";
+import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
 import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
@@ -142,6 +143,7 @@ async function route(req, env) {
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
   if (path === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
+  if (path === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url);
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -247,6 +249,7 @@ async function route(req, env) {
     delete acct.traktEnc;
     delete acct.trakt;
     await putAccount(env, acct);
+    await forgetTraktLibrary(env, acct.login, true);
     return redirect("/?m=trakt_off#compte");
   }
   if (path === "/subtitles/unlink") {
@@ -584,7 +587,55 @@ async function deviceTraktScrobble(req, env) {
     if (!access) return json({ linked: false });
     r = await sendScrobble(env.TRAKT_CLIENT_ID, access, s.action, payload);
   }
+  // Vu (Trakt marque « vu » au-delà de 80 %) : la bibliothèque en cache est périmée.
+  if (r === "ok" && s.action === "stop" && s.progress >= 80) await forgetTraktLibrary(env, auth.acct.login);
   return json({ linked: true, matched: r !== "unmatched", ok: r === "ok" });
+}
+
+const traktLibKey = (login, lang) => `tlib:${login}:${lang}`;
+const traktDictKey = (login, lang) => `tdict:${login}:${lang}`;
+
+/** Oublie la bibliothèque en cache (et, au déliage, le dictionnaire des titres). */
+async function forgetTraktLibrary(env, login, all = false) {
+  await Promise.all([...LANGS].flatMap((l) => [env.CONFIG.delete(traktLibKey(login, l)), ...(all ? [env.CONFIG.delete(traktDictKey(login, l))] : [])]));
+}
+
+// Bibliothèque Trakt pour l'appareil (watchlist, recommandations, vus), gardée 15 min chiffrée en KV.
+async function deviceTraktLibrary(req, env, url) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = await limited(env, `traktlib:dev:${auth.device.id}`, 30, 600, true);
+  if (rl) return rl;
+  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const login = auth.acct.login;
+  const lang = LANGS.has(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "en";
+  const keys = keysFromEnv(env);
+  const cached = await env.CONFIG.get(traktLibKey(login, lang));
+  if (cached) {
+    const v = await decryptJson(keys, cached, login).catch(() => null);
+    if (v) return json(v);
+  }
+  const redirectUri = traktRedirect(url);
+  let access = await traktAccess(env, login, redirectUri);
+  if (!access) return json({ linked: false });
+  let lib;
+  try {
+    lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access);
+  } catch (e) {
+    if (!e.unauthorized) return json({ error: "upstream" }, 502);
+    access = await traktAccess(env, login, redirectUri, true);
+    if (!access) return json({ linked: false });
+    try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return json({ error: "upstream" }, 502); }
+  }
+  let known = {};
+  try { known = JSON.parse((await env.CONFIG.get(traktDictKey(login, lang))) || "{}") || {}; } catch { known = {}; }
+  const dict = await enrichTitles(env, lib, known, lang);
+  if (Object.keys(dict).length !== Object.keys(known).length) {
+    await env.CONFIG.put(traktDictKey(login, lang), JSON.stringify(dict), { expirationTtl: 90 * 86400 });
+  }
+  const data = libraryForDevice(lib, dict, Date.now());
+  await env.CONFIG.put(traktLibKey(login, lang), await encryptJson(keys, data, login), { expirationTtl: LIB_TTL_S });
+  return json(data);
 }
 
 // ---- compte OpenSubtitles du client (facultatif) ------------------------------

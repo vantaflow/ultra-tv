@@ -55,6 +55,10 @@ export async function deleteAccount(env, acct) {
   const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
   await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name)));
   await env.CONFIG.delete(`ostok:${acct.login}`);
+  // Bibliothèque et titres Trakt en cache.
+  const tl = await env.CONFIG.list({ prefix: `tlib:${acct.login}:` });
+  const td = await env.CONFIG.list({ prefix: `tdict:${acct.login}:` });
+  await Promise.all([...tl.keys, ...td.keys].map((k) => env.CONFIG.delete(k.name)));
   await env.CONFIG.delete(`acct:${acct.login}`);
   await guardStub(env, `acct:${acct.login}`).release();
 }

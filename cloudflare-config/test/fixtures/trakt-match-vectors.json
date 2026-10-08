@@ -1,0 +1,139 @@
+{
+  "_doc": "Clé de rapprochement des titres Trakt ↔ playlist (matchKey). MÊMES vecteurs dans le Worker (test/traktlib.test.js), Android (TraktMatchTest) et le bureau (web/src/trakt/match.test.ts) : toute modification de la règle se fait ici d'abord.",
+  "keys": [
+    [
+      "Alien",
+      "alien"
+    ],
+    [
+      "FR - Alien (1979) 4K",
+      "alien"
+    ],
+    [
+      "|FR| La Casa de Papel HD",
+      "casa de papel"
+    ],
+    [
+      "[VOD] Le Seigneur des Anneaux : La Communauté de l'Anneau",
+      "seigneur des anneaux la communaute de l anneau"
+    ],
+    [
+      "The Dark Knight",
+      "dark knight"
+    ],
+    [
+      "Dune 2021",
+      "dune"
+    ],
+    [
+      "Dune: Part Two",
+      "dune part two"
+    ],
+    [
+      "Amélie",
+      "amelie"
+    ],
+    [
+      "Fast & Furious",
+      "fast and furious"
+    ],
+    [
+      "L'Odyssée",
+      "odyssee"
+    ],
+    [
+      "Les Misérables MULTI VOSTFR",
+      "miserables"
+    ],
+    [
+      "4K - Oppenheimer",
+      "oppenheimer"
+    ],
+    [
+      "AR: مسلسل",
+      "مسلسل"
+    ],
+    [
+      "Spider-Man: No Way Home",
+      "spider man no way home"
+    ],
+    [
+      "1917",
+      "1917"
+    ],
+    [
+      "La La Land",
+      "la land"
+    ],
+    [
+      "  ",
+      ""
+    ]
+  ],
+  "matches": [
+    {
+      "catalog": "FR - La Casa de Papel",
+      "catalogYear": 2017,
+      "titles": [
+        "Money Heist",
+        "La casa de papel"
+      ],
+      "year": 2017,
+      "match": true
+    },
+    {
+      "catalog": "Alien 4K",
+      "catalogYear": 1979,
+      "titles": [
+        "Alien"
+      ],
+      "year": 1979,
+      "match": true
+    },
+    {
+      "catalog": "Alien",
+      "catalogYear": null,
+      "titles": [
+        "Alien"
+      ],
+      "year": 1979,
+      "match": true
+    },
+    {
+      "catalog": "Alien",
+      "catalogYear": 1980,
+      "titles": [
+        "Alien"
+      ],
+      "year": 1979,
+      "match": true
+    },
+    {
+      "catalog": "Alien",
+      "catalogYear": 2024,
+      "titles": [
+        "Alien"
+      ],
+      "year": 1979,
+      "match": false
+    },
+    {
+      "catalog": "Aliens",
+      "catalogYear": 1986,
+      "titles": [
+        "Alien"
+      ],
+      "year": 1979,
+      "match": false
+    },
+    {
+      "catalog": "Dune (2021)",
+      "catalogYear": 2021,
+      "titles": [
+        "Dune"
+      ],
+      "year": 1984,
+      "match": false
+    }
+  ]
+}
