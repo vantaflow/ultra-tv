@@ -9,7 +9,7 @@
     var next = dark ? "light" : "dark"; root.dataset.theme = next; set("theme", next);
   });
   // Dernière version publiée (repli : le lien « latest » fonctionne sans cette requête).
-  fetch("https://api.github.com/repos/khalilbenaz/ultra-tv/releases/latest").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+  fetch("https://api.github.com/repos/vantaflow/ultra-tv/releases/latest").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
     if (!j || !j.tag_name) return;
     document.querySelectorAll("[data-version]").forEach(function (n) { n.textContent = j.tag_name; });
   }).catch(function () {});

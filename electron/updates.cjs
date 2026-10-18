@@ -28,7 +28,7 @@ function isMacSigned() {
   });
 }
 
-const REPO = "khalilbenaz/ultra-tv";
+const REPO = "vantaflow/ultra-tv";
 
 // La release GitHub "Latest" est celle de l'application Android (vX.Y.Z), sans latest.yml :
 // le fournisseur GitHub d'electron-updater ne trouvait donc jamais la version de bureau.

@@ -80,7 +80,7 @@ indisponible (ou Linux `basic_text`), le format est `plain:v1:<base64>` (simple 
 
 ## Mise a jour automatique
 
-`electron-updater` (GitHub Releases, `khalilbenaz/ultra-tv`) : verification 5 s apres le lancement (hors dev et
+`electron-updater` (GitHub Releases, `vantaflow/ultra-tv`) : verification 5 s apres le lancement (hors dev et
 `ULTRATV_HEADLESS`), telechargement automatique, installation a la fermeture. Le statut est pousse au renderer
 (`onUpdateStatus`) : `checking | available | not-available | downloading | downloaded | unavailable | error`.
 

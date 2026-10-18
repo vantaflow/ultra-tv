@@ -10,17 +10,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/khalilbenaz/ultra-tv?label=release" /></a>
+  <a href="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
   <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
-  <a href="https://khalilbenaz.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
+  <a href="https://vantaflow.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
 </p>
 
 <p align="center">
   <a href="README.en.md">🇬🇧 English version</a> ·
-  <a href="https://khalilbenaz.github.io/ultra-tv/">Site</a> ·
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">Télécharger l'APK</a> ·
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> ·
+  <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
+  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk">Télécharger l'APK</a> ·
+  <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
@@ -135,18 +135,18 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 
 | Appareil | Fichier |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
 | Tableau de bord cloud | <https://ultratv-config.khalilbenaz.workers.dev> (aucune installation) |
 
-Tout est sur la page [Releases](https://github.com/khalilbenaz/ultra-tv/releases) (les fichiers bureau portent les tags `desktop-v…`).
+Tout est sur la page [Releases](https://github.com/vantaflow/ultra-tv/releases) (les fichiers bureau portent les tags `desktop-v…`).
 
 ## Installation
 
 Android 9 ou plus récent (API 28).
 
-**APK.** Téléchargez [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk) (somme SHA-256 sur la page de la release) et installez-le.
+**APK.** Téléchargez [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) (somme SHA-256 sur la page de la release) et installez-le.
 
 **Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5248504`**, autorisez les sources inconnues, installez.
 
@@ -189,7 +189,7 @@ L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiff
 JDK 17 requis.
 
 ```bash
-git clone https://github.com/khalilbenaz/ultra-tv && cd ultra-tv/android-native
+git clone https://github.com/vantaflow/ultra-tv && cd ultra-tv/android-native
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleDebug                            # APK universel
 ./gradlew testDebugUnitTest                        # tests unitaires (JUnit, Robolectric)

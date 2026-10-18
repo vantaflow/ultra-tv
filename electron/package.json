@@ -4,10 +4,10 @@
   "description": "Ultra TV desktop - Electron shell around the web app.",
   "author": "Ultra TV",
   "license": "MIT",
-  "homepage": "https://github.com/khalilbenaz/ultra-tv",
+  "homepage": "https://github.com/vantaflow/ultra-tv",
   "repository": {
     "type": "git",
-    "url": "https://github.com/khalilbenaz/ultra-tv.git"
+    "url": "https://github.com/vantaflow/ultra-tv.git"
   },
   "main": "main.cjs",
   "scripts": {
@@ -55,7 +55,7 @@
     "publish": [
       {
         "provider": "github",
-        "owner": "khalilbenaz",
+        "owner": "vantaflow",
         "repo": "ultra-tv",
         "releaseType": "draft"
       }

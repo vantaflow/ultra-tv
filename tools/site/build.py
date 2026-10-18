@@ -24,11 +24,11 @@ ALT = {
 }
 PAGES = {
  "fr": dict(out="index.html", ROOT="", LANG="fr", ALT="en", ALTCODE="EN", ALTHREF="en/", ALTLABEL="English version", OGLOC="fr_FR",
-            CANON="https://khalilbenaz.github.io/ultra-tv/", i=0, THEMELABEL="Thème clair ou sombre",
+            CANON="https://vantaflow.github.io/ultra-tv/", i=0, THEMELABEL="Thème clair ou sombre",
             TITLE="Ultra TV — lecteur IPTV pour TV, smartphone, tablette et ordinateur",
             DESC="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques."),
  "en": dict(out="en/index.html", ROOT="../", LANG="en", ALT="fr", ALTCODE="FR", ALTHREF="../", ALTLABEL="Version française", OGLOC="en_US",
-            CANON="https://khalilbenaz.github.io/ultra-tv/en/", i=1, THEMELABEL="Light or dark theme",
+            CANON="https://vantaflow.github.io/ultra-tv/en/", i=1, THEMELABEL="Light or dark theme",
             TITLE="Ultra TV — IPTV player for TV, smartphone, tablet and desktop",
             DESC="Ultra TV is an IPTV player for Android TV, smartphone, tablet, Windows and macOS: Xtream Codes, M3U, guide, replay, timeshift, two playback engines, cloud sync, automatic tuning."),
 }

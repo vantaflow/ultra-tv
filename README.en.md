@@ -10,17 +10,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/khalilbenaz/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/khalilbenaz/ultra-tv?label=release" /></a>
+  <a href="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
+  <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
-  <a href="https://khalilbenaz.github.io/ultra-tv/en/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
+  <a href="https://vantaflow.github.io/ultra-tv/en/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
 </p>
 
 <p align="center">
   <a href="README.md">🇫🇷 Version française</a> ·
-  <a href="https://khalilbenaz.github.io/ultra-tv/en/">Website</a> ·
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk">Download the APK</a> ·
-  <a href="https://github.com/khalilbenaz/ultra-tv/releases">Releases</a> ·
+  <a href="https://vantaflow.github.io/ultra-tv/en/">Website</a> ·
+  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk">Download the APK</a> ·
+  <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog (French)</a>
 </p>
 
@@ -135,18 +135,18 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 
 | Device | File |
 |---|---|
-| Android (TV, smartphone, tablet) | universal [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablet) | universal [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
 | Cloud dashboard | <https://ultratv-config.khalilbenaz.workers.dev> (nothing to install) |
 
-Everything is on the [Releases](https://github.com/khalilbenaz/ultra-tv/releases) page (desktop files carry `desktop-v…` tags).
+Everything is on the [Releases](https://github.com/vantaflow/ultra-tv/releases) page (desktop files carry `desktop-v…` tags).
 
 ## Installation
 
 Android 9 or newer (API 28).
 
-**APK.** Download [`UltraTV-debug.apk`](https://github.com/khalilbenaz/ultra-tv/releases/latest/download/UltraTV-debug.apk) (SHA-256 sum on the release page) and install it. Lighter per-processor builds (`UltraTV-<version>-arm64-v8a.apk`, `armeabi-v7a`, `x86_64`) are published with a `SHA256SUMS.txt`; the in-app updater picks the right one for your device.
+**APK.** Download [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) (SHA-256 sum on the release page) and install it. Lighter per-processor builds (`UltraTV-<version>-arm64-v8a.apk`, `armeabi-v7a`, `x86_64`) are published with a `SHA256SUMS.txt`; the in-app updater picks the right one for your device.
 
 **Downloader** (boxes without a browser): open the [Downloader](https://www.aftvnews.com/downloader/) app, enter the code **`5248504`**, allow unknown sources, install.
 
@@ -189,7 +189,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 JDK 17 required.
 
 ```bash
-git clone https://github.com/khalilbenaz/ultra-tv && cd ultra-tv/android-native
+git clone https://github.com/vantaflow/ultra-tv && cd ultra-tv/android-native
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleDebug                            # universal APK
 ./gradlew testDebugUnitTest                        # unit tests (JUnit, Robolectric)

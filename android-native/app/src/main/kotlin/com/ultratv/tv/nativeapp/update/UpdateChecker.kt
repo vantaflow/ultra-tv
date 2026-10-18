@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit
 object UpdateChecker {
 
     private const val TAG = "update"
-    private const val REPO = "khalilbenaz/ultra-tv"
+    private const val REPO = "vantaflow/ultra-tv"
     private const val APK_NAME = "UltraTV-debug.apk"
 
     data class UpdateInfo(
