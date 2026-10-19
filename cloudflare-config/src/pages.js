@@ -557,6 +557,20 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
  });};
 })();
 // Recherche + pagination des listes (utile au-delà de quelques éléments ; sans JavaScript, tout reste affiché).
+// Le menu de gauche suit la section visible (défilement ET clic) ; seuls les liens d'ancre sont concernés.
+(function(){var links=[].slice.call(document.querySelectorAll('.side nav a[href^="#"]'));if(!links.length)return;
+ var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));});
+ var mark=function(i){links.forEach(function(a,k){a.classList.toggle('on',k===i);});};
+ var tick=false,pin=-1,pinUntil=0;
+ var update=function(){tick=false;var now=Date.now();if(pin>=0&&now<pinUntil){mark(pin);return;}pin=-1;
+  var line=window.innerHeight*0.35,cur=0;
+  for(var k=0;k<secs.length;k++){var el=secs[k];if(el&&el.getBoundingClientRect().top<=line)cur=k;}
+  // Tout en bas de page : la dernière section est active même si son titre n'atteint pas la ligne de repère.
+  if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2)cur=secs.length-1;
+  mark(cur);};
+ var onScroll=function(){if(!tick){tick=true;requestAnimationFrame(update);}};
+ links.forEach(function(a,k){a.addEventListener('click',function(){pin=k;pinUntil=Date.now()+700;mark(k);});});
+ window.addEventListener('scroll',onScroll,{passive:true});window.addEventListener('resize',onScroll);update();})();
 (function(){var SIZE=10;
  document.querySelectorAll('.listbar[data-list]').forEach(function(bar){
   var list=document.getElementById(bar.dataset.list);if(!list)return;
@@ -707,6 +721,14 @@ function countryLabel(code) {
   return `${flag} ${name}`;
 }
 
+/** « 3 (2 Xtream · 1 M3U) » : nombre et types des sources, jamais leur adresse ni leurs identifiants. */
+function sourcesLabel(r) {
+  if (r.sourcesN == null) return r.sources ? "oui" : "—";
+  if (!r.sourcesN) return "—";
+  const parts = [r.sourcesXtream ? `${r.sourcesXtream} Xtream` : "", r.sourcesM3u ? `${r.sourcesM3u} M3U` : ""].filter(Boolean).join(" · ");
+  return `${r.sourcesN}${parts ? ` <span class="muted">(${e(parts)})</span>` : ""}`;
+}
+
 /** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
 export function adminPage(n, { rows, me, now = Date.now() }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
@@ -725,7 +747,7 @@ export function adminPage(n, { rows, me, now = Date.now() }) {
     const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.edition === "pro" ? ", PRO" : ""}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
     return `<tr data-legacy="${r.legacy ? 1 : 0}"><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
 <td>${r.legacy ? "ancien (MAC)" : "inscrit"}</td><td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
-<td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${r.sources ? "oui" : "non"}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
+<td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
   };
   const script = `document.getElementById('legacy').addEventListener('change',function(){var on=this.checked;document.querySelectorAll('tr[data-legacy="1"]').forEach(function(t){t.hidden=!on;});});
 document.querySelectorAll('tr[data-legacy="1"]').forEach(function(t){t.hidden=true;});`;
