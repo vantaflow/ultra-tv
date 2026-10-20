@@ -115,7 +115,8 @@ button.block{width:100%}
 .grow{min-width:0;flex:1}
 .kind{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:7px;background:var(--acc-soft);color:var(--acc-fg);font:700 11px var(--ff);letter-spacing:.06em;margin-right:6px;vertical-align:1px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-.bars{display:flex;flex-direction:column;gap:8px;margin-top:10px}.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 36px;align-items:center;gap:10px;font-size:13px}.bar .bl{color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar .bt{height:10px;border-radius:999px;background:var(--s2);overflow:hidden}.bar .bt i{display:block;height:100%;width:0;background:var(--acc);border-radius:999px;transition:width .4s}.bar .bv{text-align:right;font-weight:700;color:var(--fg)}
+.agrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.agrid .panel{margin:0}.agrid .wide{grid-column:1/-1}.agrid h3{margin:18px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}@media (max-width:899px){.agrid{grid-template-columns:1fr}}.kv{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin:12px 0 0}.kv dt{color:var(--fg2);font-size:14px}.kv dd{margin:0;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}.bar .bv small{color:var(--mut);font-weight:600}.section-h a.button{margin-left:auto}.atable th{white-space:nowrap}.atable td{vertical-align:top}
+.bars{display:flex;flex-direction:column;gap:8px;margin-top:10px}.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 72px;align-items:center;gap:10px;font-size:13px}.bar .bl{color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar .bt{height:10px;border-radius:999px;background:var(--s2);overflow:hidden}.bar .bt i{display:block;height:100%;width:0;background:var(--acc);border-radius:999px;transition:width .4s}.bar .bv{text-align:right;font-weight:700;color:var(--fg)}
 a.button{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:14px;background:var(--acc);color:#fff;font-weight:700;font-size:14px;text-decoration:none}a.button:hover{text-decoration:none;filter:brightness(1.08)}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--bg);color:var(--fg2);font-size:12px;font-weight:600}
 .chip.all{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
@@ -749,11 +750,13 @@ export function adminPage(n, { rows: all, me, now = Date.now() }) {
   const tile = (v, l, cls = "") => `<div class="tile${cls ? " " + cls : ""}"><b>${e(String(v))}</b><span>${e(l)}</span></div>`;
   const count = (arr) => { const m = new Map(); for (const k of arr) if (k) m.set(k, (m.get(k) || 0) + 1); return [...m].sort((x, y) => y[1] - x[1]); };
   // Barres horizontales (largeur posée par le CSSOM : la CSP refuse les attributs style).
-  const bars = (pairs, label = (k) => k) => {
+  // total donné : barres en part de ce total (« 12 · 40 % ») ; sinon relatives à la plus grande valeur.
+  const bars = (pairs, label = (k) => k, total = 0) => {
     if (!pairs.length) return `<p class="muted small">Aucune donnée.</p>`;
-    const max = Math.max(...pairs.map((p) => p[1]));
-    return `<div class="bars">${pairs.map(([k, v]) => `<div class="bar"><span class="bl">${e(label(k))}</span><span class="bt"><i data-w="${Math.round((100 * v) / max)}"></i></span><span class="bv">${v}</span></div>`).join("")}</div>`;
+    const max = total || Math.max(1, ...pairs.map((p) => p[1]));
+    return `<div class="bars">${pairs.map(([k, v]) => `<div class="bar"><span class="bl">${e(label(k))}</span><span class="bt"><i data-w="${Math.round((100 * v) / max)}"></i></span><span class="bv">${v}${total ? ` <small>${pct(v, total)} %</small>` : ""}</span></div>`).join("")}</div>`;
   };
+  const kv = (pairs) => `<dl class="kv">${pairs.map(([k, v]) => `<dt>${e(k)}</dt><dd>${e(String(v))}</dd>`).join("")}</dl>`;
   const countries = count(rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]));
   const models = count(devices.map((x) => x.model || "inconnu")).slice(0, 10);
   // Inscriptions par semaine (8 dernières semaines, la plus récente en bas).
@@ -772,18 +775,24 @@ export function adminPage(n, { rows: all, me, now = Date.now() }) {
   };
   const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});`;
   return layout("Ultra TV — administration", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Administration</span></div><a href="/">Retour au tableau de bord</a></header>
-<h2 class="mt16">Comptes</h2>
-<div class="tiles">${tile(rows.length, "comptes")}${tile(newSince(7 * DAY), "nouveaux ces 7 jours")}${tile(newSince(30 * DAY), "nouveaux ces 30 jours")}${tile(`${withDev} (${pct(withDev, rows.length)} %)`, "avec un appareil appairé")}</div>
-<h2 class="mt16">Activité</h2>
-<div class="tiles">${tile(activeSince(DAY), "actifs ces 24 h")}${tile(activeSince(7 * DAY), "actifs ces 7 jours")}${tile(activeSince(30 * DAY), "actifs ces 30 jours")}${tile(rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length, "connectés au site ces 7 jours")}</div>
-<h2 class="mt16">Appareils et sources</h2>
-<div class="tiles">${tile(devices.length, "appareils appairés")}${tile(devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length, "appareils actifs ces 7 jours")}${tile(`${pro} / ${devices.length - pro}`, "édition Pro / standard")}${tile(srcN, `sources (${srcX} Xtream · ${srcM} M3U)`)}${tile(withSrc ? (srcN / withSrc).toFixed(1) : "—", "sources par compte qui en a")}${tile(rows.filter((r) => r.trakt).length, "comptes reliés à Trakt")}${tile(rows.filter((r) => r.opensubtitles).length, "comptes OpenSubtitles reliés")}</div>
-<div class="two mt16"><section class="panel"><h2>Inscriptions par semaine</h2>${bars(weeks)}</section>
-<section class="panel"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section></div>
-<section class="panel mt16"><h2>Modèles d'appareils</h2>${bars(models)}</section>
+<div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}</div>
+<div class="agrid">
+<section class="panel"><h2>Croissance</h2>
+${kv([["Nouveaux comptes ces 7 jours", newSince(7 * DAY)], ["Nouveaux comptes ces 30 jours", newSince(30 * DAY)]])}
+<h3>Inscriptions par semaine</h3>${bars(weeks)}</section>
+<section class="panel"><h2>Activité</h2>
+<p class="muted small">Part des ${rows.length} comptes.</p>
+${bars([["Avec un appareil appairé", withDev], ["Actifs ces 30 jours", activeSince(30 * DAY)], ["Actifs ces 7 jours", activeSince(7 * DAY)], ["Actifs ces 24 h", activeSince(DAY)], ["Connectés au site ces 7 jours", rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length]], (k) => k, rows.length)}</section>
+<section class="panel"><h2>Appareils</h2>
+${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length], ["Édition Pro", pro], ["Édition standard", devices.length - pro]])}
+<h3>Modèles</h3>${bars(models)}</section>
+<section class="panel"><h2>Sources et services</h2>
+${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
+<section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
+</div>
+<div class="section-h mt16"><h2>Comptes <span class="count">${rows.length}</span></h2><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
 <p class="muted small mt16">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>
-<div class="row mt16"><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
-<div class="tablewrap mt16"><table><thead><tr><th>Compte</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
+<div class="tablewrap mt16"><table class="atable"><thead><tr><th>Compte</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
 <tbody>${rows.map(row).join("")}</tbody></table></div></main>`, n, `<script nonce="${n}">${script}</script>`);
 }
 
