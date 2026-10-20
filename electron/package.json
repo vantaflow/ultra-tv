@@ -45,6 +45,7 @@
       "secrets.cjs",
       "updates.cjs",
       "cloudfetch.cjs",
+      "dns.cjs",
       "web-dist/**/*",
       "package.json"
     ],

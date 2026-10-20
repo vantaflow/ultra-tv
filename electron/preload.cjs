@@ -35,6 +35,10 @@ contextBridge.exposeInMainWorld("ultratv", {
   onUpdateStatus: (cb) => subscribe("ut:update:status", cb),
   openExternal: (url) => ipcRenderer.invoke("ut:open-external", String(url)),
   setTitleBarTheme: (isDark) => ipcRenderer.invoke("ut:titlebar-theme", !!isDark),
+  // DNS personnalise : le main valide et normalise le reglage ; testDns ne recoit qu'un nom d'hote.
+  getDns: () => ipcRenderer.invoke("ut:dns:get"),
+  setDns: (settings) => ipcRenderer.invoke("ut:dns:set", settings && typeof settings === "object" ? { ...settings } : {}),
+  testDns: (host) => ipcRenderer.invoke("ut:dns:test", String(host)),
 });
 
 // Classe de plateforme posee DES le chargement (avant le premier rendu React) : le CSS reserve

@@ -1,6 +1,7 @@
 // Préférences d'interface : petites, lues AVANT le premier rendu (pas de flash de thème ni de langue).
 import { create } from "zustand";
 import { detectLang, type Lang } from "@/i18n/lang";
+import type { DnsSettings } from "@/net/dns";
 
 export type Theme = "auto" | "dark" | "light";
 export interface Profile { id: string; name: string; color: string }
@@ -22,6 +23,8 @@ export interface Prefs {
   muted: boolean;
   fit: "contain" | "cover" | "fill";
   liveCat: Record<string, string>;
+  /** DNS personnalisé (application de bureau) ; local à l'appareil, jamais synchronisé. */
+  dns: DnsSettings;
 }
 
 export const ACCENTS = ["#D91E2B", "#7C3AED", "#0EA5E9", "#F59E0B"];
@@ -33,6 +36,7 @@ const defaults = (): Prefs => ({
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", liveCat: {},
+  dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
 });
 
 function load(): Prefs {
