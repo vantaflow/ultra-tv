@@ -198,11 +198,11 @@ dependencies {
     implementation(libs.compose.tv.material)
     debugImplementation(libs.compose.ui.tooling)
 
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
     // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Télémétrie de fluidité (images saccadées par écran) : voir perf/PerfTelemetry.kt.
-    implementation("androidx.metrics:metrics-performance:1.0.0-beta01")
+    implementation("androidx.metrics:metrics-performance:1.0.0")
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime)
     implementation(libs.lifecycle.viewmodel)
@@ -216,7 +216,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     // QR code du tableau de bord cloud, généré localement (aucun réseau).
     implementation("com.google.zxing:core:3.5.3")
     implementation(libs.mediarouter)
@@ -252,7 +252,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.13")
     // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
-    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.room:room-testing:2.8.5")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("org.json:json:20240303")
