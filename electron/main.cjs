@@ -17,6 +17,7 @@ const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
 const { cloudRequest } = require("./cloudfetch.cjs");
+const dnsMod = require("./dns.cjs");
 
 const APP_SCHEME = "app";
 const APP_HOST = "ultratv";
@@ -59,6 +60,68 @@ let mainWindow = null;
 let proxy = null;
 let updater = null;
 const secrets = createSecrets(safeStorage);
+
+// ---------------------------------------------------------------------------
+// DNS personnalise (dns.cjs) : reglage local, enregistre dans userData/dns.json pour etre applique
+// des le demarrage, avant la premiere requete (le renderer n'est pas encore charge a ce moment-la).
+// ---------------------------------------------------------------------------
+
+let dnsSettings = { ...dnsMod.DEFAULT_SETTINGS };
+const resolver = dnsMod.createResolver({ getSettings: () => dnsSettings });
+const dnsFile = () => path.join(app.getPath("userData"), "dns.json");
+
+function loadDnsSettings() {
+  try {
+    dnsSettings = dnsMod.normalizeSettings(JSON.parse(fs.readFileSync(dnsFile(), "utf8")));
+  } catch {
+    dnsSettings = { ...dnsMod.DEFAULT_SETTINGS };
+  }
+}
+
+/** Applique le reglage a Chromium (configureHostResolver peut etre rappele a chaud). */
+function applyChromiumDns() {
+  const { appliesToChromium, ...cfg } = dnsMod.chromiumResolverConfig(dnsSettings);
+  try {
+    app.configureHostResolver(cfg);
+  } catch {
+    console.warn("[ultra-tv] dns: configureHostResolver failed");
+  }
+  return appliesToChromium;
+}
+
+function setDnsSettings(raw) {
+  const next = dnsMod.normalizeSettings(raw);
+  const changed = JSON.stringify(next) !== JSON.stringify(dnsSettings);
+  dnsSettings = next;
+  if (changed) {
+    resolver.clearCache();
+    try {
+      fs.writeFileSync(dnsFile(), JSON.stringify(next));
+    } catch {
+      console.warn("[ultra-tv] dns: save failed");
+    }
+  }
+  const appliesToChromium = applyChromiumDns();
+  return { settings: next, appliesToChromium };
+}
+
+/** Test : resout `host` (nom d'hote seul, jamais d'URL) et mesure la latence. */
+async function testDns(host) {
+  if (typeof host !== "string" || host.length > 253 || !/^[A-Za-z0-9.-]+$|^\[?[0-9a-fA-F:.]+\]?$/.test(host)) {
+    return { ok: false, reason: "invalid-host" };
+  }
+  const h = host.replace(/^\[|\]$/g, "");
+  resolver.clearCache();
+  const t0 = Date.now();
+  try {
+    const r = await resolver.resolveHost(h);
+    const a = r.addresses.find((x) => x.family === 4) || r.addresses[0];
+    if (!a) return { ok: false, reason: "empty", ms: Date.now() - t0 };
+    return { ok: true, address: a.address, ms: Date.now() - t0, via: r.via === "cache" ? "custom" : r.via, reason: r.reason };
+  } catch (e) {
+    return { ok: false, reason: (e && e.code) || "error", ms: Date.now() - t0 };
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Utilitaires d'origine
@@ -267,6 +330,9 @@ function registerIpc() {
     await shell.openExternal(url);
     return true;
   });
+  handle("ut:dns:get", () => ({ settings: dnsSettings, appliesToChromium: dnsMod.chromiumResolverConfig(dnsSettings).appliesToChromium }));
+  handle("ut:dns:set", (raw) => setDnsSettings(raw));
+  handle("ut:dns:test", (host) => testDns(host));
   handle("ut:titlebar-theme", (isDark) => {
     nativeTheme.themeSource = isDark ? "dark" : "light";
     return true;
@@ -398,8 +464,12 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    // DNS applique avant toute requete (proxy, fenetre, mises a jour).
+    loadDnsSettings();
+    applyChromiumDns();
     proxy = createProxyServer({
       allowedOrigin: ALLOWED_ORIGIN,
+      lookup: resolver.lookup,
       onError: (code) => console.warn(`[ultra-tv] proxy error ${code}`),
     });
     try {

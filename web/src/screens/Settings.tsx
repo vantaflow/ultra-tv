@@ -23,6 +23,7 @@ import { cloudAvailable } from "@/cloud/client";
 import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
 import { TraktSettings } from "@/trakt/TraktUi";
+import { DnsSettings } from "./DnsSettings";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
 const SECTIONS: { id: Section; icon: IconName; key: "set.sources" }[] = [
@@ -280,6 +281,7 @@ function PlaybackPane() {
           <input className="input" style={{ width: "22rem" }} value={proxy} placeholder={defaultProxy() ?? "https://…"} onChange={(e) => setProxy(e.target.value)} onBlur={() => void setProxySetting(proxy.trim() || null)} aria-label={t("set.proxy")} />
         </Pref>
       )}
+      {isElectron() && <DnsSettings Pref={Pref} />}
       <TraktSettings Pref={Pref} />
     </>
   );

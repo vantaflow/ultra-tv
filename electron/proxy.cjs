@@ -270,14 +270,16 @@ function decodeBody(buf, encoding) {
   return null;
 }
 
-function createProxyServer({ allowedOrigin, token, onError } = {}) {
+function createProxyServer({ allowedOrigin, token, onError, lookup } = {}) {
   if (!allowedOrigin) throw new Error("allowedOrigin requis");
   const secret = token || crypto.randomBytes(24).toString("base64url");
   const report = typeof onError === "function" ? onError : () => {};
 
   // Tolerance TLS limitee a ce chemin : agent dedie, jamais de switch global.
-  const httpsAgent = new https.Agent({ keepAlive: true, rejectUnauthorized: false, maxSockets: 64 });
-  const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 64 });
+  // `lookup` : DNS personnalisé (dns.cjs) ; absent = DNS du système.
+  const dnsOpt = typeof lookup === "function" ? { lookup } : {};
+  const httpsAgent = new https.Agent({ keepAlive: true, rejectUnauthorized: false, maxSockets: 64, ...dnsOpt });
+  const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 64, ...dnsOpt });
 
   let port = 0;
   let base = "";

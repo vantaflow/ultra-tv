@@ -28,6 +28,9 @@ export interface UltraTvBridge {
   onUpdateStatus?(cb: (s: { state: string; version?: string; percent?: number }) => void): (() => void) | void;
   openExternal?(url: string): Promise<unknown> | void;
   setTitleBarTheme?(isDark: boolean): Promise<unknown> | void;
+  /** DNS personnalisé (voir net/dns.ts). */
+  setDns?(settings: import("./dns").DnsSettings): Promise<{ appliesToChromium: boolean }>;
+  testDns?(host: string): Promise<import("./dns").DnsTestResult>;
 }
 
 declare global {

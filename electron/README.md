@@ -72,6 +72,19 @@ http://127.0.0.1:<port>/<token>/<base64url(urlCible)>
   Content-Length, Content-Range, Accept-Ranges` ; requetes `OPTIONS` repondues ; toute autre origine => 403.
 - Tolerance TLS (certificats expires/auto-signes) : agent HTTPS dedie a ce module, jamais globale.
 
+### DNS personnalise (`dns.cjs`)
+
+Reglages > Lecture > Reseau, memes modes qu'Android : Systeme, Google, Cloudflare, Quad9, DNS sur HTTPS
+(Cloudflare, Google, Quad9 ou URL https personnalisee) et Personnalise (1 ou 2 adresses IP). Reglage local,
+enregistre dans `userData/dns.json` et applique au demarrage avant toute requete.
+
+- Proxy loopback (catalogue, guide, images, flux) : `lookup` des agents Node. DNS classique via
+  `dns.promises.Resolver`, DoH via un client RFC 8484 (adresse d'amorcage pour les prereglages). Cache TTL
+  (60 s minimum), delai 2 s puis repli sur le DNS du systeme : un serveur en panne ne casse jamais une requete.
+- Chromium (cloud, mises a jour) : `app.configureHostResolver` en mode `automatic`. Chromium ne sait pas viser un
+  serveur DNS classique : Google / Cloudflare / Quad9 y utilisent leur point DoH ; des adresses IP personnalisees
+  inconnues ne s'y appliquent pas (l'interface le signale).
+
 ### Secrets
 
 `window.ultratv.encrypt/decrypt` utilisent `safeStorage` (format `enc:v1:<base64>`). Si le stockage securise est

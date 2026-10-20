@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Account } from "@/screens/Account";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { dirOf, useT } from "@/i18n";
-import { initTransport, bridge } from "@/net/transport";
+import { initTransport, bridge, isElectron } from "@/net/transport";
+import { normalizeDns, pushDns } from "@/net/dns";
 import { PlayerHost } from "@/player/PlayerHost";
 import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { Rail } from "@/ui/Rail";
@@ -57,6 +58,8 @@ function Effects() {
     let stopCloud: (() => void) | undefined;
     void loadCloud().then(() => { if (cloudAvailable()) stopCloud = startCloudSchedule(); });
     void initTransport();
+    // DNS personnalisé : le réglage local fait foi, le processus principal est réaligné au démarrage.
+    if (isElectron()) void pushDns(normalizeDns(usePrefs.getState().dns));
     const on = () => useUi.getState().setOnline(true);
     const off = () => useUi.getState().setOnline(false);
     window.addEventListener("online", on);
