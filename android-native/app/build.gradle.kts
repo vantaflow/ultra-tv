@@ -198,7 +198,7 @@ dependencies {
     implementation(libs.compose.tv.material)
     debugImplementation(libs.compose.ui.tooling)
 
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
     // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Télémétrie de fluidité (images saccadées par écran) : voir perf/PerfTelemetry.kt.
@@ -217,9 +217,9 @@ dependencies {
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
     implementation(libs.media3.datasource.okhttp)
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     // QR code du tableau de bord cloud, généré localement (aucun réseau).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
     implementation(libs.mediarouter)
     implementation(libs.play.cast.framework)
 
@@ -253,11 +253,11 @@ dependencies {
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.17")
     // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
-    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.room:room-testing:2.8.5")
     testImplementation("androidx.test.ext:junit:1.1.5")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     testImplementation("org.json:json:20240303")
     // Tests d'UI Compose exécutés sur la JVM via Robolectric (createComposeRule / createAndroidComposeRule).
     testImplementation(platform(libs.compose.bom))
