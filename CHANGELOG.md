@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.64] — 2026-10-20 (Android TV)
+
+### Corrigé
+- Lecteur, direct : après un zap, la barre de commandes (Chaînes, Pistes, Sous-titres, Enregistrer, Veille, Lecteur)
+  s'affichait alors que la télécommande zappait ou ouvrait la liste — boutons sans effet en apparence. Le bandeau ne
+  montre plus que la chaîne et le programme, avec l'indication « ◀ ▶ Commandes · OK Chaînes · ▲ ▼ Zapper » ;
+  Gauche / Droite affichent les commandes, cette fois actives.
+- Panneau Affichage : la minuterie n'y figure plus (elle a son bouton « Veille » dans la barre du lecteur).
+
 ## [1.2.63] — 2026-10-20 (Android)
 
 ### Corrigé

@@ -87,6 +87,8 @@ class PlayerExtraStrings(val lang: AppLang) {
 
     // Veille
     val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
+    /** Bandeau du direct (après un zap) : les commandes ne sont pas encore actives, on dit comment les atteindre. */
+    val bannerHint get() = t("◀ ▶ Controls  ·  OK Channels  ·  ▲ ▼ Zap", "◀ ▶ Commandes  ·  OK Chaînes  ·  ▲ ▼ Zapper", "◀ ▶ Controles  ·  OK Canales  ·  ▲ ▼ Zapear", "◀ ▶ الأوامر  ·  OK القنوات  ·  ▲ ▼ التنقّل")
     val sleepTitle get() = t("Sleep timer", "Minuterie de veille", "Temporizador", "مؤقّت السكون")
     val sleepEndOfProgramme get() = t("End of programme", "Fin du programme", "Fin del programa", "نهاية البرنامج")
     val sleepOff get() = t("Cancel timer", "Annuler la minuterie", "Cancelar", "إلغاء المؤقّت")

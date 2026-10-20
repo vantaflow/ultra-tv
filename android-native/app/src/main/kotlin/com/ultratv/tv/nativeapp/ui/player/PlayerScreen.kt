@@ -749,7 +749,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 tsSnap!!, playing, X, pauseFocus,
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onJump = { tsJump(it); touch() }, onLive = { tsBackToLive(); touch() },
-            ) else Footer(
+            ) else if (isLive && !controlsEngaged && !com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+                // Bandeau seul (après un zap) : la télécommande zappe / ouvre la liste, les commandes ne sont pas encore
+                // actives. Les afficher quand même faisait croire à des boutons sans effet : on indique comment les atteindre.
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                    Text(X.bannerHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1,
+                        modifier = Modifier.padding(bottom = 54.design).clip(RoundedCornerShape(30.design)).background(Color(0xCC0A0A0C)).padding(horizontal = 28.design, vertical = 14.design))
+                }
+            } else Footer(
                 isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
                 onToggle = { if (isLive && replayProg == null) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
@@ -1073,10 +1080,7 @@ private fun PlayerSidePanel(
                                 .forEach { (m, l) -> OptionRow(l, null, aspect == m) { onAspect(m) } }
                         }
                         if (!isLive) OptionGroup(D.speed) { listOf(0.5f, 1f, 1.25f, 1.5f, 2f).forEach { v -> OptionRow("${v}x", null, speed == v) { onSpeed(v) } } }
-                        OptionGroup(D.sleepTimer) {
-                            listOf(15 to "15 min", 30 to "30 min", 60 to "1 h", 120 to "2 h").forEach { (m, l) -> OptionRow(l, null, false) { onSleep(m) } }
-                            OptionRow(D.off, null, !sleepActive) { onSleep(0) }
-                        }
+                        // La minuterie n'a rien à faire ici : elle a sa propre pilule « Veille » dans la barre du lecteur.
                     }
                     SideTab.PLAYER -> {
                         val engineName = if (state.combo.engine == EngineKind.EXO) D.engineExo else D.engineVlc
