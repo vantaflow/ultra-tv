@@ -25,6 +25,15 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 
+/** Client des flux quand un DNS personnalisé est choisi : partagé (pool de connexions), redirections http↔https suivies. */
+private val streamClient: okhttp3.OkHttpClient by lazy {
+    okhttp3.OkHttpClient.Builder()
+        .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)
+        .followRedirects(true).followSslRedirects(true)
+        .retryOnConnectionFailure(true)
+        .build()
+}
+
 /** Moteur Media3 / ExoPlayer. Décodage : matériel (extensions OFF), logiciel (FFmpeg audio + codecs logiciels), auto. */
 @UnstableApi
 class ExoEngine(private val ctx: Context, override val config: EngineConfig) : PlayerEngine {
@@ -76,10 +85,24 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .setTargetBufferBytes(b.maxBytes)
             .setPrioritizeTimeOverSizeThresholds(false)
             .build()
-        val http = DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
-            // Direct : délais courts — une chaîne morte ou un serveur qui ne répond plus est détecté vite, puis la
-            // session se reconnecte toute seule (avant : 10 s + 1,5 s + 10 s avant l'écran d'erreur).
-            .setConnectTimeoutMs(if (config.isLive) 6_000 else 10_000).setReadTimeoutMs(if (config.isLive) 8_000 else 15_000)
+        // Direct : délais courts — une chaîne morte ou un serveur qui ne répond plus est détecté vite, puis la
+        // session se reconnecte toute seule (avant : 10 s + 1,5 s + 10 s avant l'écran d'erreur).
+        val connectMs = if (config.isLive) 6_000 else 10_000
+        val readMs = if (config.isLive) 8_000 else 15_000
+        // DNS personnalisé (Réglages › Lecture › Réseau) : les flux passent par OkHttp avec ce DNS. DNS du système :
+        // DefaultHttpDataSource, inchangé. Les deux lèvent les mêmes InvalidResponseCodeException (classement des erreurs).
+        val http: androidx.media3.datasource.DataSource.Factory =
+            if (com.ultratv.tv.nativeapp.data.net.dns.AppDns.settings.value.mode != com.ultratv.tv.nativeapp.data.net.dns.DnsMode.SYSTEM) {
+                androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(
+                    streamClient.newBuilder()
+                        .connectTimeout(connectMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                        .readTimeout(readMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
+                        .build(),
+                ).setUserAgent(config.userAgent)
+            } else {
+                DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
+                    .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
+            }
         val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
         )
@@ -243,6 +266,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         }
     }
     override fun setSpeed(speed: Float) { player.playbackParameters = PlaybackParameters(speed) }
+    // PlayerView suit seule la destruction / recréation de sa surface au changement de parent : rien d'autre à faire.
+    override fun setMuted(muted: Boolean) { player.volume = if (muted) 0f else 1f }
     override val hasVideo get() = player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()

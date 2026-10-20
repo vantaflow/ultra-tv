@@ -22,6 +22,7 @@ import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
 import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { SourceForm, type SourceKind } from "./SourceForm";
+import { TraktSettings } from "@/trakt/TraktUi";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
 const SECTIONS: { id: Section; icon: IconName; key: "set.sources" }[] = [
@@ -90,10 +91,10 @@ function SourcesPane() {
         const isActive = active?.id === s.id;
         return (
           <div key={s.id} className={`src-card${isActive ? " active" : ""}`}>
-            <span className="ico"><Icon name={s.type === "xtream" ? "source" : "list"} size={26} /></span>
+            <span className="ico"><Icon name={s.type === "xtream" ? "source" : s.type === "stalker" ? "tv" : "list"} size={26} /></span>
             <span className="grow">
               <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
-              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
+              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
               {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
             {!isActive && <button className="btn sm" onClick={() => prefs.set({ activeSourceId: s.id! })}>{t("set.makeActive")}</button>}
@@ -215,7 +216,7 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
   const [s, setS] = useState(source);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
+  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.type === "stalker" ? "stalker" : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
   return (
     <Modal wide title={t("common.edit")} onClose={onClose} foot={
       <>
@@ -279,6 +280,7 @@ function PlaybackPane() {
           <input className="input" style={{ width: "22rem" }} value={proxy} placeholder={defaultProxy() ?? "https://…"} onChange={(e) => setProxy(e.target.value)} onBlur={() => void setProxySetting(proxy.trim() || null)} aria-label={t("set.proxy")} />
         </Pref>
       )}
+      <TraktSettings Pref={Pref} />
     </>
   );
 }

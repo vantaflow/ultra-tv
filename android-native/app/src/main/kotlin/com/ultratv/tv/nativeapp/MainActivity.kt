@@ -159,7 +159,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        kickoffStartupTasks()
+        kickoffStartupTasks(coldStart = savedInstanceState == null)
         // Google TV : invite système « Afficher la chaîne Nouveautés sur l'accueil ? », une seule fois, quand la chaîne
         // existe sans être affichée. Après l'accueil (30 s), jamais pendant une lecture ni appli en arrière-plan.
         lifecycleScope.launch {
@@ -283,14 +283,20 @@ class MainActivity : ComponentActivity() {
      *  2. Auto-play the most recently watched item by emitting a Pending
      *     entry on [StartupNav.pending], which the NavGraph picks up.
      */
-    private fun kickoffStartupTasks() {
+    private fun kickoffStartupTasks(coldStart: Boolean) {
         lifecycleScope.launch(Dispatchers.IO) {
             val prefs = prefsStore.get().flow.first()
-            // « Reprendre au lancement » : tout de suite (avant le délai et la synchro cloud qui suivent).
-            if (prefs.autoPlayLastOnLaunch) {
+            // Écran d'ouverture (Réglages › Affichage) : seulement au vrai lancement (pas après une rotation ni une
+            // recréation), et jamais par-dessus un lien profond déjà en attente. Tout de suite, avant le délai qui suit.
+            val target = com.ultratv.tv.nativeapp.nav.startupTarget(com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch))
+            val deepLinkPending = StartupNav.pending.value != null || StartupNav.pendingRoute.value != null
+            if (coldStart && !deepLinkPending && target is com.ultratv.tv.nativeapp.nav.StartupTarget.Route) StartupNav.pendingRoute.value = target.route
+            if (coldStart && !deepLinkPending && target == com.ultratv.tv.nativeapp.nav.StartupTarget.LastChannel) {
                 val firstProvider = providerRepo.get().observeProviders().first().firstOrNull()
                 if (firstProvider != null) {
-                    val last = historyRepo.get().recent(firstProvider.id, 1).first().firstOrNull()
+                    // Dernière CHAÎNE regardée ; à défaut (aucune chaîne dans l'historique), le dernier élément regardé.
+                    val last = historyRepo.get().recentByKind(firstProvider.id, "LIVE", 1).first().firstOrNull()
+                        ?: historyRepo.get().recent(firstProvider.id, 1).first().firstOrNull()
                     if (last != null) {
                         playback.set(PlaybackContext.Item(
                             providerId = last.providerId, kind = last.kind, remoteId = last.remoteId,
@@ -355,7 +361,11 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
     ) {
         val dbgTheme by StartupNav.debugTheme.collectAsState()
-        com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(dbgTheme?.let { com.ultratv.tv.nativeapp.data.prefs.AppTheme.parse(it) } ?: prefs.theme)
+        com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(
+            dbgTheme?.let { com.ultratv.tv.nativeapp.data.prefs.AppTheme.parse(it) } ?: prefs.theme,
+            accent = com.ultratv.tv.nativeapp.ui.design.AccentChoice.parse(prefs.accent),
+            textSize = com.ultratv.tv.nativeapp.ui.design.TextSize.parse(prefs.textSize),
+        )
         com.ultratv.tv.nativeapp.ui.common.ProvideUiScale {
         UltraTvTheme {
             // L'assistant de premier lancement REMPLACE l'application au lieu de
@@ -457,13 +467,17 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     }
 
     val overlays = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.OverlayHost() }
+    // Session du Direct partagée entre l'aperçu de la liste et le lecteur plein écran (OK sans rechargement du flux).
+    val liveScope = androidx.compose.runtime.rememberCoroutineScope()
+    val sharedLive = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession(liveScope) }
+    androidx.compose.runtime.DisposableEffect(sharedLive) { onDispose { sharedLive.stop() } }
     val openSearch: () -> Unit = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } }
     val navBack: () -> Unit = { nav.popBackStack() }
     Surface(
         modifier = Modifier.fillMaxSize(),
         colors = SurfaceDefaults.colors(containerColor = MaterialTheme.colorScheme.background),
     ) {
-      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack) {
+      androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack, com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive provides sharedLive) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         val backEntryRoute by nav.currentBackStackEntryAsState()
         val onPlayer = com.ultratv.tv.nativeapp.ui.mobile.isFullscreenRoute(backEntryRoute?.destination?.route)
@@ -597,6 +611,10 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
             com.ultratv.tv.nativeapp.ui.recordings.RecordingsScreen(
                 onPlayLocal = { url, title -> nav.navigate(Routes.player(url, title)) },
             )
+        }
+        // Téléchargements hors ligne : lit uniquement la base, fonctionne sans réseau.
+        screen(Routes.DOWNLOADS) {
+            com.ultratv.tv.nativeapp.ui.downloads.DownloadsScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
         screen(Routes.FAVORITES) {
             FavoritesScreen(

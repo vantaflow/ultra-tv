@@ -14,6 +14,12 @@ interface TraktStore {
     fun writeRows(json: String)
     /** Oublie tout (appareil désappairé ou compte Trakt non lié). */
     fun clear()
+    /** Réglages Trakt de l'appareil (marquer vu à la fin, listes masquées) : gardés même si le compte est délié. */
+    fun readPrefs(): String? = null
+    fun writePrefs(json: String) {}
+    /** Reprises Trakt déjà importées dans l'historique (une pause n'est importée qu'une fois). */
+    fun readImported(): String? = null
+    fun writeImported(json: String) {}
 }
 
 /** Aucune persistance (tests, valeur par défaut). */
@@ -32,12 +38,18 @@ class FileTraktStore(private val dir: File) : TraktStore {
 
     private val lib get() = File(dir, "trakt-library.json")
     private val rows get() = File(dir, "trakt-rows.json")
+    private val prefs get() = File(dir, "trakt-prefs.json")
+    private val imported get() = File(dir, "trakt-imported.json")
 
     override fun readLibrary() = read(lib)
     override fun writeLibrary(json: String) = write(lib, json)
     override fun readRows() = read(rows)
     override fun writeRows(json: String) = write(rows, json)
-    override fun clear() { runCatching { lib.delete() }; runCatching { rows.delete() } }
+    override fun readPrefs() = read(prefs)
+    override fun writePrefs(json: String) = write(prefs, json)
+    override fun readImported() = read(imported)
+    override fun writeImported(json: String) = write(imported, json)
+    override fun clear() { runCatching { lib.delete() }; runCatching { rows.delete() }; runCatching { imported.delete() } }
 
     private fun read(f: File): String? = try { if (f.isFile) f.readText().takeIf { it.isNotBlank() } else null } catch (_: Exception) { null }
 

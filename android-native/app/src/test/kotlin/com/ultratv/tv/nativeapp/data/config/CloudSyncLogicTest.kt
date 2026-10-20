@@ -42,7 +42,7 @@ class CloudSyncLogicTest {
     }
 
     @Test fun plan_typeNonPris_enCharge_ignore() {
-        assertTrue(plan(emptyList(), listOf(cloud("aaaaaaaa", kind = "STALKER"))).isEmpty())
+        assertTrue(plan(emptyList(), listOf(cloud("aaaaaaaa", kind = "LEGACY"))).isEmpty())
     }
 
     // ── modification ──
@@ -142,6 +142,42 @@ class CloudSyncLogicTest {
 
     @Test fun identity_ignoreLaCasseEtLeSlashFinal() {
         assertEquals(CloudSyncLogic.identity("xtream", "HTTP://H/", "u"), CloudSyncLogic.identity("XTREAM", "http://h", "u"))
+    }
+
+    // ── portail Stalker ──
+    private fun stalkerCloud(id: String, mac: String, user: String = "", pass: String = "") =
+        CloudProvider(id, "STALKER", "Portail", "http://p:80/c", user, pass, mac, null, "TV salon", 0L)
+    private fun stalkerLocal(localId: Long, cloudId: String?, mac: String, user: String = "", pass: String = "") =
+        LocalProvider(localId, "STALKER", "Portail", "http://p:80/c/", user, pass, mac, cloudId)
+
+    @Test fun plan_stalkerDuCloud_ajoute() {
+        assertTrue(plan(emptyList(), listOf(stalkerCloud("aaaaaaaa", "00:1A:79:00:00:01"))).single() is SyncAction.Add)
+    }
+
+    @Test fun plan_stalker_identiteParLaMac_pasParLIdentifiant() {
+        val twin = plan(listOf(stalkerLocal(1, null, "00:1A:79:00:00:01")), listOf(stalkerCloud("aaaaaaaa", "00:1a:79:00:00:01")))
+        assertTrue(twin.single() is SyncAction.Link)
+        val other = plan(listOf(stalkerLocal(1, null, "00:1A:79:00:00:01")), listOf(stalkerCloud("aaaaaaaa", "00:1A:79:00:00:02")))
+        assertTrue(other.single() is SyncAction.Add)
+    }
+
+    @Test fun plan_stalker_macOuIdentifiantsChanges_metAJour() {
+        assertTrue(plan(listOf(stalkerLocal(1, "aaaaaaaa", "00:1A:79:00:00:01")), listOf(stalkerCloud("aaaaaaaa", "00:1A:79:00:00:09"))).single() is SyncAction.Update)
+        assertTrue(plan(listOf(stalkerLocal(1, "aaaaaaaa", "00:1A:79:00:00:01")), listOf(stalkerCloud("aaaaaaaa", "00:1A:79:00:00:01", "jean", "pw"))).single() is SyncAction.Update)
+        assertEquals(emptyList<SyncAction>(), plan(listOf(stalkerLocal(1, "aaaaaaaa", "00:1A:79:00:00:01")), listOf(stalkerCloud("aaaaaaaa", "00:1a:79:00:00:01")), applied = mapOf("aaaaaaaa" to "Portail")))
+    }
+
+    @Test fun uploadBody_stalker_macEtIdentifiantsFacultatifs() {
+        val bare = JSONObjectOf(CloudSyncLogic.uploadBody(stalkerLocal(1, null, "00:1A:79:00:00:01"), null, null))
+        assertEquals("STALKER", bare.getString("kind")); assertEquals("00:1A:79:00:00:01", bare.getString("mac"))
+        assertFalse(bare.has("username")); assertFalse(bare.has("password"))
+        val withLogin = JSONObjectOf(CloudSyncLogic.uploadBody(stalkerLocal(1, null, "00:1A:79:00:00:01", "jean", "pw"), null, null))
+        assertEquals("jean", withLogin.getString("username")); assertEquals("pw", withLogin.getString("password"))
+    }
+
+    @Test fun parseConfig_stalker_macLue() {
+        val cfg = CloudSyncLogic.parseConfig("""{"version":3,"providers":[{"id":"aaaaaaaa","kind":"stalker","name":"P","url":"http://p/c","mac":"00:1A:79:00:00:01","username":"","password":""}]}""")
+        assertEquals("STALKER", cfg.providers.single().kind); assertEquals("00:1A:79:00:00:01", cfg.providers.single().mac)
     }
 
     private fun JSONObjectOf(s: String) = org.json.JSONObject(s)

@@ -42,7 +42,8 @@ data class FirstSyncUi(
 fun requiredParts(kind: String): List<SyncPart> = when (kind) {
     "M3U", "M3U_LOCAL" -> listOf(SyncPart.LIVE)
     "XTREAM" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES, SyncPart.EPG)
-    else -> emptyList()   // type de source hérité non pris en charge (ex. Stalker, retiré en 1.1.1) : rien à attendre
+    "STALKER" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES)   // pas de guide XMLTV sur un portail
+    else -> emptyList()   // type de source hérité non pris en charge : rien à attendre
 }
 
 fun isDone(p: ProviderEntity, part: SyncPart): Boolean = when (part) {

@@ -45,6 +45,12 @@ object SyncPolicy {
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
                 if (force || stale(p.lastEpgSyncAt, ttl.epgMs)) parts += SyncPart.EPG
             }
+            // Portail Stalker : direct, films, séries ; pas de guide XMLTV (programme court chaîne par chaîne, à l'affichage).
+            "STALKER" -> {
+                if (force || liveCount == 0 || stale(p.lastLiveSyncAt, ttl.liveMs)) parts += SyncPart.LIVE
+                if (force || stale(p.lastVodSyncAt, ttl.vodMs)) parts += SyncPart.VOD
+                if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
+            }
         }
         // Contenus désactivés par l'utilisateur ; VOD / séries / guide seulement si le réseau le permet (non facturé) sauf demande explicite.
         return parts.filter { it in enabled && (heavyAllowed || force || it == SyncPart.LIVE) }

@@ -98,6 +98,38 @@ class PlaybackSession(
     var liveReconnect: Boolean = true
     private val reconnectAllowed get() = isLive && liveReconnect
 
+    /** Son coupé (aperçu du Direct) : appliqué au moteur en place ET à chaque moteur recréé (repli, nouvelle tentative). */
+    var muted: Boolean = false
+        set(v) { field = v; engine?.setMuted(v) }
+
+    /**
+     * Vue vidéo à placer dans un nouvel hôte (AndroidView de l'aperçu ou du plein écran). Retirée de l'ancien parent
+     * en prévenant le moteur (LibVLC coupe sa sortie vidéo avant la destruction de la surface), puis relancée une fois
+     * rattachée — sans recharger le flux.
+     */
+    fun takeVideoView(): android.view.View {
+        val old = container.parent as? android.view.ViewGroup
+        // Premier hôte : rien à prévenir. Ensuite, la vue a déjà été affichée ailleurs (même si son ancien hôte a déjà
+        // quitté l'écran) : la surface a été ou va être détruite.
+        if (!hostedOnce) old?.removeView(container)
+        else {
+            engine?.onVideoDetaching()
+            old?.removeView(container)
+            container.addOnAttachStateChangeListener(object : android.view.View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: android.view.View) {
+                    v.removeOnAttachStateChangeListener(this)
+                    // Après la passe de mise en page qui crée la nouvelle surface.
+                    v.post { engine?.onVideoReattached() }
+                }
+                override fun onViewDetachedFromWindow(v: android.view.View) {}
+            })
+        }
+        hostedOnce = true
+        container.visibility = android.view.View.VISIBLE
+        return container
+    }
+    private var hostedOnce = false
+
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
@@ -163,6 +195,7 @@ class PlaybackSession(
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))
+        if (muted) e.setMuted(true)
         // Masqué en quittant le lecteur (couche vidéo retirée tout de suite) : toujours réaffiché au lancement suivant.
         container.visibility = android.view.View.VISIBLE
         e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))

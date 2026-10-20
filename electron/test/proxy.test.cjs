@@ -194,6 +194,21 @@ test("proxy : Range, X-UT-UA et X-UT-Referer transmis", async () => {
   });
 });
 
+test("proxy : en-tetes du portail Stalker relayes (liste fermee)", async () => {
+  await withEnv(async ({ up, url, seen }) => {
+    const r = await fetch(url(up + "/seg.bin"), {
+      headers: { "x-ut-h-cookie": "mac=00%3A1A%3A79%3A00%3A00%3A01", "x-ut-h-authorization": "Bearer T", "x-ut-h-x-user-agent": "Model: MAG250; Link: WiFi", "x-ut-h-host": "evil" },
+    });
+    assert.equal(r.status, 200);
+    const hit = seen.find((s) => s.url === "/seg.bin");
+    assert.equal(hit.headers["cookie"], "mac=00%3A1A%3A79%3A00%3A00%3A01");
+    assert.equal(hit.headers["authorization"], "Bearer T");
+    assert.equal(hit.headers["x-user-agent"], "Model: MAG250; Link: WiFi");
+    assert.equal(hit.headers["x-ut-h-cookie"], undefined);
+    assert.notEqual(hit.headers["host"], "evil");
+  });
+});
+
 test("proxy : manifeste HLS reecrit (direct, gzip, octet-stream, apres redirection)", async () => {
   await withEnv(async ({ up, url, proxy }) => {
     const expected = (path) => buildProxyUrl(`http://127.0.0.1:${proxy.port}/`, proxy.token, `${up}${path}`);

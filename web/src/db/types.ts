@@ -2,7 +2,8 @@
 // doit tenir sur disque, pas en mémoire. Les URL de flux ne sont JAMAIS stockées : elles sont
 // reconstruites à la lecture depuis la source (identifiants chiffrés) et l'identifiant du flux.
 
-export type SourceType = "xtream" | "m3u";
+/** "stalker" : portail Stalker / Ministra (MAC dans `username`, identifiants facultatifs empaquetés dans `password`, voir net/stalker.ts). */
+export type SourceType = "xtream" | "m3u" | "stalker";
 export type Kind = "live" | "movie" | "series";
 
 export interface Source {
@@ -15,6 +16,8 @@ export interface Source {
   password: string;
   /** M3U : lien de la playlist (contient souvent des identifiants). */
   m3uUrl: string;
+  /** Portail Stalker : point d'entrée de l'API qui a répondu (…/portal.php ou …/server/load.php), sondé à l'ajout. */
+  stalkerApi?: string;
   epgUrl: string;
   userAgent: string;
   referer: string;
@@ -78,7 +81,7 @@ export interface ChannelRow {
   logo: string | null;
   epg: string | null;
   archive: 0 | 1;
-  /** M3U : URL de flux fournie par la playlist (jamais journalisée). */
+  /** M3U : URL de flux fournie par la playlist (jamais journalisée) ; portail Stalker : adresse interne `stalker:…`. */
   url?: string;
 }
 
@@ -97,6 +100,8 @@ export interface MovieRow {
   rating: number;
   ext: string;
   added: number;
+  /** Portail Stalker : adresse interne `stalker:vod:…` (lien demandé au portail à la lecture). */
+  url?: string;
 }
 
 export interface SeriesRow {
@@ -115,6 +120,9 @@ export interface SeriesRow {
   plot: string | null;
   rating: number;
   added: number;
+  /** Portail Stalker : commande de la série (`stalker:vod::…`) et numéros d'épisodes (tableau `series`). */
+  url?: string;
+  eps?: number[];
 }
 
 export interface ProgramRow {

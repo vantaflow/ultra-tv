@@ -74,7 +74,11 @@ class AccountStrings(private val lang: AppLang) {
 data class AccountState(val sourceName: String? = null, val xtream: Boolean = false, val account: XtreamAccount? = null, val failed: Boolean = false, val loading: Boolean = true)
 
 @HiltViewModel
-class AccountViewModel @Inject constructor(private val providers: ProviderRepository, private val xtream: XtreamClient) : ViewModel() {
+class AccountViewModel @Inject constructor(
+    private val providers: ProviderRepository,
+    private val xtream: XtreamClient,
+    private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
+) : ViewModel() {
     private val _state = MutableStateFlow(AccountState())
     val state: StateFlow<AccountState> = _state
 
@@ -102,8 +106,14 @@ class AccountViewModel @Inject constructor(private val providers: ProviderReposi
         job?.cancel()
         _state.value = _state.value.copy(loading = true)
         job = viewModelScope.launch {
-            val isX = p?.kind == "XTREAM"
-            val acc = if (p != null && isX) xtream.fetchAccount(p) else null
+            // Portail Stalker : échéance lue par account_info/get_main_info, présentée comme un compte Xtream.
+            val isX = p?.kind == "XTREAM" || p?.kind == "STALKER"
+            val acc = when {
+                p == null -> null
+                p.kind == "XTREAM" -> xtream.fetchAccount(p)
+                p.kind == "STALKER" -> stalker.fetchAccount(p)
+                else -> null
+            }
             _state.value = AccountState(p?.name, isX, acc, failed = isX && acc == null, loading = false)
         }
     }
@@ -140,13 +150,14 @@ fun IptvAccountCard(st: AccountState, s: AccountStrings) {
             !st.xtream -> { AccountRow(s.source, st.sourceName); Text(s.noXtream, color = Ux.Muted, fontSize = 16.sp) }
             else -> {
                 AccountRow(s.source, st.sourceName)
-                AccountRow(s.account, a?.status ?: s.unknown, if (a?.status.equals("Active", true)) OK else if (a?.status != null) Ux.Accent else Ux.Text)
+                AccountRow(s.account, a?.status ?: s.unknown, if (a?.status.equals("Active", true)) OK else if (a?.status != null) Ux.AccentInk else Ux.Text)
                 AccountRow(s.expires, when {
                     a == null -> "—"
                     a.expiresAt == null -> s.never
                     else -> "${fmt(a.expiresAt)} · ${((a.expiresAt - System.currentTimeMillis()).coerceAtLeast(0) + 86_399_999L) / 86_400_000L} ${s.daysLeft}"
                 })
-                AccountRow(s.conns, if (a != null) "${a.activeConnections ?: 0} / ${a.maxConnections ?: 1}" else "—")
+                // Portail Stalker : le nombre de connexions n'est pas publié, la ligne est omise.
+                if (a == null || a.activeConnections != null || a.maxConnections != null) AccountRow(s.conns, if (a != null) "${a.activeConnections ?: 0} / ${a.maxConnections ?: 1}" else "—")
                 a?.createdAt?.let { AccountRow(s.created, fmt(it)) }
                 if (a?.trial == true) AccountRow(s.trial, s.yes)
                 a?.server?.let { AccountRow(s.server, it) }

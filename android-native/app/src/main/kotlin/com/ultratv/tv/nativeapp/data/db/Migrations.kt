@@ -181,7 +181,25 @@ val MIGRATION_17_18 = object : Migration(17, 18) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
+/**
+ * 18 → 19 (téléchargements hors ligne) : table `download` seule, aucune donnée existante touchée. Pas de clé étrangère
+ * vers `provider` (son upsert est un REPLACE qui déclencherait la cascade) : la purge suit la liste des sources
+ * (DownloadRepository.purgeOrphans). Aucune URL de flux n'y est stockée, seulement son empreinte.
+ */
+val MIGRATION_18_19 = object : Migration(18, 19) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `download` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `providerId` INTEGER NOT NULL, " +
+                "`kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, `parentRemoteId` TEXT, `title` TEXT NOT NULL, `poster` TEXT, `season` INTEGER, " +
+                "`episode` INTEGER, `urlHash` TEXT NOT NULL, `filePath` TEXT NOT NULL, `totalBytes` INTEGER NOT NULL, `doneBytes` INTEGER NOT NULL, " +
+                "`state` TEXT NOT NULL, `error` TEXT, `createdAt` INTEGER NOT NULL)",
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_download_providerId_kind_remoteId` ON `download` (`providerId`, `kind`, `remoteId`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_download_state` ON `download` (`state`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

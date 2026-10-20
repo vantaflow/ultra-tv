@@ -57,6 +57,7 @@ object DatabaseModule {
     @Provides fun provideVodInfoDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.VodInfoDao = db.vodInfoDao()
     @Provides fun provideTmdbDao(db: UltraDb): com.ultratv.tv.nativeapp.data.tmdb.TmdbDao = db.tmdbDao()
     @Provides fun provideReminderDao(db: UltraDb): com.ultratv.tv.nativeapp.data.reminders.ReminderDao = db.reminderDao()
+    @Provides fun provideDownloadDao(db: UltraDb): com.ultratv.tv.nativeapp.data.downloads.DownloadDao = db.downloadDao()
 }
 
 @Module
@@ -64,7 +65,12 @@ object DatabaseModule {
 object NetworkModule {
 
     @Provides @Singleton
-    fun provideOkHttp(monitor: com.ultratv.tv.nativeapp.adaptive.NetworkMonitor): OkHttpClient = OkHttpClient.Builder()
+    fun provideOkHttp(
+        monitor: com.ultratv.tv.nativeapp.adaptive.NetworkMonitor,
+        @ApplicationContext ctx: Context,
+    ): OkHttpClient = OkHttpClient.Builder()
+        // DNS choisi dans les Réglages (lu à chaque résolution, repli sur le système) : hérité par tous les newBuilder().
+        .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns.also { it.attach(ctx) })
         // Mesure continue du débit et de la latence réels (alimente le profil adaptatif).
         .addNetworkInterceptor(monitor.interceptor)
         .connectTimeout(15, TimeUnit.SECONDS)

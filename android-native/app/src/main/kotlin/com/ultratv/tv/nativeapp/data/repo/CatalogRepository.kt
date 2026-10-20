@@ -43,6 +43,7 @@ class CatalogRepository @Inject constructor(
     private val epgDao: EpgDao,
     private val vodInfoDao: VodInfoDao,
     private val xtream: XtreamClient,
+    private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
     fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
@@ -97,6 +98,8 @@ class CatalogRepository @Inject constructor(
                     seriesDao.updateInfo(s.id, d.plot, d.genre, d.cast, d.backdrop, d.year, d.rating)
                 d.episodes
             }
+            // Portail Stalker : saisons/épisodes du portail, ou tableau `series` de la série (voir StalkerClient.episodes).
+            "STALKER" -> stalker.episodes(p, s).ifEmpty { return }
             else -> return
         }
         episodesFetchedAt[seriesId] = now
@@ -195,8 +198,8 @@ class CatalogRepository @Inject constructor(
     private suspend fun refreshShortEpgCount(channelId: Long): Int {
         val ch = channelDao.byId(channelId) ?: return 0
         val p = providerDao.byId(ch.providerId) ?: return 0
-        if (p.kind != "XTREAM") return 0
-        var rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
+        if (p.kind != "XTREAM" && p.kind != "STALKER") return 0
+        var rows = runCatching { shortEpgOf(p, ch) }.getOrDefault(emptyList())
         // Chaîne décalée sans programme propre : celui de la chaîne de base, décalé de N heures.
         // Sinon, même chaîne sous le même nom dans une autre catégorie (seule l'une porte souvent l'identifiant EPG).
         if (rows.isEmpty()) (TimeshiftChannels.parse(ch.title) ?: (ch.title.trim() to 0)).let { (base, h) ->
@@ -213,11 +216,18 @@ class CatalogRepository @Inject constructor(
         return rows.size
     }
 
+    /** Programme court selon le type de source (Xtream `get_short_epg&stream_id`, Stalker `itv/get_short_epg&ch_id`). */
+    private suspend fun shortEpgOf(p: com.ultratv.tv.nativeapp.data.db.ProviderEntity, ch: ChannelEntity): List<EpgEntity> = when (p.kind) {
+        "STALKER" -> stalker.shortEpg(p, ch.remoteId, ch.id)
+        "XTREAM" -> xtream.fetchShortEpg(p, ch.remoteId, ch.id)
+        else -> emptyList()
+    }
+
     /** Pulls short EPG for one channel from Xtream. Safe to call repeatedly — no-op on failure. */
     suspend fun refreshShortEpg(channelId: Long) {
         val ch = channelDao.byId(channelId) ?: return
         val p = providerDao.byId(ch.providerId) ?: return
-        val rows = runCatching { xtream.fetchShortEpg(p, ch.remoteId, ch.id) }.getOrDefault(emptyList())
+        val rows = runCatching { shortEpgOf(p, ch) }.getOrDefault(emptyList())
         if (rows.isNotEmpty()) {
             epgDao.deleteForChannel(ch.id)
             epgDao.upsertAll(rows)

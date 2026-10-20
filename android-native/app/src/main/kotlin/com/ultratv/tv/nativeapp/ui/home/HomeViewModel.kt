@@ -178,8 +178,11 @@ class HomeViewModel @Inject constructor(
      * affiches converties, programme en cours résolu, ordre des rangées calculé). StateFlow : une valeur égale à la
      * précédente n'est pas réémise, donc l'écran ne recompose rien quand Room relit des données identiques.
      */
+    /** Disposition de l'accueil (ordre / rangées masquées) : seule une modification du réglage réémet. */
+    private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
+
     val rows: StateFlow<HomeRows> = combine(
-        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying),
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout),
     ) { a ->
         @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
         val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
@@ -196,11 +199,14 @@ class HomeViewModel @Inject constructor(
             recommended = t.recommendations.map(::traktPosterOf).distinctKeys { it.key },
             trending = t.trending.map(::traktPosterOf).distinctKeys { it.key },
             popular = t.popular.map(::traktPosterOf).distinctKeys { it.key },
+            upNext = t.upNext.map(::traktUpNextPosterOf).distinctKeys { it.key },
+            traktLists = t.lists.map { l -> TraktListUi(l.id, l.name, l.cards.map(::traktPosterOf).distinctKeys { it.key }) },
             recentChannels = recent.map { resumeCardOf(it, "rc-", clean) }.distinctKeys { it.key },
             latestMovies = movies.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
             latestSeries = series.map { catalogPosterOf(it, isShow = true) }.distinctKeys { it.key },
             channels = chans.distinctBy { it.id }.map { ChannelCardUi(it, now[it.id]?.title) },
             showingFavorites = fav,
+            layout = a[8] as HomeLayout,
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeRows.EMPTY)

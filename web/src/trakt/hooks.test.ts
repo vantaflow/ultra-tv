@@ -7,7 +7,7 @@ const row = (kind: "movie" | "show", ref: number) => ({ kind, ref, row: {} as ne
 describe("rangées résolues persistées", () => {
   beforeEach(() => localStorage.clear());
   it("aller-retour par cid", () => {
-    const rows: TraktRows = { watchlist: [row("movie", 1)], recommendations: [], trending: [row("show", 5), row("movie", 2)], popular: [] };
+    const rows: TraktRows = { watchlist: [row("movie", 1)], recommendations: [], trending: [row("show", 5), row("movie", 2)], popular: [], lists: [], upNext: [] };
     saveRefs(7, rows);
     expect(loadSavedRefs(7)).toEqual({ watchlist: [["movie", 1]], recommendations: [], trending: [["show", 5], ["movie", 2]], popular: [] });
     expect(loadSavedRefs(8)).toBeNull();

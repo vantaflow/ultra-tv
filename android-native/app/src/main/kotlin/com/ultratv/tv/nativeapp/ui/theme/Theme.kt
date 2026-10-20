@@ -47,14 +47,24 @@ fun isLightEffective(themeLight: Boolean, playerShown: Boolean): Boolean = theme
  */
 fun isPlayerShown(visibleRoutes: List<String?>): Boolean = visibleRoutes.any { it == com.ultratv.tv.nativeapp.nav.Routes.PLAYER }
 
-/** Publie le thème dans les jetons [Ux] ; à appeler AVANT toute composition qui les lit. */
+/** Publie le thème, l'accent et la taille du texte dans les jetons [Ux] ; à appeler AVANT toute composition qui les lit. */
 @Composable
-fun ApplyUxTheme(theme: AppTheme) {
+fun ApplyUxTheme(
+    theme: AppTheme,
+    accent: com.ultratv.tv.nativeapp.ui.design.AccentChoice = com.ultratv.tv.nativeapp.ui.design.AccentChoice.DEFAULT,
+    textSize: com.ultratv.tv.nativeapp.ui.design.TextSize = com.ultratv.tv.nativeapp.ui.design.TextSize.NORMAL,
+) {
     val light = isLightTheme(theme, isSystemInDarkTheme())
     if (Ux.themeLight != light) Ux.themeLight = light
+    if (Ux.accentChoice != accent) Ux.accentChoice = accent
+    if (Ux.textScale != textSize.scale) Ux.textScale = textSize.scale
 }
 
 @Composable
 fun UltraTvTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isLightEffective(Ux.themeLight, Ux.playerActive)) Light else Dark, content = content)
+    // Accent choisi par l'utilisateur (le jeu de couleurs Material ne sert qu'aux rares composants Material restants).
+    val accent = Ux.Accent; val onAccent = Ux.OnAccent
+    val base = if (isLightEffective(Ux.themeLight, Ux.playerActive)) Light else Dark
+    val scheme = androidx.compose.runtime.remember(base, accent) { base.copy(primary = accent, onPrimary = onAccent) }
+    MaterialTheme(colorScheme = scheme, content = content)
 }

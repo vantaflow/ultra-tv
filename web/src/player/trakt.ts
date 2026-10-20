@@ -8,6 +8,10 @@ import { getToken, useCloud } from "@/cloud/service";
 import type { Source } from "@/db/types";
 import type { PlayState } from "./engine";
 import type { PlayTarget } from "./resolve";
+import { useTraktPrefs } from "@/trakt/prefs";
+
+/** Seuil de Trakt au-delà duquel un `stop` marque l'élément « vu ». */
+export const WATCHED_PERCENT = 80;
 
 /** Identité du média, sans l'action ni la progression. */
 export type ScrobbleItem = Omit<ScrobbleBody, "action" | "progress">;
@@ -37,7 +41,8 @@ export class Scrobbler {
   private seen: { pos: number; dur: number } | null = null;
 
   /** `item` peut être résolu plus tard (promesse) ; null = média non scrobblable. */
-  constructor(private item: Promise<ScrobbleItem | null> | ScrobbleItem | null, private send: ScrobbleSend) {}
+  /** `autoWatched` : réglage « Marquer vu automatiquement à la fin » ; faux, la fin est envoyée en `pause` (jamais « vu »). */
+  constructor(private item: Promise<ScrobbleItem | null> | ScrobbleItem | null, private send: ScrobbleSend, private autoWatched: () => boolean = () => true) {}
 
   /** Transition d'état du lecteur. « buffering » / « loading » ne sont pas des pauses : ignorés. */
   onState(s: PlayState, pos: number, dur: number) {
@@ -67,7 +72,9 @@ export class Scrobbler {
       try {
         const item = await this.item;
         if (!item) { this.off = true; return; }
-        const r = await this.send({ ...item, action, progress });
+        // Trakt marque « vu » un `stop` au-delà de 80 % ; sans marquage automatique, on n'enregistre qu'une pause.
+        const sent = action === "stop" && progress >= WATCHED_PERCENT && !this.autoWatched() ? "pause" : action;
+        const r = await this.send({ ...item, action: sent, progress });
         if (r && r.linked === false) this.off = true;
       } catch { /* réseau, 401, 429 : on n'insiste pas */ }
     });
@@ -110,5 +117,5 @@ const sendViaWorker: ScrobbleSend = async (body) => {
 /** Démarre le suivi d'une cible ; null si elle n'est pas scrobblable (direct, rediffusion, appareil non appairé). */
 export function startScrobble(t: PlayTarget, source: Source): Scrobbler | null {
   if (t.kind === "live" || t.replay || !useCloud.getState().paired) return null;
-  return new Scrobbler(resolveIdentity(t, source), sendViaWorker);
+  return new Scrobbler(resolveIdentity(t, source), sendViaWorker, () => useTraktPrefs.getState().autoWatched);
 }

@@ -3,8 +3,9 @@ import { useT } from "@/i18n";
 import type { Source } from "@/db/types";
 import { Icon } from "@/ui/Icon";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
+import { formatMacTyping, packCreds, unpackCreds } from "@/net/stalker";
 
-export type SourceKind = "xtream" | "m3u-link" | "m3u-file";
+export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker";
 
 export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
   kind: SourceKind; value: Source; onChange: (s: Source) => void; fileInfo?: string; onPickFile?: (f: File) => void;
@@ -34,6 +35,31 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
           </div>
         </>
       )}
+      {kind === "stalker" && (() => {
+        // Identifiant / mot de passe facultatifs du portail : rangés ensemble dans `password` (voir net/stalker.ts).
+        const creds = unpackCreds(value.password);
+        return (
+          <>
+            <div className="field full">
+              <label htmlFor="f-portal">{t("src.portal")}</label>
+              <input id="f-portal" className="input" value={value.server} placeholder="http://portail.tv:8080/c/" autoCapitalize="off" spellCheck={false} onChange={(e) => set({ server: e.target.value })} />
+            </div>
+            <div className="field full">
+              <label htmlFor="f-mac">{t("src.mac")}</label>
+              <input id="f-mac" className="input mono" value={value.username} placeholder="00:1A:79:XX:XX:XX" autoCapitalize="characters" autoComplete="off" spellCheck={false} onChange={(e) => set({ username: formatMacTyping(e.target.value) })} />
+              <span className="muted">{t("src.macHint")}</span>
+            </div>
+            <div className="field">
+              <label htmlFor="f-plogin">{t("src.portalLogin")}</label>
+              <input id="f-plogin" className="input" value={creds.login} autoComplete="off" spellCheck={false} onChange={(e) => set({ password: packCreds(e.target.value, creds.password) })} />
+            </div>
+            <div className="field">
+              <label htmlFor="f-ppass">{t("src.portalPassword")}</label>
+              <input id="f-ppass" className="input" type="password" value={creds.password} autoComplete="off" onChange={(e) => set({ password: packCreds(creds.login, e.target.value) })} />
+            </div>
+          </>
+        );
+      })()}
       {kind === "m3u-link" && (
         <div className="field full">
           <label htmlFor="f-m3u">{t("src.m3uUrl")}</label>

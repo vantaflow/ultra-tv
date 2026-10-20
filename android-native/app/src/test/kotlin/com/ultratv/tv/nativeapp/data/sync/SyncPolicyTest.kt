@@ -61,11 +61,18 @@ class SyncPolicyTest {
         assertEquals(listOf(SyncPart.LIVE), SyncPolicy.dueParts(xtream().copy(kind = "M3U"), now, ttl, 0, false))
     }
 
-    /** Source Stalker enregistrée avant la 1.1.1 : plus synchronisée, ne plante pas, et la première synchro n'attend rien. */
-    @Test fun dueParts_sourceStalkerHeritee_aucuneSynchro() {
-        val legacy = xtream().copy(kind = "STALKER")
+    /** Type de source inconnu (hérité) : jamais synchronisé, ne plante pas, et la première synchro n'attend rien. */
+    @Test fun dueParts_typeInconnu_aucuneSynchro() {
+        val legacy = xtream().copy(kind = "LEGACY")
         assertEquals(emptyList<SyncPart>(), SyncPolicy.dueParts(legacy, now, ttl, 0, true))
-        assertEquals(emptyList<SyncPart>(), com.ultratv.tv.nativeapp.ui.sync.requiredParts("STALKER"))
+        assertEquals(emptyList<SyncPart>(), com.ultratv.tv.nativeapp.ui.sync.requiredParts("LEGACY"))
+    }
+
+    /** Portail Stalker : direct, films et séries ; jamais de guide XMLTV. */
+    @Test fun dueParts_portailStalker_sansGuide() {
+        val p = xtream().copy(kind = "STALKER")
+        assertEquals(listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES), SyncPolicy.dueParts(p, now, ttl, 0, true))
+        assertEquals(listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES), com.ultratv.tv.nativeapp.ui.sync.requiredParts("STALKER"))
     }
 
     @Test fun ttl_intervalleUtilisateur_s_applique_au_direct() {

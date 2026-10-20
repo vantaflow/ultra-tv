@@ -177,7 +177,9 @@ describe("POST /api/device/providers : validation et attaques", () => {
     expect((await putProv(phone, { kind: "M3U", url: "javascript:alert(1)" })).status).toBe(400);
     expect((await putProv(phone, { kind: "M3U", url: "file:///etc/passwd" })).status).toBe(400);
     expect((await putProv(phone, { kind: "XTREAM", url: "http://h:80" })).status).toBe(400);
-    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80", mac: "00:1A:79:00:00:01" })).status).toBe(400);
+    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80" })).status).toBe(400);
+    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80", mac: "00:1A:79:00:00" })).status).toBe(400);
+    expect((await putProv(phone, { kind: "STALKER", url: "http://h:80", mac: 12 })).status).toBe(400);
   });
   it("champsNonChaines_objetsTableaux_refuses", async () => {
     const { phone } = await twoDevices();
@@ -276,24 +278,43 @@ describe("appareils : nom et tableau de bord", () => {
   });
 });
 
-describe("Stalker retiré : champ mac", () => {
-  it("macIgnoreEnEntree_etNeSortPlus_etLesAnciensStalkerSontFiltres", async () => {
-    const { acct, phone } = await twoDevices();
+describe("portail Stalker (MAC)", () => {
+  it("mac_ignoreeHorsStalker", async () => {
+    const { phone } = await twoDevices();
     const r = await putProv(phone, { ...m3u("Avec mac"), mac: "00:1A:79:00:00:01" });
     expect(r.status).toBe(201);
-    const p = (await r.json()).provider;
-    expect("mac" in p).toBe(false);
+    expect("mac" in (await r.json()).provider).toBe(false);
     expect((await (await cfg(phone)).json()).providers.every((x) => !("mac" in x))).toBe(true);
-    // un ancien fournisseur Stalker stocké ne part plus vers les appareils
-    const { env } = await import("cloudflare:workers");
-    const { loadProviders, saveProviders, getAccount, putAccount } = await import("../src/store.js");
-    const a = await getAccount(env, acct.login);
-    const list = await loadProviders(env, a);
-    list.push({ id: "0badc0de", kind: "STALKER", name: "Vieux portail", url: "http://p:80", mac: "00:1A:79:00:00:02", username: "", password: "" });
-    await saveProviders(env, a, list); await putAccount(env, a);
-    expect(await names(phone)).toEqual(["Avec mac"]);
-    // et le tableau de bord refuse d'en créer
-    expect((await addProvider(acct, { kind: "STALKER", url: "http://p:80", mac: "00:1A:79:00:00:03" })).headers.get("location")).toContain("e=kind");
+  });
+
+  it("appareil_partageUnPortail_macNormaliseeEnvoyeeAuxAutresAppareils", async () => {
+    const { phone, tv } = await twoDevices();
+    const r = await putProv(phone, { kind: "STALKER", name: "Portail", url: "http://p.example.test:8080/c/", mac: "00-1a-79-00-00-01", shareWith: "all" });
+    expect(r.status).toBe(201);
+    const sent = (await (await cfg(tv)).json()).providers.find((x) => x.name === "Portail");
+    expect(sent).toMatchObject({ kind: "STALKER", url: "http://p.example.test:8080/c/", mac: "00:1A:79:00:00:01", username: "", password: "" });
+  });
+
+  it("tableauDeBord_ajoute_macMasquee_pasDeLien_niDeLigneAbonnement", async () => {
+    const { acct, tv } = await twoDevices();
+    const res = await addProvider(acct, { kind: "STALKER", name: "Mon portail", url: "http://p.example.test/stalker_portal/c/", mac: "00:1A:79:AB:CD:EF", username: "jean", password: "s3cret" });
+    expect(res.headers.get("location")).toContain("m=added");
+    const html = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(html).toContain("Mon portail");
+    expect(html).toContain("••:••:••:••:CD:EF");
+    expect(html).not.toContain("00:1A:79:AB:CD:EF");
+    expect(html).not.toContain("s3cret");
+    expect(html).toContain("Abonnement visible dans l'application");
+    expect(html).toContain("Lien IPTV non disponible pour un portail Stalker");
+    const sent = (await (await cfg(tv)).json()).providers.find((x) => x.name === "Mon portail");
+    expect(sent).toMatchObject({ kind: "STALKER", mac: "00:1A:79:AB:CD:EF", username: "jean", password: "s3cret" });
+    expect(html).not.toContain(`reveal-link" data-id="${sent.id}"`);
+  });
+
+  it("tableauDeBord_macInvalide_refusee", async () => {
+    const { acct } = await twoDevices();
+    expect((await addProvider(acct, { kind: "STALKER", url: "http://p:80/c/", mac: "pas une mac" })).headers.get("location")).toContain("e=mac");
+    expect((await addProvider(acct, { kind: "STALKER", url: "http://p:80/c/" })).headers.get("location")).toContain("e=mac");
   });
 });
 

@@ -283,7 +283,7 @@ private fun SecondaryButton(label: String, onClick: () -> Unit) {
 
 @Composable
 private fun Eyebrow(text: String) =
-    Text(text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, color = Ux.Accent)
+    Text(text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, color = Ux.AccentInk)
 
 /** Taille du titre : 84 px de la maquette, réduite pour tenir sur UNE ligne si le texte est long. */
 internal fun fitTitleSizePx(text: String, basePx: Int = 84, maxWidthPx: Int = 1180): Int {
@@ -504,7 +504,7 @@ private fun SourceCard(modifier: Modifier, icon: String, title: String, desc: St
             Box(
                 Modifier.size(72.design).clip(RoundedCornerShape(18.design)).background(if (f) Ux.Accent else Ux.Surface2),
                 contentAlignment = Alignment.Center,
-            ) { DIcon(icon, 38.design, if (f) Ux.White else Ux.Text) }
+            ) { DIcon(icon, 38.design, if (f) Ux.OnAccent else Ux.Text) }
             Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
                 Text(title, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 34.spx, color = if (f) Ux.TextOnLight else Ux.Text)
                 Text(desc, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, color = if (f) Ux.OnFocus2 else Ux.Text3)
@@ -522,7 +522,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     val failure by vm.failure.collectAsState()
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchStepColumn {
-            Box(Modifier.size(56.dp).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(Icons.Check, 28.dp, Ux.White, strokeWidth = 2.5f) }
+            Box(Modifier.size(56.dp).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(Icons.Check, 28.dp, Ux.OnAccent, strokeWidth = 2.5f) }
             Eyebrow(W.stepLabel.format(3))
             Text(W.readyTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, color = Ux.Text)
             val f = failure
@@ -536,7 +536,7 @@ private fun ReadyStep(W: WizardStrings, vm: OnboardingViewModel, onWatch: () -> 
     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.responsiveWidth(920), verticalArrangement = Arrangement.spacedBy(40.design)) {
             Box(Modifier.size(112.design).clip(CircleShape).background(Ux.Accent), contentAlignment = Alignment.Center) {
-                DIcon(Icons.Check, 56.design, Ux.White, strokeWidth = 2.5f)
+                DIcon(Icons.Check, 56.design, Ux.OnAccent, strokeWidth = 2.5f)
             }
             Column(verticalArrangement = Arrangement.spacedBy(20.design)) {
                 Eyebrow(W.stepLabel.format(3))
@@ -600,6 +600,7 @@ private fun kindLabel(W: WizardStrings, kind: String?) = when (kind) {
     "XTREAM" -> W.kindXtream
     "M3U" -> W.kindM3u
     "M3U_LOCAL" -> W.kindM3uFile
+    "STALKER" -> "Stalker"
     else -> ""
 }
 

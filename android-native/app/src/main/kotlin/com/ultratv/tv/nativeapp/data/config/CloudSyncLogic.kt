@@ -72,13 +72,20 @@ sealed interface SyncAction {
     }
 }
 
-val SUPPORTED_KINDS = setOf("XTREAM", "M3U")
+/**
+ * Types échangés avec le cloud. Portail Stalker : `url` = portail, `mac` = MAC du boîtier, `username` / `password` =
+ * identifiant et mot de passe FACULTATIFS du portail (localement : MAC dans `username`, les deux autres empaquetés).
+ */
+val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "STALKER")
 
 object CloudSyncLogic {
 
-    /** Identité d'une source : même type, même serveur (sans « / » final), même compte. */
+    /** Identité d'une source : même type, même serveur (sans « / » final), même compte (la MAC pour un portail Stalker). */
     fun identity(kind: String, url: String, username: String): String =
         "${kind.uppercase()}|${url.trim().trimEnd('/').lowercase()}|$username"
+
+    private fun identityOf(kind: String, url: String, username: String, mac: String): String =
+        identity(kind, url, if (kind.uppercase() == "STALKER") mac.uppercase() else username)
 
     fun parseConfig(body: String): CloudConfig {
         val o = JSONObject(body)
@@ -125,7 +132,7 @@ object CloudSyncLogic {
         val actions = mutableListOf<SyncAction>()
         val supported = cloud.map(::normalized).filter { it.kind in SUPPORTED_KINDS }
         val byCloudId = local.filter { it.cloudId != null }.associateBy { it.cloudId!! }
-        val unlinkedByIdentity = local.filter { it.cloudId == null }.associateBy { identity(it.kind, it.url, it.username) }.toMutableMap()
+        val unlinkedByIdentity = local.filter { it.cloudId == null }.associateBy { identityOf(it.kind, it.url, it.username, it.mac) }.toMutableMap()
         for (c in supported) {
             val linked = byCloudId[c.id]
             if (linked != null) {
@@ -137,7 +144,7 @@ object CloudSyncLogic {
                 }
                 continue
             }
-            val twin = unlinkedByIdentity.remove(identity(c.kind, c.url, c.username))
+            val twin = unlinkedByIdentity.remove(identityOf(c.kind, c.url, c.username, c.mac))
             if (twin != null) {
                 actions += SyncAction.Link(twin.localId, c)
                 if (differs(twin, c)) actions += SyncAction.Update(twin.localId, c, renameLocal = false)
@@ -153,7 +160,7 @@ object CloudSyncLogic {
 
     private fun differs(l: LocalProvider, c: CloudProvider): Boolean =
         l.url.trim().trimEnd('/') != c.url.trim().trimEnd('/') || l.username != c.username || l.password != c.password ||
-            (c.kind == "STALKER" && l.mac != c.mac)
+            (c.kind == "STALKER" && !l.mac.equals(c.mac, ignoreCase = true))
 
     /**
      * Avertissement de connexions (jamais bloquant) : la source n'autorise qu'un flux à la fois et au moins deux
@@ -165,6 +172,10 @@ object CloudSyncLogic {
     fun uploadBody(l: LocalProvider, shareWith: List<String>?, cloudId: String?): String {
         val o = JSONObject().put("kind", l.kind).put("name", l.name).put("url", l.url)
         if (l.kind == "XTREAM") o.put("username", l.username).put("password", l.password)
+        if (l.kind == "STALKER") {
+            o.put("mac", l.mac)
+            if (l.username.isNotEmpty() || l.password.isNotEmpty()) o.put("username", l.username).put("password", l.password)
+        }
         if (cloudId != null) o.put("id", cloudId)
         o.put("shareWith", if (shareWith == null) "all" else JSONArray(shareWith))
         return o.toString()

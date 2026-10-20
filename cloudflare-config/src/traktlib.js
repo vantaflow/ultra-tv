@@ -1,7 +1,10 @@
 // Bibliothèque Trakt d'un compte, préparée pour les appareils : watchlist, recommandations, tendances, populaires,
-// films et épisodes vus.
+// films et épisodes vus, notes, listes personnelles et lectures en pause (reprise).
 //   GET /api/device/trakt/library?lang=fr
-//     → { linked, updatedAt, watchlist[], recommendations[], trending[], popular[], watched{movies[], shows[]} }
+//     → { linked, updatedAt, watchlist[], recommendations[], trending[], popular[], watched{movies[], shows[]},
+//         ratings{movies[], shows[]}, lists[{id, name, items[]}], playback[] }
+//   watched.shows[] : { …, episodes["SxE"], lastWatchedAt } ; ratings : { …, rating 1..10 } ;
+//   playback[] : { type movie|show, …, progress %, pausedAt (ms), runtime (min) | null, season?, episode? }
 // Chaque titre porte ses clés de rapprochement (`keys`, voir matchKey) : titre Trakt (anglais), titre localisé et
 // titre original TMDB. L'appareil n'affiche que ce que SA playlist contient (rapprochement titre + année).
 
@@ -15,6 +18,11 @@ const MAX_RECS = 20; // par type
 const MAX_PUBLIC = 40; // tendances / populaires, par type
 const MAX_WATCHED_MOVIES = 1500;
 const MAX_WATCHED_SHOWS = 400;
+const MAX_RATINGS = 1000; // par type
+const MAX_PLAYBACK = 50;
+/** Listes personnelles lues (une sous-requête chacune) et éléments gardés par liste. */
+export const MAX_LISTS = 6;
+export const MAX_LIST_ITEMS = 100;
 /** Titres TMDB complétés par rafraîchissement (borne de sous-requêtes ; le reste suit au rafraîchissement suivant). */
 export const TMDB_PER_REFRESH = 25;
 export const LANGS = new Set(["fr", "en", "es", "ar"]);
@@ -68,8 +76,27 @@ const titleOf = (o) => String(o?.title ?? "").slice(0, 200);
 /** Élément normalisé { type, tmdb, year, title } (tmdb peut manquer : rapprochement par titre seul). */
 const item = (type, o) => ({ type, tmdb: tmdbOf(o), year: yearOf(o?.year), title: titleOf(o) });
 
+/** Date ISO → millisecondes (0 si absente ou illisible). */
+const msOf = (v) => { const t = Date.parse(typeof v === "string" ? v : ""); return Number.isFinite(t) ? t : 0; };
+
+/** Lecture en pause (/sync/playback) normalisée, ou null. Épisode : l'élément porte le titre de la SÉRIE. */
+function playbackOf(x) {
+  const progress = Number(x?.progress);
+  if (!Number.isFinite(progress) || progress <= 0 || progress >= 100) return null;
+  const pausedAt = msOf(x.paused_at);
+  const rt = (o) => (Number.isInteger(o?.runtime) && o.runtime > 0 && o.runtime < 1000 ? o.runtime : null);
+  if (x.type === "movie" && x.movie) return { ...item("movie", x.movie), progress: Math.round(progress * 100) / 100, pausedAt, runtime: rt(x.movie) };
+  if (x.type === "episode" && x.show && x.episode && Number.isInteger(x.episode.season) && Number.isInteger(x.episode.number)) {
+    return { ...item("show", x.show), progress: Math.round(progress * 100) / 100, pausedAt, runtime: rt(x.episode), season: x.episode.season, episode: x.episode.number };
+  }
+  return null;
+}
+
+/** Élément d'une liste personnelle (/users/me/lists/{id}/items) : films et séries seulement. */
+const listItemOf = (x) => (x?.type === "movie" && x.movie ? item("movie", x.movie) : x?.type === "show" && x.show ? item("show", x.show) : null);
+
 /**
- * Lit Trakt (6 appels en parallèle) → données brutes normalisées.
+ * Lit Trakt (14 appels en parallèle, puis les éléments des listes personnelles) → données brutes normalisées.
  * Un appel en échec (autre qu'un refus d'accès) laisse simplement sa liste vide.
  */
 export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
@@ -82,15 +109,19 @@ export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
     console.log(JSON.stringify({ trakt: "library", path: p.split("?")[0], status: e.status ?? "network" }));
     return [];
   });
-  const [wm, ws, rm, rs, hm, hs, tm, ts, pm, ps] = await Promise.all([
-    get("/sync/watchlist/movies"), get("/sync/watchlist/shows"),
-    get(`/recommendations/movies?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
-    get(`/recommendations/shows?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`),
-    get("/sync/watched/movies"), get("/sync/watched/shows"),
-    get(`/movies/trending?limit=${MAX_PUBLIC}`), get(`/shows/trending?limit=${MAX_PUBLIC}`),
-    get(`/movies/popular?limit=${MAX_PUBLIC}`), get(`/shows/popular?limit=${MAX_PUBLIC}`),
-  ]);
-  if (failed === 10) throw Object.assign(new Error("trakt indisponible"), { upstream: true });
+  const first = [
+    "/sync/watchlist/movies", "/sync/watchlist/shows",
+    `/recommendations/movies?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`,
+    `/recommendations/shows?limit=${MAX_RECS}&ignore_collected=true&ignore_watchlisted=true`,
+    "/sync/watched/movies", "/sync/watched/shows",
+    `/movies/trending?limit=${MAX_PUBLIC}`, `/shows/trending?limit=${MAX_PUBLIC}`,
+    `/movies/popular?limit=${MAX_PUBLIC}`, `/shows/popular?limit=${MAX_PUBLIC}`,
+    "/sync/ratings/movies", "/sync/ratings/shows",
+    `/sync/playback?extended=full&limit=${MAX_PLAYBACK}`,
+    "/users/me/lists",
+  ];
+  const [wm, ws, rm, rs, hm, hs, tm, ts, pm, ps, qm, qs, pb, ul] = await Promise.all(first.map(get));
+  if (failed === first.length) throw Object.assign(new Error("trakt indisponible"), { upstream: true });
   const watchlist = [...wm.map((x) => item("movie", x.movie)), ...ws.map((x) => item("show", x.show))]
     .filter((x) => x.title).slice(0, MAX_WATCHLIST);
   const recommendations = [...rm.map((x) => item("movie", x)), ...rs.map((x) => item("show", x))].filter((x) => x.title);
@@ -102,13 +133,28 @@ export async function fetchTraktLibrary(clientId, access, fetchFn = fetch) {
         if (Number.isInteger(se.number) && Number.isInteger(ep.number)) episodes.push(`${se.number}x${ep.number}`);
       }
     }
-    return { ...item("show", x.show), episodes };
+    return { ...item("show", x.show), episodes, lastWatchedAt: msOf(x.last_watched_at) };
   }).filter((x) => x.title).slice(0, MAX_WATCHED_SHOWS);
   // Tendances (regardés en ce moment) et populaires : listes publiques, films et séries entrelacés.
   const mix = (a, b) => { const out = []; for (let i = 0; i < Math.max(a.length, b.length); i++) { if (a[i]) out.push(a[i]); if (b[i]) out.push(b[i]); } return out.filter((x) => x.title); };
   const trending = mix(tm.map((x) => item("movie", x.movie)), ts.map((x) => item("show", x.show)));
   const popular = mix(pm.map((x) => item("movie", x)), ps.map((x) => item("show", x)));
-  return { watchlist, recommendations, watched: { movies, shows }, trending, popular };
+  const rated = (arr, type, key) => arr
+    .map((x) => ({ ...item(type, x[key]), rating: Number.isInteger(x.rating) && x.rating >= 1 && x.rating <= 10 ? x.rating : null }))
+    .filter((x) => x.title && x.rating).slice(0, MAX_RATINGS);
+  const ratings = { movies: rated(qm, "movie", "movie"), shows: rated(qs, "show", "show") };
+  const playback = pb.map(playbackOf).filter((x) => x && x.title)
+    .sort((a, b) => b.pausedAt - a.pausedAt).slice(0, MAX_PLAYBACK);
+  // Listes personnelles : les MAX_LISTS premières (ordre de Trakt), une sous-requête chacune ; une liste en échec reste vide.
+  const metas = ul.map((l) => ({ id: Number.isInteger(l?.ids?.trakt) ? String(l.ids.trakt) : "", name: String(l?.name ?? "").slice(0, 100) }))
+    .filter((l) => l.id && l.name).slice(0, MAX_LISTS);
+  const listItems = await Promise.all(metas.map((l) =>
+    traktGet(clientId, access, `/users/me/lists/${l.id}/items/movie,show?limit=${MAX_LIST_ITEMS}`, fetchFn).catch((e) => {
+      if (e.unauthorized) throw e;
+      return [];
+    })));
+  const lists = metas.map((l, i) => ({ ...l, items: listItems[i].map(listItemOf).filter((x) => x && x.title).slice(0, MAX_LIST_ITEMS) }));
+  return { watchlist, recommendations, watched: { movies, shows }, trending, popular, ratings, lists, playback };
 }
 
 /** Titres localisé + original d'un élément TMDB, ou null. */
@@ -133,7 +179,12 @@ export async function tmdbTitles(env, type, tmdb, lang, fetchFn = fetch) {
  */
 export async function enrichTitles(env, lib, known, lang, fetchFn = fetch) {
   const dict = { ...known };
-  const order = [...lib.watchlist, ...lib.recommendations, ...(lib.trending || []), ...(lib.popular || []), ...lib.watched.shows, ...lib.watched.movies];
+  // Budget TMDB partagé : ce que l'utilisateur a choisi d'abord (watchlist, reprises, listes), le public ensuite.
+  const order = [
+    ...lib.watchlist, ...(lib.playback || []), ...(lib.lists || []).flatMap((l) => l.items), ...lib.recommendations,
+    ...(lib.trending || []), ...(lib.popular || []), ...lib.watched.shows, ...lib.watched.movies,
+    ...(lib.ratings?.movies || []), ...(lib.ratings?.shows || []),
+  ];
   const todo = [];
   const seen = new Set();
   for (const x of order) {
@@ -165,8 +216,17 @@ export function libraryForDevice(lib, dict, updatedAt) {
     popular: (lib.popular || []).map(out),
     watched: {
       movies: lib.watched.movies.map(out),
-      shows: lib.watched.shows.map((x) => ({ ...out(x), episodes: x.episodes })),
+      shows: lib.watched.shows.map((x) => ({ ...out(x), episodes: x.episodes, lastWatchedAt: x.lastWatchedAt || 0 })),
     },
+    ratings: {
+      movies: (lib.ratings?.movies || []).map((x) => ({ ...out(x), rating: x.rating })),
+      shows: (lib.ratings?.shows || []).map((x) => ({ ...out(x), rating: x.rating })),
+    },
+    lists: (lib.lists || []).map((l) => ({ id: l.id, name: l.name, items: l.items.map(out) })),
+    playback: (lib.playback || []).map((x) => ({
+      ...out(x), progress: x.progress, pausedAt: x.pausedAt, runtime: x.runtime ?? null,
+      ...(x.type === "show" ? { season: x.season, episode: x.episode } : {}),
+    })),
   };
 }
 

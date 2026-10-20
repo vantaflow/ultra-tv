@@ -45,7 +45,7 @@ Un appareil ne reçoit, ne modifie et ne supprime QUE les fournisseurs qui lui s
 | `PATCH /api/device` (ou `POST /api/device/self`) | `{name}` : renomme l'appareil. |
 
 Tableau de bord : matrice fournisseurs × appareils (cases + « Tous »), appareils renommables, origine et date de chaque fournisseur. Révoquer un appareil le retire des listes explicites.
-Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de passe, rotation) sont sérialisées par un verrou Durable Object `mut:<login>` ; le compte est relu SOUS le verrou et `version` n'est incrémentée que dans ce critique (aucune écriture perdue entre appareils et tableau de bord). Stalker est retiré : `mac` est ignoré en entrée, jamais renvoyé, et un ancien fournisseur Stalker n'est plus envoyé aux appareils.
+Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de passe, rotation) sont sérialisées par un verrou Durable Object `mut:<login>` ; le compte est relu SOUS le verrou et `version` n'est incrémentée que dans ce critique (aucune écriture perdue entre appareils et tableau de bord). Portail Stalker (`kind: STALKER`) : `mac` est obligatoire et normalisé (`00:1A:79:XX:XX:XX`), `username` / `password` facultatifs ; la MAC est envoyée aux appareils mais jamais réaffichée en entier sur le tableau de bord (masquée), aucun lien IPTV n'est proposé et l'abonnement se lit dans l'application. Pour les autres types, `mac` est ignoré.
 
 ## Déploiement
 

@@ -7,7 +7,8 @@
 //   DELETE /api/device/providers/:id Bearer
 //   PATCH /api/device {name} Bearer                  -> renomme l'appareil courant
 //   POST /api/device/trakt/scrobble Bearer           -> {linked:false} · {linked:true, matched, ok}
-//   GET  /api/device/trakt/library?lang= Bearer       -> {linked:false} · {linked:true, updatedAt, watchlist, recommendations, watched}
+//   GET  /api/device/trakt/library?lang= Bearer       -> {linked:false} · {linked:true, updatedAt, watchlist, recommendations, watched, ratings, lists, playback}
+//   POST /api/device/trakt/{watchlist|history|rating} Bearer -> {linked:false} · {linked:true, matched, ok}
 // HTTPS obligatoire, aucune redirection suivie (un 30x vers http:// ferait fuiter le jeton).
 // Dans Electron, les requêtes sont faites par le processus principal (`window.ultratv.cloudRequest`).
 
@@ -93,6 +94,8 @@ export interface CloudProvider {
   url: string;
   username?: string;
   password?: string;
+  /** Portail Stalker : MAC du boîtier (username / password = identifiants facultatifs du portail). */
+  mac?: string;
   /** Édition Pro : source posée par le revendeur (ni lien ni suppression sur le tableau de bord). */
   managed?: "reseller";
   originDeviceId?: string;
@@ -138,11 +141,12 @@ export async function rotateToken(base: string, token: string): Promise<{ token:
 
 export interface ProviderInput {
   id?: string;
-  kind: "XTREAM" | "M3U";
+  kind: "XTREAM" | "M3U" | "STALKER";
   name: string;
   url: string;
   username?: string;
   password?: string;
+  mac?: string;
   /** « all » ou liste d'identifiants d'appareils. */
   shareWith?: "all" | string[];
   /** Édition Pro : source posée par le revendeur (ni lien IPTV ni suppression sur le tableau de bord). */
@@ -304,14 +308,55 @@ export async function traktScrobble(base: string, token: string, body: ScrobbleB
 }
 
 export interface TraktItem { type: "movie" | "show"; tmdb: number | null; year: number | null; title: string; keys: string[] }
-export type TraktShowItem = TraktItem & { episodes: string[] };
+export type TraktShowItem = TraktItem & { episodes: string[]; lastWatchedAt?: number };
+export type TraktRatedItem = TraktItem & { rating: number };
+export interface TraktList { id: string; name: string; items: TraktItem[] }
+/** Lecture en pause chez Trakt ; épisode : `type: "show"` (titre de la série) avec saison / épisode. */
+export type TraktPlayback = TraktItem & { progress: number; pausedAt: number; runtime: number | null; season?: number; episode?: number };
 export type TraktLibraryResult =
   | { linked: false }
-  | { linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; trending: TraktItem[]; popular: TraktItem[]; watched: { movies: TraktItem[]; shows: TraktShowItem[] } };
+  | {
+    linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; trending: TraktItem[]; popular: TraktItem[];
+    watched: { movies: TraktItem[]; shows: TraktShowItem[] };
+    ratings: { movies: TraktRatedItem[]; shows: TraktRatedItem[] }; lists: TraktList[]; playback: TraktPlayback[];
+  };
 
 const asItems = (v: unknown): TraktItem[] => (Array.isArray(v) ? (v as TraktItem[]).filter((i) => i && (i.type === "movie" || i.type === "show") && Array.isArray(i.keys)) : []);
+const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+const asRated = (v: unknown): TraktRatedItem[] => asItems(v).map((i) => ({ ...i, rating: num((i as TraktRatedItem).rating) })).filter((i) => i.rating >= 1 && i.rating <= 10);
+const asLists = (v: unknown): TraktList[] => (Array.isArray(v) ? v : [])
+  .filter((l): l is { id: unknown; name: unknown; items: unknown } => !!l && typeof l === "object")
+  .map((l) => ({ id: String(l.id ?? ""), name: String(l.name ?? ""), items: asItems(l.items) }))
+  .filter((l) => l.id && l.name);
+const asPlayback = (v: unknown): TraktPlayback[] => asItems(v).map((i) => {
+  const o = i as Partial<TraktPlayback>;
+  const p: TraktPlayback = { ...i, progress: num(o.progress), pausedAt: num(o.pausedAt), runtime: num(o.runtime) > 0 ? num(o.runtime) : null };
+  if (i.type === "show") { p.season = num(o.season, -1); p.episode = num(o.episode, -1); }
+  return p;
+}).filter((p) => p.progress > 0 && p.progress < 100 && (p.type === "movie" || (p.season! >= 0 && p.episode! >= 0)));
 
-/** Bibliothèque Trakt (watchlist, recommandations, déjà vu) via le Worker. Lève sur 401 / 429 / erreur : l'appelant garde sa dernière valeur. */
+/** Normalise une bibliothèque liée (réponse du Worker ou copie gardée sur disque, éventuellement d'un ancien format). */
+export function normalizeTraktLibrary(o: Record<string, unknown>): Extract<TraktLibraryResult, { linked: true }> {
+  const w = (o.watched ?? {}) as { movies?: unknown; shows?: unknown };
+  const r = (o.ratings ?? {}) as { movies?: unknown; shows?: unknown };
+  return {
+    linked: true, updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+    watchlist: asItems(o.watchlist), recommendations: asItems(o.recommendations),
+    trending: asItems(o.trending), popular: asItems(o.popular),
+    watched: {
+      movies: asItems(w.movies),
+      shows: asItems(w.shows).map((i) => ({
+        ...i, episodes: Array.isArray((i as TraktShowItem).episodes) ? (i as TraktShowItem).episodes.filter((e) => typeof e === "string") : [],
+        lastWatchedAt: num((i as TraktShowItem).lastWatchedAt),
+      })),
+    },
+    ratings: { movies: asRated(r.movies), shows: asRated(r.shows) },
+    lists: asLists(o.lists),
+    playback: asPlayback(o.playback),
+  };
+}
+
+/** Bibliothèque Trakt (watchlist, recommandations, déjà vu, notes, listes, reprises) via le Worker. Lève sur 401 / 429 / erreur : l'appelant garde sa dernière valeur. */
 export async function traktLibrary(base: string, token: string, lang: string): Promise<TraktLibraryResult> {
   const r = await http({ url: `${base}/api/device/trakt/library?lang=${encodeURIComponent(lang)}`, headers: auth(token) });
   if (r.status === 401) throw new TokenRejectedError();
@@ -319,14 +364,20 @@ export async function traktLibrary(base: string, token: string, lang: string): P
   if (r.status < 200 || r.status >= 300) throw new CloudError("trakt-library", r.status);
   const o = parse<Record<string, unknown>>(r);
   if (o.linked !== true) return { linked: false };
-  const w = (o.watched ?? {}) as { movies?: unknown; shows?: unknown };
-  return {
-    linked: true, updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
-    watchlist: asItems(o.watchlist), recommendations: asItems(o.recommendations),
-    trending: asItems(o.trending), popular: asItems(o.popular),
-    watched: {
-      movies: asItems(w.movies),
-      shows: asItems(w.shows).map((i) => ({ ...i, episodes: Array.isArray((i as TraktShowItem).episodes) ? (i as TraktShowItem).episodes.filter((e) => typeof e === "string") : [] })),
-    },
-  };
+  return normalizeTraktLibrary(o);
+}
+
+export type TraktWritePath = "watchlist" | "history" | "rating";
+export type TraktWriteResult = "ok" | "not-linked" | "unmatched" | "failed";
+
+/** Écriture Trakt via le Worker (watchlist, vu / non vu, note). Ne lève jamais : tout échec donne "failed". */
+export async function traktWrite(base: string, token: string, path: TraktWritePath, body: Record<string, unknown>): Promise<TraktWriteResult> {
+  try {
+    const r = await http({ url: `${base}/api/device/trakt/${path}`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(body) });
+    if (r.status < 200 || r.status >= 300) return "failed";
+    const o = parse<{ linked?: boolean; matched?: boolean; ok?: boolean }>(r);
+    if (o.linked !== true) return "not-linked";
+    if (o.matched === false) return "unmatched";
+    return o.ok === true ? "ok" : "failed";
+  } catch { return "failed"; }
 }

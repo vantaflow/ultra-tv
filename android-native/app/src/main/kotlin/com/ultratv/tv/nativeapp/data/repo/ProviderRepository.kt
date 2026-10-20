@@ -43,6 +43,7 @@ class ProviderRepository @Inject constructor(
     private val prefs: UserPreferencesStore,
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
+    private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -245,6 +246,31 @@ class ProviderRepository @Inject constructor(
     }
 
     /**
+     * Portail Stalker / Ministra : adresse du portail telle que saisie, MAC normalisée dans `username`, identifiant et
+     * mot de passe facultatifs empaquetés dans `password` (chiffré au repos, voir [com.ultratv.tv.nativeapp.data.stalker.StalkerCreds]).
+     * [probe] : vérifie d'abord la connexion (point d'entrée sondé et mémorisé) ; une erreur remonte à l'appelant.
+     */
+    suspend fun addStalker(name: String, portal: String, mac: String, login: String = "", password: String = "", probe: Boolean = false): Long {
+        val m = com.ultratv.tv.nativeapp.data.stalker.StalkerMac.normalize(mac) ?: throw IllegalArgumentException("mac")
+        val url = portal.trim().trimEnd('/')
+        providerDao.findByIdentity("STALKER", url, m)?.let { return it.id }
+        val packed = com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.pack(login, password)
+        if (probe) stalker.probe(com.ultratv.tv.nativeapp.data.stalker.StalkerClient.Account(url, m, login, password))
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { hostOf(url) ?: "Stalker" },
+                kind = "STALKER",
+                baseUrl = url,
+                username = m,
+                password = packed,
+                active = false,    // explicit default is set in Settings; see setDefault
+            ),
+        )
+    }
+
+    private fun hostOf(url: String): String? = runCatching { java.net.URI(if (url.contains("://")) url else "http://$url").host }.getOrNull()
+
+    /**
      * Marks one provider as the default and deactivates the others. Every
      * screen that picks "the current provider" uses `firstOrNull { it.active }`,
      * so setting default = id atomically switches the whole app to that
@@ -337,10 +363,10 @@ class ProviderRepository @Inject constructor(
         if (due.isEmpty()) return 0
 
         if (p.kind == "M3U") return syncM3u(providerId, onProgress).also { providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis()) }
-        // Les types hérités (ex. Stalker, retiré en 1.1.1) ne sont plus synchronisés : SyncPolicy ne renvoie aucune partie due.
+        // Portail Stalker : même moteur (catégories, langues, purge, ordre du Direct), autres requêtes ; pas de guide XMLTV.
 
         // Connexions simultanées autorisées (user_info) : alimente les avertissements enregistrement/lecture et le timeshift.
-        xtream.fetchMaxConnections(p)?.let { limits.setMaxConnections(p.id, it) }
+        if (p.kind == "XTREAM") xtream.fetchMaxConnections(p)?.let { limits.setMaxConnections(p.id, it) }
 
         // Pondération de la barre de progression : seules les parties dues comptent.
         val weights = mapOf(SyncPart.LIVE to 20, SyncPart.VOD to 35, SyncPart.SERIES to 20, SyncPart.EPG to 25)
@@ -363,9 +389,9 @@ class ProviderRepository @Inject constructor(
         try {
             for (part in due) {
                 when (part) {
-                    SyncPart.LIVE -> written += syncXtreamPart(p, livePart(), ::maybeLock) { c, n -> step(part, "Live channels: $n", n, c) }
-                    SyncPart.VOD -> written += syncXtreamPart(p, vodPart(), ::maybeLock) { c, n -> step(part, "Movies: $n", n, c) }
-                    SyncPart.SERIES -> written += syncXtreamPart(p, seriesPart(), ::maybeLock) { c, n -> step(part, "Series: $n", n, c) }
+                    SyncPart.LIVE -> written += syncXtreamPart(p, livePart(p.kind), ::maybeLock) { c, n -> step(part, "Live channels: $n", n, c) }
+                    SyncPart.VOD -> written += syncXtreamPart(p, vodPart(p.kind), ::maybeLock) { c, n -> step(part, "Movies: $n", n, c) }
+                    SyncPart.SERIES -> written += syncXtreamPart(p, seriesPart(p.kind), ::maybeLock) { c, n -> step(part, "Series: $n", n, c) }
                     SyncPart.EPG -> {
                         // Le guide ne doit jamais faire échouer le reste : erreur isolée, réessayée au TTL suivant.
                         val ok = runCatching { syncXmltvInternal(p) { c -> step(part, "EPG: $c", c, c / 400_000f) } }
@@ -379,6 +405,8 @@ class ProviderRepository @Inject constructor(
             return written
         } finally {
             syncStatus.clear()
+            // Pages VOD Stalker gardées pour la partie « Séries » : libérées en fin de synchro.
+            if (p.kind == "STALKER") stalkerVodCache.keys.removeIf { it.startsWith("${p.id}:") }
         }
     }
 
@@ -401,8 +429,11 @@ class ProviderRepository @Inject constructor(
         val incremental: IncrementalTable<T>? = null,
     )
 
-    private fun livePart() = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
-        "LIVE", { xtream.fetchLiveCategories(it) }, { p, blk -> xtream.withLiveStreams(p, blk) }, { p, c -> xtream.liveOfCategory(p, c) },
+    private fun livePart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
+        "LIVE",
+        { p -> if (kind == "STALKER") stalker.genres(p) else xtream.fetchLiveCategories(p) },
+        { p, blk -> if (kind == "STALKER") stalker.withAllChannels(p, blk) else xtream.withLiveStreams(p, blk) },
+        { p, c -> if (kind == "STALKER") stalker.channelsOfGenre(p, c) else xtream.liveOfCategory(p, c) },
         { it.categoryId }, { c, lang -> c.copy(lang = LanguageDetector.forItem(c.name, lang)) },
         { channelDao.deleteForProvider(it) }, { pid, ids -> channelDao.deleteForCategories(pid, ids) }, { pid, id -> channelDao.deleteForCategory(pid, id) },
         // Identifiant CONSERVÉ d'une synchro à l'autre : le guide est rattaché aux identifiants de chaînes ; les réécrire
@@ -417,21 +448,60 @@ class ProviderRepository @Inject constructor(
     /** Rangs des catégories du Direct, lus après l'écriture de la table des catégories (voir [livePart] et [LiveOrder]). */
     @Volatile private var liveRanks: LiveOrder.Ranks = LiveOrder.NONE
 
-    private fun vodPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
-        "MOVIE", { xtream.fetchVodCategories(it) }, { p, blk -> xtream.withVodStreams(p, blk) }, { p, c -> xtream.vodOfCategory(p, c) },
+    private fun vodPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
+        "MOVIE",
+        { p -> if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
+        { p, blk -> if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
+        { p, c -> if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
         { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
         incremental = IncrementalTable.MOVIES,
     )
 
-    private fun seriesPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
-        "SERIES", { xtream.fetchSeriesCategories(it) }, { p, blk -> xtream.withSeries(p, blk) }, { p, c -> xtream.seriesOfCategory(p, c) },
+    private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
+        "SERIES",
+        { p -> if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
+        { p, blk -> if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
+        { p, c -> if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
         { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
         incremental = IncrementalTable.SERIES,
     )
+
+    // ───────────── Portail Stalker : films et séries partagent la même liste VOD ─────────────
+
+    /**
+     * Dernière lecture VOD de chaque catégorie Stalker (films ET séries) : la partie « Séries », qui suit la partie
+     * « Films », réutilise ces pages au lieu de les retélécharger (une catégorie de 2 000 titres = 140 requêtes).
+     */
+    private val stalkerVodCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit>>()
+
+    private suspend fun stalkerVod(p: ProviderEntity, categoryId: String): com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit {
+        val key = "${p.id}:$categoryId"
+        stalkerVodCache[key]?.let { (at, v) -> if (System.currentTimeMillis() - at < 30 * 60_000L) return v }
+        val v = fetchWithBackoff { stalker.vodOfCategory(p, categoryId) }
+        stalkerVodCache[key] = System.currentTimeMillis() to v
+        return v
+    }
+
+    /** Toutes les catégories VOD ACTIVES de [kind] (déjà fusionnées et écrites par le moteur), 3 à la fois. */
+    private suspend fun <T> stalkerVodAll(p: ProviderEntity, kind: String, pick: (com.ultratv.tv.nativeapp.data.stalker.StalkerClient.VodSplit) -> List<T>): List<T> {
+        val ids = categoryDao.forProviderKind(p.id, kind).filter { it.enabled }.map { it.remoteId }
+        val gate = kotlinx.coroutines.sync.Semaphore(3)
+        return kotlinx.coroutines.coroutineScope { ids.map { id -> async { gate.withPermit { pick(stalkerVod(p, id)) } } }.map { it.await() } }.flatten()
+    }
+
+    /** Catégories des séries : celles de la VOD qui contiennent des séries (si la partie Films vient de les lire), sinon toutes. */
+    private suspend fun stalkerSeriesCategories(p: ProviderEntity): List<CategoryEntity> {
+        val all = stalker.vodCategories(p, "SERIES")
+        val now = System.currentTimeMillis()
+        val read = all.associate { c -> c.remoteId to stalkerVodCache["${p.id}:${c.remoteId}"]?.takeIf { now - it.first < 30 * 60_000L }?.second }
+        if (read.values.all { it == null }) return all
+        // Catégories lues : gardées seulement si elles contiennent des séries ; jamais lues (désactivées côté films) : gardées.
+        return all.filter { c -> read[c.remoteId]?.series?.isNotEmpty() ?: true }
+    }
 
     /**
      * Synchronise une partie du catalogue en ne téléchargeant que les catégories ACTIVES.
@@ -606,7 +676,7 @@ class ProviderRepository @Inject constructor(
      */
     suspend fun syncCategoriesNow(providerId: Long, kind: String, ids: List<String>) {
         val p = providerDao.byId(providerId) ?: return
-        if (p.kind != "XTREAM" || ids.isEmpty()) return
+        if ((p.kind != "XTREAM" && p.kind != "STALKER") || ids.isEmpty()) return
         val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
         // Serveur qui ignore `category_id` : pas de chargement ciblé possible, synchro complète (verrou global).
         if (p.categoryFilter == 0) { syncAll(providerId, force = true); return }
@@ -623,16 +693,16 @@ class ProviderRepository @Inject constructor(
                 if (kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(catList)
                 for ((i, id) in ids.withIndex()) {
                     n += when (kind) {
-                        "LIVE" -> { val sp = livePart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
-                        "MOVIE" -> { val sp = vodPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
-                        else -> { val sp = seriesPart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        "LIVE" -> { val sp = livePart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        "MOVIE" -> { val sp = vodPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        else -> { val sp = seriesPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
                     }
                     if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
                 }
             } finally { if (ownStatus) syncStatus.clear() }
         }
         // Nouvelles chaînes du direct : leur guide tout de suite (regroupé), pas à la synchro de la nuit.
-        if (kind == "LIVE") scheduleEpgRefresh(providerId)
+        if (kind == "LIVE" && p.kind == "XTREAM") scheduleEpgRefresh(providerId)
     }
 
     private val epgScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
@@ -681,8 +751,11 @@ class ProviderRepository @Inject constructor(
     /** Langues détectées dans les catégories du serveur (3 requêtes légères, aucun contenu téléchargé). */
     suspend fun previewLanguages(providerId: Long): List<Pair<String, Int>> {
         val p = providerDao.byId(providerId) ?: return emptyList()
-        if (p.kind != "XTREAM") return emptyList()
-        val all = runCatching { fetchWithBackoff { xtream.fetchLiveCategories(p) } + fetchWithBackoff { xtream.fetchVodCategories(p) } + fetchWithBackoff { xtream.fetchSeriesCategories(p) } }.getOrDefault(emptyList())
+        val all = when (p.kind) {
+            "XTREAM" -> runCatching { fetchWithBackoff { xtream.fetchLiveCategories(p) } + fetchWithBackoff { xtream.fetchVodCategories(p) } + fetchWithBackoff { xtream.fetchSeriesCategories(p) } }.getOrDefault(emptyList())
+            "STALKER" -> runCatching { fetchWithBackoff { stalker.genres(p) } + fetchWithBackoff { stalker.vodCategories(p) } }.getOrDefault(emptyList())
+            else -> return emptyList()
+        }
         return all.map { LanguageDetector.forCategory(it.name) }
             .filter { it.isNotEmpty() && it != LanguageDetector.MULTI }
             .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.map { it.key to it.value }

@@ -4,6 +4,7 @@ import type { ProgramRow, Source } from "@/db/types";
 import { currentTransport } from "@/net/transport";
 import { b64text, shortEpg } from "@/net/xtream";
 import { credsOf } from "@/sync/core";
+import { stalkerClientFor } from "@/player/resolve";
 
 export type NN = { now?: ProgramRow; next?: ProgramRow };
 const shortCache = new Map<string, { at: number; nn: NN }>();
@@ -15,11 +16,13 @@ async function fetchShort(source: Source, streamId: number): Promise<NN> {
   if (hit && Date.now() - hit.at < 5 * 60_000) return hit.nn;
   let nn: NN = {};
   try {
-    const r = await shortEpg(await currentTransport(), credsOf(source), streamId, 4);
-    const rows: ProgramRow[] = (r.epg_listings ?? []).map((e) => ({
-      sourceId: source.cid, epg: "", start: Number(e.start_timestamp) * 1000, end: Number(e.stop_timestamp) * 1000,
-      title: b64text(e.title), desc: b64text(e.description),
-    })).filter((p) => p.end > p.start);
+    // Portail Stalker : itv/get_short_epg (titres en clair) ; Xtream : get_short_epg (titres en base64).
+    const rows: ProgramRow[] = source.type === "stalker"
+      ? (await (await stalkerClientFor(source)).shortEpg(streamId)).map((e) => ({ sourceId: source.cid, epg: "", start: e.start, end: e.end, title: e.title, desc: e.desc })).filter((p) => p.end > p.start)
+      : ((await shortEpg(await currentTransport(), credsOf(source), streamId, 4)).epg_listings ?? []).map((e) => ({
+        sourceId: source.cid, epg: "", start: Number(e.start_timestamp) * 1000, end: Number(e.stop_timestamp) * 1000,
+        title: b64text(e.title), desc: b64text(e.description),
+      })).filter((p) => p.end > p.start);
     const now = Date.now();
     const cur = rows.find((p) => p.start <= now && p.end > now);
     nn = { now: cur, next: rows.find((p) => p.start >= (cur?.end ?? now)) };
@@ -38,7 +41,7 @@ export function useNowNext(source: Source | undefined, epg: string | null | unde
     const run = async () => {
       let r: NN = {};
       if (epg) r = (await nowNext(source.cid, [epg])).get(epg) ?? {};
-      if (!r.now && allowShort && source.type === "xtream") r = await fetchShort(source, streamId);
+      if (!r.now && allowShort && (source.type === "xtream" || source.type === "stalker")) r = await fetchShort(source, streamId);
       if (!dead) setNn(r);
     };
     void run();

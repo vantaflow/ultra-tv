@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.ui.settings
 
 import androidx.compose.ui.focus.focusRequester
 import com.ultratv.tv.nativeapp.i18n.locale
+import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.stalkerFailed
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -57,6 +59,17 @@ import com.ultratv.tv.nativeapp.ui.AppViewModel
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.ChoiceDialog
+import com.ultratv.tv.nativeapp.ui.design.AccentChoice
+import com.ultratv.tv.nativeapp.ui.design.TextSize
+import com.ultratv.tv.nativeapp.ui.design.designT
+import com.ultratv.tv.nativeapp.i18n.accentColor
+import com.ultratv.tv.nativeapp.i18n.accentName
+import com.ultratv.tv.nativeapp.i18n.homeRows
+import com.ultratv.tv.nativeapp.i18n.homeRowsSummary
+import com.ultratv.tv.nativeapp.i18n.personalization
+import com.ultratv.tv.nativeapp.i18n.startScreenName
+import com.ultratv.tv.nativeapp.i18n.textSizeLabel
+import com.ultratv.tv.nativeapp.i18n.textSizeName
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.GroupLabel
@@ -76,7 +89,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -146,7 +159,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 val sel = rub == i
                 FocusSurface(
                     onClick = { rub = i }, shape = RoundedCornerShape(18.design), bg = if (sel) Ux.Surface2 else Color.Transparent, ringWidth = 5.design, focusedScale = 1.0f,
-                    modifier = Modifier.fillMaxWidth().height(72.design).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused) rub = i },
+                    modifier = Modifier.fillMaxWidth().height(72.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused) rub = i },
                 ) { f ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         if (sel && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
@@ -170,8 +183,8 @@ private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 /** « scheme://hôte » seulement : jamais le chemin (qui peut contenir des identifiants). */
 internal fun hostOnly(baseUrl: String): String = runCatching { java.net.URI(baseUrl).let { "${it.scheme}://${it.host}" } }.getOrDefault("")
 
-/** Types de source pris en charge ; un type hérité (ex. Stalker, retiré en 1.1.1) reste affichable et supprimable. */
-internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL")
+/** Types de source pris en charge ; un type hérité inconnu reste affichable et supprimable. */
+internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL", "STALKER")
 
 private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; else -> null }
 
@@ -230,18 +243,18 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(22.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->
                 Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(60.design).clip(RoundedCornerShape(16.design)).background(if (p.active) Ux.Accent else Ux.Surface2), contentAlignment = Alignment.Center) {
-                        DIcon(when (p.kind) { "XTREAM" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, Ux.White)
+                        DIcon(when (p.kind) { "XTREAM", "STALKER" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, if (p.active) Ux.OnAccent else Ux.White)
                     }
                     Spacer(Modifier.width(24.design))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                         Text(p.name, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         val cloudTag = when {
-                            p.kind != "XTREAM" && p.kind != "M3U" -> null
+                            p.kind != "XTREAM" && p.kind != "M3U" && p.kind != "STALKER" -> null
                             vm.cloudIdOf(p.id) != null -> C.cloudShared(vm.sharedWith(p.id).coerceAtLeast(1))
                             paired -> C.localPrivate
                             else -> null
                         }
-                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: D.unsupportedSource, cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
+                        val meta = listOfNotNull(kindName(S.wiz, p.kind) ?: (if (p.kind == "STALKER") D.kindStalker else D.unsupportedSource), cloudTag, if (p.active) D.active else null, if (p.active && counts.live > 0) D.channels(counts.live) else null).joinToString(" · ")
                         Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                     Text(D.edit, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
@@ -294,14 +307,22 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud)), null,
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud)), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
+        OpenDialog.STALKER -> {
+            // La connexion au portail est vérifiée avant l'ajout : le dialogue reste ouvert (« Connexion au portail… ») jusqu'au verdict.
+            var checking by remember { mutableStateOf(false) }
+            StalkerDialog({ dialog = OpenDialog.NONE }, busy = checking) { n, u, mac, login, pw ->
+                checking = true
+                vm.addStalkerAndSync(n, u, mac, login, pw, D.stalkerFailed) { ok -> checking = false; if (ok) dialog = OpenDialog.NONE }
+            }
+        }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
-            val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U")
+            val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U" || p.kind == "STALKER")
             val linked = vm.cloudIdOf(p.id) != null
             val supported = p.kind in SUPPORTED_KINDS
             val opts = buildList {
@@ -354,9 +375,13 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
         val modes = listOf("auto" to (D.modeAuto to D.modeAutoDesc), "launch" to (D.modeLaunch to D.modeLaunchDesc), "scheduled" to (D.modeScheduled to D.modeScheduledDesc(p.syncHour)), "manual" to (D.modeManual to D.modeManualDesc))
         modes.forEach { (id, pair) ->
             val sel = p.syncMode == id
-            FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(22.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 5.design, modifier = Modifier.weight(1f).height(132.design)) { f ->
-                Column(Modifier.fillMaxSize().padding(24.design).then(if (sel && !f) Modifier.border(2.design, Ux.Accent, RoundedCornerShape(22.design)) else Modifier), verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically)) {
-                    Text(pair.first, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(22.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 5.design, modifier = Modifier.weight(1f).height(132.designT)) { f ->
+                // Mode actif : coche + titre accent (comme ChoiceRow), visible que la carte soit focalisée ou non.
+                Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically)) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                        if (sel) DIcon(Icons.Check, 24.design, if (f) Ux.TextOnLight else Ux.AccentInk, strokeWidth = 3.2f)
+                        Text(pair.first, color = if (f) Ux.TextOnLight else if (sel) Ux.AccentInk else Ux.Text, fontFamily = Manrope, fontWeight = if (sel) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     Text(pair.second, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
@@ -391,7 +416,7 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
 
 @Composable
 private fun ContentRow(icon: String, label: String, meta: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    FocusSurface(onClick = { onChange(!on) }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(84.design)) { f ->
+    FocusSurface(onClick = { onChange(!on) }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(84.designT)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             DIcon(icon, 28.design, if (f) Ux.TextOnLight else Ux.Text)
             Spacer(Modifier.width(20.design))
@@ -444,15 +469,27 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
-        PrefRow(D.openOn, if (p.autoPlayLastOnLaunch) D.lastChannel else D.homeScreen) { choice = "open" }
+        val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
+        PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
         PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
         PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) { pickLogos.launch(null) }
+    }
+    // Personnalisation : accent, taille du texte, rangées de l'accueil.
+    GroupLabel(D.personalization)
+    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        PrefRow(D.accentColor, D.accentName(AccentChoice.parse(p.accent))) { choice = "accent" }
+        PrefRow(D.textSizeLabel, D.textSizeName(TextSize.parse(p.textSize))) { choice = "text" }
+        val layout = remember(p.homeOrder, p.homeHidden) { com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden) }
+        PrefRow(D.homeRows, D.homeRowsSummary(layout.order.count { layout.isVisible(it) }, layout.order.size)) { choice = "home" }
     }
     when (choice) {
         "theme" -> ChoiceDialog(D.theme, listOf(AppTheme.DARK to D.themeDark, AppTheme.LIGHT to D.themeLight, AppTheme.AUTO to D.themeAuto), p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to it.displayName }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
-        "open" -> ChoiceDialog(D.openOn, listOf(false to D.homeScreen, true to D.lastChannel), p.autoPlayLastOnLaunch, { app.setAutoPlayLast(it); choice = "" }, { choice = "" })
+        "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
+        "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
+        "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
+        "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
         "tz" -> ChoiceDialog(D.timeZone, TIME_ZONES.map { it to timeZoneLabel(D, it) }, p.timeZone, { app.setTimeZone(it); choice = "" }, { choice = "" })
     }
 }
@@ -500,7 +537,13 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         SwitchPrefRow(D.compatVideo, com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current), hint = D.compatVideoHint) {
             app.setVideoSurface(if (it) "texture" else "surface")
         }
+        // Aperçu vidéo du Direct (TV seulement : sans effet sur téléphone / tablette).
+        if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.live.LivePreviewSettingsRows()
     }
+    DnsSection()   // Réseau › DNS (DnsSection.kt)
+    com.ultratv.tv.nativeapp.ui.downloads.DownloadSettingsSection()   // Téléchargements hors ligne (Wi-Fi seulement, emplacement)
+    // Trakt (compte lié seulement) : marquer vu à la fin, listes personnelles à l'accueil.
+    com.ultratv.tv.nativeapp.ui.trakt.TraktSettingsSection()
     when (choice) {
         "engine" -> ChoiceDialog(D.playerRow, listOf("auto" to D.auto, "exo" to D.engineExo, "vlc" to D.engineVlc), p.playerEngine, { panes.setPlayerEngine(it); choice = "" }, { choice = "" })
         "dec" -> ChoiceDialog(D.decodingRow, listOf("auto" to D.auto, "hw" to D.hardware, "sw" to D.software), p.decoderMode, { panes.setDecoder(it); choice = "" }, { choice = "" })
@@ -554,7 +597,7 @@ fun LanguagePickerDialog(languages: List<Pair<String, Int>>, selected: Set<Strin
 
 @Composable
 private fun LangRow(label: String, count: String, on: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(68.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(68.designT)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, modifier = Modifier.weight(1f))
             if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)

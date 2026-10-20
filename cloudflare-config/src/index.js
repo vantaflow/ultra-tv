@@ -33,6 +33,7 @@ import { sanitizeText } from "./sanitize.js";
 import {
   TRAKT_STATE_TTL_S, pkcePair, authorizeUrl, exchangeCode, refreshTokens, traktUsername, revokeToken,
   parseScrobble, resolveTmdb, traktScrobbleBody, sendScrobble,
+  parseWatchlist, parseHistory, parseRating, traktWriteRequest, sendSync,
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
@@ -144,6 +145,9 @@ async function route(req, env, ctx) {
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
   if (path === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
   if (path === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url, ctx);
+  if (path === "/api/device/trakt/watchlist" && m === "POST") return deviceTraktWrite(req, env, "watchlist");
+  if (path === "/api/device/trakt/history" && m === "POST") return deviceTraktWrite(req, env, "history");
+  if (path === "/api/device/trakt/rating" && m === "POST") return deviceTraktWrite(req, env, "rating");
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -689,6 +693,41 @@ async function deviceTraktScrobble(req, env) {
   // Vu (Trakt marque « vu » au-delà de 80 %) : la bibliothèque en cache est périmée.
   if (r === "ok" && s.action === "stop" && s.progress >= 80) await forgetTraktLibrary(env, auth.acct.login);
   return json({ linked: true, matched: r !== "unmatched", ok: r === "ok" });
+}
+
+const TRAKT_PARSERS = { watchlist: parseWatchlist, history: parseHistory, rating: parseRating };
+
+/**
+ * Écriture Trakt demandée par un appareil (watchlist, vu / non vu, note). L'appareil décrit l'œuvre ; le Worker
+ * l'identifie (TMDB), écrit avec les jetons du compte (renouvelés si besoin) puis oublie la bibliothèque en cache :
+ * la prochaine lecture de /api/device/trakt/library reflète le changement.
+ */
+async function deviceTraktWrite(req, env, kind) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  // Gestes manuels : 60 écritures / 10 min / appareil (Trakt limite lui-même les POST à environ 1 par seconde).
+  const rl = await limited(env, `traktw:dev:${auth.device.id}`, 60, 600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 8 * 1024);
+  if (body.error) return body.error;
+  const p = TRAKT_PARSERS[kind](body.value);
+  if (!p) return json({ error: "invalid" }, 400);
+  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const tmdb = p.tmdb || (await resolveTmdb(env, p.type === "movie" ? "movie" : "tv", p.title, p.year));
+  if (!tmdb) { console.log(JSON.stringify({ trakt: kind, unmatched: p.type })); return json({ linked: true, matched: false, ok: false }); }
+  const { path, body: payload } = traktWriteRequest(kind, p, tmdb);
+  const redirectUri = traktRedirect(new URL(req.url));
+  let access = await traktAccess(env, auth.acct.login, redirectUri);
+  if (!access) return json({ linked: false });
+  let r = await sendSync(env.TRAKT_CLIENT_ID, access, path, payload);
+  if (r === "unauthorized") {
+    access = await traktAccess(env, auth.acct.login, redirectUri, true);
+    if (!access) return json({ linked: false });
+    r = await sendSync(env.TRAKT_CLIENT_ID, access, path, payload);
+  }
+  if (r === "ok") await forgetTraktLibrary(env, auth.acct.login);
+  if (r === "upstream") return json({ linked: true, matched: true, ok: false, error: "upstream" }, 502);
+  return json({ linked: true, matched: r !== "unmatched", ok: r === "ok", tmdb });
 }
 
 const traktLibKey = (login, lang) => `tlib:${login}:${lang}`;

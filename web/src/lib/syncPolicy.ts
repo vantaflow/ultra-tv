@@ -3,7 +3,7 @@ import type { Source } from "@/db/types";
 
 /** Langues à synchroniser à la fin de l'assistant : seulement pour une source Xtream (type EFFECTIF, après conversion get.php) et un choix partiel. */
 export function langsToSync(type: Source["type"], chosen: ReadonlySet<string>, detectedCount: number): string[] | null {
-  return type === "xtream" && chosen.size < detectedCount ? [...chosen] : null;
+  return (type === "xtream" || type === "stalker") && chosen.size < detectedCount ? [...chosen] : null;
 }
 
 /** Source jamais synchronisée (ex. M3U get.php convertie au démarrage). */

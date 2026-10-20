@@ -91,4 +91,4 @@ Disposition : `src/db` (Dexie, requêtes), `src/net` (transport, Xtream, JSON en
 TitleCleaner, M3U).
 
 Les données de l'ancienne interface (base IndexedDB `ultratv`) ne sont pas migrées : la nouvelle
-base s'appelle `ultratv-desktop`. Le support Stalker a été retiré.
+base s'appelle `ultratv-desktop`. Les portails Stalker / Ministra (MAC) sont pris en charge (`src/net/stalker.ts`) : le lien de lecture est demandé au portail au moment de jouer ; dans le navigateur, le Cookie MAC exige l'application de bureau ou un proxy (en-têtes relayés `X-UT-H-*` / `X-SV-H-*`).

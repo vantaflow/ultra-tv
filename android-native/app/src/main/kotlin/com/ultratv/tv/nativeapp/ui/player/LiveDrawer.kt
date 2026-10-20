@@ -110,7 +110,7 @@ internal fun LiveDrawer(
             }
             Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.BottomStart) {
                 Column(Modifier.fillMaxWidth().background(Color(0xE00A0A0C)).padding(start = 48.design, end = 96.design, top = 32.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
-                    Label(D.selectedChannel, color = Ux.Accent)
+                    Label(D.selectedChannel, color = Ux.AccentInk)
                     Text(shown?.now?.title ?: shown?.channel?.title.orEmpty(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     shown?.now?.let { n ->
                         Text(
@@ -136,7 +136,7 @@ private fun Label(text: String, modifier: Modifier = Modifier, color: Color = Ux
 private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, variant: Int = 1, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val now = e.now
     val fraction = if (now != null && now.endMs > now.startMs) ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs)).coerceIn(0f, 1f) else 0f
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(96.design).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(96.designT).onFocusChanged { if (it.isFocused) onFocus() }) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             Text("$index", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.width(48.design))
             LogoBox(e.channel.logo, e.channel.title, Modifier.width(64.design).height(42.design), radius = 8, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
@@ -146,7 +146,7 @@ private fun ChannelLine(e: PlayerViewModel.DrawerEntry, index: Int, variant: Int
                 Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             com.ultratv.tv.nativeapp.ui.live.StreamBadges(e.channel.quality, e.channel.flags, f, variant)
-            if (e.isCurrent) Text(D.onAirPill, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
+            if (e.isCurrent) Text(D.onAirPill, color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = TextUnit(1.3f, TextUnitType.Sp), maxLines = 1)
         }
     }
 }

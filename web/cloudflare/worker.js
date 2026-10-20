@@ -72,7 +72,7 @@ function corsHeaders(request, env) {
     h.set("Access-Control-Allow-Origin", request.headers.get("origin"));
     h.set("Vary", "Origin");
     h.set("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS");
-    h.set("Access-Control-Allow-Headers", "Content-Type,Range,X-SV-UA,X-SV-Referer");
+    h.set("Access-Control-Allow-Headers", "Content-Type,Range,X-SV-UA,X-SV-Referer,X-SV-H-Cookie,X-SV-H-Authorization,X-SV-H-X-User-Agent");
     h.set("Access-Control-Expose-Headers", "Content-Length,Content-Range,Content-Type,X-SV-Diagnostic");
   }
   return h;
@@ -104,6 +104,11 @@ export default {
     headers.set("Accept-Language", "en-US,en;q=0.9");
     const referer = request.headers.get("x-sv-referer");
     if (referer) headers.set("Referer", referer.slice(0, 512));
+    // Portail Stalker : MAC (Cookie), jeton (Authorization) et X-User-Agent relayés (liste fermée).
+    for (const name of ["cookie", "authorization", "x-user-agent"]) {
+      const v = request.headers.get("x-sv-h-" + name);
+      if (v) headers.set(name, v.slice(0, 512));
+    }
     const range = request.headers.get("range");
     if (range) headers.set("Range", range.slice(0, 128));
 

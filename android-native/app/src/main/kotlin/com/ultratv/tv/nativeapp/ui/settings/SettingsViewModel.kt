@@ -302,6 +302,30 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Portail Stalker : la connexion est vérifiée AVANT l'enregistrement (point d'entrée sondé puis mémorisé) ; un portail
+     * qui refuse la MAC n'est pas ajouté et [failedText] est affiché.
+     */
+    fun addStalkerAndSync(name: String, portal: String, mac: String, login: String, password: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _syncing.value = true
+            try {
+                val id = repo.addStalker(name, portal, mac, login, password, probe = true)
+                makeDefaultIfNone(id)
+                offerIfPaired(id)
+                sync.request(id, force = true)
+                onDone(true)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err(failedText)
+                onDone(false)
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
     fun addM3uLocal(name: String, label: String, text: String) {
         viewModelScope.launch {
             _syncing.value = true

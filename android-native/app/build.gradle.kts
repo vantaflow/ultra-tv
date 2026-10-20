@@ -216,6 +216,7 @@ dependencies {
     implementation(libs.media3.session)
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
+    implementation(libs.media3.datasource.okhttp)
     implementation("androidx.documentfile:documentfile:1.0.1")
     // QR code du tableau de bord cloud, généré localement (aucun réseau).
     implementation("com.google.zxing:core:3.5.3")
@@ -246,6 +247,8 @@ dependencies {
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+    // DNS personnalisé (Réglages › Lecture › DNS) : DNS-over-HTTPS, Apache-2.0 comme OkHttp.
+    implementation(libs.okhttp.dnsoverhttps)
 
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).

@@ -57,6 +57,7 @@ object UpdateChecker {
 
     private val http by lazy {
         OkHttpClient.Builder()
+            .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)   // DNS des Réglages (client hors graphe Hilt)
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .build()

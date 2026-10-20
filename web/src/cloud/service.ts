@@ -1,6 +1,7 @@
 // Compte cloud : appairage, synchronisation périodique des fournisseurs, partage d'une source locale.
 // Le jeton d'appareil est chiffré avec safeStorage (via encryptSecret) ; il n'est jamais journalisé.
 
+import { unpackCreds } from "@/net/stalker";
 import { create } from "zustand";
 import { getSetting, setSetting, db } from "@/db/db";
 import { deleteSource, emptySource, getSource, listSources, saveSource } from "@/db/sources";
@@ -122,7 +123,7 @@ async function syncNewSources(ids: number[]): Promise<void> {
     const rows = await listSources();
     const s = rows.find((x) => x.id === id);
     if (!s) continue;
-    const langs = s.type === "xtream" ? await autoLangs(s) : null;
+    const langs = s.type === "xtream" || s.type === "stalker" ? await autoLangs(s) : null;
     const withLangs = { ...s, langs };
     await saveSource(withLangs);
     while (useSync.getState().running) await new Promise((r) => setTimeout(r, 500));
@@ -305,13 +306,15 @@ export async function shareSource(source: Source, target: ShareTarget): Promise<
   const { worker } = useCloud.getState();
   const token = await getToken();
   if (!token) return { ok: false, reason: "error" };
+  const st = source.type === "stalker" ? unpackCreds(source.password) : null;
   const input: ProviderInput = {
     id: source.cloudId,
-    kind: source.type === "xtream" ? "XTREAM" : "M3U",
+    kind: source.type === "xtream" ? "XTREAM" : source.type === "stalker" ? "STALKER" : "M3U",
     name: source.name,
-    url: source.type === "xtream" ? source.server : source.m3uUrl,
-    username: source.type === "xtream" ? source.username : undefined,
-    password: source.type === "xtream" ? source.password : undefined,
+    url: source.type === "m3u" ? source.m3uUrl : source.server,
+    username: source.type === "xtream" ? source.username : st?.login || undefined,
+    password: source.type === "xtream" ? source.password : st?.password || undefined,
+    ...(source.type === "stalker" ? { mac: source.username } : {}),
     shareWith: target,
   };
   if (source.type === "m3u" && source.m3uUrl.startsWith("file:")) return { ok: false, reason: "unsupported" };

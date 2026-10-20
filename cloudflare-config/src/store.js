@@ -116,7 +116,21 @@ export async function rotateDevice(env, acct, device) {
 
 // ---- validation des fournisseurs -------------------------------------------
 
-const KINDS = ["XTREAM", "M3U"];   // Stalker retiré en 1.1.1 (jamais validé)
+// Portail Stalker / Ministra : `url` = portail, `mac` = MAC du boîtier (obligatoire), `username` / `password` facultatifs.
+const KINDS = ["XTREAM", "M3U", "STALKER"];
+
+/** MAC « 00:1A:79:XX:XX:XX » (séparateurs « : » ou « - » ou aucun) → forme normalisée en majuscules ; null sinon. */
+export function normalizeMac(raw) {
+  const hex = String(raw ?? "").replace(/[^0-9a-f]/gi, "").toUpperCase();
+  if (hex.length !== 12 || !/^[0-9A-F:\-\s]+$/i.test(String(raw ?? "").trim())) return null;
+  return hex.match(/.{2}/g).join(":");
+}
+
+/** MAC affichable sans la divulguer (comme un mot de passe) : seuls les deux derniers octets restent lisibles. */
+export function maskMac(mac) {
+  const n = normalizeMac(mac);
+  return n ? `••:••:••:••:${n.slice(-5)}` : "••:••:••:••:••:••";
+}
 
 function cleanLine(v, max) {
   // eslint-disable-next-line no-control-regex
@@ -149,6 +163,13 @@ export function parseProvider(form, origin = null) {
     p.password = cleanLine(form.get("password"), 256);
     if (!p.username || !p.password) return { error: "creds" };
   }
+  if (kind === "STALKER") {
+    p.mac = normalizeMac(form.get("mac"));
+    if (!p.mac) return { error: "mac" };
+    // Identifiant / mot de passe du portail : facultatifs (certains portails les demandent en plus de la MAC).
+    p.username = cleanLine(form.get("username"), 256);
+    p.password = cleanLine(form.get("password"), 256);
+  }
   return { provider: p };
 }
 
@@ -166,6 +187,8 @@ export function syncProvider(p) {
     // Source posée par le revendeur (édition Pro) : signalée comme telle aux appareils.
     managed: p.managed === "reseller" ? "reseller" : null,
     id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
+    // MAC du portail Stalker : envoyée aux appareils comme un identifiant (jamais réaffichée sur le tableau de bord).
+    ...(p.kind === "STALKER" ? { mac: p.mac || "" } : {}),
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
   };
 }
@@ -175,7 +198,7 @@ export function syncProvider(p) {
  * (un objet ou un tableau serait converti en « [object Object] » et passerait la validation).
  */
 export function parseDeviceProvider(body, origin) {
-  const FIELDS = ["kind", "name", "url", "username", "password"]; // `mac` est ignoré en entrée
+  const FIELDS = ["kind", "name", "url", "username", "password", "mac"]; // `mac` : portail Stalker seulement
   for (const k of FIELDS) {
     if (body[k] !== undefined && typeof body[k] !== "string") return { error: k };
   }
@@ -196,6 +219,8 @@ export function displayUrl(raw) {
  * Xtream : la playlist M3U équivalente (get.php) ; M3U : l'URL telle qu'enregistrée.
  */
 export function iptvLink(p) {
+  // Portail Stalker : aucun lien autonome (le portail exige la MAC en cookie, côté appareil).
+  if (p.kind === "STALKER") return "";
   if (p.kind !== "XTREAM") return p.url || "";
   try {
     const u = new URL(p.url);

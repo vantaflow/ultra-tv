@@ -46,4 +46,4 @@ export const syncSourceEpg = (source: Source) => call<number>({ type: "epg", sou
 export const detectSourceLanguages = (source: Source) =>
   call<{ languages: DetectedLanguage[]; counts: Record<"live" | "movie" | "series", number> }>({ type: "detect", source });
 export const testSource = (source: Source) =>
-  call<{ ok: true; expDate: number | null; maxConnections: number }>({ type: "test", source });
+  call<{ ok: true; expDate: number | null; maxConnections: number; stalkerApi?: string }>({ type: "test", source });

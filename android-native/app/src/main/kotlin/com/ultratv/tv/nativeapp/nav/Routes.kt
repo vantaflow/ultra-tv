@@ -11,6 +11,7 @@ object Routes {
     const val GUIDE = "guide"
     const val FAVORITES = "favorites"
     const val SETTINGS = "settings"
+    const val DOWNLOADS = "downloads"
     // Player accepts a stream URL (URL-encoded) + title.
     const val PLAYER = "player?url={url}&title={title}"
 

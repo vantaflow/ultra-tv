@@ -85,11 +85,21 @@ fun SeriesDetailScreen(
     val seasons = remember(eps) { eps.map { it.season }.distinct().sorted() }
     val progress = remember(watched) { watched.associateBy { it.remoteId } }
     // Épisode à reprendre : le dernier regardé non terminé, sinon le suivant du dernier terminé, sinon le tout premier.
-    val target: EpisodeEntity? = remember(eps, watched) { resumeTarget(eps, watched) }
+    val target: EpisodeEntity? = remember(eps, watched, traktSeen) { resumeTarget(eps, watched, traktSeen) }
     val resuming = target != null && progress[target.remoteId]?.let { it.positionMs > 0 } == true
     var season by remember(series.id) { mutableStateOf<Int?>(null) }
     val activeSeason = season ?: target?.season ?: seasons.firstOrNull()
     val shown = remember(eps, activeSeason) { eps.filter { it.season == activeSeason } }
+    // Téléchargements hors ligne de la série (par identifiant d'épisode) et avertissement « connexion » avant une lecture en ligne.
+    val dlVm: com.ultratv.tv.nativeapp.ui.downloads.DownloadActionsViewModel = hiltViewModel()
+    val dlStrings = com.ultratv.tv.nativeapp.ui.downloads.rememberDownloadStrings()
+    val dlFlow = remember(series.providerId, series.remoteId) { dlVm.forSeries(series) }
+    val downloads by dlFlow.collectAsState(initial = emptyMap())
+    val playOnline = onPlayEpisode
+    val onPlayEpisode: (String, String) -> Unit = { u, t ->
+        eps.firstOrNull { it.streamUrl == u }?.let { dlVm.warnBeforePlay(series.providerId, "EPISODE", it.remoteId, dlStrings) }
+        playOnline(u, t)
+    }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
@@ -109,6 +119,7 @@ fun SeriesDetailScreen(
                 { vm.playEpisode(series.name, series.remoteId, series.providerId, target, onPlayEpisode) },
             )
             com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.fillMaxWidth(), active = isFav, fill = isFav)
+            com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, eps, activeSeason, touch = true)
             tc.presentable(series.plot)?.let { com.ultratv.tv.nativeapp.ui.mobile.ExpandableText(it) }
         }
         val episodes: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
@@ -125,8 +136,14 @@ fun SeriesDetailScreen(
                 }
             }
             if (shown.isEmpty()) item(key = "empty") { Text(if (loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 14.sp) }
+            else item(key = "dl-season") {
+                com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) })
+            }
             items(shown, key = { "${it.season}:${it.episode}:${it.remoteId}" }) { ep ->
-                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen, modifier = Modifier.weight(1f)) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                    com.ultratv.tv.nativeapp.ui.downloads.EpisodeDownloadButton(series, ep, downloads[ep.remoteId], dlVm)
+                }
             }
         }
         if (twoPane) Box(Modifier.fillMaxSize().background(Ux.Bg)) {
@@ -193,10 +210,13 @@ fun SeriesDetailScreen(
                     modifier = Modifier.focusRequester(playRequester).onFocusChanged { focused = it.isFocused },
                 )
                 FavoriteButton(kind = "SERIES", remoteId = series.remoteId)
+                // Trakt : watchlist, note, saison / épisodes vus (rien si le compte n'est pas lié).
+                com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, eps, activeSeason)
             }
         }
         Column(Modifier.weight(1f).fillMaxHeight().padding(top = 44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
-            if (seasons.size > 1) LazyRow(horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+            if (seasons.size > 1) LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 items(seasons, key = { it }) { n ->
                     val sel = n == activeSeason
                     FocusSurface(
@@ -208,6 +228,11 @@ fun SeriesDetailScreen(
                         }
                     }
                 }
+            } else Spacer(Modifier.weight(1f))
+            if (shown.isNotEmpty()) PillButton(
+                dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) },
+                heightPx = 56, hPadPx = 28, fontPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download,
+            )
             }
             when {
                 shown.isEmpty() && loading -> Text(S.detailLoading, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
@@ -231,8 +256,12 @@ fun SeriesDetailScreen(
                         verticalArrangement = Arrangement.spacedBy(14.design),
                     ) {
                         itemsIndexed(shown, key = { _, it -> "${it.season}:${it.episode}:${it.remoteId}" }) { i, ep ->
-                            EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen,
-                                modifier = if (i == entryIndex) Modifier.focusRequester(entry) else Modifier) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen,
+                                    modifier = Modifier.weight(1f).then(if (i == entryIndex) Modifier.focusRequester(entry) else Modifier)) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
+                                // Téléchargement de l'épisode (→ depuis la ligne).
+                                com.ultratv.tv.nativeapp.ui.downloads.EpisodeDownloadButton(series, ep, downloads[ep.remoteId], dlVm)
+                            }
                         }
                     }
                     // Épisode à reprendre hors écran : la liste s'y place pour qu'il soit le point d'entrée.
@@ -243,12 +272,19 @@ fun SeriesDetailScreen(
     }
 }
 
-/** Dernier épisode commencé et inachevé ; à défaut le premier non vu ; à défaut le premier. */
-fun resumeTarget(eps: List<EpisodeEntity>, watched: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>): EpisodeEntity? {
+/**
+ * Dernier épisode commencé et inachevé ; sans historique local, le suivant du dernier vu sur Trakt ([traktSeen],
+ * « SxE ») ; à défaut le premier non vu ; à défaut le premier.
+ */
+fun resumeTarget(eps: List<EpisodeEntity>, watched: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>, traktSeen: Set<String> = emptySet()): EpisodeEntity? {
     if (eps.isEmpty()) return null
     val byRid = eps.associateBy { it.remoteId }
     watched.firstOrNull { it.positionMs > 0 && (it.durationMs == 0L || it.positionMs < it.durationMs - 60_000) }
         ?.let { byRid[it.remoteId] }?.let { return it }
+    if (watched.isEmpty() && traktSeen.isNotEmpty()) {
+        com.ultratv.tv.nativeapp.data.trakt.TraktUpNext.nextEpisode(traktSeen, eps.map { com.ultratv.tv.nativeapp.data.trakt.EpisodeRef(it.season, it.episode) })
+            ?.let { n -> eps.firstOrNull { it.season == n.season && it.episode == n.episode } }?.let { return it }
+    }
     val sorted = eps.sortedWith(compareBy({ it.season }, { it.episode }))
     val seen = watched.map { it.remoteId }.toSet()
     return sorted.firstOrNull { it.remoteId !in seen } ?: sorted.first()

@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -84,7 +85,7 @@ private fun CheckRow(label: String, count: String, checked: Boolean, onClick: ()
             Box(
                 Modifier.size(32.design).clip(RoundedCornerShape(8.design)).background(if (checked) Ux.Accent else Ux.Surface2),
                 contentAlignment = Alignment.Center,
-            ) { if (checked) DIcon(Icons.Check, 22.design, Ux.White, strokeWidth = 3f) }
+            ) { if (checked) DIcon(Icons.Check, 22.design, Ux.OnAccent, strokeWidth = 3f) }
             Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             if (count.isNotEmpty()) Text(count, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
         }
@@ -96,9 +97,13 @@ private fun CheckRow(label: String, count: String, checked: Boolean, onClick: ()
 fun LangBadge(lang: String, focused: Boolean = false, modifier: Modifier = Modifier) {
     if (lang.isBlank()) return
     val multi = lang == LangViewMulti
+    // Même style que les pastilles de qualité : fond plein, gras, contraste AA sur ligne au repos comme focalisée
+    // (ligne focalisée = Cta, sinon SurfaceDeep ; sur une affiche, jeu « ligne claire » : pastille sombre, texte blanc).
+    val darkRow = (if (focused) Ux.Cta else Ux.SurfaceDeep).luminance() < 0.4f
+    val chip = com.ultratv.tv.nativeapp.ui.design.BadgePalette.lang(darkRow, multi)
     Text(
-        if (multi) "MULTI" else lang.uppercase(), color = if (focused) Ux.White else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1,
-        modifier = modifier.clip(RoundedCornerShape(6.design)).background(if (focused) Ux.Accent else if (multi) Ux.Surface2 else Ux.Surface).padding(horizontal = 8.design, vertical = 3.design),
+        if (multi) "MULTI" else lang.uppercase(), color = androidx.compose.ui.graphics.Color(chip.fg), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1, softWrap = false,
+        modifier = modifier.clip(RoundedCornerShape(6.design)).background(androidx.compose.ui.graphics.Color(chip.bg)).padding(horizontal = 10.design, vertical = 3.design),
     )
 }
 

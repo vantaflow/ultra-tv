@@ -134,9 +134,11 @@ class TraktScrobbler(
     dispatcher: CoroutineDispatcher,
     /** Un arrêt de lecture (non-lecture) n'est signalé en `pause` qu'après ce délai : évite le bruit du buffering. */
     private val pauseDelayMs: Long = 3_000,
+    /** Réglage « Marquer vu automatiquement à la fin » : désactivé, la fin est envoyée en `pause` (jamais « vu »). */
+    private val autoWatched: () -> Boolean = { true },
 ) {
-    @Inject constructor(transport: WorkerTraktTransport, resolver: DbTraktIdentityResolver) :
-        this(transport, resolver, Dispatchers.IO)
+    @Inject constructor(transport: WorkerTraktTransport, resolver: DbTraktIdentityResolver, prefs: TraktPrefsStore) :
+        this(transport, resolver, Dispatchers.IO, autoWatched = { prefs.state.value.autoWatched })
 
     private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val queue = Channel<Pending>(Channel.UNLIMITED)
@@ -208,7 +210,9 @@ class TraktScrobbler(
             if (synchronized(lock) { unlinkedKey == p.key }) return
             val identity = if (known) cached else resolveOnce(p)
             identity ?: return
-            if (transport.send(ScrobbleRequest(p.action, p.progress, identity)) == ScrobbleResult.NOT_LINKED) {
+            // Trakt marque « vu » un `stop` au-delà de 80 % ; sans marquage automatique, on n'enregistre qu'une pause.
+            val action = if (p.action == "stop" && p.progress >= WATCHED_PERCENT && !autoWatched()) "pause" else p.action
+            if (transport.send(ScrobbleRequest(action, p.progress, identity)) == ScrobbleResult.NOT_LINKED) {
                 synchronized(lock) { unlinkedKey = p.key }   // compte non lié : inutile d'insister pour cet élément
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -222,5 +226,10 @@ class TraktScrobbler(
         val id = resolver.resolve(p.item)
         synchronized(lock) { resolvedKey = p.key; resolvedIdentity = id }
         return id
+    }
+
+    companion object {
+        /** Seuil de Trakt au-delà duquel un `stop` marque l'élément « vu ». */
+        const val WATCHED_PERCENT = 80.0
     }
 }

@@ -48,6 +48,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     @Inject lateinit var traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>
     @Inject lateinit var providerRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProviderRepository>
     @Inject lateinit var posters: dagger.Lazy<com.ultratv.tv.nativeapp.data.tmdb.PosterResolver>
+    @Inject lateinit var downloads: dagger.Lazy<com.ultratv.tv.nativeapp.data.downloads.DownloadRepository>
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -139,6 +140,9 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
         // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
         bgScope.launch { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
+
+        // Téléchargements hors ligne : table de lecture locale, purge des sources supprimées, reprise de la file.
+        bgScope.launch { runCatching { downloads.get().start(bgScope) } }
 
         // Trakt : recharge la dernière bibliothèque du disque et calcule les rangées de la source active dès le lancement
         // (l'accueil les trouve déjà prêtes), puis relit le réseau selon la règle des 15 min. runCatching : jamais bloquant.

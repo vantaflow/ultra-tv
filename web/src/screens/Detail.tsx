@@ -12,6 +12,8 @@ import { currentTransport } from "@/net/transport";
 import { seriesInfo, vodInfo, type SeriesInfo, type VodInfo } from "@/net/xtream";
 import { usePlayer } from "@/player/store";
 import { movieTarget } from "@/player/targets";
+import { stalkerClientFor } from "@/player/resolve";
+import { parseStalkerLink, type StalkerEpisode } from "@/net/stalker";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
@@ -20,6 +22,9 @@ import { Img } from "@/ui/Img";
 import { StateCard } from "@/ui/common";
 import { credsOf } from "@/sync/core";
 import { useIsWatchedMovie, useWatchedEpisodes } from "@/trakt/hooks";
+import { TraktMovieActions, TraktSeriesActions } from "@/trakt/TraktUi";
+import { nextEpisode } from "@/trakt/progress";
+import { tmdbOf } from "@/player/trakt";
 import { NoSource } from "./states";
 
 const WEEK = 7 * 86400_000;
@@ -35,6 +40,19 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
       const hit = await db.details.get(key);
       if (hit && !dead) setState({ info: hit.json as T, error: false });
       if (hit && Date.now() - hit.fetchedAt < WEEK) return;
+      if (source.type === "stalker") {
+        // Portail Stalker : pas de fiche détaillée ; épisodes lus sur le portail (saisons, ou tableau `series`).
+        if (kind === "vod") { if (!dead && !hit) setState({ info: {} as T, error: false }); return; }
+        try {
+          const row = await db.series.where("[sourceId+seriesId]").equals([source.cid, id]).first();
+          const base = row?.url ? parseStalkerLink(row.url) : null;
+          const eps = await (await stalkerClientFor(source)).episodes(String(id), base?.cmd ?? null, row?.eps ?? null);
+          const json = stalkerSeriesInfo(eps);
+          await db.details.put({ key, json, fetchedAt: Date.now() });
+          if (!dead) setState({ info: json as T, error: false });
+        } catch { if (!dead && !hit) setState({ info: null, error: true }); }
+        return;
+      }
       if (source.type !== "xtream") return;
       try {
         const tr = await currentTransport();
@@ -46,6 +64,13 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
     return () => { dead = true; };
   }, [source.id, kind, id]);
   return state;
+}
+
+/** Épisodes du portail Stalker présentés comme une fiche Xtream (`episodes` par saison) + leurs adresses internes. */
+export function stalkerSeriesInfo(eps: StalkerEpisode[]): SeriesInfo & { stalker: Array<{ id: number; url: string }> } {
+  const episodes: Record<string, Array<{ id: number; title: string; episode_num: number; container_extension: string; info: { plot?: string; movie_image?: string } }>> = {};
+  for (const e of eps) (episodes[String(e.season)] ??= []).push({ id: e.id, title: e.title, episode_num: e.num, container_extension: "", info: { plot: e.plot ?? undefined, movie_image: e.img ?? undefined } });
+  return { episodes, stalker: eps.map((e) => ({ id: e.id, url: e.url })) };
 }
 
 function Facts({ items }: { items: (string | number | null | undefined)[] }) {
@@ -89,7 +114,7 @@ function MovieInner({ source }: { source: Source }) {
   const dur = i?.duration_secs ? fmtDuration(toNum(i.duration_secs)) : presentable(i?.duration);
   const resume = hist && hist.pos > 20 ? hist.pos : 0;
   const m: MovieRow = movie;
-  const play = (startAt?: number) => usePlayer.getState().open(movieTarget(source, { streamId: m.streamId, title: m.title, poster: m.poster, ext: m.ext }, startAt), "full");
+  const play = (startAt?: number) => usePlayer.getState().open(movieTarget(source, { streamId: m.streamId, title: m.title, poster: m.poster, ext: m.ext, url: m.url }, startAt), "full");
   const back = firstString(i?.backdrop_path) ?? i?.movie_image ?? m.poster;
   return (
     <div className="detail">
@@ -110,6 +135,7 @@ function MovieInner({ source }: { source: Source }) {
             useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
           }}><Icon name="heart" size={24} fill={isFav} /></button>
         </div>
+        <TraktMovieActions title={m.title} year={m.year} tmdb={tmdbOf((i as { tmdb_id?: unknown } | undefined)?.tmdb_id)} seen={seenMovie(m.title, m.year)} />
         <Cast names={[...splitNames(i?.director).map((n) => n), ...splitNames(i?.cast ?? i?.actors)]} label={t("vod.cast")} />
       </div>
     </div>
@@ -172,7 +198,9 @@ function SeriesInner({ source }: { source: Source }) {
   }, "full");
   const allEps = parsed.seasons.flatMap((x) => x.eps);
   const resumeEp = last?.epId != null ? allEps.find((e) => e.id === last.epId) : undefined;
-  const main = resumeEp ?? allEps[0];
+  // Sans historique local : l'épisode qui suit le dernier vu sur Trakt (s'il existe dans la playlist).
+  const traktNext = !last && seenEps ? nextEpisode(seenEps, allEps.map((e) => ({ season: e.season, episode: e.num }))) : null;
+  const main = resumeEp ?? (traktNext ? allEps.find((e) => e.season === traktNext.season && e.num === traktNext.episode) : undefined) ?? allEps[0];
   return (
     <div className="detail series">
       <div className="backdrop" aria-hidden="true"><Img src={firstString(i?.backdrop_path) ?? s.backdrop} /></div>
@@ -196,6 +224,7 @@ function SeriesInner({ source }: { source: Source }) {
               useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
             }}><Icon name="heart" size={24} fill={isFav} /></button>
           </div>
+          <TraktSeriesActions title={s.title} year={s.year} tmdb={tmdbOf((i as { tmdb?: unknown } | undefined)?.tmdb)} season={season} episodes={allEps.map((e) => ({ season: e.season, episode: e.num }))} />
           <Cast names={splitNames(i?.cast)} label={t("vod.cast")} />
         </section>
         <section aria-label={t("vod.episodes")} style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>

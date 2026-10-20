@@ -91,7 +91,7 @@ Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp
         val mainCol: @Composable (Modifier) -> Unit = { mainModifier ->
             Column(mainModifier, verticalArrangement = Arrangement.spacedBy(if (touch) 24.dp else 44.design)) {
                 Column(verticalArrangement = Arrangement.spacedBy(18.design)) {
-                    Text(D.firstSync, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, maxLines = 1)
+                    Text(D.firstSync, color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 3.sp, maxLines = 1)
                     Text(D.preparing, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 30.sp else 72.spx, lineHeight = if (touch) 34.sp else 76.spx, letterSpacing = (-1).spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(D.preparingBody, color = Ux.Text2, fontFamily = Manrope, fontSize = if (touch) 15.sp else 30.spx, lineHeight = if (touch) 22.sp else 42.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 }
@@ -138,7 +138,7 @@ Text("ULTRA ", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp
 }
 
 private fun kindLabel(W: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) {
-    "XTREAM" -> W.kindXtream; "M3U" -> W.kindM3u; "M3U_LOCAL" -> W.kindM3uFile; else -> ""
+    "XTREAM" -> W.kindXtream; "M3U" -> W.kindM3u; "M3U_LOCAL" -> W.kindM3uFile; "STALKER" -> "Stalker"; else -> ""
 }
 
 private fun countText(D: DesignStrings, part: SyncPart, n: String) = when (part) {
@@ -201,7 +201,7 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
         Box(
             Modifier.size(60.design).clip(CircleShape).background(when { done -> Ux.Surface2; active -> Ux.Accent; error -> Color(0xFF5A1A1E); else -> Ux.Surface }),
             contentAlignment = Alignment.Center,
-        ) { DIcon(if (done) Icons.Check else icon, 30.design, if (done || active || error) Ux.White else Ux.Muted, strokeWidth = 2.5f) }
+        ) { DIcon(if (done) Icons.Check else icon, 30.design, if (active) Ux.OnAccent else if (done || error) Ux.White else Ux.Muted, strokeWidth = 2.5f) }
         Spacer(Modifier.width(24.design))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {

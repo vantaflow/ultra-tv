@@ -71,6 +71,8 @@ export function nonStandardHttpStatus(message: string): number | null {
 /** Vrai si un champ obligatoire manque, selon le TYPE EFFECTIF de la source (après conversion get.php → Xtream). */
 export function missingRequired(kind: string, s: Source): boolean {
   if (s.type === "xtream") return !s.server.trim() || !s.username.trim() || !s.password;
+  // Portail Stalker : adresse du portail et MAC complète ; identifiant / mot de passe facultatifs.
+  if (s.type === "stalker") return !s.server.trim() || s.username.replace(/[^0-9a-f]/gi, "").length !== 12;
   if (kind === "m3u-link") return !s.m3uUrl.trim();
   return false;
 }

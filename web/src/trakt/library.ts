@@ -3,7 +3,7 @@
 // « non lié » (ou appareil non appairé) vide tout : l'interface n'affiche alors rien de Trakt.
 
 import { create } from "zustand";
-import { traktLibrary, type TraktLibraryResult } from "@/cloud/client";
+import { normalizeTraktLibrary, traktLibrary, type TraktLibraryResult } from "@/cloud/client";
 import { getToken, useCloud } from "@/cloud/service";
 import type { Lang } from "@/i18n/lang";
 import { usePrefs } from "@/state/prefs";
@@ -27,7 +27,8 @@ export function loadSavedLibrary(): Saved | null {
     const o = JSON.parse(raw) as Partial<Saved>;
     const l = o.lib;
     if (!l || l.linked !== true || typeof o.key !== "string" || typeof o.loadedAt !== "number" || !Array.isArray(l.watchlist) || !Array.isArray(l.recommendations)) return null;
-    const lib: Linked = { ...l, trending: Array.isArray(l.trending) ? l.trending : [], popular: Array.isArray(l.popular) ? l.popular : [], watched: l.watched ?? { movies: [], shows: [] } };
+    // Copie d'un ancien format (sans notes, listes, reprises) : complétée par la même normalisation que la réponse réseau.
+    const lib: Linked = normalizeTraktLibrary(l as unknown as Record<string, unknown>);
     return { lib, loadedAt: o.loadedAt, key: o.key };
   } catch { return null; }
 }
@@ -51,8 +52,22 @@ export const traktLang = (l: Lang | string | undefined): string => (["fr", "en",
 
 let inflight: Promise<void> | null = null;
 
+/**
+ * Correction locale immédiate après une écriture réussie (watchlist, vu, note) : l'interface suit sans attendre la
+ * relecture du Worker. Sans effet si le compte n'est pas lié.
+ */
+export function patchTraktLibrary(f: (lib: Linked) => Linked): void {
+  const cur = useTraktLibrary.getState();
+  if (!cur.lib) return;
+  const lib = f(cur.lib);
+  saveLibrary({ lib, loadedAt: cur.loadedAt, key: cur.key });
+  useTraktLibrary.setState({ lib, watched: buildWatched(lib.watched) });
+}
+
 /** Recharge la bibliothèque. `force` ignore le délai de 15 min (changement de source). Ne lève jamais. */
 export function refreshTraktLibrary(force = false): Promise<void> {
+  // Relecture forcée pendant une relecture en cours (écriture juste faite) : enchaînée après, jamais ignorée.
+  if (force && inflight) return inflight.then(() => refreshTraktLibrary(true));
   const { paired, worker } = useCloud.getState();
   if (!paired) { saveLibrary(null); useTraktLibrary.setState({ lib: null, watched: EMPTY, loadedAt: 0, key: "" }); return Promise.resolve(); }
   const lang = traktLang(usePrefs.getState().lang);

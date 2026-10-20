@@ -182,7 +182,7 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
                 Modifier.width(92.design).height(44.design).clip(RoundedCornerShape(10.design)).background(if (running) Ux.Accent else if (failed) Ux.Muted2 else Ux.Surface2),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(if (running) D.recBadge else if (scheduled) D.recScheduledBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running || failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
+                Text(if (running) D.recBadge else if (scheduled) D.recScheduledBadge else if (failed) D.recFailedBadge else D.recQueuedBadge, color = if (running) Ux.OnAccent else if (failed) Ux.White else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(1.5f, androidx.compose.ui.unit.TextUnitType.Sp), maxLines = 1)
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.design)) {
                 Text(r.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

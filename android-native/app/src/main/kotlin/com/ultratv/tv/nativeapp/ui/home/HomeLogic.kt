@@ -18,10 +18,17 @@ import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
 /** Rangées de l'accueil, dans l'ordre d'affichage. [contentType] regroupe les rangées de même forme (réutilisation). */
 enum class HomeSectionId(val contentType: String) {
     RESUME("resume"),
+    TRAKT_UP_NEXT("posters"),
     TRAKT_WATCHLIST("posters"),
     TRAKT_RECOMMENDED("posters"),
     TRAKT_TRENDING("posters"),
     TRAKT_POPULAR("posters"),
+    // Listes personnelles Trakt (au plus 5, voir TraktPrefs.MAX_LIST_ROWS), dans l'ordre de Trakt.
+    TRAKT_LIST_1("posters"),
+    TRAKT_LIST_2("posters"),
+    TRAKT_LIST_3("posters"),
+    TRAKT_LIST_4("posters"),
+    TRAKT_LIST_5("posters"),
     RECENT_CHANNELS("resume"),
     LATEST_MOVIES("posters"),
     LATEST_SERIES("posters"),
@@ -32,7 +39,21 @@ enum class HomeSectionId(val contentType: String) {
 val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
     HomeSectionId.RESUME, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED,
     HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR, HomeSectionId.CHANNELS,
+    HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3,
+    HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
 )
+
+/** Rangées « liste Trakt », dans l'ordre. */
+val TRAKT_LIST_SECTIONS: List<HomeSectionId> = listOf(
+    HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
+)
+
+/** Index de la liste Trakt affichée par cette rangée (0..4), ou -1. */
+val HomeSectionId.traktListIndex: Int get() = TRAKT_LIST_SECTIONS.indexOf(this)
+
+/** Liste personnelle Trakt prête à afficher (nom tel que sur Trakt). */
+@Immutable
+data class TraktListUi(val id: String, val name: String, val cards: List<PosterCardUi>)
 
 /** Carte « Reprendre » prête à afficher : titre déjà nettoyé (regex hors fil principal), progression calculée. */
 @Immutable
@@ -61,11 +82,16 @@ data class HomeRows(
     val recommended: List<PosterCardUi> = emptyList(),
     val trending: List<PosterCardUi> = emptyList(),
     val popular: List<PosterCardUi> = emptyList(),
+    /** « À suivre (Trakt) » : séries regardées dont l'épisode suivant est disponible (titre « Série · S02E05 »). */
+    val upNext: List<PosterCardUi> = emptyList(),
+    val traktLists: List<TraktListUi> = emptyList(),
     val recentChannels: List<ResumeCardUi> = emptyList(),
     val latestMovies: List<PosterCardUi> = emptyList(),
     val latestSeries: List<PosterCardUi> = emptyList(),
     val channels: List<ChannelCardUi> = emptyList(),
     val showingFavorites: Boolean = false,
+    /** Ordre et rangées masquées choisis par l'utilisateur (Réglages › Affichage). */
+    val layout: HomeLayout = HomeLayout.DEFAULT,
 ) {
     /** Rangées non vides dans l'ordre d'affichage (calculé une fois, à la construction, hors fil principal). */
     val order: List<HomeSectionId> = homeSectionOrder(this)
@@ -73,13 +99,20 @@ data class HomeRows(
     companion object { val EMPTY = HomeRows() }
 }
 
-/** Ordre fixe de la maquette ; une rangée vide n'est jamais affichée (ni titre ni espace). */
-fun homeSectionOrder(rows: HomeRows): List<HomeSectionId> = buildList {
+/**
+ * Ordre de la maquette, réordonné / filtré par la disposition de l'utilisateur ([HomeRows.layout]) ;
+ * une rangée vide n'est jamais affichée (ni titre ni espace).
+ */
+fun homeSectionOrder(rows: HomeRows): List<HomeSectionId> = rows.layout.apply(presentSections(rows))
+
+private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
+    if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
     if (rows.watchlist.isNotEmpty()) add(HomeSectionId.TRAKT_WATCHLIST)
     if (rows.recommended.isNotEmpty()) add(HomeSectionId.TRAKT_RECOMMENDED)
     if (rows.trending.isNotEmpty()) add(HomeSectionId.TRAKT_TRENDING)
     if (rows.popular.isNotEmpty()) add(HomeSectionId.TRAKT_POPULAR)
+    rows.traktLists.take(TRAKT_LIST_SECTIONS.size).forEachIndexed { i, l -> if (l.cards.isNotEmpty()) add(TRAKT_LIST_SECTIONS[i]) }
     if (rows.recentChannels.isNotEmpty()) add(HomeSectionId.RECENT_CHANNELS)
     if (rows.latestMovies.isNotEmpty()) add(HomeSectionId.LATEST_MOVIES)
     if (rows.latestSeries.isNotEmpty()) add(HomeSectionId.LATEST_SERIES)
@@ -125,6 +158,13 @@ fun resumeCardOf(e: WatchHistoryEntity, keyPrefix: String, clean: (String) -> St
 /** Affiche Trakt (films et séries mêlés) : la clé distingue film et série de même identifiant. */
 fun traktPosterOf(c: TraktCard): PosterCardUi =
     PosterCardUi("${if (c.isShow) "s" else "m"}-${c.id}", PosterItem(c.id, c.title, c.poster, c.year, c.rating), c.isShow, if (c.isShow) TmdbKind.TV else TmdbKind.MOVIE)
+
+/** Carte « À suivre » : affiche de la série, titre suivi de l'épisode à regarder (« Lost · S02E05 »). */
+fun traktUpNextPosterOf(u: com.ultratv.tv.nativeapp.data.trakt.TraktUpNextCard): PosterCardUi {
+    val c = u.card
+    val tag = "S${"%02d".format(u.season)}E${"%02d".format(u.episode)}"
+    return PosterCardUi("u-${c.id}", PosterItem(c.id, "${c.title} · $tag", c.poster, c.year, c.rating), true, TmdbKind.TV)
+}
 
 /** Affiche du catalogue (derniers films / séries). */
 fun catalogPosterOf(p: PosterItem, isShow: Boolean): PosterCardUi =

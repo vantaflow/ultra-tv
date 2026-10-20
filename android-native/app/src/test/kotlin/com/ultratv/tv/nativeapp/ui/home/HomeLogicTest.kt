@@ -28,6 +28,7 @@ class HomeLogicTest {
         val r = HomeRows(
             resume = listOf(resumeCardOf(hist("1"), "", { it })),
             watchlist = listOf(poster(1)), recommended = listOf(poster(2)), trending = listOf(poster(3)), popular = listOf(poster(4)),
+            upNext = listOf(poster(7, true)), traktLists = (1..5).map { TraktListUi("$it", "L$it", listOf(poster(10L + it))) },
             recentChannels = listOf(resumeCardOf(hist("2", "LIVE"), "rc-", { it })),
             latestMovies = listOf(poster(5)), latestSeries = listOf(poster(6, true)), channels = listOf(channel(1)),
         )
@@ -48,7 +49,10 @@ class HomeLogicTest {
     @Test fun mobileSectionOrder_retireLesRangeesPropresALaTv_ordreConserve() {
         val all = HomeSectionId.entries.toList()
         assertEquals(
-            listOf(HomeSectionId.RESUME, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED, HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR, HomeSectionId.CHANNELS),
+            listOf(
+                HomeSectionId.RESUME, HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED, HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR,
+                HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5, HomeSectionId.CHANNELS,
+            ),
             mobileSectionOrder(all),
         )
     }
@@ -74,11 +78,11 @@ class HomeLogicTest {
     }
 
     @Test fun homeTopSlot_sourcesNonPrisesEnCharge_carteDediee() {
-        assertEquals(HomeTopSlot.UNSUPPORTED, homeTopSlot(false, true, listOf("STALKER"), supported, hasFailure = false))
+        assertEquals(HomeTopSlot.UNSUPPORTED, homeTopSlot(false, true, listOf("LEGACY"), supported, hasFailure = false))
     }
 
     @Test fun homeTopSlot_sourceEnErreur_carteErreur() {
-        assertEquals(HomeTopSlot.FAILURE, homeTopSlot(false, true, listOf("STALKER", "M3U"), supported, hasFailure = true))
+        assertEquals(HomeTopSlot.FAILURE, homeTopSlot(false, true, listOf("LEGACY", "M3U"), supported, hasFailure = true))
     }
 
     @Test fun homeTopSlot_sourceSaineSansHero_chargement() {

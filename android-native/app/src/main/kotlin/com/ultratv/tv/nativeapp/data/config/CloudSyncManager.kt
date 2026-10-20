@@ -319,9 +319,7 @@ class CloudSyncManager @Inject constructor(
 
     private suspend fun apply(cfg: CloudConfig): Summary {
         val locals = repo.observeProviders().first()
-        val localModels = locals.filter { it.kind == "XTREAM" || it.kind == "M3U" }.map {
-            LocalProvider(it.id, it.kind, it.name, it.baseUrl, it.username, it.password, "", links.cloudIdOf(it.id))
-        }
+        val localModels = locals.filter { it.kind == "XTREAM" || it.kind == "M3U" || it.kind == "STALKER" }.map { localModel(it) }
         val dependents = localModels.filter { it.cloudId != null }.associate { it.localId to (db.favoriteDao().countForProvider(it.localId) + db.recordingDao().countForProvider(it.localId)) }
         val applied = cfg.providers.mapNotNull { c -> links.appliedName(c.id)?.let { c.id to it } }.toMap() +
             localModels.mapNotNull { l -> l.cloudId?.let { id -> links.appliedName(id)?.let { id to it } } }.toMap()
@@ -330,7 +328,12 @@ class CloudSyncManager @Inject constructor(
         val deviceCount = cfg.devices.size
         for (a in CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)) when (a) {
             is SyncAction.Add -> {
-                val id = if (a.cloud.kind == "XTREAM") repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password) else repo.addM3u(a.cloud.name, a.cloud.url)
+                val id = when (a.cloud.kind) {
+                    "XTREAM" -> repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password)
+                    // MAC invalide reçue du cloud : la source est ignorée (aucune action sur les autres).
+                    "STALKER" -> runCatching { repo.addStalker(a.cloud.name, a.cloud.url, a.cloud.mac, a.cloud.username, a.cloud.password) }.getOrNull() ?: continue
+                    else -> repo.addM3u(a.cloud.name, a.cloud.url)
+                }
                 links.link(id, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
                 if (repo.firstActive() == null) repo.setDefault(id)
                 // Appairage depuis l'assistant : une source Xtream attend l'étape Langues (sinon une
@@ -342,7 +345,10 @@ class CloudSyncManager @Inject constructor(
             is SyncAction.Update -> {
                 // Locale encore en M3U « get.php » face à sa version cloud normalisée en Xtream : on la convertit d'abord.
                 if (a.cloud.kind == "XTREAM" && repo.canConvertToXtream(a.localId)) repo.convertToXtream(a.localId)
-                repo.updateFromCloud(a.localId, if (a.renameLocal) a.cloud.name else null, a.cloud.url, a.cloud.username, a.cloud.password)
+                if (a.cloud.kind == "STALKER") {
+                    val mac = com.ultratv.tv.nativeapp.data.stalker.StalkerMac.normalize(a.cloud.mac) ?: continue
+                    repo.updateFromCloud(a.localId, if (a.renameLocal) a.cloud.name else null, a.cloud.url, mac, com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.pack(a.cloud.username, a.cloud.password))
+                } else repo.updateFromCloud(a.localId, if (a.renameLocal) a.cloud.name else null, a.cloud.url, a.cloud.username, a.cloud.password)
                 val keepName = if (a.renameLocal) a.cloud.name else (links.appliedName(a.cloud.id) ?: a.cloud.name)
                 links.link(a.localId, a.cloud.id, keepName, a.cloud.sharedWith(deviceCount))
                 sync.request(a.localId, force = true)
@@ -356,6 +362,13 @@ class CloudSyncManager @Inject constructor(
         cfg.providers.forEach { c -> links.localIdOf(c.id)?.let { lid -> links.link(lid, c.id, links.appliedName(c.id) ?: c.name, c.sharedWith(deviceCount)) } }
         runCatching { applyPrefs(cfg) }
         return Summary(added, updated, removed, pending)
+    }
+
+    /** Source locale vue par la fusion ; portail Stalker : MAC à part, identifiant et mot de passe du portail dépaquetés. */
+    private suspend fun localModel(p: com.ultratv.tv.nativeapp.data.db.ProviderEntity): LocalProvider {
+        if (p.kind != "STALKER") return LocalProvider(p.id, p.kind, p.name, p.baseUrl, p.username, p.password, "", links.cloudIdOf(p.id))
+        val (login, pass) = com.ultratv.tv.nativeapp.data.stalker.StalkerCreds.unpack(p.password)
+        return LocalProvider(p.id, p.kind, p.name, p.baseUrl, login, pass, p.username, links.cloudIdOf(p.id))
     }
 
     private suspend fun removeLocal(localId: Long) {
@@ -385,8 +398,8 @@ class CloudSyncManager @Inject constructor(
     suspend fun share(localId: Long, shareWith: List<String>?): Boolean = mutex.withLock {
         val base = workerBase() ?: return false
         val p = repo.byId(localId) ?: return false
-        if (p.kind != "XTREAM" && p.kind != "M3U") return false
-        val local = LocalProvider(p.id, p.kind, p.name, p.baseUrl, p.username, p.password, "", links.cloudIdOf(localId))
+        if (p.kind != "XTREAM" && p.kind != "M3U" && p.kind != "STALKER") return false
+        val local = localModel(p)
         return try {
             val resp = source.withToken(base) { t -> client.put(base, t, CloudSyncLogic.uploadBody(local, shareWith, local.cloudId)) }
             val cid = JSONObject(resp).getJSONObject("provider").getString("id")

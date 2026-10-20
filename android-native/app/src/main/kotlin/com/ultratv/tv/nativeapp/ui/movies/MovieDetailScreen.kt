@@ -79,7 +79,6 @@ class MovieDetailViewModel @Inject constructor(
     private val catalog: CatalogRepository,
     private val playback: PlaybackContext,
     private val provider: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
-    private val recordings: com.ultratv.tv.nativeapp.data.recording.RecordingRepository,
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
@@ -103,13 +102,6 @@ class MovieDetailViewModel @Inject constructor(
         }
     }
 
-    /** Queue a VOD download for this movie. */
-    fun record(m: MovieEntity, queuedMsg: String = "Recording queued — see Recordings screen") {
-        viewModelScope.launch {
-            recordings.enqueue(m.providerId, "MOVIE", m.remoteId, m.name, m.streamUrl)
-            com.ultratv.tv.nativeapp.ui.common.Toaster.ok(queuedMsg)
-        }
-    }
     private val _m = MutableStateFlow<MovieEntity?>(null)
     val movie: StateFlow<MovieEntity?> = _m.asStateFlow()
 
@@ -170,6 +162,11 @@ fun MovieDetailScreen(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
         return
     }
+    // Lecture en ligne pendant un téléchargement : avertit si l'abonnement n'a qu'une connexion (rien si le film est téléchargé).
+    val dlVm: com.ultratv.tv.nativeapp.ui.downloads.DownloadActionsViewModel = hiltViewModel()
+    val dlStrings = com.ultratv.tv.nativeapp.ui.downloads.rememberDownloadStrings()
+    val playOnline = onPlay
+    val onPlay: (String, String) -> Unit = { u, t -> dlVm.warnBeforePlay(movie.providerId, "MOVIE", movie.remoteId, dlStrings); playOnline(u, t) }
     val info by vm.info.collectAsState()
     val infoLoading by vm.infoLoading.collectAsState()
     val T = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
@@ -204,9 +201,11 @@ fun MovieDetailScreen(
             if (resume > 0) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.weight(1f), active = isFav, fill = isFav)
-                com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Download, S.playerRecord, { vm.record(movie, S.toastRecordingQueued) }, Modifier.weight(1f))
+                com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadTile(movie, Modifier.weight(1f))
                 if (trailer != null) com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Trailer, D.trailerLabel, { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, trailer) }, Modifier.weight(1f))
             }
+            // Trakt : watchlist, vu / non vu, note (rien si le compte n'est pas lié).
+            com.ultratv.tv.nativeapp.ui.trakt.TraktMovieActionsMobile(movie)
             if (skeleton) { Skeleton(Modifier.fillMaxWidth().height(16.dp)); Skeleton(Modifier.fillMaxWidth().height(16.dp)); Skeleton(Modifier.width(200.dp).height(16.dp)) }
             else plot?.let { com.ultratv.tv.nativeapp.ui.mobile.ExpandableText(it) }
             if (people.isNotEmpty()) {
@@ -270,13 +269,16 @@ fun MovieDetailScreen(
                     modifier = Modifier.focusRequester(playRequester).onFocusChanged { focused = it.isFocused },
                 )
                 if (resume > 0) PillButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) }, heightPx = 72, fontPx = 26)
-                PillButton(S.playerRecord, onClick = { vm.record(movie, S.toastRecordingQueued) }, heightPx = 72, fontPx = 26)
+                // Téléchargement hors ligne (remplace l'ancien « Enregistrer » d'un VOD : file, pause, reprise, progression).
+                com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadPill(movie)
                 T.presentable(info?.trailer)?.let { url ->
                     val ctx = androidx.compose.ui.platform.LocalContext.current
                     PillButton(D.trailerLabel, onClick = { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, url) }, heightPx = 72, fontPx = 26)
                 }
                 FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
             }
+            // Trakt : watchlist, vu / non vu, note (rien si le compte n'est pas lié).
+            com.ultratv.tv.nativeapp.ui.trakt.TraktMovieActions(movie)
             if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
                 SectionTitle(D.castTitle, 28)
                 Row(horizontalArrangement = Arrangement.spacedBy(32.design)) { repeat(5) { Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) { Skeleton(Modifier.size(96.design), circle = true); Skeleton(Modifier.width(80.design).height(18.design)) } } }

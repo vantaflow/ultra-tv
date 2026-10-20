@@ -25,6 +25,7 @@ class TranslationsCompleteTest {
         // FR / ES : mots identiques dans la langue cible
         "guide", "stats", "cast", "diagnostic", "position", "type", "mobile", "animations", "auto", "zoom", "sources", "stable", "active",
         "programmes", "series", "hardware", "software", "manual", "no", "sections", "amoled", "zapping", "rec", "e", "s", "—", "·",
+        "normal", "orange",
     )
     private val arabicLetter = Regex("[\\u0600-\\u06FF]")
     private val latinLetter = Regex("[A-Za-zÀ-ÿ]")
@@ -72,9 +73,10 @@ class TranslationsCompleteTest {
 
     private val tables: Map<String, (AppLang) -> Map<String, String>> = mapOf(
         "Strings" to { l -> strings(mapOf(AppLang.English to "EN", AppLang.French to "FR", AppLang.Spanish to "ES", AppLang.Arabic to "AR").getValue(l)) },
-        "DesignStrings" to { l -> read(DesignStrings(l), listOf(Class.forName("com.ultratv.tv.nativeapp.i18n.DesignStringsB1Kt"))) },
+        "DesignStrings" to { l -> read(DesignStrings(l), listOf(Class.forName("com.ultratv.tv.nativeapp.i18n.DesignStringsB1Kt"), Class.forName("com.ultratv.tv.nativeapp.i18n.PersonalizationStringsKt"))) },
         "PlayerExtraStrings" to { l -> read(PlayerExtraStrings(l), emptyList()) },
         "ProfileStrings" to { l -> read(ProfileStrings(l), emptyList()) },
+        "DownloadStrings" to { l -> read(com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(l), emptyList()) },
     )
 
     private fun isExempt(v: String): Boolean {

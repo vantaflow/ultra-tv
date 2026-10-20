@@ -7,8 +7,20 @@ import org.json.JSONObject
 /** Un film ou une série de Trakt. `keys` = clés de rapprochement précalculées par le Worker (voir [TraktMatch]). */
 data class TraktItem(val isShow: Boolean, val tmdb: Int?, val year: Int?, val title: String, val keys: List<String>)
 
-/** Série vue : l'item et ses épisodes vus, au format « SxE » (« 1x2 »). */
-data class TraktWatchedShow(val item: TraktItem, val episodes: Set<String>)
+/** Série vue : l'item, ses épisodes vus (« SxE », « 1x2 ») et l'heure de la dernière vue (ms, 0 = inconnue). */
+data class TraktWatchedShow(val item: TraktItem, val episodes: Set<String>, val lastWatchedAt: Long = 0L)
+
+/** Film ou série noté par l'utilisateur (1..10). */
+data class TraktRated(val item: TraktItem, val rating: Int)
+
+/** Liste personnelle Trakt (/users/me/lists) : identifiant Trakt, nom, films et séries dans l'ordre de la liste. */
+data class TraktUserList(val id: String, val name: String, val items: List<TraktItem>)
+
+/**
+ * Lecture en pause chez Trakt (/sync/playback). Épisode : [item] est la SÉRIE, [season]/[episode] sont renseignés.
+ * [progress] en %, [pausedAt] en ms, [runtimeMin] = durée Trakt en minutes (null si inconnue).
+ */
+data class TraktPlayback(val item: TraktItem, val season: Int?, val episode: Int?, val progress: Double, val pausedAt: Long, val runtimeMin: Int?)
 
 /**
  * Bibliothèque Trakt du compte (GET /api/device/trakt/library). [EMPTY] = compte non lié, jamais chargé ou échec :
@@ -24,6 +36,10 @@ class TraktLibrary(
     /** Tendances et populaires de Trakt (films et séries mêlés, ordre de Trakt) ; absents de l'ancienne réponse = vides. */
     val trending: List<TraktItem> = emptyList(),
     val popular: List<TraktItem> = emptyList(),
+    val ratedMovies: List<TraktRated> = emptyList(),
+    val ratedShows: List<TraktRated> = emptyList(),
+    val lists: List<TraktUserList> = emptyList(),
+    val playback: List<TraktPlayback> = emptyList(),
 ) {
     // Clé de rapprochement → années des films vus (une clé peut couvrir un remake : on compare l'année).
     private val movieIndex: Map<String, List<Int?>> by lazy {
@@ -50,6 +66,72 @@ class TraktLibrary(
         for (s in shows) if (TraktMatch.yearsCompatible(year, s.item.year)) out += s.episodes
         return out
     }
+
+    /** Ce film / cette série du catalogue est-il dans la watchlist Trakt ? */
+    fun isInWatchlist(isShow: Boolean, title: String, year: Int?): Boolean {
+        if (!linked) return false
+        val k = TraktMatch.matchKey(title).ifEmpty { return false }
+        return watchlist.any { it.isShow == isShow && it.matches(k, year) }
+    }
+
+    /** Note (1..10) donnée sur Trakt à ce film / cette série du catalogue, ou null. */
+    fun ratingFor(isShow: Boolean, title: String, year: Int?): Int? {
+        if (!linked) return null
+        val k = TraktMatch.matchKey(title).ifEmpty { return null }
+        return (if (isShow) ratedShows else ratedMovies).firstOrNull { it.item.matches(k, year) }?.rating
+    }
+
+    // ── Mises à jour locales immédiates (après une écriture réussie, avant la relecture du Worker) ──
+
+    /** Ajout / retrait de la watchlist. */
+    fun withWatchlist(isShow: Boolean, title: String, year: Int?, add: Boolean): TraktLibrary {
+        val k = TraktMatch.matchKey(title)
+        val rest = watchlist.filterNot { it.isShow == isShow && it.matches(k, year) }
+        return copy(watchlist = if (add) listOf(localItem(isShow, title, year)) + rest else rest)
+    }
+
+    /** Film marqué vu / non vu. */
+    fun withMovieWatched(title: String, year: Int?, watched: Boolean): TraktLibrary {
+        val k = TraktMatch.matchKey(title)
+        val rest = watchedMovies.filterNot { it.matches(k, year) }
+        return copy(watchedMovies = if (watched) rest + localItem(false, title, year) else rest)
+    }
+
+    /** Épisodes (« SxE ») d'une série marqués vus / non vus ; la série devient la plus récemment vue si ajout. */
+    fun withEpisodes(title: String, year: Int?, episodes: Set<String>, watched: Boolean, now: Long = System.currentTimeMillis()): TraktLibrary {
+        val k = TraktMatch.matchKey(title)
+        var found = false
+        val shows = watchedShows.mapNotNull { s ->
+            if (!s.item.matches(k, year)) return@mapNotNull s
+            found = true
+            val eps = if (watched) s.episodes + episodes else s.episodes - episodes
+            if (eps.isEmpty()) null else s.copy(episodes = eps, lastWatchedAt = if (watched) now else s.lastWatchedAt)
+        }
+        val out = if (!found && watched) shows + TraktWatchedShow(localItem(true, title, year), episodes, now) else shows
+        return copy(watchedShows = out)
+    }
+
+    /** Note donnée (1..10) ou retirée (0). */
+    fun withRating(isShow: Boolean, title: String, year: Int?, rating: Int): TraktLibrary {
+        val k = TraktMatch.matchKey(title)
+        val list = if (isShow) ratedShows else ratedMovies
+        val rest = list.filterNot { it.item.matches(k, year) }
+        val next = if (rating in 1..10) listOf(TraktRated(localItem(isShow, title, year), rating)) + rest else rest
+        return if (isShow) copy(ratedShows = next) else copy(ratedMovies = next)
+    }
+
+    private fun TraktItem.matches(key: String, y: Int?) = key.isNotEmpty() && key in keys && TraktMatch.yearsCompatible(y, year)
+
+    private fun localItem(isShow: Boolean, title: String, year: Int?) =
+        TraktItem(isShow, null, year, title, listOf(TraktMatch.matchKey(title)).filter { it.isNotEmpty() })
+
+    private fun copy(
+        watchlist: List<TraktItem> = this.watchlist,
+        watchedMovies: List<TraktItem> = this.watchedMovies,
+        watchedShows: List<TraktWatchedShow> = this.watchedShows,
+        ratedMovies: List<TraktRated> = this.ratedMovies,
+        ratedShows: List<TraktRated> = this.ratedShows,
+    ) = TraktLibrary(linked, updatedAt, watchlist, recommendations, watchedMovies, watchedShows, trending, popular, ratedMovies, ratedShows, lists, playback)
 
     companion object {
         val EMPTY = TraktLibrary(false, 0L, emptyList(), emptyList(), emptyList(), emptyList())
@@ -80,6 +162,47 @@ class TraktLibrary(
             )
         }
 
+        private fun optInt(o: JSONObject, name: String): Int? = if (!o.has(name) || o.isNull(name)) null else o.optInt(name)
+
+        private fun rated(a: JSONArray?): List<TraktRated> {
+            if (a == null) return emptyList()
+            val out = ArrayList<TraktRated>(a.length())
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue
+                val r = o.optInt("rating", 0)
+                if (r in 1..10) out += TraktRated(item(o), r)
+            }
+            return out
+        }
+
+        private fun lists(a: JSONArray?): List<TraktUserList> {
+            if (a == null) return emptyList()
+            val out = ArrayList<TraktUserList>(a.length())
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue
+                val id = o.optString("id", "")
+                val name = o.optString("name", "")
+                if (id.isNotEmpty() && name.isNotEmpty()) out += TraktUserList(id, name, items(o.optJSONArray("items")))
+            }
+            return out
+        }
+
+        private fun playback(a: JSONArray?): List<TraktPlayback> {
+            if (a == null) return emptyList()
+            val out = ArrayList<TraktPlayback>(a.length())
+            for (i in 0 until a.length()) {
+                val o = a.optJSONObject(i) ?: continue
+                val it = item(o)
+                val progress = o.optDouble("progress", 0.0)
+                if (!(progress > 0.0 && progress < 100.0)) continue
+                val season = optInt(o, "season")
+                val episode = optInt(o, "episode")
+                if (it.isShow && (season == null || episode == null)) continue
+                out += TraktPlayback(it, if (it.isShow) season else null, if (it.isShow) episode else null, progress, o.optLong("pausedAt", 0L), optInt(o, "runtime")?.takeIf { r -> r > 0 })
+            }
+            return out
+        }
+
         /** Analyse la réponse du Worker. Lève une exception si le JSON est illisible (l'appelant garde l'ancienne valeur). */
         fun parse(body: String): TraktLibrary {
             val o = JSONObject(body)
@@ -92,8 +215,9 @@ class TraktLibrary(
                 val eps = so.optJSONArray("episodes")
                 val set = HashSet<String>()
                 if (eps != null) for (j in 0 until eps.length()) eps.optString(j, "").takeIf { it.isNotEmpty() }?.let(set::add)
-                watchedShows += TraktWatchedShow(item(so), set)
+                watchedShows += TraktWatchedShow(item(so), set, so.optLong("lastWatchedAt", 0L))
             }
+            val ratings = o.optJSONObject("ratings")
             return TraktLibrary(
                 linked = true,
                 updatedAt = o.optLong("updatedAt", 0L),
@@ -103,6 +227,10 @@ class TraktLibrary(
                 watchedShows = watchedShows,
                 trending = items(o.optJSONArray("trending")),
                 popular = items(o.optJSONArray("popular")),
+                ratedMovies = rated(ratings?.optJSONArray("movies")),
+                ratedShows = rated(ratings?.optJSONArray("shows")),
+                lists = lists(o.optJSONArray("lists")),
+                playback = playback(o.optJSONArray("playback")),
             )
         }
     }
@@ -111,14 +239,23 @@ class TraktLibrary(
 /** Carte Trakt affichable : un élément du catalogue de l'utilisateur. */
 data class TraktCard(val isShow: Boolean, val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?)
 
+/** Liste personnelle Trakt prête à afficher (seulement ses éléments disponibles dans la playlist). */
+data class TraktListRow(val id: String, val name: String, val cards: List<TraktCard>)
+
+/** « À suivre » : la série du catalogue et le prochain épisode DISPONIBLE dans la playlist. */
+data class TraktUpNextCard(val card: TraktCard, val season: Int, val episode: Int)
+
 /** Les rangées Trakt de l'accueil : UNIQUEMENT des éléments disponibles dans la playlist chargée. */
 data class TraktRows(
     val watchlist: List<TraktCard>,
     val recommendations: List<TraktCard>,
     val trending: List<TraktCard> = emptyList(),
     val popular: List<TraktCard> = emptyList(),
+    val lists: List<TraktListRow> = emptyList(),
+    val upNext: List<TraktUpNextCard> = emptyList(),
 ) {
-    val isEmpty: Boolean get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty()
+    val isEmpty: Boolean get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty() &&
+        lists.all { it.cards.isEmpty() } && upNext.isEmpty()
     companion object { val EMPTY = TraktRows(emptyList(), emptyList()) }
 }
 
@@ -148,7 +285,12 @@ object TraktRowsCodec {
 
     fun encode(byProvider: Map<Long, TraktRows>): String = JSONObject().also { root ->
         for ((pid, r) in byProvider) root.put(pid.toString(), JSONObject()
-            .put("w", enc(r.watchlist)).put("r", enc(r.recommendations)).put("t", enc(r.trending)).put("p", enc(r.popular)))
+            .put("w", enc(r.watchlist)).put("r", enc(r.recommendations)).put("t", enc(r.trending)).put("p", enc(r.popular))
+            .put("l", JSONArray().also { a -> for (l in r.lists) a.put(JSONObject().put("i", l.id).put("n", l.name).put("c", enc(l.cards))) })
+            .put("u", JSONArray().also { a ->
+                val cards = enc(r.upNext.map { it.card })
+                r.upNext.forEachIndexed { i, u -> a.put(cards.getJSONObject(i).put("se", u.season).put("ep", u.episode)) }
+            }))
     }.toString()
 
     /** Jamais d'exception : un fichier illisible donne une table vide (les rangées sont alors simplement recalculées). */
@@ -160,7 +302,22 @@ object TraktRowsCodec {
             for (k in root.keys()) {
                 val pid = k.toLongOrNull() ?: continue
                 val o = root.optJSONObject(k) ?: continue
-                out[pid] = TraktRows(dec(o.optJSONArray("w")), dec(o.optJSONArray("r")), dec(o.optJSONArray("t")), dec(o.optJSONArray("p")))
+                val lists = ArrayList<TraktListRow>()
+                o.optJSONArray("l")?.let { a ->
+                    for (i in 0 until a.length()) {
+                        val l = a.optJSONObject(i) ?: continue
+                        lists += TraktListRow(l.optString("i", ""), l.optString("n", ""), dec(l.optJSONArray("c")))
+                    }
+                }
+                val upNext = ArrayList<TraktUpNextCard>()
+                o.optJSONArray("u")?.let { a ->
+                    val cards = dec(a)
+                    for (i in 0 until a.length()) {
+                        val u = a.optJSONObject(i) ?: continue
+                        cards.getOrNull(i)?.let { c -> upNext += TraktUpNextCard(c, u.optInt("se"), u.optInt("ep")) }
+                    }
+                }
+                out[pid] = TraktRows(dec(o.optJSONArray("w")), dec(o.optJSONArray("r")), dec(o.optJSONArray("t")), dec(o.optJSONArray("p")), lists, upNext)
             }
             out
         } catch (_: Exception) { emptyMap() }
@@ -224,12 +381,13 @@ object TraktAvailability {
         else -> false
     }
 
-    /** Les quatre rangées d'après les index du catalogue (pur, testé sans base). */
+    /** Les rangées d'après les index du catalogue (pur, testé sans base) ; « À suivre » est calculé à part. */
     fun rows(lib: TraktLibrary, movies: Map<String, List<CatalogLite>>, series: Map<String, List<CatalogLite>>) = TraktRows(
         resolve(lib.watchlist, movies, series),
         resolve(lib.recommendations, movies, series),
         resolve(lib.trending, movies, series),
         resolve(lib.popular, movies, series),
+        lib.lists.map { TraktListRow(it.id, it.name, resolve(it.items, movies, series)) }.filter { it.cards.isNotEmpty() },
     )
 
     /**

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.components
 
+import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.mobile.navigateTopLevel
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,7 @@ internal val railItems = listOf(
     RailItem("series", Icons.Series) { it.navSeries },
     RailItem("favorites", Icons.Heart) { it.navFavorites },
     RailItem("recordings", Icons.Record) { it.navRecordings },
+    RailItem("downloads", com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download) { com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings.of(it).navTitle },
     RailItem("account", Icons.Account) { it.navAccount },
     RailItem("settings", Icons.Settings) { it.navSettings },
 )
@@ -182,17 +184,17 @@ fun SidebarNav(navController: NavController) {
                     bg = if (searchActive) Ux.Accent else Ux.Surface,
                     focusedScale = 1.05f,
                     ringWidth = 5.design,
-                    modifier = Modifier.height(64.design).fillMaxWidth().testTag("rail-search").then(if (searchActive) Modifier.focusRequester(activeFocus) else Modifier),
+                    modifier = Modifier.height(64.designT).fillMaxWidth().testTag("rail-search").then(if (searchActive) Modifier.focusRequester(activeFocus) else Modifier),
                 ) { focused ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         Spacer(Modifier.width(16.design))
                         Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
-                            DIcon(Icons.Search, 30.design, when { focused -> Ux.TextOnLight; searchActive -> Ux.White; expanded -> Ux.Text; else -> Ux.Text2 })
+                            DIcon(Icons.Search, 30.design, when { focused -> Ux.TextOnLight; searchActive -> Ux.OnAccent; expanded -> Ux.Text; else -> Ux.Text2 })
                         }
                         if (showLabels) {
                             Spacer(Modifier.width(16.design))
                             Text(D.searchPill, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
-                                color = when { focused -> Ux.TextOnLight; searchActive -> Ux.White; else -> Ux.Text2 }, maxLines = 1, softWrap = false,
+                                color = when { focused -> Ux.TextOnLight; searchActive -> Ux.OnAccent; else -> Ux.Text2 }, maxLines = 1, softWrap = false,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Clip, modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value })
                         }
                     }
@@ -241,13 +243,13 @@ fun SidebarNav(navController: NavController) {
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.width(16.design))
                                 Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
-                                    DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.White; expanded -> Ux.Text; else -> Ux.Text3 })
+                                    DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; expanded -> Ux.Text; else -> Ux.Text3 })
                                 }
                                 if (showLabels) {
                                     Spacer(Modifier.width(16.design))
                                     Text(
                                         item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
-                                        color = when { focused -> Ux.TextOnLight; active -> Ux.White; else -> Ux.Text2 },
+                                        color = when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Ux.Text2 },
                                         maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
                                         modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value },
                                     )

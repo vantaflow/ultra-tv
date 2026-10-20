@@ -8,10 +8,16 @@ const rp = (o: Partial<CloudProvider> = {}): CloudProvider => ({ id: "a0000001",
 const ls = (o: Partial<Source> = {}): Source => ({ ...emptySource(), id: 1, name: "Abo", type: "xtream", server: "http://h:80", username: "u", password: "p", cloudId: "a0000001", cloudOrigin: "cloud", ...o });
 
 describe("toSourceFields", () => {
-  it("Xtream, M3U ; Stalker ignoré", () => {
+  it("Xtream, M3U ; Stalker sans MAC valide ignoré", () => {
     expect(toSourceFields(rp())).toMatchObject({ type: "xtream", server: "http://h:80", username: "u" });
     expect(toSourceFields(rp({ kind: "m3u", url: "http://x/a.m3u" }))).toMatchObject({ type: "m3u", m3uUrl: "http://x/a.m3u" });
     expect(toSourceFields(rp({ kind: "STALKER" }))).toBeNull();
+    expect(toSourceFields(rp({ kind: "STALKER", mac: "00:1A:79" }))).toBeNull();
+  });
+  it("portail Stalker : MAC normalisée dans username, identifiants facultatifs empaquetés", () => {
+    expect(toSourceFields(rp({ kind: "STALKER", url: "http://p/c/", mac: "00-1a-79-00-00-01", username: "", password: "" })))
+      .toMatchObject({ type: "stalker", server: "http://p/c/", username: "00:1A:79:00:00:01", password: "" });
+    expect(toSourceFields(rp({ kind: "STALKER", url: "http://p/c/", mac: "001A79000001", username: "jean", password: "pw" }))?.password).toBe("jean\u0000pw");
   });
 });
 
@@ -34,7 +40,13 @@ describe("reconcile", () => {
     expect(p.add).toHaveLength(1);
     expect(p.add[0]).toMatchObject({ cloudId: "a0000001", cloudOrigin: "cloud", server: "http://h:80" });
   });
-  it("ignore Stalker et le compte", () => {
+  it("adopte un portail Stalker local identique (même portail, même MAC)", () => {
+    const local = ls({ cloudId: undefined, cloudOrigin: undefined, type: "stalker", server: "http://p/c/", username: "00:1A:79:00:00:01", password: "" });
+    const p = reconcile([local], [rp({ kind: "STALKER", url: "http://p/c", mac: "00:1a:79:00:00:01", username: "", password: "" })], emptySource);
+    expect(p.add).toHaveLength(0);
+    expect(p.update[0]).toMatchObject({ id: 1, patch: { cloudId: "a0000001" } });
+  });
+  it("ignore un Stalker sans MAC et le compte", () => {
     const p = reconcile([], [rp({ kind: "STALKER", id: "a0000002" })], emptySource);
     expect(p.add).toHaveLength(0);
     expect(p.skipped).toBe(1);

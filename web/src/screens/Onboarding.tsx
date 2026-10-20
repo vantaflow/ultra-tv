@@ -17,6 +17,7 @@ import { cloudAvailable } from "@/cloud/client";
 import { listSources } from "@/db/sources";
 import { langsToSync } from "@/lib/syncPolicy";
 import { convertToXtream, missingRequired, nonStandardHttpStatus } from "@/lib/xtreamUrl";
+import { MAC_PREFIX } from "@/net/stalker";
 
 type SourceKind = FormKind | "cloud";
 
@@ -84,7 +85,7 @@ export function Onboarding() {
   const pickType = (k: SourceKind) => {
     setKind(k);
     if (k === "cloud") { setStep("cloud"); return; }
-    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : "m3u" });
+    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : k === "stalker" ? "stalker" : "m3u", username: k === "stalker" ? MAC_PREFIX : "" });
     setFileText(null); setFileInfo(""); setErr(null);
     setStep("form");
   };
@@ -93,7 +94,7 @@ export function Onboarding() {
     setErr(null);
     // Adresse get.php / player_api.php collée en M3U : c'est une source Xtream Codes (get.php est souvent bloqué).
     const xt = kind === "m3u-link" ? convertToXtream(src) : null;
-    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
+    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || kind === "stalker" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
     // On valide la source EFFECTIVE (après conversion) : une adresse get.php devient Xtream, m3uUrl est alors vide.
     if (missingRequired(kind, s)) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
@@ -101,7 +102,7 @@ export function Onboarding() {
     try {
       if (kind === "m3u-file") await db.details.put({ key: "m3ufile:tmp", json: fileText, fetchedAt: Date.now() });
       const r = await testSource(s);
-      const saved: Source = { ...s, expDate: r.expDate, maxConnections: r.maxConnections };
+      const saved: Source = { ...s, expDate: r.expDate, maxConnections: r.maxConnections, ...(r.stalkerApi ? { stalkerApi: r.stalkerApi } : {}) };
       const id = await saveSource(saved);
       if (kind === "m3u-file") {
         await db.details.put({ key: `m3ufile:${id}`, json: fileText, fetchedAt: Date.now() });
@@ -110,7 +111,7 @@ export function Onboarding() {
       setSavedId(id);
       setSrc({ ...saved, id });
       prefs.set({ activeSourceId: id });
-      if (s.type === "xtream") {
+      if (s.type === "xtream" || s.type === "stalker") {
         const d = await detectSourceLanguages({ ...saved, id });
         setDetected(d.languages);
         const ui = prefs.lang.toUpperCase();
@@ -162,7 +163,7 @@ export function Onboarding() {
             <p className="lead" style={{ marginTop: 12 }}>{t("src.whichLead")}</p>
           </div>
           <div className="choice-grid">
-            {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
+            {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["stalker", "tv", "src.stalker", "src.stalkerD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
               <button key={k} className={`choice${i === 0 ? " first" : ""}`} onClick={() => pickType(k)}>
                 <span className="ico"><Icon name={ic} size={30} /></span>
                 <span><b>{t(l)}</b><span className="s">{t(d)}</span></span>
@@ -178,7 +179,7 @@ export function Onboarding() {
           onDone={async (r) => {
             const list = await listSources();
             const first = list.find((x) => x.cloudId);
-            if (first) { prefs.set({ activeSourceId: first.id! }); setSavedId(first.id!); started.current = true; setSrc(first); setKind(first.type === "xtream" ? "xtream" : "m3u-link"); setStep("sync"); }
+            if (first) { prefs.set({ activeSourceId: first.id! }); setSavedId(first.id!); started.current = true; setSrc(first); setKind(first.type === "xtream" ? "xtream" : first.type === "stalker" ? "stalker" : "m3u-link"); setStep("sync"); }
             else if (list.length) nav("/", { replace: true });
             else { setStep("type"); setErr(r.skipped ? t("cloud.noProviders") : t("cloud.noProviders")); }
           }}
@@ -190,7 +191,7 @@ export function Onboarding() {
         <main onKeyDown={(e) => { if (e.key === "Enter" && !busy && (e.target as HTMLElement).tagName === "INPUT") void submit(); }}>
           <div>
             <div className="eyebrow">{t("src.step", { a: 2, b: 3 })}</div>
-            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
+            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "stalker" ? "src.stalker" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
           </div>
           <SourceForm kind={kind as FormKind} value={src} onChange={setSrc} fileInfo={fileInfo}
             onPickFile={async (f) => { setFileText(await f.text()); setFileInfo(t("src.fileChosen", { n: f.name, k: Math.round(f.size / 1024) })); setSrc((s) => ({ ...s, m3uUrl: `file:${f.name}`, name: s.name || f.name.replace(/\.[^.]+$/, "") })); }} />
@@ -226,7 +227,7 @@ export function Onboarding() {
         </main>
       )}
 
-      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
+      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : src.type === "stalker" ? "Stalker" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
     </div>
   );
 }

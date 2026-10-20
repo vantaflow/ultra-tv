@@ -174,3 +174,115 @@ export async function sendScrobble(clientId, access, action, body, fetchFn = fet
   if (r.status === 404) return "unmatched";
   return "upstream";
 }
+
+// ---- écritures depuis les appareils (watchlist, historique, notes) -------------------------------------------------
+//   POST /api/device/trakt/watchlist {action: add|remove, type: movie|show, title, year?, tmdb?}
+//   POST /api/device/trakt/history   {action: add|remove, type: movie|episodes, title, year?, tmdb?, episodes?: [{season, episode}]}
+//   POST /api/device/trakt/rating    {type: movie|show, title, year?, tmdb?, rating: 0..10}   (0 = retirer la note)
+// Comme le scrobble : l'appareil décrit l'œuvre, le Worker l'identifie (TMDB) et écrit chez Trakt avec SES jetons.
+
+const WRITE_ACTIONS = new Set(["add", "remove"]);
+export const MAX_HISTORY_EPISODES = 200;
+
+/** Champs communs (titre, année, tmdb) validés, ou null. */
+function workOf(body) {
+  const title = cleanText(body.title, 200);
+  if (!title) return null;
+  return { title, year: intIn(body.year, 1900, 2100), tmdb: intIn(body.tmdb, 1, 99_999_999) };
+}
+
+/** Corps « watchlist » d'un appareil, validé. null si invalide. */
+export function parseWatchlist(body) {
+  if (!body || typeof body !== "object" || !WRITE_ACTIONS.has(body.action)) return null;
+  if (body.type !== "movie" && body.type !== "show") return null;
+  const w = workOf(body);
+  return w && { action: body.action, type: body.type, ...w };
+}
+
+/** Corps « historique » (vu / non vu) d'un appareil, validé. Épisodes dédoublonnés, au plus MAX_HISTORY_EPISODES. */
+export function parseHistory(body) {
+  if (!body || typeof body !== "object" || !WRITE_ACTIONS.has(body.action)) return null;
+  if (body.type !== "movie" && body.type !== "episodes") return null;
+  const w = workOf(body);
+  if (!w) return null;
+  const out = { action: body.action, type: body.type, ...w };
+  if (body.type === "episodes") {
+    if (!Array.isArray(body.episodes) || body.episodes.length === 0 || body.episodes.length > MAX_HISTORY_EPISODES) return null;
+    const seen = new Set();
+    out.episodes = [];
+    for (const e of body.episodes) {
+      const season = intIn(e?.season, 0, 500);
+      const episode = intIn(e?.episode, 0, 20_000);
+      if (season === null || episode === null) return null;
+      const k = `${season}x${episode}`;
+      if (!seen.has(k)) { seen.add(k); out.episodes.push({ season, episode }); }
+    }
+  }
+  return out;
+}
+
+/** Corps « note » d'un appareil, validé (0 = retirer la note). null si invalide. */
+export function parseRating(body) {
+  if (!body || typeof body !== "object") return null;
+  if (body.type !== "movie" && body.type !== "show") return null;
+  // Nombre entier strict : null ou "8" ne doivent jamais devenir « retirer la note » ou une note implicite.
+  if (!Number.isInteger(body.rating) || body.rating < 0 || body.rating > 10) return null;
+  const rating = body.rating;
+  const w = workOf(body);
+  return w && { type: body.type, rating, ...w };
+}
+
+/**
+ * Requête Trakt correspondant à une écriture validée → { path, body }. `now` = date ISO (vu / noté « maintenant »).
+ * kind : "watchlist" | "history" | "rating".
+ */
+export function traktWriteRequest(kind, p, tmdb, now = new Date().toISOString()) {
+  const ids = { tmdb };
+  if (kind === "watchlist") {
+    return { path: p.action === "add" ? "/sync/watchlist" : "/sync/watchlist/remove", body: p.type === "movie" ? { movies: [{ ids }] } : { shows: [{ ids }] } };
+  }
+  if (kind === "history") {
+    const path = p.action === "add" ? "/sync/history" : "/sync/history/remove";
+    const at = p.action === "add" ? { watched_at: now } : {};
+    if (p.type === "movie") return { path, body: { movies: [{ ids, ...at }] } };
+    const bySeason = new Map();
+    for (const e of p.episodes) {
+      if (!bySeason.has(e.season)) bySeason.set(e.season, []);
+      bySeason.get(e.season).push({ number: e.episode, ...at });
+    }
+    const seasons = [...bySeason].sort((a, b) => a[0] - b[0]).map(([number, episodes]) => ({ number, episodes }));
+    return { path, body: { shows: [{ ids, seasons }] } };
+  }
+  // Note : 1..10 → /sync/ratings ; 0 → /sync/ratings/remove.
+  const one = p.rating > 0 ? { ids, rating: p.rating, rated_at: now } : { ids };
+  return { path: p.rating > 0 ? "/sync/ratings" : "/sync/ratings/remove", body: p.type === "movie" ? { movies: [one] } : { shows: [one] } };
+}
+
+/** Somme des compteurs d'une réponse /sync (added / existing / deleted / updated). */
+function countOf(d) {
+  let n = 0;
+  for (const k of ["added", "existing", "deleted", "updated"]) {
+    const o = d?.[k];
+    if (o && typeof o === "object") for (const v of Object.values(o)) if (Number.isFinite(v)) n += v;
+  }
+  return n;
+}
+/** Vrai si Trakt n'a reconnu aucun élément (listes `not_found` non vides). */
+function anyNotFound(d) {
+  const nf = d?.not_found;
+  return !!nf && typeof nf === "object" && Object.values(nf).some((v) => Array.isArray(v) && v.length > 0);
+}
+
+/** Écriture /sync chez Trakt → "ok" | "unauthorized" | "unmatched" | "upstream". */
+export async function sendSync(clientId, access, path, body, fetchFn = fetch) {
+  let r;
+  try {
+    r = await fetchFn(`${TRAKT_API}${path}`, { method: "POST", redirect: "manual", headers: apiHeaders(clientId, access), body: JSON.stringify(body) });
+  } catch { return "upstream"; }
+  console.log(JSON.stringify({ trakt: "sync", path, status: r.status }));
+  if (r.status === 401 || r.status === 403) return "unauthorized";
+  if (r.status !== 200 && r.status !== 201 && r.status !== 204) return "upstream";
+  const d = r.status === 204 ? null : await r.json().catch(() => null);
+  if (d && anyNotFound(d) && countOf(d) === 0) return "unmatched";
+  return "ok";
+}

@@ -11,6 +11,7 @@ import { firstString, normText, rating10, toNum, wordKeys } from "@/lib/text";
 import { parseM3u } from "@/lib/m3u";
 import { streamObjects, TruncatedError } from "@/net/json";
 import { transportFetch, type Transport } from "@/net/transport";
+import { StalkerClient, absoluteUrl, normalizeMac, stalkerLink, unpackCreds, type StalkerItem } from "@/net/stalker";
 import {
   handshake, xtreamArray, xtreamStream,
   type XtreamCategory, type XtreamCreds, type XtreamLive, type XtreamSeries, type XtreamVod,
@@ -24,6 +25,18 @@ export interface DetectedLanguage { code: string; categories: number }
 
 export function credsOf(s: Source): XtreamCreds {
   return { server: s.server, username: s.username, password: s.password, userAgent: s.userAgent || null, referer: s.referer || null };
+}
+
+/**
+ * Client du portail d'une source Stalker. Le point d'entrée retenu est mémorisé dans la source (`stalkerApi`) :
+ * les synchros suivantes ne sondent plus.
+ */
+export function stalkerOf(t: Transport, s: Source, signal?: AbortSignal): StalkerClient {
+  const { login, password } = unpackCreds(s.password);
+  return new StalkerClient(t, { portal: s.server, mac: normalizeMac(s.username) ?? s.username, login, password }, {
+    endpoint: s.stalkerApi || null, signal,
+    onEndpoint: (api) => { s.stalkerApi = api; if (s.id != null) void db.sources.update(s.id, { stalkerApi: api }).catch(() => undefined); },
+  });
 }
 
 function mapCategories(kind: Kind, sourceId: number, list: XtreamCategory[], langs: string[] | null): CategoryRow[] {
@@ -43,19 +56,29 @@ function mapCategories(kind: Kind, sourceId: number, list: XtreamCategory[], lan
 
 /** Étape rapide (3 petits appels) : catégories et langues détectées, pour l'écran de choix de langues. */
 export async function detectLanguages(t: Transport, s: Source, signal?: AbortSignal): Promise<{ languages: DetectedLanguage[]; counts: Record<Kind, number> }> {
+  if (s.type === "stalker") {
+    const sc = stalkerOf(t, s, signal);
+    const [g, v] = [await sc.genres(), await sc.vodCategories()];
+    const cats = [...g, ...v].map((x) => ({ category_id: x.id, category_name: x.title }));
+    return languagesOf(cats, { live: g.length, movie: v.length, series: v.length });
+  }
   const c = credsOf(s);
   const [live, vod, ser] = await Promise.all([
     xtreamArray<XtreamCategory>(t, c, "get_live_categories", {}, signal),
     xtreamArray<XtreamCategory>(t, c, "get_vod_categories", {}, signal),
     xtreamArray<XtreamCategory>(t, c, "get_series_categories", {}, signal),
   ]);
+  return languagesOf([...live, ...vod, ...ser], { live: live.length, movie: vod.length, series: ser.length });
+}
+
+function languagesOf(cats: XtreamCategory[], counts: Record<Kind, number>): { languages: DetectedLanguage[]; counts: Record<Kind, number> } {
   const map = new Map<string, number>();
-  for (const cat of [...live, ...vod, ...ser]) {
+  for (const cat of cats) {
     const code = categoryLang(String(cat.category_name ?? ""));
     map.set(code, (map.get(code) ?? 0) + 1);
   }
   const languages = [...map].map(([code, categories]) => ({ code, categories })).sort((a, b) => b.categories - a.categories);
-  return { languages, counts: { live: live.length, movie: vod.length, series: ser.length } };
+  return { languages, counts };
 }
 
 export async function testConnection(t: Transport, s: Source, signal?: AbortSignal) {
@@ -63,6 +86,15 @@ export async function testConnection(t: Transport, s: Source, signal?: AbortSign
     const head = (await readM3u(t, s, signal)).slice(0, 200);
     if (!head.includes("#EXTM3U") && !head.includes("#EXTINF")) throw new Error("not-m3u");
     return { ok: true as const, expDate: null, maxConnections: 1 };
+  }
+  if (s.type === "stalker") {
+    if (!normalizeMac(s.username)) throw new Error("auth");
+    const sc = stalkerOf(t, s, signal);
+    const stalkerApi = await sc.probe();
+    const acc = await sc.account().catch(() => null);
+    if (acc?.status === "Expired") throw new Error("expired");
+    if (acc?.status === "Disabled") throw new Error("auth");
+    return { ok: true as const, expDate: acc?.expDate ?? null, maxConnections: 1, stalkerApi };
   }
   const h = await handshake(t, credsOf(s), signal);
   const ui = h.user_info;
@@ -137,6 +169,7 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
   try {
     try {
       if (source.type === "m3u") await syncM3u(ctx, t, signal);
+      else if (source.type === "stalker") await syncStalker(ctx, t, signal);
       else await syncXtream(ctx, t, signal);
       assertNotAborted(signal);
     } catch (e) {
@@ -316,6 +349,103 @@ async function streamIntoDb<T>(
       }
     }
   }
+}
+
+/**
+ * Portail Stalker : genres + toutes les chaînes (`get_all_channels`, sinon pages), puis catégories VOD lues page par
+ * page (films et séries mêlés : une série porte `is_series` ou un tableau `series`). Seules les catégories ACTIVES
+ * (langues choisies) sont téléchargées : un portail sert 14 titres par page.
+ */
+async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
+  const { source, cid: sourceId, counts, report, flags, firstGeneration } = ctx;
+  const sc = stalkerOf(t, source, signal);
+  const portal = source.server;
+  const langs = source.langs;
+  const [genres, vodCats] = [await sc.genres(), await sc.vodCategories()];
+  const asX = (l: { id: string; title: string }[]) => l.map((c) => ({ category_id: c.id, category_name: c.title }));
+  const cats = [
+    ...mapCategories("live", sourceId, asX(genres), langs),
+    ...mapCategories("movie", sourceId, asX(vodCats), langs),
+    ...mapCategories("series", sourceId, asX(vodCats), langs),
+  ];
+  if (flags) for (const cat of cats) { const f = flags.get(`${cat.kind}:${cat.extId}`); if (f !== undefined) cat.enabled = f; }
+  const enabled: Record<Kind, Set<string>> = { live: new Set(), movie: new Set(), series: new Set() };
+  for (const cat of cats) if (cat.enabled) enabled[cat.kind].add(cat.extId);
+  const catIds = await db.categories.bulkAdd(cats, { allKeys: true });
+  const catCount: Record<string, number> = {};
+  const bump = (kind: Kind, ext: string) => { const k = `${kind}:${ext}`; catCount[k] = (catCount[k] ?? 0) + 1; };
+  const s = (o: StalkerItem, k: string) => { const v = o[k]; return v == null || typeof v === "object" ? "" : String(v).trim(); };
+  assertNotAborted(signal);
+
+  // --- Direct ---
+  report("live", 0, true);
+  const rows: ChannelRow[] = [];
+  let liveOrd = 0;
+  for (const o of await sc.allChannels()) {
+    const cat = s(o, "tv_genre_id"), cmd = s(o, "cmd"), name = s(o, "name");
+    if (!cmd || !name || !enabled.live.has(cat)) continue;
+    const p = parseChannelName(name);
+    bump("live", cat);
+    rows.push({
+      sourceId, catExt: cat, ord: liveOrd++, streamId: toNum(o.id), num: toNum(o.number, liveOrd), name, display: p.displayName,
+      norm: normText(p.displayName), words: p.isSeparator ? [] : wordKeys(sourceId, normText(p.displayName)), country: p.country, q: p.quality,
+      flags: p.flags, sep: p.isSeparator ? 1 : 0, logo: absoluteUrl(portal, o.logo), epg: s(o, "xmltv_id") || null, archive: 0,
+      url: stalkerLink("itv", cmd),
+    });
+  }
+  for (let i = 0; i < rows.length; i += 5000) await db.channels.bulkAdd(rows.slice(i, i + 5000));
+  counts.live = rows.filter((r) => !r.sep).length;
+  if (firstGeneration) { await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } }); ctx.switched = true; }
+  report("live", 1, true);
+
+  // --- Films et séries (mêmes catégories VOD) ---
+  report("movie", 0, true);
+  const wanted = vodCats.map((c) => c.id).filter((id) => enabled.movie.has(id) || enabled.series.has(id));
+  let movieOrd = 0, serOrd = 0, done = 0;
+  for (const catId of wanted) {
+    assertNotAborted(signal);
+    const items = await sc.vodOfCategory(catId).catch((e) => { if ((e as Error).name === "AbortError") throw e; return [] as StalkerItem[]; });
+    const movies: MovieRow[] = [];
+    const series: SeriesRow[] = [];
+    for (const o of items) {
+      const cmd = s(o, "cmd"), name = s(o, "name");
+      if (!cmd || !name) continue;
+      const ct = cleanTitle(name);
+      const year = /^\d{4}/.test(s(o, "year")) ? parseInt(s(o, "year").slice(0, 4), 10) : ct.year;
+      const rating = Math.min(10, toNum(o.rating_imdb) || toNum(o.rating_kinopoisk));
+      const added = (Date.parse(s(o, "added").replace(" ", "T") + "Z") || 0);
+      const poster = absoluteUrl(portal, o.screenshot_uri ?? o.cover_big);
+      const eps = Array.isArray(o.series) ? (o.series as unknown[]).map(Number).filter(Number.isFinite) : [];
+      if (o.is_series === true || o.is_series === 1 || o.is_series === "1" || eps.length) {
+        if (!enabled.series.has(catId)) continue;
+        bump("series", catId);
+        series.push({
+          sourceId, catExt: catId, ord: serOrd++, seriesId: toNum(o.id), name, title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)),
+          year, poster, backdrop: null, plot: s(o, "description").slice(0, 600) || null, rating, added, url: stalkerLink("vod", cmd), eps,
+        });
+      } else {
+        if (!enabled.movie.has(catId)) continue;
+        bump("movie", catId);
+        movies.push({
+          sourceId, catExt: catId, ord: movieOrd++, streamId: toNum(o.id), name, title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)),
+          year, poster, rating, ext: "", added, url: stalkerLink("vod", cmd),
+        });
+      }
+    }
+    if (movies.length) await db.movies.bulkAdd(movies);
+    if (series.length) await db.series.bulkAdd(series);
+    counts.movie = movieOrd; counts.series = serOrd;
+    report("movie", Math.min(0.99, ++done / Math.max(1, wanted.length)));
+  }
+  report("movie", 1, true);
+  report("series", 1, true);
+
+  await db.transaction("rw", db.categories, async () => {
+    for (let i = 0; i < cats.length; i++) {
+      const n = catCount[`${cats[i]!.kind}:${cats[i]!.extId}`] ?? 0;
+      if (n) await db.categories.update(catIds[i]!, { count: n });
+    }
+  });
 }
 
 async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {

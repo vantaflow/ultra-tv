@@ -92,9 +92,9 @@ class ProviderFormsTest {
         rule.onNodeWithTag("field-worker").performTextInput("")
     }
 
-    @Test fun sourceStalkerHeritee_nEstPlusPriseEnCharge_maisResteSupprimable() {
-        assertTrue("XTREAM" in SUPPORTED_KINDS && "M3U" in SUPPORTED_KINDS && "M3U_LOCAL" in SUPPORTED_KINDS)
-        assertFalse("STALKER" in SUPPORTED_KINDS)
+    @Test fun portailStalker_prisEnCharge_typeInconnuNon() {
+        assertTrue("XTREAM" in SUPPORTED_KINDS && "M3U" in SUPPORTED_KINDS && "M3U_LOCAL" in SUPPORTED_KINDS && "STALKER" in SUPPORTED_KINDS)
+        assertFalse("LEGACY" in SUPPORTED_KINDS)
     }
 
     /** Écran bas (400 dp, bien plus court que le dialogue) : « ▼ » depuis le mot de passe atteint le bouton principal, visible. */

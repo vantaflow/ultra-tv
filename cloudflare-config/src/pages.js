@@ -3,7 +3,7 @@
 
 import { escapeHtml as e, html } from "./http.js";
 import { parsePairQr } from "./qr.js";
-import { displayUrl, xtreamCredsOf } from "./store.js";
+import { displayUrl, maskMac, xtreamCredsOf } from "./store.js";
 
 const CSS = `
 @font-face{font-family:Sora;src:url(/assets/sora.woff2) format("woff2");font-weight:100 800;font-display:swap}
@@ -144,9 +144,9 @@ details>.drop{margin-top:12px;padding-top:4px;flex-basis:100%}
 .seg{display:flex;gap:4px;padding:4px;background:var(--bg);border:1px solid var(--bd);border-radius:16px;margin:16px 0 4px}
 .tabbed>input[type=radio]{position:absolute;opacity:0;width:1px;height:1px;min-height:0;pointer-events:none}
 .seg label{flex:1;margin:0;min-height:44px;display:grid;place-items:center;border-radius:12px;color:var(--fg2);font-size:14px;cursor:pointer;transition:background .15s,color .15s}
-#t-xtream:checked~.seg label[for=t-xtream],#t-m3u:checked~.seg label[for=t-m3u]{background:var(--acc);color:var(--on-acc)}
-#t-xtream:focus-visible~.seg label[for=t-xtream],#t-m3u:focus-visible~.seg label[for=t-m3u]{outline:3px solid var(--ring);outline-offset:2px}
-.tabbed form{display:none} #t-xtream:checked~#form-xtream,#t-m3u:checked~#form-m3u{display:block}
+#t-xtream:checked~.seg label[for=t-xtream],#t-m3u:checked~.seg label[for=t-m3u],#t-stalker:checked~.seg label[for=t-stalker]{background:var(--acc);color:var(--on-acc)}
+#t-xtream:focus-visible~.seg label[for=t-xtream],#t-m3u:focus-visible~.seg label[for=t-m3u],#t-stalker:focus-visible~.seg label[for=t-stalker]{outline:3px solid var(--ring);outline-offset:2px}
+.tabbed form{display:none} #t-xtream:checked~#form-xtream,#t-m3u:checked~#form-m3u,#t-stalker:checked~#form-stalker{display:block}
 .secure{display:flex;gap:8px;align-items:flex-start;margin-top:14px;color:var(--mut);font-size:13px}
 .secure .ico{width:16px;height:16px;margin-top:3px}
 .danger-zone{border-color:color-mix(in srgb,var(--dng) 40%,var(--bd))}
@@ -293,6 +293,7 @@ const DASH_MSG = {
     kind: "Type de fournisseur inconnu.",
     url: "URL invalide : seules les URL http:// et https:// sont acceptées.",
     creds: "Utilisateur et mot de passe requis pour Xtream.",
+    mac: "Adresse MAC invalide : 12 caractères hexadécimaux (ex. 00:1A:79:12:34:56).",
     short: "Nouveau mot de passe trop court (10 caractères minimum).",
     pw: "Mot de passe actuel incorrect.",
     assign: "Choisis au moins un appareil de ton compte.",
@@ -477,16 +478,19 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false
     const origin = p.originName ? `Ajouté depuis ${e(p.originName === "dashboard" ? "le tableau de bord" : p.originName)}` : "Origine inconnue";
     return `
 <article class="card" data-q="${e(`${p.name} ${displayUrl(p.url)} ${p.kind}`.toLowerCase())}"><div class="card-top"><div class="badge-ico">${ico("list")}</div>
-<div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}</div></div></div>
+<div class="grow"><div class="card-title"><span class="kind">${e(p.kind)}</span>${e(p.name)}</div><div class="card-meta">${e(displayUrl(p.url))}${p.kind === "STALKER" ? ` · MAC ${e(maskMac(p.mac))}` : ""}</div></div></div>
 ${sh.chips}${p.managed === "reseller" ? `<div class="chips"><span class="chip acc">Gérée par ton revendeur (Pro)</span></div>` : ""}
 <div class="card-meta mt10">${origin}${p.createdAt ? ` · le ${e(when(p.createdAt))}` : ""}${p.updatedAt && p.updatedAt > (p.createdAt || 0) + 60000 ? ` · modifié le ${e(when(p.updatedAt))}` : ""}</div>
 ${xtreamCredsOf(p) ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria-live="polite"><span class="muted">Abonnement : chargement…</span></div>` : ""}
+${p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted">Abonnement visible dans l'application (le portail n'accepte que la MAC de l'appareil).</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">Lien IPTV</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">Copier</button></div></div>
 <div class="actions">${sh.form}
 ${p.managed === "reseller"
     ? `<span class="muted small">Ses identifiants appartiennent à ton revendeur : ni affichés ni supprimables ici.</span>`
-    : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">Afficher le lien IPTV</button>
+    : `${p.kind === "STALKER"
+    ? `<span class="muted small">Lien IPTV non disponible pour un portail Stalker : il s'ouvre avec la MAC, dans l'application.</span>`
+    : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">Afficher le lien IPTV</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="Supprimer ce fournisseur ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form>`}</div></article>`;
   }).join("");
   const devRows = devices.map((d) => `
@@ -644,7 +648,7 @@ ${isPro ? `<div class="tile${nextLic && nextLic < Date.now() ? " bad" : nextLic 
 <ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol>
 ${pairForm(csrfInput)}</section>
 <section class="panel" aria-labelledby="h-add"><h2 id="h-add">Ajouter un fournisseur</h2>
-<div class="tabbed"><input type="radio" name="tab" id="t-xtream" checked aria-label="Xtream Codes"/><input type="radio" name="tab" id="t-m3u" aria-label="Playlist M3U"/><div class="seg" aria-hidden="true"><label for="t-xtream">Xtream Codes</label><label for="t-m3u">Playlist M3U</label></div>
+<div class="tabbed"><input type="radio" name="tab" id="t-xtream" checked aria-label="Xtream Codes"/><input type="radio" name="tab" id="t-m3u" aria-label="Playlist M3U"/><input type="radio" name="tab" id="t-stalker" aria-label="Portail Stalker (MAC)"/><div class="seg" aria-hidden="true"><label for="t-xtream">Xtream Codes</label><label for="t-m3u">Playlist M3U</label><label for="t-stalker">Portail Stalker</label></div>
 <form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
 <label for="xn">Nom <span class="hint">(facultatif)</span></label><input id="xn" name="name" maxlength="64" placeholder="Mon fournisseur"/>
 <label for="xu">URL du serveur</label><input id="xu" name="url" type="url" required maxlength="2048" placeholder="http://provider.com:8080" autocapitalize="none" spellcheck="false"/>
@@ -654,6 +658,13 @@ ${pairForm(csrfInput)}</section>
 <form method="post" action="/providers" id="form-m3u">${csrfInput}<input type="hidden" name="kind" value="M3U"/>
 <label for="mn">Nom <span class="hint">(facultatif)</span></label><input id="mn" name="name" maxlength="64" placeholder="Ma playlist"/>
 <label for="mu">URL de la playlist</label><input id="mu" name="url" type="url" required maxlength="2048" placeholder="https://exemple.com/liste.m3u" autocapitalize="none" spellcheck="false"/>
+<div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form>
+<form method="post" action="/providers" id="form-stalker">${csrfInput}<input type="hidden" name="kind" value="STALKER"/>
+<label for="sn">Nom <span class="hint">(facultatif)</span></label><input id="sn" name="name" maxlength="64" placeholder="Mon portail"/>
+<label for="su">Adresse du portail</label><input id="su" name="url" type="url" required maxlength="2048" placeholder="http://portail.tv:8080/c/" autocapitalize="none" spellcheck="false"/>
+<label for="sm">Adresse MAC</label><input id="sm" name="mac" required maxlength="17" pattern="[0-9A-Fa-f]{2}([:\-]?[0-9A-Fa-f]{2}){5}" placeholder="00:1A:79:XX:XX:XX" autocomplete="off" autocapitalize="characters" spellcheck="false"/>
+<label for="sl">Identifiant du portail <span class="hint">(facultatif)</span></label><input id="sl" name="username" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+<label for="sp">Mot de passe du portail <span class="hint">(facultatif)</span></label><input id="sp" name="password" type="password" maxlength="256" autocomplete="off"/>
 <div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form></div>
 <p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section>
 </div>
@@ -689,7 +700,7 @@ function traktPanel(t, csrfInput) {
   const linked = t && !t.revoked;
   return `<section class="panel" aria-labelledby="h-trakt"><h2 id="h-trakt">Trakt <span class="hint">(facultatif)</span></h2>
 ${linked ? `<p class="mt6">Connecté${t.user ? ` au compte <strong>${e(t.user)}</strong>` : ""}.</p>
-<p class="muted small mt6">Films et épisodes regardés sur tes appareils sont envoyés à Trakt (en cours, puis vu à la fin). Rien à régler sur la TV.</p>
+<p class="muted small mt6">Films et épisodes regardés sur tes appareils sont envoyés à Trakt (en cours, puis vu à la fin). Depuis les fiches, tes appareils peuvent aussi gérer ta watchlist, marquer vu / non vu et noter ; l'accueil montre « À suivre », tes listes personnelles et reprend là où tu t'étais arrêté — uniquement avec ce que contient ta playlist. Rien à régler sur la TV.</p>
 <form method="post" action="/trakt/disconnect">${csrfInput}<div class="row"><button class="secondary" type="submit">Déconnecter Trakt</button></div></form>`
     : `<p class="muted small mt6">${t && t.revoked ? "L'accès a été retiré chez Trakt : reconnecte-toi pour reprendre le suivi. " : ""}Relie ton compte Trakt : ce que tu regardes sur tes appareils (films, épisodes) y est enregistré automatiquement, sans rien régler sur la TV.</p>
 <form method="post" action="/trakt/connect">${csrfInput}<div class="row"><button type="submit">Connecter Trakt</button></div></form>

@@ -10,4 +10,7 @@ describe("iptvLink", () => {
     expect(iptvLink({ kind: "M3U", url: "https://h.example.test/liste.m3u" })).toBe("https://h.example.test/liste.m3u");
   });
   it("URL invalide : vide", () => expect(iptvLink({ kind: "XTREAM", url: "pas une url" })).toBe(""));
+  it("portail Stalker : aucun lien (la MAC reste côté appareil)", () => {
+    expect(iptvLink({ kind: "STALKER", url: "http://p.example.test/c/", mac: "00:1A:79:00:00:01" })).toBe("");
+  });
 });

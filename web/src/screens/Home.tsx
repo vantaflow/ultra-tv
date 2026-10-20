@@ -16,7 +16,7 @@ import { hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
-import { useIsWatchedMovie, useTraktRows, type TraktRow } from "@/trakt/hooks";
+import { useIsWatchedMovie, useTraktRows, type TraktRow, type UpNextRow } from "@/trakt/hooks";
 import { EmptyCatalog, NoSource } from "./states";
 
 export function Home() {
@@ -55,6 +55,25 @@ function TraktRowSection({ title, rows, seen, onOpen }: { title: string; rows: T
           <div key={`${r.kind}${r.ref}`} style={{ flex: "0 0 9.5rem" }}>
             <PosterCard kind={r.kind === "movie" ? "movie" : "tv"} year={r.row.year} title={r.row.title} image={r.row.poster} meta={r.row.year ? String(r.row.year) : undefined}
               watched={r.kind === "movie" && seen(r.row.title, r.row.year)} onClick={() => onOpen(r)} />
+          </div>
+        ))}
+      </HScroll>
+    </section>
+  );
+}
+
+/** « À suivre (Trakt) » : séries dont l'épisode suivant est disponible ; ouvre la fiche (qui propose cet épisode). */
+function UpNextSection({ title, rows, onOpen }: { title: string; rows: UpNextRow[]; onOpen: (u: UpNextRow) => void }) {
+  const t = useT();
+  if (!rows.length) return null;
+  return (
+    <section>
+      <h2 className="section-title">{title}</h2>
+      <HScroll className="row-scroll">
+        {rows.map((u) => (
+          <div key={`u${u.ref}`} style={{ flex: "0 0 9.5rem" }}>
+            <PosterCard kind="tv" year={u.row.year} title={u.row.title} image={u.row.poster}
+              meta={`${t("common.season", { n: u.season })} · ${t("common.episodeShort", { n: u.episode })}`} onClick={() => onOpen(u)} />
           </div>
         ))}
       </HScroll>
@@ -112,10 +131,12 @@ function HomeInner({ source }: { source: Source }) {
         </section>
       )}
 
+      <UpNextSection title={t("home.traktUpNext")} rows={trakt.upNext} onOpen={(u) => nav(`/serie/${u.ref}`)} />
       <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktTrending")} rows={trakt.trending} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktPopular")} rows={trakt.popular} seen={seen} onOpen={openTrakt} />
+      {trakt.lists.map((l) => <TraktRowSection key={l.id} title={t("home.traktList", { name: l.name })} rows={l.rows} seen={seen} onOpen={openTrakt} />)}
 
       {favChans.length > 0 && (
         <section>

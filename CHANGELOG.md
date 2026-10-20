@@ -2,6 +2,32 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.65] — 2026-10-21 (Android) · [Bureau 1.2.35]
+
+### Ajouté
+- **Portails Stalker / Ministra (adresse MAC)** : ajout depuis l'appli (Réglages › Sources), le bureau (application
+  Electron) ou le tableau de bord ; direct, films, séries, guide court et date d'expiration (écran Abonnement). Lien de
+  lecture demandé au portail au moment de la lecture. Replay non disponible pour ces portails.
+- **Téléchargements** (Android) : films, épisodes, saison entière ; file d'attente (2 à la fois) avec pause, reprise,
+  annulation et nouvel essai ; reprise après coupure ; écran « Téléchargements » utilisable hors ligne ; Wi-Fi
+  uniquement et emplacement dans les réglages. Un film téléchargé se lit depuis le fichier local.
+- **Aperçu vidéo dans le Direct** (Android TV) : la chaîne sélectionnée joue dans le panneau d'aperçu (muet par
+  défaut) ; OK la passe en plein écran **sans recharger le flux**, Retour revient à la liste avec l'aperçu en cours.
+  Réglable dans Réglages › Lecture.
+- **Trakt complet** (Android et bureau) : ajouter / retirer de la watchlist, marquer vu / non vu (film, épisode,
+  saison), noter de 1 à 10, rangées des listes personnelles, rangée « À suivre », positions de reprise importées.
+- **DNS personnalisé** (Android) : Google, Cloudflare, Quad9, DNS-over-HTTPS ou serveur au choix, avec test ;
+  appliqué au catalogue, au guide, aux images et aux flux ExoPlayer (pas à VLC). Repli automatique sur le DNS du
+  système si le serveur ne répond pas.
+- **Personnalisation** (Réglages › Affichage) : couleur d'accent (6 choix), taille du texte, rangées de l'accueil
+  (afficher / masquer / ordre), écran d'ouverture (Accueil, Direct, Films, Séries, Guide, dernière chaîne).
+
+### Amélioré (lisibilité)
+- Barre du lecteur plus contrastée, libellés blancs plus grands, bouton actif (Veille, Replay) mis en évidence.
+- Badges des chaînes (langue, qualité) lisibles (contraste AA), qualité légèrement colorée.
+- En-tête du Direct simplifié : « Catégorie · N chaînes ».
+- Listes de choix : l'option appliquée porte une coche ✓, distincte de la sélection à la télécommande.
+
 ## [1.2.64] — 2026-10-20 (Android TV)
 
 ### Corrigé

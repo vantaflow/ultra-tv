@@ -22,7 +22,8 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { effectivePreferred } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
-import { candidates, type Candidate } from "./resolve";
+import { stalkerCandidate, candidates, type Candidate } from "./resolve";
+import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
 import { startScrobble, type Scrobbler } from "./trakt";
@@ -134,7 +135,8 @@ export function PlayerHost() {
     resumeAtRef.current = null;
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
-      userAgent: src.userAgent || null, referer: src.referer || null, startAt: resume ?? tg.startAt,
+      // Portail Stalker : flux demandés avec l'identité MAG du portail, sauf User-Agent choisi par l'utilisateur.
+      userAgent: src.userAgent || (src.type === "stalker" ? STALKER_UA : null), referer: src.referer || null, startAt: resume ?? tg.startAt,
     });
   }, []);
 
@@ -145,6 +147,21 @@ export function PlayerHost() {
     setTracks(NO_TRACKS);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
+    if (source.type === "stalker") {
+      // Portail Stalker : lien à durée de vie courte demandé au portail (create_link) au moment de jouer.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void stalkerCandidate(source, target).then((c) => {
+        if (dead) return;
+        if (!c) { setError(true); setState("error"); return; }
+        candRef.current = { list: [c], i: 0 };
+        void startCandidate(c);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
     const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4 });
     candRef.current = { list, i: 0 };
     silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;

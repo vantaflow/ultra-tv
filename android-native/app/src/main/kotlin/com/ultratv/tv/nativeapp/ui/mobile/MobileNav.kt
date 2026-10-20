@@ -127,7 +127,7 @@ fun BottomTabs(navController: NavController, onMore: () -> Unit, modifier: Modif
     ) {
         tabs.forEach { t ->
             val selected = t.tab == active
-            val ink = if (selected) Color.White else Ux.Text3
+            val ink = if (selected) Ux.OnAccent else Ux.Text3
             val label = t.label(S, D, M)
             Column(
                 Modifier
@@ -162,6 +162,7 @@ private val moreItems = listOf(
     MoreDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
     MoreDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
     MoreDef("recordings", Icons.Record) { s, _, _ -> s.navRecordings },
+    MoreDef(Routes.DOWNLOADS, MobileIcons.Download) { _, d, _ -> com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(d.lang).navTitle },
     MoreDef(Routes.SETTINGS, Icons.Settings) { _, d, _ -> d.settingsTitle },
     MoreDef("profiles", MobileIcons.User) { _, _, m -> m.navProfiles },
 )
@@ -222,6 +223,7 @@ private val railDefs = listOf(
     RailDef(Routes.SERIES, Icons.Series) { s, _ -> s.navSeries },
     RailDef(Routes.FAVORITES, Icons.Heart) { s, _ -> s.navFavorites },
     RailDef("recordings", Icons.Record) { s, _ -> s.navRecordings },
+    RailDef(Routes.DOWNLOADS, MobileIcons.Download) { _, d -> com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(d.lang).navTitle },
     RailDef(Routes.SETTINGS, Icons.Settings) { _, d -> d.settingsTitle },
 )
 
@@ -261,7 +263,7 @@ fun TouchRail(navController: NavController, profile: ProfileChip?, onProfile: ()
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Box(Modifier.width(52.dp).height(32.dp).clip(RoundedCornerShape(16.dp)).background(if (selected) Ux.Accent else Color.Transparent), contentAlignment = Alignment.Center) {
-                        DIcon(r.icon, 22.dp, if (selected) Color.White else Ux.Text3)
+                        DIcon(r.icon, 22.dp, if (selected) Ux.OnAccent else Ux.Text3)
                     }
                     Spacer4()
                     Text(label, color = if (selected) Ux.Text else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -54,12 +54,14 @@ object RemoteLog {
     // quickly because the process is about to be killed.
     private val eventClient by lazy {
         OkHttpClient.Builder()
+            .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)   // DNS des Réglages (client hors graphe Hilt)
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
     }
     private val crashClient by lazy {
         OkHttpClient.Builder()
+            .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)   // DNS des Réglages (client hors graphe Hilt)
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(3, TimeUnit.SECONDS)
             .writeTimeout(3, TimeUnit.SECONDS)

@@ -4,6 +4,7 @@
 import type { Source } from "@/db/types";
 import type { CloudProvider } from "./client";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
+import { normalizeMac, packCreds } from "@/net/stalker";
 
 export interface Plan {
   add: Source[];
@@ -12,7 +13,7 @@ export interface Plan {
   remove: number[];
   /** Sources locales qui étaient partagées et ne le sont plus : on les garde, sans lien cloud. */
   detach: number[];
-  /** Fournisseurs ignorés (type non pris en charge, ex. Stalker). */
+  /** Fournisseurs ignorés (type non pris en charge, ou portail Stalker à MAC invalide). */
   skipped: number;
 }
 
@@ -29,6 +30,11 @@ export function toSourceFields(p: CloudProvider): Fields | null {
     if (x) return { name, type: "xtream", server: x.server, username: x.username, password: x.password, m3uUrl: "" };
     return { name, type: "m3u", server: "", username: "", password: "", m3uUrl: p.url };
   }
+  if (kind === "STALKER") {
+    // Portail Stalker : MAC dans `username`, identifiant et mot de passe facultatifs empaquetés dans `password`.
+    const mac = normalizeMac(p.mac ?? "");
+    return mac ? { name, type: "stalker", server: p.url, username: mac, password: packCreds(p.username ?? "", p.password ?? ""), m3uUrl: "" } : null;
+  }
   return null;
 }
 
@@ -37,6 +43,7 @@ const norm = (u: string) => u.trim().replace(/\/+$/, "").toLowerCase();
 /** Une source locale identique (même serveur et identifiant, ou même lien) : adoptée au lieu d'être dupliquée. */
 function sameProvider(s: Source, f: Fields): boolean {
   if (s.type !== f.type) return false;
+  if (s.type === "stalker") return norm(s.server) === norm(f.server) && s.username.toUpperCase() === f.username.toUpperCase();
   return s.type === "xtream" ? norm(s.server) === norm(f.server) && s.username === f.username : norm(s.m3uUrl) === norm(f.m3uUrl);
 }
 

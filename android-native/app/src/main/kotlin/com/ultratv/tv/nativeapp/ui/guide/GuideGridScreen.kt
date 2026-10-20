@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.guide
 
+import com.ultratv.tv.nativeapp.ui.design.designT
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -308,7 +309,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                             onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg.value = c to p },
                         )
-                    } else Spacer(Modifier.height(84.design))
+                    } else Spacer(Modifier.height(84.designT))
                 }
             }
             // Ligne « maintenant » (accent, 3 px) : seulement si l'instant courant est dans la fenêtre.
@@ -374,8 +375,8 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
 
 @Composable
 private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.design)) { f ->
-        Box(Modifier.padding(horizontal = 28.design).height(56.design), contentAlignment = Alignment.Center) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.designT)) { f ->
+        Box(Modifier.padding(horizontal = 28.design).height(56.designT), contentAlignment = Alignment.Center) {
             Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
         }
     }
@@ -388,7 +389,7 @@ private fun GuideRow(
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
 ) {
     val nowMs = System.currentTimeMillis()
-    Row(Modifier.fillMaxWidth().height(84.design)) {
+    Row(Modifier.fillMaxWidth().height(84.designT)) {
         Row(Modifier.width(260.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
             LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
             Spacer(Modifier.width(14.design))

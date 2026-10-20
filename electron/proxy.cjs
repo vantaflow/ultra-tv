@@ -159,6 +159,9 @@ function rewriteManifest(text, baseUrl, wrap) {
 // Serveur
 // ---------------------------------------------------------------------------
 
+/** En-têtes relayés depuis `X-UT-H-<nom>` (portail Stalker) ; tout autre nom est ignoré. */
+const RELAYED_HEADERS = ["cookie", "authorization", "x-user-agent"];
+
 const FORWARD_REQ_HEADERS = [
   "range",
   "if-range",
@@ -347,6 +350,11 @@ function createProxyServer({ allowedOrigin, token, onError } = {}) {
     if (ua) h["user-agent"] = ua;
     const ref = req.headers["x-ut-referer"];
     if (ref) h["referer"] = ref;
+    // Portail Stalker : Cookie (MAC), Authorization (jeton) et X-User-Agent relayés sous un nom neutre (liste fermée).
+    for (const name of RELAYED_HEADERS) {
+      const v = req.headers["x-ut-h-" + name];
+      if (v) h[name] = v;
+    }
     h["accept-encoding"] = req.headers["range"] ? "identity" : "gzip, deflate";
     if (method === "POST" && bodyLength !== undefined) h["content-length"] = String(bodyLength);
     return h;

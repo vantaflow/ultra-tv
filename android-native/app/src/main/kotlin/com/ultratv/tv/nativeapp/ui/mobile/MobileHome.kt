@@ -46,6 +46,8 @@ import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
+import com.ultratv.tv.nativeapp.i18n.traktListRow
+import com.ultratv.tv.nativeapp.i18n.traktUpNext
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
 import com.ultratv.tv.nativeapp.i18n.traktTrending
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
@@ -66,6 +68,7 @@ import com.ultratv.tv.nativeapp.ui.home.ChannelCardUi
 import com.ultratv.tv.nativeapp.ui.home.HeroItem
 import com.ultratv.tv.nativeapp.ui.home.HomeRows
 import com.ultratv.tv.nativeapp.ui.home.HomeSectionId
+import com.ultratv.tv.nativeapp.ui.home.traktListIndex
 import com.ultratv.tv.nativeapp.ui.home.PosterCardUi
 import com.ultratv.tv.nativeapp.ui.home.ResumeCardUi
 import com.ultratv.tv.nativeapp.ui.home.mobileSectionOrder
@@ -174,6 +177,9 @@ fun MobileHomeScreen(
                     HomeSectionId.TRAKT_RECOMMENDED -> TraktPosterRow(D.traktRecommended, rows.recommended, wide, openPoster)
                     HomeSectionId.TRAKT_TRENDING -> TraktPosterRow(D.traktTrending, rows.trending, wide, openPoster)
                     HomeSectionId.TRAKT_POPULAR -> TraktPosterRow(D.traktPopular, rows.popular, wide, openPoster)
+                    HomeSectionId.TRAKT_UP_NEXT -> TraktPosterRow(D.traktUpNext, rows.upNext, wide, openPoster)
+                    HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
+                        rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster) }
                     HomeSectionId.CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(if (rows.showingFavorites) D.favoriteChannels else D.directTitle, M.seeAll, if (rows.showingFavorites) onGoFavorites else onGoLive)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
@@ -229,7 +235,7 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (He
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    (if (h.kind == HeroItem.Kind.SERIES) S.seriesTitle else S.moviesTitle).uppercase(), color = Color.White, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.1.sp,
+                    (if (h.kind == HeroItem.Kind.SERIES) S.seriesTitle else S.moviesTitle).uppercase(), color = Ux.OnAccent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.1.sp,
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(Ux.Accent).padding(horizontal = 8.dp, vertical = 3.dp),
                 )
                 if (h.meta.isNotEmpty()) Text(h.meta, color = Color(0xFFC4C4CC), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)

@@ -64,6 +64,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.fieldMac
+import com.ultratv.tv.nativeapp.i18n.fieldPortalLogin
+import com.ultratv.tv.nativeapp.i18n.fieldPortalPassword
+import com.ultratv.tv.nativeapp.i18n.fieldPortalUrl
+import com.ultratv.tv.nativeapp.i18n.formSubStalker
+import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.macHint
+import com.ultratv.tv.nativeapp.i18n.stalkerChecking
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.Icons
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
@@ -251,6 +259,8 @@ fun FormField(
     error: String? = null,
     required: Boolean = false,
     testTag: String? = null,
+    /** Affichage mis en forme sans toucher à la valeur (ex. « : » d'une adresse MAC, voir [MacVisualTransformation]). */
+    visual: VisualTransformation? = null,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
@@ -300,7 +310,7 @@ fun FormField(
                 singleLine = true,
                 textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = if (touch) 16.sp else 24.spx),
                 cursorBrush = SolidColor(Ux.Accent),
-                visualTransformation = if (password) PasswordVisualTransformation() else VisualTransformation.None,
+                visualTransformation = visual ?: if (password) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = if (password) KeyboardType.Password else keyboardType,
                     imeAction = if (last) ImeAction.Done else ImeAction.Next,
@@ -386,5 +396,61 @@ fun M3uDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String) -> Un
             placeholder = "https://hote.tld/liste.m3u", autoFocus = true, last = true, required = true,
             error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
         if (recognized) Text(D.xtreamRecognized, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 2, modifier = Modifier.testTag("xtream-recognized"))
+    }
+}
+
+/**
+ * Adresse MAC saisie à la télécommande : la valeur ne contient QUE les 12 chiffres hexadécimaux, les « : » sont
+ * seulement affichés (le curseur reste juste, aucun séparateur à taper ni à effacer).
+ */
+object MacVisualTransformation : VisualTransformation {
+    override fun filter(text: androidx.compose.ui.text.AnnotatedString): androidx.compose.ui.text.input.TransformedText {
+        val raw = text.text
+        val out = raw.chunked(2).joinToString(":")
+        val mapping = object : androidx.compose.ui.text.input.OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = (offset + if (offset <= 0) 0 else (offset - 1) / 2).coerceIn(0, out.length)
+            override fun transformedToOriginal(offset: Int): Int = (offset - offset / 3).coerceIn(0, raw.length)
+        }
+        return androidx.compose.ui.text.input.TransformedText(androidx.compose.ui.text.AnnotatedString(out), mapping)
+    }
+}
+
+/** Saisie MAC → 12 chiffres hexadécimaux au plus, en majuscules (tout autre caractère est ignoré). */
+internal fun macDigits(input: String): String = input.filter { it in '0'..'9' || it in 'a'..'f' || it in 'A'..'F' }.uppercase().take(12)
+
+/**
+ * « Portail Stalker (MAC) » : adresse du portail, MAC (préremplie avec le préfixe des boîtiers MAG 00:1A:79), identifiant et
+ * mot de passe facultatifs. [onSubmit] reçoit la MAC normalisée ; le dialogue reste ouvert pendant la vérification
+ * ([busy]) et se ferme quand l'appelant a fini.
+ */
+@Composable
+fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var mac by remember { mutableStateOf(com.ultratv.tv.nativeapp.data.stalker.StalkerMac.DEFAULT_PREFIX.filter { it != ':' }) }
+    var login by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val urlOk = url.isBlank() || isValidHttpUrl(url)
+    val macOk = mac.length == 12
+    AddProviderDialog(
+        title = D.kindStalker,
+        subtitle = D.formSubStalker,
+        icon = Icons.Monitor,
+        onDismiss = onDismiss,
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), mac.chunked(2).joinToString(":"), login.trim(), pass) },
+        canSubmit = isValidHttpUrl(url) && macOk && !busy,
+        submitLabel = if (busy) D.stalkerChecking else null,
+    ) {
+        FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
+        FormField(D.fieldPortalUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
+            placeholder = "http://portail:8080/c/", autoFocus = true, required = true,
+            error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
+        FormField(D.fieldMac, mac, { mac = macDigits(it) }, keyboardType = KeyboardType.Ascii,
+            placeholder = "00:1A:79:XX:XX:XX", required = true, visual = MacVisualTransformation, testTag = "field-mac")
+        Text(D.macHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 2)
+        FormField(D.fieldPortalLogin, login, { login = it }, testTag = "field-login")
+        FormField(D.fieldPortalPassword, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
     }
 }

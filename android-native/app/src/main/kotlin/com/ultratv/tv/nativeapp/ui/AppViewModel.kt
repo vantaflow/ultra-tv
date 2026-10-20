@@ -52,4 +52,8 @@ class AppViewModel @Inject constructor(
     fun setPreferSoftwareDecoder(v: Boolean) = viewModelScope.launch { store.setPreferSoftwareDecoder(v) }
     fun setEpgTimeOffsetMin(v: Int) = viewModelScope.launch { store.setEpgTimeOffsetMin(v) }
     fun setLocalLogosFolderUri(uri: String) = viewModelScope.launch { store.setLocalLogosFolderUri(uri) }
+    fun setAccent(key: String) = viewModelScope.launch { store.setAccent(key) }
+    fun setTextSize(key: String) = viewModelScope.launch { store.setTextSize(key) }
+    fun setHomeLayout(layout: com.ultratv.tv.nativeapp.ui.home.HomeLayout) = viewModelScope.launch { store.setHomeLayout(layout.orderCsv(), layout.hiddenCsv()) }
+    fun setStartScreen(key: String) = viewModelScope.launch { store.setStartScreen(key) }
 }

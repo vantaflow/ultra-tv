@@ -86,7 +86,16 @@ export interface ReqOptions {
   signal?: AbortSignal;
   userAgent?: string | null;
   referer?: string | null;
+  /**
+   * En-têtes supplémentaires (portail Stalker : Cookie, Authorization, X-User-Agent). Electron / proxy : relayés sous
+   * un nom neutre (`X-UT-…` / `X-SV-…`) que le relais rétablit ; navigateur direct : posés tels quels (Cookie est
+   * ignoré par le navigateur).
+   */
+  headers?: Record<string, string>;
 }
+
+/** En-têtes supplémentaires relayés par le proxy Electron / Cloudflare (liste fermée). */
+export const RELAYED_HEADERS = ["cookie", "authorization", "x-user-agent"] as const;
 
 export function requestHeaders(t: Transport, o: ReqOptions): Record<string, string> {
   const h: Record<string, string> = {};
@@ -96,6 +105,13 @@ export function requestHeaders(t: Transport, o: ReqOptions): Record<string, stri
   } else if (t.mode === "proxy") {
     if (o.userAgent) h["X-SV-UA"] = o.userAgent;
     if (o.referer) h["X-SV-Referer"] = o.referer;
+  }
+  for (const [k, v] of Object.entries(o.headers ?? {})) {
+    const name = k.toLowerCase();
+    if (!(RELAYED_HEADERS as readonly string[]).includes(name)) continue;
+    if (t.mode === "electron") h[`X-UT-H-${name}`] = v;
+    else if (t.mode === "proxy") h[`X-SV-H-${name}`] = v;
+    else h[k] = v;
   }
   return h;
 }

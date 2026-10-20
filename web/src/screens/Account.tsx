@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { handshake, type XtreamHandshake } from "@/net/xtream";
 import { currentTransport } from "@/net/transport";
 import { credsOf } from "@/sync/core";
+import { stalkerClientFor } from "@/player/resolve";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 
@@ -55,9 +56,15 @@ export function IptvAccountCard() {
   const fmt = (ms: number) => new Date(ms).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" });
 
   const load = async () => {
-    if (!source || source.type !== "xtream") return;
+    if (!source || source.type === "m3u") return;
     setBusy(true);
     try {
+      if (source.type === "stalker") {
+        // Portail Stalker : échéance lue par account_info/get_main_info (aucun nombre de connexions publié).
+        const a = await (await stalkerClientFor(source)).account();
+        setInfo({ status: a.status, exp_date: a.expDate ? String(Math.floor(a.expDate / 1000)) : null }); setSrv(null); setFailed(false);
+        return;
+      }
       const h = await handshake(await currentTransport(), credsOf(source));
       setInfo(h.user_info ?? null); setSrv(h.server_info ?? null); setFailed(false);
     } catch { setFailed(true); } finally { setBusy(false); }
@@ -76,11 +83,11 @@ export function IptvAccountCard() {
       {!source ? <p className="muted">{t.noSource}</p> : (
         <>
           <AccountRow k={t.source} v={source.name} />
-          {source.type !== "xtream" ? <p className="muted">{t.m3u}</p> : (
+          {source.type === "m3u" ? <p className="muted">{t.m3u}</p> : (
             <>
               <AccountRow k={t.status} v={<span className={`acc-pill ${status === "Active" ? "ok" : status ? "bad" : ""}`}>{status ?? (busy ? t.loading : t.unknown)}</span>} />
               <AccountRow k={t.expires} v={exp ? `${fmt(exp)} · ${days} ${t.days}` : info ? t.never : "—"} />
-              <AccountRow k={t.conns} v={info ? `${num(info.active_cons) ?? 0} / ${num(info.max_connections) ?? source.maxConnections ?? 1}` : "—"} />
+              {source.type !== "stalker" && <AccountRow k={t.conns} v={info ? `${num(info.active_cons) ?? 0} / ${num(info.max_connections) ?? source.maxConnections ?? 1}` : "—"} />}
               {created ? <AccountRow k={t.created} v={fmt(created * 1000)} /> : null}
               {(info as { is_trial?: unknown } | null)?.is_trial === "1" && <AccountRow k={t.trial} v={t.yes} />}
               {info?.allowed_output_formats?.length ? <AccountRow k={t.formats} v={info.allowed_output_formats.join(", ")} /> : null}

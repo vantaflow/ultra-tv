@@ -98,9 +98,27 @@ object Ux {
     /** Texte secondaire sur une ligne focalisée. */
     val OnFocus2: Color get() = if (light) Color(0xFFC9C7CF) else Color(0xFF3F3F46)
 
-    val Accent = Color(0xFFD91E2B)
+    /**
+     * Couleur d'accent choisie (Réglages › Affichage) : anneau de focus, progression, pastilles, interrupteurs.
+     * État Compose comme [themeLight] : un changement recompose tout ce qui lit l'accent.
+     */
+    var accentChoice by mutableStateOf(AccentChoice.DEFAULT)
+    /** Facteur de taille du texte (Réglages › Affichage) ; appliqué à la densité de police par ProvideUiScale. */
+    var textScale by androidx.compose.runtime.mutableFloatStateOf(1f)
+
+    val Accent: Color get() = Color(accentChoice.argb)
+    /** Texte / icône posé SUR l'accent (blanc ou encre selon la couleur, toujours ≥ 4,5:1). */
+    val OnAccent: Color get() = Color(accentChoice.onAccent)
+    /** Accent utilisé comme couleur de TEXTE sur les surfaces du thème (éclairci ou assombri pour rester AA). */
+    val AccentInk: Color get() = Color(if (light) accentChoice.inkOnLight else accentChoice.inkOnDark)
     val White = Color(0xFFFFFFFF)
 }
+
+/**
+ * Cote de maquette d'un cadre qui CONTIENT du texte (ligne, pilule) : grandit avec la taille de texte choisie,
+ * pour que « Grand » / « Très grand » ne coupent pas les libellés. Identique à `design` en taille normale.
+ */
+val Int.designT: Dp get() = (this / 2f * Ux.textScale).dp
 
 /** Sora (titres) et Manrope (texte) : polices variables sous licence OFL, embarquées dans res/font. */
 @OptIn(androidx.compose.ui.text.ExperimentalTextApi::class)
@@ -245,7 +263,7 @@ fun KeyHint(key: String?, label: String, chevron: Boolean = false) {
 @Composable
 fun LiveBadge(text: String, bg: Color = Ux.Accent) {
     Box(Modifier.clip(RoundedCornerShape(8.design)).background(bg).padding(horizontal = 14.design, vertical = 6.design)) {
-        Text(text, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.4.sp, maxLines = 1)
+        Text(text, color = if (bg == Ux.Accent) Ux.OnAccent else Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.4.sp, maxLines = 1)
     }
 }
 
@@ -272,10 +290,10 @@ fun PillButton(
         shape = RoundedCornerShape((heightPx / 2).design),
         bg = bg,
         ringWidth = ringWidth,
-        modifier = modifier.height(heightPx.design),
+        modifier = modifier.height(heightPx.designT),
     ) { f ->
-        Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.design), verticalAlignment = Alignment.CenterVertically) {
-            val ink = if (f || bg == Ux.Cta) Ux.TextOnLight else Ux.Text
+        Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.designT), verticalAlignment = Alignment.CenterVertically) {
+            val ink = if (f || bg == Ux.Cta) Ux.TextOnLight else if (bg == Ux.Accent) Ux.OnAccent else Ux.Text
             if (iconPath != null) {
                 DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
                 Spacer(Modifier.width(14.design))

@@ -117,6 +117,17 @@ data class UserPrefs(
     val syncVod: Boolean = true,
     val syncSeries: Boolean = true,
     val syncUnmeteredOnly: Boolean = true,
+    // ── Personnalisation (Réglages › Affichage) ──
+    /** Couleur d'accent : "red" (défaut) | "blue" | "violet" | "green" | "orange" | "pink" (voir AccentChoice). */
+    val accent: String = "red",
+    /** Taille du texte : "normal" | "large" | "xlarge" (voir TextSize). */
+    val textSize: String = "normal",
+    /** Ordre des rangées de l'accueil (CSV de HomeBlock) ; vide = ordre par défaut. */
+    val homeOrder: String = "",
+    /** Rangées de l'accueil masquées (CSV de HomeBlock). */
+    val homeHidden: String = "",
+    /** Écran d'ouverture : "" (= hérité de « Reprendre au lancement »), "home", "live", "movies", "series", "guide", "last". */
+    val startScreen: String = "",
 )
 
 @Singleton
@@ -170,6 +181,11 @@ class UserPreferencesStore @Inject constructor(
         val includeMulti = booleanPreferencesKey("include_multi")
         val preferredQuality = stringPreferencesKey("preferred_quality")
         val includeUnknown = booleanPreferencesKey("include_unknown_lang")
+        val accent = stringPreferencesKey("accent")
+        val textSize = stringPreferencesKey("text_size")
+        val homeOrder = stringPreferencesKey("home_order")
+        val homeHidden = stringPreferencesKey("home_hidden")
+        val startScreen = stringPreferencesKey("start_screen")
     }
 
     /** Préférences EFFECTIVES : globales, surchargées par celles du profil courant (voir ProfilePrefs). */
@@ -214,6 +230,8 @@ class UserPreferencesStore @Inject constructor(
             syncMode = p[Keys.syncMode] ?: "auto", syncHour = p[Keys.syncHour] ?: 3, syncLive = p[Keys.syncLive] ?: true, syncEpg = p[Keys.syncEpg] ?: true,
             syncVod = p[Keys.syncVod] ?: true, syncSeries = p[Keys.syncSeries] ?: true, syncUnmeteredOnly = p[Keys.syncUnmetered] ?: true,
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
+            accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal",
+            homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "",
         )
     }
 
@@ -254,6 +272,11 @@ class UserPreferencesStore @Inject constructor(
         when (part) { "live" -> it[Keys.syncLive] = on; "epg" -> it[Keys.syncEpg] = on; "vod" -> it[Keys.syncVod] = on; "series" -> it[Keys.syncSeries] = on }
     }
     suspend fun setSyncUnmeteredOnly(v: Boolean) = update { it[Keys.syncUnmetered] = v }
+    suspend fun setAccent(key: String) = update { it[Keys.accent] = key }
+    suspend fun setTextSize(key: String) = update { it[Keys.textSize] = key }
+    /** Ordre et rangées masquées de l'accueil, écrits ensemble (une seule émission du flux). */
+    suspend fun setHomeLayout(orderCsv: String, hiddenCsv: String) = update { it[Keys.homeOrder] = orderCsv; it[Keys.homeHidden] = hiddenCsv }
+    suspend fun setStartScreen(key: String) = update { it[Keys.startScreen] = key }
     suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
     suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
     suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }

@@ -396,7 +396,7 @@ private fun TouchProgramHit(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.Desi
                 Text(h.channel.title + " · " + programWhen(h, D), color = Ux.Text3, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (h.live) Box(Modifier.clip(RoundedCornerShape(6.dp)).background(Ux.Accent).padding(horizontal = 8.dp, vertical = 3.dp)) {
-                Text(D.live, color = Ux.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
+                Text(D.live, color = Ux.OnAccent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 10.sp, letterSpacing = 1.sp, maxLines = 1)
             }
         }
     }

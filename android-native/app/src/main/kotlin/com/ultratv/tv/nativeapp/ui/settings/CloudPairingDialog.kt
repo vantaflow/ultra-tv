@@ -80,7 +80,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
             }
             val pairBody: @Composable (Modifier) -> Unit = { codeModifier ->
                 Column(Modifier.responsiveWidth(760), verticalArrangement = Arrangement.spacedBy(if (touch) 20.dp else 40.design)) {
-                    Text(D.pairEyebrow, color = Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = TextUnit(3f, TextUnitType.Sp), maxLines = 1)
+                    Text(D.pairEyebrow, color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = TextUnit(3f, TextUnitType.Sp), maxLines = 1)
                     Text(D.pairTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 64.spx, lineHeight = if (touch) 32.sp else 67.spx, maxLines = 3)
                     val host = (state as? PairingUi.ShowCode)?.workerBase?.let { hostOnly(it).substringAfter("://") }.orEmpty()
                     if (touch && host.isNotEmpty()) {
@@ -141,7 +141,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
 @Composable
 private fun Step(n: Int, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.Top) {
-        Text("$n", color = Ux.Accent, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx)
+        Text("$n", color = Ux.AccentInk, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx)
         Text(text, color = Ux.Text, fontFamily = Manrope, fontSize = 28.spx, lineHeight = 36.spx, maxLines = 2)
     }
 }

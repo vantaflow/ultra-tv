@@ -238,7 +238,7 @@ fun BoxScope.MobileControls(
     ) {
         PlayerRoundButton(MobileIcons.Back, M.a11yBack, onBack)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (badge != null) Text(badge, color = com.ultratv.tv.nativeapp.ui.design.Ux.Accent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (badge != null) Text(badge, color = com.ultratv.tv.nativeapp.ui.design.Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(title, color = Color(0xFFF5F5F7), fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (onFullscreen != null) PlayerRoundButton(MobileIcons.Fullscreen, M.rotateHint, onFullscreen)
@@ -292,8 +292,9 @@ fun PlayerPill(p: ControlPill) {
             Modifier.height(32.dp).clip(RoundedCornerShape(16.dp)).background(if (p.active) com.ultratv.tv.nativeapp.ui.design.Ux.Accent else Color(0x1FFFFFFF)).padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            DIcon(p.icon, 14.dp, Color(0xFFF5F5F7))
-            Text(p.label, color = Color(0xFFF5F5F7), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
+            val ink = if (p.active) com.ultratv.tv.nativeapp.ui.design.Ux.OnAccent else Color(0xFFF5F5F7)
+            DIcon(p.icon, 14.dp, ink)
+            Text(p.label, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
         }
     }
 }

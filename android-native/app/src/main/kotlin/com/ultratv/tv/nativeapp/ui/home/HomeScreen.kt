@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.home
 
+import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.common.RowBleed
 import com.ultratv.tv.nativeapp.ui.common.rowBleedStart
 import androidx.compose.foundation.background
@@ -53,6 +54,8 @@ import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
+import com.ultratv.tv.nativeapp.i18n.traktListRow
+import com.ultratv.tv.nativeapp.i18n.traktUpNext
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
 import com.ultratv.tv.nativeapp.i18n.traktTrending
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
@@ -221,6 +224,9 @@ private fun HomeSection(
         HomeSectionId.TRAKT_RECOMMENDED -> Section(D.traktRecommended) { PosterRow(rows.recommended, openPoster) }
         HomeSectionId.TRAKT_TRENDING -> Section(D.traktTrending) { PosterRow(rows.trending, openPoster) }
         HomeSectionId.TRAKT_POPULAR -> Section(D.traktPopular) { PosterRow(rows.popular, openPoster) }
+        HomeSectionId.TRAKT_UP_NEXT -> Section(D.traktUpNext) { PosterRow(rows.upNext, openPoster) }
+        HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
+            rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> Section(D.traktListRow(l.name)) { PosterRow(l.cards, openPoster) } }
         HomeSectionId.RECENT_CHANNELS -> Section(D.recentlyWatched) { ResumeRow(rows.recentChannels, playHistory) }
         HomeSectionId.LATEST_MOVIES -> Section(D.latestMovies) { PosterRow(rows.latestMovies, openPoster) }
         HomeSectionId.LATEST_SERIES -> Section(D.latestSeries) { PosterRow(rows.latestSeries, openPoster) }
@@ -382,7 +388,7 @@ private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
 @Composable
 private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
     val c = card.channel
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Surface, modifier = Modifier.width(220.design).height(132.design)) { f ->
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Surface, modifier = Modifier.width(220.design).height(132.designT)) { f ->
         Column(Modifier.fillMaxSize().padding(20.design), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

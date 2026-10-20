@@ -119,5 +119,14 @@ interface PlayerEngine {
     fun setSubtitleDelay(ms: Int): Boolean = false
     /** Ajoute un fichier de sous-titres (SRT) à la lecture en cours et l'active ; faux si non pris en charge. */
     fun addExternalSubtitle(path: String): Boolean = false
+    /** Coupe / rétablit le son (aperçu du Direct muet) sans toucher au flux. */
+    fun setMuted(muted: Boolean) {}
+    /**
+     * La vue vidéo va changer de parent (aperçu du Direct ↔ plein écran) : sa surface sera détruite puis recréée.
+     * Media3 (PlayerView) suit seul la nouvelle surface ; LibVLC doit couper sa sortie vidéo avant et la relancer après.
+     */
+    fun onVideoDetaching() {}
+    /** La vue vidéo est rattachée à son nouveau parent (après la création de la nouvelle surface). */
+    fun onVideoReattached() {}
     fun release()
 }

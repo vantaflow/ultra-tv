@@ -64,7 +64,11 @@ fun ProvideUiScale(content: @Composable () -> Unit) {
         val hPx = constraints.maxHeight
         // TV : maquette en pixels fixes, police comprise. La taille de police système (« Grand » sur certaines box)
         // agrandissait les textes dans des cadres de taille fixe : titres, boutons et libellés tronqués partout.
-        val scaled = if (tv) Density(uiDensityFor(hPx, base.density), 1f) else base
+        // Taille du texte choisie dans Réglages › Affichage (Normal / Grand / Très grand) : facteur de police explicite,
+        // multiplié à celui du système hors TV. Les cadres qui contiennent du texte grandissent avec (voir `designT`).
+        val textScale = com.ultratv.tv.nativeapp.ui.design.Ux.textScale
+        val scaled = if (tv) Density(uiDensityFor(hPx, base.density), textScale)
+        else if (textScale == 1f) base else Density(base.density, base.fontScale * textScale)
         val wDp = if (wPx > 0) wPx / scaled.density else 0f
         val hDp = if (hPx > 0) hPx / scaled.density else 0f
         val safe = if (tv) PaddingValues(

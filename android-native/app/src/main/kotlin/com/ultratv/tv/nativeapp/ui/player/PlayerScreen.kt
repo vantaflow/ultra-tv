@@ -103,6 +103,7 @@ import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.PillButton
 import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
+import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.design.spx
 import com.ultratv.tv.nativeapp.ui.player.engine.AspectMode
 import com.ultratv.tv.nativeapp.ui.player.engine.BufferPreset
@@ -377,9 +378,25 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // [B2·sous-titres] style, langues préférées (DataStore) et recherche en ligne.
     val subVm: com.ultratv.tv.nativeapp.ui.player.subtitles.SubtitleViewModel = hiltViewModel()
     val touchUi = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    val container = remember { FrameLayout(context).apply { setBackgroundColor(android.graphics.Color.BLACK) } }
+    // Direct ouvert depuis la liste : la session de l'aperçu est REPRISE (même moteur ; si l'aperçu jouait déjà cette
+    // chaîne, son flux continue sans rechargement). Ouvert d'ailleurs : session propre, tout aperçu restant est fermé.
+    val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
+    val adoption = remember {
+        if (shared == null) null
+        else if (isLive) shared.adopt(item?.let { "${it.providerId}:${it.remoteId}" })
+        else { shared.stop(); null }
+    }
+    if (adoption != null && shared != null) shared.env = remember {
+        com.ultratv.tv.nativeapp.ui.player.engine.LiveEnv(
+            settings = { vm.resolved(latestPrefs) }, subtitles = { subVm.current },
+            uiLanguage = { if (latestPrefs.language == "system") java.util.Locale.getDefault().language else latestPrefs.language },
+        )
+    }
+    // Retour vers la liste : la session est rendue à l'aperçu (sans rechargement) si c'est encore le vrai direct.
+    val handBack = remember { booleanArrayOf(false) }
+    val container = remember { adoption?.session?.container ?: FrameLayout(context).apply { setBackgroundColor(android.graphics.Color.BLACK) } }
     val session = remember {
-        PlaybackSession(
+        adoption?.session ?: PlaybackSession(
             ctx = context, scope = scope, container = container,
             settings = { vm.resolved(latestPrefs) }, memory = vm.memory, network = vm.network,
             isLive = isLive, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
@@ -392,7 +409,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Quitter le lecteur : la vidéo est une couche à part (SurfaceView) qui restait affichée jusqu'à la destruction de
     // l'écran — après la composition de l'écran suivant et la libération du moteur. On la met en pause et on la MASQUE
     // tout de suite, puis on quitte (la libération se fait ensuite, dans onDispose).
-    val leave: () -> Unit = {
+    val leave: () -> Unit = leave@{
+        if (handBack[0] && shared != null) { shared.demote(); onBack(); return@leave }
         session.engine?.pause()
         session.container.visibility = android.view.View.INVISIBLE
         onBack()
@@ -446,7 +464,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     DisposableEffect(Unit) {
-        onDispose { session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)); vm.scrobbleStop(it.positionMs, it.durationMs.coerceAtLeast(0)) }; session.release(); ts.deactivate() }
+        onDispose {
+            session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)); vm.scrobbleStop(it.positionMs, it.durationMs.coerceAtLeast(0)) }
+            // Session reprise de l'aperçu : rendue (Retour) ou libérée (toute autre sortie) par la session partagée.
+            if (adoption != null && shared != null) shared.onFullscreenGone() else session.release()
+            ts.deactivate()
+        }
     }
     // Épisode terminé : marqué vu, puis l'épisode suivant démarre (Réglages › Lecture › Épisode suivant automatique).
     LaunchedEffect(state.phase) {
@@ -480,12 +503,17 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             Toaster.show(when (n) { Notice.USING_VLC -> D.noticeVlc; Notice.USING_EXO -> D.noticeExo; Notice.USING_SOFTWARE -> D.noticeSoftware; Notice.RETRYING -> D.noticeRetry })
         }
     }
+    // Aperçu promu : le flux de l'URL d'ouverture joue déjà — aucun `start` (ni arrêt, ni rechargement).
+    val skipFirstStart = remember { booleanArrayOf(adoption?.playing == true) }
+    if (adoption != null && shared != null) LaunchedEffect(item?.remoteId) { shared.onFullscreenChannel(item?.let { "${it.providerId}:${it.remoteId}" }) }
     LaunchedEffect(currentUrl) {
         val it = vm.current.value
         val resume = vm.prepareResume()
         subVm.ensureLoaded()
         if (tsActive && !ts.isLocalUrl(currentUrl)) { ts.deactivate(); tsActive = false; tsSnap = null }   // [B2·timeshift] autre chaîne : le relais lâche la connexion d'abord
-        session.start(currentUrl, it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)
+        if (skipFirstStart[0]) { skipFirstStart[0] = false; if (currentUrl == url) return@LaunchedEffect }
+        // [téléchargements] film / épisode téléchargé : fichier local (file://) à la place du flux.
+        session.start(com.ultratv.tv.nativeapp.data.stalker.StreamUrls.resolve(context, com.ultratv.tv.nativeapp.data.downloads.OfflineMedia.resolve(it, currentUrl)), it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)   // portail Stalker : lien demandé à la lecture
     }
     // Progression enregistrée toutes les 10 s (« Reprendre la lecture »).
     // (La progression VOD est enregistrée toutes les 30 s par la boucle de la surcouche ; plus de doublon à 10 s.)
@@ -504,7 +532,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
     // Reconnexion automatique : vrai direct seulement (pas un replay « Depuis le début » ni le relais du différé).
     // SideEffect : appliqué à chaque composition, avant le démarrage du lancement (LaunchedEffect(currentUrl)).
-    androidx.compose.runtime.SideEffect { session.liveReconnect = replayProg == null && !tsActive }
+    androidx.compose.runtime.SideEffect {
+        session.liveReconnect = replayProg == null && !tsActive
+        // Vrai direct sans différé ni replay, sans erreur : Retour rend la chaîne à l'aperçu de la liste.
+        handBack[0] = adoption != null && isLive && !tsActive && replayProg == null && state.phase != Phase.ERROR
+    }
     var canReplay by remember { mutableStateOf(false) }
     LaunchedEffect(nowProg?.id) { canReplay = replayVm.canReplay(nowProg) }
     LaunchedEffect(item?.remoteId) { if (replayProg !== guideReplay?.first) replayProg = null }
@@ -732,7 +764,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 }
             } else videoArea()
         } else {
-        AndroidView(factory = { container }, modifier = Modifier.fillMaxSize())
+        // takeVideoView : la vue vidéo peut venir de l'aperçu du Direct (changement de parent sans recharger le flux).
+        AndroidView(factory = { session.takeVideoView() }, modifier = Modifier.fillMaxSize())
 
         // Chargement : visuel de la chaîne avec anneau de progression.
         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
@@ -763,6 +796,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
                 onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
                 sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true }, subLabel = X.subsPill, onSubs = { panel = Panel.Subtitles },
+                sleepActive = sleepDeadline > 0, replayActive = replayProg != null,
                 replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null,
                 onReplay = {
                     val rp = replayProg
@@ -847,6 +881,7 @@ private fun Footer(
     isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
     onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
     sleepLabel: String, onSleepPill: () -> Unit, subLabel: String, onSubs: () -> Unit, replayLabel: String?, onReplay: () -> Unit,
+    sleepActive: Boolean = false, replayActive: Boolean = false,
 ) {
     val now = System.currentTimeMillis()
     val frac: Float; val startLabel: String; val endLabel: String
@@ -860,7 +895,7 @@ private fun Footer(
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
     Column(
-        Modifier.fillMaxWidth().background(Color(0xE00A0A0C)).padding(start = 96.design, end = 96.design, top = 40.design, bottom = 54.design),
+        Modifier.fillMaxWidth().background(Color(0xF20A0A0C)).padding(start = 96.design, end = 96.design, top = 40.design, bottom = 54.design),
         verticalArrangement = Arrangement.spacedBy(28.design),
     ) {
         if (startLabel.isNotEmpty() || endLabel.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
@@ -885,11 +920,11 @@ private fun Footer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (isLive) item { OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels) }
-                if (isLive && replayLabel != null) item { OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay) }
+                if (isLive && replayLabel != null) item { OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay, active = replayActive) }
                 item { OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks) }
                 item { OptionPill(subLabel, "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6", onSubs) }
                 if (isLive) item { OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord) }
-                item { OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill) }
+                item { OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill, active = sleepActive) }
                 item { OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions) }
             }
         }
@@ -915,16 +950,35 @@ private fun PauseButton(playing: Boolean, focus: FocusRequester, onClick: () -> 
     }
 }
 
+/**
+ * Pilule de la barre du lecteur, lisible depuis le canapé : fond opaque à 95 % plus clair que la barre, liseré fin,
+ * libellé et icône BLANCS à pleine opacité (24 px, gras). Focus = fond clair + texte foncé + anneau accent ;
+ * [active] (minuterie de veille armée, lecture depuis le début…) = fond accent + texte contrasté, visible sans focus.
+ */
 @Composable
-private fun OptionPill(label: String, icon: String, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(30.design), bg = Ux.Surface2, ringWidth = 5.design, modifier = Modifier.height(60.design)) { f ->
-        Row(Modifier.padding(horizontal = 22.design).height(60.design), verticalAlignment = Alignment.CenterVertically) {
-            DIcon(icon, 24.design, if (f) Ux.TextOnLight else Ux.Text)
-            Spacer(Modifier.width(10.design))
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+private fun OptionPill(label: String, icon: String, onClick: () -> Unit, active: Boolean = false) {
+    val bg = if (active) Ux.Accent else PILL_BG
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(32.design), bg = bg, ringWidth = 5.design, modifier = Modifier.height(64.designT)) { f ->
+        val ink = when { f -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Color.White }
+        Row(
+            Modifier.then(if (!f && !active) Modifier.border(2.design, PILL_EDGE, RoundedCornerShape(32.design)) else Modifier)
+                .padding(horizontal = 24.design).height(64.designT),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DIcon(icon, 26.design, ink, strokeWidth = 2.4f)
+            Spacer(Modifier.width(12.design))
+            Text(label, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, softWrap = false)
+            if (active && !f) {
+                Spacer(Modifier.width(10.design))
+                Box(Modifier.size(10.design).clip(CircleShape).background(ink))
+            }
         }
     }
 }
+
+/** Fond des pilules du lecteur (#2C2C34 à 95 %) : blanc dessus = 13:1 ; liseré blanc à 22 % pour les détacher de l'image. */
+private val PILL_BG = Color(0xF22C2C34)
+private val PILL_EDGE = Color(0x38FFFFFF)
 
 /**
  * Chargement : l'image du programme (ou le logo) en plein écran, floutée et assombrie, le visuel net au centre,
@@ -1008,18 +1062,10 @@ private fun Int.sp() = androidx.compose.ui.unit.TextUnit(this.toFloat(), android
 
 // ───────────────────────── Panneau de réglages (maquette LecteurReglages) ─────────────────────────
 
-/** Ligne d'option de 64 px : repos #141418 ; choisie = fond #1C1C21 + liseré accent ; focus = blanc + anneau (encre en thème clair, mais le lecteur reste sombre). */
+/** Ligne d'option de 64 px : composant partagé [com.ultratv.tv.nativeapp.ui.design.ChoiceRow] (actif = ✓ + accent, indépendant du focus). */
 @Composable
-private fun OptionRow(label: String, hint: String?, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) Ux.Surface else Ux.SurfaceDeep, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.fillMaxWidth().height(64.design)) { f ->
-        Box(Modifier.fillMaxSize().then(if (selected && !f) Modifier.border(2.design, Ux.Accent, RoundedCornerShape(16.design)) else Modifier)) {
-            Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(label, color = if (f) Ux.TextOnLight else if (selected) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (!hint.isNullOrEmpty()) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
-            }
-        }
-    }
-}
+private fun OptionRow(label: String, hint: String?, selected: Boolean, onClick: () -> Unit) =
+    com.ultratv.tv.nativeapp.ui.design.ChoiceRow(label, selected, onClick, hint = hint)
 
 @Composable
 private fun OptionGroup(title: String, content: @Composable () -> Unit) {
@@ -1054,9 +1100,12 @@ private fun PlayerSidePanel(
             Row(horizontalArrangement = Arrangement.spacedBy(10.design), modifier = if (touch) Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState()) else Modifier) {
                 labels.forEach { (t, l) ->
                     val sel = t == tab
-                    FocusSurface(onClick = { tab = t }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Cta else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(52.design)) { f ->
-                        Box(Modifier.height(52.design).padding(horizontal = 18.design), contentAlignment = Alignment.Center) {
-                            Text(l, color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                    // Onglet courant : fond surface + texte accent gras + soulignement accent ; focus : fond clair (comme partout).
+                    // Avant, l'onglet courant ÉTAIT un fond clair : impossible de le distinguer de l'onglet focalisé.
+                    FocusSurface(onClick = { tab = t }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Surface2 else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = Modifier.height(52.designT)) { f ->
+                        Box(Modifier.height(52.designT).padding(horizontal = 18.design), contentAlignment = Alignment.Center) {
+                            Text(l, color = if (f) Ux.TextOnLight else if (sel) Ux.AccentInk else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                            if (sel) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.design).width(28.design).height(4.design).clip(RoundedCornerShape(2.design)).background(if (f) Ux.TextOnLight else Ux.Accent))
                         }
                     }
                 }

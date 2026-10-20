@@ -156,6 +156,27 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         }
     }
     override fun setSpeed(speed: Float) { mp.rate = speed }
+    override fun setMuted(muted: Boolean) { if (!released) runCatching { mp.setVolume(if (muted) 0 else 100) } }
+
+    /**
+     * Changement de parent de la vue (aperçu ↔ plein écran) : la sortie vidéo est coupée AVANT la destruction de la
+     * surface, puis relancée sur la nouvelle (méthode de VLC lui-même pour l'arrière-plan). Le flux, lui, continue :
+     * aucune reconnexion au fournisseur. Les vues restent attachées (même VLCVideoLayout, mêmes SurfaceView/TextureView).
+     */
+    @Volatile private var videoCut = false
+    override fun onVideoDetaching() {
+        if (released || videoCut) return
+        videoCut = true
+        runCatching { mp.setVideoTrackEnabled(false) }
+    }
+    override fun onVideoReattached() {
+        if (released) return
+        // Surface détruite sans préavis (vue retirée avant l'appel) : on coupe quand même pour recréer la sortie vidéo.
+        if (!videoCut) runCatching { mp.setVideoTrackEnabled(false) }
+        videoCut = false
+        runCatching { mp.setVideoTrackEnabled(true) }
+        runCatching { mp.updateVideoSurfaces() }
+    }
     override val hasVideo get() = !released && mp.videoTracksCount > 0
     private var maxHeight = Int.MAX_VALUE
     private var maxBitrateBps: Int? = null

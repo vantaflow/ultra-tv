@@ -52,6 +52,7 @@ media3-cast = { module = "androidx.media3:media3-cast", version.ref = "media3" }
 libvlc = { module = "org.videolan.android:libvlc-all", version.ref = "libvlc" }
 media3-ffmpeg-decoder = { module = "org.jellyfin.media3:media3-ffmpeg-decoder", version.ref = "media3-ffmpeg" }
 media3-datasource-rtmp = { module = "androidx.media3:media3-datasource-rtmp", version.ref = "media3" }
+media3-datasource-okhttp = { module = "androidx.media3:media3-datasource-okhttp", version.ref = "media3" }
 mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
 play-cast-framework = { module = "com.google.android.gms:play-services-cast-framework", version.ref = "play-cast" }
 
@@ -78,6 +79,7 @@ room-paging = { module = "androidx.room:room-paging", version.ref = "room" }
 
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-logging = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

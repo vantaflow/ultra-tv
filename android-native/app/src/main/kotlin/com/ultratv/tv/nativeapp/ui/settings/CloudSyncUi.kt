@@ -87,7 +87,7 @@ private fun CheckRow(label: String, checked: Boolean, enabled: Boolean = true, o
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
             Text(label, color = if (f) Ux.TextOnLight else if (enabled) Ux.Text else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Box(Modifier.width(32.design).height(32.design).clip(RoundedCornerShape(8.design)).background(if (checked) Ux.Accent else Ux.Surface2), contentAlignment = Alignment.Center) {
-                if (checked) DIcon(Icons.Check, 22.design, Ux.White, strokeWidth = 3f)
+                if (checked) DIcon(Icons.Check, 22.design, Ux.OnAccent, strokeWidth = 3f)
             }
         }
     }

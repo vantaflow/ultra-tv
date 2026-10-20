@@ -33,6 +33,7 @@ class RecordingWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val ok: OkHttpClient,
     private val dao: RecordingDao,
+    private val urls: com.ultratv.tv.nativeapp.data.stalker.StreamUrlResolver,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext)
@@ -55,10 +56,12 @@ class RecordingWorker @AssistedInject constructor(
             val file = File(r.filePath).apply { parentFile?.mkdirs() }
             try {
                 dao.updateProgress(id, "running", 0, 0, null, null)
-                val cancelled = if (r.sourceUrl.contains(".m3u8", ignoreCase = true)) {
-                    runHls(id, r.sourceUrl, file, maxDurationMs)
+                // Portail Stalker : le lien de lecture n'existe qu'au moment de l'enregistrement (create_link).
+                val src = urls.resolve(r.sourceUrl)
+                val cancelled = if (src.contains(".m3u8", ignoreCase = true)) {
+                    runHls(id, src, file, maxDurationMs)
                 } else {
-                    runHttp(id, r.sourceUrl, file)
+                    runHttp(id, src, file)
                 }
                 // The download path may have short-circuited on user cancel and
                 // already written the "cancelled" status — don't clobber it with
