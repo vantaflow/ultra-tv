@@ -255,12 +255,12 @@ dependencies {
     testImplementation("androidx.room:room-testing:2.6.1")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     // Tests d'UI Compose exécutés sur la JVM via Robolectric (createComposeRule / createAndroidComposeRule).
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
 }
 
 /**
