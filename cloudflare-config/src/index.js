@@ -36,7 +36,7 @@ import {
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
-import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage, adminPage } from "./pages.js";
+import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
 
@@ -198,20 +198,20 @@ async function route(req, env, ctx) {
   if (adminRoute) {
     // Réservé aux identifiants listés dans ADMIN_LOGINS ; tout autre compte reçoit un 404 (l'existence n'est pas révélée).
     if (!isAdmin(env, sess.acct)) return new Response("Not found", { status: 404 });
-    const rows = await adminAccounts(env);
-    if (path.endsWith(".csv")) {
-      return new Response(adminCsv(rows), { headers: {
-        "content-type": "text/csv; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff",
-        "content-disposition": `attachment; filename="ultratv-comptes-${new Date().toISOString().slice(0, 10)}.csv"`,
-      } });
-    }
-    return adminPage(nonce(), { rows, me: sess.acct.login });
+    // Ancienne page séparée : l'administration est désormais une section du tableau de bord.
+    if (!path.endsWith(".csv")) return redirect("/#administration");
+    return new Response(adminCsv(await adminAccounts(env)), { headers: {
+      "content-type": "text/csv; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff",
+      "content-disposition": `attachment; filename="ultratv-comptes-${new Date().toISOString().slice(0, 10)}.csv"`,
+    } });
   }
 
   if (dashboardRoute) {
     const n = nonce();
     const providers = await loadProviders(env, sess.acct);
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin: isAdmin(env, sess.acct) });
+    const admin = isAdmin(env, sess.acct);
+    const adminRows = admin ? await adminAccounts(env) : null;
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.

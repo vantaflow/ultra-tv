@@ -467,7 +467,8 @@ function licenseLine(lic, now = Date.now()) {
   return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false }) {
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null }) {
+  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login }) : null;
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
@@ -621,7 +622,7 @@ ${SCAN_JS}
 <a href="#fournisseurs">${ico("list")}Fournisseurs</a>
 <a href="#appareils">${ico("tv")}Appareils</a>
 <a href="#compte">${ico("gear")}Compte</a>
-${admin ? `<a href="/admin">${ico("user")}Administration</a>` : ""}
+${admin ? `<a href="#administration">${ico("user")}Administration</a>` : ""}
 </nav>
 <div class="me"><div class="login" title="Compte connecté">${ico("user")}<span>${e(acct.login)}</span></div>
 <form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div>
@@ -679,7 +680,8 @@ ${osPanel(acct.os, csrfInput)}
 <label for="dpw">Mot de passe</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
 <div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section>
 </div>
-</main></div>`, n, script, true);
+${adminBlock ? adminBlock.html : ""}
+</main></div>`, n, script + (adminBlock ? `<script nonce="${n}">${adminBlock.script}</script>` : ""), true);
 }
 
 /** Trakt (facultatif) : connexion OAuth depuis l'espace client ; les appareils n'ont rien à configurer. */
@@ -732,7 +734,8 @@ function sourcesLabel(r) {
 }
 
 /** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
-export function adminPage(n, { rows: all, me, now = Date.now() }) {
+/** Section « Administration » du tableau de bord (comptes ADMIN_LOGINS) : { html, script }. */
+export function adminSection({ rows: all, me, now = Date.now() }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
   const DAY = 86400_000;
   // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
@@ -746,7 +749,6 @@ export function adminPage(n, { rows: all, me, now = Date.now() }) {
   const srcX = rows.reduce((t, r) => t + (r.sourcesXtream || 0), 0);
   const srcM = rows.reduce((t, r) => t + (r.sourcesM3u || 0), 0);
   const withSrc = rows.filter((r) => r.sourcesN > 0).length;
-  const pro = devices.filter((x) => x.edition === "pro").length;
   const tile = (v, l, cls = "") => `<div class="tile${cls ? " " + cls : ""}"><b>${e(String(v))}</b><span>${e(l)}</span></div>`;
   const count = (arr) => { const m = new Map(); for (const k of arr) if (k) m.set(k, (m.get(k) || 0) + 1); return [...m].sort((x, y) => y[1] - x[1]); };
   // Barres horizontales (largeur posée par le CSSOM : la CSP refuse les attributs style).
@@ -768,13 +770,13 @@ export function adminPage(n, { rows: all, me, now = Date.now() }) {
   }
   const row = (r) => {
     const cs = [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))];
-    const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.edition === "pro" ? ", PRO" : ""}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
+    const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
     return `<tr><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
 <td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
 <td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
   };
   const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});`;
-  return layout("Ultra TV — administration", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Administration</span></div><a href="/">Retour au tableau de bord</a></header>
+  return { script, html: `<div class="section-h" id="administration"><h2>Administration</h2><span class="muted small">Statistiques et comptes de tous les utilisateurs.</span></div>
 <div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}</div>
 <div class="agrid">
 <section class="panel"><h2>Croissance</h2>
@@ -784,16 +786,16 @@ ${kv([["Nouveaux comptes ces 7 jours", newSince(7 * DAY)], ["Nouveaux comptes ce
 <p class="muted small">Part des ${rows.length} comptes.</p>
 ${bars([["Avec un appareil appairé", withDev], ["Actifs ces 30 jours", activeSince(30 * DAY)], ["Actifs ces 7 jours", activeSince(7 * DAY)], ["Actifs ces 24 h", activeSince(DAY)], ["Connectés au site ces 7 jours", rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length]], (k) => k, rows.length)}</section>
 <section class="panel"><h2>Appareils</h2>
-${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length], ["Édition Pro", pro], ["Édition standard", devices.length - pro]])}
+${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length]])}
 <h3>Modèles</h3>${bars(models)}</section>
 <section class="panel"><h2>Sources et services</h2>
 ${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
 <section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
 </div>
-<div class="section-h mt16"><h2>Comptes <span class="count">${rows.length}</span></h2><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
+<div class="section-h mt16"><h3>Comptes <span class="count">${rows.length}</span></h3><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
 <p class="muted small mt16">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>
 <div class="tablewrap mt16"><table class="atable"><thead><tr><th>Compte</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
-<tbody>${rows.map(row).join("")}</tbody></table></div></main>`, n, `<script nonce="${n}">${script}</script>`);
+<tbody>${rows.map(row).join("")}</tbody></table></div>` };
 }
 
 export function eventsPage(n, items) {

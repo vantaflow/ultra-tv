@@ -9,8 +9,9 @@ describe("administration", () => {
   it("compte ordinaire : /admin et l'export répondent 404 (existence non révélée), pas de lien dans le tableau de bord", async () => {
     const a = await newAccount();
     expect((await call("/admin", { cookie: a.cookie, ip: a.ip })).status).toBe(404);
+    expect(await (await call("/", { cookie: a.cookie, ip: a.ip })).text()).not.toContain('id="administration"');
     expect((await call("/admin/comptes.csv", { cookie: a.cookie, ip: a.ip })).status).toBe(404);
-    expect(await (await call("/", { cookie: a.cookie, ip: a.ip })).text()).not.toContain('href="/admin"');
+    expect(await (await call("/", { cookie: a.cookie, ip: a.ip })).text()).not.toContain('href="#administration"');
   });
   it("sans session : renvoyé à la connexion", async () => {
     expect((await call("/admin")).headers.get("location")).toBe("/login");
@@ -19,8 +20,11 @@ describe("administration", () => {
     const other = await newAccount();
     await pairDevice(other, "=calc Salon");
     const admin = await adminAccount();
-    expect(await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text()).toContain('href="/admin"');
-    const page = await (await call("/admin", { cookie: admin.cookie, ip: admin.ip })).text();
+    expect((await call("/admin", { cookie: admin.cookie, ip: admin.ip })).headers.get("location")).toBe("/#administration");
+    const page = await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text();
+    expect(page).toContain('href="#administration"');
+    expect(page).toContain('id="administration"');
+    expect(page).not.toContain("Édition Pro");
     expect(page).toContain(other.login);
     expect(page).toContain("=calc Salon");
     expect(page).not.toMatch(/passwordHash|providersEnc|traktEnc|osEnc/);
