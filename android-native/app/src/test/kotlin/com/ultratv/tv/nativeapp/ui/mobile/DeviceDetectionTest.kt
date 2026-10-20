@@ -25,7 +25,8 @@ class DeviceDetectionTest {
 
     @Test fun modeInterfaceTelevision_estUneTelevision() {
         val ui = ctx.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-        shadowOf(ui).currentModeType = Configuration.UI_MODE_TYPE_TELEVISION
+        // Robolectric 4.17 : le champ public currentModeType n’est plus lu ; passer par le mutateur.
+        shadowOf(ui).setCurrentModeType(Configuration.UI_MODE_TYPE_TELEVISION)
         assertTrue(isTelevision(ctx))
     }
 

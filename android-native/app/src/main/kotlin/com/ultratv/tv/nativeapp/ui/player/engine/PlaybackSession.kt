@@ -182,7 +182,7 @@ class PlaybackSession(
         launchedBuffer = buffer
         _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
-        if (s.lowRam) runCatching { coil.Coil.imageLoader(ctx).memoryCache?.clear() }
+        if (s.lowRam) runCatching { coil3.SingletonImageLoader.get(ctx).memoryCache?.clear() }
         val sub = subtitles()
         launchedSubs = sub
         // Sous-titres : jamais activés d'office ; seulement si l'utilisateur les avait activés la dernière fois.

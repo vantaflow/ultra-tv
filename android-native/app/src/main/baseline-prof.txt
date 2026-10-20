@@ -41,7 +41,7 @@ HSPLcom/ultratv/tv/nativeapp/adaptive/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/trakt/**;->**(**)**
 HSPLandroidx/paging/**;->**(**)**
 HSPLandroidx/navigation/**;->**(**)**
-HSPLcoil/**;->**(**)**
+HSPLcoil3/**;->**(**)**
 Lcom/ultratv/tv/nativeapp/**;
 HSPLandroidx/compose/ui/focus/**;->**(**)**
 HSPLandroidx/compose/foundation/lazy/**;->**(**)**

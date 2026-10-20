@@ -1,7 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.design
 
 import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,12 +14,13 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import androidx.test.core.app.ApplicationProvider
-import coil.Coil
-import coil.ImageLoader
-import coil.annotation.ExperimentalCoilApi
-import coil.intercept.Interceptor
-import coil.request.ImageResult
-import coil.request.SuccessResult
+import coil3.ImageLoader
+import coil3.SingletonImageLoader
+import coil3.annotation.DelicateCoilApi
+import coil3.asImage
+import coil3.intercept.Interceptor
+import coil3.request.ImageResult
+import coil3.request.SuccessResult
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -34,7 +34,7 @@ import org.robolectric.annotation.Config
  * RÈGLE : une image ne dicte JAMAIS la taille de son emplacement. Quelles que soient les dimensions de l'image reçue
  * (bandeau 4000×10, colonne 10×4000, énorme 8000×8000, minuscule 1×1), l'emplacement garde EXACTEMENT sa taille imposée.
  */
-@OptIn(ExperimentalCoilApi::class)
+@OptIn(DelicateCoilApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34], qualifiers = "w1920dp-h1080dp-xhdpi")
 class SlotSizeTest {
@@ -49,14 +49,14 @@ class SlotSizeTest {
             add(Interceptor { chain ->
                 val (w, h) = chain.request.data.toString().substringAfterLast('/').split('x').map { it.toInt() }
                 val bmp = Bitmap.createBitmap(w.coerceAtMost(512), h.coerceAtMost(512), Bitmap.Config.ARGB_8888)
-                SuccessResult(drawable = BitmapDrawable(ctx.resources, bmp), request = chain.request, dataSource = coil.decode.DataSource.MEMORY) as ImageResult
+                SuccessResult(image = bmp.asImage(), request = chain.request, dataSource = coil3.decode.DataSource.MEMORY) as ImageResult
             })
         }.build()
-        Coil.setImageLoader(loader)
+        SingletonImageLoader.setUnsafe(loader)
     }
 
-    @Before fun reset() { Coil.reset() }
-    @After fun cleanup() { Coil.reset() }
+    @Before fun reset() { SingletonImageLoader.reset() }
+    @After fun cleanup() { SingletonImageLoader.reset() }
 
     @Test fun lesEmplacementsGardentExactementLeurTaille_quelleQueSoitL_image() {
         install()
