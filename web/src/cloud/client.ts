@@ -116,7 +116,9 @@ export type ConfigResult = { unchanged: true } | { unchanged: false; config: Clo
 
 /** Édition de l'appli (standard / pro, fixée à la compilation par VITE_EDITION) : affichée sur le tableau de bord du compte. */
 const EDITION_HEADER = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_EDITION === "pro" ? "pro" : "standard";
-const auth = (token: string, extra: Record<string, string> = {}) => ({ authorization: `Bearer ${token}`, accept: "application/json", "x-ultra-edition": EDITION_HEADER, ...extra });
+// Version de l'appli (tableau de bord : colonne « version » des appareils).
+const VERSION_HEADER = String(import.meta.env.VITE_APP_VERSION ?? "");
+const auth = (token: string, extra: Record<string, string> = {}) => ({ authorization: `Bearer ${token}`, accept: "application/json", "x-ultra-edition": EDITION_HEADER, ...(VERSION_HEADER ? { "x-ultra-version": `${VERSION_HEADER}-desktop` } : {}), ...extra });
 
 export async function fetchConfig(base: string, token: string, etag?: string | null): Promise<ConfigResult> {
   const r = await http({ url: `${base}/api/config`, headers: auth(token, etag ? { "if-none-match": etag } : {}) });

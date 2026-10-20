@@ -495,7 +495,7 @@ ${p.managed === "reseller"
   }).join("");
   const devRows = devices.map((d) => `
 <article class="card" data-q="${e(`${d.name} ${d.label || ""} ${d.edition || ""}`.toLowerCase())}"><div class="card-top"><div class="badge-ico">${ico("tv")}</div>
-<div class="grow"><div class="card-title">${e(d.name)} ${d.edition === "pro" ? `<span class="kind pro">PRO</span>` : d.edition === "standard" ? `<span class="kind std">STANDARD</span>` : ""}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
+<div class="grow"><div class="card-title">${e(d.name)} ${d.edition === "pro" ? `<span class="kind pro">PRO</span>` : d.edition === "standard" ? `<span class="kind std">STANDARD</span>` : ""}</div><div class="card-meta">${d.label ? `${e(d.label)} · ` : ""}${d.version ? `version ${e(d.version)} · ` : ""}appairé ${e(ago(d.createdAt))}</div></div></div>
 ${d.edition === "pro" ? licenseLine(d.license) : ""}
 <div class="actions"><details><summary>${ico("edit")}Renommer</summary><form method="post" action="/devices/${e(d.id)}/rename" class="drop">${csrfInput}
 <label class="mt0" for="rn-${e(d.id)}">Nom de l'appareil</label><input id="rn-${e(d.id)}" name="name" maxlength="40" value="${e(d.name)}"/>
@@ -772,6 +772,7 @@ export function adminSection({ rows: all, me, now = Date.now() }) {
   const kv = (pairs) => `<dl class="kv">${pairs.map(([k, v]) => `<dt>${e(k)}</dt><dd>${e(String(v))}</dd>`).join("")}</dl>`;
   const countries = count(rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]));
   const models = count(devices.map((x) => x.model || "inconnu")).slice(0, 10);
+  const versions = count(devices.map((x) => x.version || "inconnue")).slice(0, 10);
   // Inscriptions par semaine (8 dernières semaines, la plus récente en bas).
   const weeks = [];
   for (let w = 7; w >= 0; w--) {
@@ -781,7 +782,7 @@ export function adminSection({ rows: all, me, now = Date.now() }) {
   }
   const row = (r) => {
     const cs = [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))];
-    const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
+    const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.version ? `, v${e(x.version)}` : ""}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
     return `<tr><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
 <td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
 <td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
@@ -798,7 +799,8 @@ ${kv([["Nouveaux comptes ces 7 jours", newSince(7 * DAY)], ["Nouveaux comptes ce
 ${bars([["Avec un appareil appairé", withDev], ["Actifs ces 30 jours", activeSince(30 * DAY)], ["Actifs ces 7 jours", activeSince(7 * DAY)], ["Actifs ces 24 h", activeSince(DAY)], ["Connectés au site ces 7 jours", rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length]], (k) => k, rows.length)}</section>
 <section class="panel"><h2>Appareils</h2>
 ${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length]])}
-<h3>Modèles</h3>${bars(models)}</section>
+<h3>Modèles</h3>${bars(models)}
+<h3>Versions de l'appli</h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`))}</section>
 <section class="panel"><h2>Sources et services</h2>
 ${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
 <section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>

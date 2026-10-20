@@ -382,6 +382,12 @@ async function doLogin(req, env) {
   return startSession(env, acct, to);
 }
 
+/** Version d'application déclarée (« 1.2.65 », « 1.2.35-desktop »…), ou null si absente / invalide. */
+function appVersionOf(raw) {
+  const v = String(raw ?? "").trim();
+  return /^[0-9][0-9A-Za-z.+-]{0,31}$/.test(v) ? v : null;
+}
+
 /** Pays de la requête (code ISO à 2 lettres fourni par Cloudflare), ou null. L'adresse IP n'est jamais gardée. */
 function countryOf(req) {
   const c = req.cf && req.cf.country;
@@ -534,7 +540,7 @@ async function adminAccounts(env) {
       try { a = JSON.parse(raw); } catch { continue; }
       if (!a || !a.login) continue;
       const devices = (a.devices || []).map((d) => ({
-        name: d.name || "", model: d.label || "", edition: d.edition || "standard", lastSeen: d.lastSeen || 0,
+        name: d.name || "", model: d.label || "", edition: d.edition || "standard", lastSeen: d.lastSeen || 0, version: d.version || "",
         country: d.country || null, createdAt: d.createdAt || 0,
       }));
       // Nombre et type des sources : déchiffrées pour être COMPTÉES seulement ; rien d'autre n'en sort.
@@ -569,7 +575,7 @@ function adminCsv(rows) {
   const head = ["compte", "email", "cree_le", "derniere_connexion", "pays_compte", "nb_appareils", "appareils", "derniere_activite", "pays_appareils", "nb_sources", "sources_xtream", "sources_m3u", "trakt", "opensubtitles"];
   const lines = rows.map((r) => [
     r.login, r.login.includes("@") ? r.login : "", d(r.createdAt), d(r.lastLoginAt), r.country || "",
-    r.devices.length, r.devices.map((x) => `${x.name} (${x.model}, ${x.edition}${x.lastSeen ? `, vu ${d(x.lastSeen)}` : ""})`).join(" | "),
+    r.devices.length, r.devices.map((x) => `${x.name} (${x.model}${x.version ? `, v${x.version}` : ""}${x.lastSeen ? `, vu ${d(x.lastSeen)}` : ""})`).join(" | "),
     d(r.lastSeen), [...new Set(r.devices.map((x) => x.country).filter(Boolean))].join(" "), r.sourcesN ?? "?", r.sourcesXtream, r.sourcesM3u, r.trakt, r.opensubtitles,
   ].map(cell).join(";"));
   return "\ufeff" + [head.join(";"), ...lines].join("\r\n") + "\r\n";
@@ -871,6 +877,8 @@ async function noteEdition(req, env, auth) {
   if (Date.now() - (auth.device.lastSeen || 0) > 3600_000) patch.lastSeen = Date.now();
   const country = countryOf(req);
   if (country && auth.device.country !== country) patch.country = country;
+  const version = appVersionOf(req.headers.get("x-ultra-version"));
+  if (version && auth.device.version !== version) patch.version = version;
   if (!Object.keys(patch).length) return;
   await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, patch));
 }
@@ -1118,6 +1126,11 @@ async function ingest(req, env, kind) {
     // Compte et pays : relier un relevé à son propriétaire dans la vue d'exploitation (jamais l'adresse IP).
     acct: auth.acct.login, country: countryOf(req),
   };
+  // Version de l'appli de l'appareil (déjà présente dans chaque relevé) : gardée sur l'appareil quand elle change.
+  const ver = appVersionOf(b.version);
+  if (ver && auth.device.version !== ver) {
+    await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { version: ver })).catch(() => {});
+  }
   const key = `${kind}:${base.ts}:${rand(6)}`;
   const entry = isCrash
     ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) }

@@ -73,6 +73,7 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         val b = Request.Builder().url("$base/api/config").header("Authorization", "Bearer $token")
             // Édition de l'appli (standard / pro) : affichée sur le tableau de bord du compte.
             .header("X-Ultra-Edition", com.ultratv.tv.nativeapp.BuildConfig.EDITION)
+            .header("X-Ultra-Version", com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)
         if (etag != null) b.header("If-None-Match", etag)
         http.newCall(b.get().build()).execute().use { r ->
             if (r.code == 304) return@use ConfigFetch(true, "", etag)
