@@ -1,0 +1,30 @@
+# Mises à jour des dépendances : une PR groupée par écosystème et par semaine, pour ne plus prendre de retard
+# (Compose, Media3, Coil… avaient plus d'un an de retard en octobre 2026).
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /android-native
+    schedule: { interval: weekly, day: monday }
+    open-pull-requests-limit: 5
+    groups:
+      androidx-compose: { patterns: ["androidx.compose*", "androidx.tv*", "androidx.activity*"] }
+      media: { patterns: ["androidx.media3*", "org.videolan*"] }
+      kotlin-build: { patterns: ["org.jetbrains.kotlin*", "com.android.*", "com.google.devtools.ksp*"] }
+      androidx-autres: { patterns: ["androidx.*"] }
+      autres: { patterns: ["*"] }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly, day: monday }
+    groups: { web: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /electron
+    schedule: { interval: weekly, day: monday }
+    groups: { electron: { patterns: ["*"] } }
+  - package-ecosystem: npm
+    directory: /cloudflare-config
+    schedule: { interval: weekly, day: monday }
+    groups: { worker: { patterns: ["*"] } }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    groups: { actions: { patterns: ["*"] } }
