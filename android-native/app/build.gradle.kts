@@ -202,7 +202,7 @@ dependencies {
     // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Télémétrie de fluidité (images saccadées par écran) : voir perf/PerfTelemetry.kt.
-    implementation("androidx.metrics:metrics-performance:1.0.0-beta01")
+    implementation("androidx.metrics:metrics-performance:1.0.0")
     implementation(libs.activity.compose)
     implementation(libs.lifecycle.runtime)
     implementation(libs.lifecycle.viewmodel)
