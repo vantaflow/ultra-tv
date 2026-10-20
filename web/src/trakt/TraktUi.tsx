@@ -110,7 +110,7 @@ export function TraktSeriesActions({ title, year, tmdb, season, episodes }: { ti
 }
 
 /** Section Trakt des réglages (lecture) : marquer vu à la fin, listes personnelles de l'accueil. */
-export function TraktSettings({ Pref }: { Pref: (p: { label: string; desc?: string; children: React.ReactNode }) => JSX.Element }) {
+export function TraktSettings({ Pref }: { Pref: (p: { label: string; desc?: string; children: React.ReactNode }) => React.JSX.Element }) {
   const t = useT();
   const lib = useTraktLibrary((s) => s.lib);
   const p = useTraktPrefs();

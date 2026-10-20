@@ -17,13 +17,17 @@ export default defineConfig({
   server: { port: 5173, host: true },
   build: {
     chunkSizeWarningLimit: 900,
-    rollupOptions: {
+    // Vite 8 (Rolldown) : `manualChunks` sous forme d'objet n'existe plus, on décrit les mêmes paquets
+    // avec `codeSplitting.groups` (un module de node_modules rejoint le premier groupe qui le reconnaît).
+    rolldownOptions: {
       output: {
-        manualChunks: {
-          hls: ["hls.js"],
-          mpegts: ["mpegts.js"],
-          react: ["react", "react-dom", "react-router-dom"],
-          dexie: ["dexie", "dexie-react-hooks"],
+        codeSplitting: {
+          groups: [
+            { name: "hls", test: /[\\/]node_modules[\\/]hls\.js[\\/]/ },
+            { name: "mpegts", test: /[\\/]node_modules[\\/]mpegts\.js[\\/]/ },
+            { name: "react", test: /[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/ },
+            { name: "dexie", test: /[\\/]node_modules[\\/](dexie|dexie-react-hooks)[\\/]/ },
+          ],
         },
       },
     },

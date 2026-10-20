@@ -30,6 +30,12 @@ updates:
     groups:
       worker-mineures: { patterns: ["*"], update-types: ["minor", "patch"] }
       worker-majeures: { patterns: ["*"], update-types: ["major"] }
+    ignore:
+      # Vitest reste en 4.x tant que @cloudflare/vitest-pool-workers n'accepte pas Vitest 5 : la 0.23.0 (dernière
+      # en octobre 2026) exige vitest ^4.1.0 et, forcée en 5.0.5, la suite ne démarre même pas (ERR_MODULE_NOT_FOUND).
+      # Retirer cette exclusion quand une version du pool annonce vitest ^5 dans ses peerDependencies.
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }

@@ -1,6 +1,6 @@
 // Listes et grilles virtualisées (seules les lignes visibles existent dans le DOM).
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { forwardRef, useEffect, useImperativeHandle, useRef, type ReactNode } from "react";
+import { useEffect, useImperativeHandle, useRef, type ReactNode } from "react";
 import { useElementSize } from "@/hooks/misc";
 
 export interface Rows<T> { count: number | null; get: (i: number) => T | undefined; want: (from: number, to: number) => void }
@@ -17,9 +17,11 @@ interface VListProps<T> {
   overscan?: number;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   label?: string;
+  /** React 19 : la ref est une prop ordinaire, plus besoin de forwardRef. */
+  ref?: React.Ref<VListHandle>;
 }
 
-function VListInner<T>({ rows, rowH, render, className = "vlist", overscan = 8, onKeyDown, label }: VListProps<T>, ref: React.Ref<VListHandle>) {
+export function VList<T>({ rows, rowH, render, className = "vlist", overscan = 8, onKeyDown, label, ref }: VListProps<T>) {
   const el = useRef<HTMLDivElement>(null);
   const count = rows.count ?? 0;
   const v = useVirtualizer({ count, getScrollElement: () => el.current, estimateSize: () => rowH, overscan });
@@ -40,7 +42,6 @@ function VListInner<T>({ rows, rowH, render, className = "vlist", overscan = 8, 
     </div>
   );
 }
-export const VList = forwardRef(VListInner) as <T>(p: VListProps<T> & { ref?: React.Ref<VListHandle> }) => ReactNode;
 
 interface VGridProps<T> {
   rows: Rows<T>;
