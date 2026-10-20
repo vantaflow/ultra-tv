@@ -19,8 +19,16 @@ jobs:
         # Aucune vérification n'est « obligatoire » sur main : on attend nous-mêmes la fin de toutes les vérifications
         # de la PR et on ne fusionne que si elles ont TOUTES réussi (un échec laisse la PR ouverte).
         run: |
+          # Ce job est lui-même une vérification de la PR : on l'exclut, sinon il s'attendrait indéfiniment.
           sleep 60
-          gh pr checks "$PR_URL" --watch --interval 30 --fail-fast || { echo "Vérifications en échec : pas de fusion."; exit 0; }
+          while :; do
+            states=$(gh pr checks "$PR_URL" --json name,bucket --jq '[.[] | select(.name != "automerge") | .bucket] | unique | join(",")')
+            case "$states" in
+              *fail*|*cancel*) echo "Vérifications en échec ($states) : pas de fusion."; exit 0 ;;
+              *pending*|"") sleep 30 ;;
+              *) break ;;
+            esac
+          done
           gh pr merge --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
