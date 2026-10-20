@@ -561,9 +561,10 @@ function adminCsv(rows) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "");
   // Cellules neutralisées contre l'injection de formules (=, +, -, @ en tête) et échappées.
   const cell = (v) => { let s = String(v ?? ""); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return `"${s.replace(/"/g, '""')}"`; };
-  const head = ["compte", "type", "email", "cree_le", "derniere_connexion", "pays_compte", "nb_appareils", "appareils", "derniere_activite", "pays_appareils", "nb_sources", "sources_xtream", "sources_m3u", "trakt", "opensubtitles"];
+  rows = rows.filter((r) => !r.legacy);
+  const head = ["compte", "email", "cree_le", "derniere_connexion", "pays_compte", "nb_appareils", "appareils", "derniere_activite", "pays_appareils", "nb_sources", "sources_xtream", "sources_m3u", "trakt", "opensubtitles"];
   const lines = rows.map((r) => [
-    r.login, r.legacy ? "ancien (adresse MAC)" : "inscrit", r.login.includes("@") ? r.login : "", d(r.createdAt), d(r.lastLoginAt), r.country || "",
+    r.login, r.login.includes("@") ? r.login : "", d(r.createdAt), d(r.lastLoginAt), r.country || "",
     r.devices.length, r.devices.map((x) => `${x.name} (${x.model}, ${x.edition}${x.lastSeen ? `, vu ${d(x.lastSeen)}` : ""})`).join(" | "),
     d(r.lastSeen), [...new Set(r.devices.map((x) => x.country).filter(Boolean))].join(" "), r.sourcesN ?? "?", r.sourcesXtream, r.sourcesM3u, r.trakt, r.opensubtitles,
   ].map(cell).join(";"));

@@ -115,6 +115,7 @@ button.block{width:100%}
 .grow{min-width:0;flex:1}
 .kind{display:inline-flex;align-items:center;min-height:22px;padding:0 8px;border-radius:7px;background:var(--acc-soft);color:var(--acc-fg);font:700 11px var(--ff);letter-spacing:.06em;margin-right:6px;vertical-align:1px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.bars{display:flex;flex-direction:column;gap:8px;margin-top:10px}.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 36px;align-items:center;gap:10px;font-size:13px}.bar .bl{color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar .bt{height:10px;border-radius:999px;background:var(--s2);overflow:hidden}.bar .bt i{display:block;height:100%;width:0;background:var(--acc);border-radius:999px;transition:width .4s}.bar .bv{text-align:right;font-weight:700;color:var(--fg)}
 a.button{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:14px;background:var(--acc);color:#fff;font-weight:700;font-size:14px;text-decoration:none}a.button:hover{text-decoration:none;filter:brightness(1.08)}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--bg);color:var(--fg2);font-size:12px;font-weight:600}
 .chip.all{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
@@ -730,36 +731,59 @@ function sourcesLabel(r) {
 }
 
 /** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
-export function adminPage(n, { rows, me, now = Date.now() }) {
+export function adminPage(n, { rows: all, me, now = Date.now() }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
-  const signed = rows.filter((r) => !r.legacy);
-  const withDev = rows.filter((r) => r.devices.length);
-  const active7 = rows.filter((r) => r.lastSeen && now - r.lastSeen < 7 * 86400_000);
-  const byCountry = new Map();
-  for (const r of rows) {
-    const cs = new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean));
-    if (!cs.size) continue;
-    for (const c of cs) byCountry.set(c, (byCountry.get(c) || 0) + 1);
+  const DAY = 86400_000;
+  // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
+  const rows = all.filter((r) => !r.legacy);
+  const pct = (k, n) => (n ? Math.round((100 * k) / n) : 0);
+  const devices = rows.flatMap((r) => r.devices.map((x) => ({ ...x, login: r.login })));
+  const activeSince = (ms) => rows.filter((r) => r.lastSeen && now - r.lastSeen < ms).length;
+  const newSince = (ms) => rows.filter((r) => r.createdAt && now - r.createdAt < ms).length;
+  const withDev = rows.filter((r) => r.devices.length).length;
+  const srcN = rows.reduce((t, r) => t + (r.sourcesN || 0), 0);
+  const srcX = rows.reduce((t, r) => t + (r.sourcesXtream || 0), 0);
+  const srcM = rows.reduce((t, r) => t + (r.sourcesM3u || 0), 0);
+  const withSrc = rows.filter((r) => r.sourcesN > 0).length;
+  const pro = devices.filter((x) => x.edition === "pro").length;
+  const tile = (v, l, cls = "") => `<div class="tile${cls ? " " + cls : ""}"><b>${e(String(v))}</b><span>${e(l)}</span></div>`;
+  const count = (arr) => { const m = new Map(); for (const k of arr) if (k) m.set(k, (m.get(k) || 0) + 1); return [...m].sort((x, y) => y[1] - x[1]); };
+  // Barres horizontales (largeur posée par le CSSOM : la CSP refuse les attributs style).
+  const bars = (pairs, label = (k) => k) => {
+    if (!pairs.length) return `<p class="muted small">Aucune donnée.</p>`;
+    const max = Math.max(...pairs.map((p) => p[1]));
+    return `<div class="bars">${pairs.map(([k, v]) => `<div class="bar"><span class="bl">${e(label(k))}</span><span class="bt"><i data-w="${Math.round((100 * v) / max)}"></i></span><span class="bv">${v}</span></div>`).join("")}</div>`;
+  };
+  const countries = count(rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]));
+  const models = count(devices.map((x) => x.model || "inconnu")).slice(0, 10);
+  // Inscriptions par semaine (8 dernières semaines, la plus récente en bas).
+  const weeks = [];
+  for (let w = 7; w >= 0; w--) {
+    const end = now - w * 7 * DAY, start = end - 7 * DAY;
+    const k = rows.filter((r) => r.createdAt >= start && r.createdAt < end).length;
+    weeks.push([w === 0 ? "7 derniers jours" : `il y a ${w} sem.`, k]);
   }
-  const countries = [...byCountry].sort((a, b) => b[1] - a[1]).map(([c, k]) => `<span class="chip">${e(countryLabel(c))} · ${k}</span>`).join(" ");
   const row = (r) => {
     const cs = [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))];
     const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.edition === "pro" ? ", PRO" : ""}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
-    return `<tr data-legacy="${r.legacy ? 1 : 0}"><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
-<td>${r.legacy ? "ancien (MAC)" : "inscrit"}</td><td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
+    return `<tr><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
+<td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
 <td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
   };
-  const script = `document.getElementById('legacy').addEventListener('change',function(){var on=this.checked;document.querySelectorAll('tr[data-legacy="1"]').forEach(function(t){t.hidden=!on;});});
-document.querySelectorAll('tr[data-legacy="1"]').forEach(function(t){t.hidden=true;});`;
+  const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});`;
   return layout("Ultra TV — administration", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Administration</span></div><a href="/">Retour au tableau de bord</a></header>
-<div class="tiles"><div class="tile"><b>${signed.length}</b><span>comptes inscrits</span></div>
-<div class="tile"><b>${rows.length - signed.length}</b><span>anciens comptes (adresse MAC)</span></div>
-<div class="tile"><b>${withDev.length}</b><span>comptes avec un appareil</span></div>
-<div class="tile"><b>${active7.length}</b><span>actifs ces 7 jours</span></div></div>
-<p class="mt16"><strong>Pays</strong> ${countries || `<span class="muted">aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</span>`}</p>
-<p class="muted small">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>
-<div class="row mt16"><a class="button" href="/admin/comptes.csv">Exporter en CSV</a> <label class="small"><input type="checkbox" id="legacy"/> Afficher les anciens comptes (adresse MAC)</label></div>
-<div class="tablewrap mt16"><table><thead><tr><th>Compte</th><th>Type</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
+<h2 class="mt16">Comptes</h2>
+<div class="tiles">${tile(rows.length, "comptes")}${tile(newSince(7 * DAY), "nouveaux ces 7 jours")}${tile(newSince(30 * DAY), "nouveaux ces 30 jours")}${tile(`${withDev} (${pct(withDev, rows.length)} %)`, "avec un appareil appairé")}</div>
+<h2 class="mt16">Activité</h2>
+<div class="tiles">${tile(activeSince(DAY), "actifs ces 24 h")}${tile(activeSince(7 * DAY), "actifs ces 7 jours")}${tile(activeSince(30 * DAY), "actifs ces 30 jours")}${tile(rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length, "connectés au site ces 7 jours")}</div>
+<h2 class="mt16">Appareils et sources</h2>
+<div class="tiles">${tile(devices.length, "appareils appairés")}${tile(devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length, "appareils actifs ces 7 jours")}${tile(`${pro} / ${devices.length - pro}`, "édition Pro / standard")}${tile(srcN, `sources (${srcX} Xtream · ${srcM} M3U)`)}${tile(withSrc ? (srcN / withSrc).toFixed(1) : "—", "sources par compte qui en a")}${tile(rows.filter((r) => r.trakt).length, "comptes reliés à Trakt")}${tile(rows.filter((r) => r.opensubtitles).length, "comptes OpenSubtitles reliés")}</div>
+<div class="two mt16"><section class="panel"><h2>Inscriptions par semaine</h2>${bars(weeks)}</section>
+<section class="panel"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section></div>
+<section class="panel mt16"><h2>Modèles d'appareils</h2>${bars(models)}</section>
+<p class="muted small mt16">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>
+<div class="row mt16"><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
+<div class="tablewrap mt16"><table><thead><tr><th>Compte</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
 <tbody>${rows.map(row).join("")}</tbody></table></div></main>`, n, `<script nonce="${n}">${script}</script>`);
 }
 
