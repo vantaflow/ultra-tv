@@ -2,6 +2,12 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.63] — 2026-10-20 (Android)
+
+### Corrigé
+- Direct : l'en-tête de section collé en haut de la liste masquait la première chaîne (agrandie quand elle est
+  sélectionnée). Il a maintenant sa propre place au-dessus de la liste ; un libellé de section vide n'est plus affiché.
+
 ## [1.2.62] — 2026-10-20 (Android)
 
 ### Amélioré (fluidité, mesurée en production : Direct 20 % d'images saccadées, Accueil 15 %, démarrage ~3,2 s)

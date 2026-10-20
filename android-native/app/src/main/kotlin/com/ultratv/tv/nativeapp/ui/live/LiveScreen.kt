@@ -263,9 +263,16 @@ private fun ChannelList(
     val rowIndexHolder = remember(channels) { arrayOfNulls<LiveRowIndex>(1) }
     val rowIndex = remember(snapshot) { LiveRowIndex.build(snapshot, rowIndexHolder[0]).also { rowIndexHolder[0] = it } }
     // Section courante : le dernier séparateur au-dessus (ou à) la première ligne visible (en-tête collant), en O(1).
+    // L'en-tête de section a SA place au-dessus de la liste (plus de superposition : il masquait le haut de la première
+    // chaîne, agrandie par la sélection). Place réservée seulement si la liste a au moins une section à afficher.
+    val hasSections = remember(rowIndex, categoryName) { rowIndex.hasSectionOtherThan(categoryName) }
     val stickyLabel by remember(state, rowIndex, categoryName) {
         androidx.compose.runtime.derivedStateOf {
-            rowIndex.sectionLabelAt(state.firstVisibleItemIndex)?.takeIf { !sameLabel(it, categoryName) }
+            val first = state.firstVisibleItemIndex
+            // Séparateur encore visible en haut de la liste : l'en-tête garde la section PRÉCÉDENTE jusqu'à ce qu'il soit
+            // passé (pas de libellé affiché deux fois l'un sous l'autre) ; en tout début de liste, sa propre section.
+            val at = if (first > 0 && rowIndex.isSeparatorAt(first)) first - 1 else first
+            rowIndex.sectionLabelAt(at)?.takeIf { it.isNotBlank() && !sameLabel(it, categoryName) }
         }
     }
     var firstFocused by remember { mutableStateOf(false) }
@@ -273,14 +280,16 @@ private fun ChannelList(
         Text(emptyText, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
         return
     }
-    Box {
-        LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 6.design)) {
+    Column {
+        if (hasSections) Box(Modifier.fillMaxWidth().height(56.design).padding(top = 6.design, bottom = 6.design)) { stickyLabel?.let { SectionHeader(it) } }
+        LazyColumn(state = state, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 10.design)) {
             items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
                 val c = channels[i]
                 when {
                     c == null -> Spacer(Modifier.fillMaxWidth().height(88.design))
                     // Séparateur : en-tête de section, NON focalisable (le D-pad le saute), non lisible.
-                    c.isSeparator -> if (!sameLabel(c.title, categoryName)) SectionHeader(c.title)
+                    // En tête de liste, la place réservée au-dessus l'affiche déjà ; libellé vide : rien.
+                    c.isSeparator -> if (i > 0 && c.title.isNotBlank() && !sameLabel(c.title, categoryName)) SectionHeader(c.title)
                     else -> ChannelRow(
                         c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first,
@@ -292,7 +301,6 @@ private fun ChannelList(
                 }
             }
         }
-        stickyLabel?.let { Box(Modifier.fillMaxWidth().background(Ux.Bg).padding(top = 6.design, bottom = 6.design)) { SectionHeader(it) } }
     }
 }
 
@@ -389,6 +397,14 @@ internal class LiveRowIndex private constructor(
         if (items.isEmpty() || index < 0) return null
         val s = sectionOf[minOf(index, items.size - 1)]
         return if (s < 0) null else items[s]?.title
+    }
+
+    fun isSeparatorAt(index: Int): Boolean = index in items.indices && items[index]?.isSeparator == true
+
+    /** Au moins une section (séparateur au libellé non vide, différent du nom de la catégorie) dans les lignes chargées. */
+    fun hasSectionOtherThan(categoryName: String): Boolean {
+        for (i in items.indices) if (sectionOf[i] == i) { val t = items[i]?.title; if (!t.isNullOrBlank() && !sameLabel(t, categoryName)) return true }
+        return false
     }
 
     /** Numéro de doublon de la ligne [index] (1 = premier flux, pas de badge). */

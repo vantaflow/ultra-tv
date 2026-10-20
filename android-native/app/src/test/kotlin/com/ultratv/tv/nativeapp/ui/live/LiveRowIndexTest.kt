@@ -134,4 +134,22 @@ class LiveRowIndexTest {
         assertEquals(emptyList<Long>(), visibleChannelIds(items, 9, 14))
         assertEquals(emptyList<Long>(), visibleChannelIds(emptyList(), 0, 14))
     }
+
+    @Test
+    fun hasSectionOtherThan_seulementSiUneSectionDifferenteEtNonVide() {
+        assertEquals(false, LiveRowIndex.build(listOf(ch("A"), ch("B"))).hasSectionOtherThan("Cat"))
+        assertEquals(false, LiveRowIndex.build(listOf(sep("Cat"), ch("A"))).hasSectionOtherThan("cat "))
+        assertEquals(false, LiveRowIndex.build(listOf(sep("  "), ch("A"))).hasSectionOtherThan("Cat"))
+        assertEquals(true, LiveRowIndex.build(listOf(sep("Cat"), ch("A"), sep("Sport"), ch("B"))).hasSectionOtherThan("Cat"))
+    }
+
+    @Test
+    fun isSeparatorAt_horsLimitesEtLignesNonChargees_faux() {
+        val idx = LiveRowIndex.build(listOf(sep("S"), null, ch("A")))
+        assertEquals(true, idx.isSeparatorAt(0))
+        assertEquals(false, idx.isSeparatorAt(1))
+        assertEquals(false, idx.isSeparatorAt(2))
+        assertEquals(false, idx.isSeparatorAt(-1))
+        assertEquals(false, idx.isSeparatorAt(9))
+    }
 }
