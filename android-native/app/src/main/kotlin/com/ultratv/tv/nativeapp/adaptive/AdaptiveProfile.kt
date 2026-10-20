@@ -36,9 +36,26 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Source des données brutes de l'appareil : réelle sur Android, fausse en test. */
-interface DeviceInfoSource { fun read(): DeviceInfo }
+interface DeviceInfoSource {
+    fun read(): DeviceInfo
+    /** Lecture RAPIDE (thread principal, démarrage) : mémoire, cœurs, écran ; sans sonder les décodeurs ni l'écran HDR. */
+    fun readQuick(): DeviceInfo = read()
+}
 
 class AndroidDeviceInfoSource(private val ctx: Context) : DeviceInfoSource {
+    override fun readQuick(): DeviceInfo {
+        val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val mi = ActivityManager.MemoryInfo().also(am::getMemoryInfo)
+        val dm = ctx.resources.displayMetrics
+        return DeviceInfo(
+            ramMb = (mi.totalMem / 1_048_576L).toInt(), memoryClassMb = am.memoryClass, lowRamFlag = am.isLowRamDevice,
+            cores = Runtime.getRuntime().availableProcessors(), maxFreqMhz = null, is64Bit = android.os.Process.is64Bit(),
+            sdk = Build.VERSION.SDK_INT, h264 = null, hevc = null, vp9 = null, av1 = null,
+            screenWidth = maxOf(dm.widthPixels, dm.heightPixels), screenHeight = minOf(dm.widthPixels, dm.heightPixels),
+            hdr = false, benchmarkMs = null,
+        )
+    }
+
     override fun read(): DeviceInfo {
         val am = ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         val mi = ActivityManager.MemoryInfo().also(am::getMemoryInfo)
@@ -96,17 +113,21 @@ class NetworkMonitor @Inject constructor(@ApplicationContext private val ctx: Co
     private var ewmaTtfb: Double? = null
     private val rebuffers = ArrayDeque<Long>()
     private val errors = ArrayDeque<Long>()
-    private val _sample = MutableStateFlow(snapshot())
+    // Valeur provisoire neutre : l'état réel (deux appels Binder à ConnectivityManager) et l'abonnement aux changements
+    // de réseau sont faits en arrière-plan — ce singleton est construit pendant Application.onCreate.
+    private val _sample = MutableStateFlow(NetSample(NetType.OTHER, null, false, null, null, 0, 0))
     val sample: StateFlow<NetSample> = _sample.asStateFlow()
 
-
     init {
-        runCatching {
-            cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) { reset(); publish() }
-                override fun onLost(network: Network) { publish() }
-                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { publish() }
-            })
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            publish()
+            runCatching {
+                cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) { reset(); publish() }
+                    override fun onLost(network: Network) { publish() }
+                    override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) { publish() }
+                })
+            }
         }
     }
 
@@ -233,19 +254,29 @@ class AdaptiveProfile @Inject constructor(
     val heapClassMb: Int = (ctx.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager).memoryClass
 
     init {
-        val device = loadCached() ?: DeviceProfile(source.read(), DeviceClassifier.tier(source.read())).also { }
-        _state = MutableStateFlow(compute(device, network.sample.value))
-        if (sp.getInt("version", -1) != versionCode() || !sp.contains("bench")) scope.launch { evaluateDevice() }
+        // Construit dans Application.onCreate (thread principal) : seulement la lecture RAPIDE ici. Avant, source.read()
+        // (4 × MediaCodecList + capacités de chaque décodeur, fichier /sys, DisplayManager) tournait une fois — DEUX fois
+        // sans cache — avant le premier écran. Le niveau (tier) ne dépend pas des décodeurs : il est juste dès maintenant.
+        val cached = cachedBench()
+        val quick = source.readQuick().copy(benchmarkMs = cached)
+        _state = MutableStateFlow(compute(DeviceProfile(quick, DeviceClassifier.tier(quick)), network.sample.value))
+        scope.launch {
+            if (cached == null) evaluateDevice()
+            else {
+                // Décodeurs et HDR (utiles au lecteur seulement) : complétés en arrière-plan.
+                val full = source.read().copy(benchmarkMs = cached)
+                _state.value = compute(DeviceProfile(full, DeviceClassifier.tier(full)), _state.value.net)
+            }
+        }
         scope.launch { network.sample.collect { s -> delay(500); _state.value = compute(_state.value.device, s) } }
     }
 
-    private fun versionCode(): Int = runCatching { @Suppress("DEPRECATION") ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionCode }.getOrDefault(0)
+    // BuildConfig plutôt que PackageManager : pas d'appel système (Binder) synchrone au démarrage.
+    private fun versionCode(): Int = com.ultratv.tv.nativeapp.BuildConfig.VERSION_CODE
 
-    private fun loadCached(): DeviceProfile? {
-        if (sp.getInt("version", -1) != versionCode() || !sp.contains("bench")) return null
-        val base = source.read().copy(benchmarkMs = sp.getLong("bench", 0))
-        return DeviceProfile(base, DeviceClassifier.tier(base))
-    }
+    /** Micro-benchmark mémorisé pour cette version, ou null s'il faut le (re)mesurer. */
+    private fun cachedBench(): Long? =
+        if (sp.getInt("version", -1) != versionCode() || !sp.contains("bench")) null else sp.getLong("bench", 0)
 
     /** Évalue (ou réévalue) l'appareil : lecture des capacités + micro-benchmark, mise en cache. */
     fun reevaluate() { scope.launch { evaluateDevice() } }

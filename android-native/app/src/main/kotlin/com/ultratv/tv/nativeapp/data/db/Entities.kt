@@ -42,6 +42,10 @@ data class ProviderEntity(
         Index(value = ["providerId", "categoryId", "num"]),
         Index(value = ["providerId", "remoteId"], unique = true),
         Index(value = ["providerId", "lang"]),
+        // Liste « Tout » du Direct et zapping : filtre (junk = 0, isSeparator = 0) puis ORDER BY catRank, num, id servis
+        // par ce seul index (le rowid suit la clé). Avant : LEFT JOIN category + ORDER BY CASE… → tri complet des
+        // 55 000 lignes À CHAQUE page chargée (images de 700 ms et plus sur une box).
+        Index(value = ["providerId", "junk", "isSeparator", "catRank", "num"]),
     ],
 )
 data class ChannelEntity(
@@ -86,6 +90,12 @@ data class ChannelEntity(
     val flags: Int = com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(name).flags,
     /** Langue détectée (code, « MULTI » ou vide = indéterminée). */
     val lang: String = com.ultratv.tv.nativeapp.data.repo.LanguageDetector.forItem(name, ""),
+    /**
+     * Rang de la catégorie de la chaîne dans l'ordre d'affichage du Direct (Paramètres › Catégories), PRÉCALCULÉ et
+     * indexé : voir [com.ultratv.tv.nativeapp.data.repo.LiveOrder]. Posé à la synchro, recalculé quand l'utilisateur
+     * réordonne ses catégories. 0 = pas encore calculé (lignes d'avant la migration 18, corrigées par elle).
+     */
+    @androidx.room.ColumnInfo(defaultValue = "0") val catRank: Int = 0,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])

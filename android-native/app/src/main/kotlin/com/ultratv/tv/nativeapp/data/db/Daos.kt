@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Update
 import com.ultratv.tv.nativeapp.data.security.SecretBox
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -79,7 +80,9 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
     private fun ProviderEntity.dec() = copy(password = SecretBox.shared.decrypt(password))
     private fun ProviderEntity.enc() = copy(password = SecretBox.shared.encrypt(password))
 
-    fun observeAll(): Flow<List<ProviderEntity>> = raw.observeAll().map { l -> l.map { it.dec() } }
+    // Déchiffrement HORS du thread principal : map s'exécutait dans le contexte du collecteur (viewModelScope = Main) et
+    // chaque mot de passe passe par le keystore (IPC) — au démarrage, plusieurs écrans observent les sources.
+    fun observeAll(): Flow<List<ProviderEntity>> = raw.observeAll().map { l -> l.map { it.dec() } }.flowOn(kotlinx.coroutines.Dispatchers.Default)
     suspend fun firstActive(): ProviderEntity? = raw.firstActive()?.dec()
     suspend fun findByIdentity(kind: String, baseUrl: String, username: String): ProviderEntity? =
         raw.findByIdentity(kind, baseUrl, username)?.dec()
@@ -188,19 +191,41 @@ interface ChannelDao {
     @Query("SELECT lang AS lang, COUNT(*) AS n FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 GROUP BY lang")
     fun observeLangCounts(pid: Long): Flow<List<LangCount>>
 
-    /** Pagination Room : seules les lignes visibles (+ marge) sont chargées, l'ordre vient de l'index. */
     // « Tout » : SANS les séparateurs de sections — mélangés à toutes les catégories ils n'ont pas de sens, et sans
     // vrai numéro de playlist ils remontaient tous en tête (38 en-têtes vides avant la première chaîne).
     // Ordre : celui des catégories (Paramètres › Catégories, même tri que la liste de gauche), puis la playlist dans
     // chaque catégorie. Avant : numéro de chaîne seul, sans rapport avec l'ordre choisi.
-    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
-    fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+    // Ordre servi par l'index grâce à catRank : voir allAfter / allBefore (pagination par clé, LiveAllPagingSource).
 
     @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND (:useLang = 0 OR lang IN (:langs)) ORDER BY num, id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
 
+
+    // ── Repli tant que catRank n'est pas rempli (base migrée depuis < 18, remplissage en tâche de fond : LiveOrderBackfill) ──
+    // Même ordre que catRank, calculé par jointure : lent (tri complet) mais juste. À retirer quand plus aucune base
+    // antérieure à la version 18 n'est en circulation.
+    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
+    fun pagedAllLegacy(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+
     @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 AND (ch.categoryId IS NULL OR ch.categoryId NOT IN (:hidden)) AND (:useLang = 0 OR ch.lang IN (:langs)) ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
-    fun pagedAllExcluding(pid: Long, hidden: List<String>, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+    fun pagedAllExcludingLegacy(pid: Long, hidden: List<String>, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id LIMIT :limit OFFSET :offset")
+    suspend fun windowAllLegacy(pid: Long, limit: Int, offset: Int): List<ChannelEntity>
+
+    @Query("SELECT ch.id FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
+    suspend fun orderedAllIdsLegacy(pid: Long): List<Long>
+
+    /** Sources dont des chaînes affichées n'ont pas encore de rang de catégorie (0) : à remplir en tâche de fond (recherche d'index, pas de parcours). */
+    @Query("SELECT p.id FROM provider p WHERE EXISTS(SELECT 1 FROM channel WHERE providerId = p.id AND junk = 0 AND isSeparator = 0 AND catRank = 0)")
+    suspend fun unrankedProviders(): List<Long>
+
+    /** Remplissage PAR LOT (au plus [limit] lignes, chacune sa transaction) : renvoie le nombre de lignes réécrites. */
+    @Query("UPDATE channel SET catRank = :rank WHERE id IN (SELECT id FROM channel WHERE providerId = :pid AND categoryId = :cat AND catRank != :rank LIMIT :limit)")
+    suspend fun setCatRankBatch(pid: Long, cat: String, rank: Int, limit: Int): Int
+
+    @Query("UPDATE channel SET catRank = :rank WHERE id IN (SELECT id FROM channel WHERE providerId = :pid AND catRank != :rank AND (categoryId IS NULL OR categoryId NOT IN (SELECT remoteId FROM category WHERE providerId = :pid AND kind = 'LIVE')) LIMIT :limit)")
+    suspend fun setCatRankOrphansBatch(pid: Long, rank: Int, limit: Int): Int
 
     /** Chaînes qui ONT un programme dans la fenêtre [from, to] (lignes de la grille du guide). */
     @Query("""
@@ -210,14 +235,31 @@ interface ChannelDao {
     """)
     fun pagedWithEpg(pid: Long, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
-    /** Fenêtres pour le zapping du lecteur (haut/bas) : jamais toute la liste en mémoire. */
-    // Même ordre que la liste « Tout » (pagedAll) : Haut/Bas suivent exactement ce qui est affiché.
-    @Query("SELECT ch.* FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id LIMIT :limit OFFSET :offset")
-    suspend fun windowAll(pid: Long, limit: Int, offset: Int): List<ChannelEntity>
+    // ── « Tout » par CLÉ (catRank, num, id) : liste paginée du Direct et zapping ──
+    // Pagination par clé au lieu de LIMIT/OFFSET : chaque page démarre par une recherche dans l'index
+    // (providerId, junk, isSeparator, catRank, num[, rowid]) au lieu de parcourir les N lignes qui précèdent, et une ligne
+    // insérée par une synchro entre deux pages ne peut jamais apparaître deux fois (clés en double = plantage de la liste).
+    // Filtres facultatifs : langue de la vue (useLang) et catégories masquées du profil (useHidden).
 
-    /** Identifiants de « Tout » dans l'ordre affiché : rang d'une chaîne pour centrer la fenêtre de zapping. */
-    @Query("SELECT ch.id FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
-    suspend fun orderedAllIds(pid: Long): List<Long>
+    /** Page suivante : les [limit] chaînes strictement APRÈS (catRank, num, id). */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND (catRank, num, id) > (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank, num, id LIMIT :limit")
+    suspend fun allAfter(pid: Long, catRank: Int, num: Int, id: Long, limit: Int, useHidden: Int, hidden: List<String>, useLang: Int, langs: List<String>): List<ChannelEntity>
+
+    /** Page précédente : les [limit] chaînes strictement AVANT (catRank, num, id), de la plus proche à la plus lointaine. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND (catRank, num, id) < (:catRank, :num, :id) AND (:useHidden = 0 OR categoryId IS NULL OR categoryId NOT IN (:hidden)) AND (:useLang = 0 OR lang IN (:langs)) ORDER BY catRank DESC, num DESC, id DESC LIMIT :limit")
+    suspend fun allBefore(pid: Long, catRank: Int, num: Int, id: Long, limit: Int, useHidden: Int, hidden: List<String>, useLang: Int, langs: List<String>): List<ChannelEntity>
+
+    /** Vrai tant que des chaînes affichées de la source n'ont pas de rang (base migrée, remplissage en cours) : repli sur l'ordre joint. */
+    @Query("SELECT EXISTS(SELECT 1 FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND catRank = 0)")
+    fun observeHasUnranked(pid: Long): Flow<Boolean>
+
+    /** Rang de catégorie des chaînes d'une catégorie (voir LiveOrder) ; seules les lignes qui changent sont réécrites (déclencheurs FTS). */
+    @Query("UPDATE channel SET catRank = :rank WHERE providerId = :pid AND categoryId = :cat AND catRank != :rank")
+    suspend fun setCatRank(pid: Long, cat: String, rank: Int)
+
+    /** Rang des chaînes SANS catégorie du Direct (categoryId nul ou inconnu de la table category). */
+    @Query("UPDATE channel SET catRank = :rank WHERE providerId = :pid AND catRank != :rank AND (categoryId IS NULL OR categoryId NOT IN (SELECT remoteId FROM category WHERE providerId = :pid AND kind = 'LIVE'))")
+    suspend fun setCatRankOrphans(pid: Long, rank: Int)
 
     @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat AND junk = 0 AND isSeparator = 0 ORDER BY num, id LIMIT :limit OFFSET :offset")
     suspend fun windowCategory(pid: Long, cat: String, limit: Int, offset: Int): List<ChannelEntity>

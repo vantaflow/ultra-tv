@@ -166,7 +166,22 @@ val MIGRATION_16_17 = object : Migration(16, 17) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17)
+/**
+ * 17 → 18 (performances du Direct) : `channel.catRank`, rang précalculé de la catégorie de chaque chaîne dans l'ordre
+ * d'affichage (voir LiveOrder), et l'index (providerId, junk, isSeparator, catRank, num) qui sert la liste « Tout » et le
+ * zapping sans jointure ni tri. SCHÉMA SEULEMENT : les 55 000 lignes existantes gardent 0 et sont remplies en tâche de
+ * fond par lots (LiveOrderBackfill) — une réécriture synchrone ici figerait l'eMMC d'une box plusieurs secondes au premier
+ * lancement (déclencheurs FTS compris) et déclencherait le chien de garde ANR. Tant qu'une source a des lignes à 0, le
+ * Direct garde l'ancienne requête jointe (ordre identique, juste plus lente).
+ */
+val MIGRATION_17_18 = object : Migration(17, 18) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `channel` ADD COLUMN `catRank` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_providerId_junk_isSeparator_catRank_num` ON `channel` (`providerId`, `junk`, `isSeparator`, `catRank`, `num`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

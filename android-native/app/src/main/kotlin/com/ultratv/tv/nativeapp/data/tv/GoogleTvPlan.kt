@@ -156,3 +156,78 @@ class TelemetryGate {
         return true
     }
 }
+
+/**
+ * Fournisseur TV du système (autorité `android.media.tv` : chaînes d'accueil et Watch Next). Sur certains appareils
+ * leanback il ne répond pas — NVIDIA Shield de certains builds / régions : fournisseur absent, désactivé, ou invisible
+ * pour l'appli (filtrage de visibilité des paquets depuis Android 11) — et chaque écriture du ContentResolver lève
+ * « IllegalArgumentException: Unknown URL content://android.media.tv/… » (la lecture, elle, renvoie null sans bruit).
+ * La vérification leanback ne le voit pas : la Shield EST un appareil leanback ; la synchro échouait donc à chaque
+ * lancement (trois avertissements par processus). Le manifeste déclare désormais l'autorité dans `<queries>` (cause
+ * probable sur la Shield) ; cette porte reste le garde-fou pour un fournisseur réellement absent ou désactivé.
+ *
+ * Règles pures : sonde une fois par processus, indisponibilité signalée au plus une fois par [intervalMs] (horodatage
+ * persistant), et toute erreur de résolveur rétrograde la synchro en « indisponible » pour le reste du processus.
+ */
+class TvProviderGate(private val intervalMs: Long = REPORT_INTERVAL_MS) {
+    enum class Decision { PROBE, PUBLISH, SKIP_SILENT, SKIP_REPORT }
+
+    /** null : pas encore sondé dans ce processus. Une fois faux, reste faux (plus de sonde). */
+    @Volatile var resolved: Boolean? = null
+        private set
+
+    /** Pourquoi le fournisseur est indisponible (pour l'événement de télémétrie) ; vide tant qu'il répond. */
+    @Volatile var reason: String = ""
+        private set
+
+    /** Résultat de la sonde ; ignoré si une opération a déjà déclaré le fournisseur indisponible. */
+    @Synchronized
+    fun probed(ok: Boolean, reasonIfMissing: String) {
+        if (resolved == false) return
+        resolved = ok
+        if (!ok) reason = reasonIfMissing
+    }
+
+    /**
+     * Une opération a échoué : vrai si c'est une erreur de résolveur — le fournisseur est alors indisponible pour le reste
+     * du processus ; faux pour toute autre erreur (le fournisseur répond, l'appelant garde son avertissement).
+     */
+    @Synchronized
+    fun failed(what: String, e: Throwable): Boolean {
+        if (!isResolverFailure(e)) return false
+        resolved = false
+        reason = "$what: ${e.javaClass.simpleName} ${e.message.orEmpty().take(120)}"
+        return true
+    }
+
+    fun decide(lastReportedAt: Long, now: Long): Decision = decide(resolved, lastReportedAt, now, intervalMs)
+
+    companion object {
+        /** Au plus un événement « indisponible » par jour et par appareil (la télémétrie était dédoublonnée par processus). */
+        const val REPORT_INTERVAL_MS = 24L * 3_600_000
+
+        /**
+         * [resolved] : null = jamais sondé (sonder), vrai = le fournisseur répond (publier), faux = absent : se taire, ou se
+         * taire et signaler si le dernier signalement ([lastReportedAt], 0 = jamais) date d'au moins [intervalMs].
+         */
+        fun decide(resolved: Boolean?, lastReportedAt: Long, now: Long, intervalMs: Long = REPORT_INTERVAL_MS): Decision = when {
+            resolved == null -> Decision.PROBE
+            resolved -> Decision.PUBLISH
+            shouldReport(lastReportedAt, now, intervalMs) -> Decision.SKIP_REPORT
+            else -> Decision.SKIP_SILENT
+        }
+
+        /** Jamais signalé, intervalle écoulé, ou horloge reculée (un horodatage futur bloquerait sinon pendant des jours). */
+        fun shouldReport(lastReportedAt: Long, now: Long, intervalMs: Long = REPORT_INTERVAL_MS): Boolean =
+            lastReportedAt <= 0L || now < lastReportedAt || now - lastReportedAt >= intervalMs
+
+        /**
+         * Erreur de résolveur : ContentResolver.insert / update / delete lèvent IllegalArgumentException (« Unknown URL »)
+         * quand aucun fournisseur ne répond à l'autorité ; le fournisseur lui-même lève la même exception (« Unknown URI »)
+         * pour une URI qu'il ne connaît pas (ancien fournisseur sans programmes d'aperçu). Dans les deux cas, réessayer
+         * dans ce processus ne servirait à rien. Un refus (NullPointerException « insertion failed », SecurityException)
+         * vient d'un fournisseur présent : pas une erreur de résolveur.
+         */
+        fun isResolverFailure(e: Throwable): Boolean = e is IllegalArgumentException
+    }
+}

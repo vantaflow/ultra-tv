@@ -33,6 +33,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -65,6 +69,8 @@ class LiveViewModel @Inject constructor(
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val syncCoordinator: SyncCoordinator,
     syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
+    private val backfill: com.ultratv.tv.nativeapp.data.repo.LiveOrderBackfill,
+    private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
 
@@ -77,6 +83,9 @@ class LiveViewModel @Inject constructor(
 
     /** Synchro en cours : compteurs lus une seule fois au lieu d'être relancés (GROUP BY sur ~55 000 chaînes) à chaque lot inséré. */
     private val syncing: Flow<Boolean> = syncBus.status.map { it != null }.distinctUntilChanged()
+
+    /** Écriture massive en cours (synchro OU remplissage différé de l'ordre) : aucune relecture ne suit chaque lot. */
+    private val busy: Flow<Boolean> = combine(syncing, backfill.running) { a, b -> a || b }.distinctUntilChanged()
 
     private val pid: Flow<Long?> = providers.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
@@ -91,7 +100,7 @@ class LiveViewModel @Inject constructor(
             if (id == null) flowOf(emptyList())
             else combine(
                 catalog.categories(id, "LIVE"),
-                channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(syncing),
+                channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(busy),
                 catalog.favoriteCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
                 val byId = counts.associate { it.categoryId to it.n }
@@ -112,11 +121,22 @@ class LiveViewModel @Inject constructor(
     val langView: StateFlow<com.ultratv.tv.nativeapp.data.repo.LangView> = _langView
     fun toggleLang(code: String) { _langView.value = _langView.value.toggle(code) }
     fun clearLangView() { _langView.value = com.ultratv.tv.nativeapp.data.repo.LangView.ALL }
-    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else channelDao.observeLangCounts(id).atMostEvery(1_000).snapshotWhile(syncing) }
+    val langCounts: StateFlow<List<com.ultratv.tv.nativeapp.data.db.LangCount>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptyList()) else channelDao.observeLangCounts(id).atMostEvery(1_000).snapshotWhile(busy) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /**
+     * L'ordre précalculé (catRank) est-il prêt pour cette source ? Faux seulement juste après la migration 17 → 18, le
+     * temps du remplissage en tâche de fond : « Tout » garde alors l'ancienne requête jointe (même ordre).
+     */
+    private val ranked: StateFlow<Boolean> = pid.flatMapLatest { id -> if (id == null) flowOf(true) else channelDao.observeHasUnranked(id).map { !it } }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    /** Source « Tout » en cours (pagination par clé) : invalidée À LA MAIN, voir [allInvalidations]. */
+    @Volatile private var allSource: com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource? = null
+
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId) { id, cat, hidden, lv, prof -> listOf<Any?>(id, cat, hidden, lv, prof) }   // liste : égalité par contenu (un Array se compare par référence)
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId, ranked) { a -> a.toList() }   // liste : égalité par contenu (un Array se compare par référence)
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
@@ -126,7 +146,8 @@ class LiveViewModel @Inject constructor(
                     cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
                     cat == CATEGORY_ALL -> {
                         val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
-                        if (hiddenIds.isEmpty()) channelDao.pagedAll(id, lv.useLang, lv.langs) else channelDao.pagedAllExcluding(id, hiddenIds, lv.useLang, lv.langs)
+                        if (arr[5] == true) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource(channelDao, id, com.ultratv.tv.nativeapp.data.repo.LiveAllFilter(hiddenIds, lv.useLang, lv.langs)).also { allSource = it }
+                        else if (hiddenIds.isEmpty()) channelDao.pagedAllLegacy(id, lv.useLang, lv.langs) else channelDao.pagedAllExcludingLegacy(id, hiddenIds, lv.useLang, lv.langs)
                     }
                     else -> channelDao.pagedForCategory(id, cat, lv.useLang, lv.langs)
                 }
@@ -163,7 +184,28 @@ class LiveViewModel @Inject constructor(
         _nowNext.value = _nowNext.value + ids.associateWith { id -> val l = rows[id].orEmpty(); l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now } }
     }
 
+    /**
+     * Quand recharger « Tout » : à la FIN d'une écriture massive (synchro, remplissage), ou à une modification de la table
+     * des chaînes hors synchro (catégorie réordonnée / désactivée). Pendant une synchro, rien : avant, chaque lot inséré
+     * relançait la requête de la page et rediffait la liste (images saccadées pendant toute la synchro).
+     */
+    private val allInvalidations: Flow<Unit> = kotlinx.coroutines.flow.merge(
+        busy.flatMapLatest { b -> if (b) kotlinx.coroutines.flow.emptyFlow() else channelTableChanges() },
+        busy.drop(1).filter { !it }.map { },
+    ).debounce(300)
+
+    private fun channelTableChanges(): Flow<Unit> = kotlinx.coroutines.flow.callbackFlow {
+        val obs = object : androidx.room.InvalidationTracker.Observer("channel") {
+            override fun onInvalidated(tables: Set<String>) { trySend(Unit) }
+        }
+        db.invalidationTracker.addObserver(obs)
+        awaitClose { db.invalidationTracker.removeObserver(obs) }
+    }.flowOn(kotlinx.coroutines.Dispatchers.IO)
+
     init {
+        // Base migrée depuis la version 17 : l'ordre précalculé est rempli en tâche de fond (sans effet sinon).
+        viewModelScope.launch { ranked.collect { if (!it) backfill.ensure() } }
+        viewModelScope.launch { allInvalidations.collect { allSource?.invalidate() } }
         viewModelScope.launch { visibleIds.debounce(120).collect { loadNowNext(it) } }
         viewModelScope.launch { while (true) { delay(60_000); loadNowNext(visibleIds.value) } }
     }
@@ -232,9 +274,11 @@ class LiveViewModel @Inject constructor(
                 val cat = selectedCategory.value
                 val window = when (cat) {
                     CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId, profiles.currentIdNow)
-                    CATEGORY_ALL -> {
-                        val rank = channelDao.orderedAllIds(channel.providerId).indexOf(channel.id).coerceAtLeast(0)
-                        channelDao.windowAll(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
+                    CATEGORY_ALL -> if (ranked.value && channel.catRank > 0) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, channel)
+                    else {
+                        // Repli (ordre pas encore précalculé) : ancienne méthode, même ordre.
+                        val rank = channelDao.orderedAllIdsLegacy(channel.providerId).indexOf(channel.id).coerceAtLeast(0)
+                        channelDao.windowAllLegacy(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
                         val rank = channelDao.rankCategory(channel.providerId, cat, channel.num, channel.id)

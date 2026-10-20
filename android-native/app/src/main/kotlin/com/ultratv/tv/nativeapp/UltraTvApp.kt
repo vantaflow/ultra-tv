@@ -36,7 +36,10 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
     // le premier écran sinon).
     @Inject lateinit var secretsMigrator: dagger.Lazy<com.ultratv.tv.nativeapp.data.security.ProviderSecretsMigrator>
     @Inject lateinit var adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
-    @Inject lateinit var prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
+    // Lazy : UserPreferencesStore tire ProfileRepository → UltraDb (construction Room) ; résolu sur le fil d'arrière-plan.
+    @Inject lateinit var prefsStore: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore>
+    @Inject lateinit var liveOrderBackfill: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.LiveOrderBackfill>
+    @Inject lateinit var cloudSync: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.CloudSyncManager>
 
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
@@ -102,11 +105,17 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // Départ de la mesure « démarrage à froid » (jusqu'à la première image affichée sur un écran).
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.markAppCreate()
 
+        // Préchauffage du graphe lourd EN PARALLÈLE de la création de l'activité : ProviderRepository (OkHttp et ses
+        // clients Xtream / M3U / XMLTV, tous les DAO, la base) et CloudSyncManager (lectures synchrones de préférences
+        // dans son constructeur). Sans cela, ils étaient construits sur le thread principal — injection de MainActivity
+        // puis ViewModels du premier écran — avant la première image. Les singletons Dagger (DoubleCheck) sont sûrs entre fils.
+        bgScope.launch { runCatching { providerRepo.get(); cloudSync.get() } }
+
         // Tell RemoteLog who we are before anyone calls it.
         // Version lue dans BuildConfig : pas d'appel système (Binder) synchrone avant le premier écran.
         RemoteLog.init(
             ctx = this,
-            mac = deviceMac.mac,
+            mac = { deviceMac.mac },
             versionName = BuildConfig.VERSION_NAME,
             versionCode = BuildConfig.VERSION_CODE,
         )
@@ -116,7 +125,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         // flag so disabling it from Settings takes effect immediately for
         // every subsequent event/crash POST.
         bgScope.launch {
-            prefsStore.flow.collect { p ->
+            prefsStore.get().flow.collect { p ->
                 RemoteLog.telemetryEnabled = p.telemetryEnabled
                 RemoteLog.workerUrlOverride = p.workerBaseUrl
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.offsetMinutes = p.epgTimeOffsetMin
@@ -141,11 +150,15 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
                     val pid = providerRepo.get().observeProviders()
                         .map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
                     traktMatcher.get().warmUp(bgScope, pid)
-                    val p = prefsStore.flow.first()
+                    val p = prefsStore.get().flow.first()
                     repo.refreshIfStale(com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository.langParam(p.language, java.util.Locale.getDefault().language))
                 }
             }
         }
+
+        // Base migrée depuis la version 17 : ordre précalculé du Direct rempli en tâche de fond, après le premier écran
+        // (sans effet une fois fait ; le Direct le lance aussi tout de suite s'il est ouvert avant).
+        bgScope.launch { runCatching { liveOrderBackfill.get().ensure(delayMs = 4_000) } }
 
         // Chiffre les mots de passe fournisseurs hérités (clair -> AES-GCM Keystore).
         bgScope.launch { runCatching { secretsMigrator.get().migrate() } }

@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import coil.compose.AsyncImage
@@ -64,6 +65,7 @@ fun SlotImage(
     innerPadding: Dp = 0.design,
     initialsSize: Int = 22,
     onFail: (() -> Unit)? = null,
+    decodeSize: DpSize? = null,
 ) {
     val lowRam = LocalLowRam.current
     // Fondu seulement au toucher : à la télécommande, chaque vignette chargée en défilement lançait une animation d'alpha.
@@ -78,9 +80,18 @@ fun SlotImage(
         }
         if (!url.isNullOrBlank()) {
             val ctx = LocalContext.current
-            // Requête construite une fois par (url, mode) : la recréer à chaque recomposition (focus) coûtait une allocation
-            // et une comparaison de modèle par vignette visible.
-            val request = androidx.compose.runtime.remember(url, fade) { ImageRequest.Builder(ctx).data(url).crossfade(fade).build() }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            // Taille de décodage EXPLICITE quand l'appelant connaît son cadre (carte de rangée, logo, hero) : Coil lance la
+            // requête dès la composition au lieu d'attendre la mesure, et décode directement à la taille de la carte.
+            // Sans taille connue (cellule de grille à largeur variable), Coil se cale sur les contraintes de mise en page.
+            val px = decodeSize?.let { with(density) { it.width.roundToPx().coerceAtLeast(1) to it.height.roundToPx().coerceAtLeast(1) } }
+            // Requête construite une fois par (url, mode, taille) : la recréer à chaque recomposition (focus) coûtait une
+            // allocation et une comparaison de modèle par vignette visible.
+            val request = androidx.compose.runtime.remember(url, fade, px, fit) {
+                ImageRequest.Builder(ctx).data(url).crossfade(fade).apply {
+                    if (px != null) size(px.first, px.second).scale(if (fit == SlotFit.Crop) coil.size.Scale.FILL else coil.size.Scale.FIT)
+                }.build()
+            }
             AsyncImage(
                 model = request,
                 contentDescription = null,
@@ -103,7 +114,7 @@ val LocalPosterKind = androidx.compose.runtime.compositionLocalOf<TmdbKind?> { n
  * cherchée sur TMDB (cache persistant, hors fil principal, appareil appairé seulement).
  */
 @Composable
-fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18, kind: TmdbKind? = LocalPosterKind.current, year: Int? = null) {
+fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18, kind: TmdbKind? = LocalPosterKind.current, year: Int? = null, decodeSize: DpSize? = null) {
     var fallback by remember(url, name) { mutableStateOf<String?>(null) }
     var failed by remember(url) { mutableStateOf(false) }
     val ctx = LocalContext.current
@@ -115,23 +126,24 @@ fun PosterImage(url: String?, name: String, modifier: Modifier, radius: Int = 18
     SlotImage(
         fallback ?: url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface, initialsSize = 36,
         onFail = if (kind != null && fallback == null) ({ failed = true }) else null,
+        decodeSize = decodeSize,
     )
 }
 
 /** Vignette 16:9 (Reprendre, épisodes) : `Crop`. */
 @Composable
-fun ThumbImage(url: String?, name: String, modifier: Modifier, radius: Int = 20) =
-    SlotImage(url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface2, initialsSize = 40)
+fun ThumbImage(url: String?, name: String, modifier: Modifier, radius: Int = 20, decodeSize: DpSize? = null) =
+    SlotImage(url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Crop, Ux.Surface2, initialsSize = 40, decodeSize = decodeSize)
 
 /** Logo de chaîne : boîte fixe, `Fit` centré avec marge intérieure, fond de la surface. */
 @Composable
-fun LogoBox(url: String?, name: String, modifier: Modifier, radius: Int = 10, pad: Int = 6, bg: Color = Ux.Surface2) =
-    SlotImage(url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Fit, bg, innerPadding = pad.design, initialsSize = 18)
+fun LogoBox(url: String?, name: String, modifier: Modifier, radius: Int = 10, pad: Int = 6, bg: Color = Ux.Surface2, decodeSize: DpSize? = null) =
+    SlotImage(url, name, modifier, RoundedCornerShape(radius.design), SlotFit.Fit, bg, innerPadding = pad.design, initialsSize = 18, decodeSize = decodeSize)
 
 /** Fond de hero / de fiche : zone fixe, `Crop`. */
 @Composable
-fun BackdropImage(url: String?, modifier: Modifier, bg: Color = Ux.Tone) =
-    SlotImage(url, "", modifier, RoundedCornerShape(0.design), SlotFit.Crop, bg)
+fun BackdropImage(url: String?, modifier: Modifier, bg: Color = Ux.Tone, decodeSize: DpSize? = null) =
+    SlotImage(url, "", modifier, RoundedCornerShape(0.design), SlotFit.Crop, bg, decodeSize = decodeSize)
 
 /** Avatar de distribution : cercle, `Crop`. */
 @Composable

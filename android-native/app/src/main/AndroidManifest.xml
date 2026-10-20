@@ -34,6 +34,12 @@
     <!-- Touche « Voix » de la recherche : on ne l'affiche que si un service de reconnaissance existe. -->
     <queries>
         <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+        <!-- Fournisseur TV du système (chaînes d'accueil, Watch Next) et invite « Afficher la chaîne sur l'accueil ? » :
+             sans ces déclarations, le filtrage de visibilité des paquets (Android 11+, targetSdk 30+) les cache à l'appli
+             sur les systèmes dont le fournisseur n'est pas « forceQueryable » — ContentResolver lève alors
+             « Unknown URL content://android.media.tv/… » à chaque écriture (NVIDIA Shield), et l'invite paraît absente. -->
+        <provider android:authorities="android.media.tv" />
+        <intent><action android:name="android.media.tv.action.REQUEST_CHANNEL_BROWSABLE" /></intent>
     </queries>
 
     <application

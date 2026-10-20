@@ -1,8 +1,8 @@
 package com.ultratv.tv.nativeapp.perf
 
 /**
- * Agrégation des images (frames) PAR ÉCRAN pour la télémétrie de fluidité : nombre d'images, images saccadées, pire durée
- * et p95 approché. Logique pure (aucune dépendance Android) : l'horloge est passée en paramètre, ce qui la rend testable.
+ * Agrégation des images (frames) PAR ÉCRAN pour la télémétrie de fluidité : nombre d'images, images saccadées, images
+ * lentes, pire durée et p95 approché. Logique pure (aucune dépendance Android) : l'horloge est passée en paramètre, ce qui la rend testable.
  *
  * Aucune donnée personnelle : seul le MODÈLE de route (« home », « live », « movies/{id} »…) est utilisé, jamais ses arguments.
  * Thread-safe : les mesures arrivent d'un fil de JankStats, le vidage du fil principal ou d'un fil de fond.
@@ -16,6 +16,7 @@ class PerfAggregator(
     private class Bucket {
         var frames = 0
         var janky = 0
+        var slow = 0
         var worstMs = 0L
         val histogram = IntArray(HISTOGRAM_SIZE)
         var lastReportMs = Long.MIN_VALUE
@@ -23,12 +24,17 @@ class PerfAggregator(
 
     private val buckets = LinkedHashMap<String, Bucket>()
 
-    /** Une image terminée sur [route] : durée [frameMs] (ms), [janky] selon l'heuristique de JankStats. */
+    /**
+     * Une image terminée sur [route] : durée [frameMs] (ms), [janky] selon l'heuristique de JankStats (> 2 × la période de
+     * l'écran), [slow] au-delà de 1,5 × cette période (voir [isSlow]) : à 60 Hz, les images
+     * de 25 à 33 ms (une image ratée) que le seuil de JankStats ne voit pas.
+     */
     @Synchronized
-    fun record(route: String, frameMs: Long, janky: Boolean) {
+    fun record(route: String, frameMs: Long, janky: Boolean, slow: Boolean = false) {
         val b = buckets.getOrPut(normalize(route)) { Bucket() }
         b.frames++
         if (janky) b.janky++
+        if (slow) b.slow++
         if (frameMs > b.worstMs) b.worstMs = frameMs
         b.histogram[(frameMs / BUCKET_MS).toInt().coerceIn(0, HISTOGRAM_SIZE - 1)]++
     }
@@ -48,14 +54,15 @@ class PerfAggregator(
             if (b.lastReportMs != Long.MIN_VALUE && nowMs - b.lastReportMs < minIntervalMs) continue
             out += format(route, b)
             b.lastReportMs = nowMs
-            b.frames = 0; b.janky = 0; b.worstMs = 0L; b.histogram.fill(0)
+            b.frames = 0; b.janky = 0; b.slow = 0; b.worstMs = 0L; b.histogram.fill(0)
         }
         return out
     }
 
     private fun format(route: String, b: Bucket): String {
         val pct = Math.round(b.janky * 100.0 / b.frames).toInt()
-        return "perf $route frames=${b.frames} janky=${b.janky} ($pct%) p95≈${p95(b)}ms worst=${b.worstMs}ms"
+        val slowPct = Math.round(b.slow * 100.0 / b.frames).toInt()
+        return "perf $route frames=${b.frames} janky=${b.janky} ($pct%) slow=${b.slow} ($slowPct%) p95≈${p95(b)}ms worst=${b.worstMs}ms"
     }
 
     /** Borne haute du seau qui contient le 95e centile. */
@@ -74,6 +81,20 @@ class PerfAggregator(
         const val MIN_FRAMES = 30
         private const val BUCKET_MS = 4L
         private const val HISTOGRAM_SIZE = 128   // 0..512 ms par seaux de 4 ms ; au-delà, dernier seau (le pire est exact).
+
+        /** Seuil des images « lentes » : 1,5 × la période de rafraîchissement de l'écran. */
+        const val SLOW_FACTOR_NUM = 3L
+        const val SLOW_FACTOR_DEN = 2L
+        /** Période par défaut si l'écran n'a pas pu être lu : 60 Hz. */
+        const val DEFAULT_REFRESH_PERIOD_NANOS = 16_666_667L
+
+        /** Période d'une image (ns) pour une fréquence [refreshHz] ; 60 Hz si la valeur est absurde (0, négative, NaN). */
+        fun refreshPeriodNanos(refreshHz: Float): Long =
+            if (refreshHz.isNaN() || refreshHz < 1f || refreshHz > 1_000f) DEFAULT_REFRESH_PERIOD_NANOS else Math.round(1_000_000_000.0 / refreshHz)
+
+        /** Image lente : durée [frameNanos] strictement au-dessus de 1,5 × [refreshPeriodNanos] (25 ms à 60 Hz, 30 ms à 50 Hz). */
+        fun isSlow(frameNanos: Long, refreshPeriodNanos: Long): Boolean =
+            frameNanos * SLOW_FACTOR_DEN > refreshPeriodNanos * SLOW_FACTOR_NUM
 
         /** « player?url={url}&title={title} » → « player » ; « movies/{id} » reste tel quel (modèle, pas de valeur réelle). */
         fun normalize(route: String?): String = route?.substringBefore('?')?.trim()?.ifEmpty { null } ?: "(none)"

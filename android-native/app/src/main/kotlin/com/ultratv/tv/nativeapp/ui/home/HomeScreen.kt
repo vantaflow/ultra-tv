@@ -17,11 +17,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -41,9 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
-import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
-import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
@@ -73,7 +79,14 @@ import com.ultratv.tv.nativeapp.ui.design.spx
  * Accueil (maquette Accueil.dc.html) : hero « À la une » de 440 px, rails « Reprendre la lecture »
  * (cartes 16:9 avec progression) et « Chaînes favorites ». Aucune donnée factice : tout vient de la
  * source ; une métadonnée absente est masquée. Chaque image occupe un cadre fixe.
+ *
+ * Colonne PARESSEUSE (LazyColumn, une entrée par rangée avec clé et contentType) : seules les rangées visibles
+ * sont composées. Avant, une Column + verticalScroll composait et mesurait d'un coup le hero et les huit rangées
+ * (≈ 60 cartes avec image) à la première image puis à chaque émission de données — images de plus d'une seconde
+ * sur les box modestes. Les rangées arrivent toutes prêtes du ViewModel ([HomeRows], immuable, construite hors du
+ * fil principal) : la composition ne fabrique plus de listes ni ne nettoie de titres.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     onGoLive: () -> Unit,
@@ -90,18 +103,13 @@ fun HomeScreen(
     vm: HomeViewModel = hiltViewModel(),
 ) {
     val D = LocalDs.current
-    val providers by vm.providers.collectAsState()
-    val loaded by vm.providersLoaded.collectAsState()
-    val hero by vm.hero.collectAsState()
-    val resume by vm.continueWatching.collectAsState()
-    val trakt by vm.trakt.collectAsState()
-    val latestMovies by vm.latestMovies.collectAsState()
-    val latestSeries by vm.latestSeries.collectAsState()
-    val recentChannels by vm.recentChannels.collectAsState()
-    val channels by vm.channels.collectAsState()
-    val favorites by vm.showingFavorites.collectAsState()
-    val nowPlaying by vm.nowPlaying.collectAsState()
-    val syncPct by vm.syncPercent.collectAsState()
+    val providers by vm.providers.collectAsStateWithLifecycle()
+    val loaded by vm.providersLoaded.collectAsStateWithLifecycle()
+    val hero by vm.hero.collectAsStateWithLifecycle()
+    val rows by vm.rows.collectAsStateWithLifecycle()
+    // Lecture DIFFÉRÉE : seul l'encart de chargement lit le pourcentage (State non déballé ici), l'écran entier
+    // n'est plus recomposé à chaque pour-cent de synchro.
+    val syncPct = vm.syncPercent.collectAsStateWithLifecycle()
     // Retour au premier plan : relecture de la bibliothèque Trakt si elle a plus de 15 min (sinon sans effet).
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
@@ -110,108 +118,141 @@ fun HomeScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
     val dataState: com.ultratv.tv.nativeapp.ui.common.DataStateViewModel = hiltViewModel()
-    val failure by dataState.failure.collectAsState()
+    val failure by dataState.failure.collectAsStateWithLifecycle()
+
+    // Actions hissées : une seule instance par écran, pas une nouvelle lambda par carte à chaque recomposition.
+    val playHistory: (WatchHistoryEntity) -> Unit = remember(vm, onPlay) { { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) } }
+    val openHero: (HeroItem) -> Unit = remember(onOpenMovie, onOpenSeries) { { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) } }
+    val openPoster: (PosterCardUi) -> Unit = remember(onOpenMovie, onOpenSeries) { { p -> if (p.isShow) onOpenSeries(p.item.id) else onOpenMovie(p.item.id) } }
+    val playChannel: (ChannelEntity) -> Unit = remember(onPlay) { { c -> onPlay(c.streamUrl, c.title) } }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = hiltViewModel()
-        val prof by profileVm.current.collectAsState()
+        val prof by profileVm.current.collectAsStateWithLifecycle()
         com.ultratv.tv.nativeapp.ui.mobile.MobileHomeScreen(
-            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, resume, channels, favorites, nowPlaying, syncPct, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt(), trakt),
+            state = com.ultratv.tv.nativeapp.ui.mobile.MobileHomeState(loaded, providers.isNotEmpty(), hero, rows, prof?.initial ?: "K", prof?.color ?: 0xFFD91E2B.toInt()),
+            syncPercent = { syncPct.value },
             onOpenMovie = onOpenMovie, onOpenSeries = onOpenSeries,
             onSearch = onGoSearch, onProfile = { profileVm.requestSwitch() }, onGoLive = onGoLive, onGoSettings = onGoSettings, onGoGuide = onGoGuide, onGoFavorites = onGoFavorites,
-            onPlay = onPlay, onPlayHistory = { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) },
-            onOpenHero = { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) },
+            onPlay = onPlay, onPlayHistory = playHistory, onOpenHero = openHero,
         )
         return
     }
 
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(start = 72.design, top = 54.design, bottom = 54.design),
-        verticalArrangement = Arrangement.spacedBy(48.design),
-    ) {
-        val h = hero
-        when {
-            h != null -> Hero(h, onOpen = { if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) }, onGuide = onGoGuide)
-            loaded && providers.isEmpty() -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
-            // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
-            loaded && providers.none { it.kind in com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS } -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.openSourceSettings, onGoSettings, takeFocus = false)
-            // Source en erreur : message lisible, bouton explicite, aucun focus d'office (l'utilisateur reste sur le rail : « Accueil » n'ouvre pas les Réglages).
-            loaded && failure != null -> failure!!.let { f ->
-                EmptyCard(
-                    LocalStrings.current.sync.messageFor(f.kind), D.sourceErrorBody(f.provider), D.openSourceSettings, onGoSettings,
-                    action2 = D.retry, onAction2 = { dataState.retry(f.providerId) }, takeFocus = false,
-                )
-            }
-            loaded -> LoadingCard(D.homeEmpty, syncPct)
-        }
+    val h = hero
+    val f = failure
+    val slot = remember(h != null, loaded, providers, f != null) {
+        homeTopSlot(h != null, loaded, providers.map { it.kind }, com.ultratv.tv.nativeapp.ui.settings.SUPPORTED_KINDS, f != null)
+    }
+    // Focus initial sur « Regarder » UNE fois par visite de l'accueil (état sauvegardé dans l'entrée de navigation) :
+    // au retour d'une fiche ou du lecteur, le hero recomposé ne vole plus le focus que ScreenFocusHost (focusRestorer)
+    // rend à la carte quittée.
+    var heroFocusDone by rememberSaveable { mutableStateOf(false) }
+    val onHeroFocused = remember { { heroFocusDone = true } }
 
-        if (resume.isNotEmpty()) Section(D.continueWatching) {
-            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-                items(resume, key = { "${it.kind}-${it.remoteId}" }, contentType = { "resume" }) { e ->
-                    ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
-                }
-            }
-        }
-
-        // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
-        if (trakt.watchlist.isNotEmpty()) Section(D.traktWatchlist) { TraktRow(trakt.watchlist, "tw", onOpenMovie, onOpenSeries) }
-        if (trakt.recommendations.isNotEmpty()) Section(D.traktRecommended) { TraktRow(trakt.recommendations, "tr", onOpenMovie, onOpenSeries) }
-        if (trakt.trending.isNotEmpty()) Section(D.traktTrending) { TraktRow(trakt.trending, "tt", onOpenMovie, onOpenSeries) }
-        if (trakt.popular.isNotEmpty()) Section(D.traktPopular) { TraktRow(trakt.popular, "tp", onOpenMovie, onOpenSeries) }
-
-        if (recentChannels.isNotEmpty()) Section(D.recentlyWatched) {
-            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-                items(recentChannels, key = { "rc-${it.remoteId}" }, contentType = { "resume" }) { e ->
-                    ResumeCard(e) { vm.playFromHistory(e); onPlay(e.streamUrl, e.title) }
-                }
-            }
-        }
-
-        if (latestMovies.isNotEmpty()) Section(D.latestMovies) {
-            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE) {
-                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-                    items(latestMovies, key = { "lm-${it.id}" }, contentType = { "poster" }) { m ->
-                        com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenMovie(m.id) }
+    // Pivot VERTICAL seulement (haut de l'élément focalisé à 30 % de l'écran, comme le pivot TV de Compose) ; les
+    // rangées horizontales gardent le comportement hérité, rétabli dans chaque entrée.
+    val inheritedSpec = LocalBringIntoViewSpec.current
+    val listState = rememberLazyListState()
+    CompositionLocalProvider(LocalBringIntoViewSpec provides HomePivotSpec) {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            state = listState,
+            // Marge gauche en contentPadding (et non en padding extérieur) : les rangées débordent de RowBleed dans
+            // cette marge sans sortir de la zone de rognage de la liste — la première carte agrandie n'est pas coupée.
+            contentPadding = PaddingValues(start = 72.design, top = 54.design, bottom = 54.design),
+            verticalArrangement = Arrangement.spacedBy(48.design),
+        ) {
+            if (slot != HomeTopSlot.NONE) item(key = "top", contentType = slot.name) {
+                CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
+                    when (slot) {
+                        HomeTopSlot.HERO -> if (h != null) Hero(h, onOpen = openHero, onGuide = onGoGuide, takeFocus = !heroFocusDone, onFocused = onHeroFocused)
+                        HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
+                        // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
+                        HomeTopSlot.UNSUPPORTED -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.openSourceSettings, onGoSettings, takeFocus = false)
+                        // Source en erreur : message lisible, bouton explicite, aucun focus d'office (l'utilisateur reste sur le rail : « Accueil » n'ouvre pas les Réglages).
+                        HomeTopSlot.FAILURE -> if (f != null) EmptyCard(
+                            LocalStrings.current.sync.messageFor(f.kind), D.sourceErrorBody(f.provider), D.openSourceSettings, onGoSettings,
+                            action2 = D.retry, onAction2 = { dataState.retry(f.providerId) }, takeFocus = false,
+                        )
+                        HomeTopSlot.LOADING -> LoadingCard(D.homeEmpty) { syncPct.value }
+                        HomeTopSlot.NONE -> Unit
                     }
                 }
             }
-        }
-
-        if (latestSeries.isNotEmpty()) Section(D.latestSeries) {
-            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV) {
-                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-                    items(latestSeries, key = { "ls-${it.id}" }, contentType = { "poster" }) { m ->
-                        com.ultratv.tv.nativeapp.ui.catalog.PosterCell(m, Modifier.width(200.design)) { onOpenSeries(m.id) }
-                    }
-                }
-            }
-        }
-
-        if (channels.isNotEmpty()) Section(if (favorites) D.favoriteChannels else LocalStrings.current.navLive) {
-            LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-                items(channels, key = { it.id }, contentType = { "channel" }) { c ->
-                    ChannelCard(c, nowPlaying[c.id]) { onPlay(c.streamUrl, c.title) }
+            items(rows.order, key = { it.name }, contentType = { it.contentType }) { id ->
+                CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
+                    HomeSection(id, rows, playHistory, openPoster, playChannel)
                 }
             }
         }
     }
 }
 
-/** Rangée d'affiches Trakt (films et séries mêlés, ordre de Trakt) ; sélectionner ouvre la fiche existante. */
+/** Pivot vertical de l'accueil : voir [pivotScrollDistance] ; animation courte (125 ms) comme le pivot TV de Compose. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private object HomePivotSpec : BringIntoViewSpec {
+    override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float> =
+        androidx.compose.animation.core.tween(durationMillis = 125, easing = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f))
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = pivotScrollDistance(offset, size, containerSize)
+}
+
+/**
+ * Rangée horizontale de l'accueil : débordement à gauche (première carte agrandie non rognée) + groupe de focus avec
+ * restauration — revenir dans la rangée (Haut/Bas, retour du menu latéral, rangée recomposée après être sortie de
+ * l'écran) rend le focus à la DERNIÈRE carte visée de cette rangée, jamais à la première par défaut.
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+private fun Modifier.homeRow(): Modifier = this.rowBleedStart(RowBleed).focusRestorer().focusGroup()
+
 @Composable
-private fun TraktRow(cards: List<com.ultratv.tv.nativeapp.data.trakt.TraktCard>, keyPrefix: String, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit) {
-    LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = androidx.compose.foundation.layout.PaddingValues(start = RowBleed, end = 96.design)) {
-        items(cards, key = { "$keyPrefix-${it.isShow}-${it.id}" }, contentType = { "poster" }) { c ->
-            androidx.compose.runtime.CompositionLocalProvider(
-                com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides if (c.isShow) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE,
-            ) {
-                com.ultratv.tv.nativeapp.ui.catalog.PosterCell(com.ultratv.tv.nativeapp.ui.catalog.PosterItem(c.id, c.title, c.poster, c.year, c.rating), Modifier.width(200.design)) {
-                    if (c.isShow) onOpenSeries(c.id) else onOpenMovie(c.id)
-                }
-            }
+private fun HomeSection(
+    id: HomeSectionId,
+    rows: HomeRows,
+    playHistory: (WatchHistoryEntity) -> Unit,
+    openPoster: (PosterCardUi) -> Unit,
+    playChannel: (ChannelEntity) -> Unit,
+) {
+    val D = LocalDs.current
+    when (id) {
+        HomeSectionId.RESUME -> Section(D.continueWatching) { ResumeRow(rows.resume, playHistory) }
+        // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
+        HomeSectionId.TRAKT_WATCHLIST -> Section(D.traktWatchlist) { PosterRow(rows.watchlist, openPoster) }
+        HomeSectionId.TRAKT_RECOMMENDED -> Section(D.traktRecommended) { PosterRow(rows.recommended, openPoster) }
+        HomeSectionId.TRAKT_TRENDING -> Section(D.traktTrending) { PosterRow(rows.trending, openPoster) }
+        HomeSectionId.TRAKT_POPULAR -> Section(D.traktPopular) { PosterRow(rows.popular, openPoster) }
+        HomeSectionId.RECENT_CHANNELS -> Section(D.recentlyWatched) { ResumeRow(rows.recentChannels, playHistory) }
+        HomeSectionId.LATEST_MOVIES -> Section(D.latestMovies) { PosterRow(rows.latestMovies, openPoster) }
+        HomeSectionId.LATEST_SERIES -> Section(D.latestSeries) { PosterRow(rows.latestSeries, openPoster) }
+        HomeSectionId.CHANNELS -> Section(if (rows.showingFavorites) D.favoriteChannels else LocalStrings.current.navLive) { ChannelRow(rows.channels, playChannel) }
+    }
+}
+
+@Composable
+private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) -> Unit) {
+    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+        items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c) { onPlay(c.entry) } }
+    }
+}
+
+/** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
+@Composable
+private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+        items(cards, key = { it.key }, contentType = { "poster" }) { p ->
+            com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
         }
     }
 }
+
+@Composable
+private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit) {
+    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+        items(cards, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c) { onPlay(c.channel) } }
+    }
+}
+
+private val PosterWidth get() = 200.design
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
@@ -224,12 +265,12 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 // ───────────────────────── Hero 440 px ─────────────────────────
 
 @Composable
-private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
+private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, takeFocus: Boolean, onFocused: () -> Unit) {
     val D = LocalDs.current
     val S = LocalStrings.current
     val requester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
-    RequestInitialFocus(requester, hasFocus = { focused })
+    if (takeFocus) RequestInitialFocus(requester, hasFocus = { focused })
     Box(
         Modifier.fillMaxWidth().padding(end = 96.design).height(440.design)
             .clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep),
@@ -238,9 +279,9 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
         // dans sa propre zone fixe (jamais étirée, jamais sous le texte), sur la couleur du cadre.
         Box(Modifier.align(Alignment.CenterEnd).width(760.design).fillMaxHeight().background(Ux.Tone)) {
             if (h.backdrop != null) {
-                BackdropImage(h.backdrop, Modifier.fillMaxSize())
+                BackdropImage(h.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(760.design, 440.design))
             } else {
-                PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE)
+                PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(293.design, 440.design))
             }
             // Voile de lisibilité : fondu vers le fond du cadre côté texte.
             Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))
@@ -250,9 +291,10 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(24.design, Alignment.Bottom),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                LiveBadge(if (h.kind == HeroItem.Kind.SERIES) S.seriesTitle.uppercase() else S.moviesTitle.uppercase())
-                val meta = listOfNotNull(h.year?.toString(), h.genre, h.rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
-                if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                val badge = remember(h.kind, S) { (if (h.kind == HeroItem.Kind.SERIES) S.seriesTitle else S.moviesTitle).uppercase() }
+                LiveBadge(badge)
+                // Méta formatée dans le ViewModel (HeroItem.meta), plus de String.format à la composition.
+                if (h.meta.isNotEmpty()) Text(h.meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(
                 h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 67.spx,
@@ -260,9 +302,9 @@ private fun Hero(h: HeroItem, onOpen: () -> Unit, onGuide: () -> Unit) {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
                 PillButton(
-                    D.watch, onClick = onOpen, heightPx = 76, hPadPx = 40, fontPx = 28, weight = FontWeight.Bold,
+                    D.watch, onClick = { onOpen(h) }, heightPx = 76, hPadPx = 40, fontPx = 28, weight = FontWeight.Bold,
                     iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
-                    modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused },
+                    modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() },
                 )
                 PillButton(D.tvGuide, onClick = onGuide)
             }
@@ -289,14 +331,15 @@ private fun EmptyCard(title: String, hint: String, action: String, onAction: () 
 }
 
 @Composable
-private fun LoadingCard(text: String, percent: Int?) {
+private fun LoadingCard(text: String, percent: () -> Int?) {
     Column(
         Modifier.fillMaxWidth().padding(end = 96.design).height(440.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(56.design),
         verticalArrangement = Arrangement.spacedBy(24.design, Alignment.Bottom),
     ) {
         Text(text, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Box(Modifier.fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Surface2)) {
-            ProgressLine((percent ?: 0) / 100f, Modifier.fillMaxWidth(), heightPx = 10)
+            // Pourcentage lu ICI (lecture différée) : seule cette carte se recompose pendant la synchro.
+            ProgressLine((percent() ?: 0) / 100f, Modifier.fillMaxWidth(), heightPx = 10)
         }
     }
 }
@@ -305,21 +348,24 @@ private fun LoadingCard(text: String, percent: Int?) {
 
 /** Carte « Reprendre » : vignette 16:9 (360×202) avec progression, titre 24, reste à voir 20. */
 @Composable
-private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
+private fun ResumeCard(c: ResumeCardUi, onClick: () -> Unit) {
     val D = LocalDs.current
-    val progress = if (e.durationMs > 0) e.positionMs.toFloat() / e.durationMs else 0f
-    val mins = ((e.durationMs - e.positionMs).coerceAtLeast(0) / 60_000).toInt()
-    val meta = when {
-        e.durationMs <= 0 -> null
-        mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
-        else -> D.minLeft.format(mins)
+    val e = c.entry
+    // Titre nettoyé et progression calculés dans le ViewModel (hors fil principal) ; seul le libellé localisé est formaté ici, une fois.
+    val meta = remember(c.minutesLeft, D) {
+        val mins = c.minutesLeft
+        when {
+            mins == null -> null
+            mins >= 60 -> D.hourMinLeft.format(mins / 60, mins % 60)
+            else -> D.minLeft.format(mins)
+        }
     }
-    // Nettoyage (plusieurs regex) fait une fois par titre, pas à chaque recomposition due au focus.
-    val cleanTitle = androidx.compose.runtime.remember(e.title) { TitleCleaner.clean(e.title).title }
+    val cleanTitle = c.title
+    val progress = c.progress
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Color.Transparent, modifier = Modifier.width(360.design)) { f ->
         Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
             Box(Modifier.fillMaxWidth().height(202.design)) {
-                ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20)
+                ThumbImage(e.poster, e.title, Modifier.fillMaxSize(), radius = 20, decodeSize = DpSize(360.design, 202.design))
                 ProgressLine(progress, Modifier.align(Alignment.BottomStart).fillMaxWidth(), heightPx = 6, track = Color(0x66000000))
             }
             Column(Modifier.padding(horizontal = 12.design).padding(bottom = 16.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
@@ -334,16 +380,17 @@ private fun ResumeCard(e: WatchHistoryEntity, onClick: () -> Unit) {
 
 /** Carte chaîne 220×132 (maquette) : nom 24 + logo en boîte fixe, programme en cours 18. */
 @Composable
-private fun ChannelCard(c: ChannelEntity, now: EpgEntity?, onClick: () -> Unit) {
+private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
+    val c = card.channel
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(20.design), bg = Ux.Surface, modifier = Modifier.width(220.design).height(132.design)) { f ->
         Column(Modifier.fillMaxSize().padding(20.design), verticalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(8.design))
-                LogoBox(c.logo, c.title, Modifier.width(48.design).height(32.design), radius = 6, pad = 3, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
+                LogoBox(c.logo, c.title, Modifier.width(48.design).height(32.design), radius = 6, pad = 3, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2, decodeSize = DpSize(48.design, 32.design))
             }
             Text(
-                now?.title ?: "", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx,
+                card.nowTitle ?: "", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx,
                 maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
         }

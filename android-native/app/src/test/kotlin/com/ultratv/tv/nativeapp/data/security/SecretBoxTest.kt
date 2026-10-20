@@ -45,4 +45,12 @@ class SecretBoxTest {
         val tampered = enc.dropLast(3) + (if (enc.endsWith("AAA")) "BBB" else "AAA")
         assertEquals("", box.decrypt(tampered))
     }
+
+    @Test fun dechiffrementsRepetes_cleLueUneFois_resultatMemorise() {
+        var reads = 0
+        val counting = SecretBox { reads++; k }
+        val enc = box.encrypt("hunter2")
+        repeat(5) { assertEquals("hunter2", counting.decrypt(enc)) }
+        assertEquals(1, reads)
+    }
 }

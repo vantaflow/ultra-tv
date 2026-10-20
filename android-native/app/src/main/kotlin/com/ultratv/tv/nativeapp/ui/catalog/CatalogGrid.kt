@@ -84,7 +84,8 @@ import javax.inject.Inject
 
 enum class CatalogKind { MOVIES, SERIES }
 
-/** Carte de la grille : seulement des champs RÉELS de la source. */
+/** Carte de la grille : seulement des champs RÉELS de la source. Immuable : une cellule inchangée est sautée à la recomposition. */
+@androidx.compose.runtime.Immutable
 data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "", val watched: Boolean = false)
 
 data class CategoryChip(val remoteId: String, val name: String)
@@ -256,8 +257,9 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
                 LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(start = RowBleed, end = if (touch) 16.dp else 96.design)) {
                     items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
                         val it = list[i]
-                        val m = Modifier.width(if (touch) 120.dp else 200.design)
-                        PosterCell(it, if (idx == 0 && i == 0) m.focusRequester(first).onFocusChanged { f -> firstFocused = f.isFocused } else m) { onOpen(it.id) }
+                        val w = if (touch) 120.dp else 200.design
+                        val m = Modifier.width(w)
+                        PosterCell(it, if (idx == 0 && i == 0) m.focusRequester(first).onFocusChanged { f -> firstFocused = f.isFocused } else m, imageWidth = w) { onOpen(it.id) }
                     }
                     if (list.size >= ROW_SIZE) item(key = "more-${c.remoteId}") {
                         FocusSurface(onClick = { vm.select(c.remoteId) }, shape = RoundedCornerShape(18.design), bg = Ux.Surface,
@@ -311,14 +313,28 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Affiche 2:3 (focus : ×1,06 + anneau), titre 22 gras sur 1 ligne, année · note 18. */
+/**
+ * Affiche 2:3 (focus : ×1,06 + anneau), titre 22 gras sur 1 ligne, année · note 18.
+ * [kind] : type d'œuvre pour le repli TMDB (par défaut celui de l'écran) — passé directement par les rangées mêlant films
+ * et séries, sans CompositionLocalProvider par carte. [imageWidth] : largeur connue de la carte (rangées) → l'affiche
+ * est décodée à 2:3 de cette largeur dès la composition ; null (grille à colonnes variables) → taille de mise en page.
+ */
 @Composable
-internal fun PosterCell(item: PosterItem, modifier: Modifier, onClick: () -> Unit) {
+internal fun PosterCell(
+    item: PosterItem,
+    modifier: Modifier,
+    kind: com.ultratv.tv.nativeapp.data.tmdb.TmdbKind? = com.ultratv.tv.nativeapp.ui.design.LocalPosterKind.current,
+    imageWidth: androidx.compose.ui.unit.Dp? = null,
+    onClick: () -> Unit,
+) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {
             Box(Modifier.fillMaxSize()) {
-                PosterImage(item.poster, item.title, Modifier.fillMaxSize(), radius = 18)
+                PosterImage(
+                    item.poster, item.title, Modifier.fillMaxSize(), radius = 18, kind = kind,
+                    decodeSize = imageWidth?.let { androidx.compose.ui.unit.DpSize(it, it * 1.5f) },
+                )
                 com.ultratv.tv.nativeapp.ui.common.LangBadge(item.lang, modifier = Modifier.align(Alignment.TopStart).padding(10.design))
                 if (item.watched) WatchedBadge(Modifier.align(Alignment.BottomEnd).padding(8.design))
             }

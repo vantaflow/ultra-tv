@@ -20,10 +20,21 @@ import javax.crypto.spec.GCMParameterSpec
  */
 class SecretBox(private val keyProvider: () -> SecretKey = ::keystoreKey) {
 
+    // Clé lue UNE fois (avant : KeyStore.load + getKey — appels au démon keystore — à CHAQUE déchiffrement). Un échec
+    // n'est pas mémorisé (lazy relance l'initialisation), la valeur suivante retente.
+    private val key: SecretKey by lazy { keyProvider() }
+
+    /**
+     * Derniers déchiffrements (texte chiffré → clair) : la liste des sources est relue et déchiffrée à chaque émission
+     * de Room (plusieurs écrans l'observent dès le démarrage), chaque déchiffrement étant un aller-retour avec le
+     * keystore. Le clair vit déjà en mémoire dans les entités ; borné à quelques sources.
+     */
+    private val plainCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     fun encrypt(plain: String): String {
         if (plain.isEmpty() || plain.startsWith(PREFIX)) return plain
         val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, keyProvider())
+        cipher.init(Cipher.ENCRYPT_MODE, key)
         val ct = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
         return PREFIX + Base64.encodeToString(cipher.iv + ct, Base64.NO_WRAP)
     }
@@ -31,12 +42,13 @@ class SecretBox(private val keyProvider: () -> SecretKey = ::keystoreKey) {
     /** Renvoie "" si la clé est perdue/invalide (ex. données restaurées sur un autre appareil). */
     fun decrypt(stored: String): String {
         if (!stored.startsWith(PREFIX)) return stored
+        plainCache[stored]?.let { return it }
         return runCatching {
             val raw = Base64.decode(stored.removePrefix(PREFIX), Base64.NO_WRAP)
             val cipher = Cipher.getInstance(TRANSFORMATION)
-            cipher.init(Cipher.DECRYPT_MODE, keyProvider(), GCMParameterSpec(TAG_BITS, raw, 0, IV_BYTES))
+            cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(TAG_BITS, raw, 0, IV_BYTES))
             String(cipher.doFinal(raw, IV_BYTES, raw.size - IV_BYTES), Charsets.UTF_8)
-        }.getOrDefault("")
+        }.onSuccess { if (plainCache.size < 64) plainCache[stored] = it }.getOrDefault("")
     }
 
     fun isEncrypted(stored: String) = stored.startsWith(PREFIX)

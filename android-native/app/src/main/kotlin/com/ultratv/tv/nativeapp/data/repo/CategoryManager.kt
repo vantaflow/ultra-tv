@@ -56,9 +56,10 @@ class CategoryManager @Inject constructor(
         if (enabled) sync.requestCategories(pid, kind, ids)
     }
 
-    /** Enregistre l'ordre (1..n) tel qu'affiché. */
+    /** Enregistre l'ordre (1..n) tel qu'affiché. Direct : le rang précalculé des chaînes suit (voir [LiveOrder]). */
     suspend fun saveOrder(pid: Long, kind: String, orderedIds: List<String>) = db.withTransaction {
         orderedIds.forEachIndexed { i, id -> categoryDao.setPosition(pid, kind, id, i + 1) }
+        if (kind == LiveOrder.KIND) LiveOrder.apply(channelDao, pid, LiveOrder.ranks(categoryDao.forProviderKind(pid, kind)))
     }
 
     companion object {

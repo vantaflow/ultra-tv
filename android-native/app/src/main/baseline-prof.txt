@@ -29,6 +29,11 @@ HSPLcom/ultratv/tv/nativeapp/data/db/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/repo/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/prefs/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/security/**;->**(**)**
+# Construits au démarrage (en arrière-plan désormais, mais toujours sur le chemin critique de l'accueil) : jeton et liens
+# cloud, planification de la synchro, file de rappels.
+HSPLcom/ultratv/tv/nativeapp/data/config/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/sync/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/reminders/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/di/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/perf/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/adaptive/**;->**(**)**

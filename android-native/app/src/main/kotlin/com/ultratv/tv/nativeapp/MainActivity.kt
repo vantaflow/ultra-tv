@@ -96,15 +96,18 @@ class MainActivity : ComponentActivity() {
 
     private companion object { const val REQ_CHANNEL_BROWSABLE = 4107 }
 
-    @Inject lateinit var prefsStore: UserPreferencesStore
-    @Inject lateinit var providerRepo: ProviderRepository
-    @Inject lateinit var historyRepo: HistoryRepository
+    // Tout ce qui ne sert qu'en tâche de fond est injecté en Lazy et résolu sur Dispatchers.IO : avant, l'injection de
+    // l'activité construisait sur le thread principal ProviderRepository (OkHttp + clients), CloudSyncManager (lectures
+    // synchrones de préférences), RemindersScheduler (canal de notification, Binder), RecordingScheduler… avant setContent.
+    @Inject lateinit var prefsStore: dagger.Lazy<UserPreferencesStore>
+    @Inject lateinit var providerRepo: dagger.Lazy<ProviderRepository>
+    @Inject lateinit var historyRepo: dagger.Lazy<HistoryRepository>
     @Inject lateinit var playback: PlaybackContext
-    @Inject lateinit var syncCoordinator: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator
-    @Inject lateinit var deepLinks: com.ultratv.tv.nativeapp.nav.DeepLinkHandler
-    @Inject lateinit var recordingScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler
-    @Inject lateinit var cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager
-    @Inject lateinit var remindersScheduler: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler
+    @Inject lateinit var syncCoordinator: dagger.Lazy<com.ultratv.tv.nativeapp.data.sync.SyncCoordinator>
+    @Inject lateinit var deepLinks: dagger.Lazy<com.ultratv.tv.nativeapp.nav.DeepLinkHandler>
+    @Inject lateinit var recordingScheduler: dagger.Lazy<com.ultratv.tv.nativeapp.data.recording.RecordingScheduler>
+    @Inject lateinit var cloudSync: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.CloudSyncManager>
+    @Inject lateinit var remindersScheduler: dagger.Lazy<com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler>
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
 
     override fun onStop() {
@@ -119,7 +122,7 @@ class MainActivity : ComponentActivity() {
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.setTracking(true)
         // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire
         // des jours sur une box et le guide ne couvre que les 24 h suivant sa synchro.
-        if (::providerRepo.isInitialized) providerRepo.refreshEpgIfStale()
+        if (::providerRepo.isInitialized) lifecycleScope.launch(Dispatchers.IO) { providerRepo.get().refreshEpgIfStale() }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -139,8 +142,8 @@ class MainActivity : ComponentActivity() {
         handleDeepLink(intent)
         // Ré-arme rappels et enregistrements programmés (alarmes perdues après une mise à jour ou un arrêt forcé).
         lifecycleScope.launch(Dispatchers.IO) {
-            runCatching { remindersScheduler.rescheduleAll() }
-            runCatching { recordingScheduler.rearmAll() }
+            runCatching { remindersScheduler.get().rescheduleAll() }
+            runCatching { recordingScheduler.get().rearmAll() }
         }
         setContent { Root() }
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.attach(this)
@@ -211,7 +214,7 @@ class MainActivity : ComponentActivity() {
         val voiceQuery = if (intent?.action == android.content.Intent.ACTION_SEARCH) intent.getStringExtra(android.app.SearchManager.QUERY)?.trim()?.takeIf { it.isNotEmpty() } else null
         val link = voiceQuery?.let { com.ultratv.tv.nativeapp.nav.DeepLink.Search(it) }
             ?: com.ultratv.tv.nativeapp.nav.DeepLink.parse(intent?.data?.toString()) ?: return
-        lifecycleScope.launch { runCatching { deepLinks.handle(link) } }
+        lifecycleScope.launch(Dispatchers.IO) { runCatching { deepLinks.get().handle(link) } }
     }
 
     /** Build debug seulement : `am start --es debug_route settings --ei debug_rub 1` ouvre un écran précis (captures, tests). */
@@ -223,10 +226,10 @@ class MainActivity : ComponentActivity() {
         com.ultratv.tv.nativeapp.ui.common.DebugConnectivity.forceOffline = intent.getBooleanExtra("debug_offline", false)
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
         // Mesures (debug) : moteur (auto|exo|vlc), décodage (auto|hw|sw) et préréglage de tampon.
-        intent.getStringExtra("debug_lang")?.let { v -> lifecycleScope.launch { prefsStore.setLanguage(v) } }
-        intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch { prefsStore.setPlayerEngine(v) } }
-        intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch { prefsStore.setDecoderMode(v) } }
-        intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch { prefsStore.setBufferPreset(v) } }
+        intent.getStringExtra("debug_lang")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setLanguage(v) } }
+        intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setPlayerEngine(v) } }
+        intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setDecoderMode(v) } }
+        intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setBufferPreset(v) } }
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
@@ -282,12 +285,12 @@ class MainActivity : ComponentActivity() {
      */
     private fun kickoffStartupTasks() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val prefs = prefsStore.flow.first()
+            val prefs = prefsStore.get().flow.first()
             // « Reprendre au lancement » : tout de suite (avant le délai et la synchro cloud qui suivent).
             if (prefs.autoPlayLastOnLaunch) {
-                val firstProvider = providerRepo.observeProviders().first().firstOrNull()
+                val firstProvider = providerRepo.get().observeProviders().first().firstOrNull()
                 if (firstProvider != null) {
-                    val last = historyRepo.recent(firstProvider.id, 1).first().firstOrNull()
+                    val last = historyRepo.get().recent(firstProvider.id, 1).first().firstOrNull()
                     if (last != null) {
                         playback.set(PlaybackContext.Item(
                             providerId = last.providerId, kind = last.kind, remoteId = last.remoteId,
@@ -301,7 +304,7 @@ class MainActivity : ComponentActivity() {
 
             // Appli déjà remplie : synchro cloud, catalogue, rappels… attendent que l'accueil soit affiché (3 s) au lieu
             // de concurrencer son premier rendu sur un CPU modeste. Première installation : rien n'est retardé.
-            if (providerRepo.observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
+            if (providerRepo.get().observeProviders().first().any { it.lastLiveSyncAt > 0 }) kotlinx.coroutines.delay(3_000)
 
             // (Re-)apply the background sync schedule from the stored prefs
             // every time the app starts so a re-install / OS restart picks up
@@ -310,15 +313,15 @@ class MainActivity : ComponentActivity() {
             SyncScheduler.schedule(this@MainActivity, if (prefs.syncMode == "auto" || prefs.syncMode == "scheduled") prefs.syncIntervalHours else 0)
             // Sources du compte cloud : à l'ouverture, puis toutes les 6 h (travail périodique).
             com.ultratv.tv.nativeapp.data.config.CloudSyncWorker.schedule(this@MainActivity)
-            cloudSync.watchDisplayPrefs()
-            cloudSync.watchSharedState()
-            runCatching { cloudSync.sync() }
+            cloudSync.get().watchDisplayPrefs()
+            cloudSync.get().watchSharedState()
+            runCatching { cloudSync.get().sync() }
 
             // Synchro incrémentale : le TTL (par partie du catalogue) décide de ce qui est rechargé ;
             // une source jamais synchronisée ou vide l'est TOUJOURS, même si la synchro auto est coupée.
-            val all = providerRepo.observeProviders().first()
+            val all = providerRepo.get().observeProviders().first()
             // Mode : auto (TTL selon l'appareil/le réseau) · à chaque lancement · planifiée (travail périodique) · manuelle.
-            all.forEach { p -> if (p.lastLiveSyncAt == 0L || (prefs.syncMode != "manual" && prefs.syncMode != "scheduled" && prefs.autoSyncOnLaunch)) syncCoordinator.request(p.id) }
+            all.forEach { p -> if (p.lastLiveSyncAt == 0L || (prefs.syncMode != "manual" && prefs.syncMode != "scheduled" && prefs.autoSyncOnLaunch)) syncCoordinator.get().request(p.id) }
             if (prefs.syncMode == "scheduled") SyncScheduler.scheduleDaily(this@MainActivity, prefs.syncHour, prefs.syncUnmeteredOnly)
 
         }

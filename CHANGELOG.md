@@ -2,6 +2,29 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.62] — 2026-10-20 (Android)
+
+### Amélioré (fluidité, mesurée en production : Direct 20 % d'images saccadées, Accueil 15 %, démarrage ~3,2 s)
+- **Direct** : la liste ne trie plus les ~55 000 chaînes à chaque page. Rang de catégorie précalculé et indexé,
+  pagination par clé (une recherche dans l'index par page), liste rafraîchie une seule fois à la fin d'une
+  synchronisation, zapping sans chargement de toute la liste. Ordre identique à avant ; calcul des rangs en
+  arrière-plan après la mise à jour (aucun blocage au premier lancement).
+- **Direct** : libellé de catégorie, badges de variante et chaînes visibles calculés une fois par page au lieu de
+  boucles à chaque image de défilement.
+- **Accueil** : seules les rangées visibles sont construites ; textes préparés hors du fil principal ; images
+  décodées à la taille des cartes ; chaque rangée retient sa dernière carte. En revenant à l'accueil, la sélection
+  revient sur la carte quittée (et non plus sur « Regarder »).
+- **Démarrage** : 250 ms d'attente supprimées, déchiffrement des sources, détection des décodeurs, réseau et services
+  préparés hors du fil principal.
+- **Lecteur** : zapping sans blocage lors de la libération d'ExoPlayer (jusqu'à ~2,5 s auparavant).
+
+### Corrigé
+- Google TV sur NVIDIA Shield : « Unknown URL content://android.media.tv » à chaque lancement — fournisseur TV et
+  invite « ajouter à l'accueil » déclarés pour Android 11+ ; si le fournisseur est absent, un seul message par jour.
+
+### Diagnostic
+- Relevé de fluidité : nouveau compteur `slow` (images au-delà de 1,5 × la durée d'image).
+
 ## [1.2.61] — 2026-10-12 (Android)
 
 ### Corrections

@@ -49,6 +49,26 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         MediaCodecUtil.getDecoderInfos(mime, secure, tunneling).sortedBy { if (it.softwareOnly) 0 else 1 }
     }
 
+    /** Écouteur gardé en champ : retiré AVANT la libération (aucun événement d'un lecteur en cours de destruction). */
+    private val listener = object : Player.Listener {
+        override fun onPlaybackStateChanged(state: Int) {
+            when (state) {
+                Player.STATE_BUFFERING -> _events.tryEmit(EngineEvent.Buffering)
+                Player.STATE_READY -> _events.tryEmit(EngineEvent.Ready)
+                Player.STATE_ENDED -> _events.tryEmit(EngineEvent.Ended)
+            }
+        }
+        override fun onRenderedFirstFrame() { _events.tryEmit(EngineEvent.FirstFrame) }
+        override fun onPlayerError(error: PlaybackException) {
+            val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+            _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status)))
+        }
+        override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
+        // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
+        // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks() }
+    }
+
     init {
         val b = config.buffer
         val loadControl = DefaultLoadControl.Builder()
@@ -71,26 +91,13 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 DecoderMode.AUTO -> setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
         }
-        player = ExoPlayer.Builder(ctx, renderers).setLoadControl(loadControl).setMediaSourceFactory(mediaSources).build().apply {
+        player = ExoPlayer.Builder(ctx, renderers).setLoadControl(loadControl).setMediaSourceFactory(mediaSources)
+            // Libération : le fil principal n'attend plus (500 ms par défaut) que le fil de lecture d'ExoPlayer ait détruit
+            // les décodeurs — voir [release].
+            .setReleaseTimeoutMs(RELEASE_WAIT_MS)
+            .build().apply {
             playWhenReady = true
-            addListener(object : Player.Listener {
-                override fun onPlaybackStateChanged(state: Int) {
-                    when (state) {
-                        Player.STATE_BUFFERING -> _events.tryEmit(EngineEvent.Buffering)
-                        Player.STATE_READY -> _events.tryEmit(EngineEvent.Ready)
-                        Player.STATE_ENDED -> _events.tryEmit(EngineEvent.Ended)
-                    }
-                }
-                override fun onRenderedFirstFrame() { _events.tryEmit(EngineEvent.FirstFrame) }
-                override fun onPlayerError(error: PlaybackException) {
-                    val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
-                    _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status)))
-                }
-                override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
-                // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
-                // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
-                override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks() }
-            })
+            addListener(listener)
         }
         playerView.player = player
         playerView.subtitleView?.apply { setApplyEmbeddedStyles(false); setApplyEmbeddedFontSizes(false) }
@@ -169,6 +176,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override val reusable: Boolean get() = true
 
     override fun load(url: String, startPositionMs: Long) {
+        if (released) return
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
         audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null
         if (player.mediaItemCount > 0) {
@@ -278,8 +286,32 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (lp.preferredDisplayModeId != target.modeId) { lp.preferredDisplayModeId = target.modeId; act.window.attributes = lp }
     }
 
+    @Volatile private var released = false
+
+    /**
+     * Libération au zapping (moteur recréé) et en quittant le lecteur. Avant : `playerView.player = null` PUIS
+     * `player.release()`, tous deux BLOQUANTS sur le fil principal — le détachement de la surface attend que le fil de
+     * lecture ait débranché (voire recréé) le décodeur (`blockUntilDelivered`, jusqu'à 2 s), puis release() attend la
+     * destruction des décodeurs (jusqu'à 500 ms) : blocages > 1 s au zapping.
+     *
+     * ExoPlayer interdit tout appel hors de son fil d'application (IllegalStateException en 1.5 : `throwsWhenUsingWrongThread`
+     * vrai par défaut), on ne peut donc pas appeler release() depuis un fil à nous comme VlcEngine. Le travail natif part
+     * de toute façon sur un fil dédié : le fil de lecture d'ExoPlayer, qui détruit décodeurs et tampons puis s'arrête
+     * seul. Le fil principal (1) retire nos écouteurs, (2) lance release() sans attendre plus de [RELEASE_WAIT_MS],
+     * (3) détache la vue — devenu instantané : release() a déjà débranché la surface. Un nouvel ExoPlayer (son propre
+     * fil de lecture) peut être créé aussitôt ; sur une box à un seul décodeur matériel, le repli de décodeur
+     * (setEnableDecoderFallback) couvre le cas où l'ancien n'est pas encore rendu.
+     */
     override fun release() {
-        runCatching { playerView.player = null }
+        if (released) return
+        released = true
+        runCatching { player.removeListener(listener) }
         runCatching { player.release() }
+        runCatching { playerView.player = null }
+    }
+
+    private companion object {
+        /** Attente maximale de la destruction des décodeurs sur le fil principal (le reste se termine en arrière-plan). */
+        const val RELEASE_WAIT_MS = 50L
     }
 }

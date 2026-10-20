@@ -40,7 +40,8 @@ import kotlinx.coroutines.sync.withLock
 /**
  * Intégration Google TV / Android TV : « Continuer à regarder » (Watch Next) et chaîne de prévisualisation
  * « Favoris » de l'écran d'accueil. Elle observe la base (historique, favoris) : la lecture n'a rien à appeler,
- * la fin d'une lecture met l'historique à jour, donc Watch Next aussi. Sans effet hors appareil Android TV.
+ * la fin d'une lecture met l'historique à jour, donc Watch Next aussi. Sans effet hors appareil Android TV, ni sur un
+ * appareil leanback dont le fournisseur TV ne répond pas (voir [TvProviderGate]).
  */
 @Singleton
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
@@ -60,6 +61,10 @@ class GoogleTvSync @Inject constructor(
     private val prefs = ctx.getSharedPreferences("google_tv", Context.MODE_PRIVATE)
     private var started = false
     @Volatile private var lastWatchNextSync = 0L
+    /** Fournisseur TV du système : sondé une fois par processus, indisponible au premier « Unknown URL ». */
+    private val providerGate = TvProviderGate()
+    /** Collecteurs lancés par [start] : annulés si le fournisseur se révèle indisponible (plus de travail de base pour rien). */
+    private val jobs = ArrayList<kotlinx.coroutines.Job>()
 
     private val activeProvider = providers.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
@@ -74,17 +79,70 @@ class GoogleTvSync @Inject constructor(
         if (warn) com.ultratv.tv.nativeapp.RemoteLog.warn("googletv", message) else com.ultratv.tv.nativeapp.RemoteLog.info("googletv", message)
     }
 
+    /**
+     * Échec d'une opération. Erreur de résolveur (« Unknown URL » : plus aucun fournisseur pour l'autorité) : la synchro
+     * est rétrogradée en « fournisseur indisponible » pour le reste du processus — un seul événement info (par jour), fin
+     * des collecteurs, plus d'avertissement à chaque lancement. Toute autre erreur : avertissement, comme avant.
+     */
     private fun fail(key: String, what: String, e: Throwable) {
+        if (providerGate.failed(what, e)) {
+            android.util.Log.w("UltraGoogleTv", "tv provider unavailable: ${providerGate.reason}")
+            providerAvailable()
+            synchronized(jobs) { jobs.forEach { it.cancel() }; jobs.clear() }
+            return
+        }
         android.util.Log.w("UltraGoogleTv", what, e)
         report("fail:$key", "$what failed: ${e.javaClass.simpleName} ${e.message?.take(160)}", warn = true)
+    }
+
+    /**
+     * Le fournisseur TV répond-il ? Sondé une fois par processus (voir [probeProvider]). Indisponible : un seul événement
+     * info par jour (préférence [K_PROVIDER_NA_AT]), envoyé directement à RemoteLog — hors [gate], qui bloquerait le
+     * même message le lendemain dans un processus qui vit longtemps. Jamais d'avertissement : rien à corriger côté appli.
+     */
+    private fun providerAvailable(): Boolean {
+        val now = System.currentTimeMillis()
+        var decision = providerGate.decide(prefs.getLong(K_PROVIDER_NA_AT, 0L), now)
+        if (decision == TvProviderGate.Decision.PROBE) {
+            providerGate.probed(probeProvider(), "authority ${TvContractCompat.AUTHORITY} not resolved")
+            decision = providerGate.decide(prefs.getLong(K_PROVIDER_NA_AT, 0L), now)
+        }
+        return when (decision) {
+            TvProviderGate.Decision.PUBLISH -> true
+            TvProviderGate.Decision.SKIP_REPORT -> {
+                prefs.edit().putLong(K_PROVIDER_NA_AT, now).apply()
+                android.util.Log.i("UltraGoogleTv", "sync skipped: tv provider unavailable (${providerGate.reason})")
+                com.ultratv.tv.nativeapp.RemoteLog.info("googletv", "sync skipped: tv provider unavailable (${providerGate.reason})")
+                false
+            }
+            TvProviderGate.Decision.SKIP_SILENT, TvProviderGate.Decision.PROBE -> false
+        }
+    }
+
+    /**
+     * Le fournisseur de l'autorité `android.media.tv` existe-t-il pour cette appli ? PackageManager d'abord (sans réveiller
+     * le fournisseur), puis, s'il dit non, un client instable relâché aussitôt : il suit exactement le chemin des écritures
+     * (un fournisseur désactivé ou invisible ne répond ni à l'un ni à l'autre). Toute exception = absent.
+     */
+    @Suppress("DEPRECATION")
+    private fun probeProvider(): Boolean {
+        if (runCatching { ctx.packageManager.resolveContentProvider(TvContractCompat.AUTHORITY, 0) }.getOrNull() != null) return true
+        return runCatching {
+            val client = ctx.contentResolver.acquireUnstableContentProviderClient(TvContractCompat.AUTHORITY)
+            client?.close()
+            client != null
+        }.getOrDefault(false)
     }
 
     fun start(scope: CoroutineScope) {
         if (!isTv) { report("skip", "sync skipped: not a leanback device"); return }
         if (started) return
         started = true
+        if (!providerAvailable()) return
         report("start", "sync started")
-        scope.launch {
+        // Collecteurs retenus pour être annulés si le fournisseur se révèle indisponible en cours de route.
+        fun track(block: suspend CoroutineScope.() -> Unit) { val job = scope.launch(block = block); synchronized(jobs) { jobs += job } }
+        track {
             scope_.flatMapLatest { (prof, pid) -> if (pid == null) { report("skip:wn", "watch next skipped: no active provider"); flowOf(emptyList()) } else history.observeRecent(prof, pid, 40) }
                 // 1.2.42 avait mis un debounce de 45 s : tant que l'historique bouge (position enregistrée toutes les 30 s,
                 // synchro d'appareils), RIEN n'était publié, et rien non plus si l'appli était quittée / tuée dans les 45 s
@@ -97,7 +155,7 @@ class GoogleTvSync @Inject constructor(
                     lastWatchNextSync = System.currentTimeMillis()
                 }
         }
-        scope.launch {
+        track {
             scope_.flatMapLatest { (prof, pid) ->
                 if (pid == null) flowOf(emptyList())
                 else combine(favorites.observeForKind(prof, pid, "LIVE"), history.observeRecent(prof, pid, 40)) { favs, hist ->
@@ -109,7 +167,7 @@ class GoogleTvSync @Inject constructor(
         }
         // Chaîne « Nouveautés » : suit la source active. Les tables film / série bougent pendant toute la synchro du
         // catalogue : on attend 5 s de calme (fin de synchro), puis la signature évite toute réécriture inutile.
-        scope.launch {
+        track {
             activeProvider.flatMapLatest { pid -> if (pid == null) { report("skip:news", "news channel skipped: no active provider"); flowOf(emptyList()) } else latestFlow(pid) }
                 .debounce(5_000).collect { runCatching { syncNewsChannel(it) }.onFailure { e -> fail("news", "news channel", e) } }
         }
@@ -145,7 +203,7 @@ class GoogleTvSync @Inject constructor(
 
     /** Synchro ponctuelle (demande du système à l'initialisation des programmes). */
     suspend fun syncOnce() {
-        if (!isTv) return
+        if (!isTv || !providerAvailable()) return
         val pid = activeProvider.first() ?: return
         val prof = profiles.currentIdNow
         val hist = history.observeRecent(prof, pid, 40).first()
@@ -168,6 +226,7 @@ class GoogleTvSync @Inject constructor(
     // ---- Watch Next -----------------------------------------------------------------
 
     private fun syncWatchNext(selected: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>) {
+        if (!providerAvailable()) return
         val cr = ctx.contentResolver
         // Lignes déjà publiées par l'application : identifiant interne -> identifiant de ligne.
         val existing = HashMap<String, Long>()
@@ -227,6 +286,7 @@ class GoogleTvSync @Inject constructor(
     // ---- Chaîne de prévisualisation « Favoris » -------------------------------------------
 
     private fun syncFavoritesChannel(selected: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) {
+        if (!providerAvailable()) return
         val helper = PreviewChannelHelper(ctx)
         var channelId = prefs.getLong(K_CHANNEL, -1L)
         if (ChannelPublishPlan.mustRecreate(channelId, channelExists(channelId))) {
@@ -289,10 +349,11 @@ class GoogleTvSync @Inject constructor(
 
     /**
      * Intent de l'invite système « Afficher la chaîne Nouveautés sur l'accueil ? » (à lancer avec startActivityForResult
-     * depuis une Activity), ou null : pas de chaîne, déjà affichée, déjà demandée une fois, ou invite indisponible.
+     * depuis une Activity), ou null : pas de chaîne, déjà affichée, déjà demandée une fois, invite indisponible, ou
+     * fournisseur TV indisponible.
      */
     fun browsableRequest(): Intent? {
-        if (!isTv) return null
+        if (!isTv || !providerAvailable()) return null
         val channelId = prefs.getLong(K_NEWS_CHANNEL, -1L)
         if (channelId < 0) return null
         val browsable = runCatching {
@@ -301,7 +362,17 @@ class GoogleTvSync @Inject constructor(
         }.getOrNull() ?: return null
         if (!ChannelPublishPlan.shouldAskBrowsable(channelId, browsable, prefs.getBoolean(K_BROWSABLE_ASKED, false))) return null
         val intent = Intent(TvContractCompat.ACTION_REQUEST_CHANNEL_BROWSABLE).putExtra(TvContractCompat.EXTRA_CHANNEL_ID, channelId)
-        if (intent.resolveActivity(ctx.packageManager) == null) { report("browsable:na", "browsable prompt unavailable on this system", warn = true); return null }
+        if (intent.resolveActivity(ctx.packageManager) == null) {
+            // Système sans l'invite (Skyworth) : au plus une fois par jour (préférence), pas à chaque lancement, et en info,
+            // l'appli n'y pouvant rien. Hors [gate] : un message identique le lendemain y serait bloqué.
+            val now = System.currentTimeMillis()
+            if (TvProviderGate.shouldReport(prefs.getLong(K_BROWSABLE_NA_AT, 0L), now)) {
+                prefs.edit().putLong(K_BROWSABLE_NA_AT, now).apply()
+                android.util.Log.i("UltraGoogleTv", "browsable prompt unavailable on this system")
+                com.ultratv.tv.nativeapp.RemoteLog.info("googletv", "browsable prompt unavailable on this system")
+            }
+            return null
+        }
         prefs.edit().putBoolean(K_BROWSABLE_ASKED, true).apply()
         report("browsable:ask", "browsable prompt shown for news channel $channelId")
         return intent
@@ -315,6 +386,7 @@ class GoogleTvSync @Inject constructor(
     private val newsLock = kotlinx.coroutines.sync.Mutex()
 
     private suspend fun syncNewsChannel(selected: List<NewsChannelPlan.Item>) = newsLock.withLock {
+        if (!providerAvailable()) return@withLock
         val helper = PreviewChannelHelper(ctx)
         var channelId = prefs.getLong(K_NEWS_CHANNEL, -1L)
         if (ChannelPublishPlan.mustRecreate(channelId, channelExists(channelId))) {
@@ -385,6 +457,8 @@ class GoogleTvSync @Inject constructor(
         const val K_NEWS_NAME = "news_name"
         const val K_DEFAULT_DONE = "default_channel_published"
         const val K_BROWSABLE_ASKED = "news_browsable_asked"
+        const val K_BROWSABLE_NA_AT = "news_browsable_unavailable_reported_at"
+        const val K_PROVIDER_NA_AT = "provider_unavailable_reported_at"
         const val K_CHANNEL = "favorites_channel_id"
         const val K_SIGNATURE = "favorites_signature"
     }

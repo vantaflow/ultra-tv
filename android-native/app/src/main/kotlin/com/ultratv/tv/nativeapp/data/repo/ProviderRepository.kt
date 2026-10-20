@@ -100,7 +100,8 @@ class ProviderRepository @Inject constructor(
         categoryDao.deleteForProviderKind(pid, "LIVE")
         categoryDao.upsertAll(cats)
         channelDao.deleteForProvider(pid)
-        channelDao.upsertAll(res.channels)
+        // Rang de catégorie lu APRÈS l'écriture des catégories : les non placées se départagent par leur nouvel id.
+        channelDao.upsertAll(LiveOrder.ranks(categoryDao.forProviderKind(pid, LiveOrder.KIND)).stamp(res.channels))
         return pid
     }
 
@@ -125,7 +126,8 @@ class ProviderRepository @Inject constructor(
                 categoryDao.upsertAll(cats)
                 channelDao.deleteForProvider(p.id)
                 step("Saving ${res.channels.size} channels…", 90)
-                insertChunked(res.channels) { channelDao.upsertAll(it) }
+                val ranks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, LiveOrder.KIND))
+                insertChunked(res.channels) { channelDao.upsertAll(ranks.stamp(it)) }
             }
             step("Done — ${res.channels.size} channels", 100)
             return res.channels.size
@@ -405,11 +407,15 @@ class ProviderRepository @Inject constructor(
         { channelDao.deleteForProvider(it) }, { pid, ids -> channelDao.deleteForCategories(pid, ids) }, { pid, id -> channelDao.deleteForCategory(pid, id) },
         // Identifiant CONSERVÉ d'une synchro à l'autre : le guide est rattaché aux identifiants de chaînes ; les réécrire
         // (suppression + insertion) laissait tous les programmes orphelins jusqu'au guide de la nuit.
-        { rows -> val keep = liveIds; channelDao.upsertAll(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c }) },
+        // Rang de catégorie (ordre du Direct, voir LiveOrder) posé à l'insertion : aucune réécriture après coup.
+        { rows -> val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
     )
 
     /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */
     @Volatile private var liveIds: Map<String, Long> = emptyMap()
+
+    /** Rangs des catégories du Direct, lus après l'écriture de la table des catégories (voir [livePart] et [LiveOrder]). */
+    @Volatile private var liveRanks: LiveOrder.Ranks = LiveOrder.NONE
 
     private fun vodPart() = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
         "MOVIE", { xtream.fetchVodCategories(it) }, { p, blk -> xtream.withVodStreams(p, blk) }, { p, c -> xtream.vodOfCategory(p, c) },
@@ -438,7 +444,13 @@ class ProviderRepository @Inject constructor(
         spec: PartSpec<T>,
         lock: (List<CategoryEntity>) -> List<CategoryEntity>,
         progress: (Float, Int) -> Unit,
-    ): Int = partLock(spec.kind).withLock { syncXtreamPartLocked(p, spec, lock, progress) }
+    ): Int = partLock(spec.kind).withLock {
+        syncXtreamPartLocked(p, spec, lock, progress).also {
+            // Filet de sécurité du Direct : les chaînes restées en place (catégorie disparue du serveur, synchro par
+            // catégorie) reprennent le rang de l'ordre courant ; ne réécrit que ce qui change (pas de coût sinon).
+            if (spec.kind == LiveOrder.KIND) db.withTransaction { LiveOrder.apply(channelDao, p.id, liveRanks) }
+        }
+    }
 
     /**
      * Un verrou PAR PARTIE (direct, films, séries) en plus du verrou global : activer une catégorie du Direct
@@ -469,6 +481,8 @@ class ProviderRepository @Inject constructor(
             // SQLite plafonne les paramètres à 999 : purge par paquets.
             disabledIds.chunked(500).forEach { spec.deleteCats(p.id, it) }
         }
+        // Les catégories viennent d'être réécrites (nouveaux id) : rangs du Direct relus avant d'insérer les chaînes.
+        if (spec.kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, spec.kind))
         var strategy = CatalogPlan.strategy(merged.size, enabledIds.size, p.categoryFilter)
         var written = 0
         val tier = adaptive.state.value.device.tier
@@ -603,8 +617,10 @@ class ProviderRepository @Inject constructor(
             if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", 0, part, 0))
             try {
                 var n = 0
-                val cats = categoryDao.forProviderKind(p.id, kind).associateBy { it.remoteId }
+                val catList = categoryDao.forProviderKind(p.id, kind)
+                val cats = catList.associateBy { it.remoteId }
                 val langOf: (String) -> String = { cats[it]?.lang.orEmpty() }
+                if (kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(catList)
                 for ((i, id) in ids.withIndex()) {
                     n += when (kind) {
                         "LIVE" -> { val sp = livePart(); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }

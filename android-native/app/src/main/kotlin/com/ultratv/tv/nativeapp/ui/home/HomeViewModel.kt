@@ -28,12 +28,14 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** Élément « À la une » : uniquement des métadonnées RÉELLES de la source (jamais inventées). */
+@androidx.compose.runtime.Immutable
 data class HeroItem(
     val kind: Kind,
     val id: Long,
@@ -44,6 +46,8 @@ data class HeroItem(
     /** Image PAYSAGE si la source en fournit une (backdrop), sinon null. */
     val backdrop: String?,
     val poster: String?,
+    /** « 2024 · Drame · ★ 7.8 » formaté UNE fois à la construction (dans le ViewModel), pas à chaque composition du hero. */
+    val meta: String = heroMeta(year, genre, rating),
 ) { enum class Kind { SERIES, MOVIE } }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -139,7 +143,8 @@ class HomeViewModel @Inject constructor(
                 else -> null
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     /** Favorites en premier ; sans favori, des chaînes avec logo. [favorite] dit lequel des deux. */
     val favoriteChannels: StateFlow<List<ChannelEntity>> = pid
@@ -167,6 +172,38 @@ class HomeViewModel @Inject constructor(
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    /**
+     * Toutes les rangées de l'accueil en UNE valeur immuable, construite hors du fil principal (titres nettoyés,
+     * affiches converties, programme en cours résolu, ordre des rangées calculé). StateFlow : une valeur égale à la
+     * précédente n'est pas réémise, donc l'écran ne recompose rien quand Room relit des données identiques.
+     */
+    val rows: StateFlow<HomeRows> = combine(
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying),
+    ) { a ->
+        @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
+        val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
+        @Suppress("UNCHECKED_CAST") val recent = a[2] as List<WatchHistoryEntity>
+        @Suppress("UNCHECKED_CAST") val movies = a[3] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>
+        @Suppress("UNCHECKED_CAST") val series = a[4] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>
+        @Suppress("UNCHECKED_CAST") val chans = a[5] as List<ChannelEntity>
+        val fav = a[6] as Boolean
+        @Suppress("UNCHECKED_CAST") val now = a[7] as Map<Long, EpgEntity>
+        val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(it).title }
+        HomeRows(
+            resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key },
+            watchlist = t.watchlist.map(::traktPosterOf).distinctKeys { it.key },
+            recommended = t.recommendations.map(::traktPosterOf).distinctKeys { it.key },
+            trending = t.trending.map(::traktPosterOf).distinctKeys { it.key },
+            popular = t.popular.map(::traktPosterOf).distinctKeys { it.key },
+            recentChannels = recent.map { resumeCardOf(it, "rc-", clean) }.distinctKeys { it.key },
+            latestMovies = movies.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
+            latestSeries = series.map { catalogPosterOf(it, isShow = true) }.distinctKeys { it.key },
+            channels = chans.distinctBy { it.id }.map { ChannelCardUi(it, now[it.id]?.title) },
+            showingFavorites = fav,
+        )
+    }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeRows.EMPTY)
 
     /** Sets the playback context from a history entry so the player can record proper context. */
     fun playFromHistory(h: WatchHistoryEntity) {

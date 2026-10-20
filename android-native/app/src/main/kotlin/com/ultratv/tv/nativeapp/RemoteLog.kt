@@ -76,19 +76,22 @@ object RemoteLog {
 
     private fun sanitize(input: String): String = LogSanitizer.sanitize(input)
 
-    data class ContextInfo(
-        val mac: String,
+    /** [macOf] évalué au premier envoi (thread d'arrière-plan) : ANDROID_ID + SHA-256 ne coûtent rien au démarrage. */
+    class ContextInfo(
+        macOf: () -> String,
         val versionName: String,
         val versionCode: Int,
         val device: String,
         val androidSdk: Int,
-    )
+    ) {
+        val mac: String by lazy(macOf)
+    }
 
-    fun init(ctx: android.content.Context, mac: String, versionName: String, versionCode: Int) {
+    fun init(ctx: android.content.Context, mac: () -> String, versionName: String, versionCode: Int) {
         appCtx = ctx.applicationContext
         tokenStore = DeviceTokenStore(ctx.applicationContext)
         contextInfo = ContextInfo(
-            mac = mac,
+            macOf = mac,
             versionName = versionName,
             versionCode = versionCode,
             device = "${Build.MANUFACTURER} ${Build.MODEL}",

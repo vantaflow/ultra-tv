@@ -32,7 +32,7 @@ class PerfAggregatorTest {
         frames(a, "home", 100, ms = 10, jankyEvery = 5)   // 20 saccadées sur 100
         a.record("home", 480, true)                        // frame 101, la pire
         val line = a.drain(0).single()
-        assertTrue(line, line.startsWith("perf home frames=101 janky=21 (21%) p95≈"))
+        assertTrue(line, line.startsWith("perf home frames=101 janky=21 (21%) slow=0 (0%) p95≈"))
         assertTrue(line, line.endsWith("worst=480ms"))
     }
 
@@ -74,6 +74,47 @@ class PerfAggregatorTest {
         assertEquals(1, out.size)
         assertTrue(out.single().startsWith("perf home "))
         assertTrue(a.drain(0).single().startsWith("perf live "))
+    }
+
+    @Test
+    fun drain_imagesLentes_compteEtPourcentageApresJanky() {
+        val a = PerfAggregator()
+        for (i in 1..100) a.record("live", if (i % 4 == 0) 28 else 10, janky = false, slow = i % 4 == 0)   // 25 lentes, aucune saccadée
+        val line = a.drain(0).single()
+        assertTrue(line, line.startsWith("perf live frames=100 janky=0 (0%) slow=25 (25%) p95≈"))
+    }
+
+    @Test
+    fun drain_apresRapport_lesImagesLentesRepartentDeZero() {
+        val a = PerfAggregator()
+        repeat(40) { a.record("home", 30, janky = false, slow = true) }
+        a.drain(0)
+        repeat(40) { a.record("home", 10, janky = false) }
+        assertTrue(a.drain(60_000).single().contains(" slow=0 (0%) "))
+    }
+
+    @Test
+    fun isSlow_60Hz_seuilA25ms() {
+        val p = PerfAggregator.refreshPeriodNanos(60f)   // 16,67 ms → seuil 25 ms
+        assertFalse(PerfAggregator.isSlow(16_000_000, p))
+        assertFalse(PerfAggregator.isSlow(25_000_000, p))
+        assertTrue(PerfAggregator.isSlow(25_100_000, p))
+        assertTrue(PerfAggregator.isSlow(30_000_000, p))   // image unique ratée : invisible pour le seuil 2× (33 ms)
+    }
+
+    @Test
+    fun isSlow_50Hz_seuilA30ms() {
+        val p = PerfAggregator.refreshPeriodNanos(50f)   // 20 ms → seuil 30 ms
+        assertFalse(PerfAggregator.isSlow(28_000_000, p))
+        assertTrue(PerfAggregator.isSlow(31_000_000, p))
+    }
+
+    @Test
+    fun refreshPeriodNanos_frequenceAbsurde_retombeA60Hz() {
+        assertEquals(PerfAggregator.DEFAULT_REFRESH_PERIOD_NANOS, PerfAggregator.refreshPeriodNanos(0f))
+        assertEquals(PerfAggregator.DEFAULT_REFRESH_PERIOD_NANOS, PerfAggregator.refreshPeriodNanos(Float.NaN))
+        assertEquals(PerfAggregator.DEFAULT_REFRESH_PERIOD_NANOS, PerfAggregator.refreshPeriodNanos(-5f))
+        assertEquals(8_333_333L, PerfAggregator.refreshPeriodNanos(120f))
     }
 
     @Test

@@ -245,21 +245,27 @@ private fun ChannelList(
     // Seules les lignes visibles interrogent le guide.
     // Les IDENTIFIANTS visibles sont suivis (pas seulement les positions) : à l'arrivée des données ou au changement de
     // catégorie, les positions visibles restent 0…8 et le guide n'était demandé qu'au premier défilement.
+    // Avant : snapshotFlow sur layoutInfo.visibleItemsInfo — réévalué et une liste allouée à CHAQUE pixel défilé.
+    // Désormais : première ligne visible (change une fois par ligne) + liste chargée (change à chaque page reçue) ;
+    // fenêtre fixe de [VISIBLE_WINDOW] lignes, un peu plus que l'écran (le guide des 2-3 suivantes est préchargé).
     LaunchedEffect(state, channels) {
-        snapshotFlow {
-            val snap = channels.itemSnapshotList
-            state.layoutInfo.visibleItemsInfo.mapNotNull { snap.getOrNull(it.index)?.takeIf { c -> !c.isSeparator }?.id }
-        }.distinctUntilChanged().collect { ids -> vm.setVisible(ids) }
+        kotlinx.coroutines.flow.combine(
+            snapshotFlow { state.firstVisibleItemIndex }.distinctUntilChanged(),
+            snapshotFlow { channels.itemSnapshotList },
+        ) { first, snap -> visibleChannelIds(snap, first, VISIBLE_WINDOW) }
+            .distinctUntilChanged().collect { ids -> vm.setVisible(ids) }
     }
-    // Section courante : le dernier séparateur au-dessus (ou à) la première ligne visible (en-tête collant).
-    val stickyLabel by remember(state, channels) {
+    // Section de chaque ligne et numéro de doublon PRÉCALCULÉS une fois par page reçue (incrémental : seules les lignes
+    // nouvelles sont parcourues). Avant : remontée jusqu'à l'index 0 à chaque image de défilement (en-tête collant) et
+    // relecture des lignes précédentes pour chaque ligne composée (badge « #2 ») — des centaines de peek() par image.
+    // itemSnapshotList est un état de LazyPagingItems (paging-compose 3.3) : le lire ne copie rien.
+    val snapshot = channels.itemSnapshotList
+    val rowIndexHolder = remember(channels) { arrayOfNulls<LiveRowIndex>(1) }
+    val rowIndex = remember(snapshot) { LiveRowIndex.build(snapshot, rowIndexHolder[0]).also { rowIndexHolder[0] = it } }
+    // Section courante : le dernier séparateur au-dessus (ou à) la première ligne visible (en-tête collant), en O(1).
+    val stickyLabel by remember(state, rowIndex, categoryName) {
         androidx.compose.runtime.derivedStateOf {
-            var i = state.firstVisibleItemIndex
-            var label: String? = null
-            // peek(i) en O(1) : relire itemSnapshotList (copie de toute la liste) à chaque pas rendait cette remontée
-            // quadratique sur les longues listes sans sections.
-            while (i >= 0 && label == null) { if (i < channels.itemCount) channels.peek(i)?.takeIf { it.isSeparator }?.let { label = it.title }; i-- }
-            label?.takeIf { !sameLabel(it, categoryName) }
+            rowIndex.sectionLabelAt(state.firstVisibleItemIndex)?.takeIf { !sameLabel(it, categoryName) }
         }
     }
     var firstFocused by remember { mutableStateOf(false) }
@@ -279,7 +285,7 @@ private fun ChannelList(
                         c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
                         now = nowNext[c.id]?.first,
                         highlighted = c.id == highlightId,
-                        variant = run { var n = 1; var j = i - 1; while (j >= 0 && n < 9) { val p = channels.peek(j) ?: break; if (!sameStream(p, c)) break; n++; j-- }; n },
+                        variant = rowIndex.variantAt(i),
                         modifier = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
                     )
@@ -343,6 +349,79 @@ internal fun flagsLabel(flags: Int): String? {
 /** Même flux affiché à l'identique (nom, qualité, mentions) : les doublons du fournisseur se suivent dans la liste. */
 internal fun sameStream(a: ChannelEntity, b: ChannelEntity) =
     !a.isSeparator && !b.isSeparator && a.quality == b.quality && a.flags == b.flags && a.title.trim().equals(b.title.trim(), ignoreCase = true)
+
+/** Lignes dont on demande le guide : un peu plus qu'un écran (10 lignes TV, ~11 sur téléphone). */
+internal const val VISIBLE_WINDOW = 14
+
+/** Numéro de doublon maximal affiché (« #9 ») : au-delà, la série n'est plus comptée. */
+internal const val MAX_VARIANT = 9
+
+/** Identifiants des chaînes (hors séparateurs, hors lignes non chargées) de [first] à [first] + [window] − 1. */
+internal fun visibleChannelIds(items: List<ChannelEntity?>, first: Int, window: Int): List<Long> {
+    val from = first.coerceAtLeast(0)
+    val to = minOf(items.size, from + window)
+    if (from >= to) return emptyList()
+    val out = ArrayList<Long>(to - from)
+    for (i in from until to) items[i]?.takeIf { !it.isSeparator }?.let { out += it.id }
+    return out
+}
+
+/**
+ * Contexte précalculé des lignes CHARGÉES de la liste du Direct : pour chaque index, le dernier séparateur à ou
+ * au-dessus (en-tête collant) et le numéro de doublon (badge « #2 », « #3 »… — même flux que les lignes précédentes,
+ * voir [sameStream], plafonné à [MAX_VARIANT]).
+ *
+ * Même résultat que les anciennes boucles (remontée de peek()) : une ligne non chargée (null) ne coupe pas la recherche
+ * de section mais coupe une série de doublons. Construit de façon incrémentale : si la nouvelle liste prolonge
+ * l'ancienne (mêmes objets en tête — page ajoutée en bas), seules les lignes nouvelles sont calculées ; sinon
+ * (nouvelle catégorie, page ajoutée en haut, rechargement) tout est recalculé, une fois par page reçue.
+ */
+internal class LiveRowIndex private constructor(
+    private val items: List<ChannelEntity?>,
+    /** Index du dernier séparateur à ou au-dessus de chaque ligne ; −1 s'il n'y en a pas. */
+    private val sectionOf: IntArray,
+    private val variants: IntArray,
+) {
+    val size: Int get() = items.size
+
+    /** Libellé de la section de la ligne [index] ; au-delà de la liste chargée, celui de la dernière ligne chargée. */
+    fun sectionLabelAt(index: Int): String? {
+        if (items.isEmpty() || index < 0) return null
+        val s = sectionOf[minOf(index, items.size - 1)]
+        return if (s < 0) null else items[s]?.title
+    }
+
+    /** Numéro de doublon de la ligne [index] (1 = premier flux, pas de badge). */
+    fun variantAt(index: Int): Int = if (index in variants.indices) variants[index] else 1
+
+    companion object {
+        fun build(items: List<ChannelEntity?>, previous: LiveRowIndex? = null): LiveRowIndex {
+            val n = items.size
+            val reuse = previous != null && previous.size in 1..n && prefixSame(previous.items, items)
+            val start = if (reuse) previous!!.size else 0
+            val sectionOf = IntArray(n)
+            val variants = IntArray(n)
+            if (reuse) {
+                System.arraycopy(previous!!.sectionOf, 0, sectionOf, 0, start)
+                System.arraycopy(previous.variants, 0, variants, 0, start)
+            }
+            for (i in start until n) {
+                val c = items[i]
+                val prevSection = if (i > 0) sectionOf[i - 1] else -1
+                sectionOf[i] = if (c?.isSeparator == true) i else prevSection
+                val p = if (i > 0) items[i - 1] else null
+                variants[i] = if (c != null && p != null && sameStream(p, c)) minOf(variants[i - 1] + 1, MAX_VARIANT) else 1
+            }
+            return LiveRowIndex(items, sectionOf, variants)
+        }
+
+        /** Les lignes de [old] sont les MÊMES objets en tête de [new] (comparaison de références, sans allocation). */
+        private fun prefixSame(old: List<ChannelEntity?>, new: List<ChannelEntity?>): Boolean {
+            for (i in old.indices) if (old[i] !== new[i]) return false
+            return true
+        }
+    }
+}
 
 /** Qualité + mentions techniques : ce qui différencie les doublons d'une même chaîne. */
 @Composable
