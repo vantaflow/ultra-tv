@@ -26,7 +26,7 @@
 
 ---
 
-Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
+Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
 
 > The screenshots below use **synthetic data only** (a local fake Xtream server, `android-native/tools/fake-xtream`). Channel and programme names come from that data set, not from the app.
 
@@ -46,19 +46,22 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 ## Features
 
 - **Search** from any screen: a button at the top of the side rail, plus the remote's Search and microphone keys.
-- **Live TV**: Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, Back returns to the menu (Last channel key recalls the previous one), 20 recent channels, instant search (FTS).
+- **Live TV**: **video preview** of the selected channel in the list (muted by default), **OK switches it to full screen without reloading the stream**; Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, Back returns to the menu (Last channel key recalls the previous one), 20 recent channels, instant search (FTS).
 - **Categories**: names and playlist order exactly as the source provides them, enable / disable / reorder, text filter ("FR" = whole word); quality badges (SD, HD, FHD, 4K, RAW, HEVC…) to tell apart streams of the same channel.
 - **Guide**: time grid, reminders, scheduled recordings, **replay** (Xtream catch-up) from the guide when the source allows it. Programme borrowed from a channel with the same name when the provider only tags one category (HEVC, General…), "+1 / +2" channels shifted accordingly, the provider's short EPG as a fallback, and a **free additional guide** (XMLTV France by default, epgshare01 beIN Sports / Saudi Arabia / UAE) for channels still without a programme.
 - **Live pause** (timeshift): circular disk buffer for MPEG-TS streams.
 - **Movies and series**: rich details through **TMDB** (poster, plot, cast), **automatic resume** (position saved every 30 s), seasons as tabs, rows by category.
+- **Downloads** (Android): movies, episodes or a whole season; queue with pause, resume, cancel and retry, resume after a dropout, optional Wi-Fi only; a « Downloads » screen that works offline.
 - **Two playback engines**: ExoPlayer (Media3) and **LibVLC**; Auto / ExoPlayer / VLC, decoding Auto / Hardware / Software, automatic fallback and per-channel memory.
 - **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset). Nothing to set up on the device; a personal OpenSubtitles account can be linked from the cloud dashboard if needed.
-- **Trakt**: movies and episodes you watch are sent to Trakt (watching, then watched at the end); on Home, your Trakt **watchlist**, **recommendations**, **trending** and **popular** titles, limited to titles available in the loaded playlist; a **"Watched"** mark on movies and episodes already seen. Connect from the cloud dashboard, nothing to set on the TV.
+- **Trakt**: movies and episodes you watch are sent to Trakt (watching, then watched at the end); on Home, your Trakt **watchlist**, **recommendations**, **trending**, **popular**, **personal lists** and **Up next**, limited to titles available in the loaded playlist; a **"Watched"** mark; from detail pages: add / remove from the watchlist, mark watched / unwatched (movie, episode, season), **rate 1–10**; resume positions imported. Connect from the cloud dashboard, nothing to set on the TV.
 - **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
 - **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
 - **Google TV**: "Continue watching" (movies, episodes and recent live channels), Ultra TV home channel (favourites then recent channels) and **Ultra TV · New** channel (latest movies and series added), voice and global search, `ultratv://` deep links.
 - **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
+- **Personalisation** (Settings › Display): **accent colour** (6 choices), **text size**, **Home rows** (show, hide, reorder), **start screen** (Home, Live, Movies, Series, Guide or last channel).
+- **Custom DNS** (Android): Google, Cloudflare, Quad9, DNS-over-HTTPS or your own server, with a Test button; applied to catalogue, guide, images and ExoPlayer streams (not VLC), automatic fallback to the system DNS.
 - **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
 
 ## Devices
@@ -109,7 +112,7 @@ Manage devices and sources from a browser: **<https://ultratv-config.khalilbenaz
   <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
 </p>
 
-Each source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button) and its **subscription** (status, expiry date, days left, connections), read from the provider; lists are paginated and searchable as they grow.
+**Xtream**, **M3U** and **Stalker portal** sources (MAC address masked). Each device shows its model, edition, **app version** and last activity. Each Xtream or M3U source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button) and its **subscription** (status, expiry date, days left, connections), read from the provider; lists are paginated and searchable as they grow.
 
 **Account** section:
 - **Trakt**: *Connect Trakt* button, authorise on Trakt; your devices then send what you watch. Your Trakt password never goes through the site.
@@ -157,7 +160,7 @@ adb connect BOX_IP:5555
 adb install -r UltraTV-debug.apk
 ```
 
-On first launch: choose the source type (Xtream Codes, M3U link, M3U file or **From the cloud**), enter it, then choose your categories (only active categories are downloaded).
+On first launch: choose the source type (Xtream Codes, M3U link, M3U file, **Stalker portal** or **From the cloud**), enter it, then choose your categories (only active categories are downloaded).
 
 An address like `…/get.php?username=…&password=…` pasted as an M3U link is recognised and added as an Xtream Codes source (many providers block `get.php`).
 
