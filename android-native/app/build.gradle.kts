@@ -218,7 +218,7 @@ dependencies {
     implementation(libs.media3.datasource.rtmp)
     implementation("androidx.documentfile:documentfile:1.0.1")
     // QR code du tableau de bord cloud, généré localement (aucun réseau).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
     implementation(libs.mediarouter)
     implementation(libs.play.cast.framework)
 
@@ -250,17 +250,17 @@ dependencies {
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.17")
     // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
     testImplementation("androidx.room:room-testing:2.6.1")
     testImplementation("androidx.test.ext:junit:1.1.5")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260814")
     // Tests d'UI Compose exécutés sur la JVM via Robolectric (createComposeRule / createAndroidComposeRule).
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
 }
 
 /**
