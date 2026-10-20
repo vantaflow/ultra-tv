@@ -1,0 +1,27 @@
+# Fusion automatique des mises à jour MINEURES / correctifs de Dependabot, une fois toutes les vérifications passées.
+# Les versions majeures restent à valider à la main.
+name: Dependabot auto-merge
+on: pull_request_target
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  automerge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@08eff52bf64351f401fb50d4972fa95b9f2c2d1b # v2.4.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.meta.outputs.update-type != 'version-update:semver-major'
+        # Aucune vérification n'est « obligatoire » sur main : on attend nous-mêmes la fin de toutes les vérifications
+        # de la PR et on ne fusionne que si elles ont TOUTES réussi (un échec laisse la PR ouverte).
+        run: |
+          sleep 60
+          gh pr checks "$PR_URL" --watch --interval 30 --fail-fast || { echo "Vérifications en échec : pas de fusion."; exit 0; }
+          gh pr merge --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

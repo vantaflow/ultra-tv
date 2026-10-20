@@ -7,23 +7,29 @@ updates:
     schedule: { interval: weekly, day: monday }
     open-pull-requests-limit: 5
     groups:
-      androidx-compose: { patterns: ["androidx.compose*", "androidx.tv*", "androidx.activity*"] }
-      media: { patterns: ["androidx.media3*", "org.videolan*"] }
-      kotlin-build: { patterns: ["org.jetbrains.kotlin*", "com.android.*", "com.google.devtools.ksp*"] }
-      androidx-autres: { patterns: ["androidx.*"] }
-      autres: { patterns: ["*"] }
+      # Un SEUL groupe pour les mises à jour mineures / correctifs : Compose, Kotlin, KSP et Media3 dépendent les uns
+      # des autres ; séparées, elles échouaient chacune à la compilation.
+      android-mineures: { patterns: ["*"], update-types: ["minor", "patch"] }
+      # Les versions majeures arrivent à part : elles demandent souvent d'adapter le code.
+      android-majeures: { patterns: ["*"], update-types: ["major"] }
   - package-ecosystem: npm
     directory: /web
     schedule: { interval: weekly, day: monday }
-    groups: { web: { patterns: ["*"] } }
+    groups:
+      web-mineures: { patterns: ["*"], update-types: ["minor", "patch"] }
+      web-majeures: { patterns: ["*"], update-types: ["major"] }
   - package-ecosystem: npm
     directory: /electron
     schedule: { interval: weekly, day: monday }
-    groups: { electron: { patterns: ["*"] } }
+    groups:
+      electron-mineures: { patterns: ["*"], update-types: ["minor", "patch"] }
+      electron-majeures: { patterns: ["*"], update-types: ["major"] }
   - package-ecosystem: npm
     directory: /cloudflare-config
     schedule: { interval: weekly, day: monday }
-    groups: { worker: { patterns: ["*"] } }
+    groups:
+      worker-mineures: { patterns: ["*"], update-types: ["minor", "patch"] }
+      worker-majeures: { patterns: ["*"], update-types: ["major"] }
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly, day: monday }
