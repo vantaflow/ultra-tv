@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.67] — 2026-10-21 (Android)
+
+### Technique
+- Mise à jour complète des technologies (plus d'un an de retard rattrapé) : Kotlin 2.4, Gradle 9.8, AGP 9.4,
+  Compose 2026.09 (UI 1.12) et tv-material 1.1, **Media3 1.11** (lecteur ExoPlayer : flux TS / HLS, décodeurs, HDR,
+  reprise réseau), **libVLC 3.7.7**, **Coil 3** (images), OkHttp 5, Room 2.8, Paging 3.5, Hilt 2.60, WorkManager 2.12,
+  Navigation 2.10. Comportement inchangé (targetSdk 35 conservé). Mises à jour suivies chaque semaine par Dependabot.
+
 ## [1.2.66] — 2026-10-21 (Android)
 
 ### Corrigé
