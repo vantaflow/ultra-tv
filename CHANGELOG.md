@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.66] — 2026-10-21 (Android)
+
+### Corrigé
+- **Sélection qui saute** à la télécommande (Réglages, À propos, autres écrans) et fenêtre **« Portail Stalker » qui se
+  refermait** dès son ouverture (clavier qui sortait puis se cachait). Quand l'élément sélectionné disparaissait
+  (fenêtre fermée, liste remplacée par un formulaire, clavier), Android rendait la sélection au menu latéral, qui la
+  renvoyait au hasard vers la droite — jusqu'à changer de rubrique dans les Réglages. La sélection revient désormais à
+  l'élément qui l'avait (ou à celui qui a ouvert la fenêtre), et une fenêtre ouverte garde son champ actif.
+- Journal de diagnostic pour l'ajout et la synchronisation d'un portail Stalker (sans adresse MAC ni identifiants).
+
 ## [1.2.65] — 2026-10-21 (Android) · [Bureau 1.2.35]
 
 ### Ajouté

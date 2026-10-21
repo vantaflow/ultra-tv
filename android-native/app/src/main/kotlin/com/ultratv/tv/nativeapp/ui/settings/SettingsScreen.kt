@@ -106,6 +106,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val pairRequested by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
     androidx.compose.runtime.LaunchedEffect(pairRequested) { if (pairRequested) { rub = Rub.SOURCES.ordinal; showPane = true } }
     val rubFocus = remember { List(Rub.entries.size) { androidx.compose.ui.focus.FocusRequester() } }
+    val overlays = com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost.current
     // Débogage (captures) : ouvre la rubrique demandée ET y place le focus (la rubrique suit le focus), une fois le focus initial posé.
     androidx.compose.runtime.LaunchedEffect(dbg) {
         dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; showPane = true; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
@@ -159,7 +160,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 val sel = rub == i
                 FocusSurface(
                     onClick = { rub = i }, shape = RoundedCornerShape(18.design), bg = if (sel) Ux.Surface2 else Color.Transparent, ringWidth = 5.design, focusedScale = 1.0f,
-                    modifier = Modifier.fillMaxWidth().height(72.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused) rub = i },
+                    modifier = Modifier.fillMaxWidth().height(72.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused && rubFollowsFocus(overlays?.hasModal == true)) rub = i },
                 ) { f ->
                     Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                         if (sel && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
@@ -177,6 +178,15 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         }
     }
 }
+
+/**
+ * La rubrique suit le focus quand l'utilisateur l'y a amené (flèches), ou hors de toute touche récente quand aucune modale
+ * n'est ouverte (focus initial de l'écran).
+ * Un focus arrivé juste après OK / Retour est un focus « rendu » par Compose (élément focalisé disparu : choix fait dans une
+ * modale, modale fermée) : il ne doit pas changer de rubrique, sinon le volet (et la modale qu'il porte) disparaît.
+ */
+internal fun rubFollowsFocus(modalOpen: Boolean): Boolean =
+    com.ultratv.tv.nativeapp.ui.common.InputClock.recentNavKey() || (!modalOpen && !com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey())
 
 private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
@@ -315,9 +325,19 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         OpenDialog.STALKER -> {
             // La connexion au portail est vérifiée avant l'ajout : le dialogue reste ouvert (« Connexion au portail… ») jusqu'au verdict.
             var checking by remember { mutableStateOf(false) }
-            StalkerDialog({ dialog = OpenDialog.NONE }, busy = checking) { n, u, mac, login, pw ->
+            // Télémétrie : ouverture / fermeture avec sa cause (« other » = disparu sans action de l'utilisateur).
+            val closeReason = remember { arrayOf<String?>(null) }
+            androidx.compose.runtime.DisposableEffect(Unit) {
+                StalkerTelemetry.dialogOpened()
+                onDispose { StalkerTelemetry.dialogClosed(closeReason[0] ?: "other") }
+            }
+            StalkerDialog(
+                onDismiss = { closeReason[0] = "cancel"; dialog = OpenDialog.NONE },
+                busy = checking,
+                onBack = { closeReason[0] = "back"; dialog = OpenDialog.NONE },
+            ) { n, u, mac, login, pw ->
                 checking = true
-                vm.addStalkerAndSync(n, u, mac, login, pw, D.stalkerFailed) { ok -> checking = false; if (ok) dialog = OpenDialog.NONE }
+                vm.addStalkerAndSync(n, u, mac, login, pw, D.stalkerFailed) { ok -> checking = false; if (ok) { closeReason[0] = "submit"; dialog = OpenDialog.NONE } }
             }
         }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })

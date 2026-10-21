@@ -77,6 +77,7 @@ import com.ultratv.tv.nativeapp.ui.design.Icons
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.common.leaveOnVerticalDpad
+import com.ultratv.tv.nativeapp.ui.common.modalFocusMemory
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.Sora
@@ -106,6 +107,8 @@ fun AddProviderDialog(
     icon: String = Icons.Monitor,
     subtitle: String? = null,
     submitLabel: String? = null,
+    /** Retour télécommande (par défaut : comme « Annuler »). */
+    onBack: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val S = LocalStrings.current
@@ -114,7 +117,7 @@ fun AddProviderDialog(
     val submitFocus = remember { FocusRequester() }
     val attempted = remember { mutableStateOf(false) }
     val submit = { if (canSubmit) onSubmit() else attempted.value = true }
-    ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
+    ModalFocusScope(onBack = onBack ?: onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         if (touch) {
             // Tactile : en-tête et champs DÉFILENT, les boutons restent épinglés en bas, au-dessus du clavier système (imePadding via les insets).
             CompositionLocalProvider(LocalSubmitAttempted provides attempted, LocalFormSubmit provides submit) {
@@ -324,6 +327,7 @@ fun FormField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    .modalFocusMemory(focusRequester)
                     .bringIntoViewRequester(bring)
                     .then(
                         if (last && submit != null) Modifier.onPreviewKeyEvent { ev ->
@@ -424,7 +428,7 @@ internal fun macDigits(input: String): String = input.filter { it in '0'..'9' ||
  * ([busy]) et se ferme quand l'appelant a fini.
  */
 @Composable
-fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String) -> Unit) {
+fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, portal: String, mac: String, login: String, pass: String) -> Unit) {
     var name by remember { mutableStateOf("") }
     var url by remember { mutableStateOf("") }
     var mac by remember { mutableStateOf(com.ultratv.tv.nativeapp.data.stalker.StalkerMac.DEFAULT_PREFIX.filter { it != ':' }) }
@@ -442,6 +446,7 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onSubmit: (name:
         onSubmit = { if (!busy) onSubmit(name, url.trim(), mac.chunked(2).joinToString(":"), login.trim(), pass) },
         canSubmit = isValidHttpUrl(url) && macOk && !busy,
         submitLabel = if (busy) D.stalkerChecking else null,
+        onBack = onBack,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(D.fieldPortalUrl, url, { url = it }, keyboardType = KeyboardType.Uri,

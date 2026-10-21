@@ -90,8 +90,28 @@ fun ScreenFocusHost(
             .focusRestorer()
             .focusRequester(requester)
             .focusGroup(),
-    ) { content() }
+    ) { androidx.compose.runtime.CompositionLocalProvider(LocalScreenFocus provides requester) { content() } }
+    // Écran courant connu hors de son sous-arbre (menu latéral) : un focus perdu y revient, sur l'élément mémorisé.
+    androidx.compose.runtime.DisposableEffect(requester) {
+        CurrentScreenFocus.requester = requester
+        onDispose { if (CurrentScreenFocus.requester === requester) CurrentScreenFocus.requester = null }
+    }
 }
+
+/**
+ * Groupe de focus de l'écran affiché, accessible au menu latéral (qui n'est pas dans le sous-arbre de l'écran). Quand
+ * Compose rend un focus perdu au premier élément en haut à gauche (le menu), le menu le renvoie à l'écran par ce
+ * groupe ([focusRestorer] : l'élément qui l'avait) plutôt que par un déplacement géométrique qui le faisait « sauter ».
+ */
+object CurrentScreenFocus {
+    @Volatile var requester: FocusRequester? = null
+}
+
+/**
+ * Groupe de focus de l'écran courant ([ScreenFocusHost], avec focusRestorer) : une modale qui se ferme y rend le focus,
+ * donc à l'élément qui l'a ouverte.
+ */
+val LocalScreenFocus = androidx.compose.runtime.compositionLocalOf<FocusRequester?> { null }
 
 /**
  * Couche d'incrustation plein écran : les modales ne sont PAS composées là où elles sont déclarées (dans un volet
@@ -99,7 +119,33 @@ fun ScreenFocusHost(
  */
 class OverlayHost {
     internal val layers = androidx.compose.runtime.mutableStateListOf<Layer>()
-    internal class Layer(val content: @Composable () -> Unit)
+    internal class Layer(val state: ModalState, val content: @Composable () -> Unit)
+    /** Au moins une modale ouverte (lu hors composition, ex. dans un rappel de focus). */
+    val hasModal: Boolean get() = layers.isNotEmpty()
+}
+
+/** État de focus d'une modale, partagé entre sa déclaration (dans l'écran) et son corps (dans l'OverlayLayer). */
+internal class ModalState {
+    val requester = FocusRequester()
+    var hasFocus by mutableStateOf(false)
+    /** La modale a déjà tenu le focus (le focus initial y est arrivé). */
+    var hadFocus = false
+    /** Dernier champ focalisé de la modale ([modalFocusMemory]) : cible de la reprise du focus perdu. */
+    var last: FocusRequester? = null
+    /** Modale en cours de fermeture : le focus a le droit d'en sortir (sinon `exit = Cancel` bloque le retour du focus). */
+    var closing = false
+}
+
+internal val LocalModalState = androidx.compose.runtime.compositionLocalOf<ModalState?> { null }
+
+/**
+ * Mémorise [requester] comme dernier élément focalisé de la modale qui l'entoure : si la modale perd le focus (clavier à
+ * l'écran sur certaines box), il revient sur CET élément et non sur le premier de la modale.
+ */
+@Composable
+fun Modifier.modalFocusMemory(requester: FocusRequester): Modifier {
+    val st = LocalModalState.current ?: return this
+    return this.onFocusChanged { if (it.isFocused) st.last = requester }
 }
 
 val LocalOverlayHost = androidx.compose.runtime.compositionLocalOf<OverlayHost?> { null }
@@ -124,45 +170,80 @@ fun ModalFocusScope(
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
 ) {
     val host = LocalOverlayHost.current
+    val screen = LocalScreenFocus.current
+    val state = remember { ModalState() }
     val latestBack = androidx.compose.runtime.rememberUpdatedState(onBack)
     val latestContent = androidx.compose.runtime.rememberUpdatedState(content)
     val latestModifier = androidx.compose.runtime.rememberUpdatedState(modifier)
-    val body: @Composable () -> Unit = {
-        ModalBody(latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
-    }
     if (host == null) {
-        body()
+        ModalBody(state, null, latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
     } else {
         androidx.compose.runtime.DisposableEffect(host) {
-            val layer = OverlayHost.Layer(body)
+            lateinit var layer: OverlayHost.Layer
+            layer = OverlayHost.Layer(state) {
+                ModalBody(state, { host.layers.lastOrNull() === layer }, latestBack.value, latestModifier.value, contentAlignment, latestContent.value)
+            }
             host.layers.add(layer)
-            onDispose { host.layers.remove(layer) }
+            onDispose {
+                host.layers.remove(layer)
+                // Le corps de la modale est encore en place (l'OverlayLayer ne le retire qu'à sa prochaine recomposition) :
+                // on rend le focus MAINTENANT. Sinon, l'élément focalisé disparaissant, Compose pose le focus sur le premier
+                // élément en haut à gauche (le menu latéral), qui le renvoie à droite au hasard de la géométrie : la sélection
+                // « saute », et une rubrique des Réglages qui suit le focus faisait disparaître le volet (et la modale suivante).
+                state.closing = true
+                if (state.hasFocus) returnFocus(host.layers.lastOrNull()?.state?.requester, screen)
+            }
         }
     }
+}
+
+/** Focus rendu à la modale restée dessous, sinon à l'écran (son focusRestorer revient à l'élément qui a ouvert la modale). */
+private fun returnFocus(underneath: FocusRequester?, screen: FocusRequester?) {
+    val ok = underneath != null && runCatching { underneath.requestFocus() }.getOrDefault(false)
+    if (!ok && screen != null) runCatching { screen.requestFocus() }
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ModalBody(
+    state: ModalState,
+    /** Modale du dessus (null : pas d'OverlayHost, aucune reprise automatique du focus). */
+    isTopmost: (() -> Boolean)?,
     onBack: (() -> Unit)?,
     modifier: Modifier,
     contentAlignment: androidx.compose.ui.Alignment,
     content: @Composable androidx.compose.foundation.layout.BoxScope.() -> Unit,
 ) {
-    val requester = remember { FocusRequester() }
-    var hasFocus by remember { mutableStateOf(false) }
-    RequestInitialFocus(requester, hasFocus = { hasFocus })
+    val requester = state.requester
+    RequestInitialFocus(requester, hasFocus = { state.hasFocus })
+    // Focus PERDU alors que la modale est toujours au premier plan (la vue Compose perd le focus quand le clavier à l'écran
+    // apparaît ou disparaît sur certaines box Google TV, ou l'élément focalisé disparaît) : on le reprend, sur le dernier
+    // élément focalisé de la modale (focusRestorer). Sans cela il retombait derrière la modale et le clavier se refermait.
+    if (isTopmost != null && !com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        LaunchedEffect(state.hasFocus) {
+            if (state.hasFocus || !state.hadFocus) return@LaunchedEffect
+            delay(MODAL_REFOCUS_DELAY_MS)
+            if (!state.hasFocus && isTopmost()) {
+                val back = state.last?.let { runCatching { it.requestFocus() }.getOrDefault(false) } ?: false
+                if (!back) runCatching { requester.requestFocus() }
+            }
+        }
+    }
     if (onBack != null) BackHandler(onBack = onBack)
     Box(
         modifier
             .fillMaxSize()
-            .onFocusChanged { hasFocus = it.hasFocus }
+            .onFocusChanged { state.hasFocus = it.hasFocus; if (it.hasFocus) state.hadFocus = true }
+            .focusRestorer()
             .focusRequester(requester)
-            .focusProperties { exit = { FocusRequester.Cancel } }
+            .focusProperties { exit = { if (state.closing) FocusRequester.Default else FocusRequester.Cancel } }
             .focusGroup(),
         contentAlignment = contentAlignment,
-    ) { content() }
+    ) { androidx.compose.runtime.CompositionLocalProvider(LocalModalState provides state) { content() } }
 }
+
+/** Délai avant de reprendre le focus perdu par une modale : laisse passer une transition légitime (modale ouverte par-dessus). */
+internal const val MODAL_REFOCUS_DELAY_MS = 150L
 
 private const val INITIAL_FOCUS_ATTEMPTS = 30
 private const val INITIAL_FOCUS_RETRY_MS = 100L

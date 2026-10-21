@@ -40,6 +40,7 @@ class SettingsViewModel @Inject constructor(
     private val deviceTokens: com.ultratv.tv.nativeapp.data.config.DeviceTokenStore,
     private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager,
+    private val syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
 ) : ViewModel() {
 
     // ---- Synchro cloud multi-appareils ----
@@ -309,20 +310,37 @@ class SettingsViewModel @Inject constructor(
     fun addStalkerAndSync(name: String, portal: String, mac: String, login: String, password: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _syncing.value = true
+            StalkerTelemetry.addAttempt(portal)
             try {
+                // addStalker sonde le portail (point d'entrée + poignée de main) avant d'enregistrer la source.
                 val id = repo.addStalker(name, portal, mac, login, password, probe = true)
+                StalkerTelemetry.probeOk()
                 makeDefaultIfNone(id)
                 offerIfPaired(id)
                 sync.request(id, force = true)
+                watchStalkerSync(id)
                 onDone(true)
             } catch (c: kotlinx.coroutines.CancellationException) {
                 throw c
             } catch (t: Throwable) {
+                StalkerTelemetry.probeFailed(t)
                 com.ultratv.tv.nativeapp.ui.common.Toaster.err(failedText)
                 onDone(false)
             } finally {
                 _syncing.value = false
             }
+        }
+    }
+
+    /** Télémétrie de la première synchro d'une source Stalker : début, fin, type d'erreur (jamais d'identifiants). */
+    private fun watchStalkerSync(id: Long) {
+        viewModelScope.launch {
+            val started = kotlinx.coroutines.withTimeoutOrNull(120_000) { syncBus.status.first { it != null } }
+            if (started == null) { StalkerTelemetry.syncUnknown(); return@launch }
+            StalkerTelemetry.syncStarted()
+            val ended = kotlinx.coroutines.withTimeoutOrNull(30 * 60_000L) { syncBus.status.first { it == null } }
+            if (ended == null) { StalkerTelemetry.syncUnknown(); return@launch }
+            StalkerTelemetry.syncEnded(syncBus.failure.value?.takeIf { it.providerId == id }?.kind?.name)
         }
     }
 

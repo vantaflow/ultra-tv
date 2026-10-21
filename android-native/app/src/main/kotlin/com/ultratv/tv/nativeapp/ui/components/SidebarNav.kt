@@ -156,7 +156,12 @@ fun SidebarNav(navController: NavController) {
                     .onFocusChanged { st ->
                         if (!st.hasFocus) expanded = false
                         else if (com.ultratv.tv.nativeapp.ui.common.InputClock.recentNavKey()) expanded = true
-                        else if (!expanded) leaveRail()
+                        // Focus arrivé sans touche (élément disparu, fenêtre fermée, clavier) : retour à l'élément mémorisé
+                        // de l'écran ; à défaut seulement, déplacement vers la droite.
+                        else if (!expanded) {
+                            val back = com.ultratv.tv.nativeapp.ui.common.CurrentScreenFocus.requester
+                            if (back == null || !runCatching { back.requestFocus() }.getOrDefault(false)) leaveRail()
+                        }
                     }
                     .onPreviewKeyEvent { ev -> if (!expanded && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) expanded = true; false }
                     // Géométrie identique replié / déplié : les icônes gardent le même x pendant tout l'élargissement.
