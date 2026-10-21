@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -169,7 +170,11 @@ fun AddProviderDialog(
         val imeHeight = if (measured > 0.dp) measured else if (fieldFocused.value) (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp else 0.dp
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = if (imeHeight > 0.dp) Alignment.TopCenter else Alignment.Center) {
             val safeV = androidx.compose.foundation.layout.PaddingValues(0.dp).let { com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateTopPadding() }
-            val maxH = (maxHeight - safeV * 2 - imeHeight).coerceAtLeast(240.dp)
+            // Clavier affiché : il prend plus de la moitié de l'écran d'une TV. Mode COMPACT (titre + champs seulement,
+            // marges réduites) : sinon icône, sous-titre, boutons et aides écrasaient les champs (chevauchements). Les
+            // boutons reviennent dès que le clavier se ferme (Retour), « Suivant » / « OK » du clavier passent au champ suivant.
+            val compact = measured > 0.dp   // clavier RÉELLEMENT affiché (pas l'estimation faite avant sa mesure)
+            val maxH = (maxHeight - safeV * 2 - imeHeight).coerceAtLeast(if (compact) 160.dp else 240.dp)
             Box(Modifier.padding(top = if (imeHeight > 0.dp) safeV else 0.dp)) {
             CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted, LocalFieldFocused provides fieldFocused) {
                 Column(
@@ -179,10 +184,12 @@ fun AddProviderDialog(
                         .clip(RoundedCornerShape(32.design))
                         .background(Ux.SurfaceDeep)
                         .border(1.design, Ux.Surface2, RoundedCornerShape(32.design))
-                        .padding(horizontal = 56.design, vertical = 40.design),
-                    verticalArrangement = Arrangement.spacedBy(24.design),
+                        .padding(horizontal = 56.design, vertical = if (compact) 20.design else 40.design),
+                    verticalArrangement = Arrangement.spacedBy(if (compact) 14.design else 24.design),
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                    if (compact) {
+                        Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                    } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
                         Box(Modifier.size(64.design).clip(RoundedCornerShape(16.design)).background(Ux.Accent), contentAlignment = Alignment.Center) {
                             DIcon(icon, 32.design, Ux.White, strokeWidth = 2f)
                         }
@@ -195,7 +202,7 @@ fun AddProviderDialog(
                         Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(24.design),
                     ) { content() }
-                    Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 4.design)) {
+                    if (!compact) Row(horizontalArrangement = Arrangement.spacedBy(20.design, Alignment.End), modifier = Modifier.fillMaxWidth().padding(top = 4.design)) {
                         FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, modifier = Modifier.height(72.design).testTag("dialog-cancel")) { f ->
                             Box(Modifier.height(72.design).padding(horizontal = 36.design), contentAlignment = Alignment.Center) {
                                 Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, color = if (f) Ux.TextOnLight else Ux.Text)
@@ -208,7 +215,7 @@ fun AddProviderDialog(
                             }
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
+                    if (!compact) Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                         Text(D.formHintFields, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                         Text(D.formHintIme, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
                         Text(D.formHintBack, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
@@ -275,6 +282,8 @@ fun FormField(
     androidx.compose.runtime.DisposableEffect(focused) { if (focused) fieldFocusedState?.value = true; onDispose { if (focused) fieldFocusedState?.value = false } }
     val submit = LocalSubmitFocus.current
     val formSubmit = LocalFormSubmit.current
+    val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val fieldScope = androidx.compose.runtime.rememberCoroutineScope()
     // « Visité puis quitté vide » : l'erreur ne s'affiche JAMAIS à l'ouverture, seulement après un passage dans le champ.
     var settled by remember { mutableStateOf(false) }
     var touched by remember { mutableStateOf(false) }
@@ -321,7 +330,13 @@ fun FormField(
                 ),
                 keyboardActions = KeyboardActions(
                     onNext = { fm.moveFocus(FocusDirection.Down) },
-                    onDone = { if (formSubmit != null) formSubmit() else if (submit != null) runCatching { submit.requestFocus() } else fm.moveFocus(FocusDirection.Down) },   // « OK / Terminé » valide le formulaire
+                    // « OK / Terminé » : valide (tactile) ou ferme le clavier puis va sur le bouton principal (TV : les boutons
+                    // ne sont affichés qu'une fois le clavier fermé, mode compact).
+                    onDone = {
+                        if (formSubmit != null) formSubmit()
+                        else if (submit != null) { keyboard?.hide(); fieldScope.launch { repeat(10) { kotlinx.coroutines.delay(80); if (runCatching { submit.requestFocus() }.isSuccess) return@launch } } }
+                        else fm.moveFocus(FocusDirection.Down)
+                    },
                 ),
                 interactionSource = interaction,
                 modifier = Modifier
@@ -332,7 +347,13 @@ fun FormField(
                     .then(
                         if (last && submit != null) Modifier.onPreviewKeyEvent { ev ->
                             // ▼ depuis le dernier champ : droit sur le bouton principal (et non sur « Annuler »).
-                            if (ev.key == Key.DirectionDown) { if (ev.type == KeyEventType.KeyDown) runCatching { submit.requestFocus() }; true } else false
+                            if (ev.key == Key.DirectionDown) {
+                                if (ev.type == KeyEventType.KeyDown && runCatching { submit.requestFocus() }.isFailure) {
+                                    // Bouton absent (clavier ouvert, mode compact) : on ferme le clavier, puis on y va.
+                                    keyboard?.hide(); fieldScope.launch { repeat(10) { kotlinx.coroutines.delay(80); if (runCatching { submit.requestFocus() }.isSuccess) return@launch } }
+                                }
+                                true
+                            } else false
                         } else Modifier,
                     )
                     .leaveOnVerticalDpad()

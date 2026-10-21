@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [1.2.67] — 2026-10-21 (Android)
 
+### Corrigé
+- Fenêtres d'ajout de source (Xtream, M3U, Stalker…) écrasées par le clavier à l'écran sur TV (champs et boutons qui se
+  chevauchaient) : tant que le clavier est affiché, la fenêtre ne garde que le titre et les champs ; « OK » du clavier
+  ou ▼ sur le dernier champ ferment le clavier et mènent au bouton « Ajouter ».
+
 ### Technique
 - Mise à jour complète des technologies (plus d'un an de retard rattrapé) : Kotlin 2.4, Gradle 9.8, AGP 9.4,
   Compose 2026.09 (UI 1.12) et tv-material 1.1, **Media3 1.11** (lecteur ExoPlayer : flux TS / HLS, décodeurs, HDR,
