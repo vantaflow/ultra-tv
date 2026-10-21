@@ -4,11 +4,17 @@ import kotlinx.coroutines.cancel
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import coil.ImageLoader
-import coil.ImageLoaderFactory
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
-import coil.request.CachePolicy
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.disk.DiskCache
+import coil3.memory.MemoryCache
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.CachePolicy
+import coil3.request.allowHardware
+import coil3.request.allowRgb565
+import coil3.request.crossfade
+import okio.Path.Companion.toOkioPath
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +26,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
- * Application root. Implements Coil's [ImageLoaderFactory] for app-wide image
+ * Application root. Implements Coil's [SingletonImageLoader.Factory] for app-wide image
  * caching and WorkManager's [Configuration.Provider] so [SyncWorker] can be
  * instantiated through Hilt with its repository dependencies.
  *
@@ -28,7 +34,7 @@ import kotlinx.coroutines.launch
  * Cloudflare Worker via [RemoteLog.crashSync], with no local file buffer.
  */
 @HiltAndroidApp
-class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
+class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac
@@ -52,18 +58,18 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    override fun newImageLoader(): ImageLoader {
+    override fun newImageLoader(context: PlatformContext): ImageLoader {
         val auto = adaptive.state.value.auto
         val low = auto.lowRam
         return ImageLoader.Builder(this)
             .memoryCache {
-                MemoryCache.Builder(this)
-                    .maxSizePercent(if (low) 0.08 else 0.25)
+                MemoryCache.Builder()
+                    .maxSizePercent(this, if (low) 0.08 else 0.25)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
-                    .directory(cacheDir.resolve("image_cache"))
+                    .directory(cacheDir.resolve("image_cache").toOkioPath())
                     .maxSizeBytes(if (low) 96L * 1024 * 1024 else 256L * 1024 * 1024)
                     .build()
             }
@@ -72,9 +78,15 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
             // Connexions partagées avec le reste de l'appli, mais SANS l'intercepteur de mesure du débit (les images ne
             // doivent pas fausser le profil adaptatif du lecteur ni appeler ConnectivityManager à chaque vignette) et avec
             // sa propre file de requêtes (les logos n'attendent pas derrière une synchro).
-            .okHttpClient { okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build() }
-            .apply { if (low) decoderDispatcher(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
-            .respectCacheHeaders(false)
+            // Coil 3 : le réseau passe par le module coil-network-okhttp ; le client est toujours construit paresseusement.
+            .components {
+                add(OkHttpNetworkFetcherFactory(callFactory = {
+                    okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build()
+                }))
+            }
+            .apply { if (low) decoderCoroutineContext(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
+            // En-têtes de cache HTTP ignorés (ancien respectCacheHeaders(false)) : c'est le comportement par défaut de
+            // Coil 3 (CacheStrategy.DEFAULT ; les respecter demanderait le module coil-network-cache-control).
             .memoryCachePolicy(CachePolicy.ENABLED)
             .diskCachePolicy(CachePolicy.ENABLED)
             // Entrée de gamme : bitmaps logiciels RGB_565 (moitié moins de mémoire). Les bitmaps matériels l'empêchaient
@@ -93,7 +105,7 @@ class UltraTvApp : Application(), ImageLoaderFactory, Configuration.Provider {
         super.onTrimMemory(level)
         val low = runCatching { adaptive.state.value.auto.lowRam }.getOrDefault(false)
         if (level >= TRIM_MEMORY_RUNNING_LOW || (low && level >= TRIM_MEMORY_UI_HIDDEN)) {
-            runCatching { coil.Coil.imageLoader(this).memoryCache?.clear() }
+            runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
             runCatching { posters.get().trim() }
         }
     }

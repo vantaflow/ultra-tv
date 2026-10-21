@@ -307,9 +307,9 @@ fun DetailVisual(backdrop: String?, poster: String?, title: String) {
     var landscape by remember(backdrop) { mutableStateOf<Boolean?>(if (backdrop == null) false else null) }
     Box(Modifier.fillMaxSize()) {
         if (backdrop != null && landscape != false) {
-            coil.compose.AsyncImage(
+            coil3.compose.AsyncImage(
                 model = backdrop, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize(),
-                onSuccess = { st -> val d = st.result.drawable; landscape = d.intrinsicWidth.toFloat() / d.intrinsicHeight.coerceAtLeast(1) >= 1.3f },
+                onSuccess = { st -> val img = st.result.image; landscape = img.width.toFloat() / img.height.coerceAtLeast(1) >= 1.3f },
                 onError = { landscape = false },
             )
         }
@@ -334,7 +334,7 @@ fun Skeleton(modifier: Modifier, circle: Boolean = false) {
 fun BlurredFill(url: String?, modifier: Modifier) {
     val lowRam = com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current
     if (url.isNullOrBlank() || lowRam || android.os.Build.VERSION.SDK_INT < 31) { Box(modifier.background(Ux.Surface)); return }
-    coil.compose.AsyncImage(
+    coil3.compose.AsyncImage(
         model = url, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
         modifier = modifier.blur(48.design),
     )

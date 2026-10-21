@@ -24,8 +24,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.ultratv.tv.nativeapp.data.tmdb.PosterResolver
 import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
@@ -89,7 +90,7 @@ fun SlotImage(
             // allocation et une comparaison de modèle par vignette visible.
             val request = androidx.compose.runtime.remember(url, fade, px, fit) {
                 ImageRequest.Builder(ctx).data(url).crossfade(fade).apply {
-                    if (px != null) size(px.first, px.second).scale(if (fit == SlotFit.Crop) coil.size.Scale.FILL else coil.size.Scale.FIT)
+                    if (px != null) size(px.first, px.second).scale(if (fit == SlotFit.Crop) coil3.size.Scale.FILL else coil3.size.Scale.FIT)
                 }.build()
             }
             AsyncImage(

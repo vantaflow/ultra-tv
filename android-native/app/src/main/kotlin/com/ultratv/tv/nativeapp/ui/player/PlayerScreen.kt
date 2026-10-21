@@ -991,8 +991,8 @@ private fun LoadingVisual(logo: String?, name: String) {
         // rendent vraiment (API 31+, hors low-RAM), comme BlurredFill ; ailleurs un simple fond.
         val richBackdrop = !com.ultratv.tv.nativeapp.ui.common.LocalLowRam.current && android.os.Build.VERSION.SDK_INT >= 31
         if (richBackdrop && !logo.isNullOrBlank()) {
-            coil.compose.AsyncImage(
-                model = coil.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(logo).size(320, 180).build(),
+            coil3.compose.AsyncImage(
+                model = coil3.request.ImageRequest.Builder(androidx.compose.ui.platform.LocalContext.current).data(logo).size(320, 180).build(),
                 contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().blur(48.dp).alpha(0.45f),
             )

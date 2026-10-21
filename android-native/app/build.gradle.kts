@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
@@ -49,7 +48,8 @@ val ultraEdition = resolveBuildConfigValue("ULTRA_EDITION", "standard")
 
 android {
     namespace = "com.ultratv.tv.nativeapp"
-    compileSdk = 35
+    // 37 : exigé par Media3 1.11 et les bibliothèques AndroidX 2026 (targetSdk inchangé : même comportement à l’exécution).
+    compileSdk = 37
 
     defaultConfig {
         // Different applicationId during development so it can be installed
@@ -138,24 +138,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.tv.material3.ExperimentalTvMaterial3Api",
-            "-opt-in=androidx.media3.common.util.UnstableApi",
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-        )
-    }
 
     buildFeatures {
         compose = true
         buildConfig = true
     }
 
-    sourceSets["main"].kotlin.srcDirs("src/main/kotlin")
-    sourceSets["test"].kotlin.srcDirs("src/test/kotlin")
+    // src/main/kotlin et src/test/kotlin sont des dossiers source par défaut (Kotlin intégré d'AGP 9) : rien à déclarer.
     // Schémas exportés visibles de MigrationTestHelper (Robolectric lit les assets du build debug) ; absents du release.
-    sourceSets["debug"].assets.srcDir("$projectDir/schemas")
+    sourceSets["debug"].assets.directories.add("$projectDir/schemas")
 
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -182,6 +173,18 @@ android {
     }
 }
 
+// AGP 9 compile le Kotlin lui-même (Kotlin intégré) : plus de plugin org.jetbrains.kotlin.android,
+// et kotlinOptions {} est remplacé par compilerOptions {}.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        optIn.addAll(
+            "androidx.tv.material3.ExperimentalTvMaterial3Api",
+            "kotlinx.coroutines.ExperimentalCoroutinesApi",
+        )
+    }
+}
+
 // Export Room schemas so future version bumps can ship verified Migration
 // objects (and so the schema history is tracked in VCS under app/schemas).
 ksp {
@@ -198,7 +201,7 @@ dependencies {
     implementation(libs.compose.tv.material)
     debugImplementation(libs.compose.ui.tooling)
 
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation("androidx.core:core-splashscreen:1.2.0")
     // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     // Télémétrie de fluidité (images saccadées par écran) : voir perf/PerfTelemetry.kt.
@@ -217,9 +220,9 @@ dependencies {
     implementation(libs.media3.cast)
     implementation(libs.media3.datasource.rtmp)
     implementation(libs.media3.datasource.okhttp)
-    implementation("androidx.documentfile:documentfile:1.0.1")
+    implementation("androidx.documentfile:documentfile:1.1.0")
     // QR code du tableau de bord cloud, généré localement (aucun réseau).
-    implementation("com.google.zxing:core:3.5.3")
+    implementation("com.google.zxing:core:3.5.4")
     implementation(libs.mediarouter)
     implementation(libs.play.cast.framework)
 
@@ -231,6 +234,8 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.coil.compose)
+    // Coil 3 : le réseau est un module à part ; il réutilise le client OkHttp partagé (DNS personnalisé, en-têtes).
+    implementation(libs.coil.network.okhttp)
     implementation(libs.coroutines.android)
     implementation(libs.serialization.json)
     implementation(libs.datastore.preferences)
@@ -253,17 +258,17 @@ dependencies {
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.robolectric:robolectric:4.13")
+    testImplementation("org.robolectric:robolectric:4.17")
     // Migrations Room : MigrationTestHelper lit les schémas exportés (app/schemas) exposés comme assets de test.
-    testImplementation("androidx.room:room-testing:2.6.1")
+    testImplementation("androidx.room:room-testing:2.8.5")
     testImplementation("androidx.test.ext:junit:1.1.5")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
+    testImplementation("org.json:json:20260814")
     // Tests d'UI Compose exécutés sur la JVM via Robolectric (createComposeRule / createAndroidComposeRule).
     testImplementation(platform(libs.compose.bom))
     testImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
-    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
 }
 
 /**
@@ -271,7 +276,7 @@ dependencies {
  * over the existing debug-signed release. Only runs when the env vars are
  * set; otherwise it's a no-op (CI / dev keep using the debug fallback).
  */
-val resignRelease by tasks.registering {
+tasks.register("resignRelease") {
     dependsOn("assembleRelease")
     // The doLast block holds script-object references (file(), env lookups)
     // that Gradle's configuration cache can't serialize — opt out explicitly.
