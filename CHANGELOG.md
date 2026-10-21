@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Bureau 1.2.36] — 2026-10-21
+
+### Ajouté
+- **DNS personnalisé sur le bureau** (Réglages › Lecture › Réseau) : mêmes choix qu'Android (Système, Google,
+  Cloudflare, Quad9, DNS sur HTTPS ou adresses IP au choix). Appliqué au catalogue, au guide, aux images et aux flux ;
+  si le serveur ne répond pas en 2 s, le DNS du système prend le relais.
+
+### Technique
+- React 19, Vite 8, TypeScript 7 ; mises à jour Dependabot regroupées et fusionnées automatiquement quand les tests passent.
+
 ## [1.2.67] — 2026-10-21 (Android)
 
 ### Corrigé

@@ -61,7 +61,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Personnalisation** (Réglages › Affichage) : **couleur d'accent** (6 choix), **taille du texte**, **rangées de l'accueil** (afficher, masquer, réordonner), **écran d'ouverture** (Accueil, Direct, Films, Séries, Guide ou dernière chaîne).
-- **DNS personnalisé** (Android) : Google, Cloudflare, Quad9, DNS-over-HTTPS ou serveur au choix, avec bouton Tester ; appliqué au catalogue, au guide, aux images et aux flux ExoPlayer (pas à VLC), repli automatique sur le DNS du système.
+- **DNS personnalisé** (Android et bureau) : Google, Cloudflare, Quad9, DNS-over-HTTPS ou serveur au choix ; appliqué au catalogue, au guide, aux images et aux flux (sur Android : flux ExoPlayer, pas VLC ; bouton Tester), repli automatique sur le DNS du système.
 - **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
 
 ## Appareils

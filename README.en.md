@@ -61,7 +61,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
 - **Personalisation** (Settings › Display): **accent colour** (6 choices), **text size**, **Home rows** (show, hide, reorder), **start screen** (Home, Live, Movies, Series, Guide or last channel).
-- **Custom DNS** (Android): Google, Cloudflare, Quad9, DNS-over-HTTPS or your own server, with a Test button; applied to catalogue, guide, images and ExoPlayer streams (not VLC), automatic fallback to the system DNS.
+- **Custom DNS** (Android and desktop): Google, Cloudflare, Quad9, DNS-over-HTTPS or your own server; applied to catalogue, guide, images and streams (on Android: ExoPlayer streams, not VLC; Test button), automatic fallback to the system DNS.
 - **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
 
 ## Devices
