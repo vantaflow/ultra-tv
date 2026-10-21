@@ -166,8 +166,9 @@ fun AddProviderDialog(
         // lui-même à l'espace au-dessus du clavier et se cale en haut tant qu'il est visible : les boutons restent atteignables.
         val fieldFocused = remember { mutableStateOf(false) }
         val measured = rememberImeHeight()
-        // Si le clavier est annoncé (champ focalisé) mais que sa hauteur n'est pas encore mesurée : estimation 45 % de la fenêtre.
-        val imeHeight = if (measured > 0.dp) measured else if (fieldFocused.value) (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp else 0.dp
+        // Hauteur MESURÉE seulement : sur TV un champ focalisé n'ouvre pas le clavier (il faut OK), une estimation
+        // réduisait la fenêtre de moitié sans clavier, et il fallait défiler pour voir les autres champs.
+        val imeHeight = measured
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = if (imeHeight > 0.dp) Alignment.TopCenter else Alignment.Center) {
             val safeV = androidx.compose.foundation.layout.PaddingValues(0.dp).let { com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateTopPadding() }
             // Clavier affiché : il prend plus de la moitié de l'écran d'une TV. Mode COMPACT (titre + champs seulement,

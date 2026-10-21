@@ -243,7 +243,13 @@ class MainActivity : ComponentActivity() {
      * don't support it (some TV firmwares).
      */
     /** Touches Recherche et micro de la télécommande : ouvrent la Recherche par-dessus l'écran courant (Retour y revient). */
+    private val keyGuard = com.ultratv.tv.nativeapp.ui.common.KeyGuard { RemoteLog.info("keys", it) }
+
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.action != android.view.KeyEvent.ACTION_MULTIPLE && keyGuard.shouldDrop(
+                event.keyCode, event.action == android.view.KeyEvent.ACTION_DOWN, event.repeatCount,
+                event.eventTime, android.os.SystemClock.uptimeMillis(),
+            )) return true
         if (event.action == android.view.KeyEvent.ACTION_DOWN) {
             com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyCode = event.keyCode
             com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs = android.os.SystemClock.uptimeMillis()

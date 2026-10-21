@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.68] — 2026-10-21 (Android)
+
+### Corrigé
+- Fenêtres d'ajout de source trop petites sans clavier (il fallait défiler pour voir les autres champs) : la fenêtre
+  ne se réduit plus que lorsque le clavier est réellement affiché.
+- Sélection qui saute de deux éléments ou plus pour un seul appui : les appuis envoyés en double par certaines
+  télécommandes Bluetooth (deux « bas » sans relâchement entre les deux) sont ignorés ; l'appui long continue de défiler.
+
+### Technique
+- Télémétrie « keys » : appuis en double ignorés et retard de traitement des touches (box surchargée).
+
 ## [Bureau 1.2.36] — 2026-10-21
 
 ### Ajouté
