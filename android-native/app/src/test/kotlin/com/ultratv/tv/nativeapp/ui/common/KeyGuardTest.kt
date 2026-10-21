@@ -22,10 +22,21 @@ class KeyGuardTest {
         assertFalse(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 0, 1120, 1120))
     }
 
-    @Test fun `long press repeats pass`() {
+    @Test fun `long press repeats pass after the hold delay`() {
         val g = KeyGuard()
         assertFalse(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 0, 1000, 1000))
-        assertFalse(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 1, 1050, 1050))
+        assertFalse(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 1, 1750, 1760, downTime = 1000))
+    }
+
+    @Test fun `early repeats of a short press are dropped`() {
+        val g = KeyGuard()
+        assertFalse(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 0, 1000, 1000))
+        assertTrue(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 1, 1500, 1510, downTime = 1000))
+    }
+
+    @Test fun `stale queued repeats are dropped`() {
+        val g = KeyGuard()
+        assertTrue(g.shouldDrop(KEYCODE_DPAD_DOWN, true, 5, 2000, 2400, downTime = 1000))
     }
 
     @Test fun `lost up does not block a later press`() {

@@ -248,7 +248,7 @@ class MainActivity : ComponentActivity() {
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (event.action != android.view.KeyEvent.ACTION_MULTIPLE && keyGuard.shouldDrop(
                 event.keyCode, event.action == android.view.KeyEvent.ACTION_DOWN, event.repeatCount,
-                event.eventTime, android.os.SystemClock.uptimeMillis(),
+                event.eventTime, android.os.SystemClock.uptimeMillis(), event.downTime,
             )) return true
         if (event.action == android.view.KeyEvent.ACTION_DOWN) {
             com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyCode = event.keyCode

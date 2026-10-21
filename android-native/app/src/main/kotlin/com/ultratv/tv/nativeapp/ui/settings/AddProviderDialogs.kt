@@ -166,18 +166,30 @@ fun AddProviderDialog(
         // lui-même à l'espace au-dessus du clavier et se cale en haut tant qu'il est visible : les boutons restent atteignables.
         val fieldFocused = remember { mutableStateOf(false) }
         val measured = rememberImeHeight()
-        // Hauteur MESURÉE seulement : sur TV un champ focalisé n'ouvre pas le clavier (il faut OK), une estimation
-        // réduisait la fenêtre de moitié sans clavier, et il fallait défiler pour voir les autres champs.
-        val imeHeight = measured
+        // Clavier demandé (OK sur un champ) : certaines box (Skyworth…) n'annoncent pas la hauteur de leur clavier, la
+        // mesure reste à 0 alors qu'il couvre la moitié basse de l'écran. On estime alors 55 % de la hauteur, jusqu'à ce
+        // qu'une touche parvienne de nouveau à l'appli (clavier fermé : tant qu'il est ouvert, il reçoit les touches).
+        // Sans demande, pas d'estimation : un champ simplement focalisé n'ouvre pas le clavier sur TV.
+        val imeAskedAt = remember { mutableStateOf(0L) }
+        LaunchedEffect(imeAskedAt.value) {
+            val at = imeAskedAt.value
+            if (at > 0) while (true) {
+                kotlinx.coroutines.delay(150)
+                if (com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyMs > at) { imeAskedAt.value = 0L; break }
+            }
+        }
+        val imeHeight = if (measured > 0.dp) measured
+            else if (imeAskedAt.value > 0) (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.55f).dp
+            else 0.dp
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = if (imeHeight > 0.dp) Alignment.TopCenter else Alignment.Center) {
             val safeV = androidx.compose.foundation.layout.PaddingValues(0.dp).let { com.ultratv.tv.nativeapp.ui.common.LocalSafeArea.current.calculateTopPadding() }
             // Clavier affiché : il prend plus de la moitié de l'écran d'une TV. Mode COMPACT (titre + champs seulement,
             // marges réduites) : sinon icône, sous-titre, boutons et aides écrasaient les champs (chevauchements). Les
             // boutons reviennent dès que le clavier se ferme (Retour), « Suivant » / « OK » du clavier passent au champ suivant.
-            val compact = measured > 0.dp   // clavier RÉELLEMENT affiché (pas l'estimation faite avant sa mesure)
+            val compact = imeHeight > 0.dp   // clavier mesuré, ou demandé par OK sur un champ
             val maxH = (maxHeight - safeV * 2 - imeHeight).coerceAtLeast(if (compact) 160.dp else 240.dp)
             Box(Modifier.padding(top = if (imeHeight > 0.dp) safeV else 0.dp)) {
-            CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted, LocalFieldFocused provides fieldFocused) {
+            CompositionLocalProvider(LocalSubmitFocus provides submitFocus, LocalSubmitAttempted provides attempted, LocalFieldFocused provides fieldFocused, LocalImeAskedAt provides imeAskedAt) {
                 Column(
                     modifier = Modifier
                         .width(1000.design)
@@ -245,6 +257,9 @@ private fun rememberImeHeight(): androidx.compose.ui.unit.Dp {
     return with(density) { px.toDp() }
 }
 
+/** Instant (uptime) où le clavier a été demandé par OK sur un champ, 0 sinon : voir l'estimation du clavier. */
+private val LocalImeAskedAt = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Long>?> { null }
+
 /** Bouton principal du dialogue courant : cible de « ▼ » et de l'action IME « OK » sur le dernier champ. */
 private val LocalSubmitAttempted = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
 private val LocalFieldFocused = androidx.compose.runtime.compositionLocalOf<androidx.compose.runtime.MutableState<Boolean>?> { null }
@@ -281,6 +296,11 @@ fun FormField(
     val bring = remember { BringIntoViewRequester() }
     val fieldFocusedState = LocalFieldFocused.current
     androidx.compose.runtime.DisposableEffect(focused) { if (focused) fieldFocusedState?.value = true; onDispose { if (focused) fieldFocusedState?.value = false } }
+    val imeAskedAt = LocalImeAskedAt.current
+    // Fenêtre passée en compact (clavier) : le champ en cours de saisie est ramené dans la partie visible.
+    LaunchedEffect(focused, (imeAskedAt?.value ?: 0L) > 0) {
+        if (focused && (imeAskedAt?.value ?: 0L) > 0) { kotlinx.coroutines.delay(120); runCatching { bring.bringIntoView() } }
+    }
     val submit = LocalSubmitFocus.current
     val formSubmit = LocalFormSubmit.current
     val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
@@ -334,6 +354,7 @@ fun FormField(
                     // « OK / Terminé » : valide (tactile) ou ferme le clavier puis va sur le bouton principal (TV : les boutons
                     // ne sont affichés qu'une fois le clavier fermé, mode compact).
                     onDone = {
+                        imeAskedAt?.value = 0L
                         if (formSubmit != null) formSubmit()
                         else if (submit != null) { keyboard?.hide(); fieldScope.launch { repeat(10) { kotlinx.coroutines.delay(80); if (runCatching { submit.requestFocus() }.isSuccess) return@launch } } }
                         else fm.moveFocus(FocusDirection.Down)
@@ -345,6 +366,12 @@ fun FormField(
                     .focusRequester(focusRequester)
                     .modalFocusMemory(focusRequester)
                     .bringIntoViewRequester(bring)
+                    .onPreviewKeyEvent { ev ->
+                        // OK sur le champ : le clavier va s'ouvrir (la touche n'est pas consommée).
+                        if (ev.type == KeyEventType.KeyDown && (ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter))
+                            imeAskedAt?.value = android.os.SystemClock.uptimeMillis() + 1
+                        false
+                    }
                     .then(
                         if (last && submit != null) Modifier.onPreviewKeyEvent { ev ->
                             // ▼ depuis le dernier champ : droit sur le bouton principal (et non sur « Annuler »).

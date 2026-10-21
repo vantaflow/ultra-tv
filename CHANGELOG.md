@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.69] — 2026-10-21 (Android)
+
+### Corrigé
+- Sélection qui saute encore (télémétrie 1.2.68 : aucun appui en double, mais des **répétitions automatiques** pour des
+  appuis brefs et des touches traitées jusqu'à 0,5 s en retard) : une flèche ne se répète plus qu'après 0,7 s d'appui
+  réel, et une répétition restée en attente pendant un ralentissement est ignorée. L'appui long fait toujours défiler.
+- Clavier qui masque le champ en cours de saisie sur les box qui n'annoncent pas la hauteur de leur clavier : OK sur un
+  champ passe la fenêtre en mode compact, en haut de l'écran, et fait défiler jusqu'au champ.
+
 ## [1.2.68] — 2026-10-21 (Android)
 
 ### Corrigé
