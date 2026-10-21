@@ -20,10 +20,9 @@
     "isolatedModules": true,
     "allowSyntheticDefaultImports": true,
     "useDefineForClassFields": true,
-    "baseUrl": "src",
     "paths": {
       "@/*": [
-        "*"
+        "./src/*"
       ]
     },
     "types": [

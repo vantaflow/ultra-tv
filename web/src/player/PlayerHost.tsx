@@ -79,7 +79,7 @@ export function PlayerHost() {
   const [osFull, setOsFull] = useState(false);
   const [zapFlash, setZapFlash] = useState<string | null>(null);
   const [rate, setRate] = useState(1);
-  const hideTimer = useRef<number>();
+  const hideTimer = useRef<number | undefined>(undefined);
   const live = target?.kind === "live" && !target.replay;
   const liveRef = useRef(live);
   liveRef.current = live;

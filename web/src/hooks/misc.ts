@@ -13,7 +13,7 @@ export function useNow(ms = 30_000): number {
   return n;
 }
 
-export function useElementSize<T extends HTMLElement>(): [React.RefObject<T>, { w: number; h: number }] {
+export function useElementSize<T extends HTMLElement>(): [React.RefObject<T | null>, { w: number; h: number }] {
   const ref = useRef<T>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
   useEffect(() => {
