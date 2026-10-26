@@ -25,7 +25,7 @@ hilt-work = "1.4.0"
 paging = "3.5.3"
 paging-compose = "3.5.3"
 mediarouter = "1.8.1"
-play-cast = "21.5.0"
+play-cast = "23.0.0"
 
 [libraries]
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
