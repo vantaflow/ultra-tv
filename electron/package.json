@@ -22,13 +22,13 @@
     "package:linux": "npm run prepare:web && electron-builder --linux AppImage --x64 --publish never"
   },
   "dependencies": {
-    "electron-updater": "^6.8.9"
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "cross-env": "^10.1.0",
     "electron": "^44.9.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.0",
     "png2icons": "^2.0.1"
   },
   "build": {
