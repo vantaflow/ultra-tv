@@ -124,15 +124,15 @@ private val OK = Color(0xFF1F8A4C)
 @Composable
 fun AccountRow(k: String, v: String, color: Color = Ux.Text) {
     Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(k, color = Ux.Muted, fontSize = 17.sp)
-        Text(v, color = color, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+        Text(k, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 17.sp)
+        Text(v, color = color, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
 @Composable
 fun AccountCard(title: String, content: @Composable () -> Unit) {
     Column(Modifier.widthIn(max = 680.dp).fillMaxWidth().background(Ux.Surface, RoundedCornerShape(20.dp)).padding(24.dp)) {
-        Text(title, color = Ux.Text, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+        Text(title, color = Ux.Text, fontFamily = com.ultratv.tv.nativeapp.ui.design.Sora, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
         content()
     }
 }
@@ -145,9 +145,9 @@ fun IptvAccountCard(st: AccountState, s: AccountStrings) {
     AccountCard(s.iptv) {
         val a = st.account
         when {
-            st.loading && a == null -> Text(s.loading, color = Ux.Muted, fontSize = 17.sp)
-            st.sourceName == null -> Text(s.noSource, color = Ux.Muted, fontSize = 17.sp)
-            !st.xtream -> { AccountRow(s.source, st.sourceName); Text(s.noXtream, color = Ux.Muted, fontSize = 16.sp) }
+            st.loading && a == null -> Text(s.loading, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 17.sp)
+            st.sourceName == null -> Text(s.noSource, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 17.sp)
+            !st.xtream -> { AccountRow(s.source, st.sourceName); Text(s.noXtream, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 16.sp) }
             else -> {
                 AccountRow(s.source, st.sourceName)
                 AccountRow(s.account, a?.status ?: s.unknown, if (a?.status.equals("Active", true)) OK else if (a?.status != null) Ux.AccentInk else Ux.Text)
@@ -161,7 +161,7 @@ fun IptvAccountCard(st: AccountState, s: AccountStrings) {
                 a?.createdAt?.let { AccountRow(s.created, fmt(it)) }
                 if (a?.trial == true) AccountRow(s.trial, s.yes)
                 a?.server?.let { AccountRow(s.server, it) }
-                if (st.failed) Text(s.offline, color = Ux.Muted, fontSize = 15.sp)
+                if (st.failed) Text(s.offline, color = Ux.Muted, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 15.sp)
             }
         }
     }
@@ -174,8 +174,8 @@ fun AccountScreen(vm: AccountViewModel = hiltViewModel()) {
     val s = AccountStrings(LocalDs.current.lang)
     Box(Modifier.fillMaxSize().background(Ux.Bg)) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(48.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text(s.title, color = Ux.Text, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-            Text(s.sub, color = Ux.Text2, fontSize = 18.sp)
+            Text(s.title, color = Ux.Text, fontFamily = com.ultratv.tv.nativeapp.ui.design.Sora, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+            Text(s.sub, color = Ux.Text2, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 18.sp)
             IptvAccountCard(st, s)
             PillButton(if (st.loading) s.loading else s.refresh, onClick = { vm.refresh() })
         }

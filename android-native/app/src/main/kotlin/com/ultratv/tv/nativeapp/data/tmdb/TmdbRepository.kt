@@ -106,9 +106,27 @@ class TmdbRepository @Inject constructor(
     suspend fun cachedOriginalLanguage(kind: TmdbKind, providerId: Long, remoteId: String): String? =
         dao.get(kind.path, providerId, remoteId)?.originalLanguage
 
+    /**
+     * Photos de la distribution (nom en minuscules → URL), pour les bulles de la fiche. Pas de colonne en base : cache
+     * mémoire de la session (60 fiches), rempli au chargement de la fiche TMDB ou par une requête « détails ».
+     */
+    private val photoCache = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, Map<String, String>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Map<String, String>>?) = size > 60
+    })
+
+    suspend fun castPhotos(kind: TmdbKind, tmdbId: Int): Map<String, String> {
+        if (!api.isEnabled()) return emptyMap()
+        val key = "${kind.path}:$tmdbId"
+        photoCache[key]?.let { return it }
+        val d = runCatching { api.details(kind, tmdbId, currentLang()) }.getOrNull() ?: return emptyMap()
+        return d.photos.mapValues { TmdbImages.profile(it.value) }.also { photoCache[key] = it }
+    }
+
+    private suspend fun currentLang() = tmdbLang(AppLang.fromCode(prefs.flow.first().language).let { if (it == AppLang.System) systemLang() else it })
+
     internal suspend fun load(kind: TmdbKind, pid: Long, rid: String, q: TmdbQuery, sourceId: Int?, now: Long): TmdbInfoEntity? {
         if (!api.isEnabled()) return null
-        val lang = tmdbLang(AppLang.fromCode(prefs.flow.first().language).let { if (it == AppLang.System) systemLang() else it })
+        val lang = currentLang()
         val cached = dao.get(kind.path, pid, rid)
         if (cached != null && isFresh(cached, lang, now)) return cached
         return try {
@@ -121,6 +139,7 @@ class TmdbRepository @Inject constructor(
                 originalLanguage = d?.originalLanguage, lang = lang, fetchedAt = now,
             )
             dao.upsert(row)
+            if (d != null) photoCache["${kind.path}:${d.tmdbId}"] = d.photos.mapValues { TmdbImages.profile(it.value) }
             row
         } catch (e: java.io.IOException) {
             cached

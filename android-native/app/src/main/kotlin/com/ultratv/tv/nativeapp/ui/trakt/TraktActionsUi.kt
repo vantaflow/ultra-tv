@@ -52,6 +52,7 @@ import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.traktAddWatchlist
 import com.ultratv.tv.nativeapp.i18n.traktAutoWatched
 import com.ultratv.tv.nativeapp.i18n.traktAutoWatchedHint
+import com.ultratv.tv.nativeapp.i18n.traktAutoWatchedHintOn
 import com.ultratv.tv.nativeapp.i18n.traktButton
 import com.ultratv.tv.nativeapp.i18n.traktEpisodesHint
 import com.ultratv.tv.nativeapp.i18n.traktFailed
@@ -293,7 +294,8 @@ fun TraktSettingsSection(vm: TraktSettingsViewModel = hiltViewModel()) {
     val D = LocalDs.current
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(D.traktSettings)
-        SwitchPrefRow(D.traktAutoWatched, st.prefs.autoWatched, hint = D.traktAutoWatchedHint) { vm.setAutoWatched(it) }
+        // Le texte décrit l'état ACTUEL : activé, il affichait « Désactivé : la fin est enregistrée comme une pause ».
+        SwitchPrefRow(D.traktAutoWatched, st.prefs.autoWatched, hint = if (st.prefs.autoWatched) D.traktAutoWatchedHintOn else D.traktAutoWatchedHint) { vm.setAutoWatched(it) }
         if (st.lists.isNotEmpty()) {
             Text(D.traktListsHome + " · " + D.traktListsHomeHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.design))
             for (l in st.lists) SwitchPrefRow(l.name, l.id !in st.prefs.hiddenLists) { vm.setListVisible(l.id, it) }

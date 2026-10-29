@@ -50,12 +50,11 @@ private const val CHEVRON = "M9 6l6 6-6 6"
 /** Ligne de réglage « valeur + chevron » (maquette Réglages) : 84 px, fond #141418, blanche + anneau au focus. */
 @Composable
 fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: String? = null, onClick: () -> Unit) {
-    // La ligne s'annonce comme ouvreuse : la fenêtre de choix qu'elle ouvre lui rend le focus en se fermant.
-    val self = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    // La fenêtre de choix qu'ouvre la ligne lui rend le focus en se fermant (FocusSurface se signale comme ouvreur).
     FocusSurface(
-        onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },
+        onClick = onClick,
         shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
-        modifier = modifier.focusRequester(self).fillMaxWidth().height(84.designT),
+        modifier = modifier.fillMaxWidth().height(84.designT),
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
@@ -138,12 +137,21 @@ fun ChoiceRow(
 /** Boîte de choix modale (liste de valeurs, la courante cochée) — remplace les anciennes puces. */
 @Composable
 fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?, onPick: (T) -> Unit, onDismiss: () -> Unit) {
+    // Focus initial sur l'option COCHÉE (et non la première) : « ↓ puis OK » depuis Cloudflare choisissait Google, le focus
+    // partant de « Système ». La liste défile d'abord jusqu'à elle (option hors écran dans une longue liste).
+    val selectedIndex = options.indexOfFirst { it.first == selected }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceAtLeast(0))
+    val selectedFocus = androidx.compose.runtime.remember { FocusRequester() }
+    if (selectedIndex >= 0) androidx.compose.runtime.LaunchedEffect(Unit) {
+        repeat(10) { if (runCatching { selectedFocus.requestFocus() }.getOrDefault(false)) return@LaunchedEffect; kotlinx.coroutines.delay(50) }
+    }
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         Column(Modifier.widthIn(min = 560.design, max = 760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 8.design))
-            LazyColumn(Modifier.heightIn(max = 640.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+            LazyColumn(Modifier.heightIn(max = 640.design), state = listState, verticalArrangement = Arrangement.spacedBy(10.design)) {
                 items(options, key = { it.second }) { (key, label) ->
-                    ChoiceRow(label, key == selected, { onPick(key) }, heightPx = 68, fontPx = 24, bg = Ux.Surface, selectedBg = Ux.Surface2, ringWidth = 5.design)
+                    ChoiceRow(label, key == selected, { onPick(key) }, heightPx = 68, fontPx = 24, bg = Ux.Surface, selectedBg = Ux.Surface2, ringWidth = 5.design,
+                        modifier = if (key == selected) Modifier.focusRequester(selectedFocus) else Modifier)
                 }
             }
         }

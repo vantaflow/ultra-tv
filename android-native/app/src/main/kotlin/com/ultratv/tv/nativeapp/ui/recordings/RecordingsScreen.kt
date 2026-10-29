@@ -171,7 +171,7 @@ private fun ActiveRow(r: RecordingEntity, S: com.ultratv.tv.nativeapp.i18n.Strin
     val fraction = if (r.totalBytes > 0) (r.downloadedBytes.toFloat() / r.totalBytes).coerceIn(0f, 1f) else 0f
     val meta = when {
         scheduled -> scheduledMeta(r, D.locale)
-        running -> "${(fraction * 100).toInt()} % · ${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes)}"
+        running -> "${(fraction * 100).toInt()} % · ${formatBytes(r.downloadedBytes)} / ${formatBytes(r.totalBytes.takeIf { it > 0 } ?: -1)}"
         failed -> S.recordingStatusFailed        // jamais le message brut : il peut contenir une URL de flux
         r.status == "cancelled" -> S.recordingStatusCancelled
         else -> S.recordingStatusQueued
@@ -207,7 +207,9 @@ private fun scheduledMeta(r: RecordingEntity, loc: java.util.Locale): String {
 
 /** Taille lisible (Ko / Mo / Go) sans dépendre de la locale pour l'unité. */
 fun formatBytes(b: Long): String = when {
-    b <= 0 -> "—"
+    // Rien d'utilisé : « 0 Mo » (« — sur 5,2 Go » ressemblait à une valeur manquante). Négatif = inconnu.
+    b < 0 -> "—"
+    b == 0L -> "0 Mo"
     b < 1024L * 1024 -> "${(b / 1024).coerceAtLeast(1)} Ko"
     b < 1024L * 1024 * 1024 -> "${b / (1024 * 1024)} Mo"
     else -> String.format(java.util.Locale.getDefault(), "%.1f Go", b / (1024.0 * 1024 * 1024))

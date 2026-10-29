@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.75] — 2026-10-30 (Android)
+
+### Corrections (passe de bout en bout sur une box Android TV)
+- Fiches film : photos de la distribution et du réalisateur (TMDB) au lieu des seules initiales.
+- Direct : en revenant du plein écran, le focus est sur la chaîne regardée (il restait sur la première : OK relançait une autre chaîne).
+- Fenêtres de choix : le focus part de l'option cochée (« ↓ puis OK » depuis Cloudflare choisissait Google) ; à la fermeture de n'importe quelle fenêtre ouverte depuis un bouton ou une ligne (menu d'une chaîne, Noter…), le focus revient sur ce bouton.
+- Guide : ↓ depuis les jours entre dans la grille au programme en cours (et non sur la case la plus à droite) ; au bord droit, → fait défiler le temps au lieu de sauter sur l'onglet « Samedi » ; jour à venir sans programme : message explicite au lieu de « se charge encore ».
+- Trakt : le texte de « Marquer vu automatiquement à la fin » décrit l'état réel (il disait « Désactivé » une fois activé).
+- Enregistrements et Téléchargements : « 0 Mo sur 5,2 Go » au lieu de « — sur 5,2 Go ».
+- Abonnement : polices de l'application.
+
 ## [1.2.74] — 2026-10-29 (Android)
 
 ### Corrections

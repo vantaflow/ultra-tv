@@ -172,7 +172,7 @@ private fun DownloadRow(d: DownloadEntity, s: DownloadStrings, touch: Boolean, v
     val pct = percentOf(d)
     val meta = when (d.state) {
         DownloadState.COMPLETED -> formatBytes(d.totalBytes.coerceAtLeast(d.doneBytes))
-        DownloadState.RUNNING -> listOfNotNull(pct?.let { "$it %" }, "${formatBytes(d.doneBytes)} / ${formatBytes(d.totalBytes)}").joinToString(" · ")
+        DownloadState.RUNNING -> listOfNotNull(pct?.let { "$it %" }, "${formatBytes(d.doneBytes)} / ${formatBytes(d.totalBytes.takeIf { it > 0 } ?: -1)}").joinToString(" · ")
         DownloadState.QUEUED -> s.queued
         DownloadState.PAUSED -> listOfNotNull(s.paused, pct?.let { "$it %" }).joinToString(" · ")
         DownloadState.FAILED -> s.error(d.error)
