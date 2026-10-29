@@ -99,6 +99,7 @@ private enum class Rub(val icon: String) {
 }
 
 /** Réglages (maquettes Reglages / Synchro / ReglagesAffichage / Diagnostic) : rubriques à gauche, volet à droite. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hiltViewModel(), panes: SettingsPanesViewModel = hiltViewModel(), app: AppViewModel = hiltViewModel()) {
     val D = LocalDs.current

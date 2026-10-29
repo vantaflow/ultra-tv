@@ -20,7 +20,9 @@ class LivePreviewPolicyTest {
 
     @Test
     fun delai_borne() {
-        assertEquals(700L, LivePreviewPolicy.delayMs(LivePreviewPolicy.DEFAULT_DELAY_MS))
+        assertEquals(400L, LivePreviewPolicy.delayMs(LivePreviewPolicy.DEFAULT_DELAY_MS))
+        // Chaque choix proposé dans les réglages est dans les bornes.
+        LivePreviewPolicy.DELAY_CHOICES.forEach { assertEquals(it.toLong(), LivePreviewPolicy.delayMs(it)) }
         assertEquals(300L, LivePreviewPolicy.delayMs(0))
         assertEquals(3_000L, LivePreviewPolicy.delayMs(60_000))
     }

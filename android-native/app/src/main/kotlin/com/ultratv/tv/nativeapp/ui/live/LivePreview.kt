@@ -43,13 +43,17 @@ import javax.inject.Singleton
  * Aperçu VIDÉO du Direct : la chaîne focalisée joue dans le cadre de droite après un court délai ; OK la passe en
  * plein écran sans recharger le flux (voir [SharedLiveSession]).
  *
- * Choix par défaut : aperçu MUET. Sur un téléviseur, faire défiler la liste lançait sinon un son différent toutes les
- * ~0,7 s (salon bruyant, voisins) ; le son revient dès le plein écran. Réglage « Son de l'aperçu » pour l'avoir.
+ * Choix par défaut (1.2.73) : aperçu AVEC le son, demandé à l'usage (un aperçu muet passait pour une panne). Réglage
+ * « Son de l'aperçu » pour le couper ; un choix déjà fait (clé « sound » présente) est conservé.
+ * Délai par défaut 0,4 s (0,7 s avant : 2 à 3,3 s mesurées entre la touche et l'image sur une box 2 Go), réglable de
+ * 0,3 à 3 s : plus court, il lance davantage de flux en parcourant la liste (abonnements à une seule connexion).
  * « Auto » : aperçu activé sauf sur les box à faible mémoire (un décodeur vidéo de plus en mémoire pendant la
  * navigation dans la liste). Tactile : jamais (pas de cadre d'aperçu fixe sur téléphone ; tablette inchangée).
  */
 object LivePreviewPolicy {
-    const val DEFAULT_DELAY_MS = 700
+    const val DEFAULT_DELAY_MS = 400
+    /** Choix proposés dans Réglages › Lecture › Délai avant l'aperçu. */
+    val DELAY_CHOICES = listOf(300, 400, 700, 1_000, 1_500, 3_000)
     const val MIN_DELAY_MS = 300
     const val MAX_DELAY_MS = 3_000
 
@@ -87,7 +91,7 @@ fun channelKey(c: ChannelEntity) = "${c.providerId}:${c.remoteId}"
 /** Réglages de l'aperçu, à part des préférences générales (aucun conflit avec les autres chantiers). */
 @Singleton
 class LivePreviewPrefs @Inject constructor(@ApplicationContext ctx: Context) {
-    data class Values(val mode: String = "auto", val sound: Boolean = false, val delayMs: Int = LivePreviewPolicy.DEFAULT_DELAY_MS)
+    data class Values(val mode: String = "auto", val sound: Boolean = true, val delayMs: Int = LivePreviewPolicy.DEFAULT_DELAY_MS)
 
     private val sp = ctx.getSharedPreferences("live_preview", Context.MODE_PRIVATE)
     private val _state = MutableStateFlow(read())
@@ -95,7 +99,7 @@ class LivePreviewPrefs @Inject constructor(@ApplicationContext ctx: Context) {
 
     private fun read() = Values(
         mode = sp.getString("mode", "auto") ?: "auto",
-        sound = sp.getBoolean("sound", false),
+        sound = sp.getBoolean("sound", true),
         delayMs = sp.getInt("delay_ms", LivePreviewPolicy.DEFAULT_DELAY_MS),
     )
 
@@ -156,6 +160,12 @@ class LivePreviewStrings(val lang: AppLang) {
     val row get() = t("Video preview in Live TV", "Aperçu vidéo dans le Direct", "Vista previa de vídeo en Directo", "معاينة الفيديو في البث المباشر")
     val hint get() = t("The focused channel plays next to the list; OK goes full screen instantly", "La chaîne sélectionnée joue à côté de la liste ; OK passe en plein écran sans attente", "El canal seleccionado se reproduce junto a la lista; OK pasa a pantalla completa al instante", "تُعرض القناة المحددة بجانب القائمة؛ زر OK للانتقال الفوري إلى ملء الشاشة")
     val sound get() = t("Preview sound", "Son de l’aperçu", "Sonido de la vista previa", "صوت المعاينة")
+    val delay get() = t("Delay before preview", "Délai avant l’aperçu", "Retraso antes de la vista previa", "المهلة قبل المعاينة")
+    val delayHint get() = t("Shorter: faster, but more streams opened while scrolling", "Plus court : plus rapide, mais plus de flux ouverts en parcourant la liste", "Más corto: más rápido, pero se abren más flujos al desplazarse", "أقصر: أسرع، لكن تُفتح بثوث أكثر أثناء التصفح")
+    fun seconds(ms: Int): String {
+        val s = if (ms % 1_000 == 0) (ms / 1_000).toString() else "%.1f".format(java.util.Locale.ROOT, ms / 1_000f)
+        return when (lang) { AppLang.French -> s.replace('.', ',') + " s"; AppLang.Arabic -> "$s ث"; else -> "$s s" }
+    }
     val autoLowRam get() = t("Auto (off on low-memory devices)", "Auto (désactivé sur les box à faible mémoire)", "Auto (desactivado en equipos con poca memoria)", "تلقائي (معطّل على الأجهزة محدودة الذاكرة)")
     val on get() = t("On", "Activé", "Activado", "مفعّل")
     val off get() = t("Off", "Désactivé", "Desactivado", "معطّل")
@@ -176,9 +186,17 @@ fun LivePreviewSettingsRows() {
     val L = livePreviewStrings()
     val D = LocalDs.current
     var choice by remember { mutableStateOf(false) }
+    var delayChoice by remember { mutableStateOf(false) }
     val label = when (v.mode) { "on" -> L.on; "off" -> L.off; else -> D.auto + " · " + (if (vm.lowRam) L.off else L.on) }
     com.ultratv.tv.nativeapp.ui.design.PrefRow(L.row, label, hint = L.hint) { choice = true }
-    if (v.mode != "off") com.ultratv.tv.nativeapp.ui.design.SwitchPrefRow(L.sound, v.sound) { vm.previewPrefs.setSound(it) }
+    if (v.mode != "off") {
+        com.ultratv.tv.nativeapp.ui.design.SwitchPrefRow(L.sound, v.sound) { vm.previewPrefs.setSound(it) }
+        com.ultratv.tv.nativeapp.ui.design.PrefRow(L.delay, L.seconds(v.delayMs), hint = L.delayHint) { delayChoice = true }
+    }
+    if (delayChoice) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+        L.delay, LivePreviewPolicy.DELAY_CHOICES.map { it to L.seconds(it) }, v.delayMs,
+        { vm.previewPrefs.setDelayMs(it); delayChoice = false }, { delayChoice = false },
+    )
     if (choice) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
         L.row, listOf("auto" to L.autoLowRam, "on" to L.on, "off" to L.off), v.mode,
         { vm.previewPrefs.setMode(it); choice = false }, { choice = false },
