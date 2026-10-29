@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.76] — 2026-10-30 (Android)
+
+### Corrections
+- Réglages : → depuis une rubrique entre sur la première ligne du volet (et le volet revient en haut), et non sur la ligne située en face de la rubrique (« Numéros de chaînes » depuis « Affichage », titre du volet hors de l'écran).
+
 ## [1.2.75] — 2026-10-30 (Android)
 
 ### Corrections (passe de bout en bout sur une box Android TV)

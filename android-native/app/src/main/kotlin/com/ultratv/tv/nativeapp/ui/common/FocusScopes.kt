@@ -141,6 +141,21 @@ object ModalOpener {
     }
 }
 
+/**
+ * Premier élément focalisable d'une zone (volet des Réglages) : le premier [com.ultratv.tv.nativeapp.ui.design.FocusSurface]
+ * composé dans la zone s'y inscrit, et la zone y envoie le focus quand on y entre. Sans cela, → depuis « Affichage »
+ * tombait sur la ligne en face (« Numéros de chaînes »), pas sur la première (« Thème »).
+ */
+class FirstFocusSlot {
+    internal var requester: FocusRequester? = null
+    internal fun offer(r: FocusRequester) { if (requester == null) requester = r }
+    internal fun release(r: FocusRequester) { if (requester === r) requester = null }
+    /** Cible d'entrée : le premier élément inscrit, sinon la recherche géométrique habituelle. */
+    fun target(): FocusRequester = requester ?: FocusRequester.Default
+}
+
+val LocalFirstFocusSlot = androidx.compose.runtime.compositionLocalOf<FirstFocusSlot?> { null }
+
 /** État de focus d'une modale, partagé entre sa déclaration (dans l'écran) et son corps (dans l'OverlayLayer). */
 internal class ModalState {
     val requester = FocusRequester()
