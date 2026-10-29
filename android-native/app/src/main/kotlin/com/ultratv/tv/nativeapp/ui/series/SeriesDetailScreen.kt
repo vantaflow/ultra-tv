@@ -292,6 +292,9 @@ fun resumeTarget(eps: List<EpisodeEntity>, watched: List<com.ultratv.tv.nativeap
 
 /** Titre d'épisode lisible : retire le nom de la série et le marqueur SxxExx que beaucoup de sources y répètent. */
 fun cleanEpisodeTitle(raw: String, seriesName: String, seriesTitle: String): String {
+    // « <série> - S01E01 - <titre> » : ce qui suit le marqueur est le titre, même quand la source abrège le nom de la
+    // série (« Daily Dose - S01E01 - … » pour « Daily Dose of Sunshine » laissait « Daily Dose -  - … »).
+    SXXEXX.find(raw)?.let { m -> raw.substring(m.range.last + 1).trim('-', '–', '·', ':', ' ').takeIf { it.isNotEmpty() }?.let { return it } }
     var t = raw
     for (n in listOf(seriesName, seriesTitle)) if (n.isNotBlank()) t = t.replace(n, "", ignoreCase = true)
     t = t.replace(SXXEXX, "")

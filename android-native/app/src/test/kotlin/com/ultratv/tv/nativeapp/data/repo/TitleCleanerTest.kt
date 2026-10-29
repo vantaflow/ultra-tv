@@ -9,6 +9,13 @@ class TitleCleanerTest {
     private fun film(raw: String) = TitleCleaner.clean(raw)
     private fun tv(raw: String) = TitleCleaner.clean(raw, live = true)
 
+    @Test fun historique_episode_chaquePartieNettoyee() = assertEquals(
+        "Sample Show · S01E01 · The Pilot",
+        TitleCleaner.historyTitle("4K-NF - Sample Show (2023) (KR) · S01E01 · Sample - S01E01 - The Pilot"),
+    )
+
+    @Test fun historique_film() = assertEquals("Sample Movie Name", TitleCleaner.historyTitle("TOP - Sample Movie Name (2019)"))
+
     @Test fun film_prefixeLangueEtAnnee() {
         val c = film("IN-EN - Sample Movie Name (2025)")
         assertEquals("Sample Movie Name", c.title); assertEquals(2025, c.year)

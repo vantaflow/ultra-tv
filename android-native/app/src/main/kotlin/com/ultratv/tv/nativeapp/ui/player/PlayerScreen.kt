@@ -294,7 +294,9 @@ class PlayerViewModel @Inject constructor(
         val all = episodeDao.observeForSeries(cur.seriesId).first()
         val nx = all.getOrNull(all.indexOfFirst { it.id == cur.id } + 1) ?: return null
         val tag = "S${"%02d".format(java.util.Locale.ROOT, nx.season)}E${"%02d".format(java.util.Locale.ROOT, nx.episode)}"
-        val item = c.copy(remoteId = nx.remoteId, title = "${c.title.substringBefore(" · ")} · $tag · ${nx.title}", streamUrl = nx.streamUrl, poster = nx.image ?: c.poster)
+        val series = c.title.substringBefore(" · ")
+        val epTitle = com.ultratv.tv.nativeapp.ui.series.cleanEpisodeTitle(nx.title, series, series)
+        val item = c.copy(remoteId = nx.remoteId, title = listOf(series, tag, epTitle).filter { it.isNotBlank() }.joinToString(" · "), streamUrl = nx.streamUrl, poster = nx.image ?: c.poster)
         playback.set(item)
         return item
     }

@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.71] — 2026-10-29 (Android)
+
+### Corrections
+- Séries : titres d'épisodes propres quand la source abrège le nom de la série (« Daily Dose -  - The Darkest Hour… » devient « The Darkest Hour… »). Le titre affiché dans le lecteur et dans « Reprendre la lecture » est aussi nettoyé.
+- Google TV, Android TV et lanceurs tiers (Kairo…) : titres propres dans « À suivre » (« Captain Marvel » au lieu de « TOP - Captain Marvel (2019) ») et plus de doublons dans la chaîne « Nouveautés » quand un film figure dans plusieurs catégories.
+- Fiche film : un réalisateur listé plusieurs fois par la source n'apparaît plus en une seule bulle « Ridley Scott, R… ».
+- Fiche série : le bouton Trakt devient un bouton rond (étoile), il n'est plus tronqué en « Tra… » à côté de « Reprendre ».
+- Guide TV : l'horaire n'est plus coupé sous un titre trop long.
+- Menu latéral : « Téléchargements » n'est plus coupé.
+- Recherche : « Recherche… » s'affiche pendant la recherche (au lieu d'un panneau vide) ; les touches d'un clavier physique ou d'une télécommande à clavier sont prises en compte.
+
 ## [1.2.70] — 2026-10-29 (Android) · Bureau 1.2.37
 
 ### Corrections

@@ -74,6 +74,20 @@ object TitleCleaner {
         return if (t.lowercase() in ABSENT_VALUES) null else t
     }
 
+    /**
+     * Titre d'une entrée d'historique (« Reprendre la lecture », « À suivre » de Google TV / des lanceurs). Épisode
+     * « <série> · S01E02 · <titre> » : chaque partie nettoyée (« 4K-NF - Daily Dose of Sunshine (2023) (KR) · S01E01 ·
+     * Daily Dose - S01E01 - The Darkest… » → « Daily Dose of Sunshine · S01E01 · The Darkest… »). Sinon : [clean].
+     */
+    fun historyTitle(raw: String): String {
+        val parts = raw.split(" · ")
+        if (parts.size < 3 || !EPISODE_TAG.matches(parts[1].trim())) return clean(raw).title
+        val series = clean(parts[0]).title
+        val episode = com.ultratv.tv.nativeapp.ui.series.cleanEpisodeTitle(parts.drop(2).joinToString(" · "), parts[0], series)
+        return listOf(series, parts[1].trim(), episode).filter { it.isNotBlank() }.joinToString(" · ")
+    }
+    private val EPISODE_TAG = Regex("""S\d{1,2}E\d{1,3}""", RegexOption.IGNORE_CASE)
+
     fun clean(raw: String, live: Boolean = false): Cleaned {
         var s = raw.trim()
         if (s.isEmpty()) return Cleaned(raw, null, null)

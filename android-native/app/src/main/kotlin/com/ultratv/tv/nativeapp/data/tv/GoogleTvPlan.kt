@@ -89,7 +89,9 @@ object NewsChannelPlan {
      * d'aperçu exige une image). Sans doublon, au plus [MAX].
      */
     fun select(movies: List<Item>, series: List<Item>): List<Item> {
+        // Un même film rangé dans plusieurs catégories (4K, Bluray…) : une seule tuile, la plus récente.
         fun clean(l: List<Item>) = l.filter { it.title.isNotBlank() && !it.poster.isNullOrBlank() }.sortedByDescending { it.addedKey }
+            .distinctBy { it.title.trim().lowercase() }
         val m = clean(movies)
         val s = clean(series)
         val out = ArrayList<Item>(MAX)

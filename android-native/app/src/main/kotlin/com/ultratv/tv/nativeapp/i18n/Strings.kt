@@ -937,7 +937,7 @@ private val FR = Strings(
     playerAspect = "Format", playerSpeed = "Vitesse",
     playerZapHint = "▲ ▼ pour zapper",
 
-    searchPlaceholder = "Saisis pour chercher chaînes, films, séries…",
+    searchPlaceholder = "Chercher des chaînes, films, séries…",
     searchRecent = "Récents :", searchClear = "Effacer",
     searchNoMatches = "Aucun résultat.",
 

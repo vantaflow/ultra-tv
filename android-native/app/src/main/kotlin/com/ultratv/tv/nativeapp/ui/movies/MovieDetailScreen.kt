@@ -181,7 +181,9 @@ fun MovieDetailScreen(
     val langBadge = movie.lang.takeIf { it.isNotBlank() }?.uppercase()
     val seenBadge = if (traktSeen) "✓ " + D.traktWatched else null
     val people = remember(info, movie.id) {
-        (listOfNotNull(T.presentable(info?.director)) + (T.presentable(info?.cast) ?: T.presentable(movie.cast)).orEmpty().split(',').map { it.trim() })
+        // Le champ réalisateur peut, lui aussi, lister plusieurs noms (« Ridley Scott, Ridley Scott ») : découpé comme la distribution.
+        (T.presentable(info?.director).orEmpty().split(',') + (T.presentable(info?.cast) ?: T.presentable(movie.cast)).orEmpty().split(','))
+            .map { it.trim() }
             .filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
     }
     val skeleton = infoLoading && info == null

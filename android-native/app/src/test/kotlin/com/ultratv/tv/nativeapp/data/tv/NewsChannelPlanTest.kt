@@ -33,6 +33,11 @@ class NewsChannelPlanTest {
         assertEquals(10, out.count { it.kind == Kind.MOVIE })
     }
 
+    @Test fun select_memeFilmDansDeuxCategories_uneSeuleTuile_laPlusRecente() {
+        val out = NewsChannelPlan.select(listOf(m("1", title = "The Dog Stars"), m("2", title = "the dog stars "), m("3", title = "Verity")), emptyList())
+        assertEquals(listOf("3", "2"), out.map { it.remoteId })
+    }
+
     @Test fun select_vide_renvoieVide() = assertTrue(NewsChannelPlan.select(emptyList(), emptyList()).isEmpty())
 
     @Test fun internalId_memeIdFilmEtSerie_restentDistincts() = assertNotEquals(NewsChannelPlan.internalId(m("1")), NewsChannelPlan.internalId(s("1")))
