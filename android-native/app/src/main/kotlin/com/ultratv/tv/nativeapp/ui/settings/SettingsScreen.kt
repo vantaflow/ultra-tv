@@ -183,8 +183,18 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
             }
         }
         Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
-        Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
-            pane()
+        // → depuis une rubrique : le focus entre sur la PREMIÈRE ligne du volet (et le volet revient en haut), pas sur la
+        // ligne en face de la rubrique (« Numéros de chaînes » depuis « Affichage », titre du volet sorti de l'écran).
+        val firstSlot = remember(rub) { com.ultratv.tv.nativeapp.ui.common.FirstFocusSlot() }
+        val paneScroll = rememberScrollState()
+        val paneScope = androidx.compose.runtime.rememberCoroutineScope()
+        Column(
+            Modifier.weight(1f).fillMaxHeight()
+                .focusProperties { enter = { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } }.focusGroup()
+                .verticalScroll(paneScroll).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design),
+            verticalArrangement = Arrangement.spacedBy(28.design),
+        ) {
+            androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalFirstFocusSlot provides firstSlot) { pane() }
         }
     }
 }
