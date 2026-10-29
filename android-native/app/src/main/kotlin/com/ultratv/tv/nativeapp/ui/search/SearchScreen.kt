@@ -100,7 +100,9 @@ class SearchViewModel @Inject constructor(
             _results.value = quick
             _searching.value = false
             if (s.trim().length >= 3) _results.value = quick.copy(programs = catalog.searchPrograms(pid, s))
-            if (s.length >= 3) history.record(s)
+            // Récents : seulement la saisie finale. La recherche répond désormais en ~150 ms, chaque étape de la frappe
+            // (« spi », « spid », « spide »…) aurait été enregistrée ; une nouvelle touche annule ce délai.
+            if (s.length >= 3) { delay(1_500); history.record(s) }
         }
     }
 
