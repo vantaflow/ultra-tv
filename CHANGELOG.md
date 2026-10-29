@@ -2,6 +2,21 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.72] — 2026-10-29 (Android)
+
+### Corrections
+- Recherche : jusqu'à ~500 fois plus rapide. Les requêtes plein texte parcouraient toutes les lignes de la source et évaluaient la recherche pour chacune (55 s pour « spider » sur une box 2 Go) ; l'index est maintenant lu une seule fois.
+- « Reprendre la lecture » et « À suivre » (Google TV, Kairo…) : un film présent dans plusieurs catégories de la source (4K, Bluray…) n'apparaît plus qu'une fois.
+- Journal du lecteur : la durée « première image » n'est plus faussée quand le lecteur passe de l'aperçu au plein écran.
+
+### Fluidité
+- Releases : un profil de démarrage précompilé (`.dm`, Android 12+) accompagne chaque APK par processeur. Installé avec l'APK (`adb install-multiple UltraTV-X-abi.apk UltraTV-X-abi.dm`), il est appliqué dès l'installation. Mesuré sur une box 2 Go : démarrage 1,1 s → 0,6 s, images en retard au défilement 84 % → 61 %, pire cas 550 → 150 ms.
+- Affiches : plus d'initiales composées pendant le chargement (seulement sans affiche ou en cas d'échec), un texte de moins par carte au défilement.
+
+### Finitions
+- Textes français harmonisés au vouvoiement.
+- Chaîne d'accueil « Nouveautés » (au lieu de « Ultra TV · Nouveautés ») : Google TV et les lanceurs affichent déjà le nom de l'appli.
+
 ## [1.2.71] — 2026-10-29 (Android)
 
 ### Corrections

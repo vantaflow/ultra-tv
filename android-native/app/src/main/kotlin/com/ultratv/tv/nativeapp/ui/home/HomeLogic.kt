@@ -176,6 +176,12 @@ fun catalogPosterOf(p: PosterItem, isShow: Boolean): PosterCardUi =
  */
 fun <T> List<T>.distinctKeys(key: (T) -> String): List<T> = distinctBy(key)
 
+/**
+ * Une carte par œuvre dans « Reprendre la lecture » : le même film rangé dans deux catégories de la source (4K, Bluray…)
+ * a deux identifiants ; seule la lecture la plus récente (la liste arrive du plus récent au plus ancien) reste.
+ */
+fun List<ResumeCardUi>.oneCardPerTitle(): List<ResumeCardUi> = distinctBy { "${it.entry.kind}|${it.title.trim().lowercase()}" }
+
 /** Position verticale du pivot de l'accueil TV : haut de l'élément focalisé à 30 % de la hauteur visible. */
 const val HOME_PIVOT_PARENT_FRACTION = 0.3f
 const val HOME_PIVOT_CHILD_FRACTION = 0f

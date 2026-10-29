@@ -35,6 +35,8 @@ object WatchNextPlan {
         history.filter { inProgress(it) && !it.poster.isNullOrBlank() }
             .sortedByDescending { it.watchedAt }
             .distinctBy { if (it.kind == "EPISODE") "S:${it.providerId}:${it.parentRemoteId ?: it.remoteId}" else internalId(it) }
+            // Même film dans deux catégories de la source (4K, Bluray…) : une seule tuile, la lecture la plus récente.
+            .distinctBy { if (it.kind == "MOVIE") "M:" + com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it.title).lowercase() else internalId(it) }
             .take(MAX)
 
     const val MAX_LIVE = 5

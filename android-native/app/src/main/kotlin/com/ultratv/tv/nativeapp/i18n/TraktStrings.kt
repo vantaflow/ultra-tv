@@ -24,13 +24,13 @@ fun DesignStrings.traktYourRating(n: Int) = t("My rating $n/10", "Ma note $n/10"
 val DesignStrings.traktButton get() = "Trakt"
 fun DesignStrings.traktSeasonWatched(n: Int) = t("Mark season $n as watched", "Marquer la saison $n comme vue", "Marcar la temporada $n como vista", "وضع علامة على الموسم $n كمُشاهَد")
 fun DesignStrings.traktSeasonUnwatched(n: Int) = t("Mark season $n as unwatched", "Marquer la saison $n comme non vue", "Marcar la temporada $n como no vista", "وضع علامة على الموسم $n كغير مُشاهَد")
-val DesignStrings.traktEpisodesHint get() = t("Select an episode to mark it watched or unwatched", "Sélectionne un épisode pour le marquer vu ou non vu", "Selecciona un episodio para marcarlo como visto o no visto", "اختر حلقة لوضع علامة مُشاهَدة أو غير مُشاهَدة")
+val DesignStrings.traktEpisodesHint get() = t("Select an episode to mark it watched or unwatched", "Sélectionnez un épisode pour le marquer vu ou non vu", "Selecciona un episodio para marcarlo como visto o no visto", "اختر حلقة لوضع علامة مُشاهَدة أو غير مُشاهَدة")
 
 // Retours
 val DesignStrings.traktUpdated get() = t("Trakt updated", "Trakt mis à jour", "Trakt actualizado", "تم تحديث Trakt")
 val DesignStrings.traktUnmatched get() = t("This title was not found on Trakt", "Titre introuvable sur Trakt", "Título no encontrado en Trakt", "لم يُعثر على هذا العنوان في Trakt")
 val DesignStrings.traktFailed get() = t("Trakt is unavailable, try again later", "Trakt est indisponible, réessaie plus tard", "Trakt no está disponible, inténtalo más tarde", "Trakt غير متاح، حاول لاحقاً")
-val DesignStrings.traktNotLinked get() = t("Link Trakt from your account page first", "Relie d’abord Trakt depuis ton espace client", "Vincula Trakt desde tu cuenta primero", "اربط Trakt من صفحة حسابك أولاً")
+val DesignStrings.traktNotLinked get() = t("Link Trakt from your account page first", "Reliez d’abord Trakt depuis votre espace client", "Vincula Trakt desde tu cuenta primero", "اربط Trakt من صفحة حسابك أولاً")
 
 // Accueil
 val DesignStrings.traktUpNext get() = t("Up next (Trakt)", "À suivre (Trakt)", "A continuación (Trakt)", "التالي (Trakt)")
@@ -41,4 +41,4 @@ val DesignStrings.traktSettings get() = "Trakt"
 val DesignStrings.traktAutoWatched get() = t("Mark as watched automatically at the end", "Marquer vu automatiquement à la fin", "Marcar como visto automáticamente al final", "وضع علامة مُشاهَد تلقائياً عند النهاية")
 val DesignStrings.traktAutoWatchedHint get() = t("Off: the end is saved as a pause on Trakt", "Désactivé : la fin est enregistrée comme une pause sur Trakt", "Desactivado: el final se guarda como una pausa en Trakt", "عند الإيقاف: تُحفظ النهاية كإيقاف مؤقت على Trakt")
 val DesignStrings.traktListsHome get() = t("Trakt lists on Home", "Listes Trakt à l’accueil", "Listas de Trakt en Inicio", "قوائم Trakt في الرئيسية")
-val DesignStrings.traktListsHomeHint get() = t("Up to 5 rows, only titles available in your playlist", "5 rangées au plus, seulement les titres présents dans ta playlist", "Hasta 5 filas, solo títulos disponibles en tu lista", "حتى 5 صفوف، فقط العناوين المتوفرة في قائمتك")
+val DesignStrings.traktListsHomeHint get() = t("Up to 5 rows, only titles available in your playlist", "5 rangées au plus, seulement les titres présents dans votre playlist", "Hasta 5 filas, solo títulos disponibles en tu lista", "حتى 5 صفوف، فقط العناوين المتوفرة في قائمتك")

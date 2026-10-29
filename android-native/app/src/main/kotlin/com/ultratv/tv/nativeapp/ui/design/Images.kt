@@ -72,8 +72,11 @@ fun SlotImage(
     // Fondu seulement au toucher : à la télécommande, chaque vignette chargée en défilement lançait une animation d'alpha.
     val fade = !lowRam && com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     var loaded by remember(url) { mutableStateOf(false) }
+    var failed by remember(url) { mutableStateOf(false) }
     Box(modifier.clip(shape).background(background), contentAlignment = Alignment.Center) {
-        if (!loaded && name.isNotBlank()) {
+        // Initiales seulement sans image ou si elle a échoué : pendant le chargement, le fond suffit. Avant, chaque carte
+        // entrant à l'écran au défilement composait et mesurait aussi ce texte (coût mesurable sur une box 2 Go).
+        if (!loaded && (url.isNullOrBlank() || failed) && name.isNotBlank()) {
             Text(
                 initialsOf(name), color = Ux.Text3, fontFamily = Sora, fontWeight = FontWeight.Bold,
                 fontSize = initialsSize.spx, maxLines = 1, overflow = TextOverflow.Clip,
@@ -99,8 +102,8 @@ fun SlotImage(
                 contentScale = if (fit == SlotFit.Crop) ContentScale.Crop else ContentScale.Fit,
                 alignment = Alignment.Center,
                 modifier = Modifier.fillMaxSize().padding(innerPadding),
-                onSuccess = { loaded = true },
-                onError = { loaded = false; onFail?.invoke() },
+                onSuccess = { loaded = true; failed = false },
+                onError = { loaded = false; failed = true; onFail?.invoke() },
             )
         }
     }
