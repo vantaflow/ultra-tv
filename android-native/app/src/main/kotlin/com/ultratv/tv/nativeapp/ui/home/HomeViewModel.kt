@@ -192,7 +192,7 @@ class HomeViewModel @Inject constructor(
         @Suppress("UNCHECKED_CAST") val chans = a[5] as List<ChannelEntity>
         val fav = a[6] as Boolean
         @Suppress("UNCHECKED_CAST") val now = a[7] as Map<Long, EpgEntity>
-        val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(it).title }
+        val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it) }
         HomeRows(
             resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key },
             watchlist = t.watchlist.map(::traktPosterOf).distinctKeys { it.key },

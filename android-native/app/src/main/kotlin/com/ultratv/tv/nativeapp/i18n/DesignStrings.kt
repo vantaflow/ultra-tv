@@ -87,6 +87,7 @@ class DesignStrings(val lang: AppLang) {
     val newsChannelName get() = t("Ultra TV · New releases", "Ultra TV · Nouveautés", "Ultra TV · Novedades", "Ultra TV · الجديد")
     val seeAll get() = t("See all", "Voir tout", "Ver todo", "عرض الكل")
     val loadingLabel get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
+    val searchingLabel get() = t("Searching…", "Recherche…", "Buscando…", "جارٍ البحث…")
     val dashboardScan get() = t("Scan with your phone", "À scanner avec votre téléphone", "Escanea con tu teléfono", "امسح الرمز بهاتفك")
     val pairScanAuto get() = t("Scan with your phone to pair automatically", "Scannez avec votre téléphone pour appairer automatiquement", "Escanea con tu teléfono para vincular automáticamente", "امسح الرمز بهاتفك للاقتران تلقائيًا")
     val pairDeviceLabel get() = t("Name shown on the dashboard", "Nom affiché sur le tableau de bord", "Nombre mostrado en el panel", "الاسم الظاهر في لوحة التحكم")

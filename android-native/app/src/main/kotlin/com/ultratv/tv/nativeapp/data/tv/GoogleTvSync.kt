@@ -265,7 +265,8 @@ class GoogleTvSync @Inject constructor(
                 .setType(if (h.kind == "EPISODE") TvContractCompat.WatchNextPrograms.TYPE_TV_EPISODE else TvContractCompat.WatchNextPrograms.TYPE_MOVIE)
                 .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)
                 .setLastEngagementTimeUtcMillis(h.watchedAt)
-                .setTitle(h.title)
+                // Titre nettoyé, comme « Reprendre la lecture » : « Captain Marvel », pas « TOP - Captain Marvel (2019) ».
+                .setTitle(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(h.title))
                 .setPosterArtUri(Uri.parse(h.poster))
                 .setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3)
                 .setLastPlaybackPositionMillis(h.positionMs.toInt())

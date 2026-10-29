@@ -30,5 +30,8 @@ class SeriesDetailRulesTest {
     @Test fun cleanEpisodeTitle_retireSerieEtMarqueur() {
         assertEquals("", cleanEpisodeTitle("AF-FR - SUGAR DADDY - S01E01", "AF-FR - SUGAR DADDY", "Sugar Daddy"))
         assertEquals("Le départ", cleanEpisodeTitle("Sugar Daddy - S02E03 - Le départ", "x", "Sugar Daddy").trim('-', ' '))
+        // Nom de série abrégé par la source : seul le titre après le marqueur reste.
+        assertEquals("The Darkest Hour", cleanEpisodeTitle("Daily Dose - S01E01 - The Darkest Hour", "4K - Daily Dose of Sunshine", "Daily Dose of Sunshine"))
+        assertEquals("Le pilote", cleanEpisodeTitle("Le pilote - S01E01", "x", "Sugar Daddy"))
     }
 }

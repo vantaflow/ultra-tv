@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -215,7 +218,16 @@ fun TraktSeriesButton(series: SeriesEntity, episodes: List<EpisodeEntity>, seaso
     var open by remember { mutableStateOf(false) }
     var rating by remember { mutableStateOf(false) }
     if (touch) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.traktButton, { open = true })
-    else PillButton(D.traktButton, { open = true }, heightPx = 76, hPadPx = 32, fontPx = 24, iconPath = STAR, iconFill = st.rating != null)
+    // Bouton rond, icône seule (comme le cœur des favoris) : à côté de « Reprendre S2 É12 », la pilule « Trakt » n'avait
+    // plus la place et s'affichait « Tra… ».
+    else FocusSurface(
+        onClick = { open = true }, shape = androidx.compose.foundation.shape.CircleShape, bg = Ux.Surface2,
+        modifier = Modifier.size(72.design).semantics { contentDescription = D.traktButton },
+    ) { f ->
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DIcon(STAR, 30.design, if (f) Ux.TextOnLight else if (st.rating != null) Ux.Accent else Ux.Text, fill = st.rating != null)
+        }
+    }
     if (rating) RatingDialog(st.rating, D, { vm.rate(D, it) }, { rating = false })
     else if (open) TraktSeriesDialog(st, episodes.filter { it.season == season }, season, D, vm, onRate = { rating = true }, onDismiss = { open = false })
 }

@@ -60,7 +60,10 @@ class SeriesDetailViewModel @Inject constructor(
         onReady: (url: String, title: String) -> Unit,
     ) {
         val tag = "S${"%02d".format(episode.season)}E${"%02d".format(episode.episode)}"
-        val title = "$seriesName · $tag · ${episode.title}"
+        // Titre lisible (lecteur, « Reprendre la lecture ») : nom nettoyé de la série, pas « 4K-NF - … (2023) (KR) », et
+        // titre d'épisode sans la répétition de la série et du marqueur.
+        val seriesTitle = _series.value?.title?.takeIf { it.isNotBlank() } ?: seriesName
+        val title = listOf(seriesTitle, tag, cleanEpisodeTitle(episode.title, seriesName, seriesTitle)).filter { it.isNotBlank() }.joinToString(" · ")
         playback.set(PlaybackContext.Item(
             providerId = providerId, kind = "EPISODE", remoteId = episode.remoteId,
             // Affiche : celle de la série (l'image d'épisode manque souvent) — sans elle, carte vide à l'accueil et

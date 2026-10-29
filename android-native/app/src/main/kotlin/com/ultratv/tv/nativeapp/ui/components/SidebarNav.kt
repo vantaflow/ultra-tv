@@ -82,7 +82,8 @@ internal val railItems = listOf(
 
 /** Largeur repliée / dépliée du rail, en px de maquette 1920×1080 (112 = 5,8 % de la largeur). */
 const val RAIL_COLLAPSED_PX = 112
-const val RAIL_EXPANDED_PX = 340
+// 360 (et non 340) : « Téléchargements » était coupé au bord du rail déplié.
+const val RAIL_EXPANDED_PX = 360
 
 /**
  * Rail latéral (maquette Sidebar.dc.html) : 112 px, logo, neuf items de 64×64 (icône 30), profil.
@@ -255,8 +256,8 @@ fun SidebarNav(navController: NavController) {
                                     Text(
                                         item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Ux.Text2 },
-                                        maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Clip,
-                                        modifier = Modifier.graphicsLayer { alpha = labelAlphaState.value },
+                                        maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(end = 12.design).graphicsLayer { alpha = labelAlphaState.value },
                                     )
                                 }
                             }

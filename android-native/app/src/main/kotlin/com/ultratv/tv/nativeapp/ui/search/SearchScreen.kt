@@ -2,6 +2,10 @@ package com.ultratv.tv.nativeapp.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,7 +93,10 @@ class SearchViewModel @Inject constructor(
             delay(220)
             val pid = provider.firstActive()?.id ?: return@launch
             // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
+            val t0 = android.os.SystemClock.elapsedRealtime()
             val quick = catalog.search(pid, s, includePrograms = false)
+            // Mesure (jamais le texte saisi) : durée de la recherche rapide.
+            android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
             _results.value = quick
             _searching.value = false
             if (s.trim().length >= 3) _results.value = quick.copy(programs = catalog.searchPrograms(pid, s))
@@ -151,7 +158,18 @@ fun SearchScreen(
         SearchTouch(q, r, recent, searching, voiceAvailable, { runCatching { voiceLauncher.launch(voiceIntent) } }, vm, onOpenChannel, onOpenMovie, onOpenSeries)
         return
     }
-    Row(Modifier.fillMaxSize().background(Ux.Bg)) {
+    // Clavier physique / télécommande à clavier : les caractères tapés vont dans la recherche, où que soit le focus
+    // (avant, ils étaient ignorés tant que le focus était sur le clavier à l'écran). Flèches, OK, Retour : inchangés.
+    val typing = Modifier.onPreviewKeyEvent { e ->
+        if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val cp = e.utf16CodePoint
+        when {
+            e.key == androidx.compose.ui.input.key.Key.Backspace -> { vm.backspace(); true }
+            cp > 0 && (Character.isLetterOrDigit(cp) || cp == ' '.code) -> { vm.append(cp.toChar().lowercaseChar()); true }
+            else -> false
+        }
+    }
+    Row(Modifier.fillMaxSize().background(Ux.Bg).then(typing)) {
         // ===== Gauche : saisie + clavier (620 px) =====
         Column(
             Modifier.width(620.design).fillMaxHeight().padding(start = 72.design, end = 48.design, top = 54.design, bottom = 40.design),
@@ -203,7 +221,10 @@ fun SearchScreen(
             q.isBlank() -> Box(Modifier.fillMaxSize().padding(56.design), contentAlignment = Alignment.TopStart) {
                 Text(D.searchStart, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx, modifier = Modifier.padding(top = 60.design))
             }
-            searching && total == 0 -> Box(Modifier.fillMaxSize())
+            // Recherche en cours : un retour visible plutôt qu'un panneau vide (la recherche peut prendre plusieurs secondes sur une box lente).
+            searching && total == 0 -> Box(Modifier.fillMaxSize().padding(56.design), contentAlignment = Alignment.TopStart) {
+                Text(D.searchingLabel, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx, modifier = Modifier.padding(top = 60.design))
+            }
             total == 0 -> Box(Modifier.fillMaxSize().padding(56.design), contentAlignment = Alignment.TopStart) {
                 Text(S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 26.spx, modifier = Modifier.padding(top = 60.design))
             }
