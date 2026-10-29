@@ -8,6 +8,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Réglages : la flèche gauche depuis le volet ramène le focus sur la rubrique ouverte. Avant, elle allait sur la rubrique en face de la ligne focalisée (« À propos » depuis le bas d'« Affichage ») et le volet changeait de rubrique.
 - Recherche : les « Récents » ne gardent plus les étapes intermédiaires de la frappe (« spide », « spt »…), seulement la saisie finale.
 
+### Direct
+- Aperçu vidéo de la chaîne sélectionnée : avec le son par défaut (Réglages › Lecture › Son de l'aperçu pour le couper ; un choix déjà fait est conservé) et lancé plus tôt, 0,4 s au lieu de 0,7 s. Nouveau réglage « Délai avant l'aperçu » (0,3 à 3 s).
+
 ### Documentation
 - README : captures TV françaises prises sur une vraie box Android TV (Accueil, Direct, Guide, fiches film et série, Recherche, rangées Ultra TV dans le lanceur Kairo) ; installation adb avec le profil `.dm`.
 
