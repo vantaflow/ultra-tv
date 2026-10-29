@@ -124,9 +124,28 @@ class OverlayHost {
     val hasModal: Boolean get() = layers.isNotEmpty()
 }
 
+/**
+ * Élément qui vient d'ouvrir une modale (ligne de réglage cliquée) : la modale le retient à sa création et lui rend le
+ * focus à sa fermeture. Le focusRestorer de l'écran ne suffisait pas dans un volet défilant : après « Aperçu vidéo dans
+ * le Direct », le focus revenait sur « Épisode suivant automatique », la ligne restée à la même hauteur.
+ */
+object ModalOpener {
+    private var last: FocusRequester? = null
+    private var at = 0L
+    fun mark(r: FocusRequester) { last = r; at = android.os.SystemClock.uptimeMillis() }
+    /** L'ouvreur marqué il y a moins d'une seconde (sinon null : modale ouverte autrement), consommé. */
+    internal fun take(): FocusRequester? {
+        val r = last.takeIf { android.os.SystemClock.uptimeMillis() - at < 1_000 }
+        last = null
+        return r
+    }
+}
+
 /** État de focus d'une modale, partagé entre sa déclaration (dans l'écran) et son corps (dans l'OverlayLayer). */
 internal class ModalState {
     val requester = FocusRequester()
+    /** Élément qui a ouvert la modale ([ModalOpener]) : il reprend le focus à la fermeture. */
+    val opener: FocusRequester? = ModalOpener.take()
     var hasFocus by mutableStateOf(false)
     /** La modale a déjà tenu le focus (le focus initial y est arrivé). */
     var hadFocus = false
@@ -191,16 +210,19 @@ fun ModalFocusScope(
                 // élément en haut à gauche (le menu latéral), qui le renvoie à droite au hasard de la géométrie : la sélection
                 // « saute », et une rubrique des Réglages qui suit le focus faisait disparaître le volet (et la modale suivante).
                 state.closing = true
-                if (state.hasFocus) returnFocus(host.layers.lastOrNull()?.state?.requester, screen)
+                if (state.hasFocus) returnFocus(host.layers.lastOrNull()?.state?.requester, state.opener, screen)
             }
         }
     }
 }
 
-/** Focus rendu à la modale restée dessous, sinon à l'écran (son focusRestorer revient à l'élément qui a ouvert la modale). */
-private fun returnFocus(underneath: FocusRequester?, screen: FocusRequester?) {
-    val ok = underneath != null && runCatching { underneath.requestFocus() }.getOrDefault(false)
-    if (!ok && screen != null) runCatching { screen.requestFocus() }
+/**
+ * Focus rendu à la modale restée dessous, sinon à l'élément qui a ouvert la modale, sinon à l'écran (son focusRestorer
+ * revient à l'élément qui l'avait).
+ */
+private fun returnFocus(underneath: FocusRequester?, opener: FocusRequester?, screen: FocusRequester?) {
+    fun tryFocus(r: FocusRequester?) = r != null && runCatching { r.requestFocus() }.getOrDefault(false)
+    if (!tryFocus(underneath) && !tryFocus(opener) && screen != null) runCatching { screen.requestFocus() }
 }
 
 @OptIn(ExperimentalComposeUiApi::class)
