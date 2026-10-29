@@ -1,6 +1,8 @@
 package com.ultratv.tv.nativeapp.ui.settings
 
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.stalkerFailed
@@ -154,7 +156,14 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         return
     }
     Row(Modifier.fillMaxSize()) {
-        Column(Modifier.width(460.design).fillMaxHeight().padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+        // ← depuis le volet : le focus revient sur la rubrique OUVERTE, pas sur celle qui se trouve en face de la ligne
+        // focalisée (« À propos » depuis le bas d'Affichage) — et comme la rubrique suit le focus, le volet changeait.
+        Column(
+            Modifier.width(460.design).fillMaxHeight()
+                .focusProperties { enter = { rubFocus[rub] } }.focusGroup()
+                .padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design),
+            verticalArrangement = Arrangement.spacedBy(10.design),
+        ) {
             Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
             Rub.entries.forEachIndexed { i, r ->
                 val sel = rub == i

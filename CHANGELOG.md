@@ -2,9 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [Non publié]
+## [1.2.73] — 2026-10-29 (Android)
 
 ### Corrections
+- Réglages : la flèche gauche depuis le volet ramène le focus sur la rubrique ouverte. Avant, elle allait sur la rubrique en face de la ligne focalisée (« À propos » depuis le bas d'« Affichage ») et le volet changeait de rubrique.
 - Recherche : les « Récents » ne gardent plus les étapes intermédiaires de la frappe (« spide », « spt »…), seulement la saisie finale.
 
 ### Documentation
