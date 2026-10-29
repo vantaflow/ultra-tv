@@ -179,7 +179,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     }
     val firstChannel = remember { FocusRequester() }
     LaunchedEffect(selected, channels.itemCount > 0) {
-        if (!userMoved && channels.itemCount > 0) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
+        // Retour du plein écran : c'est la chaîne regardée qui reçoit le focus (ChannelList, returnToKey), pas la première.
+        if (!userMoved && channels.itemCount > 0 && !(holdAfterReturn && playingKey != null)) { kotlinx.coroutines.delay(250); runCatching { firstChannel.requestFocus() } }
     }
     val current = cats.firstOrNull { it.id == selected }
     // Aucune chaîne en local : « hors ligne » / « erreur de source » en carte pleine (sinon l'écran vide habituel).
@@ -246,7 +247,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 onFocusChannel = { focusedChannel.value = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
                 onActions = { actionsFor = it },
-                emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel)
+                emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel,
+                returnToKey = if (holdAfterReturn) playingKey else null)
         }
 
         // ── Aperçu ──
@@ -334,9 +336,27 @@ private fun ChannelList(
     categoryName: String = "",
     first: FocusRequester = remember { FocusRequester() },
     highlightId: Long? = null,
+    /** Chaîne regardée au retour du plein écran (« fournisseur:chaîne ») : la liste y défile et lui donne le focus, une fois. */
+    returnToKey: String? = null,
 ) {
     val state = rememberLazyListState()
     LaunchedEffect(selected) { state.scrollToItem(0) }
+    // Retour du plein écran : défilement jusqu'à la chaîne regardée puis focus dessus. Avant, le focus restait sur la
+    // première ligne (chaîne 40 regardée, 13EME RUE focalisée : OK relançait une autre chaîne). Une seule fois par retour :
+    // une page de la liste qui arrive ensuite ne doit pas reprendre le focus à l'utilisateur.
+    val returnFocus = remember { FocusRequester() }
+    var returnDone by remember(returnToKey) { mutableStateOf(false) }
+    LaunchedEffect(returnToKey, channels.itemCount, selected) {
+        val key = returnToKey ?: return@LaunchedEffect
+        if (returnDone) return@LaunchedEffect
+        val idx = (0 until channels.itemCount).firstOrNull { i -> channels.peek(i)?.let { channelKey(it) } == key } ?: return@LaunchedEffect
+        kotlinx.coroutines.delay(150)   // après le scrollToItem(0) d'un changement de catégorie
+        state.scrollToItem((idx - 2).coerceAtLeast(0))
+        repeat(15) {
+            if (runCatching { returnFocus.requestFocus() }.getOrDefault(false)) { returnDone = true; return@LaunchedEffect }
+            kotlinx.coroutines.delay(50)
+        }
+    }
     // Seules les lignes visibles interrogent le guide.
     // Les IDENTIFIANTS visibles sont suivis (pas seulement les positions) : à l'arrivée des données ou au changement de
     // catégorie, les positions visibles restent 0…8 et le guide n'était demandé qu'au premier défilement.
@@ -390,7 +410,8 @@ private fun ChannelList(
                         now = nowNext[c.id]?.first,
                         highlighted = c.id == highlightId,
                         variant = rowIndex.variantAt(i),
-                        modifier = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
+                        modifier = (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier)
+                            .then(if (returnToKey != null && channelKey(c) == returnToKey) Modifier.focusRequester(returnFocus) else Modifier),
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
                     )
                 }

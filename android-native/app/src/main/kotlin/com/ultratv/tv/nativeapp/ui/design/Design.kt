@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.focus.focusRequester
 import com.ultratv.tv.nativeapp.ui.mobile.minTouchTarget
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -174,8 +175,12 @@ fun FocusSurface(
         ) { content(false) }
         return
     }
+    // L'élément activé (OK ou appui long) se signale comme ouvreur : une fenêtre qu'il ouvre lui rend le focus en se
+    // fermant (menu d'une chaîne du Direct : le focus retombait sur la catégorie « Favoris », en haut à gauche).
+    val self = remember { androidx.compose.ui.focus.FocusRequester() }
     Box(
         modifier
+            .focusRequester(self)
             .graphicsLayer {
                 val s = if (focused) focusedScale else 1f
                 scaleX = s; scaleY = s
@@ -183,7 +188,11 @@ fun FocusSurface(
             .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
-            .combinedClickable(interactionSource = interaction, indication = null, onClick = onClick, onLongClick = onLongClick),
+            .combinedClickable(
+                interactionSource = interaction, indication = null,
+                onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },
+                onLongClick = onLongClick?.let { lc -> { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); lc() } },
+            ),
     ) { content(focused) }
 }
 

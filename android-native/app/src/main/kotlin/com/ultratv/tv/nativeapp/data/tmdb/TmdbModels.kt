@@ -19,6 +19,8 @@ data class TmdbDetails(
     val trailerKey: String?,
     /** Code ISO 639-1 de la langue d'origine (« fr », « ja »…), pour le détecteur de langue. */
     val originalLanguage: String?,
+    /** Photos de la distribution et de la réalisation : nom en minuscules → `profile_path`. */
+    val photos: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -64,4 +66,6 @@ object TmdbImages {
     /** Affiche de repli (grilles, recherche) : plus légère que [poster]. */
     fun poster342(path: String) = BASE + "w342" + path
     fun backdrop(path: String) = BASE + "w1280" + path
+    /** Photo de personne (distribution) : w185, assez net pour une bulle de 96 px sans charger l'image complète. */
+    fun profile(path: String) = BASE + "w185" + path
 }

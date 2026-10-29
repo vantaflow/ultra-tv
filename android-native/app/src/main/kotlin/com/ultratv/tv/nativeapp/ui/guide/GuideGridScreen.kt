@@ -40,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -220,6 +222,7 @@ class GuideGridViewModel @Inject constructor(
 }
 
 /** Guide TV (maquette Guide.dc.html) : colonne chaînes de 260, 6 créneaux de 30 min, ligne accent = maintenant. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: String, title: String) -> Unit = { _, _ -> }, vm: GuideGridViewModel = hiltViewModel()) {
     // Android 13+ : la permission de notification est demandée au PREMIER rappel (pas au lancement de l'app).
@@ -285,7 +288,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         Box(Modifier.fillMaxWidth().height(1.dp1()).background(Ux.Surface2))
 
         if (channels.itemCount == 0) {
-            Text(D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+            // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
+            // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
+            Text(if (day > 0) D.guideNoDataYet else D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
             return@Column
         }
 
@@ -298,7 +303,17 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         val first = remember { FocusRequester() }
         var firstFocused by remember { mutableStateOf(false) }
         RequestInitialFocus(first, hasFocus = { firstFocused }, key = programmes.isNotEmpty())
-        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }) {
+        BoxWithConstraints(
+            Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }
+                // Entrée (↓ depuis les jours) : sur la première ligne, au programme en cours, et non sur la case qui se trouve
+                // sous l'onglet (TimeShift 01, à droite). Sortie par → interdite : au bord droit, la fenêtre défile de
+                // 90 min (onPreviewKeyEvent) au lieu de sauter sur l'onglet « Samedi ».
+                .focusProperties {
+                    enter = { first }
+                    exit = { dir -> if (dir == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default }
+                }
+                .focusGroup(),
+        ) {
             val gridW = maxWidth - 260.design
             LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(top = 12.design, bottom = 54.design)) {
                 items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { "row" }) { i ->

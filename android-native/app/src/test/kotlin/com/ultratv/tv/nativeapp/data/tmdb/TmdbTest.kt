@@ -35,6 +35,12 @@ class TmdbParserTest {
         assertEquals("/p.jpg", d.posterPath)
     }
     @Test fun details_sansId_null() = assertNull(TmdbParser.details("""{"overview":"x"}"""))
+    @Test fun details_photosDistributionEtRealisateur() {
+        val d = TmdbParser.details("""{"id":7,"credits":{
+            "cast":[{"name":"Jacob Elordi","profile_path":"/je.jpg"},{"name":"Sans Photo","profile_path":null}],
+            "crew":[{"name":"Ridley Scott","job":"Director","profile_path":"/rs.jpg"},{"name":"Monteur","job":"Editor","profile_path":"/m.jpg"}]}}""")!!
+        assertEquals(mapOf("jacob elordi" to "/je.jpg", "ridley scott" to "/rs.jpg"), d.photos)
+    }
     @Test fun details_champsVides_sontNuls() {
         val d = TmdbParser.details("""{"id":5,"overview":"","poster_path":null,"vote_average":0}""")!!
         assertNull(d.overview); assertNull(d.posterPath); assertNull(d.rating); assertNull(d.trailerKey)

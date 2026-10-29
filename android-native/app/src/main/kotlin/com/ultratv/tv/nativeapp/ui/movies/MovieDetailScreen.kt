@@ -90,6 +90,10 @@ class MovieDetailViewModel @Inject constructor(
     private val _infoLoading = MutableStateFlow(true)
     val infoLoading: StateFlow<Boolean> = _infoLoading.asStateFlow()
 
+    /** Photos de la distribution (TMDB) : nom en minuscules → URL. Vide : initiales dans les bulles. */
+    private val _photos = MutableStateFlow<Map<String, String>>(emptyMap())
+    val photos: StateFlow<Map<String, String>> = _photos.asStateFlow()
+
     private val _resume = MutableStateFlow(0L)
     val resumeMs: StateFlow<Long> = _resume.asStateFlow()
 
@@ -127,6 +131,7 @@ class MovieDetailViewModel @Inject constructor(
                 if (t?.tmdbId != null) {
                     _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, m, t)
                     _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(m, t)
+                    _photos.value = runCatching { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrDefault(emptyMap())
                 }
             }
         }
@@ -169,6 +174,7 @@ fun MovieDetailScreen(
     val onPlay: (String, String) -> Unit = { u, t -> dlVm.warnBeforePlay(movie.providerId, "MOVIE", movie.remoteId, dlStrings); playOnline(u, t) }
     val info by vm.info.collectAsState()
     val infoLoading by vm.infoLoading.collectAsState()
+    val photos by vm.photos.collectAsState()
     val T = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
     val title = remember(movie.id) { T.tidy(movie.title) }
     val year = movie.year?.toString() ?: T.presentable(info?.releaseDate)?.take(4)?.takeIf { it.all(Char::isDigit) }
@@ -215,7 +221,7 @@ fun MovieDetailScreen(
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(people) { name ->
                         Column(Modifier.width(60.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            AvatarImage(null, name, Modifier.size(52.dp))
+                            AvatarImage(photos[name.lowercase()], name, Modifier.size(52.dp))
                             Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
@@ -289,7 +295,7 @@ fun MovieDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                     people.forEach { name ->
                         Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                            AvatarImage(null, name, Modifier.size(96.design))
+                            AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
                             Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }

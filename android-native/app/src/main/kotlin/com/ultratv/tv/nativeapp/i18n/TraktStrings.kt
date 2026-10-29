@@ -39,6 +39,7 @@ fun DesignStrings.traktListRow(name: String) = t("Trakt list: $name", "Liste Tra
 // Réglages
 val DesignStrings.traktSettings get() = "Trakt"
 val DesignStrings.traktAutoWatched get() = t("Mark as watched automatically at the end", "Marquer vu automatiquement à la fin", "Marcar como visto automáticamente al final", "وضع علامة مُشاهَد تلقائياً عند النهاية")
+val DesignStrings.traktAutoWatchedHintOn get() = t("On: the end marks it as watched on Trakt", "Activé : la fin marque le titre comme vu sur Trakt", "Activado: el final lo marca como visto en Trakt", "عند التفعيل: تضع النهاية علامة مُشاهَد على Trakt")
 val DesignStrings.traktAutoWatchedHint get() = t("Off: the end is saved as a pause on Trakt", "Désactivé : la fin est enregistrée comme une pause sur Trakt", "Desactivado: el final se guarda como una pausa en Trakt", "عند الإيقاف: تُحفظ النهاية كإيقاف مؤقت على Trakt")
 val DesignStrings.traktListsHome get() = t("Trakt lists on Home", "Listes Trakt à l’accueil", "Listas de Trakt en Inicio", "قوائم Trakt في الرئيسية")
 val DesignStrings.traktListsHomeHint get() = t("Up to 5 rows, only titles available in your playlist", "5 rangées au plus, seulement les titres présents dans votre playlist", "Hasta 5 filas, solo títulos disponibles en tu lista", "حتى 5 صفوف، فقط العناوين المتوفرة في قائمتك")

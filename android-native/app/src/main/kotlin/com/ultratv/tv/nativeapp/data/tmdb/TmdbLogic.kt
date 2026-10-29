@@ -65,6 +65,19 @@ object TmdbParser {
         val cast = o.optJSONObject("credits")?.optJSONArray("cast")?.let { a ->
             (0 until minOf(a.length(), 12)).mapNotNull { a.optJSONObject(it)?.optString("name")?.takeIf { n -> n.isNotBlank() } }
         }.orEmpty()
+        // Photos : distribution et réalisation (le réalisateur figure aussi dans la ligne « Distribution » de la fiche).
+        val photos = HashMap<String, String>()
+        fun addPhotos(a: org.json.JSONArray?, keep: (JSONObject) -> Boolean) {
+            for (i in 0 until (a?.length() ?: 0)) {
+                val p = a!!.optJSONObject(i) ?: continue
+                if (!keep(p)) continue
+                val name = p.optString("name").trim().lowercase().takeIf { it.isNotEmpty() } ?: continue
+                val path = p.optString("profile_path").takeIf { it.startsWith("/") } ?: continue
+                photos.putIfAbsent(name, path)
+            }
+        }
+        addPhotos(o.optJSONObject("credits")?.optJSONArray("cast")) { true }
+        addPhotos(o.optJSONObject("credits")?.optJSONArray("crew")) { it.optString("job") == "Director" }
         val vids = o.optJSONObject("videos")?.optJSONArray("results")
         val yt = (0 until (vids?.length() ?: 0)).mapNotNull { vids!!.optJSONObject(it) }
             .filter { it.optString("site") == "YouTube" && it.optString("key").isNotBlank() }
@@ -73,7 +86,7 @@ object TmdbParser {
         return TmdbDetails(
             tmdbId = id, overview = str("overview"), posterPath = str("poster_path"), backdropPath = str("backdrop_path"),
             rating = o.optDouble("vote_average", 0.0).takeIf { it > 0.0 }, cast = cast, trailerKey = trailer,
-            originalLanguage = str("original_language"),
+            originalLanguage = str("original_language"), photos = photos,
         )
     }
 }
