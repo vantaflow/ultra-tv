@@ -233,6 +233,9 @@ class DesignStrings(val lang: AppLang) {
     // Guide
     val today get() = t("Today", "Aujourd’hui", "Hoy", "اليوم")
     val tomorrow get() = t("Tomorrow", "Demain", "Mañana", "غدًا")
+    val langSystem get() = t("System (auto)", "Système (auto)", "Sistema (auto)", "النظام (تلقائي)")
+    /** Nom d'une langue dans les choix : chaque langue dans sa propre langue, sauf « Système », traduit. */
+    fun langName(l: AppLang) = if (l == AppLang.System) langSystem else l.displayName
     val guideNoDataYet get() = t("No programmes for this day yet: the provider only publishes the next few hours.", "Pas encore de programmes pour ce jour : le fournisseur ne publie que les prochaines heures.", "Aún no hay programas para este día: el proveedor solo publica las próximas horas.", "لا توجد برامج لهذا اليوم بعد: المزوّد ينشر الساعات القادمة فقط.")
     val guideNoData get() = t("The programme guide is still loading. It will appear here as soon as it is ready.", "Le guide des programmes se charge encore. Il apparaîtra ici dès qu’il sera prêt.", "La guía de programas aún se está cargando.", "لا يزال دليل البرامج قيد التحميل.")
     val remind get() = t("Remind me", "Me le rappeler", "Recordármelo", "ذكّرني")

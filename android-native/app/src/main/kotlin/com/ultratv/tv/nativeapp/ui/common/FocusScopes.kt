@@ -29,6 +29,21 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import kotlinx.coroutines.delay
 
+/**
+ * Clé de liste paginée qui ne plante jamais : pendant une synchro, la pagination par décalage de Room peut présenter un
+ * instant le même élément sur deux pages ; deux clés identiques font planter Compose (« Key "2143" was already used »,
+ * Chromecast HD, 1.2.69). Un doublon reçoit une clé distincte ; les autres gardent leur identifiant (focus conservé).
+ */
+@Composable
+fun <T : Any> rememberSafeItemKey(items: androidx.paging.compose.LazyPagingItems<T>, id: (T) -> Any): (Int) -> Any {
+    val snap = items.itemSnapshotList
+    val dups = remember(snap) {
+        val seen = HashSet<Any>()
+        buildSet { snap.forEachIndexed { i, it -> if (it != null && !seen.add(id(it))) add(i) } }
+    }
+    return { i -> if (i in dups) "dup:$i" else items.peek(i)?.let(id) ?: "placeholder:$i" }
+}
+
 /** Signal « la navigation vient de la barre latérale / du bandeau du haut ». */
 object NavFocusHint {
     @Volatile private var navDriven = false

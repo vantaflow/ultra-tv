@@ -505,7 +505,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     PaneTitle(D.rubDisplay)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
-        PrefRow(D.language, AppLang.fromCode(p.language).displayName) { choice = "lang" }
+        PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
@@ -524,7 +524,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     }
     when (choice) {
         "theme" -> ChoiceDialog(D.theme, listOf(AppTheme.DARK to D.themeDark, AppTheme.LIGHT to D.themeLight, AppTheme.AUTO to D.themeAuto), p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
-        "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to it.displayName }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
+        "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
@@ -605,12 +605,12 @@ private fun LanguagesPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     val selected = p.languages.split(',').filter { it.isNotBlank() }
     PaneTitle(D.rubLanguages)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-        PrefRow(D.appLanguage, AppLang.fromCode(p.language).displayName) { uiLang = true }
+        PrefRow(D.appLanguage, D.langName(AppLang.fromCode(p.language))) { uiLang = true }
         PrefRow(D.contentLanguages, if (selected.isEmpty()) D.allLanguages else selected.joinToString(" · ") { it.uppercase() }) { picker = true }
         SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
         SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
     }
-    if (uiLang) ChoiceDialog(D.appLanguage, AppLang.entries.map { it.code to it.displayName }, p.language, { app.setLanguage(it); uiLang = false }, { uiLang = false })
+    if (uiLang) ChoiceDialog(D.appLanguage, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); uiLang = false }, { uiLang = false })
     if (picker) LanguagePickerDialog(counts.filter { it.lang.isNotEmpty() && it.lang != "MULTI" }.sortedByDescending { it.n }.map { it.lang to it.n }, selected.toSet(), { panes.setLanguages(it.sorted().joinToString(",")) }, { picker = false })
 }
 

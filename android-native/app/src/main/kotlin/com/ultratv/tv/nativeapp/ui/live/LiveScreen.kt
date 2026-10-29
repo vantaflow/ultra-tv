@@ -397,8 +397,9 @@ private fun ChannelList(
     }
     Column {
         if (hasSections) Box(Modifier.fillMaxWidth().height(56.designT).padding(top = 6.design, bottom = 6.design)) { stickyLabel?.let { SectionHeader(it) } }
+        val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
         LazyColumn(state = state, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 10.design)) {
-            items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
+            items(count = channels.itemCount, key = safeKey0, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
                 val c = channels[i]
                 when {
                     c == null -> Spacer(Modifier.fillMaxWidth().height(88.designT))
