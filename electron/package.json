@@ -27,7 +27,7 @@
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "cross-env": "^10.1.0",
-    "electron": "^44.9.0",
+    "electron": "^45.0.0",
     "electron-builder": "^26.18.0",
     "png2icons": "^2.0.1"
   },
