@@ -50,7 +50,13 @@ private const val CHEVRON = "M9 6l6 6-6 6"
 /** Ligne de réglage « valeur + chevron » (maquette Réglages) : 84 px, fond #141418, blanche + anneau au focus. */
 @Composable
 fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: String? = null, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = modifier.fillMaxWidth().height(84.designT)) { f ->
+    // La ligne s'annonce comme ouvreuse : la fenêtre de choix qu'elle ouvre lui rend le focus en se fermant.
+    val self = androidx.compose.runtime.remember { androidx.compose.ui.focus.FocusRequester() }
+    FocusSurface(
+        onClick = { com.ultratv.tv.nativeapp.ui.common.ModalOpener.mark(self); onClick() },
+        shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+        modifier = modifier.focusRequester(self).fillMaxWidth().height(84.designT),
+    ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

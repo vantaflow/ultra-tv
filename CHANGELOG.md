@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.74] — 2026-10-29 (Android)
+
+### Corrections
+- Réglages : en fermant une fenêtre de choix (ex. « Aperçu vidéo dans le Direct »), le focus revient sur la ligne qui l'a ouverte. Avant, le volet défilait et le focus tombait sur une autre ligne (« Épisode suivant automatique »).
+
 ## [1.2.73] — 2026-10-29 (Android)
 
 ### Corrections
