@@ -600,10 +600,6 @@ document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener
  });
  if(window.utvLoadAccounts)window.utvLoadAccounts();
 })();
-// Barre latérale : la section visible est mise en avant.
-(function(){var links=document.querySelectorAll('.side nav a');if(!('IntersectionObserver' in window)||!links.length)return;
- var io=new IntersectionObserver(function(es){es.forEach(function(en){if(!en.isIntersecting)return;links.forEach(function(a){a.classList.toggle('on',a.getAttribute('href')==='#'+en.target.id);});});},{rootMargin:'-30% 0px -60% 0px'});
- ['apercu','fournisseurs','appareils','compte'].forEach(function(id){var el=document.getElementById(id);if(el)io.observe(el);});})();
 document.querySelectorAll('.copy-link').forEach(function(c){c.addEventListener('click',function(){
  var i=document.getElementById(c.dataset.for);i.select();
  var done=function(){c.textContent='Copié';setTimeout(function(){c.textContent='Copier';},1500);};

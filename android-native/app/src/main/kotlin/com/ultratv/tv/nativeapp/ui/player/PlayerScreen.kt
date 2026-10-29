@@ -622,6 +622,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         Modifier.fillMaxSize().background(Color.Black).focusRequester(rootFocus).androidx_focusable()
             .onPreviewKeyEvent { ev ->
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                // Retour n'est JAMAIS consommé ici : c'est le BackHandler qui ferme ce qui est ouvert puis quitte le lecteur.
+                // Avant, commandes masquées (film / épisode), Retour servait à les afficher : l'appui « Down » consommé, Android 11
+                // et antérieurs ne déclenchaient jamais le retour ; la touche suivante masquait les commandes, et ainsi de suite
+                // (impossible de quitter le lecteur, issue #30). Android 13+ rattrapait le cas au niveau de la fenêtre.
+                if (ev.key == Key.Back || ev.key == Key.Escape) return@onPreviewKeyEvent false
                 // [B2·zapping] chiffres 0-9 / pavé numérique, OK valide la saisie.
                 if (isLive && panel == Panel.None && !drawerOpen) {
                     com.ultratv.tv.nativeapp.ui.player.zap.NumberEntry.digitOfKeyCode(ev.nativeKeyEvent.keyCode)?.let { d -> zap.digit(d) { u -> currentUrl = u }; return@onPreviewKeyEvent true }
@@ -653,7 +658,6 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                                 if (tsActive && hidden && (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight)) { tsJump(if (ev.key == Key.DirectionLeft) -30 else 30); touch(); return@onPreviewKeyEvent true }
                                 touch(); controlsEngaged = true; runCatching { pauseFocus.requestFocus() }; return@onPreviewKeyEvent true
                             }
-                            ev.key == Key.Back || ev.key == Key.Escape -> return@onPreviewKeyEvent false
                             else -> { touch(); return@onPreviewKeyEvent true }
                         }
                     }

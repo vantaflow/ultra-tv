@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.70] — 2026-10-29 (Android) · Bureau 1.2.37
+
+### Corrections
+- Lecteur (film, épisode) : la touche Retour quitte enfin le lecteur sur Android 11 et antérieurs (issue #30, Xiaomi MiTV). Commandes masquées, Retour servait à les réafficher et n'était jamais transmis : la touche suivante les masquait, et ainsi de suite, sans pouvoir sortir. Retour referme maintenant ce qui est ouvert, puis quitte le lecteur.
+- Tableau de bord : le menu de gauche suit de nouveau la section affichée (un ancien mécanisme resté en place contredisait le nouveau).
+
+### Maintenance
+- Mises à jour de dépendances (Android, bureau, Worker).
+
 ## [1.2.69] — 2026-10-21 (Android)
 
 ### Corrigé
