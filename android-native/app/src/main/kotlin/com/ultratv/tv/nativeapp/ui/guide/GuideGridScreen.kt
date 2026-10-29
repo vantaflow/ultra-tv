@@ -315,8 +315,9 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 .focusGroup(),
         ) {
             val gridW = maxWidth - 260.design
+            val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
             LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(top = 12.design, bottom = 54.design)) {
-                items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { "row" }) { i ->
+                items(count = channels.itemCount, key = safeKey0, contentType = { "row" }) { i ->
                     val c = channels[i]
                     if (c != null) {
                         GuideRow(
@@ -505,8 +506,9 @@ private fun GuideTouch(
                         Spacer(Modifier.width(TOUCH_CHAN_W))
                         for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.width(TOUCH_SLOT_W), maxLines = 1)
                     }
+                    val safeKey1 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
                     LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp), modifier = Modifier.weight(1f)) {
-                        items(count = channels.itemCount, key = channels.itemKey { it.id }, contentType = { "row" }) { i ->
+                        items(count = channels.itemCount, key = safeKey1, contentType = { "row" }) { i ->
                             val c = channels[i]
                             if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
                             else Spacer(Modifier.height(TOUCH_ROW_H))

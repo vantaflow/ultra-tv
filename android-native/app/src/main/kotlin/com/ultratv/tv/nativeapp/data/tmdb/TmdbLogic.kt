@@ -116,12 +116,22 @@ object TmdbTrailer {
 
 private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }
 
-/** La source reste prioritaire ; TMDB comble ce qu'elle ne fournit pas. */
+/**
+ * Synopsis : celui de TMDB quand il est dans la langue de l'appli (autre que l'anglais), sinon celui de la source.
+ * Les fournisseurs livrent souvent le résumé anglais : une interface française affichait « After the world's… ».
+ * TMDB renvoie un résumé VIDE quand la traduction manque : la source reprend alors la main.
+ */
+internal fun preferredPlot(source: String?, t: TmdbInfoEntity): String? {
+    val localized = t.overview.orNullIfBlank()?.takeIf { t.lang.isNotBlank() && !t.lang.startsWith("en") }
+    return localized ?: source.orNullIfBlank() ?: t.overview
+}
+
+/** La source reste prioritaire (sauf le synopsis traduit, [preferredPlot]) ; TMDB comble ce qu'elle ne fournit pas. */
 fun mergeVodInfo(src: VodInfoEntity?, movie: MovieEntity, t: TmdbInfoEntity?): VodInfoEntity? {
     if (t?.tmdbId == null) return src
     val base = src ?: VodInfoEntity(providerId = movie.providerId, remoteId = movie.remoteId)
     return base.copy(
-        plot = base.plot.orNullIfBlank() ?: t.overview,
+        plot = preferredPlot(base.plot, t),
         cast = base.cast.orNullIfBlank() ?: t.cast,
         rating = base.rating?.takeIf { it > 0.0 } ?: t.rating,
         backdrop = base.backdrop.orNullIfBlank() ?: t.backdropUrl,
@@ -134,7 +144,7 @@ fun mergeMovie(m: MovieEntity, t: TmdbInfoEntity?): MovieEntity =
     if (t?.tmdbId == null) m else m.copy(
         poster = m.poster.orNullIfBlank() ?: t.posterUrl,
         backdrop = m.backdrop.orNullIfBlank() ?: t.backdropUrl,
-        plot = m.plot.orNullIfBlank() ?: t.overview,
+        plot = preferredPlot(m.plot, t),
         cast = m.cast.orNullIfBlank() ?: t.cast,
         rating = m.rating?.takeIf { it > 0.0 } ?: t.rating,
     )
@@ -143,7 +153,7 @@ fun mergeSeries(s: SeriesEntity, t: TmdbInfoEntity?): SeriesEntity =
     if (t?.tmdbId == null) s else s.copy(
         poster = s.poster.orNullIfBlank() ?: t.posterUrl,
         backdrop = s.backdrop.orNullIfBlank() ?: t.backdropUrl,
-        plot = s.plot.orNullIfBlank() ?: t.overview,
+        plot = preferredPlot(s.plot, t),
         cast = s.cast.orNullIfBlank() ?: t.cast,
         rating = s.rating?.takeIf { it > 0.0 } ?: t.rating,
     )

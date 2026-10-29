@@ -78,6 +78,13 @@ class TmdbLogicTest {
         assertEquals("Source", mergeMovie(movie.copy(plot = "Source", poster = "http://p"), t).plot)
         assertEquals("http://p", mergeMovie(movie.copy(poster = "http://p"), t).poster)
     }
+    @Test fun synopsis_tmdbTraduitPrioritaire_sinonSource() {
+        val src = movie.copy(plot = "English plot from provider")
+        assertEquals("Synopsis", mergeMovie(src, t.copy(lang = "fr-FR")).plot)
+        assertEquals("English plot from provider", mergeMovie(src, t.copy(lang = "fr-FR", overview = "")).plot)   // pas de traduction
+        assertEquals("English plot from provider", mergeMovie(src, t.copy(lang = "en-US")).plot)
+        assertEquals("Synopsis", mergeVodInfo(VodInfoEntity(1, "r", plot = "Source"), movie, t.copy(lang = "fr-FR"))!!.plot)
+    }
     @Test fun merge_sansTmdb_ouIntrouvable_inchange() {
         assertEquals(movie, mergeMovie(movie, null)); assertEquals(movie, mergeMovie(movie, t.copy(tmdbId = null)))
     }

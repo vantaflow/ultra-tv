@@ -177,14 +177,14 @@ fun FavoritesScreen(
             }
         } else if (tab == 1) {
             LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 170f) else 4), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 24.design), contentPadding = PaddingValues(vertical = 8.design)) {
-                items(channels, key = { it.id }) { c ->
+                items(channels.distinctBy { it.id }, key = { it.id }) { c ->
                     ChannelTile(c, now[c.id], onClick = { onPlayChannel(c.streamUrl, c.name) }, onLong = { vm.remove("LIVE", c.providerId, c.remoteId) })
                 }
             }
         } else {
             LazyVerticalGrid(GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(usable, 110f) else 6), Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 20.design), verticalArrangement = Arrangement.spacedBy(if (touch) 14.dp else 20.design), contentPadding = PaddingValues(vertical = 8.design)) {
-                if (tab == 2) items(movies, key = { it.id }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
-                else items(series, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
+                if (tab == 2) items(movies.distinctBy { it.id }, key = { it.id }) { m -> VodCard(m.title, m.poster, Modifier, onClick = { onOpenMovie(m.id) }) }
+                else items(series.distinctBy { it.id }, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
             }
         }
         Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, modifier = if (touch) Modifier.padding(bottom = 8.dp) else Modifier)

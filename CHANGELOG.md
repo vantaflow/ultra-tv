@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.77] — 2026-10-30 (Android)
+
+### Corrections
+- Fiches film et série : synopsis dans la langue de l'application (TMDB) quand il existe, au lieu du résumé anglais fourni par la source ; celui de la source reste le repli.
+- Crash « Key … was already used » (Chromecast HD, journaux en ligne) : les listes paginées (Direct, Guide, Films, Séries) ne plantent plus quand la synchro présente un instant le même élément deux fois ; listes des Favoris dédoublonnées.
+- Langue : « Système (auto) » traduit (au lieu de « System (auto) »).
+
 ## [1.2.76] — 2026-10-30 (Android)
 
 ### Corrections

@@ -219,6 +219,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
         val first = remember { FocusRequester() }
         var firstFocused by remember { mutableStateOf(false) }
         RequestInitialFocus(first, hasFocus = { firstFocused }, key = selected)
+        val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(items) { it.id }
         LazyVerticalGrid(
             columns = GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f)) else 7),
             horizontalArrangement = Arrangement.spacedBy(if (touch) 12.dp else 28.design),
@@ -226,7 +227,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             contentPadding = PaddingValues(top = if (touch) 4.dp else 12.design, bottom = if (touch) 16.dp else 54.design),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            items(count = items.itemCount, key = items.itemKey { it.id }, contentType = { "poster" }) { i ->
+            items(count = items.itemCount, key = safeKey0, contentType = { "poster" }) { i ->
                 val it = items[i]
                 if (it != null) PosterCell(it, if (i == 0) Modifier.focusRequester(first).onFocusChanged { f -> firstFocused = f.isFocused } else Modifier) { onOpen(it.id) }
                 else androidx.compose.foundation.layout.Spacer(Modifier.height(1.design))
