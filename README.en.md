@@ -28,7 +28,7 @@
 
 Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
 
-> The screenshots below use **synthetic data only** (a local fake Xtream server, `android-native/tools/fake-xtream`). Channel and programme names come from that data set, not from the app.
+> The screenshots below use **synthetic data** (a local fake Xtream server, `android-native/tools/fake-xtream`). Channel and programme names come from that data set, not from the app. The French README shows screenshots taken on a real Android TV box.
 
 <p align="center">
   <img src="docs/screenshots/en/home.png" alt="Home" width="48%" />
@@ -57,7 +57,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Trakt**: movies and episodes you watch are sent to Trakt (watching, then watched at the end); on Home, your Trakt **watchlist**, **recommendations**, **trending**, **popular**, **personal lists** and **Up next**, limited to titles available in the loaded playlist; a **"Watched"** mark; from detail pages: add / remove from the watchlist, mark watched / unwatched (movie, episode, season), **rate 1–10**; resume positions imported. Connect from the cloud dashboard, nothing to set on the TV.
 - **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
 - **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
-- **Google TV**: "Continue watching" (movies, episodes and recent live channels), Ultra TV home channel (favourites then recent channels) and **Ultra TV · New** channel (latest movies and series added), voice and global search, `ultratv://` deep links.
+- **Google TV, Android TV and third-party launchers**: "Continue watching" (movies, episodes and recent live channels, cleaned titles, one tile per movie), **Favorites** home channel (favourites then recent channels) and **New releases** channel (latest movies and series added, no duplicates), voice and global search, `ultratv://` deep links. These rows go through Android's TV provider, so launchers that read it (Kairo…) show them too.
 - **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
 - **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
 - **Personalisation** (Settings › Display): **accent colour** (6 choices), **text size**, **Home rows** (show, hide, reorder), **start screen** (Home, Live, Movies, Series, Guide or last channel).
@@ -138,7 +138,7 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 
 | Device | File |
 |---|---|
-| Android (TV, smartphone, tablet) | universal [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablet) | universal [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) with its precompiled profile `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
 | Cloud dashboard | <https://ultratv-config.khalilbenaz.workers.dev> (nothing to install) |
@@ -158,6 +158,12 @@ Android 9 or newer (API 28).
 ```bash
 adb connect BOX_IP:5555
 adb install -r UltraTV-debug.apk
+```
+
+**adb, faster startup** (Android 12 or newer): install your processor's APK together with its precompiled profile `.dm` (same name, published in the release). Android then compiles the app at install time instead of waiting for a background optimisation. Measured on a 2 GB box: startup 1.1 s → 0.6 s, noticeably smoother scrolling.
+
+```bash
+adb install-multiple -r UltraTV-<version>-armeabi-v7a.apk UltraTV-<version>-armeabi-v7a.dm
 ```
 
 On first launch: choose the source type (Xtream Codes, M3U link, M3U file, **Stalker portal** or **From the cloud**), enter it, then choose your categories (only active categories are downloaded).

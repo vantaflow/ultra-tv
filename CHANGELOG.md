@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Corrections
+- Recherche : les « Récents » ne gardent plus les étapes intermédiaires de la frappe (« spide », « spt »…), seulement la saisie finale.
+
+### Documentation
+- README : captures TV françaises prises sur une vraie box Android TV (Accueil, Direct, Guide, fiches film et série, Recherche, rangées Ultra TV dans le lanceur Kairo) ; installation adb avec le profil `.dm`.
+
 ## [1.2.72] — 2026-10-29 (Android)
 
 ### Corrections

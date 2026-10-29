@@ -28,13 +28,16 @@
 
 Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **portails Stalker / Ministra** par adresse MAC). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
 
-> Les captures ci-dessous utilisent exclusivement des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).
+> Les captures TV ci-dessous viennent d'une **vraie box Android TV** (Android 14, 2 Go de RAM) reliée à un abonnement IPTV personnel ; Ultra TV ne fournit aucun contenu. Le lecteur, les profils, les langues et les captures en anglais et en arabe utilisent des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).
 
 <p align="center">
   <img src="docs/screenshots/fr/home.png" alt="Accueil" width="48%" />
   <img src="docs/screenshots/fr/live.png" alt="Direct" width="48%" />
   <img src="docs/screenshots/fr/guide.png" alt="Guide des programmes" width="48%" />
   <img src="docs/screenshots/fr/detail.png" alt="Fiche film" width="48%" />
+  <img src="docs/screenshots/fr/series.png" alt="Fiche série et épisodes" width="48%" />
+  <img src="docs/screenshots/fr/search.png" alt="Recherche en temps réel" width="48%" />
+  <img src="docs/screenshots/fr/kairo.png" alt="« À suivre » et « Nouveautés » d'Ultra TV dans le lanceur Kairo" width="48%" />
   <img src="docs/screenshots/fr/player.png" alt="Lecteur" width="48%" />
   <img src="docs/screenshots/fr/settings.png" alt="Réglages" width="48%" />
   <img src="docs/screenshots/fr/profiles.png" alt="Qui regarde ?" width="48%" />
@@ -57,7 +60,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin) ; à l'accueil, **watchlist**, **recommandations**, **tendances**, **populaires**, **listes personnelles** et **« À suivre »**, limitées aux titres disponibles dans la playlist chargée ; marque **« Vu »** ; depuis les fiches : ajouter / retirer de la watchlist, marquer vu / non vu (film, épisode, saison), **noter de 1 à 10** ; positions de reprise importées. Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
 - **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil.
 - **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
-- **Google TV** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct), chaîne d'accueil Ultra TV (favoris puis dernières chaînes) et chaîne **Ultra TV · Nouveautés** (derniers films et séries ajoutés), recherche vocale et globale, liens profonds `ultratv://`.
+- **Google TV, Android TV et lanceurs tiers** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct, titres nettoyés, un seul exemplaire par film), chaîne d'accueil **Favoris** (favoris puis dernières chaînes) et chaîne **Nouveautés** (derniers films et séries ajoutés, sans doublon), recherche vocale et globale, liens profonds `ultratv://`. Ces rangées passent par le fournisseur TV d'Android : les lanceurs qui le lisent (Kairo…) les affichent aussi.
 - **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
 - **Thèmes** Sombre / Clair / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL).
 - **Personnalisation** (Réglages › Affichage) : **couleur d'accent** (6 choix), **taille du texte**, **rangées de l'accueil** (afficher, masquer, réordonner), **écran d'ouverture** (Accueil, Direct, Films, Séries, Guide ou dernière chaîne).
@@ -138,7 +141,7 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 
 | Appareil | Fichier |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`), plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) avec son profil précompilé `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
 | Tableau de bord cloud | <https://ultratv-config.khalilbenaz.workers.dev> (aucune installation) |
@@ -158,6 +161,12 @@ Android 9 ou plus récent (API 28).
 ```bash
 adb connect IP_DE_LA_BOX:5555
 adb install -r UltraTV-debug.apk
+```
+
+**adb, démarrage plus rapide** (Android 12 ou plus récent) : installez l'APK de votre processeur avec son profil précompilé `.dm` (même nom, publié dans la release). Android compile alors l'application dès l'installation au lieu d'attendre une optimisation en tâche de fond. Mesuré sur une box 2 Go : démarrage 1,1 s → 0,6 s, défilement nettement plus fluide.
+
+```bash
+adb install-multiple -r UltraTV-<version>-armeabi-v7a.apk UltraTV-<version>-armeabi-v7a.dm
 ```
 
 Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U, **portail Stalker** ou **Depuis le cloud**), saisissez-la, puis choisissez vos catégories (seules les catégories actives sont téléchargées).
