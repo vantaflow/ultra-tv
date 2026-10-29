@@ -294,9 +294,11 @@ interface ChannelDao {
     @Query("SELECT categoryId AS categoryId, SUM(CASE WHEN isSeparator = 0 THEN 1 ELSE 0 END) AS n, SUM(isSeparator) AS sections FROM channel WHERE providerId = :pid AND junk = 0 GROUP BY categoryId")
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
+    // Sous-requête et non jointure : avec la jointure, SQLite parcourait toutes les lignes de la source et évaluait le MATCH
+    // pour chacune (55 s pour « spider » sur une box 2 Go, ~500 fois plus lent). Ici l'index plein texte est lu une fois.
     @Query("""
-        SELECT c.* FROM channel c JOIN channel_fts ON c.id = channel_fts.docid
-        WHERE channel_fts MATCH :match AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 LIMIT :limit
+        SELECT c.* FROM channel c WHERE c.id IN (SELECT docid FROM channel_fts WHERE channel_fts MATCH :match)
+        AND c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0 LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<ChannelEntity>
 }
@@ -359,8 +361,8 @@ interface MovieDao {
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
     @Query("""
-        SELECT m.* FROM movie m JOIN movie_fts ON m.id = movie_fts.docid
-        WHERE movie_fts MATCH :match AND m.providerId = :pid LIMIT :limit
+        SELECT m.* FROM movie m WHERE m.id IN (SELECT docid FROM movie_fts WHERE movie_fts MATCH :match)
+        AND m.providerId = :pid LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<MovieEntity>
 
@@ -435,8 +437,8 @@ interface SeriesDao {
     fun observeCategoryCounts(pid: Long): Flow<List<CategoryCount>>
 
     @Query("""
-        SELECT s.* FROM series s JOIN series_fts ON s.id = series_fts.docid
-        WHERE series_fts MATCH :match AND s.providerId = :pid LIMIT :limit
+        SELECT s.* FROM series s WHERE s.id IN (SELECT docid FROM series_fts WHERE series_fts MATCH :match)
+        AND s.providerId = :pid LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<SeriesEntity>
 

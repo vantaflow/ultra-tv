@@ -226,12 +226,16 @@ class PlaybackSession(
             } else Unit
             EngineEvent.Ready -> { stallJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
+                // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
+                // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
+                val again = firstFrame
                 firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel()
                 everPlayed = true
                 // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
                 stableJob?.cancel(); stableJob = scope.launch { delay(30_000); reconnects = 0 }
                 // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
-                android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
+                if (again) android.util.Log.i("UltraPlay", "picture again (surface changed) engine=${combo.engine}")
+                else android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.

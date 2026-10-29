@@ -84,7 +84,9 @@ class DesignStrings(val lang: AppLang) {
     val latestMovies get() = t("Latest movies", "Derniers films ajoutés", "Últimas películas", "أحدث الأفلام")
     val latestSeries get() = t("Latest series", "Dernières séries ajoutées", "Últimas series", "أحدث المسلسلات")
     /** Nom de la chaîne d'accueil Google TV des derniers ajouts. */
-    val newsChannelName get() = t("Ultra TV · New releases", "Ultra TV · Nouveautés", "Ultra TV · Novedades", "Ultra TV · الجديد")
+    // Sans « Ultra TV · » : Google TV et les lanceurs (Kairo…) affichent déjà l'appli à côté (« Ultra TV · Nouveautés · UTV »),
+    // et la chaîne Favoris n'avait pas ce préfixe.
+    val newsChannelName get() = t("New releases", "Nouveautés", "Novedades", "الجديد")
     val seeAll get() = t("See all", "Voir tout", "Ver todo", "عرض الكل")
     val loadingLabel get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
     val searchingLabel get() = t("Searching…", "Recherche…", "Buscando…", "جارٍ البحث…")

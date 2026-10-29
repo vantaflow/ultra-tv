@@ -38,6 +38,11 @@ class WatchNextPlanTest {
         assertEquals(listOf("e2", "m1"), WatchNextPlan.select(list).map { it.remoteId })
     }
 
+    @Test fun select_memeFilmDansDeuxCategories_uneSeuleTuile() {
+        val list = listOf(h(rid = "a", at = 10).copy(title = "TOP - Sample Movie (2025)"), h(rid = "b", at = 20).copy(title = "4K - Sample Movie"))
+        assertEquals(listOf("b"), WatchNextPlan.select(list).map { it.remoteId })
+    }
+
     @Test fun select_auPlusDix() {
         assertEquals(WatchNextPlan.MAX, WatchNextPlan.select((1..30).map { h(rid = "$it", at = it.toLong()) }).size)
     }

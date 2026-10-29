@@ -194,7 +194,7 @@ class HomeViewModel @Inject constructor(
         @Suppress("UNCHECKED_CAST") val now = a[7] as Map<Long, EpgEntity>
         val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it) }
         HomeRows(
-            resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key },
+            resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key }.oneCardPerTitle(),
             watchlist = t.watchlist.map(::traktPosterOf).distinctKeys { it.key },
             recommended = t.recommendations.map(::traktPosterOf).distinctKeys { it.key },
             trending = t.trending.map(::traktPosterOf).distinctKeys { it.key },
