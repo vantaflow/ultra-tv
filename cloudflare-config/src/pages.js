@@ -45,7 +45,7 @@ p{margin:0}
 /* Formulaires */
 label,.lbl{display:block;color:var(--fg2);font-size:13px;font-weight:600;margin:14px 0 6px}
 label .hint,.hint{color:var(--mut);font-weight:500}
-input,select{width:100%;min-height:48px;background:var(--bg);color:var(--fg);border:1.5px solid var(--bd);border-radius:14px;padding:11px 14px;font:inherit;font-size:16px;transition:border-color .15s,box-shadow .15s}
+input,select,textarea{width:100%;min-height:48px;background:var(--bg);color:var(--fg);border:1.5px solid var(--bd);border-radius:14px;padding:11px 14px;font:inherit;font-size:16px;transition:border-color .15s,box-shadow .15s}
 input::placeholder{color:var(--mut);opacity:.75}
 input:hover{border-color:var(--mut)}
 input:focus-visible{outline:none;border-color:var(--acc);box-shadow:0 0 0 4px var(--acc-soft),0 0 0 2px var(--acc)}
@@ -196,6 +196,12 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px ui-monos
 .content{padding:20px 0 40px}.hello h1{font-size:24px}}
 .kind.pro{background:linear-gradient(135deg,var(--acc),#8f1019);color:#fff;margin:0 0 0 6px}.kind.std{background:var(--s2);color:var(--fg2);margin:0 0 0 6px}
 .brand .kind.pro{font-size:10px;min-height:20px}
+/* Alertes (Administration) */
+textarea{min-height:88px;resize:vertical;line-height:1.45}
+.ann-msg{white-space:pre-wrap;margin:10px 0 0;color:var(--fg)}
+.ann.ann-urgent{border-color:var(--acc)} .ann.ann-warning{border-color:#d4a72c}
+.kind.ann-st{background:var(--s2);color:var(--fg2)} .kind.ann-live{background:var(--ok);color:#fff} .kind.ann-ended{opacity:.6}
+.ann-form .row{gap:12px;align-items:flex-end}
 .listbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px}
 .listbar .lsearch{flex:1 1 240px;min-height:44px}
 .pager{display:inline-flex;align-items:center;gap:8px}.pager button{min-height:44px;min-width:44px;padding:0 12px}
@@ -297,8 +303,12 @@ const DASH_MSG = {
     short: "Nouveau mot de passe trop court (10 caractères minimum).",
     pw: "Mot de passe actuel incorrect.",
     assign: "Choisis au moins un appareil de ton compte.",
+    ann_empty: "Alerte : le message est obligatoire.",
+    ann_dates: "Alerte : la fin doit être après le début.",
+    ann_past: "Alerte : la date de fin est déjà passée.",
+    ann_missing: "Alerte introuvable (déjà supprimée ?).",
   },
-  ok: { trakt: "Trakt connecté : tes appareils y envoient ce que tu regardes.", trakt_off: "Trakt déconnecté.", os: "Compte OpenSubtitles relié : tes téléchargements de sous-titres utilisent ton quota.", os_off: "Compte OpenSubtitles délié.", paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour." },
+  ok: { trakt: "Trakt connecté : tes appareils y envoient ce que tu regardes.", trakt_off: "Trakt déconnecté.", os: "Compte OpenSubtitles relié : tes téléchargements de sous-titres utilisent ton quota.", os_off: "Compte OpenSubtitles délié.", paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour.", ann_added: "Alerte programmée.", ann_ended: "Alerte arrêtée.", ann_deleted: "Alerte supprimée." },
 };
 
 /** « il y a 3 jours » : durée relative lisible, calculée côté serveur. */
@@ -468,9 +478,9 @@ function licenseLine(lic, now = Date.now()) {
   return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null }) {
-  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login }) : null;
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, announcements = null }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
+  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login, announcements: announcements || [], csrfInput }) : null;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const provRows = providers.map((p) => {
@@ -742,7 +752,42 @@ function sourcesLabel(r) {
 
 /** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
 /** Section « Administration » du tableau de bord (comptes ADMIN_LOGINS) : { html, script }. */
-export function adminSection({ rows: all, me, now = Date.now() }) {
+/** Panneau « Alertes » : programmer un message affiché par les applications, voir et arrêter les alertes existantes. */
+export function announcementsPanel(list, csrfInput, now = Date.now()) {
+  const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
+  const LEVEL = { info: "Information", warning: "Avertissement", urgent: "Urgent" };
+  const AUD = { all: "Tous les appareils", tv: "TV et box", mobile: "Téléphones et tablettes", desktop: "Ordinateurs" };
+  const state = (a) => (a.startAt && now < a.startAt ? ["scheduled", "Programmée"] : a.endAt && now >= a.endAt ? ["ended", "Terminée"] : ["live", "En cours"]);
+  const rows = [...list].sort((x, y) => (y.startAt || 0) - (x.startAt || 0)).map((a) => {
+    const [st, label] = state(a);
+    return `<article class="card ann ann-${e(a.level)}"><div class="card-title"><span class="kind ann-st ann-${st}">${e(label)}</span><span class="kind">${e(LEVEL[a.level] || a.level)}</span>${e(a.title || "(sans titre)")}</div>
+<p class="ann-msg">${e(a.message)}</p>
+<div class="card-meta">${e(AUD[a.audience || "all"])} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
+<div class="actions">${st !== "ended" ? `<form method="post" action="/admin/announcements/${e(a.id)}/end" data-confirm="Arrêter la diffusion de cette alerte maintenant ?">${csrfInput}<button class="secondary" type="submit">Arrêter</button></form>` : ""}
+<form method="post" action="/admin/announcements/${e(a.id)}/delete" data-confirm="Supprimer cette alerte ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
+  }).join("");
+  const opts = (map, sel) => Object.entries(map).map(([k, v]) => `<option value="${e(k)}"${k === sel ? " selected" : ""}>${e(v)}</option>`).join("");
+  return `<section class="panel wide" id="alertes"><h2>Alertes</h2>
+<p class="muted small">Message affiché par les applications pendant la période choisie (vérifié au lancement puis toutes les 15 minutes). « Information » et « Avertissement » s'affichent une fois par appareil ; « Urgent » à chaque lancement jusqu'à la fin.</p>
+<form method="post" action="/admin/announcements" class="ann-form">${csrfInput}
+<label for="ann-title">Titre</label><input id="ann-title" name="title" maxlength="80" placeholder="Maintenance du service"/>
+<label for="ann-msg">Message</label><textarea id="ann-msg" name="message" maxlength="600" rows="3" required placeholder="Le service sera indisponible dimanche de 2 h à 4 h."></textarea>
+<div class="row"><div class="grow"><label for="ann-level">Niveau</label><select id="ann-level" name="level">${opts(LEVEL, "info")}</select></div>
+<div class="grow"><label for="ann-aud">Appareils</label><select id="ann-aud" name="audience">${opts(AUD, "all")}</select></div></div>
+<div class="row"><div class="grow"><label for="ann-start">Début <span class="muted">(vide : tout de suite)</span></label><input id="ann-start" name="start" type="datetime-local"/></div>
+<div class="grow"><label for="ann-end">Fin <span class="muted">(vide : jusqu'à arrêt)</span></label><input id="ann-end" name="end" type="datetime-local"/></div></div>
+<input type="hidden" name="startMs"/><input type="hidden" name="endMs"/>
+<p class="muted small">Heures saisies dans le fuseau de ce navigateur.</p>
+<div class="row"><button type="submit">Programmer l'alerte</button></div></form>
+<div class="section-h mt16"><h3>Alertes <span class="count">${list.length}</span></h3></div>
+${rows || `<p class="muted small">Aucune alerte.</p>`}</section>`;
+}
+
+/** Heures locales du formulaire d'alerte → millisecondes (le serveur ne connaît pas le fuseau du navigateur). */
+const ANN_SCRIPT = `document.querySelectorAll('.ann-form').forEach(function(f){f.addEventListener('submit',function(){
+[['start','startMs'],['end','endMs']].forEach(function(p){var v=f.querySelector('[name='+p[0]+']').value;f.querySelector('[name='+p[1]+']').value=v?String(new Date(v).getTime()):'';});});});`;
+
+export function adminSection({ rows: all, me, now = Date.now(), announcements = [], csrfInput = "" }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
   const DAY = 86400_000;
   // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
@@ -783,7 +828,7 @@ export function adminSection({ rows: all, me, now = Date.now() }) {
 <td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
 <td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
   };
-  const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});`;
+  const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});` + ANN_SCRIPT;
   return { script, html: `<div class="section-h" id="administration"><h2>Administration</h2><span class="muted small">Statistiques et comptes de tous les utilisateurs.</span></div>
 <div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}</div>
 <div class="agrid">
@@ -799,6 +844,7 @@ ${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) =
 <h3>Versions de l'appli</h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`))}</section>
 <section class="panel"><h2>Sources et services</h2>
 ${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
+${announcementsPanel(announcements, csrfInput, now)}
 <section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
 </div>
 <div class="section-h mt16"><h3>Comptes <span class="count">${rows.length}</span></h3><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>

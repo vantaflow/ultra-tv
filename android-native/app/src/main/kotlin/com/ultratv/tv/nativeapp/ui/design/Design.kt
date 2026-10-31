@@ -222,6 +222,7 @@ object Icons {
     const val Arrow = "M5 12h14M13 6l6 6-6 6"
     const val Check = "M5 12l5 5 9-10"
     const val Play = "M7 4v16l13-8z"
+    const val Info = "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"
     const val Chevron = "M15 6l-6 6 6 6"
     // Rail (Sidebar.dc.html)
     const val Home = "M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"

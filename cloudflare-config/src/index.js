@@ -37,6 +37,7 @@ import {
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
+import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES } from "./announcements.js";
 import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
@@ -151,6 +152,12 @@ async function route(req, env, ctx) {
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
+  // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).
+  if (path === "/api/announcements" && m === "GET") {
+    const aud = url.searchParams.get("audience");
+    const items = activeAnnouncements(await loadAnnouncements(env), Date.now(), ANN_AUDIENCES.includes(aud) && aud !== "all" ? aud : null);
+    return json({ items }, 200, { "cache-control": "public, max-age=60" });
+  }
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
   if (path === "/api/crash" && m === "POST") return ingest(req, env, "crash");
   // Ancienne lecture anonyme par MAC : supprimée (la MAC n'est pas un secret).
@@ -185,7 +192,7 @@ async function route(req, env, ctx) {
   const adminRoute = (path === "/admin" || path === "/admin/comptes.csv") && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect"].includes(path)
-    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account))$/.test(path));
+    || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
     const c = pairRoute ? normalizeCode(url.searchParams.get("code")) : null;
@@ -215,7 +222,8 @@ async function route(req, env, ctx) {
     const providers = await loadProviders(env, sess.acct);
     const admin = isAdmin(env, sess.acct);
     const adminRows = admin ? await adminAccounts(env) : null;
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows });
+    const announcements = admin ? await loadAnnouncements(env) : null;
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, announcements });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.
@@ -224,6 +232,7 @@ async function route(req, env, ctx) {
   if (parsed.error) return parsed.error;
   const form = parsed.form;
   if (!timingSafeEqual(form.get("csrf") || "", sess.csrf)) return new Response("Forbidden (csrf)", { status: 403 });
+  if (path.startsWith("/admin/announcements")) return adminAnnouncement(env, sess.acct, path, form);
   // Abonnements : une requête par fournisseur Xtream à chaque ouverture du tableau de bord (jusqu'à 20) — limite
   // PROPRE, sinon quelques rechargements épuisaient celle des actions (appairage, partage, suppression).
   const acc = path.match(/^\/providers\/([0-9a-f]+)\/account$/);
@@ -516,6 +525,29 @@ async function changePassword(env, acct, form, req) {
 function isAdmin(env, acct) {
   const list = String(env.ADMIN_LOGINS || "").split(",").map((x) => x.trim()).filter(Boolean);
   return Boolean(acct && list.includes(acct.login));
+}
+
+/**
+ * Alertes (administrateur seulement, 404 pour tout autre compte) : POST /admin/announcements crée,
+ * …/{id}/end arrête la diffusion maintenant, …/{id}/delete supprime. Retour sur la section Administration.
+ */
+async function adminAnnouncement(env, acct, path, form) {
+  if (!isAdmin(env, acct)) return new Response("Not found", { status: 404 });
+  const now = Date.now();
+  const list = await loadAnnouncements(env);
+  const m = path.match(/^\/admin\/announcements\/([0-9a-f]+)\/(end|delete)$/);
+  if (m) {
+    const i = list.findIndex((a) => a.id === m[1]);
+    if (i < 0) return redirect("/?e=ann_missing#administration");
+    if (m[2] === "delete") list.splice(i, 1);
+    else list[i] = { ...list[i], endAt: now, startAt: Math.min(list[i].startAt || now, now) };
+    await saveAnnouncements(env, list, now);
+    return redirect(`/?m=${m[2] === "delete" ? "ann_deleted" : "ann_ended"}#administration`);
+  }
+  const parsed = parseAnnouncementForm(form, now);
+  if (parsed.error) return redirect(`/?e=${parsed.error}#administration`);
+  await saveAnnouncements(env, [...list, { ...parsed.value, by: acct.login }], now);
+  return redirect("/?m=ann_added#administration");
 }
 
 const LEGACY_LOGIN = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;

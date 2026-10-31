@@ -117,6 +117,8 @@ Gérez appareils et sources depuis un navigateur : **<https://ultratv-config.kha
 
 Sources **Xtream**, **M3U** et **portails Stalker** (adresse MAC masquée). Chaque appareil affiche son modèle, son édition, sa **version de l'appli** et sa dernière activité. Chaque source Xtream ou M3U a un bouton **Afficher le lien IPTV** (lien M3U complet, à la demande, avec bouton Copier) et son **abonnement** (statut, date d'expiration, jours restants, connexions), lu chez le fournisseur ; listes paginées avec recherche quand elles s'allongent.
 
+Rubrique **Administration** (comptes listés dans `ADMIN_LOGINS`) : statistiques, comptes et **alertes**. Une alerte est un message (titre, texte, niveau Information / Avertissement / Urgent) programmé avec une date de début et de fin, pour tous les appareils ou seulement les TV, les téléphones ou les ordinateurs. Les applications le vérifient au lancement puis toutes les 15 minutes et l'affichent par-dessus l'écran (jamais pendant la lecture) ; « Urgent » revient à chaque lancement jusqu'à la fin de la diffusion.
+
 Rubrique **Compte** :
 - **Trakt** : bouton *Connecter Trakt*, autorisation chez Trakt ; vos appareils y envoient ensuite ce que vous regardez. Le mot de passe Trakt ne passe jamais par le site.
 - **Sous-titres · OpenSubtitles** (facultatif) : reliez votre compte OpenSubtitles, gratuit ou VIP, pour utiliser votre propre quota de téléchargements au lieu du quota commun.
