@@ -96,6 +96,8 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | GET | `/api/config` | `Bearer` jeton d'appareil | Fournisseurs déchiffrés pour cet appareil |
 | POST | `/api/device/rotate` | `Bearer` | Nouveau jeton, l'ancien meurt |
 | POST | `/api/event`, `/api/crash` | `Bearer` | Télémétrie nettoyée et bornée |
+| GET | `/api/announcements?audience=…` (tv, mobile, desktop) | — | Alertes diffusées maintenant (lecture publique, cache 60 s) |
+| POST | `/admin/announcements`, `/admin/announcements/{id}/end`, `…/delete` | session admin + CSRF | Programmer, arrêter, supprimer une alerte (ADMIN_LOGINS) |
 | GET | `/api/config/:mac` | — | **410 Gone** (ancienne lecture anonyme supprimée) |
 | GET | `/crashes`, `/logs` | Basic/Bearer `OPS_TOKEN` | Tableaux de bord d'exploitation |
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |

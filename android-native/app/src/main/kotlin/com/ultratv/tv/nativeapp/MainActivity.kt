@@ -519,6 +519,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
         com.ultratv.tv.nativeapp.ui.common.OverlayLayer(overlays)
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         com.ultratv.tv.nativeapp.ui.common.ReminderBannerHost()
+        // Alertes de l'administrateur (tableau de bord) : jamais par-dessus la lecture plein écran.
+        com.ultratv.tv.nativeapp.ui.common.AnnouncementHost(suppressed = onPlayer)
         }
       }
     }

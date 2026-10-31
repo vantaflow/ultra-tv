@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.78] — 2026-10-31 (Android) · Worker
+
+### Nouveau
+- Alertes : l'administrateur programme depuis le tableau de bord (Administration › Alertes) un message avec titre, niveau (Information, Avertissement, Urgent), cible (tous, TV, téléphones, ordinateurs), début et fin. Les applications Android le vérifient au lancement puis toutes les 15 minutes et l'affichent par-dessus l'écran, jamais pendant la lecture plein écran. « Information » et « Avertissement » : une fois par appareil ; « Urgent » : à chaque lancement jusqu'à la fin. Arrêt et suppression depuis le même panneau.
+
 ## [1.2.77] — 2026-10-30 (Android)
 
 ### Corrections
