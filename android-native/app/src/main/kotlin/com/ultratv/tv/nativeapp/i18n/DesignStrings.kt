@@ -233,7 +233,7 @@ class DesignStrings(val lang: AppLang) {
     // Guide
     val today get() = t("Today", "Aujourd’hui", "Hoy", "اليوم")
     val tomorrow get() = t("Tomorrow", "Demain", "Mañana", "غدًا")
-    val announcementTitle get() = t("Information", "Information", "Información", "معلومة")
+    val announcementTitle get() = t("Notice", "Information", "Aviso", "إشعار")
     val announcementOk get() = t("OK", "J’ai compris", "Entendido", "حسنًا")
     val langSystem get() = t("System (auto)", "Système (auto)", "Sistema (auto)", "النظام (تلقائي)")
     /** Nom d'une langue dans les choix : chaque langue dans sa propre langue, sauf « Système », traduit. */
