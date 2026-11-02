@@ -14,25 +14,25 @@
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",
     "@fontsource/sora": "^5.3.0",
-    "@tanstack/react-virtual": "^3.14.22",
+    "@tanstack/react-virtual": "^3.14.24",
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
-    "hls.js": "^1.7.3",
+    "hls.js": "^1.7.4",
     "mpegts.js": "^1.8.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.4",
+    "react-router-dom": "^7.18.5",
     "zustand": "^5.0.16"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
-    "fake-indexeddb": "^6.2.6",
+    "fake-indexeddb": "^6.2.7",
     "typescript": "^7.0.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5",
-    "wrangler": "^4.152.0"
+    "wrangler": "^4.156.0"
   }
 }
