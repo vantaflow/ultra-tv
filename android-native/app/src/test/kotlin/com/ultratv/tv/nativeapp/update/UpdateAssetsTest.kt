@@ -59,4 +59,14 @@ class UpdateAssetsTest {
         assertEquals(h2, UpdateAssets.digestFor("$h2 *UltraTV-x.apk", "UltraTV-x.apk"))
         assertEquals("", UpdateAssets.digestFor("zz  UltraTV-x.apk", "UltraTV-x.apk"))
     }
+
+    @Test fun profilDm_choisiAvecLApkDuMemeAbi_absentSinon() {
+        val withDm = full + a("UltraTV-1.1.1-armeabi-v7a.dm") + a("UltraTV-1.1.1-arm64-v8a.dm")
+        val c = UpdateAssets.choose(withDm, "1.1.1", listOf("armeabi-v7a"))!!
+        assertEquals("UltraTV-1.1.1-armeabi-v7a.dm", c.dmName)
+        assertEquals("https://exemple.invalid/UltraTV-1.1.1-armeabi-v7a.dm", c.dmUrl)
+        assertNull(UpdateAssets.choose(full, "1.1.1", listOf("armeabi-v7a"))!!.dmName)
+        // APK universel (repli) : jamais de .dm.
+        assertNull(UpdateAssets.choose(withDm, "1.1.1", listOf("mips"))!!.dmName)
+    }
 }

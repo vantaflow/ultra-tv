@@ -49,6 +49,9 @@ object UpdateChecker {
         /** APK choisi (par ABI ou universel) et, pour un APK par ABI, l'URL de SHA256SUMS.txt (vérification obligatoire). */
         val apkName: String = APK_NAME,
         val sumsUrl: String? = null,
+        /** Profil de démarrage (.dm) à installer avec l'APK : démarrage compilé d'avance (1,1 s → 0,6 s sur box). */
+        val dmName: String? = null,
+        val dmUrl: String? = null,
     )
 
     private val _state = MutableStateFlow<UpdateInfo?>(null)
@@ -107,7 +110,7 @@ object UpdateChecker {
                     RemoteLog.warn(TAG, "no installable APK asset on $tag")
                     return@use null
                 }
-                val info = UpdateInfo(tag, verName, remoteCode, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl)
+                val info = UpdateInfo(tag, verName, remoteCode, choice.apkUrl, notes, choice.sha256Url, choice.apkName, choice.sumsUrl, choice.dmName, choice.dmUrl)
                 _state.value = info
                 RemoteLog.info(TAG, "update available: $tag (code $remoteCode)")
                 info
@@ -144,7 +147,9 @@ object UpdateChecker {
             withContext(Dispatchers.IO) {
                 val apk = fetchVerified(ctx, info, onProgress)
                 if (!sameSigner(ctx, apk)) throw SignatureMismatchException()
-                installApk(ctx, apk)
+                val dm = runCatching { fetchDm(info, apk) }
+                    .onFailure { RemoteLog.warn(TAG, "dm skipped for ${info.tag}: ${it.message}") }.getOrNull()
+                if (dm == null || !UpdateInstaller.trySession(ctx, apk, dm)) installApk(ctx, apk)
             }
         }
     }
@@ -210,6 +215,29 @@ object UpdateChecker {
         RemoteLog.info(TAG, "checksum verified for ${info.tag}")
     }
 
+    /**
+     * Profil de démarrage (.dm) de la version, vérifié par SHA256SUMS.txt ; null s'il n'est pas publié. Facultatif :
+     * en cas d'échec (exception), l'APK s'installe seul comme avant.
+     */
+    private fun fetchDm(info: UpdateInfo, apk: File): File? {
+        val url = info.dmUrl ?: return null
+        val name = info.dmName ?: return null
+        val sumsUrl = info.sumsUrl ?: return null
+        val out = File(apk.path.removeSuffix(".apk") + ".dm")
+        val expected = http.newCall(Request.Builder().url(sumsUrl).build()).execute().use { resp ->
+            check(resp.isSuccessful) { "sums ${resp.code}" }
+            UpdateAssets.digestFor(resp.body?.string().orEmpty(), name)
+        }
+        if (out.isFile && digestMatches(expected, sha256Hex(out))) return out
+        http.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+            check(resp.isSuccessful) { "dm ${resp.code}" }
+            val body = resp.body ?: error("empty dm")
+            out.outputStream().use { o -> body.byteStream().use { it.copyTo(o) } }
+        }
+        if (!digestMatches(expected, sha256Hex(out))) { out.delete(); error("dm checksum mismatch") }
+        return out
+    }
+
     /** Accepte `<hex>` ou `<hex>  fichier` (format sha256sum). Renvoie "" si illisible. */
     internal fun parseExpectedDigest(text: String): String {
         val token = text.trim().substringBefore(' ').substringBefore('\t').substringBefore('\n').lowercase()
@@ -236,7 +264,8 @@ object UpdateChecker {
         val dir = File(ctx.filesDir, "updates").apply { mkdirs() }
         val out = File(dir, "ultra-tv-${info.versionName}.apk")
         // Anciennes versions supprimées (pas celle-ci : un autre appel peut l'avoir déjà vérifiée).
-        dir.listFiles()?.filter { !it.name.startsWith(out.name) }?.forEach { it.delete() }
+        val stem = out.name.removeSuffix(".apk")
+        dir.listFiles()?.filter { !it.name.startsWith(stem) }?.forEach { it.delete() }
         // Écriture dans un fichier temporaire, renommé seulement une fois complet : jamais d'APK à moitié écrit.
         val part = File(dir, out.name + ".part")
         part.delete(); out.delete(); File(out.path + ".ok").delete()
@@ -299,7 +328,7 @@ object UpdateChecker {
         a.isEmpty() || i.isEmpty() || a.intersect(i).isNotEmpty()
     }.getOrDefault(true)
 
-    private fun installApk(ctx: Context, apk: File) {
+    internal fun installApk(ctx: Context, apk: File) {
         val authority = "${ctx.packageName}.updates"
         val uri: Uri = FileProvider.getUriForFile(ctx, authority, apk)
         val intent = Intent(Intent.ACTION_VIEW).apply {
