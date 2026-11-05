@@ -7,7 +7,12 @@
 export const ANN_KEY = "announcements:v1";
 export const ANN_MAX = 50;
 export const ANN_LEVELS = ["info", "warning", "urgent"];
-export const ANN_AUDIENCES = ["all", "tv", "mobile", "desktop"];
+export const ANN_AUDIENCES = ["all", "tv", "mobile"];
+/** Bouton d'action proposé avec l'alerte : « update » ouvre la mise à jour intégrée de l'application. */
+export const ANN_ACTIONS = ["none", "update"];
+/** Statistiques comptées par appareil (une fois chacune) : affichée, fermée, bouton d'action utilisé. */
+export const ANN_STAT_KINDS = ["shown", "dismissed", "action"];
+const VERSION_RE = /^\d{1,4}(\.\d{1,4}){0,3}$/;
 const TITLE_MAX = 80;
 const MESSAGE_MAX = 600;
 /** Une alerte terminée depuis plus de 30 jours est purgée à la prochaine écriture. */
@@ -35,19 +40,38 @@ export function announcementState(a, now = Date.now()) {
   return "live";
 }
 
+/** Version « 1.2.78 » (suffixe « -debug » ignoré) → nombres, ou null si illisible. */
+export function parseVersion(v) {
+  const m = String(v || "").trim().match(/^\d{1,4}(\.\d{1,4}){0,3}/);
+  return m ? m[0].split(".").map(Number) : null;
+}
+
+/** Vrai si la version [v] est strictement antérieure à [ref] (composants manquants = 0). */
+export function versionBefore(v, ref) {
+  const a = parseVersion(v), b = parseVersion(ref);
+  if (!a || !b) return false;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const x = a[i] || 0, y = b[i] || 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
 /**
  * Alertes à diffuser maintenant, de la plus urgente à la moins urgente puis de la plus récente à la plus ancienne.
  * [audience] (« tv », « mobile », « desktop ») filtre les alertes ciblées ; absente : toutes.
  * Seuls les champs utiles aux applications sortent (pas d'auteur ni de date de création).
  */
-export function activeAnnouncements(list, now = Date.now(), audience = null) {
+export function activeAnnouncements(list, now = Date.now(), audience = null, version = null) {
   // Rang croissant avec la gravité (info 0 … urgent 2) : tri décroissant = la plus grave d'abord.
   const rank = (l) => ANN_LEVELS.indexOf(l);
   return list
     .filter((a) => announcementState(a, now) === "live")
     .filter((a) => !audience || !a.audience || a.audience === "all" || a.audience === audience)
+    // Ciblage par version : une application qui ne dit pas sa version (1.2.78 et avant) est forcément ancienne.
+    .filter((a) => !a.below || !parseVersion(version) || versionBefore(version, a.below))
     .sort((x, y) => rank(y.level) - rank(x.level) || (y.startAt || 0) - (x.startAt || 0))
-    .map((a) => ({ id: a.id, title: a.title, message: a.message, level: a.level, startAt: a.startAt || null, endAt: a.endAt || null }));
+    .map((a) => ({ id: a.id, title: a.title, message: a.message, level: a.level, action: a.action && a.action !== "none" ? a.action : null, startAt: a.startAt || null, endAt: a.endAt || null }));
 }
 
 const clean = (v, max) => String(v || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, max);
@@ -71,9 +95,12 @@ export function parseAnnouncementForm(form, now = Date.now(), id = null) {
   if (!message) return { error: "ann_empty" };
   const level = ANN_LEVELS.includes(form.get("level")) ? form.get("level") : "info";
   const audience = ANN_AUDIENCES.includes(form.get("audience")) ? form.get("audience") : "all";
+  const below = clean(form.get("below"), 20);
+  if (below && !VERSION_RE.test(below)) return { error: "ann_version" };
+  const action = ANN_ACTIONS.includes(form.get("action")) ? form.get("action") : "none";
   const startAt = parseWhen(form.get("startMs"), form.get("start")) || now;
   const endAt = parseWhen(form.get("endMs"), form.get("end"));
   if (endAt && endAt <= startAt) return { error: "ann_dates" };
   if (endAt && endAt <= now) return { error: "ann_past" };
-  return { value: { id: id || crypto.randomUUID().replace(/-/g, "").slice(0, 16), title, message, level, audience, startAt, endAt, createdAt: now } };
+  return { value: { id: id || crypto.randomUUID().replace(/-/g, "").slice(0, 16), title, message, level, audience, below: below || null, action, startAt, endAt, createdAt: now } };
 }

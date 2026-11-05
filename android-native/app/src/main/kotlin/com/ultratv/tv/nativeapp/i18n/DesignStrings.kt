@@ -235,6 +235,9 @@ class DesignStrings(val lang: AppLang) {
     val tomorrow get() = t("Tomorrow", "Demain", "Mañana", "غدًا")
     val announcementTitle get() = t("Notice", "Information", "Aviso", "إشعار")
     val announcementOk get() = t("OK", "J’ai compris", "Entendido", "حسنًا")
+    val announcementUpdate get() = t("Update", "Mettre à jour", "Actualizar", "تحديث")
+    val rubMessages get() = t("Messages", "Messages", "Mensajes", "الرسائل")
+    val noMessages get() = t("No messages yet. Service notices will appear here.", "Aucun message pour l’instant. Les annonces du service apparaîtront ici.", "Aún no hay mensajes. Los avisos del servicio aparecerán aquí.", "لا توجد رسائل بعد. ستظهر هنا إشعارات الخدمة.")
     val langSystem get() = t("System (auto)", "Système (auto)", "Sistema (auto)", "النظام (تلقائي)")
     /** Nom d'une langue dans les choix : chaque langue dans sa propre langue, sauf « Système », traduit. */
     fun langName(l: AppLang) = if (l == AppLang.System) langSystem else l.displayName

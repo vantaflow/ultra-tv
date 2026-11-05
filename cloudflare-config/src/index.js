@@ -37,7 +37,7 @@ import {
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
-import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES } from "./announcements.js";
+import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
@@ -155,9 +155,10 @@ async function route(req, env, ctx) {
   // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).
   if (path === "/api/announcements" && m === "GET") {
     const aud = url.searchParams.get("audience");
-    const items = activeAnnouncements(await loadAnnouncements(env), Date.now(), ANN_AUDIENCES.includes(aud) && aud !== "all" ? aud : null);
+    const items = activeAnnouncements(await loadAnnouncements(env), Date.now(), ANN_AUDIENCES.includes(aud) && aud !== "all" ? aud : null, url.searchParams.get("version"));
     return json({ items }, 200, { "cache-control": "public, max-age=60" });
   }
+  { const sm = path.match(/^\/api\/announcements\/([0-9a-f]{8,32})\/stat$/); if (sm && m === "POST") return announcementStat(req, env, sm[1]); }
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
   if (path === "/api/crash" && m === "POST") return ingest(req, env, "crash");
   // Ancienne lecture anonyme par MAC : supprimée (la MAC n'est pas un secret).
@@ -223,7 +224,8 @@ async function route(req, env, ctx) {
     const admin = isAdmin(env, sess.acct);
     const adminRows = admin ? await adminAccounts(env) : null;
     const announcements = admin ? await loadAnnouncements(env) : null;
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, announcements });
+    const annStats = announcements ? await announcementStats(env, announcements) : null;
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, announcements, annStats });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.
@@ -539,7 +541,10 @@ async function adminAnnouncement(env, acct, path, form) {
   if (m) {
     const i = list.findIndex((a) => a.id === m[1]);
     if (i < 0) return redirect("/?e=ann_missing#administration");
-    if (m[2] === "delete") list.splice(i, 1);
+    if (m[2] === "delete") {
+      list.splice(i, 1);
+      await annStatsStub(env, m[1]).annReset().catch(() => {});
+    }
     else list[i] = { ...list[i], endAt: now, startAt: Math.min(list[i].startAt || now, now) };
     await saveAnnouncements(env, list, now);
     return redirect(`/?m=${m[2] === "delete" ? "ann_deleted" : "ann_ended"}#administration`);
@@ -548,6 +553,36 @@ async function adminAnnouncement(env, acct, path, form) {
   if (parsed.error) return redirect(`/?e=${parsed.error}#administration`);
   await saveAnnouncements(env, [...list, { ...parsed.value, by: acct.login }], now);
   return redirect("/?m=ann_added#administration");
+}
+
+/** Instance du Durable Object qui compte les statistiques d'une alerte. */
+const annStatsStub = (env, id) => guardStub(env, `ann:${id}`);
+
+/**
+ * Statistiques d'une alerte, envoyées par l'application : { kind: shown|dismissed|action, device: identifiant
+ * d'installation aléatoire }. Route publique comme la lecture (aucun appairage exigé) ; l'identifiant n'est gardé
+ * que haché, chaque appareil n'est compté qu'une fois par type, et l'alerte doit exister.
+ */
+async function announcementStat(req, env, id) {
+  const rl = await limited(env, `annstat:ip:${clientIp(req)}`, 120, 3600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 1024);
+  if (body.error) return body.error;
+  const kind = body.value?.kind;
+  const device = typeof body.value?.device === "string" ? body.value.device.trim() : "";
+  if (!ANN_STAT_KINDS.includes(kind) || device.length < 8 || device.length > 64) return json({ error: "bad_request" }, 400);
+  const a = (await loadAnnouncements(env)).find((x) => x.id === id);
+  if (!a) return json({ error: "not_found" }, 404);
+  const expire = (a.endAt || Date.now() + 365 * 86400_000) + 31 * 86400_000;
+  await annStatsStub(env, id).annMark(kind, (await sha256Hex(`ann:${device}`)).slice(0, 32), expire);
+  return json({ ok: true });
+}
+
+/** Statistiques de chaque alerte de la liste (vue d'administration), en parallèle ; zéros si une lecture échoue. */
+async function announcementStats(env, list) {
+  const zero = { shown: 0, dismissed: 0, action: 0 };
+  const rows = await Promise.all(list.map((a) => annStatsStub(env, a.id).annStats().catch(() => zero)));
+  return Object.fromEntries(list.map((a, i) => [a.id, rows[i]]));
 }
 
 const LEGACY_LOGIN = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;

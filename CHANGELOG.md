@@ -2,6 +2,18 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.79] — 2026-11-05 (Android) · Worker
+
+### Nouveau
+- Alertes, ciblage par version : une alerte peut ne viser que les versions de l'application antérieures à une version donnée (« Versions antérieures à 1.2.79 »).
+- Alertes, bouton d'action : « Mettre à jour » ouvre la mise à jour intégrée de l'application (ou indique qu'elle est déjà à jour).
+- Alertes, statistiques : pour chaque alerte, le tableau de bord indique sur combien d'appareils elle a été affichée, fermée et sur combien le bouton a servi (compté une fois par appareil, identifiant d'installation aléatoire stocké haché).
+- Alertes, affichage selon le niveau : « Information » sans bouton s'affiche en bandeau discret qui disparaît seul, sans prendre le focus ; « Avertissement », « Urgent » et les alertes avec bouton restent des fenêtres à valider. Pendant la lecture plein écran, une alerte « Urgent » s'affiche en bandeau au lieu d'attendre la fin.
+- Réglages › Messages : les alertes déjà reçues sur l'appareil (20 au plus), pour les relire.
+
+### Changements
+- Alertes : cible « Ordinateurs » retirée (aucune application ne la lisait).
+
 ## [1.2.78] — 2026-10-31 (Android) · Worker
 
 ### Nouveau

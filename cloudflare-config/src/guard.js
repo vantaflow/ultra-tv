@@ -118,4 +118,27 @@ export class Guard extends DurableObject {
     }
     return { status: "pending" };
   }
+
+  // ---- statistiques d'une alerte (une instance par alerte) ------------------
+  /**
+   * Compte [kind] une seule fois par appareil (identifiant d'installation haché par l'appelant). L'instance
+   * s'efface d'elle-même à [expireAtMs] (fin de l'alerte + 30 jours).
+   */
+  async annMark(kind, device, expireAtMs) {
+    const seenKey = `s:${kind}:${device}`;
+    if (await this.ctx.storage.get(seenKey)) return { counted: false };
+    const n = ((await this.ctx.storage.get(`n:${kind}`)) || 0) + 1;
+    await this.ctx.storage.put({ [seenKey]: 1, [`n:${kind}`]: n });
+    await this.#expireAt(expireAtMs);
+    return { counted: true };
+  }
+
+  async annStats() {
+    const m = await this.ctx.storage.get(["n:shown", "n:dismissed", "n:action"]);
+    return { shown: m.get("n:shown") || 0, dismissed: m.get("n:dismissed") || 0, action: m.get("n:action") || 0 };
+  }
+
+  async annReset() {
+    await this.ctx.storage.deleteAll();
+  }
 }
