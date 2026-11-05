@@ -129,6 +129,11 @@
             </intent-filter>
         </receiver>
 
+        <!-- Résultat de l'installation d'une mise à jour par session (APK + profil .dm). -->
+        <receiver
+            android:name="com.ultratv.tv.nativeapp.update.UpdateInstallReceiver"
+            android:exported="false" />
+
         <receiver
             android:name="com.ultratv.tv.nativeapp.data.reminders.ReminderReceiver"
             android:exported="false">

@@ -12,7 +12,11 @@ object UpdateAssets {
     data class Asset(val name: String, val url: String)
 
     /** [sha256Url] : fichier d'un seul condensat (universel) ; [sumsUrl] : SHA256SUMS.txt (APK par ABI). Exactement l'un des deux. */
-    data class Choice(val apkName: String, val apkUrl: String, val sha256Url: String?, val sumsUrl: String?)
+    data class Choice(
+        val apkName: String, val apkUrl: String, val sha256Url: String?, val sumsUrl: String?,
+        /** Profil de démarrage `UltraTV-<version>-<abi>.dm` publié avec l'APK par ABI (vérifié par le même SHA256SUMS). */
+        val dmName: String? = null, val dmUrl: String? = null,
+    )
 
     fun choose(assets: List<Asset>, versionName: String, supportedAbis: List<String>): Choice? {
         fun find(n: String) = assets.firstOrNull { it.name.equals(n, ignoreCase = true) }
@@ -20,7 +24,8 @@ object UpdateAssets {
         if (sums != null) {
             for (abi in supportedAbis) {
                 val apk = find("UltraTV-$versionName-$abi.apk") ?: continue
-                return Choice(apk.name, apk.url, null, sums.url)
+                val dm = find("UltraTV-$versionName-$abi.dm")
+                return Choice(apk.name, apk.url, null, sums.url, dm?.name, dm?.url)
             }
         }
         val uni = find(UNIVERSAL) ?: return null

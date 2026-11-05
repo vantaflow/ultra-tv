@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.80] — 2026-11-05 (Android)
+
+### Performances
+- Mise à jour intégrée : le profil de démarrage (.dm) publié avec chaque APK est désormais téléchargé, vérifié (SHA256SUMS.txt) et installé avec l'APK, par une session PackageInstaller. Android compile l'application d'avance dès l'installation : démarrage d'environ 1,1 s à 0,6 s sur box, au lieu de perdre ce gain à chaque mise à jour depuis l'application. Si la box refuse ce mode d'installation, l'installeur classique prend le relais (APK seul) et l'appareil ne retente plus la session.
+
 ## [1.2.79] — 2026-11-05 (Android) · Worker
 
 ### Nouveau
