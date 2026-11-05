@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { call, newAccount } from "./helpers.js";
-import { activeAnnouncements, announcementState, parseAnnouncementForm } from "../src/announcements.js";
+import { activeAnnouncements, announcementState, parseAnnouncementForm, versionBefore } from "../src/announcements.js";
 
 const H = 3600_000;
 const form = (o) => new Map(Object.entries(o));
@@ -33,6 +33,26 @@ describe("alertes : règles", () => {
     expect(Object.keys(activeAnnouncements(list, now)[1])).not.toContain("by");
     expect(announcementState(list[2], now)).toBe("scheduled");
     expect(announcementState(list[3], now)).toBe("ended");
+  });
+  it("versions : comparaison numérique, suffixe ignoré, cible « Ordinateurs » retirée", () => {
+    expect(versionBefore("1.2.9", "1.2.10")).toBe(true);
+    expect(versionBefore("1.2.79-debug", "1.2.79")).toBe(false);
+    expect(versionBefore("1.2", "1.2.1")).toBe(true);
+    expect(versionBefore("abc", "1.2")).toBe(false);
+    expect(parseAnnouncementForm(form({ message: "m", audience: "desktop" }), 1).value.audience).toBe("all");
+    expect(parseAnnouncementForm(form({ message: "m", below: "v1" }), 1).error).toBe("ann_version");
+  });
+  it("ciblage par version et bouton d'action", () => {
+    const list = [
+      { id: "old", message: "maj", level: "warning", startAt: 0, below: "1.2.79", action: "update" },
+      { id: "all", message: "tous", level: "info", startAt: 0, action: "none" },
+    ];
+    expect(activeAnnouncements(list, 1, null, "1.2.78").map((a) => a.id)).toEqual(["old", "all"]);
+    expect(activeAnnouncements(list, 1, null, "1.2.79").map((a) => a.id)).toEqual(["all"]);
+    // Sans version (applications 1.2.78 et avant) : considérée comme ancienne.
+    expect(activeAnnouncements(list, 1).map((a) => a.id)).toEqual(["old", "all"]);
+    expect(activeAnnouncements(list, 1)[0].action).toBe("update");
+    expect(activeAnnouncements(list, 1)[1].action).toBeNull();
   });
 });
 
@@ -69,6 +89,24 @@ describe("alertes : routes", () => {
     const noCsrf = await call("/admin/announcements", { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { message: "x" } });
     expect(noCsrf.status).toBe(403);
     expect((await (await call("/api/announcements")).json()).items).toHaveLength(0);
+  });
+  it("statistiques : une fois par appareil et par type, alerte existante, visibles dans l'administration", async () => {
+    const admin = await adminAccount();
+    await call("/admin/announcements", { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf, message: "Stats", action: "update", below: "1.2.79" } });
+    const { items } = await (await call("/api/announcements?version=1.2.78")).json();
+    const id = items.find((a) => a.message === "Stats").id;
+    const stat = (kind, device) => call(`/api/announcements/${id}/stat`, { method: "POST", ip: "198.51.100.9", json: { kind, device } });
+    expect((await stat("shown", "appareil-un")).status).toBe(200);
+    await stat("shown", "appareil-un");
+    await stat("shown", "appareil-deux");
+    await stat("action", "appareil-un");
+    expect((await stat("vu", "appareil-un")).status).toBe(400);
+    expect((await stat("shown", "court")).status).toBe(400);
+    expect((await call("/api/announcements/0123456789abcdef/stat", { method: "POST", json: { kind: "shown", device: "appareil-un" } })).status).toBe(404);
+    const page = await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text();
+    expect(page).toContain("affichée sur 2 appareils · fermée sur 0 · bouton utilisé sur 1");
+    expect(page).toContain("versions antérieures à 1.2.79");
+    await call(`/admin/announcements/${id}/delete`, { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf } });
   });
   it("le texte est échappé dans le tableau de bord", async () => {
     const admin = await adminAccount();

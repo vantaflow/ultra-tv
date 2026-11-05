@@ -1,19 +1,28 @@
 package com.ultratv.tv.nativeapp.ui.common
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -21,6 +30,7 @@ import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.announce.Announcement
 import com.ultratv.tv.nativeapp.data.announce.AnnouncementPlan
 import com.ultratv.tv.nativeapp.data.announce.AnnouncementRepository
+import com.ultratv.tv.nativeapp.data.announce.ReceivedAnnouncement
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.Icons
 import com.ultratv.tv.nativeapp.ui.design.Manrope
@@ -38,15 +48,20 @@ import javax.inject.Inject
 
 /**
  * Alertes de l'administrateur : lues au lancement puis toutes les 15 minutes tant que l'appli est au premier plan,
- * montrées une à une (voir [AnnouncementPlan.next]).
+ * montrées une à une (voir [AnnouncementPlan.next]). Chaque affichage, fermeture et usage du bouton d'action est
+ * compté une fois par appareil (statistiques du tableau de bord).
  */
 @HiltViewModel
 class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRepository) : ViewModel() {
     private val _current = MutableStateFlow<Announcement?>(null)
     val current: StateFlow<Announcement?> = _current.asStateFlow()
+    /** Recherche de mise à jour demandée par le bouton « Mettre à jour » : le dialogue de mise à jour s'affiche. */
+    private val _updating = MutableStateFlow(false)
+    val updating: StateFlow<Boolean> = _updating.asStateFlow()
     private var items: List<Announcement> = emptyList()
     private var audience = "tv"
     private var started = false
+    private var shownId: String? = null
 
     fun start(touch: Boolean) {
         if (started) return
@@ -69,29 +84,92 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
         if (_current.value == null) _current.value = AnnouncementPlan.next(items, repo.seen(), shownThisLaunch)
     }
 
-    fun dismiss(a: Announcement) {
+    /** L'alerte est réellement à l'écran : gardée dans « Messages » et comptée (une fois par affichage). */
+    fun onShown(a: Announcement) {
+        if (shownId == a.id) return
+        shownId = a.id
+        repo.remember(a)
+        viewModelScope.launch { repo.stat(a.id, "shown") }
+    }
+
+    /** [byUser] : fermée par l'utilisateur (comptée), sinon bandeau disparu de lui-même. */
+    fun dismiss(a: Announcement, byUser: Boolean = true) {
         shownThisLaunch += a.id
         if (a.level != AnnouncementPlan.URGENT) repo.saveSeen(repo.seen() + a.id)
+        if (byUser) viewModelScope.launch { repo.stat(a.id, "dismissed") }
         _current.value = AnnouncementPlan.next(items, repo.seen(), shownThisLaunch)
     }
 
+    /** Bouton d'action : seule action prévue, la mise à jour (dialogue habituel, ou « vous êtes à jour »). */
+    fun act(a: Announcement, upToDate: (String) -> Unit) {
+        viewModelScope.launch { repo.stat(a.id, "action") }
+        dismiss(a, byUser = false)
+        viewModelScope.launch {
+            val info = com.ultratv.tv.nativeapp.update.UpdateChecker.checkForUpdate()
+            if (info != null) _updating.value = true else upToDate(com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)
+        }
+    }
+
+    fun history(): List<ReceivedAnnouncement> = repo.history()
+
     companion object {
         const val POLL_MS = 15 * 60_000L
+        const val BANNER_MS = 15_000L
         /** Alertes urgentes déjà montrées depuis le lancement du processus (réaffichées au lancement suivant). */
         private val shownThisLaunch = mutableSetOf<String>()
     }
 }
 
-/** Fenêtre d'alerte, par-dessus l'écran ; jamais pendant la lecture plein écran ([suppressed]) : elle attend sa fin. */
+private fun accentOf(level: String): Color = when (level) {
+    AnnouncementPlan.URGENT -> Ux.Accent
+    "warning" -> Color(0xFFD4A72C)
+    else -> Ux.Text2
+}
+
+/**
+ * Affichage des alertes :
+ * - « info » sans bouton : bandeau discret en haut à droite, sans focus, qui disparaît seul ;
+ * - « warning », « urgent » ou alerte avec bouton : fenêtre à valider ;
+ * - pendant la lecture plein écran ([suppressed]) : seules les urgentes passent, en bandeau ; les autres attendent la fin.
+ */
 @Composable
 fun AnnouncementHost(suppressed: Boolean, vm: AnnouncementViewModel = hiltViewModel()) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    androidx.compose.runtime.LaunchedEffect(Unit) { vm.start(touch) }
+    LaunchedEffect(Unit) { vm.start(touch) }
+    val updating by vm.updating.collectAsState()
+    if (updating) com.ultratv.tv.nativeapp.update.UpdateDialog()
     val a by vm.current.collectAsState()
     val shown = a ?: return
-    if (suppressed) return
+    if (suppressed && !AnnouncementPlan.showDuringPlayback(shown)) return
+    LaunchedEffect(shown.id) { vm.onShown(shown) }
+    if (suppressed || AnnouncementPlan.isBanner(shown)) AnnouncementBanner(shown, vm) else AnnouncementDialog(shown, vm)
+}
+
+@Composable
+private fun AnnouncementBanner(shown: Announcement, vm: AnnouncementViewModel) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
-    val accent = when (shown.level) { AnnouncementPlan.URGENT -> Ux.Accent; "warning" -> Color(0xFFD4A72C); else -> Ux.Text2 }
+    LaunchedEffect(shown.id) { delay(AnnouncementViewModel.BANNER_MS); vm.dismiss(shown, byUser = false) }
+    val accent = accentOf(shown.level)
+    Box(Modifier.fillMaxSize().padding(end = 96.design, top = 54.design), contentAlignment = Alignment.TopEnd) {
+        Row(
+            Modifier.width(620.design).clip(RoundedCornerShape(22.design)).background(Ux.Surface)
+                .border(2.design, accent, RoundedCornerShape(22.design)).padding(horizontal = 28.design, vertical = 24.design),
+            horizontalArrangement = Arrangement.spacedBy(20.design),
+        ) {
+            DIcon(Icons.Info, 40.design, accent, strokeWidth = 2.2f)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
+                Text(shown.title.ifBlank { D.announcementTitle }, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(shown.message, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementDialog(shown: Announcement, vm: AnnouncementViewModel) {
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    val accent = accentOf(shown.level)
     ModalFocusScope(onBack = { vm.dismiss(shown) }, modifier = Modifier.background(Ux.Scrim)) {
         Column(
             Modifier.widthIn(min = 560.design, max = 900.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(44.design),
@@ -102,7 +180,42 @@ fun AnnouncementHost(suppressed: Boolean, vm: AnnouncementViewModel = hiltViewMo
                 Text(shown.title.ifBlank { D.announcementTitle }, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 2)
             }
             Text(shown.message, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, lineHeight = 36.spx)
-            PillButton(D.announcementOk, onClick = { vm.dismiss(shown) }, bg = Ux.Cta, weight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                if (shown.action == AnnouncementPlan.ACTION_UPDATE) {
+                    PillButton(D.announcementUpdate, onClick = { vm.act(shown) { v -> Toaster.ok(S.settingsUpToDateTemplate.format(v)) } }, bg = Ux.Cta, weight = FontWeight.Bold)
+                    PillButton(D.announcementOk, onClick = { vm.dismiss(shown) })
+                } else {
+                    PillButton(D.announcementOk, onClick = { vm.dismiss(shown) }, bg = Ux.Cta, weight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+/** Rubrique « Messages » des Réglages : les alertes déjà reçues sur cet appareil, la plus récente d'abord. */
+@Composable
+fun AnnouncementHistoryPane(vm: AnnouncementViewModel = hiltViewModel()) {
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    val list = remember { vm.history() }
+    val fmt = remember(D.lang) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT) }
+    com.ultratv.tv.nativeapp.ui.design.PaneTitle(D.rubMessages)
+    if (list.isEmpty()) {
+        Text(D.noMessages, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
+        list.forEach { m ->
+            // Focalisable (sans action) : la télécommande fait défiler la liste ligne par ligne.
+            com.ultratv.tv.nativeapp.ui.design.FocusSurface(onClick = {}, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth()) { f ->
+                Column(Modifier.padding(horizontal = 28.design, vertical = 20.design), verticalArrangement = Arrangement.spacedBy(6.design)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
+                        DIcon(Icons.Info, 28.design, if (f) Ux.TextOnLight else accentOf(m.level), strokeWidth = 2.2f)
+                        Text(m.title.ifBlank { D.announcementTitle }, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(fmt.format(java.util.Date(m.at)), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                    }
+                    Text(m.message, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx)
+                }
+            }
         }
     }
 }

@@ -307,6 +307,7 @@ const DASH_MSG = {
     ann_dates: "Alerte : la fin doit être après le début.",
     ann_past: "Alerte : la date de fin est déjà passée.",
     ann_missing: "Alerte introuvable (déjà supprimée ?).",
+    ann_version: "Alerte : version invalide (exemple : 1.2.79).",
   },
   ok: { trakt: "Trakt connecté : tes appareils y envoient ce que tu regardes.", trakt_off: "Trakt déconnecté.", os: "Compte OpenSubtitles relié : tes téléchargements de sous-titres utilisent ton quota.", os_off: "Compte OpenSubtitles délié.", paired: "Appareil appairé.", added: "Fournisseur ajouté.", revoked: "Appareil révoqué.", renamed: "Appareil renommé.", assigned: "Affectation enregistrée.", pw: "Mot de passe mis à jour.", ann_added: "Alerte programmée.", ann_ended: "Alerte arrêtée.", ann_deleted: "Alerte supprimée." },
 };
@@ -478,9 +479,9 @@ function licenseLine(lic, now = Date.now()) {
   return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, announcements = null }) {
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, announcements = null, annStats = null }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
-  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login, announcements: announcements || [], csrfInput }) : null;
+  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login, announcements: announcements || [], annStats: annStats || {}, csrfInput }) : null;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const provRows = providers.map((p) => {
@@ -753,27 +754,37 @@ function sourcesLabel(r) {
 /** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
 /** Section « Administration » du tableau de bord (comptes ADMIN_LOGINS) : { html, script }. */
 /** Panneau « Alertes » : programmer un message affiché par les applications, voir et arrêter les alertes existantes. */
-export function announcementsPanel(list, csrfInput, now = Date.now()) {
+export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
   const LEVEL = { info: "Information", warning: "Avertissement", urgent: "Urgent" };
-  const AUD = { all: "Tous les appareils", tv: "TV et box", mobile: "Téléphones et tablettes", desktop: "Ordinateurs" };
+  const AUD = { all: "Tous les appareils", tv: "TV et box", mobile: "Téléphones et tablettes" };
+  const ACTION = { none: "Aucun bouton", update: "« Mettre à jour » (ouvre la mise à jour de l'application)" };
+  const statLine = (a) => {
+    const st = stats[a.id] || { shown: 0, dismissed: 0, action: 0 };
+    const parts = [`affichée sur ${st.shown} appareil${st.shown > 1 ? "s" : ""}`, `fermée sur ${st.dismissed}`];
+    if (a.action && a.action !== "none") parts.push(`bouton utilisé sur ${st.action}`);
+    return `<div class="card-meta ann-stats">${e(parts.join(" · "))}</div>`;
+  };
   const state = (a) => (a.startAt && now < a.startAt ? ["scheduled", "Programmée"] : a.endAt && now >= a.endAt ? ["ended", "Terminée"] : ["live", "En cours"]);
   const rows = [...list].sort((x, y) => (y.startAt || 0) - (x.startAt || 0)).map((a) => {
     const [st, label] = state(a);
     return `<article class="card ann ann-${e(a.level)}"><div class="card-title"><span class="kind ann-st ann-${st}">${e(label)}</span><span class="kind">${e(LEVEL[a.level] || a.level)}</span>${e(a.title || "(sans titre)")}</div>
 <p class="ann-msg">${e(a.message)}</p>
-<div class="card-meta">${e(AUD[a.audience || "all"])} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
+<div class="card-meta">${e(AUD[a.audience || "all"] || a.audience)}${a.below ? ` · versions antérieures à ${e(a.below)}` : ""}${a.action === "update" ? " · bouton « Mettre à jour »" : ""} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
+${statLine(a)}
 <div class="actions">${st !== "ended" ? `<form method="post" action="/admin/announcements/${e(a.id)}/end" data-confirm="Arrêter la diffusion de cette alerte maintenant ?">${csrfInput}<button class="secondary" type="submit">Arrêter</button></form>` : ""}
 <form method="post" action="/admin/announcements/${e(a.id)}/delete" data-confirm="Supprimer cette alerte ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
   }).join("");
   const opts = (map, sel) => Object.entries(map).map(([k, v]) => `<option value="${e(k)}"${k === sel ? " selected" : ""}>${e(v)}</option>`).join("");
   return `<section class="panel wide" id="alertes"><h2>Alertes</h2>
-<p class="muted small">Message affiché par les applications pendant la période choisie (vérifié au lancement puis toutes les 15 minutes). « Information » et « Avertissement » s'affichent une fois par appareil ; « Urgent » à chaque lancement jusqu'à la fin.</p>
+<p class="muted small">Message affiché par les applications pendant la période choisie (vérifié au lancement puis toutes les 15 minutes). « Information » s'affiche en bandeau discret qui disparaît seul ; « Avertissement » et « Urgent » en fenêtre à valider. Chaque alerte s'affiche une fois par appareil, sauf « Urgent » : à chaque lancement jusqu'à la fin, et en bandeau pendant la lecture d'une vidéo.</p>
 <form method="post" action="/admin/announcements" class="ann-form">${csrfInput}
 <label for="ann-title">Titre</label><input id="ann-title" name="title" maxlength="80" placeholder="Maintenance du service"/>
 <label for="ann-msg">Message</label><textarea id="ann-msg" name="message" maxlength="600" rows="3" required placeholder="Le service sera indisponible dimanche de 2 h à 4 h."></textarea>
 <div class="row"><div class="grow"><label for="ann-level">Niveau</label><select id="ann-level" name="level">${opts(LEVEL, "info")}</select></div>
 <div class="grow"><label for="ann-aud">Appareils</label><select id="ann-aud" name="audience">${opts(AUD, "all")}</select></div></div>
+<div class="row"><div class="grow"><label for="ann-below">Versions antérieures à <span class="muted">(vide : toutes)</span></label><input id="ann-below" name="below" maxlength="20" pattern="[0-9]{1,4}([.][0-9]{1,4}){0,3}" placeholder="1.2.79"/></div>
+<div class="grow"><label for="ann-action">Bouton</label><select id="ann-action" name="action">${opts(ACTION, "none")}</select></div></div>
 <div class="row"><div class="grow"><label for="ann-start">Début <span class="muted">(vide : tout de suite)</span></label><input id="ann-start" name="start" type="datetime-local"/></div>
 <div class="grow"><label for="ann-end">Fin <span class="muted">(vide : jusqu'à arrêt)</span></label><input id="ann-end" name="end" type="datetime-local"/></div></div>
 <input type="hidden" name="startMs"/><input type="hidden" name="endMs"/>
@@ -787,7 +798,7 @@ ${rows || `<p class="muted small">Aucune alerte.</p>`}</section>`;
 const ANN_SCRIPT = `document.querySelectorAll('.ann-form').forEach(function(f){f.addEventListener('submit',function(){
 [['start','startMs'],['end','endMs']].forEach(function(p){var v=f.querySelector('[name='+p[0]+']').value;f.querySelector('[name='+p[1]+']').value=v?String(new Date(v).getTime()):'';});});});`;
 
-export function adminSection({ rows: all, me, now = Date.now(), announcements = [], csrfInput = "" }) {
+export function adminSection({ rows: all, me, now = Date.now(), announcements = [], annStats = {}, csrfInput = "" }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
   const DAY = 86400_000;
   // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
@@ -844,7 +855,7 @@ ${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) =
 <h3>Versions de l'appli</h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`))}</section>
 <section class="panel"><h2>Sources et services</h2>
 ${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
-${announcementsPanel(announcements, csrfInput, now)}
+${announcementsPanel(announcements, csrfInput, now, annStats)}
 <section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
 </div>
 <div class="section-h mt16"><h3>Comptes <span class="count">${rows.length}</span></h3><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>

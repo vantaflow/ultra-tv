@@ -25,7 +25,7 @@ class TranslationsCompleteTest {
         // FR / ES : mots identiques dans la langue cible
         "guide", "stats", "cast", "diagnostic", "position", "type", "mobile", "animations", "auto", "zoom", "sources", "stable", "active",
         "programmes", "series", "hardware", "software", "manual", "no", "sections", "amoled", "zapping", "rec", "e", "s", "—", "·",
-        "normal", "orange",
+        "normal", "orange", "messages",
     )
     private val arabicLetter = Regex("[\\u0600-\\u06FF]")
     private val latinLetter = Regex("[A-Za-zÀ-ÿ]")
