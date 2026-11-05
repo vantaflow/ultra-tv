@@ -1,0 +1,5 @@
+# Scripts shell : toujours en fins de ligne Unix (build Linux, CI, machines distantes).
+*.sh text eol=lf
+gradlew text eol=lf
+# Scripts Windows : CRLF.
+*.bat text eol=crlf

@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.81] — 2026-11-05 (Android)
+
+### Maintenance
+- Dépôt : `gradlew` et les scripts `.sh` gardent des fins de ligne Unix même extraits sous Windows (`.gitattributes`) ; un build lancé sous Linux depuis une archive faite sous Windows échouait (« ./gradlew: No such file or directory »).
+
 ## [1.2.80] — 2026-11-05 (Android)
 
 ### Performances
