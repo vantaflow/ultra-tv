@@ -20,8 +20,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ffmpeg minimal LGPL (lecture http(s)/HLS/MKV/MP4/TS, audio → AAC, sortie MPEG-TS) pour la conversion audio du
+  # bureau : Windows en compilation croisée mingw-w64 (TLS Schannel), Linux natif (TLS OpenSSL 3). macOS : ffmpeg du système.
+  ffmpeg:
+    name: Build minimal ffmpeg (${{ matrix.target }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        target: [win, linux]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain
+        run: sudo apt-get update -q && sudo apt-get install -y -q nasm libssl-dev gcc-mingw-w64-x86-64
+      - name: Build
+        working-directory: electron
+        run: bash scripts/build-ffmpeg-min.sh ${{ matrix.target }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ffmpeg-${{ matrix.target }}
+          if-no-files-found: error
+          retention-days: 7
+          path: electron/vendor/ffmpeg/
+
   build:
     name: Build ${{ matrix.name }}
+    needs: ffmpeg
     # `matrix` n'existe pas dans un `if:` de job : pas de condition ici.
     runs-on: ${{ matrix.os }}
     strategy:
@@ -141,11 +165,17 @@ jobs:
               ;;
           esac
 
-      # Conversion audio AC-3 / DTS (transcode.cjs) : ffmpeg statique LGPL embarqué sous Windows et Linux.
-      - name: Fetch LGPL ffmpeg
+      # Conversion audio AC-3 / DTS (transcode.cjs) : ffmpeg minimal LGPL (~3 Mo) construit par le job « ffmpeg ».
+      - name: Get minimal LGPL ffmpeg
         if: runner.os != 'macOS'
-        working-directory: electron
-        run: npm run fetch:ffmpeg:${{ runner.os == 'Windows' && 'win' || 'linux' }}
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: ffmpeg-${{ runner.os == 'Windows' && 'win' || 'linux' }}
+          path: electron/vendor/ffmpeg
+
+      - name: Make ffmpeg executable
+        if: runner.os == 'Linux'
+        run: chmod +x electron/vendor/ffmpeg/ffmpeg
 
       - name: Package
         working-directory: electron

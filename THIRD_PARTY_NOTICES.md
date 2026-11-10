@@ -28,7 +28,7 @@ Le décodeur AC3 / E-AC3 / DTS / TrueHD d'ExoPlayer repose sur FFmpeg.
 
 | Composant | Licence | Remarque |
 |---|---|---|
-| ffmpeg statique, variante **LGPL** (BtbN/FFmpeg-Builds) | LGPL-2.1+ | embarqué dans `resources/ffmpeg`, exécuté comme programme séparé pour convertir l'audio AC-3 / E-AC-3 / DTS en AAC ; licence et origine dans `resources/ffmpeg/LICENSE.txt` et `SOURCE.txt`. `scripts/fetch-ffmpeg.cjs` refuse toute variante GPL. |
+| ffmpeg minimal, **LGPL-2.1+** (FFmpeg 7.1, `electron/scripts/build-ffmpeg-min.sh`) | LGPL-2.1+ | embarqué dans `resources/ffmpeg` (~3 Mo), exécuté comme programme séparé pour convertir l'audio AC-3 / E-AC-3 / DTS en AAC. Compilé sans `--enable-gpl` ni `--enable-nonfree` (le script s'arrête sinon) ; TLS : Schannel (Windows), OpenSSL 3 du système (Linux). Licence, source et commit dans `resources/ffmpeg/LICENSE.txt` et `SOURCE.txt`. |
 
 macOS : pas de ffmpeg embarqué ; celui du système est utilisé s'il est installé (Homebrew).
 

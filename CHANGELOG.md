@@ -12,10 +12,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Accueil : rangées **« Parce que vous avez regardé… »** (films proches du dernier film regardé), **« Films les mieux notés »** et **« Séries les mieux notées »**, calculées en local (sans Trakt), réglables dans Rangées de l'accueil.
 - **« À la une » défile** : 6 titres (séries et films les mieux notés), un toutes les 9 s, avec fondu et points ; le bureau alterne la chaîne mise en avant et les séries les mieux notées (pause au survol).
 - Recherche **tolérante aux fautes de frappe** (« brekin bad » → Breaking Bad) quand la recherche exacte ne trouve aucun film ni série.
-- Films et séries : **tri** (fournisseur, ajouts récents, mieux notés), **note minimale** (6+, 7+, 8+) et **période** (décennies) ; un filtre actif sur « Tous » affiche une grille filtrée.
+- Films et séries : **tri** (fournisseur, ajouts récents, mieux notés ; chaque tri suit un index de la base, sans retri de tout le catalogue), **note minimale** (6+, 7+, 8+) et **période** (décennies) ; un filtre actif sur « Tous » affiche une grille filtrée.
 - **Pages acteurs et réalisateurs** : un nom de la distribution ouvre ses films et séries présents dans la playlist (filmographie TMDB rapprochée par titre et année, plus les fiches qui le citent).
 - Réglages › Affichage › **Animations** : Automatique (selon l'appareil ; sur le bureau, selon le système), Désactivées, Réduites, Complètes.
-- Bureau : **son AC-3 / E-AC-3 / DTS** — quand un film ou une chaîne joue sans son, l'audio est converti en AAC par ffmpeg (embarqué en version LGPL sous Windows et Linux ; macOS : ffmpeg installé, sinon un message explique comment l'installer).
+- Bureau : **son AC-3 / E-AC-3 / DTS** — quand un film ou une chaîne joue sans son, l'audio est converti en AAC par ffmpeg (version minimale LGPL d'environ 3 Mo, embarquée sous Windows et Linux ; macOS : ffmpeg installé, sinon un message explique comment l'installer).
 
 ### Worker
 - `GET /api/ratings` (notes OMDb, appareil appairé, cache 7 jours) : secret facultatif `OMDB_API_KEY`.
