@@ -151,10 +151,19 @@ class CatalogRepository @Inject constructor(
      */
     suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
+        var movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit)
+        var series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit)
+        // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
+        if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
+            FuzzySearch.candidateMatch(query)?.let { loose ->
+                movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+                series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+            }
+        }
         return SearchResults(
             channels = channelDao.searchFts(pid, match, limit),
-            movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit),
-            series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit),
+            movies = movies,
+            series = series,
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
             programs = if (includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
         )
@@ -267,3 +276,6 @@ private val EPISODE_ORDER = compareBy<com.ultratv.tv.nativeapp.data.db.EpisodeEn
 /** Premier genre d'une fiche (« Action, Aventure » → « Action »), assez long pour un LIKE utile ; null sinon. */
 fun similarGenreKey(genre: String?): String? =
     genre?.split(',', '/', '|', ';')?.map { it.trim() }?.firstOrNull { it.length >= 3 }?.replace("%", "")?.replace("_", "")?.takeIf { it.length >= 3 }
+
+/** Candidats lus pour la recherche approchée (classés ensuite en mémoire). */
+private const val FUZZY_POOL = 800

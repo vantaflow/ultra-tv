@@ -1,6 +1,7 @@
 import { liveQuery } from "dexie";
 import type { Table } from "dexie";
 import { searchTokens } from "@/lib/text";
+import { fuzzyPrefixes, fuzzyRank } from "@/lib/fuzzy";
 import { db } from "./db";
 import type { CategoryRow, ChannelRow, FavoriteRow, HistoryRow, Kind, MovieRow, ProgramRow, SeriesRow } from "./types";
 
@@ -56,6 +57,17 @@ export async function searchByWords<T extends { norm: string; words?: string[] }
   const sample = await table.where("[sourceId+ord]").between([cid, -1], [cid, MAXK]).first();
   if (!sample || sample.words) return [];
   return table.where("[sourceId+ord]").between([cid, -1], [cid, MAXK]).filter(fine).limit(limit).toArray();
+}
+
+/**
+ * Repli tolérant aux fautes : candidats lus dans l'index `words` par le début (3 lettres) de chaque mot saisi,
+ * puis classés par ressemblance du titre. Utilisé quand la recherche exacte ne trouve rien.
+ */
+export async function searchFuzzy<T extends { title: string; words?: string[] }>(table: Table<T, number>, cid: number, query: string, limit = 30): Promise<T[]> {
+  const pre = fuzzyPrefixes(query);
+  if (!pre.length) return [];
+  const pool = await table.where("words").startsWithAnyOf(pre.map((p) => `${cid}|${p}`)).distinct().limit(800).toArray();
+  return fuzzyRank(query, pool, (r) => r.title, limit);
 }
 
 export const live$ = <T>(fn: () => Promise<T> | T) => liveQuery(fn);
