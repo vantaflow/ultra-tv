@@ -248,7 +248,10 @@ dependencies {
     implementation(libs.room.paging)
     // Deuxième moteur de lecture (MPEG-TS difficiles, AC3/E-AC3/DTS, MKV exotiques) et décodeurs audio logiciels FFmpeg pour Media3.
     implementation(libs.libvlc)
-    implementation(libs.media3.ffmpeg.decoder)
+    // Décodeur FFmpeg : version LGPL construite par tools/ffmpeg-lgpl/build.sh (workflow « FFmpeg LGPL ») si elle est
+    // présente dans app/libs ; sinon le paquet Jellyfin, publié sous GPL-3.0.
+    val ffmpegLgpl = file("libs/media3-decoder-ffmpeg-lgpl.aar")
+    if (ffmpegLgpl.exists()) implementation(files(ffmpegLgpl)) else implementation(libs.media3.ffmpeg.decoder)
 
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
