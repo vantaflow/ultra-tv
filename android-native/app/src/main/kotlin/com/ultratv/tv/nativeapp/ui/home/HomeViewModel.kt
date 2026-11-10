@@ -126,6 +126,26 @@ class HomeViewModel @Inject constructor(
         .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** « Films / séries les mieux notés » : note du fournisseur (ou de TMDB une fois la fiche ouverte). */
+    val topMovies: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedMovies(id, 15).atMostEvery(1_000).snapshotWhile(syncing) }
+        .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    val topSeries: StateFlow<List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>> = pid
+        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else catalog.topRatedSeries(id, 15).atMostEvery(1_000).snapshotWhile(syncing) }
+        .map { l -> l.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** « Parce que vous avez regardé X » : films proches du dernier film regardé (calcul local, sans Trakt). */
+    val because: StateFlow<Pair<String, List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>>> = pid
+        .flatMapLatest { id ->
+            if (id == null) flowOf(null)
+            else history.recentByKind(id, "MOVIE", 1).map { it.firstOrNull()?.remoteId }.distinctUntilChanged()
+                .map { rid -> if (rid == null) null else runCatching { catalog.similarMovies(id, rid, 15) }.getOrNull() }
+        }
+        .map { r -> if (r == null) "" to emptyList() else r.first to r.second.map { com.ultratv.tv.nativeapp.ui.catalog.PosterItem(it.id, it.title, it.poster, it.year, it.rating) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "" to emptyList())
+
     /** Dernières chaînes regardées (historique du profil). */
     val recentChannels: StateFlow<List<WatchHistoryEntity>> = pid
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 12) }
@@ -182,7 +202,7 @@ class HomeViewModel @Inject constructor(
     private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
 
     val rows: StateFlow<HomeRows> = combine(
-        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout),
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because),
     ) { a ->
         @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
         val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
@@ -207,6 +227,10 @@ class HomeViewModel @Inject constructor(
             channels = chans.distinctBy { it.id }.map { ChannelCardUi(it, now[it.id]?.title) },
             showingFavorites = fav,
             layout = a[8] as HomeLayout,
+            topMovies = (a[9] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>).map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
+            topSeries = (a[10] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>).map { catalogPosterOf(it, isShow = true) }.distinctKeys { it.key },
+            becauseTitle = (a[11] as Pair<String, List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>>).first,
+            because = (a[11] as Pair<String, List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>>).second.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeRows.EMPTY)

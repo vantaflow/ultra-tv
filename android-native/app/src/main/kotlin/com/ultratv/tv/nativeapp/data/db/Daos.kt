@@ -327,6 +327,18 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid ORDER BY addedKey DESC LIMIT :limit")
     suspend fun latest(pid: Long, limit: Int): List<MovieEntity>
 
+    /** « Films les mieux notés » (accueil) : note valide et affiche présente. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating > 0 AND rating <= 10 ORDER BY rating DESC, addedKey DESC LIMIT :limit")
+    fun observeTopRated(pid: Long, limit: Int): Flow<List<MovieEntity>>
+
+    /** « Parce que vous avez regardé… » : même genre (texte de la fiche), les mieux notés d'abord. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND id != :excludeId AND genre LIKE '%' || :genre || '%' AND poster IS NOT NULL AND poster != '' ORDER BY rating IS NULL, rating DESC, addedKey DESC LIMIT :limit")
+    suspend fun byGenre(pid: Long, genre: String, excludeId: Long, limit: Int): List<MovieEntity>
+
+    /** Repli : même catégorie du fournisseur, les mieux notés d'abord. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND id != :excludeId AND categoryId = :cat AND poster IS NOT NULL AND poster != '' ORDER BY rating IS NULL, rating DESC, addedKey DESC LIMIT :limit")
+    suspend fun sameCategory(pid: Long, cat: String, excludeId: Long, limit: Int): List<MovieEntity>
+
     /** Rangée d'une catégorie (accueil Films) : les plus récents d'abord. */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")
     fun observeRow(pid: Long, cat: String, limit: Int): Flow<List<MovieEntity>>
@@ -405,6 +417,10 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY addedKey DESC LIMIT :limit")
     suspend fun latest(pid: Long, limit: Int): List<SeriesEntity>
+
+    /** « Séries les mieux notées » (accueil) : note valide et affiche présente. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating > 0 AND rating <= 10 ORDER BY rating DESC, addedKey DESC LIMIT :limit")
+    fun observeTopRated(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     /** Rangée d'une catégorie (accueil Séries) : les plus récentes d'abord. */
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat ORDER BY addedKey DESC LIMIT :limit")

@@ -83,6 +83,10 @@ class DesignStrings(val lang: AppLang) {
     val recentlyWatched get() = t("Recently watched", "Dernières chaînes regardées", "Vistos recientemente", "شوهدت مؤخرًا")
     val latestMovies get() = t("Latest movies", "Derniers films ajoutés", "Últimas películas", "أحدث الأفلام")
     val latestSeries get() = t("Latest series", "Dernières séries ajoutées", "Últimas series", "أحدث المسلسلات")
+    val becauseWatchedBlock get() = t("Because you watched…", "Parce que vous avez regardé…", "Porque viste…", "لأنك شاهدت…")
+    fun becauseWatched(title: String) = t("Because you watched %s", "Parce que vous avez regardé %s", "Porque viste %s", "لأنك شاهدت %s").format(title)
+    val topRatedMovies get() = t("Top rated movies", "Films les mieux notés", "Películas mejor valoradas", "الأفلام الأعلى تقييمًا")
+    val topRatedSeries get() = t("Top rated series", "Séries les mieux notées", "Series mejor valoradas", "المسلسلات الأعلى تقييمًا")
     /** Nom de la chaîne d'accueil Google TV des derniers ajouts. */
     // Sans « Ultra TV · » : Google TV et les lanceurs (Kairo…) affichent déjà l'appli à côté (« Ultra TV · Nouveautés · UTV »),
     // et la chaîne Favoris n'avait pas ce préfixe.

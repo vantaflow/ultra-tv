@@ -230,6 +230,9 @@ private fun HomeSection(
         HomeSectionId.RECENT_CHANNELS -> Section(D.recentlyWatched) { ResumeRow(rows.recentChannels, playHistory) }
         HomeSectionId.LATEST_MOVIES -> Section(D.latestMovies) { PosterRow(rows.latestMovies, openPoster) }
         HomeSectionId.LATEST_SERIES -> Section(D.latestSeries) { PosterRow(rows.latestSeries, openPoster) }
+        HomeSectionId.BECAUSE_WATCHED -> Section(D.becauseWatched(rows.becauseTitle)) { PosterRow(rows.because, openPoster) }
+        HomeSectionId.TOP_MOVIES -> Section(D.topRatedMovies) { PosterRow(rows.topMovies, openPoster) }
+        HomeSectionId.TOP_SERIES -> Section(D.topRatedSeries) { PosterRow(rows.topSeries, openPoster) }
         HomeSectionId.CHANNELS -> Section(if (rows.showingFavorites) D.favoriteChannels else LocalStrings.current.navLive) { ChannelRow(rows.channels, playChannel) }
     }
 }

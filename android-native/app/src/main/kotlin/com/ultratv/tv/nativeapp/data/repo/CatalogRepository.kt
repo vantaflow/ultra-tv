@@ -50,6 +50,20 @@ class CatalogRepository @Inject constructor(
     fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
     fun latestMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeLatest(pid, limit)
     fun latestSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeLatest(pid, limit)
+    fun topRatedMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTopRated(pid, limit)
+    fun topRatedSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeTopRated(pid, limit)
+
+    /**
+     * Films proches d'un film regardé : même genre (premier genre de sa fiche), complétés par sa catégorie du fournisseur.
+     * null si le film n'est plus au catalogue. Titre du film de départ en premier.
+     */
+    suspend fun similarMovies(pid: Long, remoteId: String, limit: Int): Pair<String, List<MovieEntity>>? {
+        val seed = movieDao.byRemoteId(pid, remoteId) ?: return null
+        val genre = similarGenreKey(seed.genre)
+        val byGenre = if (genre != null) movieDao.byGenre(pid, genre, seed.id, limit) else emptyList()
+        val byCat = if (byGenre.size < limit && !seed.categoryId.isNullOrBlank()) movieDao.sameCategory(pid, seed.categoryId, seed.id, limit) else emptyList()
+        return seed.title to (byGenre + byCat).distinctBy { it.id }.take(limit)
+    }
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
@@ -249,3 +263,7 @@ internal fun vodInfoTtlMs(v: VodInfoEntity): Long =
     if (v.plot == null && v.cast == null && v.genre == null && v.backdrop == null) DAY_MS else 7 * DAY_MS
 
 private val EPISODE_ORDER = compareBy<com.ultratv.tv.nativeapp.data.db.EpisodeEntity>({ it.season }, { it.episode }, { it.remoteId })
+
+/** Premier genre d'une fiche (« Action, Aventure » → « Action »), assez long pour un LIKE utile ; null sinon. */
+fun similarGenreKey(genre: String?): String? =
+    genre?.split(',', '/', '|', ';')?.map { it.trim() }?.firstOrNull { it.length >= 3 }?.replace("%", "")?.replace("_", "")?.takeIf { it.length >= 3 }
