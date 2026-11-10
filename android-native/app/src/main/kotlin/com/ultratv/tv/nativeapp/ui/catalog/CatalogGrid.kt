@@ -106,6 +106,11 @@ class CatalogGridViewModel @Inject constructor(
     private val kind = MutableStateFlow(CatalogKind.MOVIES)
     fun bind(k: CatalogKind) { kind.value = k }
 
+    /** Tri et filtres de la grille (puces). */
+    private val _filter = MutableStateFlow(CatalogFilter.DEFAULT)
+    val filter: StateFlow<CatalogFilter> = _filter
+    fun setFilter(f: CatalogFilter) { _filter.value = f }
+
     private val _selected = MutableStateFlow<String?>(null)
     val selected: StateFlow<String?> = _selected
     fun select(remoteId: String?) { _selected.value = remoteId }
@@ -153,16 +158,19 @@ class CatalogGridViewModel @Inject constructor(
         }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(30_000), null)
     }
 
-    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView) { p, k, c, lv -> listOf<Any?>(p, k, c, lv) }
+    val items: Flow<PagingData<PosterItem>> = combine(pid, kind, _selected, _langView, _filter) { p, k, c, lv, f -> listOf<Any?>(p, k, c, lv, f) }
         .distinctUntilChanged()
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val p = arr[0] as Long?; val k = arr[1] as CatalogKind; val cat = arr[2] as String?; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
+            val f = arr[4] as CatalogFilter
             if (p == null) flowOf(PagingData.empty())
             else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
+                if (f.narrows) movieDao.pagedFiltered(p, cat.orEmpty(), lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                else if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> val lib = trakt.library.value; pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang, lib.isMovieWatched(it.title, it.year)) } }
             else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
+                if (f.narrows) seriesDao.pagedFiltered(p, cat.orEmpty(), lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                else if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
         }.cachedIn(viewModelScope)
 }
@@ -179,6 +187,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val chipsOrNull by vm.chips.collectAsState()
     val chips = chipsOrNull.orEmpty()
     val selected by vm.selected.collectAsState()
+    val filter by vm.filter.collectAsState()
     val items = vm.items.collectAsLazyPagingItems()
     val langView by vm.langView.collectAsState()
     val langCounts by vm.langCounts.collectAsState()
@@ -202,10 +211,16 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(c.name, selected == c.remoteId) { vm.select(c.remoteId) } }
         }
+        // Tri et filtres : Tri · Note minimale · Période. Un filtre actif sur « Tous » affiche la grille filtrée.
+        LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
+            items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.catalogSortName(o), filter.sort == o) { vm.setFilter(filter.copy(sort = o)) } }
+            items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "chip" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r) { vm.setFilter(filter.copy(minRating = r)) } }
+            items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.periodName(o), filter.period == o) { vm.setFilter(filter.copy(period = o)) } }
+        }
         // Chargement : squelette de rangées à taille fixe (la mise en page ne saute plus quand les données arrivent).
         if (chipsOrNull == null) { RowsSkeleton(touch); return@Column }
         // « Tous » : une rangée par catégorie (comme Netflix), « Voir tout » ouvre la grille de la catégorie.
-        if (selected == null && chips.isNotEmpty()) {
+        if (selected == null && chips.isNotEmpty() && !filter.narrows) {
             CategoryRows(vm, chips, touch, onOpen)
             return@Column
         }
@@ -218,7 +233,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
         }
         val first = remember { FocusRequester() }
         var firstFocused by remember { mutableStateOf(false) }
-        RequestInitialFocus(first, hasFocus = { firstFocused }, key = selected)
+        RequestInitialFocus(first, hasFocus = { firstFocused }, key = selected to filter)
         val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(items) { it.id }
         LazyVerticalGrid(
             columns = GridCells.Fixed(if (touch) com.ultratv.tv.nativeapp.ui.mobile.gridColumns(widthDp - 40f - (if (widthDp >= 600f) 88f else 0f)) else 7),
