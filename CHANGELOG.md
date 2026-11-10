@@ -2,10 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [1.2.82] — 2026-11-10 (Android)
+## [1.2.82] — 2026-11-10 (Android) · Bureau 1.2.38
 
 ### Nouveau
 - Lecteur : bouton **« Passer l'intro »** pendant le générique de début d'un film ou d'un épisode, **« Passer le résumé »** pendant le « précédemment dans… », et **« Épisode suivant »** pendant le générique de fin d'un épisode (« Passer le générique » quand une scène suit le générique d'un film). Télécommande : OK, commandes masquées ; tactile : un appui. Rien n'est sauté sans action de l'utilisateur.
+- Bureau (Windows, macOS, navigateur) : même bouton en plein écran, au clic ou avec la touche S (ou Entrée).
 - Les passages viennent de TheIntroDB (base communautaire, sans clé) : seuls l'identifiant TMDB, la saison, l'épisode et la durée sont envoyés, jamais d'identifiant ni d'adresse IPTV. Titre inconnu, TMDB non relié ou réseau absent : aucun bouton.
 
 ## [1.2.81] — 2026-11-05 (Android)

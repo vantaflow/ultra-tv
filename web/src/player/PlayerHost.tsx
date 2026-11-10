@@ -27,6 +27,8 @@ import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
 import { startScrobble, type Scrobbler } from "./trakt";
+import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
+import type { PlayTarget } from "./resolve";
 
 const NO_TRACKS: Tracks = { audio: [], activeAudio: -1, text: [], activeText: -1, levels: [], activeLevel: -1 };
 
@@ -239,21 +241,52 @@ export function PlayerHost() {
     return () => { clearInterval(iv); saveHistory(); };
   }, [target?.refId, target?.kind, saveHistory]);
 
+  // --- épisode suivant (fiche de la série en cache) : null en fin de série ou hors épisode ---
+  const nextEpisodeTarget = useCallback(async (): Promise<PlayTarget | null> => {
+    const tg = usePlayer.getState().target;
+    const src = useSources.getState().list.find((x) => x.id === tg?.sourceId);
+    if (!tg || tg.kind !== "episode" || !src) return null;
+    const row = await db.details.get(`series:${src.id}:${tg.seriesId}`);
+    if (!row) return null;
+    const all = parseEpisodes(row.json as SeriesInfo).seasons.flatMap((x) => x.eps);
+    const k = all.findIndex((e) => e.id === tg.refId);
+    const nx = k >= 0 ? all[k + 1] : undefined;
+    return nx ? { ...tg, refId: nx.id, ext: nx.ext, season: nx.season, episode: nx.num, startAt: 0,
+      subtitle: `${t("common.season", { n: nx.season })} · ${t("common.episodeShort", { n: nx.num })} ${nx.title}`.trim() } : null;
+  }, [t]);
+
   // --- épisode suivant automatique ---
   useEffect(() => {
     if (state !== "ended" || !target || target.kind !== "episode" || !prefs.autoplayNext || !source) return;
     let dead = false;
-    void db.details.get(`series:${source.id}:${target.seriesId}`).then((row) => {
-      if (dead || !row) return;
-      const all = parseEpisodes(row.json as SeriesInfo).seasons.flatMap((x) => x.eps);
-      const k = all.findIndex((e) => e.id === target.refId);
-      const nx = all[k + 1];
-      if (nx) usePlayer.getState().open({ ...target, refId: nx.id, ext: nx.ext, season: nx.season, episode: nx.num, startAt: 0,
-        subtitle: `${t("common.season", { n: nx.season })} · ${t("common.episodeShort", { n: nx.num })} ${nx.title}`.trim() }, "full");
-    });
+    void nextEpisodeTarget().then((nx) => { if (!dead && nx) usePlayer.getState().open(nx, "full"); });
     return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
+
+  // --- passer l'intro / le résumé / le générique (TheIntroDB) : bouton seulement, rien n'est sauté tout seul ---
+  const [skips, setSkips] = useState<SkipSegment[]>([]);
+  const [skipNext, setSkipNext] = useState<PlayTarget | null>(null);
+  const durKnown = cur.d > 0;
+  useEffect(() => {
+    setSkips([]); setSkipNext(null);
+    if (!target || !source || !durKnown || target.replay || (target.kind !== "movie" && target.kind !== "episode")) return;
+    let dead = false;
+    void loadSkips(target, source, videoRef.current?.duration ?? 0).then((sg) => { if (!dead) setSkips(sg); });
+    if (target.kind === "episode") void nextEpisodeTarget().then((nx) => { if (!dead) setSkipNext(nx); }).catch(() => {});
+    return () => { dead = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.refId, target?.kind, target?.replay?.start, source?.id, durKnown]);
+  const skipOffer = state === "playing" && skips.length > 0 && target?.kind !== "live"
+    ? skipOfferAt(skips, cur.t, cur.d, target?.kind === "episode", !!skipNext) : null;
+  const skipRef = useRef<() => boolean>(() => false);
+  skipRef.current = () => {
+    if (!skipOffer) return false;
+    if (skipOffer.next && skipNext) { usePlayer.getState().open(skipNext, "full"); return true; }
+    const v = videoRef.current;
+    if (v && skipOffer.to != null) { v.currentTime = skipOffer.to; return true; }
+    return false;
+  };
 
   // --- surcouche : apparition au mouvement, masquage après 3 s ---
   const poke = useCallback(() => {
@@ -367,6 +400,9 @@ export function PlayerHost() {
         case "Escape":
           if (full) { e.preventDefault(); e.stopPropagation(); if (panelRef.current) setPanel(null); else void leaveFull(); }
           break;
+        // Passer l'intro : S, ou Entrée hors bouton focalisé (le bouton reste cliquable à la souris).
+        case "s": case "S": if (full && skipRef.current()) e.preventDefault(); break;
+        case "Enter": if (full && !(el && el.tagName === "BUTTON") && skipRef.current()) e.preventDefault(); break;
         case "f": case "F": e.preventDefault(); void toggleOsFull(); break;
         case "m": case "M": if (full) toggleMute(); break;
         case "p": case "P": if (full) void pip(); break;
@@ -438,6 +474,12 @@ export function PlayerHost() {
       )}
       {noAudio && !error && <div className="noaudio" role="status">{t("player.noAudio")}</div>}
       {zapFlash && <div className="zap">{zapFlash}</div>}
+      {full && skipOffer && panel === null && (
+        <button className="skipbtn" onClick={(e) => { e.stopPropagation(); skipRef.current(); }}>
+          <Icon name="fwd" size={20} />
+          {t(skipOffer.next ? "player.nextEpisode" : skipOffer.kind === "recap" ? "player.skipRecap" : skipOffer.kind === "credits" ? "player.skipCredits" : "player.skipIntro")}
+        </button>
+      )}
 
       <div className="ptop">
         <div>
