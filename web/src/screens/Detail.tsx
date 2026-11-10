@@ -80,11 +80,13 @@ function Facts({ items }: { items: (string | number | null | undefined)[] }) {
 }
 
 function Cast({ names, label }: { names: string[]; label: string }) {
+  const nav = useNavigate();
   if (!names.length) return null;
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
       <h2 style={{ fontSize: "1.125rem" }}>{label}</h2>
-      <div className="cast">{names.slice(0, 8).map((n, i) => <div key={i} className="c"><i>{n.trim().slice(0, 1).toUpperCase()}</i><span>{n.trim()}</span></div>)}</div>
+      {/* Un nom ouvre la page de la personne : ses films et séries dans la playlist. */}
+      <div className="cast">{names.slice(0, 8).map((n, i) => <button key={i} type="button" className="c" onClick={() => nav(`/person/${encodeURIComponent(n.trim())}`)}><i>{n.trim().slice(0, 1).toUpperCase()}</i><span>{n.trim()}</span></button>)}</div>
     </section>
   );
 }

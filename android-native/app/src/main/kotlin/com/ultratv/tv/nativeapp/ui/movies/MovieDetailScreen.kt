@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -159,6 +160,7 @@ fun MovieDetailScreen(
     movieId: Long,
     onPlay: (url: String, title: String) -> Unit,
     onBack: () -> Unit = {},
+    onOpenPerson: (String) -> Unit = {},
     vm: MovieDetailViewModel = hiltViewModel(),
 ) {
     val m by vm.movie.collectAsState()
@@ -227,7 +229,7 @@ fun MovieDetailScreen(
                 Text(D.castTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(people) { name ->
-                        Column(Modifier.width(60.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.width(60.dp).clickable { onOpenPerson(name) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             AvatarImage(photos[name.lowercase()], name, Modifier.size(52.dp))
                             Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
@@ -301,9 +303,12 @@ fun MovieDetailScreen(
                 SectionTitle(D.castTitle, 28)
                 Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                     people.forEach { name ->
-                        Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                            AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
-                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        // Focalisable : OK ouvre la page de la personne (ses titres dans la playlist).
+                        FocusSurface(onClick = { onOpenPerson(name) }, shape = RoundedCornerShape(24.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedScale = 1.04f, focusedBg = Ux.Surface, modifier = Modifier.width(132.design)) {
+                            Column(Modifier.fillMaxWidth().padding(vertical = 8.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
+                                AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
+                                Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }

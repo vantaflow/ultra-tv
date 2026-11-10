@@ -129,6 +129,8 @@ export const fr = {
   "vod.seeAll": "Voir tout",
   "vod.year": "Année",
   "vod.cast": "Distribution",
+  "person.loading": "Recherche des titres dans votre playlist…",
+  "person.empty": "Aucun titre avec cette personne dans votre playlist",
   "vod.director": "Réalisation",
   "vod.genre": "Genre",
   "vod.noPlot": "Aucun synopsis fourni par la source.",

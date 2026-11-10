@@ -18,6 +18,7 @@ import { Live } from "@/screens/Live";
 import { Guide } from "@/screens/Guide";
 import { VodScreen } from "@/screens/Vod";
 import { MovieDetail, SeriesDetail } from "@/screens/Detail";
+import { Person } from "@/screens/Person";
 import { Search } from "@/screens/Search";
 import { Favorites } from "@/screens/Favorites";
 import { Settings } from "@/screens/Settings";
@@ -150,6 +151,7 @@ function Shell() {
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/series" element={<VodScreen kind="series" />} />
           <Route path="/serie/:id" element={<SeriesDetail />} />
+          <Route path="/person/:name" element={<Person />} />
           <Route path="/search" element={<Search />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/account" element={<Account />} />

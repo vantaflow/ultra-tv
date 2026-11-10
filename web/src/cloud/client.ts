@@ -403,3 +403,13 @@ export async function fetchRatings(base: string, token: string, q: { kind: "movi
   const o = parse<{ ratings?: ExternalRatings | null }>(r);
   return o.ratings ?? null;
 }
+
+/** GET via le proxy TMDB du Worker (chemins autorisés par le Worker). null : introuvable / non configuré. */
+export async function tmdbGet(base: string, token: string, pathAndQuery: string): Promise<unknown | null> {
+  const r = await http({ url: `${base}/api/tmdb/${pathAndQuery}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404 || r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("tmdb", r.status);
+  return parse<unknown>(r);
+}

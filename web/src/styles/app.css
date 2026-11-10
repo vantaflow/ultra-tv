@@ -212,6 +212,9 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .cast { display: flex; gap: 1.5rem; flex-wrap: wrap; }
 .cast .c { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; width: 6rem; text-align: center; font-size: 0.8125rem; color: var(--text-2); }
 .cast .c i { width: 4.5rem; height: 4.5rem; border-radius: 50%; background: var(--surface-3); display: flex; align-items: center; justify-content: center; font-style: normal; font-family: var(--font-title); font-weight: 700; color: var(--text-3); font-size: 1.25rem; }
+.cast button.c { background: none; border: 0; padding: 0.25rem; border-radius: 0.75rem; cursor: pointer; font: inherit; color: inherit; }
+.cast button.c:hover, .cast button.c:focus-visible { background: var(--surface-2); outline: none; }
+.poster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 1.25rem; }
 .serie-layout { position: relative; display: grid; grid-template-columns: minmax(18rem, 26rem) minmax(0, 1fr); gap: 2rem; padding: 1.75rem 2.25rem 2.5rem; min-height: 100%; }
 .serie-layout .poster-big { aspect-ratio: 2 / 3; border-radius: 1.25rem; background: var(--tone); overflow: hidden; width: min(14rem, 100%); position: relative; }
 .serie-layout .poster-big .img { position: absolute; inset: 0; }

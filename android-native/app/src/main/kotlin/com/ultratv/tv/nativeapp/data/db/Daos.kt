@@ -335,6 +335,14 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND id != :excludeId AND genre LIKE '%' || :genre || '%' AND poster IS NOT NULL AND poster != '' ORDER BY rating IS NULL, rating DESC, addedKey DESC LIMIT :limit")
     suspend fun byGenre(pid: Long, genre: String, excludeId: Long, limit: Int): List<MovieEntity>
 
+    /** Page acteur / réalisateur : films dont la distribution (liste ou fiche) ou le réalisateur cite ce nom. */
+    @Query("""
+        SELECT m.* FROM movie m LEFT JOIN vod_info v ON v.providerId = m.providerId AND v.remoteId = m.remoteId
+        WHERE m.providerId = :pid AND (m.`cast` LIKE '%' || :name || '%' OR v.`cast` LIKE '%' || :name || '%' OR v.director LIKE '%' || :name || '%')
+        ORDER BY m.year IS NULL, m.year DESC LIMIT :limit
+    """)
+    suspend fun byPerson(pid: Long, name: String, limit: Int): List<MovieEntity>
+
     /** Repli : même catégorie du fournisseur, les mieux notés d'abord. */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND id != :excludeId AND categoryId = :cat AND poster IS NOT NULL AND poster != '' ORDER BY rating IS NULL, rating DESC, addedKey DESC LIMIT :limit")
     suspend fun sameCategory(pid: Long, cat: String, excludeId: Long, limit: Int): List<MovieEntity>
@@ -421,6 +429,10 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE providerId = :pid ORDER BY addedKey DESC LIMIT :limit")
     suspend fun latest(pid: Long, limit: Int): List<SeriesEntity>
+
+    /** Page acteur : séries dont la distribution cite ce nom. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND `cast` LIKE '%' || :name || '%' ORDER BY year IS NULL, year DESC LIMIT :limit")
+    suspend fun byPerson(pid: Long, name: String, limit: Int): List<SeriesEntity>
 
     /** « Séries les mieux notées » (accueil) : note valide et affiche présente. */
     @Query("SELECT * FROM series WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating > 0 AND rating <= 10 ORDER BY rating DESC, addedKey DESC LIMIT :limit")

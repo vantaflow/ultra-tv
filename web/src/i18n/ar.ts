@@ -130,6 +130,8 @@ export const ar: Dict = {
   "vod.seeAll": "عرض الكل",
   "vod.year": "السنة",
   "vod.cast": "طاقم التمثيل",
+  "person.loading": "جارٍ البحث عن العناوين في قائمتك…",
+  "person.empty": "لا توجد عناوين لهذا الشخص في قائمتك",
   "vod.director": "الإخراج",
   "vod.genre": "النوع",
   "vod.noPlot": "لا يوجد ملخص من المصدر.",

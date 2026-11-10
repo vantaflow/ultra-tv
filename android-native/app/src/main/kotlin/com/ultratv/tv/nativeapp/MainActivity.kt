@@ -580,6 +580,17 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 movieId = id,
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBack = { nav.popBackStack() },
+                onOpenPerson = { name -> nav.navigate(Routes.person(name)) },
+            )
+        }
+        screen(
+            Routes.PERSON,
+            arguments = listOf(navArgument("name") { type = NavType.StringType; defaultValue = "" }),
+        ) { entry ->
+            com.ultratv.tv.nativeapp.ui.person.PersonScreen(
+                name = entry.arguments?.getString("name").orEmpty(),
+                onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
+                onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
         }
         screen(Routes.SERIES) {

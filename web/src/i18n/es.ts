@@ -130,6 +130,8 @@ export const es: Dict = {
   "vod.seeAll": "Ver todo",
   "vod.year": "Año",
   "vod.cast": "Reparto",
+  "person.loading": "Buscando títulos en tu lista…",
+  "person.empty": "Ningún título con esta persona en tu lista",
   "vod.director": "Dirección",
   "vod.genre": "Género",
   "vod.noPlot": "La fuente no proporciona sinopsis.",
