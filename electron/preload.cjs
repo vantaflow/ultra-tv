@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("ultratv", {
   arch: process.arch,
   version: String(boot.version || ""),
   proxyBase: String(boot.proxyBase || ""),
+  transcode: !!boot.transcode,
   secretsSecure: !!boot.secretsSecure,
   cloudRequest: (req) => ipcRenderer.invoke("ut:cloud:request", req),
   encrypt: (plain) => ipcRenderer.invoke("ut:encrypt", plain),

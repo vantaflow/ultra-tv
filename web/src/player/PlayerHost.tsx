@@ -28,6 +28,7 @@ import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
+import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
 import type { PlayTarget } from "./resolve";
 
 const NO_TRACKS: Tracks = { audio: [], activeAudio: -1, text: [], activeText: -1, levels: [], activeLevel: -1 };
@@ -72,6 +73,8 @@ export function PlayerHost() {
   const silentIdxRef = useRef<number | null>(null);
   const skipProbeRef = useRef(false);
   const resumeAtRef = useRef<number | null>(null);
+  /** Conversion audio AC-3 / DTS en cours (bureau) ; null sinon. */
+  const txRef = useRef<TxState | null>(null);
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
@@ -135,10 +138,12 @@ export function PlayerHost() {
     setError(false);
     const resume = resumeAtRef.current;
     resumeAtRef.current = null;
+    const isTx = c.label === TX_LABEL;
+    if (!isTx) txRef.current = null;
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
       // Portail Stalker : flux demandés avec l'identité MAG du portail, sauf User-Agent choisi par l'utilisateur.
-      userAgent: src.userAgent || (src.type === "stalker" ? STALKER_UA : null), referer: src.referer || null, startAt: resume ?? tg.startAt,
+      userAgent: src.userAgent || (src.type === "stalker" ? STALKER_UA : null), referer: src.referer || null, startAt: isTx ? 0 : resume ?? tg.startAt,
     });
   }, []);
 
@@ -183,7 +188,7 @@ export function PlayerHost() {
 
   // Sonde audio (VOD) : image qui défile mais aucun octet audio décodé -> candidat suivant, à la même position.
   useEffect(() => {
-    if (state !== "playing" || !target || target.kind === "live" || skipProbeRef.current) return;
+    if (state !== "playing" || !target || (target.kind === "live" && !bridge()?.transcode) || skipProbeRef.current) return;
     const v = videoRef.current;
     if (!v) return;
     const w = new AudioWatcher();
@@ -195,7 +200,23 @@ export function PlayerHost() {
       const c = candRef.current;
       if (silentIdxRef.current === null) silentIdxRef.current = c.i;
       const nx = nextAudioFallback(c.list.length, c.i);
-      if (nx < 0) { skipProbeRef.current = true; setNoAudio(true); return; }
+      if (nx < 0) {
+        skipProbeRef.current = true;
+        // Bureau avec ffmpeg : dernier recours, conversion de l'audio en AAC (AC-3 / E-AC-3 / DTS) à la position courante.
+        const base = bridge()?.transcode ? bridge()?.proxyBase : undefined;
+        const cur = c.list[c.i];
+        if (base && cur && cur.label !== TX_LABEL) {
+          const isLive = target.kind === "live" && !target.replay;
+          const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration };
+          txRef.current = tx;
+          c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive), format: "ts", label: TX_LABEL }];
+          c.i = c.list.length - 1;
+          void startCandidate(c.list[c.i]!);
+          return;
+        }
+        setNoAudio(true);
+        return;
+      }
       c.i = nx;
       resumeAtRef.current = v.currentTime > 1 ? v.currentTime : null;
       void startCandidate(c.list[nx]!);
@@ -222,15 +243,17 @@ export function PlayerHost() {
   const saveHistory = useCallback(() => {
     const tg = usePlayer.getState().target;
     const v = videoRef.current;
-    if (!tg || !v || tg.kind === "live" || !Number.isFinite(v.duration) || v.duration < 30) return;
+    if (!tg || !v || tg.kind === "live") return;
+    const { t: pos, d: dur } = txClock(txRef.current, v.currentTime, v.duration);
+    if (!dur || dur < 30) return;
     const { profileId } = usePrefs.getState();
-    const done = v.currentTime / v.duration > 0.95;
+    const done = pos / dur > 0.95;
     const key = histKey(profileId, tg.sourceId, tg.kind === "movie" ? "movie" : "series", tg.kind === "movie" ? tg.refId : tg.seriesId ?? tg.refId) + (tg.kind === "episode" ? `:${tg.refId}` : "");
     if (done) { void db.history.delete(key); return; }
-    if (v.currentTime < 20) return;
+    if (pos < 20) return;
     void db.history.put({
       key, profile: profileId, sourceId: tg.sourceId, kind: tg.kind === "movie" ? "movie" : "series", refId: tg.kind === "movie" ? tg.refId : tg.seriesId ?? tg.refId,
-      title: tg.title, image: tg.image ?? null, pos: v.currentTime, dur: v.duration, updatedAt: Date.now(),
+      title: tg.title, image: tg.image ?? null, pos, dur, updatedAt: Date.now(),
       ext: tg.ext, seriesId: tg.seriesId, season: tg.season, episode: tg.episode,
       epId: tg.kind === "episode" ? tg.refId : undefined,
     });
@@ -305,9 +328,11 @@ export function PlayerHost() {
     const tick = () => {
       let buf = 0;
       for (let i = 0; i < v.buffered.length; i++) if (v.currentTime >= v.buffered.start(i) && v.currentTime <= v.buffered.end(i)) buf = v.buffered.end(i);
-      const d = Number.isFinite(v.duration) ? v.duration : 0;
+      // Conversion audio en cours : position = départ de la conversion + lecture, durée = celle du média.
+      const { t: ct, d } = txClock(txRef.current, v.currentTime, v.duration);
+      if (txRef.current) buf += txRef.current.offset;
       // Même valeur : on garde l'objet, pas de re-rendu.
-      setCur((p) => (Math.abs(p.t - v.currentTime) < 0.25 && p.d === d && Math.abs(p.buf - buf) < 0.5 ? p : { t: v.currentTime, d, buf }));
+      setCur((p) => (Math.abs(p.t - ct) < 0.25 && p.d === d && Math.abs(p.buf - buf) < 0.5 ? p : { t: ct, d, buf }));
       if (panel === "stats") setStats(engineRef.current?.stats() ?? null);
     };
     tick();
@@ -353,10 +378,25 @@ export function PlayerHost() {
     const v = videoRef.current!;
     if (v.paused) void v.play().catch(() => undefined); else v.pause();
   }, []);
+  /** Saut à une position (s). Conversion audio en cours : le flux n'est pas cherchable, la conversion repart de là. */
+  const seekTo = useCallback((sec: number) => {
+    const v = videoRef.current!;
+    const tx = txRef.current;
+    const base = bridge()?.proxyBase;
+    if (tx && base && tx.duration > 0) {
+      const ss = clampSeek(sec, tx.duration);
+      txRef.current = { ...tx, offset: ss };
+      const c = candRef.current;
+      c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss) } : x));
+      void startCandidate(c.list[c.i]!);
+      return;
+    }
+    if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
+  }, [startCandidate]);
   const seekBy = useCallback((s: number) => {
     const v = videoRef.current!;
-    if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + s));
-  }, []);
+    seekTo(txClock(txRef.current, v.currentTime, v.duration).t + s);
+  }, [seekTo]);
   const setVol = useCallback((d: number) => {
     const v = videoRef.current!;
     v.volume = Math.max(0, Math.min(1, v.volume + d));
@@ -439,7 +479,7 @@ export function PlayerHost() {
     if (live || !cur.d) return;
     const r = e.currentTarget.getBoundingClientRect();
     const f = (e.clientX - r.left) / r.width;
-    videoRef.current!.currentTime = (document.dir === "rtl" ? 1 - f : f) * cur.d;
+    seekTo((document.dir === "rtl" ? 1 - f : f) * cur.d);
   };
   const locale = prefs.lang;
   const title = live ? (prog?.title || target.title) : target.title;
@@ -472,7 +512,7 @@ export function PlayerHost() {
           </div>
         </div>
       )}
-      {noAudio && !error && <div className="noaudio" role="status">{t("player.noAudio")}</div>}
+      {noAudio && !error && <div className="noaudio" role="status">{t(bridge()?.isElectron && !bridge()?.transcode ? "player.noAudioInstall" : "player.noAudio")}</div>}
       {zapFlash && <div className="zap">{zapFlash}</div>}
       {full && skipOffer && panel === null && (
         <button className="skipbtn" onClick={(e) => { e.stopPropagation(); skipRef.current(); }}>

@@ -188,6 +188,7 @@ export const ar: Dict = {
   "player.skipCredits": "تخطي الشارة",
   "player.nextEpisode": "الحلقة التالية",
   "player.noAudio": "الصوت غير مدعوم في هذا المشغّل (AC3/DTS): جرّب الصيغة البديلة أو VLC على أندرويد.",
+  "player.noAudioInstall": "الصوت غير مدعوم (AC3/DTS): ثبّت ffmpeg (على macOS: ‏brew install ffmpeg) ثم أعد تشغيل Ultra TV لتحويله تلقائيًا.",
   "player.tryOther": "جرّب صيغة أخرى",
   "player.buffering": "جارٍ التخزين المؤقت…",
   "player.reconnecting": "إعادة الاتصال…",

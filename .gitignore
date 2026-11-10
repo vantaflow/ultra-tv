@@ -90,3 +90,6 @@ release-signing.env
 # Secrets locaux wrangler
 .dev.vars
 .dev.vars.*
+
+# ffmpeg LGPL embarqué (téléchargé au moment du packaging)
+electron/vendor/

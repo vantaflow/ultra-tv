@@ -188,6 +188,7 @@ export const en: Dict = {
   "player.skipCredits": "Skip credits",
   "player.nextEpisode": "Next episode",
   "player.noAudio": "Audio not supported by this player (AC3/DTS): try the alternate format or VLC on Android.",
+  "player.noAudioInstall": "Audio not supported (AC3/DTS): install ffmpeg (macOS: “brew install ffmpeg”) and restart Ultra TV to convert it automatically.",
   "player.tryOther": "Try another format",
   "player.buffering": "Buffering…",
   "player.reconnecting": "Reconnecting…",

@@ -187,6 +187,7 @@ export const fr = {
   "player.skipCredits": "Passer le générique",
   "player.nextEpisode": "Épisode suivant",
   "player.noAudio": "Son non pris en charge par ce lecteur (AC3/DTS) : essayez le format alternatif ou VLC sur Android.",
+  "player.noAudioInstall": "Audio non pris en charge (AC3/DTS) : installez ffmpeg (macOS : « brew install ffmpeg ») puis relancez Ultra TV pour le convertir automatiquement.",
   "player.tryOther": "Essayer un autre format",
   "player.buffering": "Mise en mémoire tampon…",
   "player.reconnecting": "Reconnexion…",

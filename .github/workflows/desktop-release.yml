@@ -141,6 +141,12 @@ jobs:
               ;;
           esac
 
+      # Conversion audio AC-3 / DTS (transcode.cjs) : ffmpeg statique LGPL embarqué sous Windows et Linux.
+      - name: Fetch LGPL ffmpeg
+        if: runner.os != 'macOS'
+        working-directory: electron
+        run: npm run fetch:ffmpeg:${{ runner.os == 'Windows' && 'win' || 'linux' }}
+
       - name: Package
         working-directory: electron
         run: npx electron-builder ${{ matrix.builder_args }} --publish never

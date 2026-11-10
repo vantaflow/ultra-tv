@@ -24,6 +24,14 @@ Le décodeur AC3 / E-AC3 / DTS / TrueHD d'ExoPlayer repose sur FFmpeg.
 - **Repli** : sans ce fichier, le build utilise `org.jellyfin.media3:media3-ffmpeg-decoder`, publié sous **GPL-3.0**.
   Un APK construit ainsi doit être diffusé selon les termes de la GPL-3.0.
 
+## Application de bureau (Windows, Linux)
+
+| Composant | Licence | Remarque |
+|---|---|---|
+| ffmpeg statique, variante **LGPL** (BtbN/FFmpeg-Builds) | LGPL-2.1+ | embarqué dans `resources/ffmpeg`, exécuté comme programme séparé pour convertir l'audio AC-3 / E-AC-3 / DTS en AAC ; licence et origine dans `resources/ffmpeg/LICENSE.txt` et `SOURCE.txt`. `scripts/fetch-ffmpeg.cjs` refuse toute variante GPL. |
+
+macOS : pas de ffmpeg embarqué ; celui du système est utilisé s'il est installé (Homebrew).
+
 ## Données et services
 
 - **TMDB** : affiches, synopsis, distribution, filmographies. *This product uses the TMDB API but is not endorsed or

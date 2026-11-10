@@ -13,6 +13,7 @@ const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme
 const path = require("node:path");
 const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
+const { findFfmpeg } = require("./transcode.cjs");
 const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
@@ -58,6 +59,7 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow = null;
 let proxy = null;
+let ffmpegPath = null;
 let updater = null;
 const secrets = createSecrets(safeStorage);
 
@@ -295,6 +297,8 @@ function registerIpc() {
     event.returnValue = {
       version: app.getVersion(),
       proxyBase: proxy ? proxy.base : "",
+      // Conversion audio AC-3 / DTS disponible (ffmpeg embarqué ou installé).
+      transcode: !!(proxy && ffmpegPath),
       secretsSecure: secrets.isSecure(),
     };
   });
@@ -467,7 +471,9 @@ if (!app.requestSingleInstanceLock()) {
     // DNS applique avant toute requete (proxy, fenetre, mises a jour).
     loadDnsSettings();
     applyChromiumDns();
+    ffmpegPath = findFfmpeg({ resourcesPath: app.isPackaged ? process.resourcesPath : null });
     proxy = createProxyServer({
+      ffmpeg: ffmpegPath,
       allowedOrigin: ALLOWED_ORIGIN,
       lookup: resolver.lookup,
       onError: (code) => console.warn(`[ultra-tv] proxy error ${code}`),

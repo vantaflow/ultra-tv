@@ -188,6 +188,7 @@ export const es: Dict = {
   "player.skipCredits": "Saltar créditos",
   "player.nextEpisode": "Siguiente episodio",
   "player.noAudio": "Audio no compatible con este reproductor (AC3/DTS): pruebe el formato alternativo o VLC en Android.",
+  "player.noAudioInstall": "Audio no compatible (AC3/DTS): instale ffmpeg (macOS: «brew install ffmpeg») y reinicie Ultra TV para convertirlo automáticamente.",
   "player.tryOther": "Probar otro formato",
   "player.buffering": "Almacenando en búfer…",
   "player.reconnecting": "Reconectando…",
