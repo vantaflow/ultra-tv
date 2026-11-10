@@ -28,6 +28,7 @@ import {
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
+import { ratingsProxy } from "./ratings.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
 import {
@@ -152,6 +153,7 @@ async function route(req, env, ctx) {
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
+  if (path === "/api/ratings" && m === "GET") return deviceRatings(req, env, url);
   // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).
   if (path === "/api/announcements" && m === "GET") {
     const aud = url.searchParams.get("audience");
@@ -1143,6 +1145,16 @@ async function deviceTmdb(req, env, rest, url) {
     || (await limited(env, `tmdb:dev:${auth.device.id}`, 120, 600, true));
   if (rl) return rl;
   return tmdbProxy(rest, url.searchParams, env);
+}
+
+// Notes IMDb / Rotten Tomatoes (OMDb) : appareils appairés, débit limité comme TMDB (le cache absorbe l'essentiel).
+async function deviceRatings(req, env, url) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `ratings:ip:${clientIp(req)}`, 300, 600, true))
+    || (await limited(env, `ratings:dev:${auth.device.id}`, 120, 600, true));
+  if (rl) return rl;
+  return ratingsProxy(url.searchParams, env);
 }
 
 // Sous-titres OpenSubtitles : mêmes garde-fous que TMDB (appareil appairé, débit par appareil et par IP), plus serrés

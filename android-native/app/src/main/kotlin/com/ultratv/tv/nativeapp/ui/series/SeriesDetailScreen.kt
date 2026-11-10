@@ -73,6 +73,7 @@ fun SeriesDetailScreen(
     val loading by vm.loading.collectAsState()
     val watched by vm.watched.collectAsState()
     val traktSeen by vm.traktWatchedEpisodes.collectAsState()
+    val extRatings by vm.ratings.collectAsState()
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
     val series = s
@@ -111,7 +112,7 @@ fun SeriesDetailScreen(
         val info: @Composable ColumnScope.() -> Unit = {
             Text(tc.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 31.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             com.ultratv.tv.nativeapp.ui.mobile.MetaRow(
-                listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre), series.rating?.takeIf { it > 0.0 && it <= 10.0 }?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }),
+                listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre)) + com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, series.rating?.takeIf { it > 0.0 && it <= 10.0 }),
                 listOfNotNull(series.lang.takeIf { it.isNotBlank() }?.uppercase()),
             )
             if (target != null) com.ultratv.tv.nativeapp.ui.mobile.MobilePrimaryButton(
@@ -185,8 +186,8 @@ fun SeriesDetailScreen(
             PosterImage(series.poster, series.name, Modifier.width(300.design).aspectRatio(2f / 3f), radius = 22)
             Text(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx, lineHeight = 59.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
-            val bits = listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre),
-                series.rating?.takeIf { it > 0.0 && it <= 10.0 }?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) })
+            val bits = listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre)) +
+                com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, series.rating?.takeIf { it > 0.0 && it <= 10.0 })
             Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
                 bits.forEachIndexed { i, b ->
                     if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
