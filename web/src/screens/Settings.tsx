@@ -246,6 +246,9 @@ function DisplayPane() {
   return (
     <>
       <h2>{t("set.display")}</h2>
+      <Pref label={t("set.animations")}>
+        <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
+      </Pref>
       <Pref label={t("set.theme")}>
         <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }]} />
       </Pref>

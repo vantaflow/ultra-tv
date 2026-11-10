@@ -1,4 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
 import { HScroll } from "@/ui/HScroll";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
@@ -125,10 +126,38 @@ function HomeInner({ source }: { source: Source }) {
     return { title: seed.title, list };
   }, [profileId, source.id, source.cid]);
 
+  // « À la une » qui défile : la chaîne mise en avant, puis les séries les mieux notées avec image paysage.
+  const heroSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((x) => !!x.backdrop).limit(5).toArray(), [source.cid]) ?? [];
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const animations = usePrefs((p) => p.animations);
+  const heroCount = 1 + heroSeries.length;
+  useEffect(() => {
+    if (heroCount < 2 || heroPaused || document.documentElement.dataset.anim === "off") return;
+    const iv = window.setInterval(() => setHeroIdx((k) => (k + 1) % heroCount), 9_000);
+    return () => window.clearInterval(iv);
+  }, [heroCount, heroPaused, animations]);
+  const slide = heroIdx % heroCount === 0 ? null : heroSeries[(heroIdx % heroCount) - 1] ?? null;
+
   if (!source.cid) return <EmptyCatalog />;
   return (
     <div className="page">
-      <section className="hero" aria-label={t("home.featured")}>
+      <section className="hero" aria-label={t("home.featured")}
+        onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}
+        onFocus={() => setHeroPaused(true)} onBlur={() => setHeroPaused(false)}>
+        {slide ? (
+          <>
+            <div className="art" aria-hidden="true"><div key={slide.id} className="slide-bg" style={{ backgroundImage: `url("${(slide.backdrop || slide.poster || "").replace(/"/g, "%22")}")` }} /></div>
+            <div className="meta">
+              <span className="badge-live">{t("nav.series")}</span>
+              <span>{[slide.year, slide.rating > 0 ? `★ ${slide.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}</span>
+            </div>
+            <h2>{slide.title}</h2>
+            <div className="actions">
+              <button className="btn primary lg" onClick={() => nav(`/serie/${slide.seriesId}`)}><Icon name="play" size={20} fill />{t("common.watch")}</button>
+            </div>
+          </>
+        ) : (<>
         <div className="art" aria-hidden="true">{nn.now?.title && featured?.logo && <Img src={featured.logo} contain />}</div>
         {featured ? (
           <>
@@ -143,6 +172,12 @@ function HomeInner({ source }: { source: Source }) {
             </div>
           </>
         ) : <h2>{t("home.emptyHero")}</h2>}
+</>)}
+        {heroCount > 1 && (
+          <div className="dots" role="tablist" aria-label={t("home.featured")}>
+            {Array.from({ length: heroCount }, (_, k) => <button key={k} type="button" role="tab" aria-current={k === heroIdx % heroCount} aria-label={String(k + 1)} onClick={() => setHeroIdx(k)} />)}
+          </div>
+        )}
       </section>
 
       {hist.length > 0 && (

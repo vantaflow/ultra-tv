@@ -221,3 +221,20 @@ fun pivotScrollDistance(
     val target = if (childSmallerThanParent && spaceUnderPivot < childSize) containerSize - childSize else initialTarget
     return offset - target
 }
+
+/** Nombre de titres « à la une » qui défilent. */
+const val HERO_POOL = 6
+/** Durée d'affichage de chaque titre « à la une ». */
+const val HERO_ROTATE_MS = 9_000L
+
+/** Alterne séries et films (série d'abord), sans doublon, au plus [max]. */
+fun <T> interleaveHeroes(series: List<T>, movies: List<T>, max: Int): List<T> {
+    val out = ArrayList<T>(max)
+    var i = 0
+    while (out.size < max && (i < series.size || i < movies.size)) {
+        series.getOrNull(i)?.let { if (it !in out && out.size < max) out += it }
+        movies.getOrNull(i)?.let { if (it !in out && out.size < max) out += it }
+        i++
+    }
+    return out
+}

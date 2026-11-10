@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -108,7 +109,15 @@ fun HomeScreen(
     val D = LocalDs.current
     val providers by vm.providers.collectAsStateWithLifecycle()
     val loaded by vm.providersLoaded.collectAsStateWithLifecycle()
-    val hero by vm.hero.collectAsStateWithLifecycle()
+    val heroes by vm.heroes.collectAsStateWithLifecycle()
+    // « À la une » qui défile toutes les 9 s (sans focus volé : seul le contenu change, OK ouvre le titre affiché).
+    var heroIdx by rememberSaveable { mutableStateOf(0) }
+    val heroAnim = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current
+    LaunchedEffect(heroes.size, heroAnim) {
+        if (heroes.size < 2 || !heroAnim.rotateHero) return@LaunchedEffect
+        while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = (heroIdx + 1) % heroes.size }
+    }
+    val hero = if (heroes.isEmpty()) null else heroes[heroIdx % heroes.size]
     val rows by vm.rows.collectAsStateWithLifecycle()
     // Lecture DIFFÉRÉE : seul l'encart de chargement lit le pourcentage (State non déballé ici), l'écran entier
     // n'est plus recomposé à chaque pour-cent de synchro.
@@ -169,7 +178,7 @@ fun HomeScreen(
             if (slot != HomeTopSlot.NONE) item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
                     when (slot) {
-                        HomeTopSlot.HERO -> if (h != null) Hero(h, onOpen = openHero, onGuide = onGoGuide, takeFocus = !heroFocusDone, onFocused = onHeroFocused)
+                        HomeTopSlot.HERO -> if (h != null) Hero(h, onOpen = openHero, onGuide = onGoGuide, takeFocus = !heroFocusDone, onFocused = onHeroFocused, index = heroIdx % heroes.size.coerceAtLeast(1), count = heroes.size)
                         HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
                         // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
                         HomeTopSlot.UNSUPPORTED -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.openSourceSettings, onGoSettings, takeFocus = false)
@@ -274,7 +283,7 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 // ───────────────────────── Hero 440 px ─────────────────────────
 
 @Composable
-private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, takeFocus: Boolean, onFocused: () -> Unit) {
+private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, takeFocus: Boolean, onFocused: () -> Unit, index: Int = 0, count: Int = 1) {
     val D = LocalDs.current
     val S = LocalStrings.current
     val requester = remember { FocusRequester() }
@@ -287,10 +296,15 @@ private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, t
         // Visuel : zone fixe de 760×440 à droite. Paysage → Crop plein cadre ; sinon l'affiche 2:3
         // dans sa propre zone fixe (jamais étirée, jamais sous le texte), sur la couleur du cadre.
         Box(Modifier.align(Alignment.CenterEnd).width(760.design).fillMaxHeight().background(Ux.Tone)) {
-            if (h.backdrop != null) {
-                BackdropImage(h.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(760.design, 440.design))
-            } else {
-                PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(293.design, 440.design))
+            // Fondu entre deux titres (coupé net quand les animations sont désactivées).
+            androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.tween(600), label = "hero") { cur ->
+                Box(Modifier.fillMaxSize()) {
+                    if (cur.backdrop != null) {
+                        BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(760.design, 440.design))
+                    } else {
+                        PosterImage(cur.poster, cur.title, Modifier.align(Alignment.CenterEnd).fillMaxHeight().width(293.design), radius = 0, kind = if (cur.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = DpSize(293.design, 440.design))
+                    }
+                }
             }
             // Voile de lisibilité : fondu vers le fond du cadre côté texte.
             Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.SurfaceDeep, 0.45f to Ux.SurfaceDeep.copy(alpha = 0.6f), 1f to Color.Transparent)))
@@ -316,6 +330,12 @@ private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, t
                     modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() },
                 )
                 PillButton(D.tvGuide, onClick = onGuide)
+            }
+        }
+        // Points de rotation (titre affiché / nombre de titres « à la une »).
+        if (count > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = 40.design, bottom = 32.design), horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            repeat(count) { i ->
+                Box(Modifier.height(8.design).width(if (i == index) 28.design else 8.design).clip(RoundedCornerShape(4.design)).background(if (i == index) Color.White else Color.White.copy(alpha = 0.35f)))
             }
         }
     }

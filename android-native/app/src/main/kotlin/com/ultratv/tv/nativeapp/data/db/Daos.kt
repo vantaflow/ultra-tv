@@ -312,6 +312,10 @@ interface MovieDao {
     @Query("SELECT COUNT(*) FROM movie WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
+    /** Films « à la une » (rotation) : les mieux notés qui ont une affiche. */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")
+    fun observeHeroes(pid: Long, limit: Int): Flow<List<MovieEntity>>
+
     /** Film « à la une » : le mieux noté qui a une affiche. */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND poster IS NOT NULL AND poster != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT 1")
     fun observeHero(pid: Long): Flow<MovieEntity?>
@@ -415,6 +419,10 @@ interface SeriesDao {
 
     @Query("SELECT COUNT(*) FROM series WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
+
+    /** Séries « à la une » (rotation) : les mieux notées qui ont une image paysage. */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")
+    fun observeHeroes(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     /** Série « à la une » : la mieux notée qui a une image paysage (backdrop_path). */
     @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT 1")

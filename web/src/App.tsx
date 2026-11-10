@@ -29,7 +29,7 @@ import { cloudAvailable } from "@/cloud/client";
 import { useTraktPrewarm, useTraktResumeImport, useTraktSync } from "@/trakt/hooks";
 
 function Effects() {
-  const { theme, accent, lang, syncOn } = usePrefs();
+  const { theme, accent, lang, syncOn, animations } = usePrefs();
   const nav = useNavigate();
   const loc = useLocation();
   const { ready, list } = useSources();
@@ -45,13 +45,15 @@ function Effects() {
       r.style.setProperty("--accent", accent);
       r.lang = lang;
       r.dir = dirOf(lang);
+      // Animations : « off » coupe transitions et défilement de « À la une », « subtle » les raccourcit.
+      r.dataset.anim = animations === "auto" ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "normal") : animations;
       void bridge()?.setTitleBarTheme?.(resolveTheme(theme) === "dark");
     };
     apply();
     const mq = matchMedia("(prefers-color-scheme: light)");
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, [theme, accent, lang]);
+  }, [theme, accent, lang, animations]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("mac", bridge()?.platform === "darwin");

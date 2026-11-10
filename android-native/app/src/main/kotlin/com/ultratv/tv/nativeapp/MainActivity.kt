@@ -365,6 +365,9 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
+        com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides com.ultratv.tv.nativeapp.ui.design.Animations.resolve(
+            com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(prefs.animations), adaptive.auto.uiEffects,
+        ),
     ) {
         val dbgTheme by StartupNav.debugTheme.collectAsState()
         com.ultratv.tv.nativeapp.ui.theme.ApplyUxTheme(

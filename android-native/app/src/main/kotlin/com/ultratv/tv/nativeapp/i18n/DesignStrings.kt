@@ -88,6 +88,13 @@ class DesignStrings(val lang: AppLang) {
     val topRatedMovies get() = t("Top rated movies", "Films les mieux notés", "Películas mejor valoradas", "الأفلام الأعلى تقييمًا")
     val topRatedSeries get() = t("Top rated series", "Séries les mieux notées", "Series mejor valoradas", "المسلسلات الأعلى تقييمًا")
     val anyRating get() = t("Any rating", "Toutes notes", "Cualquier nota", "كل التقييمات")
+    val animOff get() = t("Off", "Désactivées", "Desactivadas", "متوقفة")
+    fun animationName(l: com.ultratv.tv.nativeapp.ui.design.AnimationLevel) = when (l) {
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.AUTO -> themeAuto
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.OFF -> animOff
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.SUBTLE -> reduced
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.NORMAL -> full
+    }
     val personLoading get() = t("Looking for titles in your playlist…", "Recherche des titres dans votre playlist…", "Buscando títulos en tu lista…", "جارٍ البحث عن العناوين في قائمتك…")
     val personEmpty get() = t("No title with this person in your playlist", "Aucun titre avec cette personne dans votre playlist", "Ningún título con esta persona en tu lista", "لا توجد عناوين لهذا الشخص في قائمتك")
     fun catalogSortName(o: com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort) = when (o) {

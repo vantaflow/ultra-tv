@@ -48,6 +48,8 @@ class CatalogRepository @Inject constructor(
 ) {
     fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
     fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
+    fun heroSeriesList(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeHeroes(pid, limit)
+    fun heroMovieList(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeHeroes(pid, limit)
     fun latestMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeLatest(pid, limit)
     fun latestSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeLatest(pid, limit)
     fun topRatedMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTopRated(pid, limit)
