@@ -145,6 +145,7 @@ class PlayerViewModel @Inject constructor(
     private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
     private val episodeDao: com.ultratv.tv.nativeapp.data.db.EpisodeDao,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktScrobbler,
+    private val skips: com.ultratv.tv.nativeapp.data.skip.SkipSegmentsRepository,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
 ) : ViewModel() {
@@ -299,6 +300,22 @@ class PlayerViewModel @Inject constructor(
         val item = c.copy(remoteId = nx.remoteId, title = listOf(series, tag, epTitle).filter { it.isNotBlank() }.joinToString(" · "), streamUrl = nx.streamUrl, poster = nx.image ?: c.poster)
         playback.set(item)
         return item
+    }
+
+    /** Passages à sauter (intro, rappel, générique) de l'élément en cours ; vide hors film / épisode ou si inconnu. */
+    suspend fun skipSegments(durationMs: Long): List<com.ultratv.tv.nativeapp.data.skip.SkipSegment> {
+        val c = playback.current.value ?: return emptyList()
+        return skips.forItem(c, durationMs)
+    }
+
+    /** Un épisode suit-il l'épisode en cours (saison suivante comprise) ? Sans changer l'élément courant. */
+    suspend fun hasNextEpisode(): Boolean {
+        val c = playback.current.value ?: return false
+        if (c.kind != "EPISODE") return false
+        val cur = episodeDao.byRemoteId(c.providerId, c.remoteId) ?: return false
+        val all = episodeDao.observeForSeries(cur.seriesId).first()
+        val i = all.indexOfFirst { it.id == cur.id }
+        return i >= 0 && i + 1 < all.size
     }
 
     suspend fun prepareResume(): Long {
@@ -479,6 +496,26 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
         vm.nextEpisode()?.let { currentUrl = it.streamUrl }
     }
+    // Passer l'intro / le rappel / le générique (TheIntroDB) : passages chargés une fois la durée connue, par élément.
+    // Rien n'est jamais sauté sans l'utilisateur : un bouton s'affiche pendant le passage, OK (ou un appui) l'exécute.
+    var skipSegs by remember { mutableStateOf(emptyList<com.ultratv.tv.nativeapp.data.skip.SkipSegment>()) }
+    var skipHasNext by remember { mutableStateOf(false) }
+    val skipDurKnown = dur > 0
+    LaunchedEffect(item?.remoteId, skipDurKnown) {
+        skipSegs = emptyList(); skipHasNext = false
+        if (isLive || !skipDurKnown || (item?.kind != "MOVIE" && item?.kind != "EPISODE")) return@LaunchedEffect
+        skipHasNext = vm.hasNextEpisode()
+        skipSegs = vm.skipSegments(dur)
+    }
+    val skipOffer = if (isLive || skipSegs.isEmpty() || state.phase != Phase.PLAYING) null
+        else com.ultratv.tv.nativeapp.data.skip.SkipSegmentsLogic.offerAt(skipSegs, pos, dur, item?.kind == "EPISODE", skipHasNext)
+    val doSkip: () -> Unit = {
+        val o = skipOffer
+        if (o != null && o.toNextEpisode) scope.launch {
+            session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
+            vm.nextEpisode()?.let { currentUrl = it.streamUrl }
+        } else o?.targetMs?.let { t -> session.engine?.seekTo(t); pos = t / 1_000 * 1_000 }
+    }
     // Application quittée (Accueil, autre appli, veille) hors image dans l'image : plus de son en arrière-plan.
     // Au retour, le direct repart au bord du direct ; un film reprend où il en était.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -636,6 +673,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 }
                 val hidden = !overlayVisible && panel == Panel.None && !drawerOpen
                 val okKey = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter || ev.key == Key.ButtonSelect || ev.key == Key.ButtonA
+                // Bouton « Passer l'intro » affiché (commandes masquées) : OK l'exécute au lieu d'afficher les commandes.
+                if (hidden && okKey && skipOffer != null) { doSkip(); return@onPreviewKeyEvent true }
                 if (isLive && panel == Panel.None && !drawerOpen) {
                     // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
                     if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_LAST_CHANNEL) {
@@ -813,6 +852,17 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             )
         }
         }
+        // TV : visible seulement commandes masquées (non focalisable, OK l'exécute). Tactile : toujours, au doigt.
+        if (skipOffer != null && !drawerOpen && panel == Panel.None && !sleepMenu && (touch || !overlayVisible)) SkipChip(
+            label = when {
+                skipOffer.toNextEpisode -> X.nextEpisode
+                skipOffer.kind == com.ultratv.tv.nativeapp.data.skip.SkipKind.RECAP -> X.skipRecap
+                skipOffer.kind == com.ultratv.tv.nativeapp.data.skip.SkipKind.CREDITS -> X.skipCredits
+                else -> X.skipIntro
+            },
+            okHint = !touch, onClick = doSkip,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 96.design, bottom = if (touch) 150.design else 96.design),
+        )
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
             com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
@@ -853,6 +903,22 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
 }
 
 private fun Modifier.androidx_focusable() = this.focusable()
+
+/** Bouton « Passer l'intro » (maquette : pastille claire en bas à droite, au-dessus de la vidéo). */
+@Composable
+private fun SkipChip(label: String, okHint: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.clip(RoundedCornerShape(40.design)).background(Color(0xF2F5F5F7)).clickable(onClick = onClick)
+            .padding(horizontal = 30.design, vertical = 16.design),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DIcon("M5 4l10 8-10 8zM19 5v14", 26.design, Color(0xFF0A0A0C), strokeWidth = 2.4f)
+        Text(label, color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1,
+            modifier = Modifier.padding(start = 12.design))
+        if (okHint) Text("OK", color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx,
+            modifier = Modifier.padding(start = 16.design).clip(RoundedCornerShape(6.design)).background(Color(0x1F0A0A0C)).padding(horizontal = 8.design, vertical = 2.design))
+    }
+}
 
 // ───────────────────────── Surcouche ─────────────────────────
 
