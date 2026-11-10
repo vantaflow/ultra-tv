@@ -2,12 +2,27 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [1.2.82] — 2026-11-10 (Android) · Bureau 1.2.38
+## [1.2.82] — 2026-11-10 (Android) · Bureau 1.2.38 · Worker
 
 ### Nouveau
 - Lecteur : bouton **« Passer l'intro »** pendant le générique de début d'un film ou d'un épisode, **« Passer le résumé »** pendant le « précédemment dans… », et **« Épisode suivant »** pendant le générique de fin d'un épisode (« Passer le générique » quand une scène suit le générique d'un film). Télécommande : OK, commandes masquées ; tactile : un appui. Rien n'est sauté sans action de l'utilisateur.
 - Bureau (Windows, macOS, navigateur) : même bouton en plein écran, au clic ou avec la touche S (ou Entrée).
 - Les passages viennent de TheIntroDB (base communautaire, sans clé) : seuls l'identifiant TMDB, la saison, l'épisode et la durée sont envoyés, jamais d'identifiant ni d'adresse IPTV. Titre inconnu, TMDB non relié ou réseau absent : aucun bouton.
+- Fiches film et série : notes **IMDb** et **Rotten Tomatoes** (« IMDb 8.8 · RT 87% ») via OMDb ; sans clé OMDb sur le Worker, la note habituelle reste affichée.
+- Accueil : rangées **« Parce que vous avez regardé… »** (films proches du dernier film regardé), **« Films les mieux notés »** et **« Séries les mieux notées »**, calculées en local (sans Trakt), réglables dans Rangées de l'accueil.
+- **« À la une » défile** : 6 titres (séries et films les mieux notés), un toutes les 9 s, avec fondu et points ; le bureau alterne la chaîne mise en avant et les séries les mieux notées (pause au survol).
+- Recherche **tolérante aux fautes de frappe** (« brekin bad » → Breaking Bad) quand la recherche exacte ne trouve aucun film ni série.
+- Films et séries : **tri** (fournisseur, ajouts récents, mieux notés), **note minimale** (6+, 7+, 8+) et **période** (décennies) ; un filtre actif sur « Tous » affiche une grille filtrée.
+- **Pages acteurs et réalisateurs** : un nom de la distribution ouvre ses films et séries présents dans la playlist (filmographie TMDB rapprochée par titre et année, plus les fiches qui le citent).
+- Réglages › Affichage › **Animations** : Automatique (selon l'appareil ; sur le bureau, selon le système), Désactivées, Réduites, Complètes.
+- Bureau : **son AC-3 / E-AC-3 / DTS** — quand un film ou une chaîne joue sans son, l'audio est converti en AAC par ffmpeg (embarqué en version LGPL sous Windows et Linux ; macOS : ffmpeg installé, sinon un message explique comment l'installer).
+
+### Worker
+- `GET /api/ratings` (notes OMDb, appareil appairé, cache 7 jours) : secret facultatif `OMDB_API_KEY`.
+- Proxy TMDB : `search/person` et `person/{id}/combined_credits` autorisés (pages acteurs).
+
+### Licences
+- Le décodeur FFmpeg Android `org.jellyfin.media3:media3-ffmpeg-decoder` est publié sous GPL-3.0 : `android-native/tools/ffmpeg-lgpl/build.sh` (workflow « FFmpeg LGPL ») construit une version LGPL, utilisée automatiquement une fois déposée dans `android-native/app/libs/`. Voir `THIRD_PARTY_NOTICES.md`.
 
 ## [1.2.81] — 2026-11-05 (Android)
 
