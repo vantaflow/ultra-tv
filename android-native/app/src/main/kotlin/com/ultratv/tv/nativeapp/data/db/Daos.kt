@@ -372,9 +372,22 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
 
-    /** Grille filtrée / triée (puces Tri, Note, Période) ; [cat] vide = toutes les catégories. 0 = sans filtre. */
-    @Query("SELECT * FROM movie WHERE providerId = :pid AND (:cat = '' OR categoryId = :cat) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY CASE WHEN :sort = 2 THEN rating END DESC, CASE WHEN :sort = 1 THEN addedKey END DESC, id")
-    fun pagedFiltered(pid: Long, cat: String, useLang: Int, langs: List<String>, sort: Int, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+    /*
+     * Grille filtrée (puces Tri, Note, Période ; 0 = sans filtre). « Tous » : une requête PAR TRI, pour que l'ordre suive
+     * un index (providerId, rating) / (providerId, addedKey) / rowid — un ORDER BY CASE … obligeait SQLite à retrier
+     * toute la table (180 000 lignes) à chaque page. Dans une catégorie, déjà bornée par son index, un seul tri suffit.
+     */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY id")
+    fun pagedFilteredByProvider(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY addedKey DESC, id DESC")
+    fun pagedFilteredByRecent(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY rating DESC, id DESC")
+    fun pagedFilteredByRating(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY CASE WHEN :sort = 2 THEN rating END DESC, CASE WHEN :sort = 1 THEN addedKey END DESC, id")
+    fun pagedFilteredInCategory(pid: Long, cat: String, useLang: Int, langs: List<String>, sort: Int, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
 
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
@@ -467,9 +480,22 @@ interface SeriesDao {
     @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedAll(pid: Long, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>
 
-    /** Grille filtrée / triée (puces Tri, Note, Période) ; [cat] vide = toutes les catégories. 0 = sans filtre. */
-    @Query("SELECT * FROM series WHERE providerId = :pid AND (:cat = '' OR categoryId = :cat) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY CASE WHEN :sort = 2 THEN rating END DESC, CASE WHEN :sort = 1 THEN addedKey END DESC, id")
-    fun pagedFiltered(pid: Long, cat: String, useLang: Int, langs: List<String>, sort: Int, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+    /*
+     * Grille filtrée (puces Tri, Note, Période ; 0 = sans filtre). « Tous » : une requête PAR TRI, pour que l'ordre suive
+     * un index (providerId, rating) / (providerId, addedKey) / rowid — un ORDER BY CASE … obligeait SQLite à retrier
+     * toute la table (180 000 lignes) à chaque page. Dans une catégorie, déjà bornée par son index, un seul tri suffit.
+     */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY id")
+    fun pagedFilteredByProvider(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY addedKey DESC, id DESC")
+    fun pagedFilteredByRecent(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY rating DESC, id DESC")
+    fun pagedFilteredByRating(pid: Long, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY CASE WHEN :sort = 2 THEN rating END DESC, CASE WHEN :sort = 1 THEN addedKey END DESC, id")
+    fun pagedFilteredInCategory(pid: Long, cat: String, useLang: Int, langs: List<String>, sort: Int, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>

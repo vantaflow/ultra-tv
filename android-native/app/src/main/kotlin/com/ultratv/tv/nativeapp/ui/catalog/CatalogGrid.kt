@@ -165,11 +165,21 @@ class CatalogGridViewModel @Inject constructor(
             val f = arr[4] as CatalogFilter
             if (p == null) flowOf(PagingData.empty())
             else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (f.narrows) movieDao.pagedFiltered(p, cat.orEmpty(), lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                if (f.narrows) when {
+                    cat != null -> movieDao.pagedFilteredInCategory(p, cat, lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.RATING -> movieDao.pagedFilteredByRating(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.RECENT -> movieDao.pagedFilteredByRecent(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    else -> movieDao.pagedFilteredByProvider(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                }
                 else if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> val lib = trakt.library.value; pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang, lib.isMovieWatched(it.title, it.year)) } }
             else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
-                if (f.narrows) seriesDao.pagedFiltered(p, cat.orEmpty(), lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                if (f.narrows) when {
+                    cat != null -> seriesDao.pagedFilteredInCategory(p, cat, lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.RATING -> seriesDao.pagedFilteredByRating(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.RECENT -> seriesDao.pagedFilteredByRecent(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    else -> seriesDao.pagedFilteredByProvider(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                }
                 else if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang) } }
         }.cachedIn(viewModelScope)
