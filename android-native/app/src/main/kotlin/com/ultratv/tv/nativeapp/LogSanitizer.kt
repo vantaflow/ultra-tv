@@ -12,7 +12,7 @@ package com.ultratv.tv.nativeapp
 object LogSanitizer {
 
     private const val PARAMS =
-        "username|user|login|password|passwd|pass|pwd|token|apikey|api_key|secret|auth|authorization|key"
+        "license_key|licensekey|license_url|username|user|login|password|passwd|pass|pwd|token|apikey|api_key|secret|auth|authorization|key"
 
     private val USERINFO = Regex("""(\b[a-zA-Z][a-zA-Z0-9+.-]*://)[^\s/@]+@""")
     private val PARAM = Regex("""(^|[?&;\s,{"'])($PARAMS)(\s*[=:]\s*"?)[^&\s"',}]+""", RegexOption.IGNORE_CASE)

@@ -15,6 +15,7 @@ import com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
 import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
 import com.ultratv.tv.nativeapp.adaptive.PlaybackResolver
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
+import com.ultratv.tv.nativeapp.data.db.streamProps
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.memory.ramState
 import com.ultratv.tv.nativeapp.data.prefs.SubtitlePrefsStore
@@ -150,6 +151,7 @@ class LivePreviewViewModel @Inject constructor(
             textureView = textureView,
             subtitles = { (shared.env ?: fallback).subtitles() },
             uiLanguage = { (shared.env ?: fallback).uiLanguage() },
+            propsLookup = { k -> channelDao.streamProps(k) },
         )
     }
 

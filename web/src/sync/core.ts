@@ -461,6 +461,7 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
       sourceId, catExt: group, ord: i, streamId: i + 1, num: e.tvgChno ?? i + 1, name: e.name, display: p.displayName,
       norm: normText(p.displayName), words: p.isSeparator ? [] : wordKeys(sourceId, normText(p.displayName)), country: p.country, q: p.quality, flags: p.flags, sep: p.isSeparator ? 1 : 0,
       logo: e.tvgLogo, epg: e.tvgId, archive: e.catchUp ? 1 : 0, url: e.url,
+      ...(e.protected ? { drm: 1 as const } : {}),
     });
   });
   for (let i = 0; i < rows.length; i += 5000) {

@@ -2,7 +2,7 @@ import type { ChannelRow, MovieRow, Source } from "@/db/types";
 import type { PlayTarget } from "./resolve";
 
 export const channelTarget = (s: Source, c: ChannelRow): PlayTarget => ({
-  kind: "live", sourceId: s.id!, cid: s.cid, refId: c.streamId, title: c.display, image: c.logo, url: c.url,
+  kind: "live", sourceId: s.id!, cid: s.cid, refId: c.streamId, title: c.display, image: c.logo, url: c.url, protectedStream: !!c.drm,
   channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: !!c.archive, q: c.q, logo: c.logo },
 });
 

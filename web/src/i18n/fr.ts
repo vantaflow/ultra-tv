@@ -180,6 +180,7 @@ export const fr = {
   "player.speed": "VITESSE",
   "player.engine": "MOTEUR",
   "player.error": "Cette lecture a échoué.",
+  "player.drmUnsupported": "Flux protégé non pris en charge sur ordinateur",
   "player.errorHint": "La source a peut-être atteint sa limite de connexions simultanées, ou le flux est indisponible.",
   "player.retry": "Réessayer",
   "player.skipIntro": "Passer l'intro",

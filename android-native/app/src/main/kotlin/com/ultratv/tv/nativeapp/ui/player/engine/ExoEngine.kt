@@ -103,9 +103,20 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
                     .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
             }
-        val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(
+        // En-têtes propres au flux protégé en cours (user-agent / referrer de la playlist), ajoutés à chaque requête.
+        val dataSources = androidx.media3.datasource.ResolvingDataSource.Factory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
-        )
+        ) { spec -> val h = streamHeaders; if (h.isEmpty()) spec else spec.withAdditionalHeaders(h) }
+        val defaultDrm = androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider()
+        val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSources)
+            .setDrmSessionManagerProvider { item ->
+                // ClearKey à clés locales : réponse de licence construite sur l'appareil, aucune requête réseau de licence.
+                val local = item.localConfiguration?.tag as? LocalClearKey
+                if (local != null) androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
+                    .setUuidAndExoMediaDrmProvider(C.CLEARKEY_UUID, androidx.media3.exoplayer.drm.FrameworkMediaDrm.DEFAULT_PROVIDER)
+                    .build(androidx.media3.exoplayer.drm.LocalMediaDrmCallback(local.licenseJson))
+                else defaultDrm.get(item)
+            }
         val renderers = AudioOnlyFfmpegRenderersFactory(ctx).apply {
             setEnableDecoderFallback(true)
             when (config.decoder) {
@@ -197,9 +208,16 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     override val reusable: Boolean get() = true
+    override val supportsProtected: Boolean get() = true
 
-    override fun load(url: String, startPositionMs: Long) {
+    @Volatile private var streamHeaders: Map<String, String> = emptyMap()
+
+    override fun load(url: String, startPositionMs: Long) = open(url, startPositionMs, null)
+    override fun loadProtected(url: String, startPositionMs: Long, props: com.ultratv.tv.nativeapp.data.m3u.StreamProps) = open(url, startPositionMs, props)
+
+    private fun open(url: String, startPositionMs: Long, props: com.ultratv.tv.nativeapp.data.m3u.StreamProps?) {
         if (released) return
+        streamHeaders = props?.let { DrmMedia.streamHeaders(it) } ?: emptyMap()
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
         audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null
         if (player.mediaItemCount > 0) {
@@ -210,7 +228,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, config.textOff)
                 .build()
         }
-        val item = MediaItem.Builder().setUri(url).apply {
+        val item = if (props?.isProtected == true) DrmMedia.mediaItem(url, props, if (config.isLive) config.buffer.liveOffsetMs else null)
+        else MediaItem.Builder().setUri(url).apply {
             if (config.isLive) setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(config.buffer.liveOffsetMs).build())
         }.build()
         player.setMediaItem(item)

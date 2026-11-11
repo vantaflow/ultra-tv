@@ -158,6 +158,10 @@ interface ChannelDao {
     @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
     suspend fun byRemoteId(pid: Long, rid: String): ChannelEntity?
 
+    /** Propriétés de flux protégé (JSON, secret de lecture) d'une chaîne ; null = flux ordinaire. */
+    @Query("SELECT props FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
+    suspend fun propsOf(pid: Long, rid: String): String?
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<ChannelEntity>)

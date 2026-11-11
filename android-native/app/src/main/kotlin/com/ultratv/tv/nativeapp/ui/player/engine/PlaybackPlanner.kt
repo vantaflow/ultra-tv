@@ -19,7 +19,9 @@ data class Combo(val engine: EngineKind, val decoder: DecoderMode) {
  *    Un moteur imposé par l'utilisateur n'est jamais quitté (seul le décodage change).
  */
 object PlaybackPlanner {
-    fun initial(engine: EngineChoice, decoder: DecoderMode, remembered: Combo?): Combo {
+    fun initial(engine: EngineChoice, decoder: DecoderMode, remembered: Combo?, protectedStream: Boolean = false): Combo {
+        // Flux protégé (Widevine / ClearKey) : Media3 SEUL, quel que soit le moteur choisi ou mémorisé (LibVLC ne sait pas les lire).
+        if (protectedStream) return Combo(EngineKind.EXO, decoder)
         if (remembered != null && allowed(engine, remembered)) return remembered
         return when (engine) {
             EngineChoice.VLC -> Combo(EngineKind.VLC, decoder)
@@ -34,7 +36,8 @@ object PlaybackPlanner {
     }
 
     /** Prochaine combinaison à essayer après un échec, ou null s'il n'y en a plus. */
-    fun next(choice: EngineChoice, tried: Set<Combo>): Combo? {
+    fun next(choice: EngineChoice, tried: Set<Combo>, protectedStream: Boolean = false): Combo? {
+        if (protectedStream) return null   // jamais de repli (ni VLC, ni décodage logiciel) : l'erreur est affichée
         val order = listOf(
             Combo(EngineKind.EXO, DecoderMode.AUTO), Combo(EngineKind.EXO, DecoderMode.SOFTWARE),
             Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE),
@@ -43,7 +46,7 @@ object PlaybackPlanner {
     }
 
     /** Un repli ne sert à rien si le problème n'est ni le format ni le décodage. */
-    fun shouldFallBack(kind: PlayErrorKind) = when (kind) {
+    fun shouldFallBack(kind: PlayErrorKind, protectedStream: Boolean = false) = !protectedStream && when (kind) {
         PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE, PlayErrorKind.UNKNOWN -> true
         else -> false
     }
@@ -62,6 +65,10 @@ object PlaybackPlanner {
     fun shouldReconnectLive(kind: PlayErrorKind) =
         kind == PlayErrorKind.NETWORK || kind == PlayErrorKind.BEHIND_LIVE || kind == PlayErrorKind.REFUSED || kind == PlayErrorKind.UNKNOWN
 
+    /** Choix manuel d'une combinaison (pilule « Lecteur ») : un flux protégé reste sur Media3. */
+    fun manualCombo(c: Combo, protectedStream: Boolean): Combo =
+        if (protectedStream && c.engine != EngineKind.EXO) c.copy(engine = EngineKind.EXO) else c
+
     /** Classification d'une erreur Media3 (code d'erreur + statut HTTP éventuel). */
     fun classifyExo(errorCode: Int, httpStatus: Int?): PlayErrorKind = when {
         errorCode == 1002 -> PlayErrorKind.BEHIND_LIVE                       // ERROR_CODE_BEHIND_LIVE_WINDOW
@@ -72,6 +79,8 @@ object PlaybackPlanner {
         }
         errorCode in 2000..2008 -> PlayErrorKind.NETWORK                     // IO_*
         errorCode in 3001..3004 -> PlayErrorKind.FORMAT                      // PARSING_*
+        errorCode == 6001 || errorCode == 6002 || errorCode == 6007 || errorCode == 6000 || errorCode == 6006 -> PlayErrorKind.DRM_UNSUPPORTED  // DRM_SCHEME_UNSUPPORTED, PROVISIONING_FAILED, DEVICE_REVOKED, UNSPECIFIED, SYSTEM_ERROR
+        errorCode == 6003 || errorCode == 6004 || errorCode == 6005 || errorCode == 6008 -> PlayErrorKind.DRM_LICENSE   // CONTENT_ERROR, LICENSE_ACQUISITION_FAILED, DISALLOWED_OPERATION, LICENSE_EXPIRED
         errorCode == 4005 -> PlayErrorKind.FORMAT                            // DECODING_FORMAT_UNSUPPORTED
         errorCode in 4001..4006 || errorCode in 5001..5003 -> PlayErrorKind.DECODER   // DECODER_*, AUDIO_TRACK_*
         else -> PlayErrorKind.UNKNOWN

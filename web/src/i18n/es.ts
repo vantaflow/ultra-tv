@@ -181,6 +181,7 @@ export const es: Dict = {
   "player.speed": "VELOCIDAD",
   "player.engine": "MOTOR",
   "player.error": "La reproducción ha fallado.",
+  "player.drmUnsupported": "Señal protegida no compatible en el ordenador",
   "player.errorHint": "Puede que la fuente haya alcanzado su límite de conexiones simultáneas, o que el flujo no esté disponible.",
   "player.retry": "Reintentar",
   "player.skipIntro": "Saltar intro",

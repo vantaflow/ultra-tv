@@ -64,6 +64,7 @@ import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
 import com.ultratv.tv.nativeapp.adaptive.PlaybackResolver
 import com.ultratv.tv.nativeapp.adaptive.ResolvedPlayback
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
+import com.ultratv.tv.nativeapp.data.db.streamProps
 import com.ultratv.tv.nativeapp.data.db.EpgDao
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.prefs.UserPrefs
@@ -400,6 +401,8 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    suspend fun streamProps(key: String) = channelDao.streamProps(key)
+
     fun setEngine(v: String) { viewModelScope.launch { prefs.setPlayerEngine(v) } }
     fun setDecoder(v: String) { viewModelScope.launch { prefs.setDecoderMode(v) } }
 }
@@ -481,6 +484,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, touchUi),
             subtitles = { subVm.current },
             uiLanguage = { if (latestPrefs.language == "system") java.util.Locale.getDefault().language else latestPrefs.language },
+            propsLookup = { k -> vm.streamProps(k) },
         )
     }
     val state by session.state.collectAsState()
@@ -520,6 +524,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var liveUrlBeforeTs by remember { mutableStateOf<String?>(null) }
     var pendingPause by remember { mutableStateOf(false) }
     fun startTimeshift() {
+        if (state.isProtected) { Toaster.show(X.tsHls); return }   // flux protégé : jamais relayé par le tampon local
         when (ts.support(currentUrl)) {
             com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftSupport.OK -> {
                 val live = currentUrl
@@ -1251,6 +1256,9 @@ internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings,
         PlayErrorKind.NETWORK -> D.errNetwork to null
         PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null
         PlayErrorKind.NOT_FOUND -> D.errNotFound to null
+        PlayErrorKind.DRM_UNSUPPORTED -> D.errDrmUnsupported to D.errDrmUnsupportedHint
+        PlayErrorKind.DRM_LICENSE -> D.errDrmLicense to D.errDrmLicenseHint
+        PlayErrorKind.DRM_INVALID -> D.errDrmInvalid to D.errDrmInvalidHint
         else -> D.errNoResponse to null
     }
     val first = remember { FocusRequester() }
@@ -1371,7 +1379,7 @@ private fun PlayerSidePanel(
                         OptionGroup(D.engine) {
                             OptionRow(D.auto, if (p.playerEngine == "auto") engineName else null, p.playerEngine == "auto") { vm.setEngine("auto") }
                             OptionRow(D.engineExo, null, p.playerEngine == "exo") { vm.setEngine("exo"); onSwitch(Combo(EngineKind.EXO, state.combo.decoder)) }
-                            OptionRow(D.engineVlc, D.vlcHint, p.playerEngine == "vlc") { vm.setEngine("vlc"); onSwitch(Combo(EngineKind.VLC, state.combo.decoder)) }
+                            if (!state.isProtected) OptionRow(D.engineVlc, D.vlcHint, p.playerEngine == "vlc") { vm.setEngine("vlc"); onSwitch(Combo(EngineKind.VLC, state.combo.decoder)) }
                         }
                         OptionGroup(D.decoding) {
                             OptionRow(D.auto, if (p.decoderMode == "auto") (if (state.combo.decoder == DecoderMode.SOFTWARE) D.software else D.hardware) else null, p.decoderMode == "auto") { vm.setDecoder("auto"); onSwitch(Combo(state.combo.engine, DecoderMode.AUTO)) }
@@ -1382,7 +1390,7 @@ private fun PlayerSidePanel(
                             listOf(BufferPreset.AUTO to D.auto, BufferPreset.LOW_LATENCY to D.bufLow, BufferPreset.BALANCED to D.bufBalanced, BufferPreset.STABLE to D.bufStable)
                                 .forEach { (b, l) -> OptionRow(l, null, state.bufferPreset == b) { onBuffer(b) } }
                         }
-                        OptionRow(LocalStrings.current.playerExternal, null, false, onExternal)
+                        if (!state.isProtected) OptionRow(LocalStrings.current.playerExternal, null, false, onExternal)
                     }
                     SideTab.STATS -> {
                         OptionRow(D.statsLabel + " · " + D.onVideo, null, statsOpen, onStats)

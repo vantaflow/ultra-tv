@@ -20,6 +20,9 @@ enum class PlayErrorKind {
     DECODER,        // décodeur absent ou en échec
     NO_PICTURE,     // le son passe mais aucune image
     BEHIND_LIVE,    // fenêtre du direct dépassée : on se recale
+    DRM_UNSUPPORTED, // flux protégé : système (Widevine / ClearKey) ou niveau de sécurité absent de l'appareil
+    DRM_LICENSE,    // flux protégé : licence refusée, expirée ou injoignable
+    DRM_INVALID,    // flux protégé : propriétés de la playlist incomplètes ou illisibles
     UNKNOWN,
 }
 
@@ -91,6 +94,10 @@ interface PlayerEngine {
     fun load(url: String, startPositionMs: Long = 0)
     /** Vrai si [load] peut enchaîner un autre flux sur le MÊME moteur (zapping sans recréer lecteur, vue et décodeurs). */
     val reusable: Boolean get() = false
+    /** Vrai si le moteur sait lire un flux protégé (Media3 seulement : jamais LibVLC). */
+    val supportsProtected: Boolean get() = false
+    /** Ouvre un flux protégé (Widevine / ClearKey) ; sans effet sur les moteurs qui ne le gèrent pas. */
+    fun loadProtected(url: String, startPositionMs: Long, props: com.ultratv.tv.nativeapp.data.m3u.StreamProps) {}
     fun play()
     fun pause()
     fun seekTo(ms: Long)
