@@ -423,6 +423,7 @@
   "toast.favAdded": "Dodano do ulubionych",
   "toast.favRemoved": "Usunięto z ulubionych",
   "toast.synced": "Katalog zaktualizowany",
+  "sync.rebuilt": "Katalog odbudowany po aktualizacji",
   "sync.doneSkipped_one": "Synchronizacja zakończona · pominięto {count} kategorię",
   "sync.doneSkipped_few": "Synchronizacja zakończona · pominięto {count} kategorie",
   "sync.doneSkipped_many": "Synchronizacja zakończona · pominięto {count} kategorii",

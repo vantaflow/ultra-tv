@@ -446,6 +446,7 @@
   "toast.favAdded": "تمت الإضافة إلى المفضلة",
   "toast.favRemoved": "تمت الإزالة من المفضلة",
   "toast.synced": "تم تحديث الكتالوج",
+  "sync.rebuilt": "تمت إعادة بناء الكتالوج بعد التحديث",
   "sync.doneSkipped_zero": "اكتملت المزامنة · تم تخطي {count} فئة",
   "sync.doneSkipped_one": "اكتملت المزامنة · تم تخطي فئة واحدة",
   "sync.doneSkipped_two": "اكتملت المزامنة · تم تخطي فئتين",
