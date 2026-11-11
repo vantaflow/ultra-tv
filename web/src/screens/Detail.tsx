@@ -214,7 +214,7 @@ function SeriesInner({ source }: { source: Source }) {
           <button className="back" style={{ position: "static" }} onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.series")}</button>
           <div className="poster-big"><Img src={i?.cover || s.poster} /></div>
           <h1 style={{ fontSize: "2.25rem" }}>{s.title}</h1>
-          <Facts items={[s.year, parsed.seasons.length ? t("common.seasons", { n: parsed.seasons.length }) : null, presentable(i?.genre), ...ratingLabels(ext, s.rating)]} />
+          <Facts items={[s.year, parsed.seasons.length ? t("common.seasons", { count: parsed.seasons.length }) : null, presentable(i?.genre), ...ratingLabels(ext, s.rating)]} />
           <p className="plot clamp-4" style={{ fontSize: "0.9375rem" }}>{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}
           <div className="actions">

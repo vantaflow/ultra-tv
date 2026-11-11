@@ -164,7 +164,7 @@ function LiveInner({ source }: { source: Source }) {
             <input className="input" placeholder={t("live.filterChannels")} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t("live.filterChannels")} />
           </div>
           <div className="muted" style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
-            {count == null ? t("common.loading") : `${catLabel || t("common.all")} · ${t("common.channelsCount", { n: count - sections })}${sections ? " · " + t("common.sections", { n: sections }) : ""}`}
+            {count == null ? t("common.loading") : `${catLabel || t("common.all")} · ${t("common.channelsCount", { count: count - sections })}${sections ? " · " + t("common.sections", { count: sections }) : ""}`}
           </div>
         </div>
         {count === 0 ? <div className="state-card"><p>{t("live.noChannels")}</p></div> : (

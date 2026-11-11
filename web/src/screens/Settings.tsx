@@ -123,7 +123,7 @@ function cloudBadge(s: Source, t: ReturnType<typeof useT>): string {
   if (!s.cloudId) return t("cloud.badgeLocal");
   if (s.cloudOrigin === "cloud" && s.cloudOriginName && s.cloudShared === undefined) return t("cloud.badgeFrom", { n: s.cloudOriginName });
   if (s.cloudShared === "all") return t("cloud.badgeAll");
-  if (typeof s.cloudShared === "number") return t("cloud.badgeShared", { n: s.cloudShared });
+  if (typeof s.cloudShared === "number") return t("cloud.badgeShared", { count: s.cloudShared });
   return s.cloudOriginName ? t("cloud.badgeFrom", { n: s.cloudOriginName }) : t("cloud.badgeCloud");
 }
 
@@ -202,7 +202,7 @@ function CloudPane() {
             }}><Icon name="refresh" size={18} />{c.syncing ? t("set.syncing") : t("cloud.syncNow")}</button>
           </Pref>
           {msg && <div className="alert" role="status">{msg}</div>}
-          <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { n: c.devices })}</div>
+          <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { count: c.devices })}</div>
           {Array.isArray(c.devices) && c.devices.map((d) => (
             <div key={d.id} className="pref">
               <span><span>{d.name}</span>{(d.model || d.lastSeen !== undefined) && <span className="d" style={{ display: "block" }}>{[d.model, new Date(d.lastSeen || 0).getTime() > 0 ? new Date(d.lastSeen!).toLocaleString(lang) : "—"].filter(Boolean).join(" · ")}</span>}</span>
@@ -408,7 +408,7 @@ function CategoriesPane() {
       </div>
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <button className="btn primary" disabled={pending === 0 || sync.running} onClick={() => { initial.current = null; void sync.start(source, { preserveFlags: true }); }}>{sync.running ? t("set.syncing") : t("set.catsApply")}</button>
-        {pending > 0 && <span className="muted">{t("set.catsPending", { n: pending })}</span>}
+        {pending > 0 && <span className="muted">{t("set.catsPending", { count: pending })}</span>}
         {sync.running && sync.progress && <span className="muted mono">{Math.round(sync.progress.ratio * 100)} %</span>}
       </div>
     </>

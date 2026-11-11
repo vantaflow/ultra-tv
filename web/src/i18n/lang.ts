@@ -1,15 +1,25 @@
-export type Lang = "fr" | "en" | "es" | "ar";
-export const LANGS: { code: Lang; label: string }[] = [
-  { code: "fr", label: "Français" },
-  { code: "en", label: "English" },
-  { code: "es", label: "Español" },
-  { code: "ar", label: "العربية" },
-];
+// Langues de l'interface. Ajouter une langue = un fichier locales/<code>.json + une entrée ici.
+export const LANGS = [
+  { code: "fr", label: "Français", dir: "ltr", locale: "fr-FR" },
+  { code: "en", label: "English", dir: "ltr", locale: "en-GB" },
+  { code: "es", label: "Español", dir: "ltr", locale: "es-ES" },
+  { code: "ar", label: "العربية", dir: "rtl", locale: "ar-MA" },
+] as const;
+
+export type Lang = (typeof LANGS)[number]["code"];
+
+/** Langues communautaires : traductions incomplètes tolérées (repli sur l'anglais). Vide pour l'instant. */
+export const COMMUNITY_LANGS: readonly Lang[] = [];
+
+/** Langue source : référence des clés, et repli quand une clé manque. */
+export const SOURCE_LANG: Lang = "en";
+
+const info = (l: Lang) => LANGS.find((x) => x.code === l) ?? LANGS[0];
 
 export function detectLang(): Lang {
-  const n = (typeof navigator !== "undefined" ? navigator.language : "fr").slice(0, 2).toLowerCase();
-  return (["fr", "en", "es", "ar"] as const).find((l) => l === n) ?? "en";
+  const n = (typeof navigator !== "undefined" ? navigator.language : "en").slice(0, 2).toLowerCase();
+  return LANGS.find((l) => l.code === n)?.code ?? "en";
 }
 
-export const dirOf = (l: Lang) => (l === "ar" ? "rtl" : "ltr");
-export const localeOf = (l: Lang) => ({ fr: "fr-FR", en: "en-GB", es: "es-ES", ar: "ar-MA" })[l];
+export const dirOf = (l: Lang): "ltr" | "rtl" => info(l).dir;
+export const localeOf = (l: Lang): string => info(l).locale;
