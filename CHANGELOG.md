@@ -5,7 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
-- Direct : les sous-titres codés (CEA-608 / 708) des flux MPEG-TS sont maintenant déclarés au lecteur ExoPlayer et proposés dans le panneau Sous-titres ; en Direct, le panneau n'affiche plus la recherche en ligne (réservée aux films) mais une indication quand la chaîne n'en diffuse pas.
+- Direct : les sous-titres codés (CEA-608) des flux MPEG-TS sont déclarés au lecteur ExoPlayer, et une piste CC n'est proposée dans le panneau Sous-titres que si la chaîne en diffuse réellement (plus de « CC1 » vide sur TF1) ; en Direct, le panneau n'affiche plus la recherche en ligne (réservée aux films) mais une indication quand la chaîne n'en diffuse pas.
 
 ## [1.2.88] — 2026-11-11 (Android)
 
