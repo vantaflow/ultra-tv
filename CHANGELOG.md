@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+- APK plus léger par défaut : `/download/android`, le README et le site proposent l'APK arm64 (≈ 67 Mo), l'APK 32 bits (armv7) et l'universel en dernier recours ; la release publie `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk` et `UltraTV-x86_64.apk` (liens stables) avec leur `.sha256`.
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

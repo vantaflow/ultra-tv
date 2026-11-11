@@ -1,11 +1,19 @@
-// Liens de téléchargement stables (README, site, posts) : /download/android, /windows, /mac, /linux.
+// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -armv7, -universal), /windows, /mac, /linux.
 // Android : l'APK universel de la dernière release (« Latest » = Android). Bureau : les releases « desktop-v* » ne sont
 // pas « Latest » et leurs fichiers portent le numéro de version ; on lit la dernière release bureau via l'API GitHub
 // (cache 1 h) et on redirige vers le fichier de la plateforme.
 
 export const REPO = "vantaflow/ultra-tv";
 const RELEASES = `https://github.com/${REPO}/releases`;
-export const ANDROID_URL = `${RELEASES}/latest/download/UltraTV.apk`;
+const LATEST = `${RELEASES}/latest/download`;
+// /download/android = APK arm64-v8a (≈ 67 Mo, la plupart des box et téléphones récents) ; le universel (≈ 227 Mo) en dernier recours.
+export const ANDROID_URL = `${LATEST}/UltraTV-arm64-v8a.apk`;
+export const ANDROID_URLS = {
+  android: ANDROID_URL,
+  "android-arm64": ANDROID_URL,
+  "android-armv7": `${LATEST}/UltraTV-armeabi-v7a.apk`, // 32 bits : Chromecast avec Google TV HD, vieilles box
+  "android-universal": `${LATEST}/UltraTV.apk`,
+};
 const PATTERNS = {
   windows: /-win-x64\.exe$/,
   mac: /-mac-universal\.dmg$/,
@@ -25,7 +33,7 @@ export function pickDesktopAsset(releases, platform) {
 }
 
 export async function downloadRedirect(platform, fetchImpl = fetch) {
-  if (platform === "android") return Response.redirect(ANDROID_URL, 302);
+  if (Object.hasOwn(ANDROID_URLS, platform)) return Response.redirect(ANDROID_URLS[platform], 302);
   if (!PATTERNS[platform]) return null;
   let target = null;
   try {

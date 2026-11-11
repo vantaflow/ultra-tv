@@ -18,7 +18,7 @@
 <p align="center">
   <a href="README.md">🇫🇷 Version française</a> ·
   <a href="https://vantaflow.github.io/ultra-tv/en/">Website</a> ·
-  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk">Download the APK</a> ·
+  <a href="https://ultratv-config.khalilbenaz.workers.dev/download/android">Download the APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog (French)</a>
 </p>
@@ -29,7 +29,7 @@
 
 | Device | Link |
 |---|---|
-| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+) | [UltraTV.apk](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) · on a box: Downloader app, code **`5248504`** |
+| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+) | **[64-bit APK (arm64) — recommended](https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64)**, light (≈ 67 MB), for most recent boxes and phones · **[32-bit APK (armv7)](https://ultratv-config.khalilbenaz.workers.dev/download/android-armv7)** for 32-bit devices (Chromecast with Google TV HD, older boxes) · [Universal APK](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) (≈ 227 MB) as a last resort · on a box: Downloader app, code **`5248504`**. If the install fails, take the 32-bit version. |
 | **Windows** (x64) | [.exe installer](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
 | **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
@@ -158,7 +158,7 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 
 | Device | File |
 |---|---|
-| Android (TV, smartphone, tablet) | universal [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk), or one APK per CPU `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) with its precompiled profile `.dm`, plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablet) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (default), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32-bit), or the universal [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk); versioned files `UltraTV-<version>-<abi>.apk` with their precompiled profile `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
 | Cloud dashboard | <https://ultratv-config.khalilbenaz.workers.dev> (nothing to install) |
@@ -169,7 +169,7 @@ Everything is on the [Releases](https://github.com/vantaflow/ultra-tv/releases) 
 
 Android 9 or newer (API 28).
 
-**APK.** Download [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) (SHA-256 sum on the release page) and install it. Lighter per-processor builds (`UltraTV-<version>-arm64-v8a.apk`, `armeabi-v7a`, `x86_64`) are published with a `SHA256SUMS.txt`; the in-app updater picks the right one for your device.
+**APK.** Download [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (SHA-256 sum on the release page) and install it. If the install fails (32-bit device such as the Chromecast with Google TV HD), take [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk); as a last resort, the [universal APK](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk). The in-app updater picks the right build for your device.
 
 **Downloader** (boxes without a browser): open the [Downloader](https://www.aftvnews.com/downloader/) app, enter the code **`5248504`**, allow unknown sources, install.
 

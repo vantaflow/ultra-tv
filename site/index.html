@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Ultra TV — lecteur IPTV pour TV, smartphone, tablette et ordinateur</title>
-<meta name="description" content="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, portails Stalker, guide, replay, timeshift, téléchargements, Trakt, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
+<meta name="description" content="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
 <meta name="color-scheme" content="dark light">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preload" href="fonts/manrope.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <meta property="og:title" content="Ultra TV">
 <meta property="og:type" content="website">
-<meta property="og:description" content="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, portails Stalker, guide, replay, timeshift, téléchargements, Trakt, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
+<meta property="og:description" content="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques.">
 <meta property="og:locale" content="fr_FR">
 <link rel="canonical" href="https://vantaflow.github.io/ultra-tv/">
 <link rel="alternate" hreflang="fr" href="https://vantaflow.github.io/ultra-tv/">
@@ -29,7 +29,6 @@
     <a href="#appareils">Appareils</a>
     <a href="#telecharger">Télécharger</a>
     <a href="#installer">Installer</a>
-    <a href="#confidentialite">Confidentialité</a>
     <a href="#faq">FAQ</a>
     <a class="chip" id="lang" href="en/" hreflang="en" lang="en" aria-label="English version">EN</a>
     <button class="chip" id="theme" type="button" aria-label="Thème clair ou sombre">◐</button>
@@ -43,9 +42,7 @@
     <h1>Toute votre télé, dans une seule application.</h1>
     <p>Ultra TV est un lecteur IPTV natif, pensé pour la télécommande : chaînes, films, séries, guide des programmes, replay et pause du direct. Il se règle tout seul selon votre appareil et votre réseau.</p>
     <div class="cta">
-      <a class="btn" href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk">⬇ Android TV, téléphone, tablette</a>
-      <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/windows">⬇ Windows</a>
-      <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/mac">⬇ Mac</a>
+      <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android">⬇ Télécharger l'APK</a>
       <a class="btn alt" href="https://github.com/vantaflow/ultra-tv/releases/latest">Notes de version <span data-version>1.2.0</span></a>
     </div>
     <p class="meta">Gratuit, open source (MIT). Ultra TV ne fournit aucun contenu : utilisez vos propres abonnements.</p>
@@ -58,30 +55,23 @@
   <div class="feature">
     <div>
       <h3>Direct fluide, même avec des dizaines de milliers de chaînes</h3>
-      <p>Aperçu vidéo de la chaîne sélectionnée dans la liste, et OK la passe en plein écran sans recharger le flux. Haut/Bas pour zapper, OK pour la liste des chaînes, touches chaîne +/− de la télécommande ; catégories et ordre de la playlist tels que fournis, pastilles de qualité (HD, 4K, HEVC…) pour distinguer les flux d'une même chaîne, zapping par numéro, chaînes récentes, recherche instantanée, et Recherche depuis n'importe quel écran (bouton en haut du menu latéral, touches Recherche et micro de la télécommande).</p>
+      <p>Catégories actives, filtre par langue dès la première source, badges de qualité, zapping par numéro, chaînes récentes, recherche instantanée, et Recherche depuis n'importe quel écran (bouton en haut du menu latéral, touches Recherche et micro de la télécommande).</p>
     </div>
     <picture><source srcset="img/fr/live.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/live.png" alt="Écran Direct : catégories à gauche, chaînes avec logos et programme en cours"></picture>
   </div>
   <div class="feature">
     <div>
       <h3>Guide, replay et rappels</h3>
-      <p>Grille horaire, replay depuis le guide quand la source le permet, rappels et enregistrements programmés, pause du direct par tampon disque. Les chaînes que votre fournisseur ne renseigne pas reçoivent leur programme d'un guide complémentaire gratuit (XMLTV France), y compris les chaînes « +1 ».</p>
+      <p>Grille horaire, replay depuis le guide quand la source le permet, rappels et enregistrements programmés, pause du direct par tampon disque.</p>
     </div>
     <picture><source srcset="img/fr/guide.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/guide.png" alt="Guide des programmes : grille horaire avec la ligne du moment présent"></picture>
   </div>
   <div class="feature">
     <div>
       <h3>Fiches riches, sous-titres, profils</h3>
-      <p>Affiches, synopsis et distribution via TMDB, sous-titres en ligne et style réglable, profils dont un profil Enfants, intégration Google TV (« Continuer à regarder » avec films, épisodes et dernières chaînes, chaîne d'accueil, recherche vocale).</p>
+      <p>Affiches, synopsis et distribution via TMDB, sous-titres en ligne et style réglable, profils dont un profil Enfants, intégration Google TV (Watch Next, recherche vocale).</p>
     </div>
-    <picture><source srcset="img/fr/detail.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/detail.png" alt="Fiche d'une série : image de fond, informations, saisons et épisodes"></picture>
-  </div>
-  <div class="feature">
-    <div>
-      <h3>Films et séries rangés comme chez votre fournisseur</h3>
-      <p>Les catégories de votre abonnement à gauche avec leur nombre de titres, les affiches à droite, tri par ajout récent ou par note, filtres par note et par période.</p>
-    </div>
-    <picture><source srcset="img/fr/categories.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/categories.png" alt="Films : catégories du fournisseur et grille d'affiches"></picture>
+    <picture><source srcset="img/fr/detail.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/detail.png" alt="Fiche d'un film : visuel, informations, bouton Lecture et distribution"></picture>
   </div>
   <div class="feature">
     <div>
@@ -98,20 +88,9 @@
     <picture><source srcset="img/fr/player.webp" type="image/webp"><img class="shot" width="1280" height="720" loading="lazy" src="img/fr/player.png" alt="Lecteur plein écran avec les commandes superposées"></picture>
   </div>
   <div class="grid three">
-    <div class="card"><h3>Thèmes et personnalisation</h3><p>Sombre, clair ou automatique ; six couleurs d'accent, taille du texte, rangées de l'accueil à afficher et réordonner, écran d'ouverture au choix.</p></div>
-    <div class="card"><h3>Portails Stalker</h3><p>En plus d'Xtream Codes et des listes M3U : les portails Stalker / Ministra par adresse MAC, avec direct, films, séries et date d'expiration.</p></div>
-    <div class="card"><h3>Envoi depuis le téléphone</h3><p>La TV affiche un QR code : saisissez votre playlist (Xtream, M3U ou Stalker) sur le téléphone ou l'ordinateur, la TV l'ajoute et la synchronise. Sans compte, sans taper à la télécommande.</p></div>
-    <div class="card"><h3>Télécommande sur le téléphone</h3><p>Scannez le QR code de la box : cherchez un film, une série ou une chaîne et pilotez la lecture depuis votre téléphone, sur votre Wi-Fi.</p></div>
-    <div class="card"><h3>Mode simple</h3><p>Six grandes tuiles lisibles de loin pour les personnes peu à l'aise : Télé en direct, Reprendre, Films, Séries, Favoris, Rechercher.</p></div>
-    <div class="card"><h3>Pensée pour les petites box</h3><p>Catégories masquées jamais chargées, rubrique Mémoire et stockage, mode économie de mémoire : rapide même sur une box modeste.</p></div>
-    <div class="card"><h3>Passer l'intro</h3><p>Boutons « Passer l'intro », « Passer le résumé » et « Épisode suivant » pendant les génériques, sur Android et sur le bureau. Rien n'est sauté sans votre action.</p></div>
-    <div class="card"><h3>Notes, acteurs, tri</h3><p>Notes IMDb et Rotten Tomatoes sur les fiches, pages acteurs et réalisateurs, films et séries triés par note, ajouts récents ou décennie, recherche tolérante aux fautes de frappe.</p></div>
-    <div class="card"><h3>Un accueil qui bouge</h3><p>« À la une » qui défile, rangées « Parce que vous avez regardé… », films et séries les mieux notés, calculés sur l'appareil.</p></div>
-    <div class="card"><h3>Téléchargements</h3><p>Films, épisodes ou saison entière à regarder hors ligne : file d'attente, pause, reprise après coupure, Wi-Fi seulement en option. Android.</p></div>
-    <div class="card"><h3>DNS personnalisé</h3><p>Google, Cloudflare, Quad9, DNS-over-HTTPS ou votre serveur, avec un bouton Tester et un repli automatique sur le DNS du système. Android et bureau.</p></div>
+    <div class="card"><h3>Thèmes</h3><p>Sombre, clair ou automatique. Le lecteur reste toujours sombre.</p></div>
     <div class="card"><h3>Sécurité</h3><p>Identifiants chiffrés sur l'appareil, aucune adresse de flux affichée, appairage au cloud par code.</p></div>
-    <div class="card"><h3>Veille et confort</h3><p>Minuterie 30 / 60 / 90 min ou fin de programme, reprise automatique, pas de mise en veille pendant la lecture, mise à jour intégrée.</p></div>
-    <div class="card"><h3>Votre abonnement IPTV</h3><p>Menu Abonnement : statut, date d'expiration, jours restants et connexions utilisées, lus en direct chez votre fournisseur.</p></div>
+    <div class="card"><h3>Veille et confort</h3><p>Minuterie 30 / 60 / 90 min ou fin de programme, reprise de lecture, mise à jour intégrée.</p></div>
   </div>
 </section>
 
@@ -167,32 +146,14 @@
       <h3>Tableau de bord cloud</h3>
       <p>Gérez vos appareils et vos sources depuis un navigateur : <strong>ultratv-config.khalilbenaz.workers.dev</strong>. Appairez un appareil avec un code, renommez-le ou révoquez-le.</p>
     </div>
-    <picture><source srcset="img/fr/cloud-devices.webp" type="image/webp"><img class="shot" width="1280" height="1175" loading="lazy" src="img/fr/cloud-devices.png" alt="Tableau de bord cloud : appareils et sources"></picture>
+    <picture><source srcset="img/fr/cloud-devices.webp" type="image/webp"><img class="shot" width="880" height="707" loading="lazy" src="img/fr/cloud-devices.png" alt="Tableau de bord cloud : appareils et sources"></picture>
   </div>
   <div class="feature">
     <div>
       <h3>Partage des sources, appareil par appareil</h3>
       <p>Un fournisseur ajouté depuis le tableau de bord est reçu par tous les appareils. Une source ajoutée sur un appareil reste <em>propre à cet appareil</em> tant que vous ne la partagez pas ; le choix des appareils destinataires se fait source par source, depuis l'application ou le tableau de bord.</p>
     </div>
-    <picture><source srcset="img/fr/cloud-sharing.webp" type="image/webp"><img class="shot" width="880" height="1269" loading="lazy" src="img/fr/cloud-sharing.png" alt="Tableau de bord cloud : appareils et sources"></picture>
-  </div>
-  <div class="feature">
-    <div>
-      <h3>Appairage en un scan</h3>
-      <p>La TV affiche un code et un QR. Scannez-le avec l'appareil photo du téléphone : la page d'appairage s'ouvre avec le code déjà rempli, il ne reste qu'à confirmer. Le code se saisit aussi à la main, avec ou sans tiret. Le tableau de bord s'adapte au téléphone, en clair comme en sombre.</p>
-    </div>
-    <div class="phones duo">
-      <picture><source srcset="img/fr/cloud-pair.webp" type="image/webp"><img class="shot portrait" width="375" height="812" loading="lazy" src="img/fr/cloud-pair.png" alt="Confirmation d'appairage avec le code pré-rempli"></picture>
-      <picture><source srcset="img/fr/cloud-mobile.webp" type="image/webp"><img class="shot portrait" width="375" height="812" loading="lazy" src="img/fr/cloud-mobile.png" alt="Tableau de bord sur téléphone, thème clair"></picture>
-    </div>
-  </div>
-  <div class="grid three">
-    <div class="card"><h3>Trakt, sans rien régler sur la TV</h3><p>Connectez Trakt depuis le tableau de bord : ce que vous regardez y est enregistré. À l'accueil : watchlist, recommandations, tendances, populaires, vos listes et « À suivre » (seulement les titres présents dans votre playlist). Depuis les fiches : watchlist, vu / non vu, note de 1 à 10.</p></div>
-    <div class="card"><h3>Vos abonnements d'un coup d'œil</h3><p>Le tableau de bord affiche, pour chaque fournisseur, le statut, la date d'expiration et les connexions de l'abonnement.</p></div>
-    <div class="card"><h3>Sous-titres avec votre compte</h3><p>Les sous-titres en ligne marchent d'emblée ; reliez votre compte OpenSubtitles pour profiter de votre propre quota.</p></div>
-    <div class="card"><h3>Reprendre sur un autre écran</h3><p>Un film commencé sur la TV reprend au même endroit sur le Mac ou Windows. Favoris et derniers vus suivent aussi, profil par profil.</p></div>
-    <div class="card"><h3>Catégories partagées</h3><p>Activez ou masquez une catégorie sur un appareil : les autres appliquent le même choix.</p></div>
-    <div class="card"><h3>Lien IPTV à portée</h3><p>Le tableau de bord affiche, à la demande, le lien M3U complet de chaque source, avec un bouton Copier.</p></div>
+    <picture><source srcset="img/fr/cloud-sharing.webp" type="image/webp"><img class="shot" width="880" height="910" loading="lazy" src="img/fr/cloud-sharing.png" alt="Tableau de bord cloud : appareils et sources"></picture>
   </div>
 </section>
 
@@ -201,9 +162,9 @@
   <div class="grid two">
     <div class="card">
       <h3>Android <span data-version>1.2.0</span></h3>
-      <p>Android 9 ou plus récent (TV, smartphone, tablette). Le fichier universel suit toujours la dernière version publiée.</p>
-      <p><a class="btn" href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk">⬇ APK universel</a></p>
-      <p class="meta">Plus léger : un APK par processeur (arm64-v8a, armeabi-v7a, x86_64), <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code>, sur la <a href="https://github.com/vantaflow/ultra-tv/releases/latest">page de la version</a>. Somme SHA-256 incluse.</p>
+      <p>Android 9 ou plus récent (TV, smartphone, tablette). Choisissez la version 64 bits (arm64) pour la plupart des box et téléphones récents, la version 32 bits (armv7) pour un Chromecast avec Google TV HD ou une vieille box, et l'universel si vous ne savez pas. Si l'installation échoue, prenez la version 32 bits.</p>
+      <p><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64">⬇ APK 64 bits (arm64) — recommandé</a> <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-armv7">⬇ APK 32 bits (armv7)</a> <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-universal">⬇ APK universel (dernier recours)</a></p>
+      <p class="meta">Autres processeurs (x86_64) et fichiers versionnés <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code> sur la <a href="https://github.com/vantaflow/ultra-tv/releases/latest">page de la version</a>. Somme SHA-256 incluse.</p>
     </div>
     <div class="card">
       <h3>Windows et macOS</h3>
@@ -229,7 +190,7 @@
   <ol class="steps">
     <li>Autorisez l'installation d'applications inconnues pour Downloader (Réglages › Sécurité).</li>
     <li>Téléchargez l'APK avec le code ci-dessus, puis installez-le.</li>
-    <li>Au premier lancement, choisissez le type de source (Xtream Codes, lien M3U, fichier M3U, portail Stalker ou Depuis le cloud), saisissez-la, puis cochez vos langues : seules les catégories correspondantes sont téléchargées.</li>
+    <li>Au premier lancement, choisissez le type de source (Xtream Codes, lien M3U, fichier M3U ou Depuis le cloud), saisissez-la, puis cochez vos langues : seules les catégories correspondantes sont téléchargées.</li>
   </ol>
   <h3 style="margin-top:28px">Avec adb</h3>
 <pre><code>adb connect IP_DE_LA_BOX:5555
@@ -243,18 +204,6 @@ adb install -r UltraTV.apk</code></pre>
   </ol>
   <p>Vos identifiants sont chiffrés côté serveur ; la box reçoit un jeton propre, révocable depuis le tableau de bord. Vous pouvez aussi déployer votre propre Worker (instructions et secrets à définir dans le dépôt, aucune valeur publiée).</p>
   <p class="cta"><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev" rel="noopener">Ouvrir le tableau de bord</a></p>
-</section>
-
-<section id="confidentialite">
-  <h2>Confidentialité</h2>
-  <p>Ultra TV ne fournit aucun contenu : vous ajoutez vos propres sources et l'application contacte directement votre fournisseur. Pas de publicité, pas de bibliothèque d'analyse tierce.</p>
-  <div class="grid two">
-    <div class="card"><h3>Vos identifiants IPTV</h3><p>Adresse du serveur, identifiant, mot de passe, adresses de flux et MAC Stalker ne partent que vers votre fournisseur, sauf deux cas voulus : la synchronisation cloud (une source n'est envoyée que si vous la partagez ou l'ajoutez depuis le tableau de bord ; elle est conservée chiffrée côté serveur, AES-256-GCM, sans chiffrement de bout en bout) et l'envoi depuis le téléphone (chiffré, 15 minutes au plus, supprimé dès la réception). Pour afficher l'état d'un abonnement partagé, le Worker interroge votre fournisseur ; si celui-ci bloque Cloudflare, la requête passe par un relais hébergé chez Vercel, sans enregistrement.</p></div>
-    <div class="card"><h3>Ce qui part sans action de votre part (Android)</h3><ul><li>Comptage anonyme : identifiant d'installation aléatoire et version, au plus une fois par 20 h, appareil non appairé.</li><li>Journaux de diagnostic et rapports de plantage nettoyés : appareil appairé seulement ; conservés 7 jours et 30 jours.</li><li>Mise à jour (GitHub, 30 s après chaque lancement), lecture des alertes (toutes les 15 min ; leurs statistiques suivent le réglage de télémétrie), « Passer l'intro » (TheIntroDB), guide complémentaire (xmltvfr.fr par défaut).</li><li>Appareil appairé : synchro cloud, Trakt, fiches TMDB et notes via le serveur de configuration.</li></ul></div>
-    <div class="card"><h3>Couper la télémétrie</h3><p>Réglages › À propos › « Télémétrie et rapports de plantage ». Cela coupe les journaux de diagnostic, les rapports de plantage, le comptage anonyme et les statistiques d'alertes ; pas la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, « Passer l'intro », le guide complémentaire ni le DNS.</p></div>
-    <div class="card"><h3>Ce que le serveur conserve</h3><p>Compte (identifiant, empreinte du mot de passe, pays), appareils, sources chiffrées. L'adresse IP n'est écrite dans aucune donnée conservée : elle sert seulement à limiter le débit. Détails complets : <a href="https://github.com/vantaflow/ultra-tv#confidentialit%C3%A9">README</a>.</p></div>
-  </div>
-  <p class="meta">Sur Windows et macOS : ni comptage, ni rapport de plantage, ni journal distant ; mise à jour via GitHub (coupable dans Réglages › À propos › « Vérifier les mises à jour automatiquement »), synchro cloud et Trakt/TMDB si l'appareil est appairé.</p>
 </section>
 
 <section id="faq">
