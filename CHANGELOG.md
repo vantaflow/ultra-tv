@@ -2,7 +2,7 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [Non publié]
+## [1.2.89] — 2026-11-11 (Android) · Bureau 1.2.41 · Worker
 
 ### Nouveau
 - Lecteur : le code parental est demandé avant de passer à une chaîne verrouillée (ou d'une catégorie verrouillée), par le zapping, la chaîne précédente, la saisie du numéro, la liste des chaînes, la télécommande du téléphone et le glissement tactile ; refus ou annulation = on reste sur la chaîne actuelle, code accepté = valable pour la session de lecture.
@@ -10,6 +10,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Lecteur : touche Info = fiche du programme en surimpression (en cours + « Ensuite » en Direct ; année, durée, résumé en VOD).
 - Direct : « Ensuite HH:MM · Titre » sous le programme en cours (bandeau TV, surcouche tactile paysage et portrait).
 - Films et séries (TV) : bouton « Audio » (ouvre directement les pistes) et libellés sous les boutons Sous-titres, Veille et Réglages.
+- Guide TV : sélecteur de groupe de chaînes dans l'en-tête (Favoris, Tout et catégories du Direct), mémorisé par profil ; la grille ne charge que les chaînes du groupe.
+- APK plus léger par défaut : `/download/android`, le README et le site proposent l'APK arm64 (≈ 67 Mo), l'APK 32 bits (armv7) et l'universel en dernier recours ; la release publie `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk` et `UltraTV-x86_64.apk` (liens stables) avec leur `.sha256`.
 
 ### Corrigé
 - Invite du code parental : elle pouvait déverrouiller avant d'avoir lu le code enregistré (valeur initiale « aucun code »).
@@ -19,9 +21,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Android : message clair (français, anglais, espagnol, arabe) quand l'appareil ne prend pas en charge le système ou le niveau de sécurité, ou quand la licence est refusée.
 - Android : un flux protégé ne bascule jamais vers VLC (repli automatique, choix manuel et lecteur externe exclus) ; l'erreur est affichée.
 - Bureau : un flux protégé n'est pas lu ; message « Flux protégé non pris en charge sur ordinateur ».
-### Corrigé
 - Android : l'assistant de premier lancement propose enfin « Portail Stalker (MAC) » (TV et smartphone, même saisie et même vérification du portail que Réglages › Sources) et « Depuis le téléphone » (TV / box).
-### Corrigé
 - Guide TV (Android) : un guide lent ou qui « cale » (connexion ouverte sans données) ne charge plus indéfiniment : délai maximal sans donnée (30 s), débit minimal, durée totale bornée, et jusqu'à 3 tentatives avec attente croissante (réseau, 5xx, 408, 429 ; jamais sur 401/403/404 ni XML invalide).
 - Guide TV (Android) : le guide est écrit par lots commités au fil de l'eau (avant : une seule transaction à la fin, guide vide pendant tout le téléchargement) ; l'ancien guide d'une chaîne n'est remplacé qu'au moment où ses nouveaux programmes arrivent.
 - Guide TV (Android) : le gzip est détecté et décompressé en flux aussi pour le guide de la source Xtream et son pré-téléchargement (avant : seul le guide complémentaire).
@@ -30,16 +30,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide TV (Android) : les chaînes des catégories désactivées ne reçoivent plus de programmes (requête de rattachement filtrée).
 - Playlists M3U (Android) : `url-tvg` / `x-tvg-url` de l'en-tête `#EXTM3U` sont pris en compte (plusieurs adresses séparées par des virgules ; un guide en échec n'empêche pas les suivants), y compris pour une playlist locale.
 - Journaux (Android) : l'échec du guide n'écrit que le type d'erreur, le code HTTP et le nombre de tentatives (jamais d'adresse ni d'identifiants) ; RemoteLog nettoie en plus via LogSanitizer.
-### Ajouté
-- Guide TV : sélecteur de groupe de chaînes dans l'en-tête (Favoris, Tout et catégories du Direct), mémorisé par profil ; la grille ne charge que les chaînes du groupe.
-- APK plus léger par défaut : `/download/android`, le README et le site proposent l'APK arm64 (≈ 67 Mo), l'APK 32 bits (armv7) et l'universel en dernier recours ; la release publie `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk` et `UltraTV-x86_64.apk` (liens stables) avec leur `.sha256`.
-### Corrigé
 - Direct : les sous-titres codés (CEA-608) des flux MPEG-TS sont déclarés au lecteur ExoPlayer, et une piste CC n'est proposée dans le panneau Sous-titres que si la chaîne en diffuse réellement (plus de « CC1 » vide sur TF1) ; en Direct, le panneau n'affiche plus la recherche en ligne (réservée aux films) mais une indication quand la chaîne n'en diffuse pas.
 - Guide TV et Direct : réglage « Logos des chaînes » (Afficher / Masquer, par profil ; numéro et nom à la place du logo, y compris dans l'aperçu) et colonne des noms du guide plus large par défaut et réglable (Étroite / Normale / Large), noms sur deux lignes ; sur TV, tactile et bureau.
-
-### Corrigé
 - Guide TV : le titre « Guide » n'est plus coupé quand la pastille du groupe est longue (la pastille s'abrège avec une ellipse).
-### Corrigé
 - Source Stalker : les chaînes en direct se lisent comme les films. Le lecteur (ExoPlayer, VLC, aperçu du Direct, aperçu du guide) envoie maintenant le User-Agent MAG, le cookie `mac` et le jeton du portail ; le lien de lecture (à usage unique) est redemandé à chaque ouverture (nouvelle tentative, reconnexion, changement de moteur, aperçu vers plein écran) ; une réponse `create_link` avec `stream=` vide est complétée avec l'identifiant de la chaîne ; un refus du portail (403 / 458) affiche « Le portail refuse la lecture : la MAC est peut-être utilisée sur un autre appareil » (FR/EN/ES/AR) et le code HTTP et le type d'erreur sont journalisés sans MAC ni hôte. Pendant la lecture d'une chaîne Stalker, un signal de présence de boîtier MAG (`watchdog/get_events`, toutes les 2 min) évite que le portail coupe le flux (« Reconnecting… » puis « Network problem ») ; chaque reconnexion journalise code HTTP et durée de lecture ; ExoPlayer est utilisé d'office pour Stalker (LibVLC n'envoie pas le cookie) ; `itv/set_played` est envoyé à l'ouverture d'une chaîne ; le relais de différé, les téléchargements et les enregistrements d'une source Stalker envoient aussi les en-têtes MAG et demandent un lien neuf à chaque ouverture. Si le portail ne donne pas de lien de lecture (réponse vide, sans `cmd`…), le lecteur affiche « Le portail n'a pas fourni le lien de la chaîne » (FR/EN/ES/AR) au lieu de « problème réseau » : une adresse `stalker://` n'est plus jamais passée au moteur.
 
 ## [1.2.88] — 2026-11-11 (Android)

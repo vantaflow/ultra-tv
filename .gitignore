@@ -93,3 +93,4 @@ release-signing.env
 
 # ffmpeg LGPL embarqué (téléchargé au moment du packaging)
 electron/vendor/
+__pycache__/
