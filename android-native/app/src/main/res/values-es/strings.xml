@@ -1475,7 +1475,7 @@
     <string name="osd_history">Historial</string>
     <string name="osd_history_empty">Aún no hay canales recientes</string>
     <string name="osd_remaining">quedan %1$s</string>
-    <string name="osd_banner_hint">OK Canales  ·  ▼ Controles  ·  ▲ Zapear  ·  ◀ Anterior  ·  0-9 Número</string>
+    <string name="osd_banner_hint">OK Canales  ·  ▲▼ Controles  ·  ◀ ▶ Anterior / siguiente  ·  0-9 Número</string>
     <string name="osd_drawer_all">Todos los canales</string>
     <string name="osd_no_previous">No hay canal anterior</string>
     <string name="osd_drawer_hint">OK cambiar · ▲▼ explorar · ◀ categorías · ▶ canales · ‹ cerrar</string>

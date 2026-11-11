@@ -1472,7 +1472,7 @@
     <string name="osd_history">History</string>
     <string name="osd_history_empty">No recent channels yet</string>
     <string name="osd_remaining">%1$s left</string>
-    <string name="osd_banner_hint">OK Channels  ·  ▼ Controls  ·  ▲ Zap  ·  ◀ Previous  ·  0-9 Number</string>
+    <string name="osd_banner_hint">OK Channels  ·  ▲▼ Controls  ·  ◀ ▶ Previous / next  ·  0-9 Number</string>
     <string name="osd_drawer_all">All channels</string>
     <string name="osd_no_previous">No previous channel</string>
     <string name="osd_drawer_hint">OK zap · ▲▼ browse · ◀ categories · ▶ channels · ‹ close</string>

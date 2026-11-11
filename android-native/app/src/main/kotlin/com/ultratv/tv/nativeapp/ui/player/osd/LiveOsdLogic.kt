@@ -60,16 +60,15 @@ object LiveOsdLogic {
         if (osdOpen) return OsdDecision.Pass
         // OSD fermé (masqué ou simple bandeau après un zap).
         return when (key) {
-            // OK : liste des chaînes (habitude des utilisateurs, demandé) ; Bas ouvre l'OSD complet.
+            // OK : liste des chaînes ; Haut et Bas : OSD complet ; Gauche / Droite : chaîne précédente / suivante
+            // (en différé masqué : ±30 s). Demandé par les utilisateurs.
             OsdKey.OK -> OsdDecision.OpenChannels
-            OsdKey.DOWN -> OsdDecision.OpenOsd
-            OsdKey.UP -> OsdDecision.Zap(forward = false, closeOsd = false)
-            OsdKey.LEFT, OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO ->
-                if (tsActive && controlsHidden && (key == OsdKey.LEFT || key == OsdKey.RIGHT))
+            OsdKey.UP, OsdKey.DOWN, OsdKey.MENU, OsdKey.INFO -> OsdDecision.OpenOsd
+            OsdKey.LEFT, OsdKey.RIGHT ->
+                if (tsActive && controlsHidden)
                     OsdDecision.TimeshiftJump(if (key == OsdKey.LEFT) -TIMESHIFT_JUMP_SEC else TIMESHIFT_JUMP_SEC)
-                // Gauche, sans différé : retour à la chaîne précédente (comme la touche « dernière chaîne »).
-                else if (key == OsdKey.LEFT && !tsActive) OsdDecision.RecallPrevious
-                else OsdDecision.OpenOsd
+                else if (tsActive) OsdDecision.OpenOsd
+                else OsdDecision.Zap(forward = key == OsdKey.RIGHT, closeOsd = false)
             else -> OsdDecision.Consume
         }
     }

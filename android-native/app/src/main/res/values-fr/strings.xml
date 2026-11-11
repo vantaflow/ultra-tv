@@ -1484,7 +1484,7 @@
     <string name="osd_history">Historique</string>
     <string name="osd_history_empty">Aucune chaîne récente pour l\'instant</string>
     <string name="osd_remaining">reste %1$s</string>
-    <string name="osd_banner_hint">OK Chaînes  ·  ▼ Commandes  ·  ▲ Zapper  ·  ◀ Précédente  ·  0-9 Numéro</string>
+    <string name="osd_banner_hint">OK Chaînes  ·  ▲▼ Commandes  ·  ◀ ▶ Précédente / suivante  ·  0-9 Numéro</string>
     <string name="osd_drawer_all">Toutes les chaînes</string>
     <string name="osd_no_previous">Pas de chaîne précédente</string>
     <string name="osd_drawer_hint">OK zapper · ▲▼ parcourir · ◀ catégories · ▶ chaînes · ‹ fermer</string>
