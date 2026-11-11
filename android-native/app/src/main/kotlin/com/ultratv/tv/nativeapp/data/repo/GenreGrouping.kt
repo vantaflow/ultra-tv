@@ -18,6 +18,9 @@ object GenreGrouping {
     /** Au plus ce nombre de genres par titre (l'anime passe en premier) : borne la taille de la table de jointure. */
     const val MAX_PER_TITLE = 3
 
+    private val MARKS = Regex("\\p{Mn}+")
+    private val SPLIT = Regex("[,;/|&+\\n]")
+
     /** Identifiants de genres TMDB (films et séries) → genres communs. */
     private val TMDB: Map<Int, List<Genre>> = mapOf(
         28 to listOf(Genre.ACTION), 12 to listOf(Genre.ADVENTURE), 16 to listOf(Genre.ANIMATION), 35 to listOf(Genre.COMEDY),
@@ -54,9 +57,6 @@ object GenreGrouping {
     )
 
     private val NORMALIZED_KEYWORDS: List<Pair<Genre, List<String>>> = KEYWORDS.map { (g, ks) -> g to ks.map(::normalize) }
-
-    private val MARKS = Regex("\\p{Mn}+")
-    private val SPLIT = Regex("[,;/|&+\\n]")
 
     /** Minuscules, sans accents (ni marques arabes), toute ponctuation remplacée par un espace. */
     internal fun normalize(raw: String): String {
