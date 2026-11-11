@@ -220,8 +220,9 @@ fun MovieDetailScreen(
         val fav: com.ultratv.tv.nativeapp.ui.common.FavoriteToggleViewModel = hiltViewModel()
         LaunchedEffect(movie.remoteId) { fav.set("MOVIE", movie.remoteId) }
         val isFav by fav.isFav.collectAsState()
-        val ctx = androidx.compose.ui.platform.LocalContext.current
-        val trailer = T.presentable(info?.trailer)
+        // Bande-annonce : clé YouTube de la source (ou TMDB), lue dans l'appli par le lecteur intégré.
+        val trailerKey = T.presentable(info?.trailer)?.let(com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer::keyOf)
+        var trailerOpen by remember { mutableStateOf(false) }
         com.ultratv.tv.nativeapp.ui.mobile.MobileDetailFrame(backdrop, movie.poster, title, onBack) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 33.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             if (skeleton) Skeleton(Modifier.width(220.dp).height(18.dp))
@@ -231,7 +232,7 @@ fun MovieDetailScreen(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.weight(1f), active = isFav, fill = isFav)
                 com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadTile(movie, Modifier.weight(1f))
-                if (trailer != null) com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Trailer, D.trailerLabel, { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, trailer) }, Modifier.weight(1f))
+                if (trailerKey != null) com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Trailer, D.trailerLabel, { trailerOpen = true }, Modifier.weight(1f))
             }
             // Trakt : watchlist, vu / non vu, note (rien si le compte n'est pas lié).
             com.ultratv.tv.nativeapp.ui.trakt.TraktMovieActionsMobile(movie)
@@ -249,11 +250,11 @@ fun MovieDetailScreen(
                 }
             }
         }
+        if (trailerOpen && trailerKey != null) com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer(trailerKey, title, onClose = { trailerOpen = false })
         return
     }
 
     val similar by vm.similar.collectAsState()
-    val ctxTv = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val scroll = androidx.compose.foundation.rememberScrollState()
     val playRequester = remember { FocusRequester() }
@@ -261,7 +262,8 @@ fun MovieDetailScreen(
     RequestInitialFocus(playRequester, hasFocus = { focused }, key = movie.id)
     val directors = remember(info) { T.presentable(info?.director).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(2) }
     val cast = remember(people, directors) { people.filter { it !in directors } }
-    val trailerUrl = T.presentable(info?.trailer)
+    val trailerKey = T.presentable(info?.trailer)?.let(com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer::keyOf)
+    var trailerOpen by remember { mutableStateOf(false) }
     val line = remember(year, genre, duration, extRatings, rating) { com.ultratv.tv.nativeapp.ui.detail.buildInfoLine(year, genre, duration, extRatings, rating) }
     val tween = androidx.compose.animation.core.tween<Float>(160)
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().background(Ux.Bg)) {
@@ -294,7 +296,7 @@ fun MovieDetailScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
                     if (resume > 0) PillButton(S.play, onClick = { vm.restart(movie, onPlay) }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play)
                     com.ultratv.tv.nativeapp.ui.detail.FavoritePill("MOVIE", movie.remoteId)
-                    trailerUrl?.let { url -> PillButton(D.trailerLabel, onClick = { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctxTv, url) }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play) }
+                    if (trailerKey != null) PillButton(D.trailerLabel, onClick = { trailerOpen = true }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play)
                     // Téléchargement hors ligne (file, pause, reprise, progression).
                     com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadPill(movie)
                 }
@@ -337,6 +339,8 @@ fun MovieDetailScreen(
                 }
             }
         }
+        // Bande-annonce : surcouche plein écran (rendue par-dessus l'écran, focus piégé, Retour revient à la fiche).
+        if (trailerOpen && trailerKey != null) com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer(trailerKey, title, onClose = { trailerOpen = false })
     }
 }
 

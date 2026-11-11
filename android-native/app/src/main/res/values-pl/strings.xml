@@ -1404,4 +1404,17 @@
     <string name="translate_help_sub">Brakuje Twojego języka lub jest w nim błąd?</string>
     <string name="translate_help_scan">Zeskanuj kod QR telefonem, aby tłumaczyć w przeglądarce.</string>
     <string name="translate_help_close">Zamknij</string>
+    <string name="trailer_play">Odtwórz</string>
+    <string name="trailer_pause">Wstrzymaj</string>
+    <string name="trailer_back10">Cofnij o 10 sekund</string>
+    <string name="trailer_fwd10">Przewiń o 10 sekund</string>
+    <string name="trailer_close">Zamknij</string>
+    <string name="trailer_loading">Wczytywanie zwiastuna…</string>
+    <string name="trailer_err_not_found">Ten zwiastun jest już niedostępny (usunięty lub prywatny).</string>
+    <string name="trailer_err_embed">Właściciel tego filmu nie zezwala na jego odtwarzanie poza YouTube.</string>
+    <string name="trailer_err_config">Tego zwiastuna nie można teraz odtworzyć w aplikacji.</string>
+    <string name="trailer_err_unknown">Nie udało się odtworzyć zwiastuna.</string>
+    <string name="trailer_err_no_webview">To urządzenie nie może odtwarzać zwiastunów w aplikacji (brak komponentu internetowego).</string>
+    <string name="trailer_show_qr">Pokaż link jako kod QR</string>
+    <string name="trailer_qr_hint">Zeskanuj telefonem, aby obejrzeć tam zwiastun.</string>
 </resources>

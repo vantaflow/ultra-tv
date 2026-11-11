@@ -1454,4 +1454,17 @@
     <string name="translate_help_sub">Your language is missing or has a mistake?</string>
     <string name="translate_help_scan">Scan the QR code with your phone to translate in your browser.</string>
     <string name="translate_help_close">Close</string>
+    <string name="trailer_play">Play</string>
+    <string name="trailer_pause">Pause</string>
+    <string name="trailer_back10">Back 10 seconds</string>
+    <string name="trailer_fwd10">Forward 10 seconds</string>
+    <string name="trailer_close">Close</string>
+    <string name="trailer_loading">Loading the trailer…</string>
+    <string name="trailer_err_not_found">This trailer is no longer available (removed or private).</string>
+    <string name="trailer_err_embed">The owner of this video does not allow it to be played outside YouTube.</string>
+    <string name="trailer_err_config">This trailer cannot be played in the app right now.</string>
+    <string name="trailer_err_unknown">The trailer could not be played.</string>
+    <string name="trailer_err_no_webview">This device cannot play trailers inside the app (no web component available).</string>
+    <string name="trailer_show_qr">Show the link as a QR code</string>
+    <string name="trailer_qr_hint">Scan with your phone to watch the trailer there.</string>
 </resources>

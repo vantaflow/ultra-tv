@@ -1,7 +1,5 @@
 package com.ultratv.tv.nativeapp.data.tmdb
 
-import android.content.Intent
-import android.net.Uri
 import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import com.ultratv.tv.nativeapp.data.db.VodInfoEntity
@@ -109,27 +107,15 @@ object TmdbParser {
     }
 }
 
-/** Intent YouTube (application dédiée si présente) ; le repli web est l'URL standard. */
+/**
+ * Bande-annonce YouTube. La lecture se fait DANS l'appli (lecteur officiel intégré, voir `ui/trailer/TrailerPlayer`) :
+ * aucune ouverture de l'application ou du site YouTube. [webUrl] ne sert qu'au QR code proposé en dernier recours.
+ */
 object TmdbTrailer {
-    fun appIntent(key: String) = Intent(Intent.ACTION_VIEW, Uri.parse("vnd.youtube:$key"))
-    fun webIntent(key: String) = Intent(Intent.ACTION_VIEW, Uri.parse(webUrl(key)))
     fun webUrl(key: String) = "https://www.youtube.com/watch?v=$key"
 
-    /** Clé YouTube extraite d'une URL de bande-annonce (watch?v=, youtu.be/) ou la clé elle-même. */
-    fun keyOf(urlOrKey: String): String? {
-        val s = urlOrKey.trim()
-        Regex("""(?:v=|youtu\.be/|embed/)([A-Za-z0-9_-]{11})""").find(s)?.let { return it.groupValues[1] }
-        return s.takeIf { Regex("[A-Za-z0-9_-]{11}").matches(it) }
-    }
-
-    /** Ouvre l'application YouTube si elle est là, sinon le navigateur ; sans effet si rien ne sait ouvrir le lien. */
-    fun open(ctx: android.content.Context, urlOrKey: String) {
-        val key = keyOf(urlOrKey)
-        val intents = if (key != null) listOf(appIntent(key), webIntent(key)) else listOf(Intent(Intent.ACTION_VIEW, Uri.parse(urlOrKey)))
-        for (i in intents) {
-            if (runCatching { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess) return
-        }
-    }
+    /** Clé YouTube extraite d'une valeur de bande-annonce (watch?v=, youtu.be/, embed/, shorts/, clé brute) ; null si absente. */
+    fun keyOf(urlOrKey: String): String? = YoutubeKey.of(urlOrKey)
 }
 
 private fun String?.orNullIfBlank(): String? = this?.takeIf { it.isNotBlank() }

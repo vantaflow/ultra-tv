@@ -42,6 +42,7 @@ import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.trailerLabel
 import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
@@ -76,6 +77,9 @@ fun SeriesDetailScreen(
     val traktSeen by vm.traktWatchedEpisodes.collectAsState()
     val extRatings by vm.ratings.collectAsState()
     val trailerUrl by vm.trailer.collectAsState()
+    // Bande-annonce : lue dans l'appli (lecteur intégré), jamais dans l'appli ou le site YouTube.
+    val trailerKey = remember(trailerUrl) { trailerUrl?.let(com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer::keyOf) }
+    var trailerOpen by remember { mutableStateOf(false) }
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
     val series = s
@@ -122,6 +126,7 @@ fun SeriesDetailScreen(
                 { vm.playEpisode(series.name, series.remoteId, series.providerId, target, onPlayEpisode) },
             )
             com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(Icons.Heart, if (isFav) M.inMyList else M.myList, { fav.toggle() }, Modifier.fillMaxWidth(), active = isFav, fill = isFav)
+            if (trailerKey != null) com.ultratv.tv.nativeapp.ui.mobile.MobileActionTile(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Trailer, D.trailerLabel, { trailerOpen = true }, Modifier.fillMaxWidth())
             com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, eps, activeSeason, touch = true)
             tc.presentable(series.plot)?.let { com.ultratv.tv.nativeapp.ui.mobile.ExpandableText(it) }
         }
@@ -171,6 +176,7 @@ fun SeriesDetailScreen(
             }
             com.ultratv.tv.nativeapp.ui.mobile.MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.Companion.statusBars))
         }
+        if (trailerOpen && trailerKey != null) com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer(trailerKey, tc.tidy(series.title), onClose = { trailerOpen = false })
         return
     }
 
