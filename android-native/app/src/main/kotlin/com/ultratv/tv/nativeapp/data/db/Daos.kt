@@ -178,6 +178,10 @@ interface ChannelDao {
     fun observeCount(pid: Long): Flow<Int>
 
     /** Rail d'accueil sans favoris : des chaînes avec logo, par ordre alphabétique (hors décorations). */
+    /** Mode simple : les premières chaînes de la liste « Tout » (sans décorations ni séparateurs), dans son ordre. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 ORDER BY catRank, num, id LIMIT :limit")
+    fun observeFirstClean(pid: Long, limit: Int): Flow<List<ChannelEntity>>
+
     @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 AND logo IS NOT NULL AND logo != '' AND sortKey >= 'a' ORDER BY num, id LIMIT :limit")
     fun observeTopWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>>
 

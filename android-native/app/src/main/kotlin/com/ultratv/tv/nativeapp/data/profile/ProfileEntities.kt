@@ -80,6 +80,10 @@ interface ProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun putPref(p: ProfilePrefEntity)
 
+    /** Profils dont le mode simple est activé (Réglages › Profils). */
+    @Query("SELECT profileId FROM profile_pref WHERE `key` = 'simple_mode' AND value = 'true'")
+    fun observeSimpleModeProfiles(): Flow<List<Long>>
+
     @Query("DELETE FROM profile_pref WHERE profileId = :profileId AND `key` = :key")
     suspend fun removePref(profileId: Long, key: String)
 

@@ -323,7 +323,7 @@ class MainActivity : ComponentActivity() {
             val prefs = prefsStore.get().flow.first()
             // Écran d'ouverture (Réglages › Affichage) : seulement au vrai lancement (pas après une rotation ni une
             // recréation), et jamais par-dessus un lien profond déjà en attente. Tout de suite, avant le délai qui suit.
-            val target = com.ultratv.tv.nativeapp.nav.startupTarget(com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch))
+            val target = com.ultratv.tv.nativeapp.ui.simple.SimpleHome.startupTarget(prefs.simpleMode, com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch))
             val deepLinkPending = StartupNav.pending.value != null || StartupNav.pendingRoute.value != null
             if (coldStart && !deepLinkPending && target is com.ultratv.tv.nativeapp.nav.StartupTarget.Route) StartupNav.pendingRoute.value = target.route
             if (coldStart && !deepLinkPending && target == com.ultratv.tv.nativeapp.nav.StartupTarget.LastChannel) {
@@ -448,7 +448,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                             onRetry = { first.retry(ui.providerId) },
                             onFixSource = { StartupNav.pendingRoute.value = Routes.SETTINGS; first.dismiss() },
                         )
-                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition) }
+                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition, com.ultratv.tv.nativeapp.ui.simple.homeKindFor(prefs) == com.ultratv.tv.nativeapp.ui.simple.HomeKind.SIMPLE) }
                     }
                 }
                 }
@@ -460,7 +460,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
 
 @androidx.tv.material3.ExperimentalTvMaterial3Api
 @Composable
-private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
+private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean) {
     val nav = rememberNavController()
     // Le lecteur reste sombre : état DÉRIVÉ des destinations visibles (écrit avant NavHost, donc
     // avant toute lecture des jetons par le lecteur ; aucun compteur à tenir à jour).
@@ -530,7 +530,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                     profile = prof?.let { com.ultratv.tv.nativeapp.ui.mobile.ProfileChip(it.initial, it.color) },
                     onProfile = { profileVm.requestSwitch() },
                     banner = { com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) }) },
-                ) { NavGraph(nav) }
+                ) { NavGraph(nav, simpleHome) }
             }
             com.ultratv.tv.nativeapp.ui.mobile.NavLayout.TV_RAIL -> Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
@@ -538,14 +538,16 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
                 // (même Box) sans jamais décaler ni re-mesurer le contenu.
                 // Le lecteur est plein écran : ni rail ni marge (sinon le rail volerait le focus et recouvrirait la vidéo).
                 val backEntry by nav.currentBackStackEntryAsState()
-                val fullscreen = backEntry?.destination?.route?.startsWith("player") == true
+                // Mode simple : les grandes tuiles remplacent le menu sur l'écran d'accueil (rail masqué, contenu sans marge).
+                val fullscreen = backEntry?.destination?.route?.startsWith("player") == true ||
+                    com.ultratv.tv.nativeapp.ui.simple.SimpleHome.railHidden(simpleHome, backEntry?.destination?.route)
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
                             .padding(start = if (fullscreen) 0.dp else com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp }),
-                    ) { NavGraph(nav) }
+                    ) { NavGraph(nav, simpleHome) }
                     if (!fullscreen) SidebarNav(navController = nav)
                 }
             }
@@ -562,7 +564,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
 
 @androidx.tv.material3.ExperimentalTvMaterial3Api
 @Composable
-private fun NavGraph(nav: androidx.navigation.NavHostController) {
+private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boolean) {
     // Ship the current route to the worker on every back-stack change. Lets us
     // see in /logs which screen the user was on right before a silent crash.
     androidx.compose.runtime.LaunchedEffect(nav) {
@@ -583,7 +585,11 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
         popExitTransition = { ExitTransition.None },
     ) {
         screen(Routes.HOME) {
-            HomeScreen(
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleHomeScreen(
+                onNavigate = { route -> nav.navigate(route) },
+                onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onGoSettings = { nav.navigate(Routes.SETTINGS) },
+            ) else HomeScreen(
                 onGoLive = { nav.navigate(Routes.LIVE) },
                 onGoMovies = { nav.navigate(Routes.MOVIES) },
                 onGoSeries = { nav.navigate(Routes.SERIES) },
@@ -597,6 +603,9 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
+        }
+        screen(Routes.SIMPLE_CHANNELS) {
+            com.ultratv.tv.nativeapp.ui.simple.SimpleChannelsScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
         screen(Routes.LIVE) {
             LiveScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })

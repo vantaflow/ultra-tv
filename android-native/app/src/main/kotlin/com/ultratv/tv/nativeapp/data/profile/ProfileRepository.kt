@@ -121,6 +121,12 @@ class ProfileRepository(
     suspend fun putPref(key: String, value: String) = dao.putPref(ProfilePrefEntity(currentIdNow, key, value))
     suspend fun clearPref(key: String) = dao.removePref(currentIdNow, key)
 
+    /** Profils en mode simple (pour la liste de Réglages › Profils). */
+    val simpleModeProfileIds: Flow<Set<Long>> = dao.observeSimpleModeProfiles().map { it.toSet() }
+    /** Mode simple d'un profil précis (Réglages › Profils), pas seulement du courant. */
+    suspend fun setSimpleModeFor(profileId: Long, on: Boolean) =
+        dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SIMPLE_MODE, on.toString()))
+
     suspend fun setCategoryHidden(key: String, hidden: Boolean) {
         if (hidden) dao.hide(ProfileHiddenCategoryEntity(currentIdNow, key)) else dao.unhide(currentIdNow, key)
     }

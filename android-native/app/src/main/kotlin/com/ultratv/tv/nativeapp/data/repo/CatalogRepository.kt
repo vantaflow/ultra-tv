@@ -66,6 +66,7 @@ class CatalogRepository @Inject constructor(
         val byCat = if (byGenre.size < limit && !seed.categoryId.isNullOrBlank()) movieDao.sameCategory(pid, seed.categoryId, seed.id, limit) else emptyList()
         return seed.title to (byGenre + byCat).distinctBy { it.id }.take(limit)
     }
+    fun firstChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeFirstClean(pid, limit)
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }

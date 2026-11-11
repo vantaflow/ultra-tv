@@ -296,7 +296,7 @@ private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
 internal fun isSelected(route: String, candidate: String): Boolean = when {
     route == candidate -> true
-    candidate == "live" && route.startsWith("player") -> true
+    candidate == "live" && (route.startsWith("player") || route == "simple-channels") -> true
     candidate == "movies" && route.startsWith("movies/") -> true
     candidate == "series" && route.startsWith("series/") -> true
     else -> false
