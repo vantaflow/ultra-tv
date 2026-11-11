@@ -240,6 +240,7 @@ fun BoxScope.MobileControls(
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (badge != null) Text(badge, color = com.ultratv.tv.nativeapp.ui.design.Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.1.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(title, color = Color(0xFFF5F5F7), fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (compact) 14.sp else 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null && !compact) Text(subtitle, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         if (onFullscreen != null) PlayerRoundButton(MobileIcons.Fullscreen, M.rotateHint, onFullscreen)
         PlayerRoundButton(MobileIcons.Tune, M.a11ySettings, onSettings)
@@ -373,13 +374,14 @@ fun Context.enterPip(): Boolean {
 fun PortraitInfo(
     live: Boolean, liveLabel: String, title: String, subtitle: String?, pills: List<ControlPill>,
     entries: List<com.ultratv.tv.nativeapp.ui.player.PlayerViewModel.DrawerEntry>, channelsLabel: String,
-    onPick: (com.ultratv.tv.nativeapp.data.db.ChannelEntity) -> Unit, modifier: Modifier = Modifier,
+    onPick: (com.ultratv.tv.nativeapp.data.db.ChannelEntity) -> Unit, modifier: Modifier = Modifier, thenLine: String? = null,
 ) {
     Column(modifier.fillMaxWidth().background(Color(0xFF0A0A0C)), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Column(Modifier.padding(horizontal = 20.dp).padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             if (live) LiveBadge(liveLabel)
             Text(title, color = Color(0xFFF5F5F7), fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) Text(subtitle, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (thenLine != null) Text(thenLine, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pills.forEach { PlayerPill(it) } }
         if (live && entries.isNotEmpty()) {

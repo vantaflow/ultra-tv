@@ -2,6 +2,18 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Nouveau
+- Lecteur : le code parental est demandé avant de passer à une chaîne verrouillée (ou d'une catégorie verrouillée), par le zapping, la chaîne précédente, la saisie du numéro, la liste des chaînes, la télécommande du téléphone et le glissement tactile ; refus ou annulation = on reste sur la chaîne actuelle, code accepté = valable pour la session de lecture.
+- Lecteur (télécommande) : touches média Lecture/Pause, Avance/Retour rapide (±10 s, ±30 s en différé) et Suivant/Précédent (épisode ou chaîne).
+- Lecteur : touche Info = fiche du programme en surimpression (en cours + « Ensuite » en Direct ; année, durée, résumé en VOD).
+- Direct : « Ensuite HH:MM · Titre » sous le programme en cours (bandeau TV, surcouche tactile paysage et portrait).
+- Films et séries (TV) : bouton « Audio » (ouvre directement les pistes) et libellés sous les boutons Sous-titres, Veille et Réglages.
+
+### Corrigé
+- Invite du code parental : elle pouvait déverrouiller avant d'avoir lu le code enregistré (valeur initiale « aucun code »).
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

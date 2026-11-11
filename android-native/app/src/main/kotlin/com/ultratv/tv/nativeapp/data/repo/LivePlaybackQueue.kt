@@ -32,6 +32,21 @@ class LivePlaybackQueue @Inject constructor() {
 
     fun previous(): ChannelEntity? = move(false)
 
+    /** Chaîne qui suivrait / précéderait, SANS bouger l'index (le code parental peut encore refuser). */
+    fun peek(forward: Boolean): ChannelEntity? {
+        val s = _state.value ?: return null
+        return ZapLogic.step(s.channels, s.index, forward)?.let { s.channels[it] }
+    }
+
+    /** Place l'index sur [target] (déjà dans la liste) ; faux sinon. */
+    fun moveTo(target: ChannelEntity): Boolean {
+        val s = _state.value ?: return false
+        val i = s.channels.indexOfFirst { it.id == target.id }
+        if (i < 0) return false
+        _state.value = s.copy(index = i)
+        return true
+    }
+
     private fun move(forward: Boolean): ChannelEntity? {
         val s = _state.value ?: return null
         val i = ZapLogic.step(s.channels, s.index, forward) ?: return null

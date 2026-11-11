@@ -46,9 +46,10 @@ fun PinPromptDialog(
     onCancel: () -> Unit,
     vm: ParentalViewModel = hiltViewModel(),
 ) {
-    val pinSet by vm.pinSet.collectAsState()
-    LaunchedEffect(pinSet) { if (!pinSet) onUnlocked() }
-    if (!pinSet) return
+    // null = le code n'est pas encore lu : on n'ouvre rien et on ne déverrouille pas (la valeur initiale « faux » laissait passer).
+    val pinSet by vm.pinSetKnown.collectAsState()
+    LaunchedEffect(pinSet) { if (pinSet == false) onUnlocked() }
+    if (pinSet != true) return
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     var attempt by remember { mutableStateOf(0) }

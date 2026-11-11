@@ -91,6 +91,13 @@ class PlayerExtraStrings(val lang: AppLang) {
     val tsNoSpace get() = t("Not enough free space to pause live TV", "Espace libre insuffisant pour mettre le direct en pause", "Espacio libre insuficiente para pausar el directo", "مساحة التخزين غير كافية لإيقاف البث مؤقتًا")
     val tsFailed get() = t("Live buffer interrupted, back to live", "Tampon interrompu, retour au direct", "Búfer interrumpido, volviendo al directo", "انقطع التخزين المؤقت، العودة إلى المباشر")
 
+    // Fiche programme, « Ensuite », pistes
+    val infoNow get() = t("ON NOW", "EN COURS", "EN EMISIÓN", "يُعرض الآن")
+    val infoNoGuide get() = t("No programme information for this channel", "Pas d'information de programme pour cette chaîne", "Sin información de programa para este canal", "لا تتوفر معلومات البرنامج لهذه القناة")
+    val thenWord get() = t("Next", "Ensuite", "A continuación", "التالي")
+    val audioPill get() = t("Audio", "Audio", "Audio", "الصوت")
+    val settingsPill get() = t("Settings", "Réglages", "Ajustes", "الإعدادات")
+
     // Veille
     val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
     /** Bandeau du direct (après un zap) : les commandes ne sont pas encore actives, on dit comment les atteindre. */

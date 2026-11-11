@@ -38,6 +38,7 @@ class ZapViewModel @Inject constructor(
     private val channelDao: ChannelDao,
     private val epgDao: EpgDao,
     private val recents: RecentChannelsStore,
+    private val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
 ) : ViewModel() {
     private val entry = NumberEntry()
     private val _preview = MutableStateFlow<NumberPreview?>(null)
@@ -83,8 +84,9 @@ class ZapViewModel @Inject constructor(
         entry.clear()
         _preview.value = null
         if (n == null) return
-        val ch = queue.jumpToNumber(n) ?: return
-        switchTo(ch)
+        // Numéro saisi : la file ne bouge qu'après l'accord du code parental (chaîne verrouillée).
+        val ch = queue.peekNumber(n) ?: return
+        gated(ch) { queue.moveTo(ch) }
     }
 
     private fun refreshPreview() {
@@ -101,13 +103,19 @@ class ZapViewModel @Inject constructor(
         return epgDao.rangeForChannels(listOf(c.id), now, now + 1).firstOrNull { it.startMs <= now && it.endMs > now }?.title
     }
 
-    private suspend fun switchTo(target: ChannelEntity) {
+    /** Passe à [target] si le code parental l'autorise ; sinon la fenêtre de code est demandée (voir ParentalGuard). */
+    private suspend fun gated(target: ChannelEntity, move: () -> Unit) {
+        val url = guard.request(target) { move(); applyChannel(target) } ?: return
+        onUrl(url)
+    }
+
+    private fun applyChannel(target: ChannelEntity): String {
         val url = target.streamUrl
         playback.set(PlaybackContext.Item(
             providerId = target.providerId, kind = "LIVE", remoteId = target.remoteId, title = target.title, poster = target.logo, streamUrl = url,
             badge = TitleCleaner.prefixBadge(target.name, TitleCleaner.clean(target.name, live = true).title),
         ))
-        onUrl(url)
+        return url
     }
 
     /** Retour : revient à la chaîne précédente. Faux s'il n'y en a pas. */
@@ -116,8 +124,7 @@ class ZapViewModel @Inject constructor(
         this.onUrl = onUrl
         viewModelScope.launch {
             val ch = channelDao.byRemoteId(ref.providerId, ref.remoteId) ?: return@launch
-            queue.state.value?.let { queue.set(it.channels, ch) }
-            switchTo(ch)
+            gated(ch) { queue.state.value?.let { queue.set(it.channels, ch) } }
         }
         return true
     }

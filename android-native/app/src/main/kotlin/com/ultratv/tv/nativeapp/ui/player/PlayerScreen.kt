@@ -149,6 +149,9 @@ class PlayerViewModel @Inject constructor(
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
     val remoteBus: com.ultratv.tv.nativeapp.data.remote.RemoteBus,
+    val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
+    private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
+    private val vodInfoDao: com.ultratv.tv.nativeapp.data.db.VodInfoDao,
 ) : ViewModel() {
 
     val prefsFlow: Flow<UserPrefs> = prefs.flow
@@ -204,11 +207,47 @@ class PlayerViewModel @Inject constructor(
     }
 
     /** Chaîne suivante / précédente de la file de zapping (live) ; renvoie la nouvelle URL ou null. */
+    // Chaîne verrouillée : la file ne bouge pas, la fenêtre de code s'affiche (guard.pending) ; null jusqu'à l'accord.
     suspend fun zap(forward: Boolean): String? {
-        val target = (if (forward) zapQueue.next() else zapQueue.previous()) ?: return null
-        val resolved = target.streamUrl
-        setLive(target, resolved)
-        return resolved
+        val target = zapQueue.peek(forward) ?: return null
+        return guard.request(target) { zapQueue.moveTo(target); setLive(target, target.streamUrl); target.streamUrl }
+    }
+
+    /** Programme qui suit le programme en cours de la chaîne regardée (« Ensuite »). Relu avec le programme en cours. */
+    val nextProgramme: StateFlow<EpgEntity?> = kotlinx.coroutines.flow.combine(playback.current, nowProgramme) { i, n -> i to n }
+        .distinctUntilChanged()
+        .flatMapLatest { (item, now) ->
+            flow<EpgEntity?> {
+                if (item == null || item.kind != "LIVE") { emit(null); return@flow }
+                val ch = channelDao.byRemoteId(item.providerId, item.remoteId)
+                emit(ch?.let { upcomingFor(it.id, 1, now).firstOrNull() })
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    private suspend fun upcomingFor(channelId: Long, count: Int, now: EpgEntity?): List<EpgEntity> {
+        val t = System.currentTimeMillis()
+        return ProgrammeInfo.after(epgDao.rangeForChannels(listOf(channelId), t - 60_000, t + 12 * 60 * 60_000), now, t, count)
+    }
+
+    /** Fiche « programme » du Direct : les [count] programmes suivants de la chaîne regardée. */
+    suspend fun upcoming(count: Int): List<EpgEntity> {
+        val item = playback.current.value?.takeIf { it.kind == "LIVE" } ?: return emptyList()
+        val ch = channelDao.byRemoteId(item.providerId, item.remoteId) ?: return emptyList()
+        return upcomingFor(ch.id, count, nowProgramme.value)
+    }
+
+    /** Fiche « programme » VOD : année, résumé, genre du film / de l'épisode en cours, depuis la base locale. */
+    suspend fun vodFacts(): VodFacts? {
+        val c = playback.current.value ?: return null
+        return when (c.kind) {
+            "MOVIE" -> {
+                val m = movieDao.byRemoteId(c.providerId, c.remoteId)
+                val info = vodInfoDao.get(c.providerId, c.remoteId)
+                VodFacts(m?.year ?: ProgrammeInfo.yearOf(info?.releaseDate), info?.plot?.takeIf { it.isNotBlank() } ?: m?.plot, info?.genre ?: m?.genre)
+            }
+            "EPISODE" -> episodeDao.byRemoteId(c.providerId, c.remoteId)?.let { VodFacts(null, it.plot, null) }
+            else -> null
+        }
     }
 
     data class DrawerEntry(
@@ -275,17 +314,18 @@ class PlayerViewModel @Inject constructor(
 
     suspend fun zapTo(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
         val browsed = browsedEntries.value
-        if (browsed != null) {
-            // Chaîne choisie dans une autre catégorie : la file de zapping devient cette catégorie.
-            zapQueue.set(browsed.map { it.channel }, channel)
-        } else {
+        if (browsed == null) {
             val s = zapQueue.state.value ?: return null
             if (s.channels.none { it.id == channel.id }) return null
-            zapQueue.set(s.channels, channel)
         }
-        val resolved = channel.streamUrl
-        setLive(channel, resolved)
-        return resolved
+        // La file ne change qu'après l'accord du code parental (chaîne verrouillée).
+        return guard.request(channel) {
+            if (browsed != null) zapQueue.set(browsed.map { it.channel }, channel)   // autre catégorie : la file devient cette catégorie
+            else zapQueue.state.value?.let { zapQueue.set(it.channels, channel) }
+            val resolved = channel.streamUrl
+            setLive(channel, resolved)
+            resolved
+        }
     }
 
     /** Épisode suivant (saison suivante comprise) devenu l'élément courant ; null en fin de série ou hors épisode. */
@@ -390,6 +430,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var currentUrl by remember { mutableStateOf(url) }
     var panel by remember { mutableStateOf(Panel.None) }
     var drawerOpen by remember { mutableStateOf(false) }
+    var infoOpen by remember { mutableStateOf(false) }
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
@@ -465,6 +506,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // [B2·zapping] saisie du numéro, chaîne précédente, récentes (ZapViewModel).
     val zap: com.ultratv.tv.nativeapp.ui.player.zap.ZapViewModel = hiltViewModel()
     val X = com.ultratv.tv.nativeapp.ui.player.playerExtras()
+    // Code parental : une chaîne verrouillée n'est lancée qu'après le code (zapping, numéro, liste, télécommande du téléphone).
+    val pinPending by vm.guard.pending.collectAsState()
+    DisposableEffect(Unit) { onDispose { vm.guard.endSession() } }
     val zapPreview by zap.preview.collectAsState()
     val zapRecent by zap.recent.collectAsState()
     LaunchedEffect(item) { zap.onPlaying(item) }
@@ -705,6 +749,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     BackHandler {
         when {
             zap.isEntering -> zap.cancelEntry()
+            pinPending != null -> vm.guard.cancel()
+            infoOpen -> infoOpen = false
             // Retour ferme ce qui est ouvert puis QUITTE le lecteur (retour au menu). Il ne ramène plus à la chaîne
             // précédente : touche « chaîne précédente » de la télécommande pour cela (KEYCODE_LAST_CHANNEL).
             panel != Panel.None -> panel = Panel.None
@@ -729,6 +775,36 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 // et antérieurs ne déclenchaient jamais le retour ; la touche suivante masquait les commandes, et ainsi de suite
                 // (impossible de quitter le lecteur, issue #30). Android 13+ rattrapait le cas au niveau de la fenêtre.
                 if (ev.key == Key.Back || ev.key == Key.Escape) return@onPreviewKeyEvent false
+                // Fenêtre de code ou fiche programme ouverte : elles gèrent leurs propres touches.
+                if (pinPending != null || infoOpen) return@onPreviewKeyEvent false
+                // Touches média de la télécommande.
+                when (ev.key) {
+                    Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> {
+                        touch()
+                        val eng = session.engine
+                        val wantPause = ev.key == Key.MediaPause || (ev.key == Key.MediaPlayPause && eng?.isPlaying != false)
+                        val wantPlay = ev.key == Key.MediaPlay || (ev.key == Key.MediaPlayPause && !wantPause)
+                        if (wantPause) { if (isLive && replayProg == null && !tsActive) startTimeshift() else eng?.pause() }
+                        else if (wantPlay && eng != null && !eng.isPlaying) eng.play()
+                        return@onPreviewKeyEvent true
+                    }
+                    Key.MediaFastForward, Key.MediaRewind -> {
+                        touch()
+                        val fwd = ev.key == Key.MediaFastForward
+                        if (tsActive) tsJump(if (fwd) 30 else -30)
+                        else if (!isLive) session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, if (fwd) 10_000L else -10_000L, it.durationMs)) }
+                        return@onPreviewKeyEvent true
+                    }
+                    Key.MediaNext, Key.MediaPrevious -> {
+                        touch()
+                        val fwd = ev.key == Key.MediaNext
+                        if (isLive) scope.launch { vm.zap(fwd)?.let { currentUrl = it } }
+                        else if (if (fwd) epNav.second else epNav.first) stepEpisode(if (fwd) 1 else -1)
+                        return@onPreviewKeyEvent true
+                    }
+                    Key.Info -> if (panel == Panel.None && !drawerOpen) { touch(); infoOpen = true; return@onPreviewKeyEvent true }
+                    else -> Unit
+                }
                 // [B2·zapping] chiffres 0-9 / pavé numérique, OK valide la saisie.
                 if (isLive && panel == Panel.None && !drawerOpen) {
                     com.ultratv.tv.nativeapp.ui.player.zap.NumberEntry.digitOfKeyCode(ev.nativeKeyEvent.keyCode)?.let { d -> zap.digit(d) { u -> currentUrl = u }; return@onPreviewKeyEvent true }
@@ -741,7 +817,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 if (isLive && panel == Panel.None && !drawerOpen) {
                     // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
                     if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_LAST_CHANNEL) {
-                        if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }
+                        if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }   // chaîne verrouillée : code demandé (ParentalGuard)
                         return@onPreviewKeyEvent true
                     }
                     // Touche TV (télécommandes Google TV, ex. Mecool G10) : liste des chaînes.
@@ -810,6 +886,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.pip, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Pip, { if (!context.enterPip()) Toaster.show(M.pipUnavailable) }))
                 add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", { panel = Panel.Options }))
             }
+            val nextProg by vm.nextProgramme.collectAsState()
+            val thenLine = if (isLive && !tsActive) ProgrammeInfo.thenLine(X.thenWord, nextProg, EpgClock::hm) else null
             val headTitle = if (isLive) (prog?.title ?: item?.title ?: title) else (item?.title ?: title)
             val badge = if (isLive) com.ultratv.tv.nativeapp.ui.mobile.liveBadgeText(D.live, null, item?.title ?: title) else null
             val videoArea: @Composable () -> Unit = {
@@ -847,7 +925,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         )
                         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
                             MobileControls(
-                                isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = null, playing = playing,
+                                isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = thenLine, playing = playing,
                                 fraction = fraction, startLabel = startLabel, endLabel = endLabel, seekable = !isLive && dur > 0, compact = portrait,
                                 onBack = leave, onTogglePlay = togglePlay,
                                 onSeekBy = { d -> if (tsActive) { tsJump((d / 1000).toInt()) } else session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, d, it.durationMs)) }; touch() },
@@ -866,7 +944,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) { videoArea() }
                     com.ultratv.tv.nativeapp.ui.mobile.PortraitInfo(
                         live = isLive, liveLabel = D.live, title = headTitle, subtitle = if (isLive) item?.title else null, pills = pillList,
-                        entries = queueEntries, channelsLabel = M.channels,
+                        entries = queueEntries, channelsLabel = M.channels, thenLine = thenLine,
                         onPick = { ch -> scope.launch { vm.zapTo(ch)?.let { currentUrl = it } } }, modifier = Modifier.weight(1f),
                     )
                 }
@@ -892,9 +970,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onPrev = { stepEpisode(-1) }, onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onNext = { stepEpisode(1) },
-                onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options },
+                onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options }, onAudio = { panel = Panel.Tracks },
             ) else {
-            Header(item, title, vm, clock, isLive, D, tsSnap?.behindSec, X)
+            Header(item, title, vm, clock, isLive, D, tsSnap?.behindSec, X, X.thenWord)
             if (tsActive && tsSnap != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftFooter(
                 tsSnap!!, playing, X, pauseFocus,
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
@@ -939,6 +1017,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
             com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
+        }
+        if (infoOpen) InfoCard(vm, isLive, item?.title ?: title, dur, X, X.thenWord, onClose = { infoOpen = false })
+        pinPending?.let { pp ->
+            com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
+                title = pp.channel.title,
+                onUnlocked = { vm.guard.grant()?.let { currentUrl = it }; touch() },
+                onCancel = { vm.guard.cancel() },
+            )
         }
         if (sleepMenu) com.ultratv.tv.nativeapp.ui.player.sleep.SleepMenu(
             X, vm.nowProgramme.collectAsState().value?.endMs, sleepTimer.choice != null,
@@ -996,8 +1082,9 @@ private fun SkipChip(label: String, okHint: Boolean, onClick: () -> Unit, modifi
 // ───────────────────────── Surcouche ─────────────────────────
 
 @Composable
-private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings, tsBehindSec: Int? = null, X: com.ultratv.tv.nativeapp.ui.player.PlayerExtraStrings? = null) {
+private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings, tsBehindSec: Int? = null, X: com.ultratv.tv.nativeapp.ui.player.PlayerExtraStrings? = null, thenLabel: String = "") {
     val programme by vm.nowProgramme.collectAsState()
+    val next by vm.nextProgramme.collectAsState()
     Row(
         // Hauteur MINIMALE (et non fixe) : badge + titre dépassaient de quelques pixels et le bas des lettres était coupé,
         // davantage avec la taille de police agrandie de certaines box.
@@ -1016,6 +1103,9 @@ private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: Playe
                 if (isLive) (programme?.title ?: item?.title ?: fallbackTitle) else (item?.title ?: fallbackTitle),
                 color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, lineHeight = 48.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
             )
+            if (isLive) ProgrammeInfo.thenLine(thenLabel, next, EpgClock::hm)?.let { line ->
+                Text(line, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
         Text(clock, color = Color(0xFFE4E4E7), fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 36.spx, maxLines = 1)
     }

@@ -58,6 +58,11 @@ class ParentalViewModel @Inject constructor(
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    /** Comme [pinSet] mais null tant que le magasin n'a pas répondu : l'invite ne doit JAMAIS déverrouiller sur la valeur initiale. */
+    val pinSetKnown: StateFlow<Boolean?> = store.pinHash
+        .map<String?, Boolean?> { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     fun setPin(pin: String, onDone: () -> Unit) {
         viewModelScope.launch { store.setPin(pin); onDone() }
     }

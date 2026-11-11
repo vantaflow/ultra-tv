@@ -57,7 +57,7 @@ internal fun VodOverlay(
     playing: Boolean, loading: Boolean, hasPrev: Boolean, hasNext: Boolean, sleepActive: Boolean,
     pauseFocus: FocusRequester, X: PlayerExtraStrings,
     onPrev: () -> Unit, onSeek: (Long) -> Unit, onToggle: () -> Unit, onNext: () -> Unit,
-    onSubs: () -> Unit, onSleep: () -> Unit, onOptions: () -> Unit,
+    onSubs: () -> Unit, onSleep: () -> Unit, onOptions: () -> Unit, onAudio: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize()) {
         Row(
@@ -89,9 +89,11 @@ internal fun VodOverlay(
                     RoundBtn(72, NEXT, enabled = hasNext, onClick = onNext)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
-                    RoundBtn(72, SUBS, onClick = onSubs)
-                    RoundBtn(72, MOON, active = sleepActive, onClick = onSleep)
-                    RoundBtn(72, SLIDERS, onClick = onOptions)
+                    // Libellé court sous chaque bouton : Audio ouvre directement l'onglet Pistes.
+                    LabeledBtn(AUDIO, X.audioPill, onClick = onAudio)
+                    LabeledBtn(SUBS, X.subsPill, onClick = onSubs)
+                    LabeledBtn(MOON, X.sleepPill, active = sleepActive, onClick = onSleep)
+                    LabeledBtn(SLIDERS, X.settingsPill, onClick = onOptions)
                 }
             }
             StatusLine(pos, dur, speed, if (loading) X.statusLoading else if (playing) X.statusPlaying else X.statusPaused, X, playing)
@@ -159,6 +161,15 @@ private fun RoundBtn(sizePx: Int, icon: String, enabled: Boolean = true, active:
     }
 }
 
+/** Bouton rond de droite + libellé court dessous (lisible depuis le canapé), même style que les autres boutons ronds. */
+@Composable
+private fun LabeledBtn(icon: String, label: String, active: Boolean = false, onClick: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.design)) {
+        RoundBtn(72, icon, active = active, onClick = onClick)
+        Text(label, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1, softWrap = false)
+    }
+}
+
 @Composable
 private fun BigPlayButton(playing: Boolean, focus: FocusRequester, onClick: () -> Unit) {
     FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Cta, modifier = Modifier.size(104.design).focusRequester(focus)) {
@@ -174,6 +185,7 @@ private const val PREV = "M6 5v14M19 5L9 12l10 7z"
 private const val NEXT = "M18 5v14M5 5l10 7-10 7z"
 private const val BACK10 = "M3 12a9 9 0 1 0 3-6.7M3 4v5h5"
 private const val FWD10 = "M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"
+private const val AUDIO = "M4 14v-4M8 18V6M12 21V3M16 17V7M20 14v-4"
 private const val SUBS = "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6"
 private const val MOON = "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"
 private const val SLIDERS = "M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M8 15v4"
