@@ -239,6 +239,33 @@ interface ChannelDao {
     """)
     fun pagedWithEpg(pid: Long, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
+    /** Idem, groupe « Tout » du Direct : mêmes catégories masquées exclues, même ordre (rang de catégorie, numéro). */
+    @Query("""
+        SELECT * FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
+        AND (:useHidden = 0 OR c.categoryId IS NULL OR c.categoryId NOT IN (:hidden))
+        AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
+        ORDER BY c.catRank, c.num, c.id
+    """)
+    fun pagedWithEpgAll(pid: Long, from: Long, to: Long, useHidden: Int, hidden: List<String>): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Idem, une catégorie du fournisseur. */
+    @Query("""
+        SELECT * FROM channel c WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
+        ORDER BY c.num, c.id
+    """)
+    fun pagedWithEpgForCategory(pid: Long, cat: String, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Idem, favoris du profil. */
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.isSeparator = 0
+        AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
+        ORDER BY c.num, c.id
+    """)
+    fun pagedWithEpgFavorites(pid: Long, from: Long, to: Long, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
     // ── « Tout » par CLÉ (catRank, num, id) : liste paginée du Direct et zapping ──
     // Pagination par clé au lieu de LIMIT/OFFSET : chaque page démarre par une recherche dans l'index
     // (providerId, junk, isSeparator, catRank, num[, rowid]) au lieu de parcourir les N lignes qui précèdent, et une ligne

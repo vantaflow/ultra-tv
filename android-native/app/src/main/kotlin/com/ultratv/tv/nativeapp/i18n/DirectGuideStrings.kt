@@ -25,3 +25,13 @@ val DesignStrings.helpChannels get() = t("Channels", "Chaînes", "Canales", "ا�
 val DesignStrings.helpWatch get() = t("Watch", "Regarder", "Ver", "مشاهدة")
 val DesignStrings.helpOneDay get() = t("1 day", "1 jour", "1 día", "يوم")
 val DesignStrings.helpBackKey get() = t("Back", "Retour", "Atrás", "رجوع")
+
+// Sélecteur de groupe de chaînes du Guide TV.
+val DesignStrings.guideGroupTitle get() = t("Channel group", "Groupe de chaînes", "Grupo de canales", "مجموعة القنوات")
+fun DesignStrings.guideGroupPill(name: String) = when (lang) {
+    AppLang.French -> "Groupe : $name"
+    AppLang.Spanish -> "Grupo: $name"
+    AppLang.Arabic -> "المجموعة: $name"
+    else -> "Group: $name"
+}
+val DesignStrings.guideGroupEmpty get() = t("No channel with a guide in this group for this time.", "Aucune chaîne de ce groupe n'a de guide sur cette période.", "Ningún canal de este grupo tiene guía en este periodo.", "لا توجد قناة في هذه المجموعة لها دليل في هذه الفترة.")

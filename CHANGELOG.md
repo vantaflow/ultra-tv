@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Ajouté
+- Guide TV : sélecteur de groupe de chaînes dans l'en-tête (Favoris, Tout et catégories du Direct), mémorisé par profil ; la grille ne charge que les chaînes du groupe.
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

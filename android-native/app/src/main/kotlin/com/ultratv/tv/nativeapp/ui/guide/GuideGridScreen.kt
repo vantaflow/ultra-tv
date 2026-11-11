@@ -87,6 +87,9 @@ import com.ultratv.tv.nativeapp.data.recording.ConnectionWarning
 import com.ultratv.tv.nativeapp.data.recording.ScheduleResult
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.guideGroupEmpty
+import com.ultratv.tv.nativeapp.i18n.guideGroupPill
+import com.ultratv.tv.nativeapp.i18n.guideGroupTitle
 import com.ultratv.tv.nativeapp.i18n.recNoSpace
 import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
@@ -106,7 +109,10 @@ import com.ultratv.tv.nativeapp.ui.design.spx
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.ultratv.tv.nativeapp.data.repo.atMostEvery
+import com.ultratv.tv.nativeapp.data.repo.snapshotWhile
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -176,6 +182,10 @@ class GuideGridViewModel @Inject constructor(
     private val replay: com.ultratv.tv.nativeapp.data.replay.ReplayService,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     lockedStore: com.ultratv.tv.nativeapp.data.prefs.LockedChannelsStore,
+    private val catalog: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
+    private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
     /** Chaînes verrouillées (code parental) : jamais d'aperçu vidéo pour elles. */
@@ -202,14 +212,59 @@ class GuideGridViewModel @Inject constructor(
     val windowStart: StateFlow<Long> = _windowStart.asStateFlow()
     fun setWindowStart(ms: Long) { _windowStart.value = ms }
 
-    /** Seules les chaînes ayant un guide dans la fenêtre sont des lignes (pas 55 000 lignes vides). */
-    val channels: kotlinx.coroutines.flow.Flow<PagingData<ChannelEntity>> = combine(pid, _windowStart) { id, w -> id to w }
-        .flatMapLatest { (id, w) ->
-            if (id == null) flowOf(PagingData.empty())
-            else Pager(PagingConfig(pageSize = 20, prefetchDistance = 10, initialLoadSize = 30, enablePlaceholders = false)) {
-                channelDao.pagedWithEpg(id, w, w + GUIDE_WINDOW_MS)
-            }.flow
-        }.cachedIn(viewModelScope)
+    // ── Groupe de chaînes (mêmes groupes que la colonne de gauche du Direct) ──
+    private val syncing = syncBus.status.map { it != null }.distinctUntilChanged()
+
+    /** Favoris, Tout, catégories non vides non masquées : même liste, mêmes noms, même ordre que le Direct. Compteurs relus au plus 1 fois par seconde, figés pendant une synchro. */
+    val groups: StateFlow<List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>> =
+        combine(pid, hiddenStore.hidden) { id, hidden -> id to hidden }
+            .flatMapLatest { (id, hidden) ->
+                if (id == null) flowOf(emptyList())
+                else combine(
+                    catalog.categories(id, "LIVE"),
+                    channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(syncing),
+                    catalog.favoriteCount(id, "LIVE"),
+                ) { cats, counts, fav -> com.ultratv.tv.nativeapp.ui.live.buildDirectCategories(cats, counts, fav, id, hidden) }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Dernier groupe mémorisé pour le profil courant (null = jamais choisi). */
+    private val savedGroup: Flow<String?> = profiles.currentPrefs.map { it.guideGroup }.distinctUntilChanged()
+    /** Groupe ouvert dans le Direct (même mémoire que son écran) : défaut tant que rien n'est choisi dans le Guide. */
+    private val directLast: String? get() = appCtx.getSharedPreferences("direct_state", android.content.Context.MODE_PRIVATE).getString("last", null)
+
+    /** Groupe affiché ; Tout tant que les groupes ne sont pas chargés. */
+    val selectedGroup: StateFlow<String> = combine(savedGroup, groups) { saved, g ->
+        if (g.isEmpty()) saved ?: directLast ?: com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL
+        else resolveGuideGroup(saved, directLast, g)
+    }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL)
+
+    /** Mémorise le choix pour le profil courant (rechargement de la grille via [selectedGroup]). */
+    fun selectGroup(id: String) {
+        viewModelScope.launch { profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.GUIDE_GROUP, id) }
+    }
+
+    /**
+     * Chaînes du groupe ayant un guide dans la fenêtre (pas 55 000 lignes vides) : le groupe est filtré par Room
+     * (requêtes paginées), jamais en mémoire.
+     */
+    val channels: kotlinx.coroutines.flow.Flow<PagingData<ChannelEntity>> =
+        combine(pid, _windowStart, selectedGroup, hiddenStore.hidden, profiles.currentId) { id, w, g, hidden, prof -> arrayOf(id, w, g, hidden, prof) }
+            .distinctUntilChanged { a, b -> a.contentEquals(b) }
+            .flatMapLatest { a ->
+                @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val w = a[1] as Long; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long
+                if (id == null) flowOf(PagingData.empty())
+                else Pager(PagingConfig(pageSize = 20, prefetchDistance = 10, initialLoadSize = 30, enablePlaceholders = false)) {
+                    when (g) {
+                        com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.pagedWithEpgFavorites(id, w, w + GUIDE_WINDOW_MS, prof)
+                        com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {
+                            val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
+                            channelDao.pagedWithEpgAll(id, w, w + GUIDE_WINDOW_MS, if (hiddenIds.isEmpty()) 0 else 1, hiddenIds)
+                        }
+                        else -> channelDao.pagedWithEpgForCategory(id, g, w, w + GUIDE_WINDOW_MS)
+                    }
+                }.flow
+            }.cachedIn(viewModelScope)
 
     private val _programmes = MutableStateFlow<Map<Long, List<EpgEntity>>>(emptyMap())
     val programmes: StateFlow<Map<Long, List<EpgEntity>>> = _programmes.asStateFlow()
@@ -267,6 +322,13 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     val recordingRunning by vm.recordingRunning.collectAsState()
+    val groups by vm.groups.collectAsState()
+    val group by vm.selectedGroup.collectAsState()
+    var groupOpen by remember { mutableStateOf(false) }
+    val groupName = { g: com.ultratv.tv.nativeapp.ui.live.DirectCategory ->
+        when (g.id) { com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> D.catFavorites; com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> D.catAll; else -> com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(g.name.orEmpty()) }
+    }
+    val groupLabel = guideGroupName(groups, group, groupName)
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
         channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm,
@@ -274,6 +336,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         onShift = { dir -> vm.setWindowStart(windowStart + dir * 3 * SLOT_MS) },
         onSelect = { c, p -> actionTarget = c to p },
         onRemind = { c, p -> vm.addReminder(c, p); askNotifications(); Toaster.ok(D.remindSet) },
+        groupLabel = groupLabel, onGroup = { groupOpen = true },
     ) else Column(
         Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 40.design, bottom = 20.design)
             // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
@@ -301,6 +364,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 Text("$dayLabel · ${EpgClock.range(windowStart, windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
             DateTimePill(clock, windowStart, day, D)
+            // Groupe de chaînes : un seul bouton dans l'en-tête, la liste (mêmes groupes que le Direct) s'ouvre en boîte de choix.
+            com.ultratv.tv.nativeapp.ui.design.PillButton(D.guideGroupPill(groupLabel.let { if (it.length > 22) it.take(21) + "…" else it }), onClick = { groupOpen = true }, heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
             com.ultratv.tv.nativeapp.ui.design.PillButton(D.nowButton, onClick = { day = 0; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), 0)) }, heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
             Row(horizontalArrangement = Arrangement.spacedBy(8.design)) {
@@ -327,7 +392,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         if (channels.itemCount == 0) {
             // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
             // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
-            Text(if (day > 0) D.guideNoDataYet else D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+            Text(if (day > 0) D.guideNoDataYet else if (group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) D.guideGroupEmpty else D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
             return@Column
         }
 
@@ -377,6 +442,10 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         }
         GuideHelpBar(D)
     }
+    if (groupOpen) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+        D.guideGroupTitle, guideGroupOptions(groups, groupName), group,
+        onPick = { id -> groupOpen = false; if (id != group) vm.selectGroup(id) }, onDismiss = { groupOpen = false },
+    )
     actionTarget?.let { (ch, pr) ->
         val nowMs = System.currentTimeMillis()
         val replayUrl = remember(ch.id, pr.id) { vm.replayUrl(ch, pr) }
@@ -610,6 +679,7 @@ private fun GuideTouch(
     channels: androidx.paging.compose.LazyPagingItems<ChannelEntity>, programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings, vm: GuideGridViewModel, onDay: (Int) -> Unit, onShift: (Int) -> Unit,
     onSelect: (ChannelEntity, EpgEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit,
+    groupLabel: String, onGroup: () -> Unit,
 ) {
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val hScroll = androidx.compose.foundation.rememberScrollState()
@@ -626,6 +696,13 @@ private fun GuideTouch(
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle("M9 6l6 6-6 6", "+3 h", Ux.Surface, Ux.Text, { onShift(1) })
         }
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+            item {
+                FocusSurface(onClick = onGroup, shape = RoundedCornerShape(20.dp), bg = Ux.Surface2, modifier = Modifier.height(40.dp)) { _ ->
+                    Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
+                        Text(D.guideGroupPill(if (groupLabel.length > 22) groupLabel.take(21) + "…" else groupLabel), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
+                    }
+                }
+            }
             items((-1..2).toList()) { d ->
                 val sel = d == day
                 FocusSurface(onClick = { onDay(d) }, shape = RoundedCornerShape(20.dp), bg = if (sel) Ux.Cta else Ux.Surface, modifier = Modifier.height(40.dp)) { _ ->

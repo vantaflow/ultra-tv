@@ -103,12 +103,7 @@ class LiveViewModel @Inject constructor(
                 channelDao.observeCategoryCounts(id).atMostEvery(1_000).snapshotWhile(busy),
                 catalog.favoriteCount(id, "LIVE"),
             ) { cats: List<CategoryEntity>, counts, favCount ->
-                val byId = counts.associate { it.categoryId to it.n }
-                val secById = counts.associate { it.categoryId to it.sections }
-                val visible = cats.filter { hiddenStore.keyFor("LIVE", id, it.remoteId) !in hidden }
-                    .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
-                val total = visible.sumOf { it.count }
-                listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
+                buildDirectCategories(cats, counts, favCount, id, hidden)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -311,6 +306,22 @@ class LiveViewModel @Inject constructor(
         val id = providers.value.firstOrNull { it.active }?.id ?: providers.value.firstOrNull()?.id ?: return
         syncCoordinator.request(id, force = true)
     }
+}
+
+/**
+ * Liste de la colonne de gauche du Direct : Favoris, Tout, puis les catégories NON vides, hors catégories masquées du
+ * profil (clés `LIVE:fournisseur:catégorie`), dans l'ordre du fournisseur. Partagée avec le sélecteur de groupe du Guide TV.
+ */
+fun buildDirectCategories(
+    cats: List<CategoryEntity>, counts: List<com.ultratv.tv.nativeapp.data.db.CategoryCount>, favCount: Int,
+    providerId: Long, hidden: Set<String>,
+): List<DirectCategory> {
+    val byId = counts.associate { it.categoryId to it.n }
+    val secById = counts.associate { it.categoryId to it.sections }
+    val visible = cats.filter { "LIVE:$providerId:${it.remoteId}" !in hidden }
+        .mapNotNull { c -> byId[c.remoteId]?.takeIf { it > 0 }?.let { DirectCategory(c.remoteId, c.name, it, c.locked, secById[c.remoteId] ?: 0) } }
+    val total = visible.sumOf { it.count }
+    return listOf(DirectCategory(CATEGORY_FAVORITES, null, favCount), DirectCategory(CATEGORY_ALL, null, total)) + visible
 }
 
 /** Catégorie d'ouverture du Direct : dernière utilisée (si elle existe encore), sinon Favoris (s'il y en a), sinon la première non vide. */
