@@ -61,22 +61,14 @@ object LanguageFilter {
 }
 
 /**
- * Langues choisies par l'utilisateur (Réglages › Langues) : [selected] vide = toutes. Les langues MASQUÉES ne sont pas
- * chargées du tout : leurs catégories sont désactivées et leurs titres ne sont NI écrits en base, NI indexés (FTS),
- * NI rattachés au guide (une chaîne non chargée n'a pas de programmes). Les titres sans langue détectée restent chargés
- * tant que « Sans langue détectée » est actif.
+ * Langues choisies par l'utilisateur (Réglages › Langues) : [selected] vide = toutes. Le filtre est par CATÉGORIE : une
+ * langue MASQUÉE désactive ses catégories, dont les titres ne sont NI écrits en base, NI indexés (FTS), NI rattachés au
+ * guide. Une catégorie active est chargée en entier, quelle que soit la langue détectée sur chaque titre.
  */
 data class LangSelection(val selected: Set<String> = emptySet(), val includeMulti: Boolean = true, val includeUnknown: Boolean = true) {
     val all: Boolean get() = selected.isEmpty()
 
     fun allows(lang: String): Boolean = LanguageFilter.allows(lang, selected, includeMulti, includeUnknown)
-
-    /**
-     * Un titre est-il chargé ? [categoryLang] = langue de sa catégorie (null = sans catégorie). Une catégorie ACTIVE dont
-     * la langue est masquée (réactivée à la main dans l'écran Catégories) est chargée en entier : choix explicite.
-     */
-    fun keepsItem(itemLang: String, categoryLang: String?): Boolean =
-        all || (categoryLang != null && !allows(categoryLang)) || allows(itemLang)
 
     companion object {
         fun of(csv: String, includeMulti: Boolean, includeUnknown: Boolean) =

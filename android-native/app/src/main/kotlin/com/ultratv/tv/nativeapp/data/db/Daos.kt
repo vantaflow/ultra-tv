@@ -171,14 +171,6 @@ interface ChannelDao {
     @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId = :cat")
     suspend fun deleteForCategory(pid: Long, cat: String)
 
-    /** Langues présentes dans le catalogue de la source (purge des langues masquées). */
-    @Query("SELECT DISTINCT lang FROM channel WHERE providerId = :pid")
-    suspend fun distinctLangs(pid: Long): List<String>
-
-    /** Purge des titres d'une langue masquée, sauf ceux des catégories gardées à la main ([keepCats]) ; les triggers FTS suivent. */
-    @Query("DELETE FROM channel WHERE providerId = :pid AND lang IN (:langs) AND (categoryId IS NULL OR categoryId NOT IN (:keepCats))")
-    suspend fun deleteByLangs(pid: Long, langs: List<String>, keepCats: List<String>): Int
-
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     suspend fun count(pid: Long): Int
 
@@ -426,14 +418,6 @@ interface MovieDao {
 
     @Query("DELETE FROM movie WHERE providerId = :pid AND categoryId = :cat")
     suspend fun deleteForCategory(pid: Long, cat: String)
-
-    /** Langues présentes dans le catalogue de la source (purge des langues masquées). */
-    @Query("SELECT DISTINCT lang FROM movie WHERE providerId = :pid")
-    suspend fun distinctLangs(pid: Long): List<String>
-
-    /** Purge des titres d'une langue masquée, sauf ceux des catégories gardées à la main ([keepCats]) ; les triggers FTS suivent. */
-    @Query("DELETE FROM movie WHERE providerId = :pid AND lang IN (:langs) AND (categoryId IS NULL OR categoryId NOT IN (:keepCats))")
-    suspend fun deleteByLangs(pid: Long, langs: List<String>, keepCats: List<String>): Int
 }
 
 @Dao
@@ -539,14 +523,6 @@ interface SeriesDao {
 
     @Query("DELETE FROM series WHERE providerId = :pid AND categoryId = :cat")
     suspend fun deleteForCategory(pid: Long, cat: String)
-
-    /** Langues présentes dans le catalogue de la source (purge des langues masquées). */
-    @Query("SELECT DISTINCT lang FROM series WHERE providerId = :pid")
-    suspend fun distinctLangs(pid: Long): List<String>
-
-    /** Purge des titres d'une langue masquée, sauf ceux des catégories gardées à la main ([keepCats]) ; les triggers FTS suivent. */
-    @Query("DELETE FROM series WHERE providerId = :pid AND lang IN (:langs) AND (categoryId IS NULL OR categoryId NOT IN (:keepCats))")
-    suspend fun deleteByLangs(pid: Long, langs: List<String>, keepCats: List<String>): Int
 }
 
 @Dao

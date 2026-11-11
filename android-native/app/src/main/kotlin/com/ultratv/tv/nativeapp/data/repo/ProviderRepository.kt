@@ -44,6 +44,7 @@ class ProviderRepository @Inject constructor(
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
+    private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -138,14 +139,14 @@ class ProviderRepository @Inject constructor(
             else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
             // Langues masquées : catégories désactivées (état de l'utilisateur conservé) et titres sautés avant l'écriture.
             val u = prefs.flow.first()
-            val sel = LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang)
-            val cats = CatalogPlan.merge(locked, categoryDao.forProviderKind(p.id, "LIVE"), sel.selected, u.includeMulti, u.includeUnknownLang)
+            val before = categoryDao.forProviderKind(p.id, "LIVE")
+            val cats = CatalogPlan.merge(locked, before, LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang).selected, u.includeMulti, u.includeUnknownLang)
+            noteLangDisabled(p.id, "LIVE", cats, before)
             val enabledCats = cats.filter { it.enabled }.map { it.remoteId }.toHashSet()
             val langByCat = cats.associate { it.remoteId to it.lang }
             val channels = res.channels
                 .filter { it.categoryId == null || it.categoryId in enabledCats }
                 .map { c -> c.copy(lang = LanguageDetector.forItem(c.name, c.categoryId?.let { langByCat[it] }.orEmpty())) }
-                .filter { sel.keepsItem(it.lang, it.categoryId?.let { c -> langByCat[c] }) }
             // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
             // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
             db.withTransaction {
@@ -485,8 +486,6 @@ class ProviderRepository @Inject constructor(
         val postBatch: (List<T>) -> List<T> = { it },
         /** Films / séries : écriture incrémentale (voir [IncrementalTable]) au lieu de tout supprimer et réinsérer. */
         val incremental: IncrementalTable<T>? = null,
-        /** Langue détectée d'un élément (colonne `lang`), pour le filtre des langues masquées. */
-        val langOf: (T) -> String = { "" },
     )
 
     private fun livePart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.ChannelEntity>(
@@ -500,7 +499,6 @@ class ProviderRepository @Inject constructor(
         // (suppression + insertion) laissait tous les programmes orphelins jusqu'au guide de la nuit.
         // Rang de catégorie (ordre du Direct, voir LiveOrder) posé à l'insertion : aucune réécriture après coup.
         { rows -> val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
-        langOf = { it.lang },
     )
 
     /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */
@@ -518,7 +516,6 @@ class ProviderRepository @Inject constructor(
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
         incremental = IncrementalTable.MOVIES,
-        langOf = { it.lang },
     )
 
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
@@ -530,7 +527,6 @@ class ProviderRepository @Inject constructor(
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
         incremental = IncrementalTable.SERIES,
-        langOf = { it.lang },
     )
 
     // ───────────── Portail Stalker : films et séries partagent la même liste VOD ─────────────
@@ -605,10 +601,11 @@ class ProviderRepository @Inject constructor(
     ): Int {
         val u = prefs.flow.first()
         val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
-        val sel = LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang)
         if (spec.kind == "LIVE") liveIds = channelDao.idsByRemote(p.id).associate { it.remoteId to it.id }
         val fetched = lock(catsAhead?.await() ?: spec.fetchCats(p))
-        val merged = CatalogPlan.merge(fetched, categoryDao.forProviderKind(p.id, spec.kind), langs, u.includeMulti, u.includeUnknownLang)
+        val before = categoryDao.forProviderKind(p.id, spec.kind)
+        val merged = CatalogPlan.merge(fetched, before, langs, u.includeMulti, u.includeUnknownLang)
+        noteLangDisabled(p.id, spec.kind, merged, before)
         val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
         val disabledIds = merged.filter { !it.enabled }.map { it.remoteId }
         val langByCat = merged.associate { it.remoteId to it.lang }
@@ -639,7 +636,7 @@ class ProviderRepository @Inject constructor(
                         providerDao.setCategoryFilter(p.id, 0); strategy = SyncStrategy.GLOBAL_FILTERED
                     } else {
                         providerDao.setCategoryFilter(p.id, 1); verified = true
-                        written += insertCategory(p, spec, id, items, langByCat, sel)
+                        written += insertCategory(p, spec, id, items, langByCat)
                     }
                 }
             }
@@ -653,7 +650,7 @@ class ProviderRepository @Inject constructor(
                         async {
                             gate.withPermit {
                                 val items = fetchWithBackoff { spec.fetchOne(p, id) }
-                                val n = insertCategory(p, spec, id, items, langByCat, sel)
+                                val n = insertCategory(p, spec, id, items, langByCat)
                                 progress(done.incrementAndGet().toFloat() / total, count.addAndGet(n))
                             }
                         }
@@ -667,24 +664,29 @@ class ProviderRepository @Inject constructor(
         // Transaction unique : une liste coupée en route est annulée (l'ancien catalogue reste) au lieu d'être gardée à moitié.
         // Serveur qui filtre par catégorie : la coupure est rattrapée par une requête par catégorie active.
         return try {
-            streamAllInto(p, spec, strategy == SyncStrategy.GLOBAL, enabledSet, langByCat, progress, onDownloaded, sel)
+            streamAllInto(p, spec, strategy == SyncStrategy.GLOBAL, enabledSet, langByCat, progress, onDownloaded)
         } catch (e: Exception) {
             val cut = e is java.io.IOException || e is kotlinx.serialization.SerializationException
             if (!cut || p.categoryFilter != 1 || enabledIds.isEmpty()) throw e
             var count = 0
             for ((i, id) in enabledIds.withIndex()) {
-                count += insertCategory(p, spec, id, fetchWithBackoff { spec.fetchOne(p, id) }, langByCat, sel)
+                count += insertCategory(p, spec, id, fetchWithBackoff { spec.fetchOne(p, id) }, langByCat)
                 progress((i + 1f) / enabledIds.size, count)
             }
             count
         }
     }
 
+    /** Catégories NOUVELLES désactivées par la langue : la raison est retenue (réactivées avec leur langue, pas les autres). */
+    private fun noteLangDisabled(pid: Long, kind: String, merged: List<CategoryEntity>, before: List<CategoryEntity>) {
+        val known = before.map { it.remoteId }.toHashSet()
+        langDisabled.add(pid, kind, merged.filter { !it.enabled && it.remoteId !in known }.map { it.remoteId })
+    }
+
     private suspend fun <T : Any> streamAllInto(
         p: ProviderEntity, spec: PartSpec<T>, all: Boolean, enabledSet: Set<String>, langByCat: Map<String, String>,
         progress: (Float, Int) -> Unit,
         onDownloaded: () -> Unit = {},
-        sel: LangSelection = LangSelection(),
     ): Int {
         var n = 0
         val inc = spec.incremental
@@ -694,10 +696,10 @@ class ProviderRepository @Inject constructor(
                 db.withTransaction {
                   com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
                     val pass = inc.begin(db.openHelper.writableDatabase, p.id)
-                    // Langues masquées : titres sautés ICI, avant toute écriture (ni base, ni index plein texte, ni guide).
+                    // Catégories désactivées (langue masquée ou choix de l'utilisateur) : titres sautés ICI, avant toute
+                    // écriture (ni base, ni index plein texte, ni guide). Une catégorie active est chargée EN ENTIER.
                     seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
                         .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }
-                        .filter { sel.keepsItem(spec.langOf(it), spec.catOf(it)?.let { c -> langByCat[c] }) }
                         .forEachBatchAhead(adaptive.state.value.auto.insertBatch) { batch ->
                             pass.write(batch)
                             n += batch.size
@@ -717,7 +719,6 @@ class ProviderRepository @Inject constructor(
                 val seqState = ChannelSeq()
                 seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
                     .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }
-                    .filter { sel.keepsItem(spec.langOf(it), spec.catOf(it)?.let { c -> langByCat[c] }) }
                     .forEachBatchAhead(adaptive.state.value.auto.insertBatch) { batch ->
                         val rows = @Suppress("UNCHECKED_CAST") (if (batch.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) seqState.assign(batch as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else batch)
                         spec.insert(rows)
@@ -729,8 +730,8 @@ class ProviderRepository @Inject constructor(
         return n
     }
 
-    private suspend fun <T : Any> insertCategory(p: ProviderEntity, spec: PartSpec<T>, id: String, items: List<T>, langByCat: Map<String, String>, sel: LangSelection = LangSelection()): Int {
-        val withLang = items.map { spec.withLang(it, langByCat[id].orEmpty()) }.filter { sel.keepsItem(spec.langOf(it), langByCat[id]) }
+    private suspend fun <T : Any> insertCategory(p: ProviderEntity, spec: PartSpec<T>, id: String, items: List<T>, langByCat: Map<String, String>): Int {
+        val withLang = items.map { spec.withLang(it, langByCat[id].orEmpty()) }
         val rows = @Suppress("UNCHECKED_CAST") (if (withLang.firstOrNull() is com.ultratv.tv.nativeapp.data.db.ChannelEntity) ChannelSeq().assign(withLang as List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>) as List<T> else withLang)
         db.withTransaction { spec.deleteCat(p.id, id); rows.chunked(1_000).forEach { spec.insert(it) } }
         return rows.size
@@ -758,8 +759,6 @@ class ProviderRepository @Inject constructor(
         // M3U : une seule liste, pas de requête par catégorie ; la liste est relue en entier (les langues masquées n'y sont plus écrites).
         if (p.kind == "M3U" && ids.isNotEmpty()) { syncAll(providerId, force = true); return }
         if ((p.kind != "XTREAM" && p.kind != "STALKER") || ids.isEmpty()) return
-        val u = prefs.flow.first()
-        val sel = LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang)
         val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
         // Serveur qui ignore `category_id` : pas de chargement ciblé possible, synchro complète (verrou global).
         if (p.categoryFilter == 0) { syncAll(providerId, force = true); return }
@@ -776,9 +775,9 @@ class ProviderRepository @Inject constructor(
                 if (kind == LiveOrder.KIND) liveRanks = LiveOrder.ranks(catList)
                 for ((i, id) in ids.withIndex()) {
                     n += when (kind) {
-                        "LIVE" -> { val sp = livePart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id)), sel) }
-                        "MOVIE" -> { val sp = vodPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id)), sel) }
-                        else -> { val sp = seriesPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id)), sel) }
+                        "LIVE" -> { val sp = livePart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        "MOVIE" -> { val sp = vodPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
+                        else -> { val sp = seriesPart(p.kind); insertCategory(p, sp, id, fetchWithBackoff { sp.fetchOne(p, id) }, mapOf(id to langOf(id))) }
                     }
                     if (ownStatus) syncStatus.set(SyncStatusBus.Status(p.name, "Categories", ((i + 1) * 100) / ids.size, part, n))
                 }

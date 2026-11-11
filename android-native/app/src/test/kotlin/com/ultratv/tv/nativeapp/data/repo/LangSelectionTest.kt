@@ -9,30 +9,12 @@ import org.junit.Test
 class LangSelectionTest {
     private fun sel(csv: String, multi: Boolean = true, unknown: Boolean = true) = LangSelection.of(csv, multi, unknown)
 
-    @Test fun aucuneSelection_toutEstCharge() {
-        val all = LangSelection()
-        assertTrue(all.keepsItem("tr", "tr")); assertTrue(all.keepsItem("", null)); assertTrue(all.keepsItem("MULTI", ""))
-    }
-
-    @Test fun langueMasquee_titreSaute_langueChoisie_gardee() {
+    @Test fun filtreParCategorie_allows() {
         val fr = sel("fr")
-        assertTrue(fr.keepsItem("fr", "fr"))
-        assertFalse(fr.keepsItem("tr", "fr"))        // « [TR] » dans une catégorie française : sauté
-        assertFalse(fr.keepsItem("tr", ""))          // catégorie sans langue, titre turc : sauté
-        assertFalse(fr.keepsItem("tr", null))        // sans catégorie
-    }
-
-    @Test fun titresSansLangueDetectee_conserves() {
-        assertTrue(sel("fr").keepsItem("", ""))
-        assertTrue(sel("fr").keepsItem("", "fr"))
-        assertTrue(sel("fr").keepsItem("", null))
-        assertFalse(sel("fr", unknown = false).keepsItem("", null))   // sauf si l'utilisateur les a retirés
-        assertTrue(sel("fr").keepsItem(LanguageDetector.MULTI, ""))
-        assertFalse(sel("fr", multi = false).keepsItem(LanguageDetector.MULTI, ""))
-    }
-
-    @Test fun categorieMasqueeMaisReactiveeALaMain_chargeeEnEntier() {
-        assertTrue(sel("fr").keepsItem("tr", "tr"))
+        assertTrue(fr.allows("fr")); assertFalse(fr.allows("tr"))
+        assertTrue(fr.allows("")); assertTrue(fr.allows(LanguageDetector.MULTI))
+        assertFalse(sel("fr", unknown = false).allows("")); assertFalse(sel("fr", multi = false).allows(LanguageDetector.MULTI))
+        assertTrue(LangSelection().allows("tr") && LangSelection().all)
     }
 
     @Test fun masquer_purge_reactiver_resynchronise() {

@@ -70,6 +70,7 @@ class SyncBenchTest {
             episodeDao = db.episodeDao(), categoryDao = db.categoryDao(), xtream = xtream, m3u = M3uParser(ok), parental = ParentalStore(ctx),
             syncStatus = SyncStatusBus(), xmltv = parser, epgDao = db.epgDao(), db = db, prefs = UserPreferencesStore(ctx, profiles),
             adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = ProviderLimitsStore(ctx),
+            langDisabled = com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx),
             stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),
         )
         val provider = ProviderEntity(name = "fictif", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "test", password = "test", active = true)

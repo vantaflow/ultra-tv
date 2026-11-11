@@ -205,7 +205,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Text(if (unsupported) D.noFilterSupport else D.categoriesFooter, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Text(if (unsupported) D.noFilterSupport else D.categoriesFooter + " " + D.catHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(24.design))
             if (moving != null) Text(D.moveHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1) else Row(horizontalArrangement = Arrangement.spacedBy(28.design)) { KeyHint("OK", D.toggle); KeyHint("OK ▸", D.holdToReorder) }
         }
