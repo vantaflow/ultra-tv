@@ -17,6 +17,7 @@ import { usePrefs } from "@/state/prefs";
 import { useSources } from "@/state/sources";
 import { hhmm, QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
+import { createOsdIdle } from "./osdIdle";
 import { parseEpisodes } from "@/screens/Detail";
 import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
@@ -321,11 +322,30 @@ export function PlayerHost() {
   };
 
   // --- surcouche : apparition au mouvement, masquage après 3 s ---
-  const poke = useCallback(() => {
-    setUi(true);
+  const idle = useRef(createOsdIdle()).current;
+  const armHide = useCallback(() => {
     window.clearTimeout(hideTimer.current);
-    hideTimer.current = window.setTimeout(() => setUi(false), 3200);
-  }, []);
+    hideTimer.current = window.setTimeout(() => {
+      // Barre survolée / focalisée ou menu ouvert : on repousse ; sinon on masque.
+      if (idle.shouldHide()) setUi(false); else armHide();
+    }, Math.max(250, idle.remaining()));
+  }, [idle]);
+  // Touche, clic ou changement de lecture : activité certaine.
+  const poke = useCallback(() => {
+    idle.activity();
+    setUi(true);
+    armHide();
+  }, [idle, armHide]);
+  // Souris : seulement si le pointeur a réellement bougé.
+  const onMove = useCallback((e: React.MouseEvent) => {
+    if (idle.move(e.screenX, e.screenY, e.movementX, e.movementY)) poke();
+  }, [idle, poke]);
+  // Survol ou focus clavier dans la barre / le panneau : l'OSD reste affiché.
+  const holdOver = useCallback((e: React.SyntheticEvent) => {
+    idle.setHold(!!(e.target as HTMLElement).closest?.(".pbot,.pside"));
+  }, [idle]);
+  useEffect(() => { idle.setMenuOpen(panel !== null); }, [idle, panel]);
+  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
   useEffect(() => { poke(); }, [mode, target?.refId, poke]);
   const showUi = ui || state !== "playing" || panel !== null;
 
@@ -499,7 +519,12 @@ export function PlayerHost() {
       ref={wrapRef}
       className={`player ${full ? "full" : "inline"}${showUi ? " ui" : ""}${!showUi && full ? " nocursor" : ""}`}
       style={style}
-      onMouseMove={poke}
+      onMouseMove={onMove}
+      onMouseOver={holdOver}
+      onMouseLeave={() => idle.setHold(false)}
+      onFocus={holdOver}
+      onBlur={() => idle.setHold(false)}
+      onClickCapture={poke}
       onDoubleClick={(e) => { if ((e.target as HTMLElement).closest("button,.seek,.pside")) return; if (full) void toggleOsFull(); else goFull(); }}
       onClick={(e) => { if ((e.target as HTMLElement).tagName === "VIDEO") { if (full) togglePlay(); else goFull(); } }}
     >
