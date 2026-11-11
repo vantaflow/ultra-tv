@@ -7,6 +7,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Documentation
 - Documentation : guide de traduction (TRANSLATING.md) et modèle d'issue pour les traductions
 
+## [Bureau 1.2.43] — 2026-11-11
+
 ### Corrigé
 - Bureau : portail Stalker, séries des portails Ministra récents servies par le module `type=series` (catégories préfixées `s:`, listes paginées, saisons puis épisodes, épisodes sans saison listés directement). Lien d'épisode de type `series` : `create_link` essaie `vod`, puis `series` si la VOD échoue ou ne donne rien (les deux en échec : la première erreur). Sans catégorie du module, les séries restent tirées de la VOD comme avant.
 - Bureau : portail Stalker, gros catalogues entièrement lus. Plafond de 3 000 pages porté à 20 000 (14 titres par page : 50 000 titres = 3 572 pages), jusqu'à 3 tentatives par page (délai dépassé, coupure, 429, 5xx, délai croissant), lecture page par page jusqu'à une page vide sans `total_items`, taille de la page lue si `max_page_items` est absent ou 0.
