@@ -11,7 +11,31 @@ data class PersonCredit(val isTv: Boolean, val title: String, val originalTitle:
  * Un titre de la playlist correspond quand son nom normalisé est celui de l'œuvre (titre ou titre original) et que
  * l'année, si les deux sont connues, est à ±1 an.
  */
+/** Fiche TMDB d'une personne. [department] : « Acting », « Directing »… (métier principal, en anglais). */
+data class PersonInfo(val name: String, val department: String?, val birthday: String?, val place: String?, val bio: String?, val photo: String?)
+
 object PersonLogic {
+    /** Fiche d'une personne d'après `person/{id}` ; null si la réponse est illisible. [bio] vide = biographie absente dans cette langue. */
+    fun info(json: String): PersonInfo? {
+        val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
+        fun str(k: String) = o.optString(k).trim().takeIf { it.isNotEmpty() && it != "null" }
+        val name = str("name") ?: return null
+        return PersonInfo(name, str("known_for_department"), str("birthday"), str("place_of_birth"), str("biography"), str("profile_path")?.takeIf { it.startsWith("/") })
+    }
+
+    /** Date de naissance « 30.07.1970 » d'après « 1970-07-30 » ; une date partielle (« 1970-07 », « 1970 ») reste partielle ; null si illisible. */
+    fun birthdayLabel(iso: String?): String? {
+        val p = iso?.trim()?.split('-') ?: return null
+        val y = p.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) } ?: return null
+        val m = p.getOrNull(1)?.takeIf { it.length == 2 && it.toIntOrNull() in 1..12 }
+        val d = p.getOrNull(2)?.takeIf { it.length == 2 && it.toIntOrNull() in 1..31 }
+        return when {
+            m == null -> y
+            d == null -> "$m.$y"
+            else -> "$d.$m.$y"
+        }
+    }
+
     /** Identifiant de la personne dont le nom correspond le mieux à [name] (premier résultat à nom identique, sinon le premier). */
     fun searchBest(json: String, name: String): Int? {
         val arr = runCatching { JSONObject(json).optJSONArray("results") }.getOrNull() ?: return null

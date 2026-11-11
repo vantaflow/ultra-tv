@@ -11,6 +11,8 @@ const ALLOWED_PATHS = [
   new RegExp(`^(movie|tv)/${ID}/(images|videos|credits)$`),
   // Pages acteurs / réalisateurs : filmographie, rapprochée ensuite de la playlist par l'application.
   new RegExp(`^person/${ID}/combined_credits$`),
+  // Fiche d'une personne (photo, naissance, biographie) pour l'en-tête de ces pages.
+  new RegExp(`^person/${ID}$`),
 ];
 const APPEND_OK = new Set(["credits", "videos", "images"]);
 const LANG = /^[a-z]{2}(-[A-Z]{2})?$/;

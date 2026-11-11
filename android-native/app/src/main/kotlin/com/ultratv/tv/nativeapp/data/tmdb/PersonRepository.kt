@@ -35,6 +35,33 @@ class PersonRepository @Inject constructor(
 ) {
     private val http = okHttp.newBuilder().followRedirects(false).followSslRedirects(false).build()
 
+    private val ids = HashMap<String, Int?>()
+
+    /** Fiche de la personne (photo, métier, naissance, biographie) ; la biographie est en anglais si TMDB n'a pas la langue de l'appli. Null sans Worker. */
+    suspend fun info(name: String): PersonInfo? = runCatching {
+        val clean = name.trim()
+        val id = personId(clean) ?: return@runCatching null
+        val lang = defaultLang()
+        val first = tmdbGet("person/$id?language=$lang")?.let { PersonLogic.info(it) }
+        if (first != null && first.bio == null && !lang.startsWith("en")) {
+            val en = tmdbGet("person/$id?language=en-US")?.let { PersonLogic.info(it) }
+            first.copy(bio = en?.bio)
+        } else first
+    }.getOrNull()
+
+    private suspend fun defaultLang(): String {
+        val app = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(prefs.flow.first().language)
+        return tmdbLang(app)
+    }
+
+    private suspend fun personId(name: String): Int? {
+        synchronized(ids) { if (ids.containsKey(name)) return ids[name] }
+        val q = java.net.URLEncoder.encode(name, "UTF-8")
+        val id = tmdbGet("search/person?query=$q")?.let { PersonLogic.searchBest(it, name) }
+        synchronized(ids) { ids[name] = id }
+        return id
+    }
+
     suspend fun works(pid: Long, name: String): PersonWorks {
         val clean = name.trim().replace("%", "").replace("_", " ")
         if (clean.length < 3) return PersonWorks(emptyList(), emptyList())
@@ -51,15 +78,17 @@ class PersonRepository @Inject constructor(
         return PersonWorks(movies.values.toList(), series.values.toList())
     }
 
-    private suspend fun tmdbCredits(name: String): List<PersonCredit> = withContext(Dispatchers.IO) {
-        if (!tokens.isPaired) return@withContext emptyList()
-        val token = tokens.token() ?: return@withContext emptyList()
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext emptyList()
-        fun get(path: String): String? = http.newCall(Request.Builder().url("$base/api/tmdb/$path").header("Authorization", "Bearer $token").get().build())
+    private suspend fun tmdbGet(path: String): String? = withContext(Dispatchers.IO) {
+        if (!tokens.isPaired) return@withContext null
+        val token = tokens.token() ?: return@withContext null
+        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
+        http.newCall(Request.Builder().url("$base/api/tmdb/$path").header("Authorization", "Bearer $token").get().build())
             .execute().use { r -> if (r.isSuccessful) r.body?.string() else null }
-        val q = java.net.URLEncoder.encode(name, "UTF-8")
-        val id = get("search/person?query=$q")?.let { PersonLogic.searchBest(it, name) } ?: return@withContext emptyList()
-        get("person/$id/combined_credits")?.let { PersonLogic.credits(it) }.orEmpty()
+    }
+
+    private suspend fun tmdbCredits(name: String): List<PersonCredit> {
+        val id = personId(name) ?: return emptyList()
+        return tmdbGet("person/$id/combined_credits")?.let { PersonLogic.credits(it) }.orEmpty()
     }
 
     private companion object { const val MAX_CREDITS = 150 }
