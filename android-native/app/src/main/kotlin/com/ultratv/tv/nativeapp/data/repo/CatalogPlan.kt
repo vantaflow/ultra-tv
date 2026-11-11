@@ -59,3 +59,37 @@ object LanguageFilter {
         else -> lang in selected
     }
 }
+
+/**
+ * Langues choisies par l'utilisateur (Réglages › Langues) : [selected] vide = toutes. Les langues MASQUÉES ne sont pas
+ * chargées du tout : leurs catégories sont désactivées et leurs titres ne sont NI écrits en base, NI indexés (FTS),
+ * NI rattachés au guide (une chaîne non chargée n'a pas de programmes). Les titres sans langue détectée restent chargés
+ * tant que « Sans langue détectée » est actif.
+ */
+data class LangSelection(val selected: Set<String> = emptySet(), val includeMulti: Boolean = true, val includeUnknown: Boolean = true) {
+    val all: Boolean get() = selected.isEmpty()
+
+    fun allows(lang: String): Boolean = LanguageFilter.allows(lang, selected, includeMulti, includeUnknown)
+
+    /**
+     * Un titre est-il chargé ? [categoryLang] = langue de sa catégorie (null = sans catégorie). Une catégorie ACTIVE dont
+     * la langue est masquée (réactivée à la main dans l'écran Catégories) est chargée en entier : choix explicite.
+     */
+    fun keepsItem(itemLang: String, categoryLang: String?): Boolean =
+        all || (categoryLang != null && !allows(categoryLang)) || allows(itemLang)
+
+    companion object {
+        fun of(csv: String, includeMulti: Boolean, includeUnknown: Boolean) =
+            LangSelection(csv.split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(), includeMulti, includeUnknown)
+
+        private fun candidates(a: LangSelection, b: LangSelection) = a.selected + b.selected + LanguageDetector.MULTI + LanguageDetector.UNDETERMINED
+
+        /** Des contenus jusque-là masqués deviennent visibles : il faut les (re)télécharger. */
+        fun reveals(old: LangSelection, new: LangSelection): Boolean =
+            if (old.all) false else new.all || candidates(old, new).any { !old.allows(it) && new.allows(it) }
+
+        /** Des contenus jusque-là visibles deviennent masqués : il faut les purger. */
+        fun hides(old: LangSelection, new: LangSelection): Boolean =
+            if (new.all) false else old.all || candidates(old, new).any { old.allows(it) && !new.allows(it) }
+    }
+}

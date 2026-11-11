@@ -52,6 +52,7 @@ class CloudSyncManager @Inject constructor(
     private val limits: ProviderLimitsStore,
     private val sync: SyncCoordinator,
     private val categories: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
+    private val languages: com.ultratv.tv.nativeapp.data.repo.LanguageManager,
     private val statusBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
 ) {
     private val mutex = Mutex()
@@ -270,9 +271,18 @@ class CloudSyncManager @Inject constructor(
         // Catalogue pas encore chargé (appairage tout neuf) : on garde ces réglages et on les applique à la fin de la synchro.
         if (DisplayPrefs.KINDS.keys.all { dao.remoteIds(localId, it).isEmpty() }) {
             links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote))
+            // Les langues, elles, valent tout de suite : la première synchro ne charge pas les langues masquées.
+            if (isActive) DisplayPrefs.langsFromCloud(remote.langs).let { (sel, multi, unknown) -> languages.change(sel, multi, unknown) }
             return
         }
         links.setPendingPrefs(cloudId, null)
+        // Langues d'abord (réglage du profil, appliqué pour la source affichée) : les listes de catégories désactivées reçues,
+        // plus précises, passent ensuite par-dessus.
+        if (isActive) {
+            val (sel, multi, unknown) = DisplayPrefs.langsFromCloud(remote.langs)
+            // Même chemin que l'écran Langues : une langue masquée est purgée, une langue réactivée relance la synchro de la source.
+            languages.change(sel, multi, unknown)
+        }
         var incomplete = false
         // Même chemin que l'écran Catégories : désactiver retire le contenu, réactiver recharge ces catégories.
         for ((kind, key) in DisplayPrefs.KINDS) {
@@ -284,13 +294,6 @@ class CloudSyncManager @Inject constructor(
             val wasOff = dao.disabledIds(localId, kind).toSet()
             categories.setEnabled(localId, kind, all.filter { it in off && it !in wasOff }, false)
             categories.setEnabled(localId, kind, all.filter { it !in off && it in wasOff }, true)
-        }
-        // Les langues sont un réglage du profil : appliquées pour la source affichée.
-        if (isActive) {
-            val (sel, multi, unknown) = DisplayPrefs.langsFromCloud(remote.langs)
-            prefs.setLanguages(sel.sorted().joinToString(","))
-            prefs.setIncludeMulti(multi)
-            prefs.setIncludeUnknownLang(unknown)
         }
         if (incomplete) { links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote)); return }
         links.setPrefs(cloudId, remote.updatedAt, DisplayPrefs.fingerprint(DisplayPrefs.toCloud(localPrefs(localId), 0)))

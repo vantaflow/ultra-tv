@@ -618,12 +618,20 @@ private fun LanguagesPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     var picker by remember { mutableStateOf(false) }
     var uiLang by remember { mutableStateOf(false) }
     val selected = p.languages.split(',').filter { it.isNotBlank() }
+    // Purge d'une langue masquée / resynchronisation d'une langue réactivée : message clair (voir LanguageManager).
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        panes.langNotice.collect { o ->
+            com.ultratv.tv.nativeapp.ui.common.Toaster.show(if (o.resync.isNotEmpty()) D.langNoticeResync else D.langNoticePurged)
+        }
+    }
     PaneTitle(D.rubLanguages)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         PrefRow(D.appLanguage, D.langName(AppLang.fromCode(p.language))) { uiLang = true }
         PrefRow(D.contentLanguages, if (selected.isEmpty()) D.allLanguages else selected.joinToString(" · ") { it.uppercase() }) { picker = true }
         SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
         SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
+        // Les langues masquées ne sont pas chargées : plus rapide, moins de mémoire.
+        androidx.tv.material3.Text(D.langHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 4, modifier = Modifier.padding(top = 14.design))
     }
     if (uiLang) ChoiceDialog(D.appLanguage, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); uiLang = false }, { uiLang = false })
     if (picker) LanguagePickerDialog(counts.filter { it.lang.isNotEmpty() && it.lang != "MULTI" }.sortedByDescending { it.n }.map { it.lang to it.n }, selected.toSet(), { panes.setLanguages(it.sorted().joinToString(",")) }, { picker = false })
@@ -638,6 +646,7 @@ fun LanguagePickerDialog(languages: List<Pair<String, Int>>, selected: Set<Strin
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         Column(Modifier.responsiveWidth(760).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
             Text(D.contentLanguages, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, modifier = Modifier.padding(bottom = 8.design))
+            Text(D.langHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3, modifier = Modifier.padding(bottom = 8.design))
             androidx.compose.foundation.lazy.LazyColumn(Modifier.height(600.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
                 item { LangRow(D.allLanguages, "", selected.isEmpty()) { onChange(emptySet()) } }
                 items(items.size, key = { items[it].first }) { i ->
