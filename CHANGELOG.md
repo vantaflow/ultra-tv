@@ -2,6 +2,17 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.86] — 2026-11-11 (Android)
+
+### Nouveau
+- Release : l'APK universel est aussi publié sous le nom **`UltraTV.apk`** (avec son `.sha256`) ; tous les liens publics
+  y mènent. `UltraTV-debug.apk` reste publié pour la mise à jour intégrée.
+- README et site : nouvelle présentation, section **Confidentialité** (ce que l'appli envoie, quand, où, ce qui est
+  conservé, comment couper la télémétrie).
+
+### Technique
+- Script du décodeur FFmpeg LGPL : décodeurs Opus et Vorbis ajoutés (le décodeur LGPL n'est pas encore embarqué).
+
 ## [1.2.85] — 2026-11-11 (Android)
 
 ### Corrigé
