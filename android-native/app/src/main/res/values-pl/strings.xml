@@ -1417,4 +1417,10 @@
     <string name="trailer_err_no_webview">To urządzenie nie może odtwarzać zwiastunów w aplikacji (brak komponentu internetowego).</string>
     <string name="trailer_show_qr">Pokaż link jako kod QR</string>
     <string name="trailer_qr_hint">Zeskanuj telefonem, aby obejrzeć tam zwiastun.</string>
+    <string name="osd_recent_channels">Ostatnie kanały</string>
+    <string name="osd_picture_format">Format obrazu</string>
+    <string name="osd_history">Historia</string>
+    <string name="osd_history_empty">Brak ostatnich kanałów</string>
+    <string name="osd_remaining">zostało %1$s</string>
+    <string name="osd_banner_hint">OK / ▼ Sterowanie  ·  ▲ Przełączanie  ·  0-9 Numer</string>
 </resources>

@@ -214,7 +214,7 @@ private fun BoxScope.HudPill(text: String) {
     )
 }
 
-data class ControlPill(val label: String, val icon: String, val onClick: () -> Unit, val active: Boolean = false)
+data class ControlPill(val label: String, val icon: String, val onClick: () -> Unit, val active: Boolean = false, val fill: Boolean = false)
 
 /**
  * Contrôles tactiles (maquette MobileLecteur) : en-tête (retour, badge, titre, réglages), centre (−10, pause, +10),
@@ -294,7 +294,7 @@ fun PlayerPill(p: ControlPill) {
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             val ink = if (p.active) com.ultratv.tv.nativeapp.ui.design.Ux.OnAccent else Color(0xFFF5F5F7)
-            DIcon(p.icon, 14.dp, ink)
+            if (p.icon.isNotEmpty()) DIcon(p.icon, 14.dp, ink, fill = p.fill)
             Text(p.label, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
         }
     }
