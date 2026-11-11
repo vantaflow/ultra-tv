@@ -175,7 +175,7 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
   let flags: Map<string, 0 | 1> | null = null;
   if (preserveFlags && oldCid) {
     flags = new Map();
-    await db.categories.where("[sourceId+kind]").between([oldCid, ""], [oldCid, "\uffff"]).each((c) => { flags!.set(`${c.kind}:${c.extId}`, c.enabled); });
+    await db.categories.where("[sourceId+kind]").between([oldCid, ""], [oldCid, "\uffff"]).each((c) => { flags!.set(`${c.kind}:${c.extId}`, c.enabled); flags!.set(`${c.kind}#${c.name}`, c.enabled); });
   }
   const ctx: Ctx = { source, cid, oldCid, skips, firstGeneration: oldCid === 0, counts, flags, report, switched: false };
 
@@ -365,6 +365,22 @@ async function streamIntoDb<T>(
   }
 }
 
+/**
+ * Réapplique les catégories activées/masquées de la génération précédente. Les catégories Séries du module `type=series`
+ * portent des identifiants préfixés « s: » : ceux de la VOD (ancienne génération) n'y figurent donc plus. Repli par NOM
+ * pour retrouver le choix de l'utilisateur ; si malgré cela aucune catégorie Séries n'est activée alors que l'utilisateur
+ * en avait, on les réactive (le filtre de langues ne doit pas faire disparaître toutes les séries lors du changement d'identifiants).
+ */
+export function applyStalkerFlags(cats: CategoryRow[], flags: Map<string, 0 | 1>): void {
+  for (const cat of cats) {
+    const f = flags.get(`${cat.kind}:${cat.extId}`) ?? (cat.kind === "series" && cat.extId.startsWith("s:") ? flags.get(`series#${cat.name}`) : undefined);
+    if (f !== undefined) cat.enabled = f;
+  }
+  const moduleSeries = cats.filter((c) => c.kind === "series" && c.extId.startsWith("s:"));
+  const hadSeries = [...flags].some(([k, v]) => k.startsWith("series:") && v === 1);
+  if (moduleSeries.length && hadSeries && !moduleSeries.some((c) => c.enabled)) for (const c of moduleSeries) c.enabled = 1;
+}
+
 /** Condensé numérique stable d'un identifiant non numérique (série du module `type=series`), hors de la plage des identifiants du portail. */
 export function stalkerSeriesNumericId(id: string): number {
   if (/^\d{1,12}$/.test(id)) return Number(id);
@@ -412,7 +428,7 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     ...(vodCats ? mapCategories("movie", sourceId, asX(vodCats), langs) : []),
     ...(seriesCats ? mapCategories("series", sourceId, asX(seriesCats), langs) : []),
   ];
-  if (flags) for (const cat of cats) { const f = flags.get(`${cat.kind}:${cat.extId}`); if (f !== undefined) cat.enabled = f; }
+  if (flags) applyStalkerFlags(cats, flags);
   const enabled: Record<Kind, Set<string>> = { live: new Set(), movie: new Set(), series: new Set() };
   for (const cat of cats) if (cat.enabled) enabled[cat.kind].add(cat.extId);
   const catIds = await db.categories.bulkAdd(cats, { allKeys: true });

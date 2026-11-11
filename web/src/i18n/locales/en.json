@@ -418,6 +418,7 @@
   "toast.favAdded": "Added to favorites",
   "toast.favRemoved": "Removed from favorites",
   "toast.synced": "Catalog updated",
+  "sync.rebuilt": "Catalog rebuilt after the update",
   "sync.doneSkipped_one": "Sync complete · {count} category skipped",
   "sync.doneSkipped_other": "Sync complete · {count} categories skipped",
   "toast.copied": "Copied",

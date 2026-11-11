@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Bureau : catégories (Séries) qui disparaissaient après la mise à jour d'un portail Stalker (le préfixe « s: » des catégories du module séries faisait perdre les choix d'activation, puis le filtre de langues les masquait toutes) ; les choix sont retrouvés par nom, et un catalogue local vide pour une source déjà synchronisée est reconstruit automatiquement au démarrage (message « Catalogue reconstruit après la mise à jour »)
+
 ### Ajouté
 - Langues : polonais (premier jet, relecture bienvenue sur Weblate)
 - Lien « Aider à traduire » dans Réglages › Langue (TV avec QR code, mobile, bureau)

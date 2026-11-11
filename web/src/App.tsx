@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Account } from "@/screens/Account";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
-import { dirOf, useT } from "@/i18n";
+import { dirOf, translate, useT } from "@/i18n";
+import { catalogNeedsRebuild, claimRebuild } from "@/sync/rebuild";
 import { initTransport, bridge, isElectron } from "@/net/transport";
 import { normalizeDns, pushDns } from "@/net/dns";
 import { PlayerHost } from "@/player/PlayerHost";
@@ -95,6 +96,21 @@ function Effects() {
   useEffect(() => {
     if (ready && list.length === 0 && !loc.pathname.startsWith("/welcome")) nav("/welcome", { replace: true });
   }, [ready, list.length, loc.pathname, nav]);
+
+  // Récupération : source déjà synchronisée mais catalogue local vide (catégories perdues après une mise à jour).
+  // Une seule tentative par démarrage et par source : une source réellement vide ne provoque aucune boucle.
+  useEffect(() => {
+    if (!ready || !active || active.id == null || useSync.getState().running) return;
+    const src = active;
+    let cancelled = false;
+    void (async () => {
+      if (!(await catalogNeedsRebuild(src)) || cancelled || !claimRebuild(src.id!)) return;
+      const ok = await useSync.getState().start(src, { preserveFlags: true, silent: true });
+      if (ok) useUi.getState().toast(translate(usePrefs.getState().lang, "sync.rebuilt"));
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, active?.id]);
 
   // Mise à jour silencieuse au lancement : l'ancien catalogue reste visible jusqu'à la bascule de génération.
   useEffect(() => {
