@@ -205,7 +205,7 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 | **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv-config.khalilbenaz.workers.dev/download/android-32`](https://ultratv-config.khalilbenaz.workers.dev/download/android-32) |
 | Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv-config.khalilbenaz.workers.dev/download/android-universal`](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) |
 
-`ultratv-config.khalilbenaz.workers.dev/download/android` renvoie l'APK arm64. Dans Downloader, saisissez le code **`2268699`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+`ultratv-config.khalilbenaz.workers.dev/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`2268699`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 
 ### Installation impossible (« problème de package »)
 

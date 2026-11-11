@@ -121,7 +121,7 @@ button.block{width:100%}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .agrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:16px}.agrid .panel{margin:0}.agrid .wide{grid-column:1/-1}.agrid h3{margin:18px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}@media (max-width:899px){.agrid{grid-template-columns:1fr}}.kv{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin:12px 0 0}.kv dt{color:var(--fg2);font-size:14px}.kv dd{margin:0;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}.bar .bv small{color:var(--mut);font-weight:600}.section-h a.button{margin-left:auto}.atable th{white-space:nowrap}.atable td{vertical-align:top}
 .bars{display:flex;flex-direction:column;gap:8px;margin-top:10px}.bar{display:grid;grid-template-columns:minmax(90px,38%) 1fr 72px;align-items:center;gap:10px;font-size:13px}.bar .bl{color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.bar .bt{height:10px;border-radius:999px;background:var(--s2);overflow:hidden}.bar .bt i{display:block;height:100%;width:0;background:var(--acc);border-radius:999px;transition:width .4s}.bar .bv{text-align:right;font-weight:700;color:var(--fg)}
-a.button{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:14px;background:var(--acc);color:#fff;font-weight:700;font-size:14px;text-decoration:none}a.button:hover{text-decoration:none;filter:brightness(1.08)}
+a.button{display:inline-flex;align-items:center;min-height:44px;padding:0 18px;border-radius:14px;background:var(--acc);color:#fff;font-weight:700;font-size:14px;text-decoration:none}a.button:hover{text-decoration:none;filter:brightness(1.08)}.apk-list{display:grid;gap:12px;margin:16px 0}.apk-list a.button{min-height:64px;padding:12px 18px;line-height:1.35}.apk-list a.alt-btn{background:transparent;color:var(--fg);border:1px solid var(--bd)}.apk-list small{font-weight:500;opacity:.85}.apk-list a.button:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
 .chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 10px;border-radius:999px;border:1px solid var(--bd);background:var(--bg);color:var(--fg2);font-size:12px;font-weight:600}
 .chip.all{background:var(--ok-soft);border-color:transparent;color:var(--ok)}
 .chip.none{color:var(--dng)}
@@ -986,4 +986,22 @@ ${rows ? "" : `<div class="empty mt16"><strong>Aucun événement</strong></div>`
 export function crashesPage(n, items) {
   const rows = items.map((it) => `<div class="panel"><div><strong>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</strong> · ${e(it.device || "")} · SDK ${e(it.androidSdk ?? "?")} · ${e(fmtTime(it.ts))} · ${e(it.deviceId || "")}${it.acct ? ` · compte ${e(it.acct)}` : ""}</div><pre>${e(it.stack || "")}</pre></div>`).join("");
   return layout("Ultra TV — crashs", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Crashs — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 30 jours.</p>${rows || `<div class="empty"><strong>Aucun crash</strong></div>`}</main>`, n);
+}
+
+// Page de choix de l'APK Android (/apk), pensée pour l'appli Downloader : liens par processeur au lieu du seul
+// APK universel (≈ 220 Mo). Pas de détection automatique : navigator.platform est figé par Chromium sur Android.
+export function apkPage(n) {
+  const opt = (href, title, size, note, primary = false) =>
+    `<a class="${primary ? "button" : "button alt-btn"} block" href="${e(href)}"${primary ? " autofocus" : ""}><span><strong>${e(title)}</strong> · ${e(size)}<br/><small>${e(note)}</small></span></a>`;
+  return layout("Ultra TV — install", `
+<main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="panel"><h1>Install Ultra TV</h1><p class="sub">Pick the version for your device. Later updates from inside the app choose the right one automatically.</p>
+<div class="apk-list">
+${opt("/download/android-arm64", "64-bit (arm64)", "≈ 65 MB", "Recommended: Fire TV Stick 4K / 4K Max, Shield, Google TV Streamer, most recent boxes and phones", true)}
+${opt("/download/android-32", "32-bit (armv7)", "≈ 50 MB", "Chromecast with Google TV (HD), older or budget boxes, or if the 64-bit install fails (“package appears to be invalid”)")}
+${opt("/download/android-universal", "Universal", "≈ 220 MB", "Last resort: works everywhere, but much larger")}
+</div>
+<div class="note">${ico("info")}<span>Not sure? Try 64-bit first. If Android refuses to install it, come back and take 32-bit.</span></div>
+</div>
+<p class="alt"><a href="https://github.com/vantaflow/ultra-tv/releases/latest">All files on GitHub</a></p></main>`, n, "", false, { lang: "en", skip: "Skip to content", themeBtn: "Theme", themeLabels: { auto: "Theme: auto", light: "Theme: light", dark: "Theme: dark" }, themeChange: "change" });
 }

@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Page `/apk` du Worker : choix de l'APK Android (64 bits recommandé, 32 bits, universel en dernier recours) pour l'appli Downloader, au lieu du seul APK universel d'environ 220 Mo. Les liens `/download/*` répondent aussi aux requêtes HEAD.
+
 ### Modifié
 - Android (TV) : l'OSD complet du direct reste affiché 8 s sans touche (5 s pour le simple bandeau), le temps de lire le programme et de choisir.
 
