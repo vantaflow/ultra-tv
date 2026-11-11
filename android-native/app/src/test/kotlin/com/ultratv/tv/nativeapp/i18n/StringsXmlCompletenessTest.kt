@@ -20,8 +20,8 @@ class StringsXmlCompletenessTest {
         /** Langues complètes, maintenues avec l'appli. */
         val OFFICIAL = listOf("fr", "es", "ar")
 
-        /** Langues proposées par la communauté, éventuellement partielles (vide pour l'instant ; ex. « pl »). */
-        val COMMUNITY: List<String> = emptyList()
+        /** Langues proposées par la communauté, éventuellement partielles (« pl » : premier jet). */
+        val COMMUNITY: List<String> = listOf("pl")
 
         /** Quantités de pluriel CLDR valides par langue (sans « other » : il est toujours exigé). */
         val QUANTITIES = mapOf(

@@ -4,12 +4,13 @@ export const LANGS = [
   { code: "en", label: "English", dir: "ltr", locale: "en-GB" },
   { code: "es", label: "Español", dir: "ltr", locale: "es-ES" },
   { code: "ar", label: "العربية", dir: "rtl", locale: "ar-MA" },
+  { code: "pl", label: "Polski", dir: "ltr", locale: "pl-PL" },
 ] as const;
 
 export type Lang = (typeof LANGS)[number]["code"];
 
-/** Langues communautaires : traductions incomplètes tolérées (repli sur l'anglais). Vide pour l'instant. */
-export const COMMUNITY_LANGS: readonly Lang[] = [];
+/** Langues communautaires : traductions incomplètes tolérées (repli sur l'anglais). Polonais : premier jet, à relire via Weblate. */
+export const COMMUNITY_LANGS: readonly Lang[] = ["pl"];
 
 /** Langue source : référence des clés, et repli quand une clé manque. */
 export const SOURCE_LANG: Lang = "en";

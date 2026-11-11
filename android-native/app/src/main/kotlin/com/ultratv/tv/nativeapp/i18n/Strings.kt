@@ -17,7 +17,9 @@ enum class AppLang(val code: String, val displayName: String, val rtl: Boolean =
     English("en", "English"),
     French("fr", "Français"),
     Spanish("es", "Español"),
-    Arabic("ar", "العربية", rtl = true);
+    Arabic("ar", "العربية", rtl = true),
+    // Langue communautaire (premier jet, à relire via Weblate).
+    Polish("pl", "Polski");
 
     companion object {
         fun fromCode(code: String): AppLang = entries.firstOrNull { it.code == code } ?: System

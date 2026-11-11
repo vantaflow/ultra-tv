@@ -110,7 +110,8 @@ const CORRECTED = new Set([
 ]);
 describe("i18n : non-régression (golden)", () => {
   const old = golden as Record<string, Record<string, string>>;
-  it.each(LANGS.map((l) => l.code))("%s : mêmes textes qu'avant la conversion", (lang: Lang) => {
+  // Le golden date d'avant la conversion : il ne couvre que les langues officielles (le polonais est venu après).
+  it.each(OFFICIAL)("%s : mêmes textes qu'avant la conversion", (lang: Lang) => {
     const diffs: string[] = [];
     for (const [k, v] of Object.entries(old[lang]!)) {
       if (PLURAL_BASES.has(k)) {
