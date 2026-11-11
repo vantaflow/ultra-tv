@@ -64,6 +64,8 @@ data class UserPrefs(
     val timeZone: String = "",
     /** Guide complémentaire (XMLTV) pour les chaînes que la source ne couvre pas : URL, "" = désactivé. */
     val extraEpg: String = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
+    /** Le guide complémentaire a été choisi par l'utilisateur (clé enregistrée) : faux = valeur par défaut jamais touchée. */
+    val extraEpgChosen: Boolean = false,
     /** Per-MAC password used when fetching config from the worker. Optional —
      *  empty for unprotected entries. Persists across launches; never logged. */
     val configPassword: String = "",
@@ -239,6 +241,7 @@ class UserPreferencesStore @Inject constructor(
             language = p[Keys.language] ?: "system",
             timeZone = p[Keys.timeZone] ?: "",
             extraEpg = p[Keys.extraEpg] ?: com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
+            extraEpgChosen = p[Keys.extraEpg] != null,
             configPassword = p[Keys.configPassword] ?: "",
             telemetryEnabled = p[Keys.telemetry] ?: true,
             syncDisplayPrefs = p[Keys.syncDisplayPrefs] ?: true,
