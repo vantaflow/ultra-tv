@@ -7,6 +7,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,7 +18,16 @@ import javax.inject.Singleton
  */
 interface StreamUrlResolver {
     suspend fun resolve(url: String): String
+
+    /** Comme [resolve], avec les en-têtes que le lecteur doit envoyer (portail Stalker) ; lève en cas d'échec. */
+    suspend fun open(url: String): StreamOpen = StreamOpen(resolve(url))
+
+    /** Signal de présence (watchdog) pendant la lecture d'une adresse `stalker://` ; sans effet pour toute autre. */
+    suspend fun presence(url: String) {}
 }
+
+/** Flux prêt à ouvrir : adresse, en-têtes de requête et User-Agent imposés (null = celui du lecteur). */
+data class StreamOpen(val url: String, val headers: Map<String, String> = emptyMap(), val userAgent: String? = null, val stalker: Boolean = false)
 
 @Singleton
 class DefaultStreamUrlResolver @Inject constructor(
@@ -26,9 +36,22 @@ class DefaultStreamUrlResolver @Inject constructor(
 ) : StreamUrlResolver {
     override suspend fun resolve(url: String): String {
         val link = StalkerLink.parse(url) ?: return url
-        val p = providers.byId(link.providerId) ?: return url
-        if (p.kind != "STALKER") return url
-        return stalker.createLink(p, link.type, link.cmd, link.series)
+        // Source supprimée ou autre type : jamais l'adresse stalker:// elle-même (le lecteur ne sait pas l'ouvrir).
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
+        return stalker.createLink(p, link.type, link.cmd, link.series, link.chId)
+    }
+
+    override suspend fun presence(url: String) {
+        val link = StalkerLink.parse(url) ?: return
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: return
+        stalker.watchdog(p)
+    }
+
+    override suspend fun open(url: String): StreamOpen {
+        val link = StalkerLink.parse(url) ?: return StreamOpen(url)
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
+        val play = stalker.openLink(p, link.type, link.cmd, link.series, link.chId)
+        return StreamOpen(play.url, play.headers, play.userAgent, stalker = true)
     }
 }
 
@@ -45,14 +68,42 @@ interface StreamUrlEntryPoint {
 }
 
 /**
- * Accès en UN appel depuis un écran Compose (lecteur) sans changer son ViewModel. Ne lève jamais : en cas d'échec
- * l'adresse d'origine est rendue (le lecteur affiche alors son erreur habituelle et propose « Réessayer »).
+ * Accès en UN appel depuis un écran Compose (lecteur) sans changer son ViewModel. [open] LÈVE en cas d'échec : une adresse
+ * `stalker://` n'est JAMAIS rendue telle quelle (le lecteur ne sait pas l'ouvrir et afficherait « problème réseau »).
  */
 object StreamUrls {
-    suspend fun resolve(context: android.content.Context, url: String): String {
-        if (!StalkerLink.isStalker(url)) return url
-        return runCatching {
-            EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().resolve(url)
-        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.getOrDefault(url)
+    /** Présence d'un boîtier MAG (watchdog) ; ne lève jamais (hors annulation). */
+    suspend fun presence(context: android.content.Context, url: String) {
+        if (!StalkerLink.isStalker(url)) return
+        runCatching {
+            EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().presence(url)
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
     }
+
+    /** Ouverture d'un flux pour le lecteur : lien frais + en-têtes (Stalker). Lève en cas d'échec — l'appelant journalise et classe. */
+    suspend fun open(context: android.content.Context, url: String): StreamOpen {
+        if (!StalkerLink.isStalker(url)) return StreamOpen(url)
+        return EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().open(url)
+    }
+
+}
+
+/** En-têtes et User-Agent d'un flux ouvert, appliqués à une requête OkHttp (téléchargement, enregistrement, relais de différé). */
+fun StreamOpen.applyTo(b: okhttp3.Request.Builder): okhttp3.Request.Builder {
+    headers.forEach { (k, v) -> b.header(k, v) }
+    userAgent?.let { b.header("User-Agent", it) }
+    return b
+}
+
+/**
+ * Client dont toutes les requêtes vers l'hôte du flux portent les en-têtes de [o] (HLS : playlist et segments). Un autre
+ * hôte (CDN, redirection) ne reçoit jamais le cookie ni le jeton. Sans en-tête à ajouter, le client est rendu tel quel.
+ */
+fun okhttp3.OkHttpClient.withStreamHeaders(o: StreamOpen): okhttp3.OkHttpClient {
+    if (o.headers.isEmpty() && o.userAgent == null) return this
+    val home = o.url.toHttpUrlOrNull() ?: return this
+    return newBuilder().addInterceptor { chain ->
+        val req = chain.request()
+        chain.proceed(if (req.url.host == home.host && req.url.port == home.port) o.applyTo(req.newBuilder()).build() else req)
+    }.build()
 }

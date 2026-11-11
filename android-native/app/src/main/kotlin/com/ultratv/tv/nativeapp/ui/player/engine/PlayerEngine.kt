@@ -15,6 +15,8 @@ enum class AspectMode { FIT, FILL, ZOOM, R16_9, R4_3 }
 enum class PlayErrorKind {
     NETWORK,        // réseau coupé, délai dépassé, serveur 5xx
     REFUSED,        // 401 / 403 : identifiants refusés ou connexion unique déjà utilisée
+    PORTAL_REFUSED, // portail Stalker : lecture refusée (403 / 458), MAC peut-être utilisée sur un autre appareil
+    NO_LINK,        // portail Stalker : aucun lien de lecture fourni pour la chaîne (create_link vide ou sans cmd)
     NOT_FOUND,      // 404 / 410 : la chaîne n'existe plus
     FORMAT,         // conteneur illisible / non pris en charge
     DECODER,        // décodeur absent ou en échec
@@ -31,7 +33,7 @@ sealed interface EngineEvent {
     data object Ready : EngineEvent
     data object FirstFrame : EngineEvent
     data object Ended : EngineEvent
-    data class Error(val kind: PlayErrorKind) : EngineEvent
+    data class Error(val kind: PlayErrorKind, val httpStatus: Int? = null) : EngineEvent
 }
 
 /** [language] : code ISO 639-1 normalisé si connu (sert à mémoriser le choix manuel par titre). */
@@ -67,6 +69,8 @@ data class EngineConfig(
     val uiLanguage: String = java.util.Locale.getDefault().language,
     /** Vidéo dans une TextureView (intégrée à l'interface) au lieu d'une SurfaceView (couche séparée). */
     val textureView: Boolean = false,
+    /** En-têtes de requête ajoutés à chaque requête du flux (portail Stalker : Cookie mac, Bearer…). */
+    val headers: Map<String, String> = emptyMap(),
 )
 
 /**

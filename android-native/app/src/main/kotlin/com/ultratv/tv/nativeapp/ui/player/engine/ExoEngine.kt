@@ -73,7 +73,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         override fun onRenderedFirstFrame() { _events.tryEmit(EngineEvent.FirstFrame) }
         override fun onPlayerError(error: PlaybackException) {
             val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
-            _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status)))
+            _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status), status))
         }
         override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
         // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
@@ -101,9 +101,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                         .connectTimeout(connectMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
                         .readTimeout(readMs.toLong(), java.util.concurrent.TimeUnit.MILLISECONDS)
                         .build(),
-                ).setUserAgent(config.userAgent)
+                ).setUserAgent(config.userAgent).setDefaultRequestProperties(config.headers)
             } else {
-                DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
+                DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setDefaultRequestProperties(config.headers).setAllowCrossProtocolRedirects(true)
                     .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
             }
         // En-têtes propres au flux protégé en cours (user-agent / referrer de la playlist), ajoutés à chaque requête.

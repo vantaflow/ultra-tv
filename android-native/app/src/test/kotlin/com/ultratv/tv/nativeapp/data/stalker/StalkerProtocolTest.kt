@@ -97,3 +97,28 @@ class StalkerProtocolTest {
         assertNull(StalkerDates.parse("bientôt"))
     }
 }
+
+/** `stream=` vide dans la réponse create_link (itv) : détection et complément. */
+class StalkerLinkStreamTest {
+    @org.junit.Test fun streamVide_detecteEtComplete() {
+        val l = "http://h/play/live.php?mac=x&stream=&extension=ts&play_token=T"
+        org.junit.Assert.assertTrue(StalkerLink.hasEmptyStream(l))
+        org.junit.Assert.assertEquals("http://h/play/live.php?mac=x&stream=1234&extension=ts&play_token=T", StalkerLink.fillEmptyStream(l, "1234"))
+        org.junit.Assert.assertEquals("http://h/live.php?stream=", StalkerLink.fillEmptyStream("http://h/live.php?stream=", null))
+    }
+
+    @org.junit.Test fun streamComplet_inchange() {
+        val l = "http://h/live.php?stream=55&play_token=T"
+        org.junit.Assert.assertFalse(StalkerLink.hasEmptyStream(l))
+        org.junit.Assert.assertEquals(l, StalkerLink.fillEmptyStream(l, "1"))
+        org.junit.Assert.assertFalse(StalkerLink.hasEmptyStream("http://h/live.php?upstream=&x=1"))
+    }
+
+    @org.junit.Test fun identifiantDeChaine_dansLAdresseEtLaCommande() {
+        val p = StalkerLink.parse(StalkerLink.build(7, "itv", "ffmpeg http://localhost/ch/1234_", chId = "1234"))!!
+        org.junit.Assert.assertEquals("1234", p.chId)
+        org.junit.Assert.assertNull(StalkerLink.parse(StalkerLink.build(7, "itv", "x"))!!.chId)
+        org.junit.Assert.assertEquals("1234", StalkerLink.channelIdOfCmd("ffmpeg http://localhost/ch/1234_"))
+        org.junit.Assert.assertNull(StalkerLink.channelIdOfCmd("eyJ9"))
+    }
+}

@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.timeshift
 
+import com.ultratv.tv.nativeapp.data.stalker.applyTo
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -9,6 +10,16 @@ import java.net.Socket
 import java.security.SecureRandom
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+
+/**
+ * Ouverture du flux amont d'une source Stalker : lien NEUF (create_link) et en-têtes MAG à chaque démarrage du relais, et
+ * signal de présence (watchdog) toutes les [presenceMs] tant qu'il tient le flux (le lecteur ne parle plus au portail).
+ */
+class TimeshiftUpstream(
+    val open: suspend (String) -> com.ultratv.tv.nativeapp.data.stalker.StreamOpen,
+    val presence: suspend (String) -> Unit,
+    val presenceMs: Long = 120_000L,
+)
 
 /**
  * Relais local qui DUPLIQUE le flux direct dans un [CircularFileBuffer] et le ressert au lecteur depuis la position
@@ -24,6 +35,7 @@ class TimeshiftProxy(
     bufferFile: File,
     capacity: Long,
     assumedBytesPerSec: Long,
+    private val upstream: TimeshiftUpstream? = null,
 ) : AutoCloseable {
     val buffer = CircularFileBuffer(bufferFile, capacity)
     private val server = ServerSocket(0, 4, InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)))   // 127.0.0.1 EXPLICITE : sur Android getLoopbackAddress() peut renvoyer ::1, alors que l URL locale vise 127.0.0.1
@@ -49,12 +61,24 @@ class TimeshiftProxy(
 
     fun start() {
         Thread({ pump() }, "timeshift-pump").apply { isDaemon = true }.start()
+        val up = upstream
+        if (up != null && com.ultratv.tv.nativeapp.data.stalker.StalkerLink.isStalker(upstreamUrl)) {
+            Thread({
+                while (!stopped.get()) {
+                    runCatching { kotlinx.coroutines.runBlocking { up.presence(upstreamUrl) } }
+                    var waited = 0L
+                    while (!stopped.get() && waited < up.presenceMs) { Thread.sleep(minOf(100L, up.presenceMs)); waited += 100 }
+                }
+            }, "timeshift-presence").apply { isDaemon = true }.start()
+        }
         Thread({ acceptLoop() }, "timeshift-accept").apply { isDaemon = true }.start()
     }
 
     private fun pump() {
         try {
-            val req = Request.Builder().url(upstreamUrl).header("User-Agent", userAgent).build()
+            val o = if (upstream != null && com.ultratv.tv.nativeapp.data.stalker.StalkerLink.isStalker(upstreamUrl))
+                kotlinx.coroutines.runBlocking { upstream.open(upstreamUrl) } else com.ultratv.tv.nativeapp.data.stalker.StreamOpen(upstreamUrl)
+            val req = Request.Builder().url(o.url).header("User-Agent", userAgent).let { o.applyTo(it) }.build()
             val c = client.newCall(req).also { call = it }
             c.execute().use { resp ->
                 if (!resp.isSuccessful) { upstreamFailed = true; return }

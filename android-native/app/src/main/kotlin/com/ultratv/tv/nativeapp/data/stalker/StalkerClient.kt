@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -22,6 +23,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/**
+ * Le portail n'a pas donné de lien exploitable pour la chaîne. [reason] (jamais de contenu de réponse) :
+ * `empty_response` (corps vide, `js` vide ou faux), `no_cmd` (JSON sans `cmd`), `blank_cmd`, `not_url` (`cmd` qui n'est pas une
+ * adresse), `provider_missing` (source supprimée), `unresolved` (adresse restée `stalker://`).
+ */
+class StalkerLinkException(val reason: String) : java.io.IOException("Stalker: no link ($reason)")
 
 /**
  * Point d'entrée de l'API retenu pour chaque portail (sondé à l'ajout, puis réutilisé) : `…/portal.php` ou
@@ -161,7 +169,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         return Request.Builder().url(url)
             .header("User-Agent", StalkerDevice.USER_AGENT)
             .header("X-User-Agent", StalkerDevice.X_USER_AGENT)
-            .header("Cookie", "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC")
+            .header("Cookie", cookie(a))
             .header("Referer", StalkerPortal.referer(a.portal))
             .header("Accept", "*/*")
             .apply { if (token != null) header("Authorization", "Bearer $token") }
@@ -185,11 +193,11 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     }
 
     /** Appel authentifié → racine `js` ; une seule nouvelle poignée de main si le portail refuse le jeton. */
-    internal suspend fun call(a: Account, params: List<Pair<String, String>>): Any? {
+    internal suspend fun call(a: Account, params: List<Pair<String, String>>, blankIsEmpty: Boolean = false): Any? {
         repeat(2) { attempt ->
             val s = session(a)
             val body = try { raw(a, s, params) } catch (e: HttpStatusException) { if (e.isAuth() && attempt == 0) { invalidate(a, s); return@repeat } else throw e }
-            if (refused(body)) { if (attempt == 0) { invalidate(a, s); return@repeat } else throw denied() }
+            if (refused(body)) { if (attempt == 0) { invalidate(a, s); return@repeat } else throw (if (blankIsEmpty && body.isBlank()) StalkerLinkException("empty_response") else denied()) }
             val root = StalkerJson.parse(body)
             if (root is Map<*, *> && root.containsKey("js")) return root["js"]
             if (attempt == 0) invalidate(a, s) else throw denied()
@@ -332,15 +340,75 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * Lien de lecture à durée de vie courte (`create_link`), demandé au moment de jouer. Le préfixe de lecteur
      * (« ffmpeg », « auto ») est retiré. Échec du portail : la commande elle-même si elle est déjà une adresse jouable.
      */
-    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null): String {
+    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String {
         val params = buildList {
             add("type" to (if (type == "vod") "vod" else "itv")); add("action" to "create_link"); add("cmd" to cmd)
-            add("series" to (series?.toString() ?: "")); add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
+            if (type == "vod") add("series" to (series?.toString() ?: ""))   // pas de `series` pour une chaîne
+            add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
         }
-        val js = runCatching { call(accountOf(p), params) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
-        val link = (js as? JMap)?.s("cmd")?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() }
-        return link ?: StalkerLink.directUrlOf(cmd) ?: throw java.io.IOException("Stalker: empty link")
+        val a = accountOf(p)
+        // Deux demandes au plus : un `stream=` vide sans identifiant de chaîne connu est redemandé une fois.
+        repeat(2) { attempt ->
+            val js = runCatching { call(a, params, blankIsEmpty = true) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
+            val rawCmd = (js as? JMap)?.s("cmd")
+            val link = rawCmd?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() } ?: return StalkerLink.directUrlOf(cmd) ?: throw StalkerLinkException(
+                if (js == null || js == false || (js is List<*> && js.isEmpty()) || (js is Map<*, *> && js.isEmpty())) "empty_response" else if (rawCmd == null) "no_cmd" else "blank_cmd")
+            // Une réponse qui n'est pas une adresse (nom de chaîne, chemin relatif) ne se lit pas : jamais passée au lecteur.
+            if (!link.contains("://")) throw StalkerLinkException("not_url")
+            if (type == "vod" || !StalkerLink.hasEmptyStream(link)) return link
+            // Réponse incomplète (`stream=` vide, bug courant pour itv) : identifiant de la chaîne mémorisé, de la commande, ou de la réponse.
+            val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd) ?: (js as? JMap)?.s("id")?.takeIf { it.isNotBlank() }
+            if (id != null) return StalkerLink.fillEmptyStream(link, id)
+            if (attempt == 1) return link
+        }
+        throw StalkerLinkException("empty_response")
     }
+
+    /** Lien jouable + en-têtes que le lecteur doit envoyer avec (mêmes que le client : un portail refuse le flux sinon). */
+    data class Play(val url: String, val headers: Map<String, String>, val userAgent: String)
+
+    /** Envoi « en route, sans attendre » de `itv/set_played` : jamais bloquant pour la lecture, erreur ignorée (journal nettoyé). */
+    private val background = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Ce que fait un boîtier MAG au démarrage d'une chaîne (`itv/set_played&itv_id=<id>`), mêmes en-têtes et même jeton que
+     * les autres appels. Certains portails n'activent la session de lecture qu'après cet appel.
+     */
+    suspend fun setPlayed(p: ProviderEntity, channelId: String) {
+        call(accountOf(p), listOf("type" to "itv", "action" to "set_played", "itv_id" to channelId))
+    }
+
+    /** [createLink], puis les en-têtes de lecture (jeton à jour : la session existe après l'appel). */
+    suspend fun openLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): Play {
+        val url = createLink(p, type, cmd, series, chId)
+        if (type != "vod") {
+            val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd)
+            if (id != null) background.launch {
+                try { setPlayed(p, id) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+                    com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.setPlayedFailed(t))
+                }
+            }
+        }
+        return Play(url, playbackHeaders(accountOf(p)), StalkerDevice.USER_AGENT)
+    }
+
+    /** En-têtes MAG pour un flux : X-User-Agent, Cookie `mac=…`, jeton Bearer s'il y en a un (le User-Agent se règle à part). */
+    fun playbackHeaders(a: Account): Map<String, String> = linkedMapOf<String, String>().apply {
+        put("X-User-Agent", StalkerDevice.X_USER_AGENT)
+        put("Cookie", cookie(a))
+        sessions[a.key]?.token?.takeIf { it.isNotEmpty() }?.let { put("Authorization", "Bearer $it") }
+    }
+
+    /**
+     * Signal de présence d'un boîtier MAG qui regarde une chaîne (`watchdog/get_events`, toutes les ~2 min sur un vrai
+     * boîtier) : certains portails coupent le direct d'un boîtier qui ne se manifeste plus. Mêmes en-têtes et même jeton
+     * que les autres appels. Le résultat (événements du portail) est ignoré.
+     */
+    suspend fun watchdog(p: ProviderEntity) {
+        call(accountOf(p), listOf("type" to "watchdog", "action" to "get_events", "cur_play_type" to "1", "event_active_id" to "0"))
+    }
+
+    private fun cookie(a: Account) = "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC"
 
     /** Programme court d'une chaîne (`itv/get_short_epg`). */
     suspend fun shortEpg(p: ProviderEntity, channelRemoteId: String, channelLocalId: Long): List<EpgEntity> =

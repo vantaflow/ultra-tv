@@ -148,6 +148,8 @@ class LivePreviewViewModel @Inject constructor(
             ctx = ctx, scope = scope, container = FrameLayout(ctx).apply { setBackgroundColor(android.graphics.Color.BLACK) },
             settings = { (shared.env ?: fallback).settings() }, memory = memory, network = network,
             isLive = true, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
+            opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(ctx, u) },
+            presence = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.presence(ctx, u) },   // stalker:// : lien + en-têtes MAG à chaque ouverture
             textureView = textureView,
             subtitles = { (shared.env ?: fallback).subtitles() },
             uiLanguage = { (shared.env ?: fallback).uiLanguage() },

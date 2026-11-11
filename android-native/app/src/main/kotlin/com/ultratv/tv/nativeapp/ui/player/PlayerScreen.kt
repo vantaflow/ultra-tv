@@ -481,6 +481,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             ctx = context, scope = scope, container = container,
             settings = { vm.resolved(latestPrefs) }, memory = vm.memory, network = vm.network,
             isLive = isLive, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
+            opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(context, u) },
+            presence = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.presence(context, u) },   // stalker:// : lien + en-têtes MAG à chaque ouverture
             textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, touchUi),
             subtitles = { subVm.current },
             uiLanguage = { if (latestPrefs.language == "system") java.util.Locale.getDefault().language else latestPrefs.language },
@@ -599,7 +601,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         if (tsActive && !ts.isLocalUrl(currentUrl)) { ts.deactivate(); tsActive = false; tsSnap = null }   // [B2·timeshift] autre chaîne : le relais lâche la connexion d'abord
         if (skipFirstStart[0]) { skipFirstStart[0] = false; if (currentUrl == url) return@LaunchedEffect }
         // [téléchargements] film / épisode téléchargé : fichier local (file://) à la place du flux.
-        session.start(com.ultratv.tv.nativeapp.data.stalker.StreamUrls.resolve(context, com.ultratv.tv.nativeapp.data.downloads.OfflineMedia.resolve(it, currentUrl)), it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)   // portail Stalker : lien demandé à la lecture
+        session.start(com.ultratv.tv.nativeapp.data.downloads.OfflineMedia.resolve(it, currentUrl), it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)   // stalker:// : la session demande le lien à chaque ouverture
     }
     // Progression enregistrée toutes les 10 s (« Reprendre la lecture »).
     // (La progression VOD est enregistrée toutes les 30 s par la boucle de la surcouche ; plus de doublon à 10 s.)
@@ -1253,6 +1255,8 @@ private fun LoadingVisual(logo: String?, name: String) {
 internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     val (title, hint) = when (kind) {
         PlayErrorKind.REFUSED -> D.errRefused to D.errRefusedHint
+        PlayErrorKind.NO_LINK -> D.errNoLink to D.errNoLinkHint
+        PlayErrorKind.PORTAL_REFUSED -> D.errPortalRefused to D.errPortalRefusedHint
         PlayErrorKind.NETWORK -> D.errNetwork to null
         PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null
         PlayErrorKind.NOT_FOUND -> D.errNotFound to null
