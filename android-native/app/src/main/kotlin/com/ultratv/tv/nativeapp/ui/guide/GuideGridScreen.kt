@@ -187,7 +187,33 @@ class GuideGridViewModel @Inject constructor(
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
+    private val zapQueue: com.ultratv.tv.nativeapp.data.repo.LivePlaybackQueue,
+    private val playback: com.ultratv.tv.nativeapp.data.repo.PlaybackContext,
 ) : ViewModel() {
+    /**
+     * Prépare la lecture en DIRECT comme l'écran Direct : contexte LIVE (fiche Info, bandeau, pause en différé) et file de
+     * zapping du groupe affiché dans le guide (Favoris, catégorie, ou catégorie de la chaîne pour « Tout »).
+     */
+    fun playLive(ch: ChannelEntity, onReady: () -> Unit) {
+        viewModelScope.launch {
+            runCatching {
+                val g = selectedGroup.value
+                val cat = if (g == com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL) ch.categoryId else g
+                val window = when {
+                    g == com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.favoritesList(ch.providerId, profiles.currentIdNow)
+                    cat.isNullOrEmpty() -> listOf(ch)
+                    else -> {
+                        val rank = channelDao.rankCategory(ch.providerId, cat, ch.num, ch.id)
+                        channelDao.windowCategory(ch.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
+                    }
+                }
+                zapQueue.set(window.ifEmpty { listOf(ch) }, ch)
+                playback.set(com.ultratv.tv.nativeapp.data.repo.PlaybackContext.Item(ch.providerId, "LIVE", ch.remoteId, ch.title, ch.logo, ch.streamUrl))
+            }
+            onReady()
+        }
+    }
+
     /** Chaînes verrouillées (code parental) : jamais d'aperçu vidéo pour elles. */
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -457,7 +483,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 shared?.stopPreview()   // connexion unique : l'aperçu se ferme avant que le lecteur n'ouvre le flux
                 // Lecture et enregistrement se partagent la connexion : on prévient avant de la prendre.
                 if (ConnectionPolicy.onPlayRequested(recordingRunning, vm.maxConnections(ch.providerId)) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
-                onPlayChannel(ch)
+                vm.playLive(ch) { onPlayChannel(ch) }
             },
             onRemind = { actionTarget = null; vm.addReminder(ch, pr); askNotifications(); Toaster.ok(D.remindSet) },
             onRecord = { series ->
