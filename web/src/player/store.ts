@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { channelsFrom } from "@/db/queries";
 import type { PlayTarget } from "./resolve";
+import type { RecentChannel } from "./liveOsd";
 
 /** Zaps successifs : le nouveau flux ne part qu'après ce délai, pour que le fournisseur libère l'ancien (comptes à connexion unique). */
 export const ZAP_DEBOUNCE_MS = 200;
@@ -18,6 +19,8 @@ interface PlayerStore {
   nonce: number;
   /** Valeur de `nonce` posée par un zap : le lecteur y retarde la lecture (voir ZAP_DEBOUNCE_MS). */
   zapNonce: number;
+  /** Chaînes du Direct regardées pendant la session, la plus récente en tête (rangée « Chaînes récentes » de l'OSD). */
+  recents: RecentChannel[];
   open: (t: PlayTarget, mode?: "inline" | "full", zapCat?: string | null) => void;
   setMode: (m: PlayerMode) => void;
   setSlot: (r: Rect | null) => void;
@@ -31,7 +34,7 @@ export const sameRect = (a: Rect | null, b: Rect | null): boolean =>
   a === b || (!!a && !!b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5 && Math.abs(a.w - b.w) < 0.5 && Math.abs(a.h - b.h) < 0.5);
 
 export const usePlayer = create<PlayerStore>((set, get) => ({
-  target: null, mode: "closed", slot: null, zapCat: null, nonce: 0, zapNonce: -1,
+  target: null, mode: "closed", slot: null, zapCat: null, nonce: 0, zapNonce: -1, recents: [],
   open: (target, mode = "full", zapCat) => set((s) => ({ target, mode, zapCat: zapCat === undefined ? s.zapCat : zapCat, nonce: s.nonce + 1 })),
   setMode: (mode) => set({ mode }),
   // Même rectangle : on garde l'état (pas de re-rendu du lecteur pour une mesure identique).

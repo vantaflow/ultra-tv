@@ -6,6 +6,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Android TV, OSD du Direct : la rangée « Chaînes récentes » n'affiche plus deux fois la même chaîne (ex. « TF1 1 » en double) ni la chaîne en cours sous une autre variante ; dédoublonnage par identifiant et par nom affiché, plus récente d'abord, 10 au plus.
+### Ajouté
+- Bureau : le lecteur du Direct reprend l'OSD à trois étages d'Android TV : programme en cours (description, horaires, « Ensuite »), « Chaînes récentes » (10 au plus) et barre de commandes (avec Favori). Au clavier : Entrée ouvre la liste des chaînes, ← / → chaîne précédente / suivante, ↑ / ↓ OSD complet (flèches pour se déplacer entre étages et boutons), 0-9 saisie d'un numéro de chaîne, Échap referme les étages dans l'ordre puis quitte. Simple bandeau 5 s après un zap, OSD complet 8 s au clavier (3 s à la souris, inchangé). Le lecteur des films et séries ne change pas.
 
 ### Modifié
 - Bande-annonce (Android et bureau) : plus de sous-titres automatiques de YouTube par-dessus la vidéo.
