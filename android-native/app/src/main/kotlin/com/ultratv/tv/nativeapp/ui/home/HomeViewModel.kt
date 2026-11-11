@@ -46,9 +46,25 @@ data class HeroItem(
     /** Image PAYSAGE si la source en fournit une (backdrop), sinon null. */
     val backdrop: String?,
     val poster: String?,
+    /** Synopsis de la source (peut être vide : repli TMDB via [HeroExtras]). */
+    val plot: String? = null,
+    /** Durée en minutes (films seulement, si la source la donne). */
+    val runtimeMin: Int? = null,
+    val providerId: Long = 0,
+    val remoteId: String = "",
+    /** Adresse du film pour « Regarder » (lecture directe) ; null pour une série (ouvre la fiche). */
+    val streamUrl: String? = null,
     /** « 2024 · Drame · ★ 7.8 » formaté UNE fois à la construction (dans le ViewModel), pas à chaque composition du hero. */
     val meta: String = heroMeta(year, genre, rating),
-) { enum class Kind { SERIES, MOVIE } }
+) {
+    enum class Kind { SERIES, MOVIE }
+    /** Clé stable (type + identifiant) : index des notes et des compléments. */
+    val key: String get() = "${if (kind == Kind.SERIES) "s" else "m"}-$id"
+}
+
+/** Compléments d'un titre « à la une » résolus en arrière-plan (TMDB / OMDb, appareil appairé) : notes externes et synopsis de repli. */
+@androidx.compose.runtime.Immutable
+data class HeroExtras(val ratings: com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings? = null, val overview: String? = null)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -63,6 +79,8 @@ class HomeViewModel @Inject constructor(
     private val traktLibrary: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
     traktMatcher: com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher,
     private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
+    private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
+    private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
 ) : ViewModel() {
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
@@ -161,13 +179,53 @@ class HomeViewModel @Inject constructor(
         // Pendant la synchro, les tables changent sans arrêt : au plus une relecture par seconde.
         else combine(catalog.heroSeriesList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing), catalog.heroMovieList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing)) { ss, ms ->
             interleaveHeroes(
-                ss.map { s -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop, s.poster) },
-                ms.map { m -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop, m.poster) },
+                ss.map { s -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop, s.poster, plot = s.plot?.trim(), providerId = s.providerId, remoteId = s.remoteId) },
+                ms.map { m -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop, m.poster, plot = m.plot?.trim(), runtimeMin = durationMinutes(m.duration), providerId = m.providerId, remoteId = m.remoteId, streamUrl = m.streamUrl) },
                 HERO_POOL,
             )
         }
     }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Notes IMDb / Rotten Tomatoes (OMDb via le Worker) et synopsis TMDB de repli des titres « à la une », résolus UN PAR UN
+     * en arrière-plan (IO), après 1,5 s pour ne pas concurrencer le premier affichage. Caches Room / mémoire déjà en place ;
+     * appareil non appairé ou réseau absent : rien n'est émis et le hero garde la note habituelle.
+     */
+    val heroExtras: StateFlow<Map<String, HeroExtras>> = heroes.flatMapLatest { list ->
+        flow {
+            if (list.isEmpty()) return@flow
+            delay(1_500)
+            val acc = HashMap<String, HeroExtras>()
+            for (h in list) {
+                val e = runCatching { resolveExtras(h) }.getOrNull() ?: continue
+                acc[h.key] = e
+                emit(acc.toMap())
+            }
+        }
+    }.flowOn(kotlinx.coroutines.Dispatchers.IO).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    private suspend fun resolveExtras(h: HeroItem): HeroExtras? {
+        val isShow = h.kind == HeroItem.Kind.SERIES
+        val info = if (isShow) catalog.seriesById(h.id)?.let { tmdb.forSeries(it) } else catalog.movieById(h.id)?.let { tmdb.forMovie(it) }
+        val id = info?.tmdbId ?: return null
+        val r = ratingsClient.forTmdb(if (isShow) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, id)
+        return HeroExtras(r, info.overview?.trim()?.takeIf { it.isNotEmpty() }).takeIf { it.ratings != null || it.overview != null }
+    }
+
+    /** « Regarder » sur un film « à la une » : contexte de lecture comme la fiche film, puis l'appelant lance le lecteur. */
+    fun playHero(h: HeroItem, title: String = h.title) {
+        val url = h.streamUrl ?: return
+        playback.set(PlaybackContext.Item(providerId = h.providerId, kind = "MOVIE", remoteId = h.remoteId, title = title, poster = h.poster, streamUrl = url))
+    }
+
+    /** Compteurs des raccourcis, espacés de 2 s et figés pendant une synchro (comme les autres rangées) ; calculés par Room hors fil principal. */
+    val counts: StateFlow<HomeCounts> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(HomeCounts())
+        else combine(catalog.channelCount(id), catalog.movieCount(id), catalog.seriesCount(id), catalog.allFavoritesCount(id)) { c, m, s, f -> HomeCounts(c, m, s, f) }
+            .atMostEvery(2_000).snapshotWhile(syncing)
+    }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeCounts())
 
     val hero: StateFlow<HeroItem?> = heroes.map { it.firstOrNull() }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -208,7 +266,7 @@ class HomeViewModel @Inject constructor(
     private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
 
     val rows: StateFlow<HomeRows> = combine(
-        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because),
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because, counts),
     ) { a ->
         @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
         val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
@@ -218,6 +276,7 @@ class HomeViewModel @Inject constructor(
         @Suppress("UNCHECKED_CAST") val chans = a[5] as List<ChannelEntity>
         val fav = a[6] as Boolean
         @Suppress("UNCHECKED_CAST") val now = a[7] as Map<Long, EpgEntity>
+        val homeCounts = a[12] as HomeCounts
         val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it) }
         HomeRows(
             resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key }.oneCardPerTitle(),
@@ -230,7 +289,12 @@ class HomeViewModel @Inject constructor(
             recentChannels = recent.map { resumeCardOf(it, "rc-", clean) }.distinctKeys { it.key },
             latestMovies = movies.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
             latestSeries = series.map { catalogPosterOf(it, isShow = true) }.distinctKeys { it.key },
-            channels = chans.distinctBy { it.id }.map { ChannelCardUi(it, now[it.id]?.title) },
+            channels = chans.distinctBy { it.id }.map { c -> val p = now[c.id]; ChannelCardUi(c, p?.title, p?.let { com.ultratv.tv.nativeapp.ui.common.EpgClock.range(it.startMs, it.endMs) }) },
+            shortcuts = shortcutsOf(homeCounts, chans.mapNotNull { it.logo }, movies.firstOrNull()?.poster, series.firstOrNull()?.poster),
+            top10 = top10Of(
+                t.trending.map(::traktPosterOf).distinctKeys { it.key },
+                (a[9] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>).map { catalogPosterOf(it, isShow = false) },
+            ),
             showingFavorites = fav,
             layout = a[8] as HomeLayout,
             topMovies = (a[9] as List<com.ultratv.tv.nativeapp.ui.catalog.PosterItem>).map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },

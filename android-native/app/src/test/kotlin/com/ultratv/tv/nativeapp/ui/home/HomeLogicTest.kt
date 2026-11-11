@@ -32,6 +32,7 @@ class HomeLogicTest {
             recentChannels = listOf(resumeCardOf(hist("2", "LIVE"), "rc-", { it })),
             latestMovies = listOf(poster(5)), latestSeries = listOf(poster(6, true)), channels = listOf(channel(1)),
             // Rangées calculées en local : présentes à partir de MIN_LOCAL_ROW titres.
+            shortcuts = shortcutsOf(HomeCounts(5, 6, 7, 1), emptyList(), null, null), top10 = (50L..59L).map { poster(it) },
             because = (20L..23L).map { poster(it) }, topMovies = (30L..33L).map { poster(it) }, topSeries = (40L..43L).map { poster(it, true) },
         )
         assertEquals(HomeSectionId.entries.toList(), r.order)
@@ -39,7 +40,7 @@ class HomeLogicTest {
 
     @Test fun homeSectionOrder_rangeesVides_sautees_ordreConserve() {
         val r = HomeRows(latestSeries = listOf(poster(1, true)), resume = listOf(resumeCardOf(hist("1"), "", { it })), channels = listOf(channel(3)))
-        assertEquals(listOf(HomeSectionId.RESUME, HomeSectionId.LATEST_SERIES, HomeSectionId.CHANNELS), r.order)
+        assertEquals(listOf(HomeSectionId.CHANNELS, HomeSectionId.RESUME, HomeSectionId.LATEST_SERIES), r.order)
     }
 
     @Test fun homeSectionOrder_clesUniques_utilisablesCommeClesLazy() {
@@ -52,9 +53,10 @@ class HomeLogicTest {
         val all = HomeSectionId.entries.toList()
         assertEquals(
             listOf(
+                HomeSectionId.SHORTCUTS, HomeSectionId.CHANNELS,
                 HomeSectionId.RESUME, HomeSectionId.TRAKT_UP_NEXT,
                 HomeSectionId.BECAUSE_WATCHED, HomeSectionId.TOP_MOVIES, HomeSectionId.TOP_SERIES, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED, HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR,
-                HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5, HomeSectionId.CHANNELS,
+                HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
             ),
             mobileSectionOrder(all),
         )
@@ -161,5 +163,76 @@ class HomeLogicTest {
 
     @Test fun pivotScrollDistance_plusGrandQueLEcran_hautAuPivot() {
         assertEquals(300f, pivotScrollDistance(600f, 1200f, 1000f), 0.001f)
+    }
+
+    // ── Accueil v2 : raccourcis, Top 10, ligne d'infos ──
+
+    @Test fun shortcutsOf_rienDeSynchronise_aucunRaccourci() {
+        assertEquals(emptyList<ShortcutUi>(), shortcutsOf(HomeCounts(), listOf("a"), "p", "q"))
+    }
+
+    @Test fun shortcutsOf_cinqRaccourcis_ordreEtCompteurs() {
+        val l = shortcutsOf(HomeCounts(5347, 10093, 4437, 3), listOf("a", "", "b", "c", "d"), "m.jpg", " ")
+        assertEquals(listOf(ShortcutId.LIVE, ShortcutId.MOVIES, ShortcutId.SERIES, ShortcutId.FAVORITES, ShortcutId.GUIDE), l.map { it.id })
+        assertEquals(listOf<Int?>(5347, 10093, 4437, 3, null), l.map { it.count })
+        assertEquals(listOf("a", "b", "c"), l[0].logos)
+        assertEquals("m.jpg", l[1].thumb)
+        assertNull(l[2].thumb)
+    }
+
+    @Test fun formatCount_separateurDeMilliers_jamaisNegatif() {
+        assertEquals("5,347", formatCount(5347, java.util.Locale.US))
+        assertEquals("0", formatCount(-4, java.util.Locale.US))
+    }
+
+    @Test fun top10Of_tendancesSuffisantes_prioritaires_limiteesADix() {
+        val trend = (1L..12L).map { poster(it) }
+        assertEquals(trend.take(10), top10Of(trend, (100L..105L).map { poster(it) }))
+    }
+
+    @Test fun top10Of_tendancesInsuffisantes_replisSurLesMieuxNotes() {
+        val top = (100L..114L).map { poster(it) }
+        assertEquals(top.take(10), top10Of(listOf(poster(1)), top))
+    }
+
+    @Test fun top10Of_pasAssezDeTitres_aucuneRangee() {
+        assertEquals(emptyList<PosterCardUi>(), top10Of(listOf(poster(1)), listOf(poster(2), poster(3))))
+    }
+
+    @Test fun top10Of_doublonsRetires() {
+        assertEquals(4, top10Of((1L..4L).flatMap { listOf(poster(it), poster(it)) }, emptyList()).size)
+    }
+
+    @Test fun heroInfoLine_separateurBarre_elementsAbsentsMasques() {
+        assertEquals("2013 | Drame | 1 h 41 min", heroInfoLine(2013, "Drame", "1 h 41 min"))
+        assertEquals("Drame", heroInfoLine(null, "Drame", " "))
+        assertEquals("", heroInfoLine(null, null, null))
+    }
+
+    @Test fun durationMinutes_formatsDeSource() {
+        assertEquals(101, durationMinutes("01:41:00"))
+        assertEquals(101, durationMinutes("101"))
+        assertEquals(101, durationMinutes("6060"))
+        assertEquals(101, durationMinutes("1:41"))
+        assertNull(durationMinutes(""))
+        assertNull(durationMinutes("n/a"))
+        assertNull(durationMinutes("0"))
+    }
+
+    @Test fun runtimeLabel_heuresEtMinutes() {
+        assertEquals("1 h 41 min", runtimeLabel(101, "%d h", "%d min"))
+        assertEquals("2 h", runtimeLabel(120, "%d h", "%d min"))
+        assertEquals("45 min", runtimeLabel(45, "%d h", "%d min"))
+    }
+
+    @Test fun heroRatingBadges_imdbEtRt_sansRepli() {
+        val b = heroRatingBadges(com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings(imdb = 5.8, rt = 51), 7.0)
+        assertEquals(HeroRatingBadges("IMDb 5.8", null, "51%"), b)
+    }
+
+    @Test fun heroRatingBadges_sansNoteExterne_replisSurLaNoteHabituelle() {
+        assertEquals(HeroRatingBadges(null, "★ 7.8", null), heroRatingBadges(null, 7.84))
+        assertTrue(heroRatingBadges(null, null).isEmpty)
+        assertTrue(heroRatingBadges(null, 0.0).isEmpty)
     }
 }

@@ -218,6 +218,12 @@ class CatalogRepository @Inject constructor(
     fun favoritesByKind(pid: Long, kind: String): Flow<List<FavoriteEntity>> =
         profiles.currentId.flatMapLatest { favoriteDao.observeForKind(it, pid, kind) }
 
+    /** Compteurs des raccourcis de l'accueil (COUNT sur index, observés ; l'appelant les espace pendant une synchro). */
+    fun channelCount(pid: Long): Flow<Int> = channelDao.observeCount(pid)
+    fun movieCount(pid: Long): Flow<Int> = movieDao.observeCount(pid)
+    fun seriesCount(pid: Long): Flow<Int> = seriesDao.observeCount(pid)
+    fun allFavoritesCount(pid: Long): Flow<Int> = profiles.currentId.flatMapLatest { favoriteDao.observeCountAll(it, pid) }
+
     fun favoriteCount(pid: Long, kind: String): Flow<Int> =
         profiles.currentId.flatMapLatest { favoriteDao.observeCount(it, pid, kind) }
 

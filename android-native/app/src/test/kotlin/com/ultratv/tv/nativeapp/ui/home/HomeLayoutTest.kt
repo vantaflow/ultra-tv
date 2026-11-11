@@ -29,7 +29,7 @@ class HomeLayoutTest {
 
     @Test fun parse_nomsInconnusEtDoublons_ignores() {
         val l = HomeLayout.parse("CHANNELS,FOO,CHANNELS,RESUME", "BAR,LATEST_MOVIES")
-        assertEquals(HomeBlock.CHANNELS, l.order[0])
+        assertTrue(l.order.indexOf(HomeBlock.CHANNELS) < l.order.indexOf(HomeBlock.RESUME))
         assertEquals(HomeBlock.entries.size, l.order.size)
         assertEquals(HomeBlock.entries.toSet(), l.order.toSet())
         assertEquals(setOf(HomeBlock.LATEST_MOVIES), l.hidden)
@@ -46,7 +46,7 @@ class HomeLayoutTest {
 
     @Test fun parse_premierBlocAbsent_inseréEnTete() {
         val l = HomeLayout.parse(HomeBlock.entries.drop(1).joinToString(",") { it.name }, "")
-        assertEquals(HomeBlock.RESUME, l.order.first())
+        assertEquals(HomeBlock.SHORTCUTS, l.order.first())
     }
 
     @Test fun apply_blocMasque_rangeesRetirees() {
@@ -58,8 +58,8 @@ class HomeLayoutTest {
     }
 
     @Test fun apply_ordrePersonnalise_rangeesSuivantLOrdre_videsAbsentes() {
-        val l = HomeLayout.DEFAULT.move(HomeBlock.CHANNELS, -(HomeBlock.entries.size - 1))
-        assertEquals(listOf(HomeSectionId.CHANNELS, HomeSectionId.RESUME, HomeSectionId.LATEST_MOVIES), l.apply(listOf(HomeSectionId.LATEST_MOVIES, HomeSectionId.RESUME, HomeSectionId.CHANNELS)))
+        val l = HomeLayout.DEFAULT.move(HomeBlock.LATEST_MOVIES, -HomeBlock.entries.indexOf(HomeBlock.LATEST_MOVIES))
+        assertEquals(listOf(HomeSectionId.LATEST_MOVIES, HomeSectionId.CHANNELS, HomeSectionId.RESUME), l.apply(listOf(HomeSectionId.CHANNELS, HomeSectionId.RESUME, HomeSectionId.LATEST_MOVIES)))
     }
 
     @Test fun apply_listesTrakt_ordreInterneConserve() {
@@ -68,8 +68,8 @@ class HomeLayoutTest {
     }
 
     @Test fun move_enBoutDeListe_sansEffet() {
-        assertEquals(HomeLayout.DEFAULT, HomeLayout.DEFAULT.move(HomeBlock.RESUME, -1))
-        assertEquals(HomeLayout.DEFAULT, HomeLayout.DEFAULT.move(HomeBlock.CHANNELS, 1))
+        assertEquals(HomeLayout.DEFAULT, HomeLayout.DEFAULT.move(HomeBlock.SHORTCUTS, -1))
+        assertEquals(HomeLayout.DEFAULT, HomeLayout.DEFAULT.move(HomeBlock.TOP_SERIES, 1))
     }
 
     @Test fun toggle_deuxFois_retourALEtatInitial() {
@@ -80,9 +80,9 @@ class HomeLayoutTest {
         val rows = HomeRows(
             resume = listOf(resumeCardOf(com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "1", title = "T", poster = null, streamUrl = "u", positionMs = 0, durationMs = 0, watchedAt = 0), "", { it })),
             channels = listOf(ChannelCardUi(com.ultratv.tv.nativeapp.data.db.ChannelEntity(id = 1, providerId = 1, remoteId = "1", name = "C", logo = null, categoryId = null, streamUrl = "u"), null)),
-            layout = HomeLayout.DEFAULT.move(HomeBlock.CHANNELS, -(HomeBlock.entries.size - 1)),
+            layout = HomeLayout.DEFAULT.move(HomeBlock.RESUME, -HomeBlock.entries.indexOf(HomeBlock.RESUME)),
         )
-        assertEquals(listOf(HomeSectionId.CHANNELS, HomeSectionId.RESUME), rows.order)
+        assertEquals(listOf(HomeSectionId.RESUME, HomeSectionId.CHANNELS), rows.order)
         assertEquals(listOf(HomeSectionId.RESUME), rows.copy(layout = HomeLayout.DEFAULT.toggle(HomeBlock.CHANNELS)).order)
     }
 

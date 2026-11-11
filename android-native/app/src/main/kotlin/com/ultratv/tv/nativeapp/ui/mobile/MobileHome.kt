@@ -7,6 +7,15 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import com.ultratv.tv.nativeapp.i18n.homeChannelsCount
+import com.ultratv.tv.nativeapp.i18n.homeFavoritesCount
+import com.ultratv.tv.nativeapp.i18n.homeGuideSubtitle
+import com.ultratv.tv.nativeapp.i18n.homeMoviesCount
+import com.ultratv.tv.nativeapp.i18n.homeSeriesCount
+import com.ultratv.tv.nativeapp.i18n.locale
+import com.ultratv.tv.nativeapp.ui.home.ShortcutId
+import com.ultratv.tv.nativeapp.ui.home.ShortcutUi
+import com.ultratv.tv.nativeapp.ui.home.formatCount
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -140,6 +149,7 @@ fun MobileHomeScreen(
     onGoSettings: () -> Unit,
     onGoGuide: () -> Unit,
     onGoFavorites: () -> Unit,
+    onShortcut: (ShortcutId) -> Unit = {},
     onPlay: (url: String, title: String) -> Unit,
     onPlayHistory: (WatchHistoryEntity) -> Unit,
     onOpenHero: (HeroItem) -> Unit,
@@ -167,6 +177,7 @@ fun MobileHomeScreen(
             }
             items(sections, key = { it.name }, contentType = { it.contentType }) { id ->
                 when (id) {
+                    HomeSectionId.SHORTCUTS -> MobileShortcuts(rows.shortcuts, onShortcut)
                     HomeSectionId.RESUME -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(D.continueWatching, null, {})
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
@@ -396,5 +407,39 @@ fun MobileDetailFrame(backdrop: String?, poster: String?, title: String, onBack:
             }
         }
         MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(WindowInsets.statusBars))
+    }
+}
+
+
+/** Raccourcis (Direct, Films, Séries, Favoris, Guide) en défilement horizontal : chips colorées avec titre et compteur. */
+@Composable
+private fun MobileShortcuts(items: List<ShortcutUi>, onSelect: (ShortcutId) -> Unit) {
+    val D = LocalDs.current
+    val S = LocalStrings.current
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+        items(items, key = { it.id }, contentType = { "shortcut" }) { sc ->
+            val (title, sub) = remember(sc.id, sc.count, D, S) {
+                val n = sc.count ?: 0
+                val c = formatCount(n, D.locale)
+                when (sc.id) {
+                    ShortcutId.LIVE -> D.directTitle to D.homeChannelsCount(n, c)
+                    ShortcutId.MOVIES -> S.moviesTitle to D.homeMoviesCount(n, c)
+                    ShortcutId.SERIES -> S.seriesTitle to D.homeSeriesCount(n, c)
+                    ShortcutId.FAVORITES -> S.navFavorites to D.homeFavoritesCount(n, c)
+                    ShortcutId.GUIDE -> D.tvGuide to D.homeGuideSubtitle
+                }
+            }
+            val color = when (sc.id) {
+                ShortcutId.LIVE -> Color(0xFF5A3210); ShortcutId.MOVIES -> Color(0xFF173A78); ShortcutId.SERIES -> Color(0xFF47237A)
+                ShortcutId.FAVORITES -> Color(0xFF7A1B28); ShortcutId.GUIDE -> Color(0xFF11524A)
+            }
+            Column(
+                Modifier.width(150.dp).clip(RoundedCornerShape(16.dp)).background(color).clickable(onClickLabel = title) { onSelect(sc.id) }.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(title, color = Color.White, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(sub, color = Color(0xCCFFFFFF), fontFamily = Manrope, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }

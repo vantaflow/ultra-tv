@@ -8,6 +8,9 @@ import androidx.compose.runtime.Immutable
  * l'ordre par défaut, celui de la maquette.
  */
 enum class HomeBlock(val sections: List<HomeSectionId>) {
+    SHORTCUTS(listOf(HomeSectionId.SHORTCUTS)),
+    CHANNELS(listOf(HomeSectionId.CHANNELS)),
+    TOP10(listOf(HomeSectionId.TOP10)),
     RESUME(listOf(HomeSectionId.RESUME)),
     TRAKT_UP_NEXT(listOf(HomeSectionId.TRAKT_UP_NEXT)),
     TRAKT_WATCHLIST(listOf(HomeSectionId.TRAKT_WATCHLIST)),
@@ -21,7 +24,6 @@ enum class HomeBlock(val sections: List<HomeSectionId>) {
     LATEST_SERIES(listOf(HomeSectionId.LATEST_SERIES)),
     TOP_MOVIES(listOf(HomeSectionId.TOP_MOVIES)),
     TOP_SERIES(listOf(HomeSectionId.TOP_SERIES)),
-    CHANNELS(listOf(HomeSectionId.CHANNELS)),
 }
 
 /** Bloc réglable auquel appartient une rangée. */

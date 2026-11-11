@@ -17,6 +17,10 @@ import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
 
 /** Rangées de l'accueil, dans l'ordre d'affichage. [contentType] regroupe les rangées de même forme (réutilisation). */
 enum class HomeSectionId(val contentType: String) {
+    // Accueil v2 : raccourcis (Direct, Films, Séries…) et rangée « Direct » juste sous l'image « À la une », puis le Top 10.
+    SHORTCUTS("shortcuts"),
+    CHANNELS("channels"),
+    TOP10("top10"),
     RESUME("resume"),
     TRAKT_UP_NEXT("posters"),
     // Rangées calculées en local (sans Trakt), montées juste sous « Reprendre » pour qu'on les remarque.
@@ -36,7 +40,6 @@ enum class HomeSectionId(val contentType: String) {
     RECENT_CHANNELS("resume"),
     LATEST_MOVIES("posters"),
     LATEST_SERIES("posters"),
-    CHANNELS("channels"),
 }
 
 /** Rangées montrées par l'accueil tactile (pas de « regardées récemment » ni de « derniers ajouts », comme avant). */
@@ -46,6 +49,7 @@ val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
     HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3,
     HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
     HomeSectionId.BECAUSE_WATCHED, HomeSectionId.TOP_MOVIES, HomeSectionId.TOP_SERIES,
+    HomeSectionId.SHORTCUTS,
 )
 
 /** Rangées « liste Trakt », dans l'ordre. */
@@ -77,7 +81,46 @@ data class PosterCardUi(val key: String, val item: PosterItem, val isShow: Boole
 
 /** Carte chaîne : programme en cours déjà résolu (titre seul, rafraîchi toutes les minutes). */
 @Immutable
-data class ChannelCardUi(val channel: ChannelEntity, val nowTitle: String?)
+data class ChannelCardUi(val channel: ChannelEntity, val nowTitle: String?, val timeRange: String? = null)
+
+/** Compteurs des raccourcis (requêtes COUNT, hors fil principal). */
+@Immutable
+data class HomeCounts(val channels: Int = 0, val movies: Int = 0, val series: Int = 0, val favorites: Int = 0) {
+    /** Rien de synchronisé : les raccourcis seraient tous à zéro, on ne les montre pas. */
+    val any: Boolean get() = channels + movies + series > 0
+}
+
+/** Raccourcis de l'accueil, dans l'ordre d'affichage. */
+enum class ShortcutId { LIVE, MOVIES, SERIES, FAVORITES, GUIDE }
+
+/** Raccourci prêt à afficher : [count] nul = pas de compteur (Guide) ; logos de chaînes (Direct) et vignette (Films, Séries). */
+@Immutable
+data class ShortcutUi(val id: ShortcutId, val count: Int?, val logos: List<String> = emptyList(), val thumb: String? = null)
+
+/** Les cinq raccourcis, ou rien tant qu'aucun contenu n'est synchronisé. */
+fun shortcutsOf(counts: HomeCounts, channelLogos: List<String>, moviePoster: String?, seriesPoster: String?): List<ShortcutUi> =
+    if (!counts.any) emptyList() else listOf(
+        ShortcutUi(ShortcutId.LIVE, counts.channels, logos = channelLogos.filter { it.isNotBlank() }.take(3)),
+        ShortcutUi(ShortcutId.MOVIES, counts.movies, thumb = moviePoster?.takeIf { it.isNotBlank() }),
+        ShortcutUi(ShortcutId.SERIES, counts.series, thumb = seriesPoster?.takeIf { it.isNotBlank() }),
+        ShortcutUi(ShortcutId.FAVORITES, counts.favorites),
+        ShortcutUi(ShortcutId.GUIDE, null),
+    )
+
+/** Compteur avec séparateur de milliers de la langue (« 5 347 », « 5,347 »). */
+fun formatCount(n: Int, locale: java.util.Locale): String = java.text.NumberFormat.getIntegerInstance(locale).format(n.coerceAtLeast(0))
+
+/** Nombre de titres du « Top 10 aujourd'hui ». */
+const val TOP10_SIZE = 10
+
+/**
+ * « Top 10 aujourd'hui » : les tendances du jour (Trakt, déjà filtrées sur la source) si elles sont assez nombreuses ;
+ * sinon les films les mieux notés. Moins de [MIN_LOCAL_ROW] titres : pas de rangée.
+ */
+fun top10Of(trending: List<PosterCardUi>, topMovies: List<PosterCardUi>): List<PosterCardUi> {
+    val src = (if (trending.size >= MIN_LOCAL_ROW) trending else topMovies).distinctKeys { it.key }
+    return if (src.size >= MIN_LOCAL_ROW) src.take(TOP10_SIZE) else emptyList()
+}
 
 /** Toutes les rangées de l'accueil en UNE valeur immuable ; [order] dit lesquelles existent et dans quel ordre. */
 @Immutable
@@ -99,6 +142,8 @@ data class HomeRows(
     val topMovies: List<PosterCardUi> = emptyList(),
     val topSeries: List<PosterCardUi> = emptyList(),
     val channels: List<ChannelCardUi> = emptyList(),
+    val shortcuts: List<ShortcutUi> = emptyList(),
+    val top10: List<PosterCardUi> = emptyList(),
     val showingFavorites: Boolean = false,
     /** Ordre et rangées masquées choisis par l'utilisateur (Réglages › Affichage). */
     val layout: HomeLayout = HomeLayout.DEFAULT,
@@ -119,6 +164,9 @@ fun homeSectionOrder(rows: HomeRows): List<HomeSectionId> = rows.layout.apply(pr
 const val MIN_LOCAL_ROW = 4
 
 private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
+    if (rows.shortcuts.isNotEmpty()) add(HomeSectionId.SHORTCUTS)
+    if (rows.channels.isNotEmpty()) add(HomeSectionId.CHANNELS)
+    if (rows.top10.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP10)
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
     if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
@@ -132,7 +180,6 @@ private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.recentChannels.isNotEmpty()) add(HomeSectionId.RECENT_CHANNELS)
     if (rows.latestMovies.isNotEmpty()) add(HomeSectionId.LATEST_MOVIES)
     if (rows.latestSeries.isNotEmpty()) add(HomeSectionId.LATEST_SERIES)
-    if (rows.channels.isNotEmpty()) add(HomeSectionId.CHANNELS)
 }
 
 /** Rangées de l'accueil tactile, dans le même ordre que la TV. */
@@ -158,6 +205,37 @@ fun homeTopSlot(hasHero: Boolean, loaded: Boolean, providerKinds: List<String>, 
 /** Méta du hero « 2024 · Drame · ★ 7.8 » ; élément absent masqué, chaîne vide si rien n'est connu. */
 fun heroMeta(year: Int?, genre: String?, rating: Double?): String =
     listOfNotNull(year?.toString(), genre?.takeIf { it.isNotBlank() }, rating?.let { "★ %.1f".format(java.util.Locale.ROOT, it) }).joinToString(" · ")
+
+/** Ligne d'infos du hero « 2013 | Drame | 1 h 41 min » ; élément absent masqué (les notes IMDb / RT sont des pastilles à part). */
+fun heroInfoLine(year: Int?, genre: String?, runtime: String?): String =
+    listOfNotNull(year?.toString(), genre?.takeIf { it.isNotBlank() }, runtime?.takeIf { it.isNotBlank() }).joinToString(" | ")
+
+/** Durée source (« 01:41:00 », « 101 », « 6060 » en secondes) → minutes ; null si inconnue ou illisible. */
+fun durationMinutes(raw: String?): Int? {
+    val t = raw?.trim().orEmpty()
+    if (t.isEmpty()) return null
+    val m = when {
+        t.all { it.isDigit() } -> t.toIntOrNull()?.let { if (it > 600) it / 60 else it }
+        Regex("""\d{1,2}:\d{2}(:\d{2})?""").matches(t) -> t.split(':').let { it[0].toInt() * 60 + it[1].toInt() }
+        else -> null
+    }
+    return m?.takeIf { it in 1..1_500 }
+}
+
+/** « 1 h 41 min » / « 45 min » à partir des modèles localisés (« %d h », « %d min »). */
+fun runtimeLabel(minutes: Int, hourFmt: String, minFmt: String): String =
+    if (minutes >= 60) hourFmt.format(minutes / 60) + (if (minutes % 60 > 0) " " + minFmt.format(minutes % 60) else "") else minFmt.format(minutes)
+
+/** Pastilles de notes du hero : IMDb (sinon la note habituelle en repli) et Rotten Tomatoes. Absent = null. */
+data class HeroRatingBadges(val imdb: String?, val fallback: String?, val rt: String?) {
+    val isEmpty get() = imdb == null && fallback == null && rt == null
+}
+
+fun heroRatingBadges(r: com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?, fallback: Double?): HeroRatingBadges = HeroRatingBadges(
+    imdb = r?.imdb?.let { "IMDb %.1f".format(java.util.Locale.ROOT, it) },
+    fallback = if (r?.imdb == null) fallback?.takeIf { it > 0 && it <= 10 }?.let { "★ %.1f".format(java.util.Locale.ROOT, it) } else null,
+    rt = r?.rt?.let { "$it%" },
+)
 
 /** Fraction vue (0..1) ; durée inconnue → 0. */
 fun resumeProgress(positionMs: Long, durationMs: Long): Float =

@@ -108,5 +108,7 @@ fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.BECAUSE_WATCHED -> becauseWatchedBlock
     HomeBlock.TOP_MOVIES -> topRatedMovies
     HomeBlock.TOP_SERIES -> topRatedSeries
-    HomeBlock.CHANNELS -> favoriteChannels
+    HomeBlock.CHANNELS -> directTitle
+    HomeBlock.SHORTCUTS -> homeShortcutsRow
+    HomeBlock.TOP10 -> homeTop10
 }
