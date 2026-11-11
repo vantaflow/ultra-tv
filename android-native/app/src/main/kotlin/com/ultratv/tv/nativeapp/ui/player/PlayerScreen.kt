@@ -148,6 +148,7 @@ class PlayerViewModel @Inject constructor(
     private val skips: com.ultratv.tv.nativeapp.data.skip.SkipSegmentsRepository,
     val memory: PrefsChannelPlaybackMemory,
     val network: NetworkMonitor,
+    val remoteBus: com.ultratv.tv.nativeapp.data.remote.RemoteBus,
 ) : ViewModel() {
 
     val prefsFlow: Flow<UserPrefs> = prefs.flow
@@ -613,7 +614,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         while (true) {
             // Position écrite seulement en VOD (le direct affiche l'horaire du programme) et arrondie à la seconde :
             // chaque écriture recompose tout le lecteur — avant, 2 fois par seconde y compris en direct.
-            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying; if (!isLive) vm.scrobbleTick(e.isPlaying, e.positionMs, e.durationMs.coerceAtLeast(0)) }
+            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying; vm.remoteBus.setPlaying(e.isPlaying); if (!isLive) vm.scrobbleTick(e.isPlaying, e.positionMs, e.durationMs.coerceAtLeast(0)) }
             // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())
@@ -634,6 +635,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
 
     fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
+    // Télécommande sur le téléphone : pause, sauts et zapping demandés par la page web locale (voir data/remote).
+    val onRemote by androidx.compose.runtime.rememberUpdatedState<(com.ultratv.tv.nativeapp.data.remote.RemoteAction) -> Unit> { a ->
+        when (a) {
+            is com.ultratv.tv.nativeapp.data.remote.RemoteAction.PlayPause ->
+                if (isLive && replayProg == null && !tsActive) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }
+            is com.ultratv.tv.nativeapp.data.remote.RemoteAction.Seek ->
+                if (tsActive) tsJump((a.deltaMs / 1_000).toInt())
+                else if (!isLive) session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, a.deltaMs, it.durationMs)) }
+            is com.ultratv.tv.nativeapp.data.remote.RemoteAction.Zap -> if (isLive) scope.launch { vm.zap(a.forward)?.let { currentUrl = it } }
+            is com.ultratv.tv.nativeapp.data.remote.RemoteAction.Key -> Unit      // gérées par l'activité principale
+        }
+        touch()
+    }
+    LaunchedEffect(Unit) { vm.remoteBus.actions.collect { onRemote(it) } }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { vm.remoteBus.setPlaying(null) } }
     // Direct : la surcouche sert d'abord de BANDEAU (chaîne, programme) ; Haut/Bas zappent, OK ouvre la liste.
     // Les commandes ne prennent la main (focus) qu'avec Gauche/Droite, Menu ou Info. Sans cette séparation,
     // le 1er zap affichait les commandes et la touche suivante y déplaçait le focus (plus de zapping, OK = pause).

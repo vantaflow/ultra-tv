@@ -28,6 +28,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.navigation.NavGraphBuilder
@@ -111,17 +112,22 @@ class MainActivity : ComponentActivity() {
     @Inject lateinit var cloudSync: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.CloudSyncManager>
     @Inject lateinit var remindersScheduler: dagger.Lazy<com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler>
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
+    @Inject lateinit var phoneRemote: dagger.Lazy<com.ultratv.tv.nativeapp.data.remote.RemoteController>
+    @Inject lateinit var remoteBus: com.ultratv.tv.nativeapp.data.remote.RemoteBus
 
     override fun onStop() {
         super.onStop()
         com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.setTracking(false)
+        // Télécommande sur le téléphone : le serveur local s'arrête quand l'appli quitte le premier plan.
+        lifecycleScope.launch(Dispatchers.IO) { runCatching { phoneRemote.get().onForeground(false) } }
     }
 
     override fun onStart() {
         super.onStart()
         com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.setTracking(true)
+        lifecycleScope.launch(Dispatchers.IO) { runCatching { phoneRemote.get().onForeground(true) } }
         // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire
         // des jours sur une box et le guide ne couvre que les 24 h suivant sa synchro.
         if (::providerRepo.isInitialized) lifecycleScope.launch(Dispatchers.IO) { providerRepo.get().refreshEpgIfStale() }
@@ -148,6 +154,12 @@ class MainActivity : ComponentActivity() {
             runCatching { recordingScheduler.get().rearmAll() }
         }
         setContent { Root() }
+        // Télécommande sur le téléphone : flèches / OK / Retour injectés DANS l'appli (aucune permission système).
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                remoteBus.actions.collect { a -> if (a is com.ultratv.tv.nativeapp.data.remote.RemoteAction.Key) injectKey(a.key) }
+            }
+        }
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.attach(this)
         // Android 12+ : le geste « accueil » entre en image dans l'image sans passer par onUserLeaveHint, tant que le lecteur est affiché.
         if (android.os.Build.VERSION.SDK_INT >= 31 && !com.ultratv.tv.nativeapp.ui.common.isTelevision(this)) {
@@ -261,6 +273,21 @@ class MainActivity : ComponentActivity() {
             return true
         }
         return super.dispatchKeyEvent(event)
+    }
+
+    /** Envoie une touche (appui + relâchement) au contenu de l'activité, comme une vraie télécommande. */
+    private fun injectKey(k: com.ultratv.tv.nativeapp.data.remote.RemoteKey) {
+        val code = when (k) {
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.UP -> android.view.KeyEvent.KEYCODE_DPAD_UP
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.DOWN -> android.view.KeyEvent.KEYCODE_DPAD_DOWN
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.LEFT -> android.view.KeyEvent.KEYCODE_DPAD_LEFT
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.RIGHT -> android.view.KeyEvent.KEYCODE_DPAD_RIGHT
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.OK -> android.view.KeyEvent.KEYCODE_DPAD_CENTER
+            com.ultratv.tv.nativeapp.data.remote.RemoteKey.BACK -> android.view.KeyEvent.KEYCODE_BACK
+        }
+        val t = android.os.SystemClock.uptimeMillis()
+        window.decorView.dispatchKeyEvent(android.view.KeyEvent(t, t, android.view.KeyEvent.ACTION_DOWN, code, 0))
+        window.decorView.dispatchKeyEvent(android.view.KeyEvent(t, t + 40, android.view.KeyEvent.ACTION_UP, code, 0))
     }
 
     override fun onSearchRequested(): Boolean { StartupNav.searchRequest.value += 1; return true }
@@ -473,6 +500,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition) {
     }
     LaunchedEffect(pending) {
         val p = pending ?: return@LaunchedEffect
+        // Lecture demandée depuis le téléphone pendant que le lecteur est ouvert : on le remplace, on n'en empile pas un second.
+        if (nav.currentBackStackEntry?.destination?.route?.startsWith("player") == true) nav.popBackStack()
         nav.navigate(Routes.player(p.url, p.title))
         StartupNav.pending.value = null
     }

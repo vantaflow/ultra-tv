@@ -6,6 +6,8 @@ import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.cardPhone
+import com.ultratv.tv.nativeapp.i18n.remoteHint
+import com.ultratv.tv.nativeapp.i18n.remoteTitle
 import com.ultratv.tv.nativeapp.i18n.phoneReceived
 import com.ultratv.tv.nativeapp.i18n.stalkerFailed
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
@@ -93,7 +95,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, PHONE, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -339,6 +341,12 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             }
         }
     }
+    // Recherche et télécommande depuis le téléphone (réseau local) : pour TV et box seulement.
+    if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+            PrefRow(D.remoteTitle, "", hint = D.remoteHint) { dialog = OpenDialog.REMOTE }
+        }
+    }
     GroupLabel(D.backup)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         PrefRow(D.exportBackup, "") { vm.prepareBackup(S.toastBackupReady, password = backupPwd.takeIf { it.isNotEmpty() }); saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json") }
@@ -351,6 +359,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             + (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) emptyList() else listOf(OpenDialog.PHONE to D.cardPhone)), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
+        OpenDialog.REMOTE -> PhoneRemoteDialog(hiltViewModel(), onClose = { dialog = OpenDialog.NONE })
         OpenDialog.PHONE -> { dialog = OpenDialog.NONE; vm.startWebSend(phoneReceived, stalkerFailed) }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
