@@ -231,14 +231,17 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .guide { display: flex; flex-direction: column; height: 100%; padding: 1.5rem 2rem 1rem; gap: 1rem; min-width: 0; }
 .guide-grid { flex: 1 1 auto; min-height: 0; overflow: auto; position: relative; border-top: 1px solid var(--surface-3); }
 .g-head { position: sticky; top: 0; z-index: 4; height: 2.25rem; background: var(--bg); display: flex; border-bottom: 1px solid var(--surface-3); }
-.g-corner { position: sticky; inset-inline-start: 0; z-index: 5; width: 14rem; flex: 0 0 14rem; background: var(--bg); }
+.g-corner { position: sticky; inset-inline-start: 0; z-index: 5; width: var(--g-col, 18rem); flex: 0 0 var(--g-col, 18rem); background: var(--bg); }
 .g-time { position: absolute; top: 0; height: 100%; display: flex; align-items: center; padding-inline-start: 0.5rem; font-size: 0.8125rem; color: var(--text-3); font-weight: 700; border-inline-start: 1px solid var(--surface-3); }
 .g-row { display: flex; position: relative; height: 4.5rem; }
-.g-chan { position: sticky; inset-inline-start: 0; z-index: 3; width: 14rem; flex: 0 0 14rem; background: var(--bg); display: flex; align-items: center; gap: 0.75rem; padding-inline-end: 0.75rem; }
+.g-chan { position: sticky; inset-inline-start: 0; z-index: 3; width: var(--g-col, 18rem); flex: 0 0 var(--g-col, 18rem); background: var(--bg); display: flex; align-items: center; gap: 0.75rem; padding-inline-end: 0.75rem; }
 .g-chan .num { width: 2rem; color: var(--text-4); font-weight: 700; font-size: 0.8125rem; }
 .g-chan .logo { width: 2.5rem; height: 1.75rem; flex: 0 0 auto; border-radius: 4px; overflow: hidden; background: var(--surface-3); }
 .g-chan .logo img { object-fit: contain; width: 100%; height: 100%; }
-.g-chan b { font-size: 0.875rem; }
+.g-chan b { font-size: 0.875rem; line-height: 1.2; min-width: 0; flex: 1 1 auto; }
+.g-chan .num { flex: 0 0 auto; }
+/* Logos masqués (Réglages › Affichage) : le nom prend la place libérée. */
+[data-logos="off"] .logo { display: none; }
 .g-track { position: relative; flex: 0 0 auto; height: 100%; }
 .g-prog { position: absolute; top: 0.3rem; bottom: 0.3rem; border-radius: 0.75rem; padding: 0.4rem 0.75rem; background: var(--surface); color: var(--text-2); display: flex; flex-direction: column; justify-content: center; gap: 2px; overflow: hidden; text-align: start; border-inline-start: 2px solid var(--bg); }
 .g-prog:hover { background: var(--surface-2); }

@@ -6,6 +6,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Guide TV : sélecteur de groupe de chaînes dans l'en-tête (Favoris, Tout et catégories du Direct), mémorisé par profil ; la grille ne charge que les chaînes du groupe.
+- Guide TV et Direct : réglage « Logos des chaînes » (Afficher / Masquer, par profil ; numéro et nom à la place du logo, y compris dans l'aperçu) et colonne des noms du guide plus large par défaut et réglable (Étroite / Normale / Large), noms sur deux lignes ; sur TV, tactile et bureau.
+
+### Corrigé
+- Guide TV : le titre « Guide » n'est plus coupé quand la pastille du groupe est longue (la pastille s'abrège avec une ellipse).
 
 ## [1.2.88] — 2026-11-11 (Android)
 

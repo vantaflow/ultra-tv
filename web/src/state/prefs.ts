@@ -25,6 +25,10 @@ export interface Prefs {
   /** Animations : « auto » suit le réglage « réduire les animations » du système. */
   animations: "auto" | "off" | "subtle" | "normal";
   liveCat: Record<string, string>;
+  /** Logos des chaînes (Direct, guide, listes) : faux = numéro et nom seulement. */
+  channelLogos: boolean;
+  /** Largeur de la colonne des noms du guide : étroite, normale, large. */
+  guideCol: "narrow" | "normal" | "wide";
   /** DNS personnalisé (application de bureau) ; local à l'appareil, jamais synchronisé. */
   dns: DnsSettings;
 }
@@ -37,7 +41,7 @@ const defaults = (): Prefs => ({
   theme: "auto", accent: ACCENTS[0]!, lang: detectLang(), activeSourceId: null,
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
-  volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {},
+  volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
 });
 

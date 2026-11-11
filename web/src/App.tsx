@@ -26,10 +26,11 @@ import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
 import { loadCloud, startCloudSchedule } from "@/cloud/service";
 import { cloudAvailable } from "@/cloud/client";
+import { guideColRem } from "@/lib/guideCol";
 import { useTraktPrewarm, useTraktResumeImport, useTraktSync } from "@/trakt/hooks";
 
 function Effects() {
-  const { theme, accent, lang, syncOn, animations } = usePrefs();
+  const { theme, accent, lang, syncOn, animations, channelLogos, guideCol } = usePrefs();
   const nav = useNavigate();
   const loc = useLocation();
   const { ready, list } = useSources();
@@ -47,13 +48,15 @@ function Effects() {
       r.dir = dirOf(lang);
       // Animations : « off » coupe transitions et défilement de « À la une », « subtle » les raccourcit.
       r.dataset.anim = animations === "auto" ? (matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "normal") : animations;
+      r.dataset.logos = channelLogos ? "on" : "off";
+      r.style.setProperty("--g-col", `${guideColRem(guideCol)}rem`);
       void bridge()?.setTitleBarTheme?.(resolveTheme(theme) === "dark");
     };
     apply();
     const mq = matchMedia("(prefers-color-scheme: light)");
     mq.addEventListener("change", apply);
     return () => mq.removeEventListener("change", apply);
-  }, [theme, accent, lang, animations]);
+  }, [theme, accent, lang, animations, channelLogos, guideCol]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("mac", bridge()?.platform === "darwin");

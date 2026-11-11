@@ -15,6 +15,7 @@ import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
 import { setCategoriesEnabled } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
+import type { GuideCol } from "@/lib/guideCol";
 import { readAutoUpdate, writeAutoUpdate } from "@/net/autoUpdate";
 import { Icon, type IconName } from "@/ui/Icon";
 import { VList, arrayRows } from "@/ui/Virtual";
@@ -249,6 +250,10 @@ function DisplayPane() {
       <h2>{t("set.display")}</h2>
       <Pref label={t("set.animations")}>
         <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
+      </Pref>
+      <Pref label={t("set.channelLogos")}><Switch on={p.channelLogos} onChange={(channelLogos) => p.set({ channelLogos })} label={t("set.channelLogos")} /></Pref>
+      <Pref label={t("set.guideCol")}>
+        <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
       </Pref>
       <Pref label={t("set.theme")}>
         <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }]} />
