@@ -55,3 +55,12 @@ fun epgProgressText(D: DesignStrings, bytes: Long, total: Long, programmes: Int)
     val n = java.text.NumberFormat.getIntegerInstance().format(programmes)
     return if (programmes > 0) "$size · ${D.countProgrammes.replace("%s", n)}" else size
 }
+// Sélecteur de groupe de chaînes du Guide TV.
+val DesignStrings.guideGroupTitle get() = t("Channel group", "Groupe de chaînes", "Grupo de canales", "مجموعة القنوات")
+fun DesignStrings.guideGroupPill(name: String) = when (lang) {
+    AppLang.French -> "Groupe : $name"
+    AppLang.Spanish -> "Grupo: $name"
+    AppLang.Arabic -> "المجموعة: $name"
+    else -> "Group: $name"
+}
+val DesignStrings.guideGroupEmpty get() = t("No channel with a guide in this group for this time.", "Aucune chaîne de ce groupe n'a de guide sur cette période.", "Ningún canal de este grupo tiene guía en este periodo.", "لا توجد قناة في هذه المجموعة لها دليل في هذه الفترة.")

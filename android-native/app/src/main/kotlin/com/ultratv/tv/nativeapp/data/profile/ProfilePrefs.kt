@@ -23,6 +23,8 @@ data class ProfilePrefs(
     val includeUnknownLang: Boolean? = null,
     /** Mode simple (grandes tuiles à la place de l'accueil) : propre à chaque profil. */
     val simpleMode: Boolean? = null,
+    /** Dernier groupe de chaînes choisi dans le Guide TV (identifiant de catégorie du Direct, « __all__ », « __fav__ »). Pas une préférence globale : jamais appliqué à [UserPrefs]. */
+    val guideGroup: String? = null,
 ) {
     /** Applique les surcharges du profil sur les préférences globales. [isKids] force le contrôle parental. */
     fun applyTo(base: UserPrefs, isKids: Boolean = false): UserPrefs = base.copy(
@@ -51,6 +53,7 @@ data class ProfilePrefs(
         const val INCLUDE_MULTI = "include_multi"
         const val INCLUDE_UNKNOWN = "include_unknown"
         const val SIMPLE_MODE = "simple_mode"
+        const val GUIDE_GROUP = "guide_group"
 
         fun fromMap(m: Map<String, String>) = ProfilePrefs(
             theme = m[THEME]?.let { AppTheme.parse(it) },
@@ -64,6 +67,7 @@ data class ProfilePrefs(
             includeMulti = m[INCLUDE_MULTI]?.toBooleanStrictOrNull(),
             includeUnknownLang = m[INCLUDE_UNKNOWN]?.toBooleanStrictOrNull(),
             simpleMode = m[SIMPLE_MODE]?.toBooleanStrictOrNull(),
+            guideGroup = m[GUIDE_GROUP]?.takeIf { it.isNotEmpty() },
         )
     }
 }

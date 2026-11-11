@@ -30,6 +30,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Guide TV (Android) : les chaînes des catégories désactivées ne reçoivent plus de programmes (requête de rattachement filtrée).
 - Playlists M3U (Android) : `url-tvg` / `x-tvg-url` de l'en-tête `#EXTM3U` sont pris en compte (plusieurs adresses séparées par des virgules ; un guide en échec n'empêche pas les suivants), y compris pour une playlist locale.
 - Journaux (Android) : l'échec du guide n'écrit que le type d'erreur, le code HTTP et le nombre de tentatives (jamais d'adresse ni d'identifiants) ; RemoteLog nettoie en plus via LogSanitizer.
+### Ajouté
+- Guide TV : sélecteur de groupe de chaînes dans l'en-tête (Favoris, Tout et catégories du Direct), mémorisé par profil ; la grille ne charge que les chaînes du groupe.
 
 ## [1.2.88] — 2026-11-11 (Android)
 
