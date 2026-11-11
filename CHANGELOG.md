@@ -8,6 +8,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Langues : polonais (premier jet, relecture bienvenue sur Weblate)
 - Lien « Aider à traduire » dans Réglages › Langue (TV avec QR code, mobile, bureau)
 
+### Corrigé
+- Bureau : fenêtre coupée en bas sur les petits écrans (portable 1366×768 avec zoom Windows 125 % : zone utile d'environ 614 px, fenêtre fixée à 1280×800 avec hauteur minimale de 640). La taille initiale est désormais bornée à la zone de travail de l'écran où s'ouvre la fenêtre (1280×800 au plus, centrée, avec une marge), la hauteur minimale passe à 540 px (largeur minimale 900 px) et ne dépasse jamais la zone de travail, même à 150 % de zoom. Le plein écran reste un choix de l'utilisateur.
+- Bureau : les écrans défilent de nouveau quand leur contenu dépasse la hauteur de la fenêtre. La grille de la coquille (et celles de Réglages et des listes en deux colonnes) n'avait pas de hauteur de ligne bornée : le contenu agrandissait la page au lieu de défiler, si bien que le bas des Réglages, du Détail et des autres écrans restait hors de la fenêtre. Les boîtes de dialogue sont limitées à la hauteur de la fenêtre avec défilement interne, et leurs boutons d'action restent toujours visibles en bas.
+
 ### Documentation
 - Documentation : guide de traduction (TRANSLATING.md) et modèle d'issue pour les traductions
 
