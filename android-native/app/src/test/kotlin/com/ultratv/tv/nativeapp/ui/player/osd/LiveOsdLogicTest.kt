@@ -14,10 +14,10 @@ class LiveOsdLogicTest {
 
     // ── OSD fermé ──
 
-    @Test fun ferme_OKetBas_ouvrentLOsd() {
-        assertEquals(OsdDecision.OpenOsd, decide(OsdKey.OK))
+    @Test fun ferme_OK_ouvreLaListe_Bas_ouvreLOsd() {
+        assertEquals(OsdDecision.OpenChannels, decide(OsdKey.OK))   // OK : liste des chaînes
         assertEquals(OsdDecision.OpenOsd, decide(OsdKey.DOWN))
-        assertEquals(OsdDecision.OpenOsd, decide(OsdKey.OK, hidden = true))
+        assertEquals(OsdDecision.OpenChannels, decide(OsdKey.OK, hidden = true))
         assertEquals(OsdDecision.OpenOsd, decide(OsdKey.DOWN, hidden = true))
     }
 
