@@ -323,6 +323,7 @@ function SyncPane() {
       </div>
       {sync.running && sync.progress && <div className="bigbar"><i style={{ width: `${Math.round(sync.progress.ratio * 100)}%` }} /></div>}
       {sync.error && <div className="alert err" role="alert"><Icon name="alert" size={20} />{sync.error}</div>}
+      {!sync.running && !sync.error && sync.skipped > 0 && <div className="alert" role="status"><Icon name="alert" size={20} />{t("sync.doneSkipped", { count: sync.skipped })}</div>}
       <Pref label={t("set.syncWhen")}>
         <Seg<"launch" | "manual"> label={t("set.syncWhen")} value={p.syncOn} onChange={(syncOn) => p.set({ syncOn })} options={[{ v: "launch", label: t("set.syncLaunch") }, { v: "manual", label: t("set.syncManual") }]} />
       </Pref>

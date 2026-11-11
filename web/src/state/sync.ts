@@ -12,15 +12,17 @@ interface SyncStore {
   running: boolean;
   progress: SyncProgress | null;
   error: string | null;
+  /** Catégories Stalker sautées lors de la dernière synchro réussie (0 = aucune) : message « Synchronisation terminée · X catégories ignorées ». */
+  skipped: number;
   start: (source: Source, opts?: { preserveFlags?: boolean; silent?: boolean }) => Promise<boolean>;
   cancel: () => void;
 }
 
 export const useSync = create<SyncStore>((set, get) => ({
-  sourceId: null, running: false, progress: null, error: null,
+  sourceId: null, running: false, progress: null, error: null, skipped: 0,
   async start(source, opts = {}) {
     if (get().running) return false;
-    set({ sourceId: source.id!, running: true, progress: null, error: null });
+    set({ sourceId: source.id!, running: true, progress: null, error: null, skipped: 0 });
     let type = source.type;
     try {
       // L'objet de la liste peut dater d'avant une bascule de génération : on repart de la ligne courante.
@@ -29,9 +31,12 @@ export const useSync = create<SyncStore>((set, get) => ({
       const converted = convertToXtream(fresh);
       if (converted) { await saveSource(converted); fresh = converted; }
       type = fresh.type;
-      await syncSource({ ...fresh }, (progress) => set({ progress }), { preserveFlags: opts.preserveFlags });
+      await syncSource({ ...fresh }, (progress) => set({ progress, skipped: progress.skipped ?? get().skipped }), { preserveFlags: opts.preserveFlags });
       set({ running: false });
-      if (!opts.silent) useUi.getState().toast(translate(usePrefs.getState().lang, "toast.synced"));
+      if (!opts.silent) {
+        const lang = usePrefs.getState().lang, skipped = get().skipped;
+        useUi.getState().toast(skipped > 0 ? translate(lang, "sync.doneSkipped", { count: skipped }) : translate(lang, "toast.synced"));
+      }
       return true;
     } catch (e) {
       const err = e as Error;

@@ -10,6 +10,7 @@
 
 import { parseTolerant } from "./json";
 import { HttpError, transportFetch, type Transport } from "./transport";
+import { StalkerEmptyError, type StalkerSyncLog } from "./stalkerLog";
 
 export const STALKER_UA = "Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3";
 export const STALKER_X_UA = "Model: MAG250; Link: WiFi";
@@ -41,12 +42,17 @@ export function unpackCreds(stored: string): { login: string; password: string }
   return i < 0 ? { login: "", password: stored } : { login: stored.slice(0, i), password: stored.slice(i + 1) };
 }
 
-/** Adresse interne stockée dans le catalogue : `stalker:<itv|vod>:<épisode>:<commande>`. */
-export const stalkerLink = (type: "itv" | "vod", cmd: string, series?: number | null) => `stalker:${type}:${series ?? ""}:${cmd}`;
+/** Type d'une adresse interne : direct, film (module `vod`) ou épisode du module `series` (Ministra récent). */
+export type StalkerLinkType = "itv" | "vod" | "series";
+
+/** Adresse interne stockée dans le catalogue : `stalker:<itv|vod|series>:<épisode>:<commande>`. */
+export const stalkerLink = (type: StalkerLinkType, cmd: string, series?: number | null) => `stalker:${type}:${series ?? ""}:${cmd}`;
 export const isStalkerLink = (u: string | null | undefined): u is string => !!u && u.startsWith("stalker:");
-export function parseStalkerLink(u: string): { type: "itv" | "vod"; cmd: string; series: number | null } | null {
-  const m = /^stalker:(itv|vod):(\d*):([\s\S]+)$/.exec(u);
-  return m ? { type: m[1] as "itv" | "vod", series: m[2] ? Number(m[2]) : null, cmd: m[3]! } : null;
+/** Une série du module `series` peut n'avoir aucune commande (ses épisodes en ont) ; un direct ou un film sans commande est illisible. */
+export function parseStalkerLink(u: string): { type: StalkerLinkType; cmd: string; series: number | null } | null {
+  const m = /^stalker:(itv|vod|series):(\d*):([\s\S]*)$/.exec(u);
+  if (!m || (!m[3] && m[1] !== "series")) return null;
+  return { type: m[1] as StalkerLinkType, series: m[2] ? Number(m[2]) : null, cmd: m[3]! };
 }
 
 /** Lien du portail : préfixe de lecteur retiré (« ffmpeg http://… », « auto http://… »). */
@@ -172,6 +178,15 @@ const asObjs = (v: unknown): Obj[] => (Array.isArray(v) ? v.filter((x): x is Obj
 /** Réponse refusée par le portail (jeton périmé, MAC inconnue) : présentée comme « identifiants refusés ». */
 export class StalkerAuthError extends Error { constructor() { super("auth"); this.name = "StalkerAuthError"; } }
 
+/** Plafond de pages d'une liste, nombre de tentatives par page, pages lues en parallèle. */
+export const MAX_PAGES = 20_000;
+export const PAGE_ATTEMPTS = 3;
+/** Délai initial entre deux tentatives d'une page (ms) ; réglable pour les tests (1 ms). */
+export const retryDefaults = { delayMs: 700 };
+const PAGE_PARALLELISM = 3;
+/** Préfixe des catégories venues du module `type=series` (leurs identifiants peuvent coïncider avec ceux de la VOD). */
+export const SERIES_PREFIX = "s:";
+
 export interface StalkerCategory { id: string; title: string }
 export interface StalkerItem extends Obj { id?: string | number; name?: string; cmd?: string }
 export interface StalkerEpisode { id: number; season: number; num: number; title: string; url: string; plot: string | null; img: string | null }
@@ -188,8 +203,11 @@ export class StalkerClient {
   constructor(
     private t: Transport,
     private a: StalkerAccount,
-    private opts: { endpoint?: string | null; onEndpoint?: (api: string) => void; signal?: AbortSignal } = {},
+    private opts: { endpoint?: string | null; onEndpoint?: (api: string) => void; signal?: AbortSignal; log?: StalkerSyncLog } = {},
   ) {}
+
+  /** Délai avant la 2e tentative d'une page (doublé ensuite) ; réduit dans les tests. */
+  retryDelayMs = retryDefaults.delayMs;
 
   get endpoint(): string | null { return this.session?.api ?? this.opts.endpoint ?? null; }
 
@@ -262,42 +280,99 @@ export class StalkerClient {
   /** Vérifie la connexion (formulaire d'ajout) et renvoie le point d'entrée qui répond. */
   async probe(): Promise<string> { return (await this.ensure(true)).api; }
 
-  /** Appel authentifié → racine `js` ; une seule nouvelle poignée de main si le portail refuse le jeton. */
+  /** Oublie la session `s` si c'est encore la courante : une requête refusée avec un ancien jeton ne jette pas la session déjà renouvelée. */
+  private drop(s: { api: string; token: string }) { if (this.session === s) this.session = null; }
+
+  /**
+   * Appel authentifié → racine `js` ; une seule nouvelle poignée de main si le portail refuse le jeton.
+   * Requêtes en parallèle : une seule poignée de main pour toutes (la session renouvelée est partagée).
+   */
   async call(params: Params): Promise<unknown> {
     for (let attempt = 0; attempt < 2; attempt++) {
       const s = await this.ensure();
       let body: string;
       try { body = await this.get(s.api, s.token, params); } catch (e) {
-        if (e instanceof HttpError && (e.status === 401 || e.status === 403) && attempt === 0) { this.session = null; continue; }
+        if (e instanceof HttpError && (e.status === 401 || e.status === 403) && attempt === 0) { this.drop(s); continue; }
         throw e;
       }
       const refused = !body.trimStart().startsWith("{") || /Authorization failed/i.test(body);
       if (!refused) {
         try { const root = parseTolerant<Obj>(body); if (root && typeof root === "object" && "js" in root) return root.js; } catch { /* refus */ }
       }
-      if (attempt === 0) { this.session = null; continue; }
+      if (attempt === 0) { this.drop(s); continue; }
     }
     throw new StalkerAuthError();
   }
 
-  /** Toutes les pages d'une liste `get_ordered_list` (3 à la fois après la première ; plafond 3 000 pages). */
+  /** Une tentative de plus pour un délai dépassé, une coupure, un 429, un 5xx ou une réponse vide (délai croissant). */
+  private async retrying<T>(type: string, fn: () => Promise<T>): Promise<T> {
+    let wait = this.retryDelayMs;
+    for (let attempt = 1; ; attempt++) {
+      try { return await fn(); } catch (e) {
+        const err = e as Error;
+        const transient = (e instanceof HttpError && (e.status === 429 || e.status >= 500)) || err.name === "TimeoutError" || err.name === "TypeError" || e instanceof StalkerEmptyError;
+        if (!transient || attempt >= PAGE_ATTEMPTS || this.opts.signal?.aborted) throw e;
+        this.opts.log?.retry(type, attempt, e);
+        await new Promise((r) => setTimeout(r, wait));
+        wait *= 2;
+      }
+    }
+  }
+
+  /** Une page de liste. Hors première page, une réponse inutilisable est une erreur (jamais une page vide silencieuse). */
+  private async page(params: Params, strict: boolean): Promise<{ items: StalkerItem[]; total: number | null; per: number } | null> {
+    const js = await this.call(params);
+    if (!js || typeof js !== "object" || Array.isArray(js)) { if (strict) throw new StalkerEmptyError(); return null; }
+    const o = js as Obj;
+    const items = asObjs(o.data);
+    const t = o.total_items == null || o.total_items === "" ? NaN : Number(o.total_items);
+    const per = Number(o.max_page_items);
+    return { items, total: Number.isFinite(t) && t > 0 ? t : null, per: Number.isFinite(per) && per > 0 ? per : items.length };
+  }
+
+  /**
+   * Toutes les pages d'une liste `get_ordered_list` : la première donne `total_items` et `max_page_items`, les suivantes
+   * sont lues 3 à la fois (plafond MAX_PAGES : 14 titres par page, 50 000 titres = 3 572 pages). Sans `total_items` :
+   * pages lues une à une jusqu'à une page vide ou déjà vue. `max_page_items` absent ou 0 : taille de la page lue.
+   * Chaque page a ses nouvelles tentatives ; une page toujours en échec fait échouer la liste (la synchro saute alors la
+   * catégorie et garde son contenu précédent).
+   */
   async paged(params: Params): Promise<StalkerItem[]> {
-    const first = (await this.call({ ...params, p: 1 })) as Obj | null;
-    const items = asObjs(first?.data);
-    const total = Number(first?.total_items ?? items.length) || items.length;
-    const per = Number(first?.max_page_items ?? items.length) || items.length;
-    const pages = per > 0 ? Math.min(3000, Math.max(1, Math.ceil(total / per))) : 1;
-    const out: StalkerItem[] = [...items];
-    if (pages > 1 && items.length) {
+    const type = String(params.type ?? "-");
+    const fetchPage = (n: number, strict: boolean) => this.retrying(type, () => this.page({ ...params, p: n }, strict));
+    const first = await fetchPage(1, false);
+    if (!first || !first.items.length) return [];
+    const idOf = (o: Obj) => str(o, "id") ?? JSON.stringify(o);
+    if (first.total === null) {
+      const out = new Map<string, StalkerItem>();
+      for (const o of first.items) if (!out.has(idOf(o))) out.set(idOf(o), o);
+      for (let n = 2; n <= MAX_PAGES; n++) {
+        const items = (await fetchPage(n, false))?.items ?? [];
+        // Page vide, ou portail qui ignore `p` et renvoie toujours la même page : fin de la liste.
+        if (!items.length || items.every((o) => out.has(idOf(o)))) break;
+        for (const o of items) if (!out.has(idOf(o))) out.set(idOf(o), o);
+      }
+      return [...out.values()];
+    }
+    const pages = Math.min(MAX_PAGES, Math.max(1, Math.ceil(first.total / first.per)));
+    const results = new Map<number, StalkerItem[]>([[1, first.items]]);
+    if (pages > 1) {
       const queue = Array.from({ length: pages - 1 }, (_, i) => i + 2);
-      const results = new Map<number, Obj[]>();
-      await Promise.all(Array.from({ length: 3 }, async () => {
-        for (let n = queue.shift(); n !== undefined; n = queue.shift()) results.set(n, asObjs(((await this.call({ ...params, p: n })) as Obj | null)?.data));
+      let failed = false;
+      await Promise.all(Array.from({ length: PAGE_PARALLELISM }, async () => {
+        for (let n = queue.shift(); n !== undefined && !failed; n = queue.shift()) {
+          try { results.set(n, (await fetchPage(n, true))?.items ?? []); } catch (e) { failed = true; throw e; }
+        }
       }));
-      for (let n = 2; n <= pages; n++) out.push(...(results.get(n) ?? []));
     }
     const seen = new Set<string>();
-    return out.filter((o) => { const id = str(o, "id"); if (!id) return true; if (seen.has(id)) return false; seen.add(id); return true; });
+    const out: StalkerItem[] = [];
+    for (let n = 1; n <= pages; n++) for (const o of results.get(n) ?? []) {
+      const id = str(o, "id");
+      if (id) { if (seen.has(id)) continue; seen.add(id); }
+      out.push(o);
+    }
+    return out;
   }
 
   private static categories(js: unknown): StalkerCategory[] {
@@ -311,7 +386,14 @@ export class StalkerClient {
   }
 
   genres = async () => StalkerClient.categories(await this.call({ type: "itv", action: "get_genres" }));
-  vodCategories = async () => StalkerClient.categories(await this.call({ type: "vod", action: "get_categories" }));
+  vodCategories = () => this.retrying("vod", async () => StalkerClient.categories(await this.call({ type: "vod", action: "get_categories" })));
+
+  /**
+   * Catégories du module `type=series` (portails Ministra récents où les séries ne sont plus dans la VOD), identifiants
+   * préfixés par `s:`. Liste vide si le portail n'a pas ce module ; erreur réseau propagée (l'appelant se replie sur la VOD).
+   */
+  seriesCategories = () => this.retrying("series", async () =>
+    StalkerClient.categories(await this.call({ type: "series", action: "get_categories" })).map((c) => ({ ...c, id: SERIES_PREFIX + c.id })));
 
   /** Tout le direct : `get_all_channels`, sinon la liste paginée `genre=*`. */
   async allChannels(): Promise<StalkerItem[]> {
@@ -323,55 +405,95 @@ export class StalkerClient {
     return this.paged({ type: "itv", action: "get_ordered_list", genre: "*", fav: 0, sortby: "number" });
   }
 
+  /** Séries d'une catégorie du module `type=series` (identifiant avec ou sans préfixe). */
+  seriesOfCategory = (id: string) =>
+    this.paged({ type: "series", action: "get_ordered_list", category: id.startsWith(SERIES_PREFIX) ? id.slice(SERIES_PREFIX.length) : id, fav: 0, sortby: "added" });
+
   vodOfCategory = (id: string) => this.paged({ type: "vod", action: "get_ordered_list", category: id, fav: 0, sortby: "added" });
 
   /**
    * Épisodes d'une série : saisons du portail récent (`is_season` puis `is_episode`), sinon le tableau `series`
-   * de l'élément (numéros d'épisodes) et sa commande.
+   * de l'élément (numéros d'épisodes) et sa commande. Un identifiant préfixé `s:` désigne une série du module
+   * `type=series` : saisons et épisodes sont alors demandés à ce module, et les liens d'épisodes sont de type `series`.
    */
   async episodes(seriesId: string, cmd: string | null, numbers: number[] | null): Promise<StalkerEpisode[]> {
-    const base = { type: "vod", action: "get_ordered_list", movie_id: seriesId, season_id: 0, episode_id: 0, fav: 0, sortby: "added" };
+    const module = seriesId.startsWith(SERIES_PREFIX);
+    const apiType = module ? "series" : "vod";
+    const movieId = module ? seriesId.slice(SERIES_PREFIX.length) : seriesId;
+    const base = { type: apiType, action: "get_ordered_list", movie_id: movieId, season_id: 0, episode_id: 0, fav: 0, sortby: "added" };
     const listed = await this.paged(base).catch(() => [] as StalkerItem[]);
-    const seasons = listed.filter((o) => flag(o, "is_season"));
+    // Module séries : certains portails ne posent pas `is_season` ; un élément qui porte un tableau `series` en est une.
+    const seasons = listed.filter((o) => flag(o, "is_season") || (module && !flag(o, "is_episode") && Array.isArray(o.series)));
     const out: StalkerEpisode[] = [];
     if (seasons.length) {
       for (const [i, se] of seasons.entries()) {
         const no = Number(str(se, "season_number")) || Number(/(\d+)/.exec(str(se, "name") ?? "")?.[1]) || i + 1;
         const sid = str(se, "id"); if (!sid) continue;
-        const eps = (await this.paged({ ...base, season_id: sid }).catch(() => [] as StalkerItem[])).filter((e) => flag(e, "is_episode") || str(e, "cmd"));
+        const eps = (await this.paged({ ...base, season_id: sid }).catch(() => [] as StalkerItem[])).filter((e) => flag(e, "is_episode") || (str(e, "cmd") && !flag(e, "is_season")));
         if (eps.length) {
           eps.forEach((e, j) => {
             const c = str(e, "cmd"); if (!c) return;
             const n = Number(str(e, "series_number") ?? str(e, "episode_number")) || j + 1;
-            out.push({ id: no * 10_000 + n, season: no, num: n, title: str(e, "name") ?? "", url: stalkerLink("vod", c, n), plot: str(e, "description"), img: str(e, "screenshot_uri") });
+            out.push({ id: no * 10_000 + n, season: no, num: n, title: str(e, "name") ?? "", url: stalkerLink(apiType, c, n), plot: str(e, "description"), img: str(e, "screenshot_uri") });
           });
         } else {
           const c = str(se, "cmd");
           const nums = Array.isArray(se.series) ? (se.series as unknown[]).map(Number).filter(Number.isFinite) : [];
-          if (c) for (const n of nums) out.push({ id: no * 10_000 + n, season: no, num: n, title: "", url: stalkerLink("vod", c, n), plot: null, img: null });
+          if (c) for (const n of nums) out.push({ id: no * 10_000 + n, season: no, num: n, title: "", url: stalkerLink(apiType, c, n), plot: null, img: null });
         }
       }
       return out;
     }
-    const own = listed.find((o) => str(o, "id") === seriesId);
+    // Module séries sans saison : épisodes listés directement sous la série.
+    if (module) {
+      const eps = listed.filter((e) => flag(e, "is_episode") || str(e, "cmd"));
+      if (eps.length) {
+        eps.forEach((e, j) => {
+          const c = str(e, "cmd"); if (!c) return;
+          const n = Number(str(e, "series_number") ?? str(e, "episode_number")) || j + 1;
+          out.push({ id: 10_000 + n, season: 1, num: n, title: str(e, "name") ?? "", url: stalkerLink(apiType, c, n), plot: str(e, "description"), img: str(e, "screenshot_uri") });
+        });
+        return out;
+      }
+    }
+    const own = listed.find((o) => str(o, "id") === movieId);
     const c = (own && str(own, "cmd")) ?? cmd;
     const nums = own && Array.isArray(own.series) ? (own.series as unknown[]).map(Number).filter(Number.isFinite) : numbers ?? [];
     if (!c) return [];
-    return [...new Set(nums)].sort((a, b) => a - b).map((n) => ({ id: 10_000 + n, season: 1, num: n, title: "", url: stalkerLink("vod", c, n), plot: null, img: null }));
+    return [...new Set(nums)].sort((a, b) => a - b).map((n) => ({ id: 10_000 + n, season: 1, num: n, title: "", url: stalkerLink(apiType, c, n), plot: null, img: null }));
   }
 
-  /** Lien de lecture à durée de vie courte, demandé au moment de jouer. */
-  async createLink(type: "itv" | "vod", cmd: string, series?: number | null): Promise<string> {
+  /**
+   * Lien de lecture à durée de vie courte, demandé au moment de jouer. Épisode du module `series` : `create_link` en
+   * `vod` d'abord (le plus courant), puis en `series` si la VOD échoue ou ne donne rien ; les deux en échec : la
+   * première erreur (ou la commande elle-même si c'est déjà une adresse jouable).
+   */
+  async createLink(type: StalkerLinkType, cmd: string, series?: number | null): Promise<string> {
+    if (type !== "series") return this.createLinkAs(type, cmd, series, true);
+    try {
+      return await this.createLinkAs("vod", cmd, series, false);
+    } catch (first) {
+      if ((first as Error).name === "AbortError") throw first;
+      try { return await this.createLinkAs("series", cmd, series, false); } catch (e) {
+        if ((e as Error).name === "AbortError") throw e;
+        const direct = directUrlOf(cmd);
+        if (direct) return direct;
+        throw first;
+      }
+    }
+  }
+
+  private async createLinkAs(type: "itv" | "vod" | "series", cmd: string, series: number | null | undefined, directFallback: boolean): Promise<string> {
     let js: unknown;
     try {
       js = await this.call({ type, action: "create_link", cmd, series: series ?? "", forced_storage: "undefined", disable_ad: 0, download: 0 });
     } catch (e) {
-      const direct = directUrlOf(cmd);
+      const direct = directFallback ? directUrlOf(cmd) : null;
       if (direct) return direct;
       throw e;
     }
     const link = js && typeof js === "object" ? str(js as Obj, "cmd") : null;
-    const out = link ? cleanCmd(link) : directUrlOf(cmd);
+    const out = link ? cleanCmd(link) : directFallback ? directUrlOf(cmd) : null;
     if (!out) throw new Error("empty-link");
     return out;
   }

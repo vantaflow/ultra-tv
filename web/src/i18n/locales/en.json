@@ -418,6 +418,8 @@
   "toast.favAdded": "Added to favorites",
   "toast.favRemoved": "Removed from favorites",
   "toast.synced": "Catalog updated",
+  "sync.doneSkipped_one": "Sync complete · {count} category skipped",
+  "sync.doneSkipped_other": "Sync complete · {count} categories skipped",
   "toast.copied": "Copied",
   "set.cloud": "Cloud",
   "src.cloud": "From the cloud",

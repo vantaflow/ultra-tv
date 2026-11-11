@@ -7,6 +7,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Documentation
 - Documentation : guide de traduction (TRANSLATING.md) et modèle d'issue pour les traductions
 
+### Corrigé
+- Bureau : portail Stalker, séries des portails Ministra récents servies par le module `type=series` (catégories préfixées `s:`, listes paginées, saisons puis épisodes, épisodes sans saison listés directement). Lien d'épisode de type `series` : `create_link` essaie `vod`, puis `series` si la VOD échoue ou ne donne rien (les deux en échec : la première erreur). Sans catégorie du module, les séries restent tirées de la VOD comme avant.
+- Bureau : portail Stalker, gros catalogues entièrement lus. Plafond de 3 000 pages porté à 20 000 (14 titres par page : 50 000 titres = 3 572 pages), jusqu'à 3 tentatives par page (délai dépassé, coupure, 429, 5xx, délai croissant), lecture page par page jusqu'à une page vide sans `total_items`, taille de la page lue si `max_page_items` est absent ou 0.
+- Bureau : portail Stalker, jeton expiré en pleine synchro (« Authorization failed. », 401/403, réponse qui n'est pas du JSON du portail) : une seule nouvelle poignée de main, partagée par les requêtes en parallèle, puis nouvel essai sans perte de pages.
+- Bureau : portail Stalker, synchro des films et séries tolérante. Une catégorie en échec est journalisée et sautée, son contenu précédent est recopié dans le nouveau catalogue (rien n'est supprimé) ; une liste de catégories illisible ne saute que la partie concernée (le direct reste). Fin de synchro : « Synchronisation terminée · X catégories ignorées » (Réglages › Synchronisation et notification), au lieu d'un échec global.
+- Bureau : portail Stalker, journaux de synchro nettoyés (étape, type `vod`/`series`, code HTTP, classe d'erreur ; jamais d'adresse, de MAC ni de nom de catégorie), au plus 20 lignes détaillées par synchro, plus un bilan par partie.
+
 ## [1.2.90] — 2026-11-11 (Android) · Bureau 1.2.42 · Worker
 
 ### Nouveau

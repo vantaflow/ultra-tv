@@ -128,6 +128,8 @@ export interface SeriesRow {
   /** Portail Stalker : commande de la série (`stalker:vod::…`) et numéros d'épisodes (tableau `series`). */
   url?: string;
   eps?: number[];
+  /** Module `type=series` : identifiant du portail (souvent non numérique), `seriesId` n'en est alors qu'un condensé local. */
+  portalId?: string;
 }
 
 export interface ProgramRow {
@@ -185,5 +187,7 @@ export interface SyncProgress {
   /** 0..1 pour la phase courante. */
   ratio: number;
   counts: { live: number; movie: number; series: number };
+  /** Portail Stalker : catégories sautées pendant la synchro (la synchro a réussi ; leur contenu précédent est gardé). */
+  skipped?: number;
   message?: string;
 }
