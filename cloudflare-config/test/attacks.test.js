@@ -1,7 +1,7 @@
 // Rejeu des attaques identifiées à l'audit : chacune doit être bloquée.
 import { describe, it, expect } from "vitest";
 import { env } from "cloudflare:workers";
-import { call, freshIp, newAccount, pairDevice, addProvider, allKv, bearer, basic, cookieFrom, OPS, strongPw } from "./helpers.js";
+import { call, freshIp, newAccount, pairDevice, addProvider, allKv, d1Rows, bearer, basic, cookieFrom, OPS, strongPw } from "./helpers.js";
 
 describe("lecture de configuration (ex-anonyme)", () => {
   it("GET_apiConfig_sansJeton_401", async () => {
@@ -136,7 +136,7 @@ describe("ingestion de crashs et d'événements", () => {
       level: "error", tag: "xtream", message: "HTTP 403 http://h.tv/get.php?username=bob&password=hunter2 and /live/bob/hunter2/9.ts", mac: "aa:bb",
     } });
     expect(r.status).toBe(200);
-    const kv = JSON.stringify(await allKv());
+    const kv = JSON.stringify(await d1Rows("events")) + JSON.stringify(await allKv());
     expect(kv).not.toContain("hunter2");
     expect(kv).toContain("<redacted>");
   });
@@ -144,19 +144,20 @@ describe("ingestion de crashs et d'événements", () => {
     const acct = await newAccount("alice.exemple@example.test"); const dev = await pairDevice(acct);
     expect((await call("/api/event", { method: "POST", ip: dev.ip, headers: bearer(dev.token), json: { message: "marqueur-confid" } })).status).toBe(200);
     expect((await call("/api/crash", { method: "POST", ip: dev.ip, headers: bearer(dev.token), json: { stack: "marqueur-confid" } })).status).toBe(200);
-    const kv = await allKv();
-    const rel = Object.entries(kv).filter(([k, v]) => (k.startsWith("event:") || k.startsWith("crash:")) && v.includes("marqueur-confid"));
+    const rel = (await d1Rows("events")).filter((r) => JSON.stringify(r).includes("marqueur-confid"));
     expect(rel.length).toBe(2);
-    for (const [, v] of rel) {
-      expect(v).not.toContain("alice.exemple");
-      const o = JSON.parse(v);
+    expect(rel.map((r) => r.kind).sort()).toEqual(["crash", "event"]);
+    for (const o of rel) {
+      expect(JSON.stringify(o)).not.toContain("alice.exemple");
       expect(o.acct).toMatch(/^[A-Za-z0-9_-]{12}$/);
     }
-    expect(JSON.parse(rel[0][1]).acct).toBe(JSON.parse(rel[1][1]).acct); // stable : corrélation possible
+    expect(rel[0].acct).toBe(rel[1].acct); // stable : corrélation possible
+    // Les journaux ne passent plus par KV (quota d'écritures).
+    expect(Object.keys(await allKv()).some((k) => k.startsWith("event:") || k.startsWith("crash:"))).toBe(false);
     for (const path of ["/logs", "/crashes"]) {
       const html = await (await call(path, { ip: freshIp(), headers: basic(OPS) })).text();
       expect(html).not.toContain("alice.exemple");
-      expect(html).toContain(JSON.parse(rel[0][1]).acct);
+      expect(html).toContain(rel[0].acct);
     }
   });
   it("POST_apiEvent_tropGros_413", async () => {

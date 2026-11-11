@@ -74,7 +74,12 @@ export async function allKv() {
   return out;
 }
 
-export const bearer = (t) => ({ authorization: `Bearer ${t}` });
+/** Contenu d'une table D1 (télémétrie) : lignes brutes, pour les assertions de confidentialité. */
+export async function d1Rows(table) {
+  return (await env.DB.prepare(`SELECT * FROM ${table}`).all()).results;
+}
+
+export const bearer =(t) => ({ authorization: `Bearer ${t}` });
 export const basic = (pw) => ({ authorization: "Basic " + btoa("ops:" + pw) });
 export const OPS = "test-ops-token-0123456789abcdef0123456789";
 export const ADMIN = "test-admin-token-0123456789abcdef0123456789";

@@ -9,6 +9,20 @@ binding = "CONFIG"
 id = "4d450f36e3e34ddf9520e53bf6c241ea"
 preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
 
+# Base D1 : télémétrie (journaux, plantages, relevés anonymes) et dernière activité des appareils. Sortis de KV pour
+# rester sous son quota gratuit de 1 000 écritures par jour (erreur 10048).
+#   wrangler d1 create ultratv-telemetry   (puis coller le database_id ci-dessous)
+#   wrangler d1 migrations apply ultratv-telemetry --remote
+[[d1_databases]]
+binding = "DB"
+database_name = "ultratv-telemetry"
+database_id = "REPLACE_ME"
+migrations_dir = "migrations"
+
+# Purge quotidienne des lignes de télémétrie expirées (journaux 7 j, plantages 30 j, relevés anonymes 180 j).
+[triggers]
+crons = ["17 3 * * *"]
+
 # Durable Object : limites de débit, verrouillages et codes d'appairage.
 # Il faut une cohérence forte (KV est éventuellement cohérent : un compteur
 # d'échecs y serait contournable en parallèle).

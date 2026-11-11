@@ -32,6 +32,7 @@ import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
+import { recordEvent, listEvents, anonTouch as anonTouchD1, listAnon, purgeTelemetry } from "./telemetry.js";
 import {
   TRAKT_STATE_TTL_S, pkcePair, authorizeUrl, exchangeCode, refreshTokens, traktUsername, revokeToken,
   parseScrobble, resolveTmdb, traktScrobbleBody, sendScrobble,
@@ -49,8 +50,6 @@ const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 symboles, sans I
 const PAIR_TTL_S = 600;
 const MIN_PASSWORD = 10;
 
-const CRASH_TTL_S = 30 * 24 * 3600;
-const EVENT_TTL_S = 7 * 24 * 3600;
 const EVENT_MAX_BODY = 8 * 1024;
 const CRASH_MAX_BODY = 48 * 1024;
 
@@ -123,6 +122,10 @@ export default {
       console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : err?.message);
       return withSecurityHeaders(json({ error: err instanceof ConfigError ? "server_misconfigured" : "internal" }, 500));
     }
+  },
+  // Cron quotidien : purge des lignes de télémétrie D1 expirées (équivalent des anciens TTL de KV).
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(purgeTelemetry(env));
   },
 };
 
@@ -595,21 +598,16 @@ async function envoiPoll(req, env) {
 }
 
 // ---- appareils sans compte : relevé anonyme -------------------------------------------------
-// `anon:<empreinte>` : premier / dernier relevé, version, pays, sources envoyées par le web. Les mêmes champs sont
-// dans les métadonnées KV, pour que la vue d'administration n'ait qu'un `list` à faire (aucune lecture par clé).
+// Table D1 `anon_pings` (empreinte, premier / dernier relevé, version, pays, sources envoyées par le web), 180 jours.
+// Plus aucune écriture KV ici : voir telemetry.js.
 
-const ANON_TTL_S = 180 * 24 * 3600;
-const ANON_REFRESH_MS = 6 * 3600_000;
-
-/** Met à jour (ou crée) l'enregistrement [key] ; renouvelle le TTL de 180 jours. `web` : sources envoyées en plus. */
+/** Met à jour (ou crée) l'installation [key] ; `web` : sources envoyées en plus. Ne lève jamais d'erreur. */
 async function anonTouch(env, key, req, { version = null, web = 0 } = {}) {
-  const now = Date.now();
-  const cur = (await env.CONFIG.getWithMetadata(key, "json")).metadata;
-  const ver = version || cur?.v || null;
-  // Au plus une écriture par 6 h et par installation (sauf nouvelle version ou envoi), l'appli ne relève qu'une fois par jour.
-  if (cur && !web && now - cur.l < ANON_REFRESH_MS && cur.v === ver) return;
-  const rec = { f: cur?.f || now, l: now, v: ver, c: countryOf(req) || cur?.c || null, w: (cur?.w || 0) + web };
-  await env.CONFIG.put(key, JSON.stringify(rec), { expirationTtl: ANON_TTL_S, metadata: rec });
+  await anonTouchD1(env, key, {
+    version, web, country: countryOf(req),
+    // Transition : reprend premier relevé / version / pays / compteur de l'ancienne ligne KV (lecture seule).
+    legacy: async () => (await env.CONFIG.getWithMetadata(key, "json")).metadata,
+  });
 }
 
 async function anonPing(req, env) {
@@ -623,21 +621,8 @@ async function anonPing(req, env) {
   return json({ ok: true });
 }
 
-/** Installations sans compte (métadonnées seules, jamais d'identifiant) : [{first, last, version, country, web}]. */
-async function adminAnon(env) {
-  const rows = [];
-  let cursor;
-  for (let i = 0; i < 20; i++) {
-    const page = await env.CONFIG.list({ prefix: "anon:", cursor });
-    for (const k of page.keys) {
-      const m = k.metadata;
-      if (m && m.f) rows.push({ first: m.f, last: m.l || m.f, version: m.v || "", country: m.c || null, web: m.w || 0 });
-    }
-    if (page.list_complete) break;
-    cursor = page.cursor;
-  }
-  return rows;
-}
+/** Installations sans compte (jamais d'identifiant) : [{first, last, version, country, web}]. */
+const adminAnon = (env) => listAnon(env);
 
 async function confirmPairing(env, acct, form) {
   const lock = await lockedOut(env, `lock:pair:${acct.login}`);
@@ -1349,7 +1334,6 @@ async function deviceRotate(req, env) {
 
 const LEVELS = ["debug", "info", "warn", "error"];
 const int = (v) => (Number.isFinite(v) ? Math.trunc(v) : null);
-const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
 /** Empreinte courte et non réversible d'un compte pour les journaux et plantages (corrélation seulement). */
 export async function opsAccountId(env, login) {
@@ -1380,11 +1364,11 @@ async function ingest(req, env, kind) {
   if (ver && auth.device.version !== ver) {
     await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { version: ver })).catch(() => {});
   }
-  const key = `${kind}:${base.ts}:${rand(6)}`;
   const entry = isCrash
     ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) }
     : { ...base, level: LEVELS.includes(b.level) ? b.level : "info", tag: sanitizeText(b.tag, 32) || "app", message: sanitizeText(b.message, 4000) };
-  await env.CONFIG.put(key, JSON.stringify(entry), { expirationTtl: isCrash ? CRASH_TTL_S : EVENT_TTL_S });
+  // D1 (pas KV : une écriture par événement épuisait le quota gratuit) ; conservation 7 jours, 30 jours pour les crashs.
+  await recordEvent(env, kind, entry);
   return json({ ok: true });
 }
 
@@ -1408,17 +1392,7 @@ async function opsPage(req, env, kind) {
   const c = await checkSecret(req, env, env.OPS_TOKEN, "ops");
   if (c.res) return c.res;
   const limit = Math.max(10, Math.min(500, parseInt(new URL(req.url).searchParams.get("limit") || "100", 10) || 100));
-  const keys = [];
-  let cursor;
-  do {
-    const r = await env.CONFIG.list({ prefix: `${kind}:`, cursor, limit: 1000 });
-    keys.push(...r.keys.map((k) => k.name));
-    cursor = r.list_complete ? undefined : r.cursor;
-  } while (cursor && keys.length < 5000);
-  const recent = keys.sort().reverse().slice(0, limit);
-  const items = (await Promise.all(recent.map(async (k) => {
-    try { const v = JSON.parse(await env.CONFIG.get(k)); return v?.v === 2 ? v : null; } catch { return null; }
-  }))).filter(Boolean);
+  const items = await listEvents(env, kind, limit);
   const n = nonce();
   return kind === "crash" ? crashesPage(n, items) : eventsPage(n, items);
 }

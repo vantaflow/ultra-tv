@@ -4,6 +4,7 @@
 //   crash:*, event:*  télémétrie (TTL)
 // L'unicité d'un login est garantie par le Durable Object (claim), pas par KV.
 
+import { touchDeviceSeen, forgetDeviceSeen } from "./telemetry.js";
 import { encryptJson, decryptJson, keysFromEnv, sha256Hex, randomToken, timingSafeEqual } from "./crypto.js";
 
 // Plafonds par compte (taille du compte en KV, configuration téléchargée par chaque appareil : ~50 Ko à 100 sources).
@@ -89,9 +90,8 @@ export async function authDevice(env, token) {
   const acct = await getAccount(env, rec.login);
   const device = acct?.devices?.find((d) => d.id === rec.deviceId && timingSafeEqual(d.hash, hash));
   if (!device) return null; // révoqué : l'entrée du compte fait foi
-  if (Date.now() - (rec.seen || 0) > 3600_000) {
-    await env.CONFIG.put(`dev:${hash}`, JSON.stringify({ ...rec, seen: Date.now() }));
-  }
+  // « Vu » en D1 (une écriture KV par heure et par appareil consommait le quota gratuit) ; `rec.seen` n'est plus réécrit.
+  await touchDeviceSeen(env, hash);
   return { acct, device, hash };
 }
 
@@ -101,6 +101,7 @@ export async function revokeDevice(env, acct, deviceId) {
   acct.devices = acct.devices.filter((x) => x.id !== deviceId);
   await putAccount(env, acct);
   await env.CONFIG.delete(`dev:${d.hash}`);
+  await forgetDeviceSeen(env, d.hash);
   return true;
 }
 
@@ -111,6 +112,7 @@ export async function rotateDevice(env, acct, device) {
   acct.devices = acct.devices.map((d) => (d.id === device.id ? { ...d, hash, rotatedAt: Date.now() } : d));
   await putAccount(env, acct);
   await env.CONFIG.delete(`dev:${device.hash}`);
+  await forgetDeviceSeen(env, device.hash);
   return token;
 }
 

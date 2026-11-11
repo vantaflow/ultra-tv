@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { env } from "cloudflare:workers";
-import { call, freshIp, allKv, newAccount } from "./helpers.js";
+import { call, freshIp, allKv, newAccount, d1Rows } from "./helpers.js";
 
 const start = async (extra = {}, ip = freshIp()) => {
   const res = await call("/api/envoi/start", { method: "POST", ip, json: extra });
@@ -129,12 +129,14 @@ describe("installations sans compte (relevé anonyme)", () => {
     const id = install();
     const r = await ping({ install: id, version: "1.2.80" });
     expect(r.status).toBe(200);
-    const keys = (await env.CONFIG.list({ prefix: "anon:" })).keys;
-    const mine = keys.find((k) => k.metadata && k.metadata.v === "1.2.80");
+    const mine = (await d1Rows("anon_pings")).find((x) => x.version === "1.2.80");
     expect(mine).toBeTruthy();
-    expect(mine.name).toMatch(/^anon:[0-9a-f]{32}$/);
+    expect(mine.fingerprint).toMatch(/^anon:[0-9a-f]{32}$/);
+    expect(JSON.stringify(await d1Rows("anon_pings"))).not.toContain(id);
     expect(JSON.stringify(await allKv())).not.toContain(id);
-    expect(mine.metadata.f).toBeGreaterThan(0);
+    expect(mine.first_seen).toBeGreaterThan(0);
+    // plus aucune écriture KV pour un relevé anonyme
+    expect((await env.CONFIG.list({ prefix: "anon:" })).keys.length).toBe(0);
   });
 
   it("identifiant invalide refusé", async () => {
@@ -155,8 +157,7 @@ describe("installations sans compte (relevé anonyme)", () => {
     const s = await start({ install: id });
     await send(s.code, XTREAM);
     await poll(s.code, s.secret);
-    const all = (await env.CONFIG.list({ prefix: "anon:" })).keys;
-    expect(all.some((k) => k.metadata.v === "1.2.81" && k.metadata.w === 1)).toBe(true);
+    expect((await d1Rows("anon_pings")).some((x) => x.version === "1.2.81" && x.web === 1)).toBe(true);
   });
 
   it("statistiques d'administration : totaux, actives, nouvelles, sources web, versions et pays", async () => {
