@@ -1422,5 +1422,8 @@
     <string name="osd_history">Historia</string>
     <string name="osd_history_empty">Brak ostatnich kanałów</string>
     <string name="osd_remaining">zostało %1$s</string>
-    <string name="osd_banner_hint">OK / ▼ Sterowanie  ·  ▲ Przełączanie  ·  0-9 Numer</string>
+    <string name="osd_banner_hint">OK / ▼ Sterowanie  ·  ▲ Przełączanie  ·  0-9 Numer  ·  ◀ Poprzedni</string>
+    <string name="osd_drawer_all">Wszystkie kanały</string>
+    <string name="osd_no_previous">Brak poprzedniego kanału</string>
+    <string name="osd_drawer_hint">OK przełącz · ▲▼ przeglądaj · ◀ kategorie · ▶ kanały · ‹ zamknij</string>
 </resources>

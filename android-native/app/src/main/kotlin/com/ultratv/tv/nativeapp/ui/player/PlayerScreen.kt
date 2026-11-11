@@ -157,6 +157,7 @@ class PlayerViewModel @Inject constructor(
     private val recordings: RecordingRepository,
     private val prefs: UserPreferencesStore,
     private val channelDao: ChannelDao,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val adaptive: AdaptiveProfile,
     private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
@@ -338,14 +339,61 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
-    /** Charge les chaînes d'une catégorie dans le tiroir (sans zapper). */
+    /** Charge les chaînes d'une catégorie dans le tiroir (sans zapper), après un court anti-rebond (voir [DebouncedBrowser]). */
     fun browse(categoryId: String) {
-        val pid = playback.current.value?.providerId ?: return
-        browsedCategory.value = categoryId
-        viewModelScope.launch { browsedEntries.value = entriesFor(channelDao.windowCategory(pid, categoryId, 300, 0).filter { !it.junk && !it.isSeparator }, null) }
+        if (playback.current.value == null) return
+        browser.request(categoryId)
     }
 
-    fun resetBrowse() { browsedCategory.value = null; browsedEntries.value = null }
+    /** Catégorie demandée (focalisée) dont la liste n'est pas encore arrivée ; null = la liste affichée est à jour. */
+    val pendingCategory: StateFlow<String?> get() = browser.pending
+
+    private val browser = DebouncedBrowser(viewModelScope) { id -> loadCategory(id) }
+
+    /** Liste des chaînes d'une catégorie du tiroir : « Toutes les chaînes » (ordre du Direct), Favoris, ou une catégorie. */
+    private suspend fun loadCategory(categoryId: String) {
+        val cur = playback.current.value ?: return
+        val pid = cur.providerId
+        val channels = when (categoryId) {
+            com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.favoritesList(pid, profiles.currentIdNow)
+            com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {
+                // Fenêtre centrée sur la chaîne en cours (comme le zapping depuis « Tout » dans le Direct).
+                val c = channelDao.byRemoteId(pid, cur.remoteId)
+                when {
+                    c != null && c.catRank > 0 -> com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, c)
+                    c != null -> {
+                        // Repli (ordre pas encore précalculé) : même ordre, calculé par jointure.
+                        val rank = channelDao.orderedAllIdsLegacy(pid).indexOf(c.id).coerceAtLeast(0)
+                        channelDao.windowAllLegacy(pid, 401, (rank - 200).coerceAtLeast(0))
+                    }
+                    else -> channelDao.windowAllLegacy(pid, 401, 0)
+                }
+            }
+            else -> channelDao.windowCategory(pid, categoryId, 300, 0)
+        }.filter { !it.junk && !it.isSeparator }
+        val entries = entriesFor(channels, null)
+        if (browser.pending.value != categoryId) return   // tiroir refermé ou autre catégorie demandée entre-temps
+        // Liste et catégorie changent ensemble : le titre ne passe pas à la nouvelle catégorie avec l'ancienne liste.
+        browsedEntries.value = entries
+        browsedCategory.value = categoryId
+    }
+
+    /** Totaux « Toutes les chaînes » et Favoris (colonne des catégories) ; relus à chaque ouverture du tiroir. */
+    data class DrawerTotals(val all: Int? = null, val favorites: Int = 0)
+    private val _totals = kotlinx.coroutines.flow.MutableStateFlow(DrawerTotals())
+    val drawerTotals: StateFlow<DrawerTotals> = _totals
+
+    fun refreshDrawerTotals() {
+        val pid = playback.current.value?.providerId ?: return
+        viewModelScope.launch {
+            _totals.value = DrawerTotals(
+                all = runCatching { channelDao.countLive(pid) }.getOrNull(),
+                favorites = runCatching { channelDao.countFavorites(pid, profiles.currentIdNow) }.getOrDefault(0),
+            )
+        }
+    }
+
+    fun resetBrowse() { browser.reset(); browsedCategory.value = null; browsedEntries.value = null }
 
     suspend fun zapTo(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
         val browsed = browsedEntries.value
@@ -990,6 +1038,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
                         OsdDecision.RecallPrevious -> {
                             if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }   // chaîne verrouillée : code demandé (ParentalGuard)
+                            else if (osdKey == OsdKey.LEFT) Toaster.show(O.noPreviousChannel)   // Gauche : rien à rappeler, on le dit
                             return@onPreviewKeyEvent true
                         }
                         OsdDecision.OpenChannels -> { drawerOpen = true; return@onPreviewKeyEvent true }

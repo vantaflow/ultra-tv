@@ -27,6 +27,10 @@ class LiveOsdStrings(val lang: AppLang) {
     fun remaining(duration: String) = tx(R.string.osd_remaining, duration)
     /** Aide du simple bandeau (après un zap) : comment atteindre les commandes. */
     val bannerHint get() = tx(R.string.osd_banner_hint)
+    /** Liste des chaînes du lecteur : première entrée, aide des touches, message de Gauche sans chaîne précédente. */
+    val drawerAll get() = tx(R.string.osd_drawer_all)
+    val drawerHint get() = tx(R.string.osd_drawer_hint)
+    val noPreviousChannel get() = tx(R.string.osd_no_previous)
 
     // Réutilisés tels quels (une seule source de vérité par texte).
     val pip get() = tx(R.string.mob_pip)
