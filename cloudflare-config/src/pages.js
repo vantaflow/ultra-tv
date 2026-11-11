@@ -23,8 +23,8 @@ h1{font-size:26px;font-weight:700} h2{font-size:18px;font-weight:650} h3{font-si
 p{margin:0}
 .sub,.muted{color:var(--mut)} .sub{margin-top:6px} .small{font-size:13px}
 :focus-visible{outline:3px solid var(--ring);outline-offset:2px}
-.skip{position:absolute;left:-999px;top:8px;background:var(--acc);color:var(--on-acc);padding:10px 14px;border-radius:10px;z-index:9}
-.skip:focus{left:16px}
+.skip{position:absolute;inset-inline-start:16px;top:-80px;background:var(--acc);color:var(--on-acc);padding:10px 14px;border-radius:10px;z-index:9}
+.skip:focus{top:8px}
 /* Marque */
 .brand{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:10px;color:var(--fg);font-family:var(--fh);font-weight:700;font-size:18px}
 .logo{width:36px;height:36px;flex:none;display:block}
