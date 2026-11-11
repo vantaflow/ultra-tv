@@ -42,6 +42,10 @@ cd ../android-app && npm run sync && npm run build:install
 - Mention any new dependency in the PR description, with a one-line justification.
 - A demo GIF / screenshot is appreciated for UI changes.
 
+## Translations
+
+New languages and corrections are welcome, with or without Git (Weblate or a pull request). See [TRANSLATING.md](TRANSLATING.md) for the files, rules and tests.
+
 ## Security
 
 Provider credentials live in the user's IndexedDB and never leave the device. Don't add telemetry, analytics, or any code that uploads user data without an explicit opt-in.

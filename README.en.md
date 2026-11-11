@@ -283,6 +283,17 @@ No anonymous count, crash report, remote log or alerts. Sends: update check (`ap
 
 On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, micro-benchmark) and rates it **Low / Medium / High**. From that it derives buffer, parallelism and sync batch size, resolution and bitrate caps (low-memory boxes: 720p / 6 Mb/s) and adjusts the buffer if drop-outs occur. Everything stays adjustable: Settings › Playback (engine, decoding, buffer preset: Low latency, Auto, Balanced, Stable, Custom).
 
+## Help translate
+
+The interface is available in French, English, Spanish and Arabic (official languages). More languages are welcome: they can be partial, and English is shown for missing texts.
+
+- Only the interface is translated, never playlist content (channels, categories, titles, guide).
+- Without Git: Weblate, <https://hosted.weblate.org/projects/ultra-tv/> (coming soon).
+- With GitHub: add the language files and open a pull request.
+- Spotted a mistake? Use the ["Translation" issue template](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
+
+The full guide is in [TRANSLATING.md](TRANSLATING.md).
+
 ## For developers
 
 Stack: Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt.
