@@ -77,6 +77,7 @@ class TranslationsCompleteTest {
         "PlayerExtraStrings" to { l -> read(PlayerExtraStrings(l), emptyList()) },
         "ProfileStrings" to { l -> read(ProfileStrings(l), emptyList()) },
         "SimpleStrings" to { l -> read(SimpleStrings(l), emptyList()) },
+        "MemoryStrings" to { l -> read(com.ultratv.tv.nativeapp.ui.memory.MemoryStrings(l), emptyList()) },
         "DownloadStrings" to { l -> read(com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(l), emptyList()) },
     )
 

@@ -16,6 +16,7 @@ import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
 import com.ultratv.tv.nativeapp.adaptive.PlaybackResolver
 import com.ultratv.tv.nativeapp.data.db.ChannelDao
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
+import com.ultratv.tv.nativeapp.data.memory.ramState
 import com.ultratv.tv.nativeapp.data.prefs.SubtitlePrefsStore
 import com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings
 import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
@@ -119,10 +120,16 @@ class LivePreviewViewModel @Inject constructor(
     subtitleStore: SubtitlePrefsStore,
     private val channelDao: ChannelDao,
     val previewPrefs: LivePreviewPrefs,
+    private val memoryPrefs: com.ultratv.tv.nativeapp.data.memory.MemoryPrefs,
+    @ApplicationContext private val appCtx: Context,
 ) : ViewModel() {
     val userPrefs: StateFlow<UserPrefs?> = prefs.flow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private val subtitles: StateFlow<SubtitleSettings> = subtitleStore.flow.stateIn(viewModelScope, SharingStarted.Eagerly, SubtitleSettings())
-    val lowRam: Boolean get() = adaptive.state.value.auto.lowRam
+    /** Mémoire limitée au sens du mode « économie de mémoire » (Réglages › Mémoire et stockage) : Auto = l'appareil. */
+    val lowRam: Boolean get() = com.ultratv.tv.nativeapp.data.memory.EconomyMode.effective(
+        memoryPrefs.state.value.economy,
+        adaptive.state.value.auto.lowRam || appCtx.ramState().limited,
+    )
 
     fun env(): LiveEnv = LiveEnv(
         settings = { PlaybackResolver.resolve(adaptive.state.value.auto, userPrefs.value ?: UserPrefs(), adaptive.heapClassMb) },

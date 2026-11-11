@@ -665,6 +665,20 @@ interface WatchHistoryDao {
 
     @Query("DELETE FROM watch_history WHERE providerId = :pid")
     suspend fun clearForProvider(pid: Long)
+
+    /** Rubrique « Mémoire et stockage » : efface l'historique d'un profil (retourne le nombre de lignes). */
+    @Query("DELETE FROM watch_history WHERE profileId = :profileId")
+    suspend fun clearForProfile(profileId: Long): Int
+
+    @Query("DELETE FROM watch_history")
+    suspend fun clearAll(): Int
+
+    /** Remet à zéro les positions de reprise d'un profil, en gardant l'historique lui-même. */
+    @Query("UPDATE watch_history SET positionMs = 0 WHERE profileId = :profileId AND positionMs > 0")
+    suspend fun resetPositionsForProfile(profileId: Long): Int
+
+    @Query("UPDATE watch_history SET positionMs = 0 WHERE positionMs > 0")
+    suspend fun resetPositionsAll(): Int
 }
 
 @Dao
