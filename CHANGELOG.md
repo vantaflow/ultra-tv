@@ -2,7 +2,7 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [Non publié]
+## [1.2.90] — 2026-11-11 (Android) · Bureau 1.2.42 · Worker
 
 ### Nouveau
 - EPG personnalisé (Android) : Réglages › Synchronisation › Guide complémentaire › « Adresse personnalisée… ». Adresse `http://` ou `https://` finissant par `.xml` ou `.xml.gz` (query string tolérée), saisie à la télécommande ou envoyée depuis le téléphone (page `/envoyer`, nouveau type « Guide XMLTV »).
