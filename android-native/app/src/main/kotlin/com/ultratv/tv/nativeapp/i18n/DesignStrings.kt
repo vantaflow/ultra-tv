@@ -160,6 +160,14 @@ class DesignStrings(val lang: AppLang) {
         AppLang.Arabic -> "عنوان $name لم يعد يستجيب. يغيّر المزوّدون عناوينهم أحيانًا: تحقق منه لدى مزوّدك."
         else -> "The address of $name no longer responds. Providers sometimes change address: check it with yours."
     }
+    /** Synchro terminée avec des catégories sautées (portail Stalker : catégorie en erreur, délai dépassé, réponse vide). */
+    fun syncSkippedCategories(n: Int) = when (lang) {
+        AppLang.French -> if (n == 1) "Synchronisation terminée · 1 catégorie ignorée (le portail n’a pas répondu)" else "Synchronisation terminée · $n catégories ignorées (le portail n’a pas répondu)"
+        AppLang.Spanish -> if (n == 1) "Sincronización terminada · 1 categoría omitida (el portal no respondió)" else "Sincronización terminada · $n categorías omitidas (el portal no respondió)"
+        AppLang.Arabic -> "اكتملت المزامنة · تم تجاهل $n فئة (لم تستجب البوابة)"
+        else -> if (n == 1) "Sync finished · 1 category skipped (the portal did not respond)" else "Sync finished · $n categories skipped (the portal did not respond)"
+    }
+    val dismiss get() = t("OK", "OK", "OK", "حسنًا")
     val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
     val seeRecordings get() = t("View recordings", "Voir les enregistrements", "Ver grabaciones", "عرض التسجيلات")
     val browseLive get() = t("Browse live TV", "Parcourir le direct", "Explorar el directo", "تصفح البث المباشر")

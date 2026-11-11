@@ -40,6 +40,17 @@ class SyncStatusBus @Inject constructor() {
         if (providerId == null || cur.providerId == providerId) _failure.value = null
     }
 
+    /** Synchro réussie mais incomplète : [skipped] catégories sautées (en erreur, trop lentes ou vides), contenu précédent gardé. */
+    data class Partial(val providerId: Long, val provider: String, val skipped: Int)
+
+    private val _partial = MutableStateFlow<Partial?>(null)
+    val partial: StateFlow<Partial?> = _partial
+    fun setPartial(p: Partial) { _partial.value = p }
+    fun clearPartial(providerId: Long? = null) {
+        val cur = _partial.value ?: return
+        if (providerId == null || cur.providerId == providerId) _partial.value = null
+    }
+
     /** État du GUIDE seul (chargement avec progression, échec avec raison) : lu par le guide et la première synchro. */
     private val _epg = MutableStateFlow<com.ultratv.tv.nativeapp.data.xmltv.EpgState>(com.ultratv.tv.nativeapp.data.xmltv.EpgState.Idle)
     val epg: StateFlow<com.ultratv.tv.nativeapp.data.xmltv.EpgState> = _epg

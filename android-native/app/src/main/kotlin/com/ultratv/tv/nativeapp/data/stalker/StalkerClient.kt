@@ -261,18 +261,64 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
 
     /**
      * Toutes les pages d'une liste `get_ordered_list` : la page 1 donne `total_items` et `max_page_items`, les suivantes
-     * sont lues à 3 en parallèle. Plafond de sécurité : 3 000 pages (un portail qui annonce n'importe quoi).
+     * sont lues à 3 en parallèle. Plafond de sécurité : [MAX_PAGES] pages (14 éléments par page sur la plupart des
+     * portails : 50 000 titres = 3 572 pages). Portail qui ne donne pas `total_items` : pages lues une à une jusqu'à une
+     * page vide ou déjà vue. Chaque page a ses propres nouvelles tentatives ([pageWithRetry]) ; une page toujours en échec
+     * fait échouer la liste (la synchro saute alors la catégorie et garde son contenu précédent).
      */
     internal suspend fun pagedItems(a: Account, params: List<Pair<String, String>>): List<JMap> {
-        val first = StalkerParse.page(call(a, params + ("p" to "1"))) ?: return emptyList()
+        val first = pageWithRetry(a, params + ("p" to "1")) ?: return emptyList()
+        if (first.items.isEmpty()) return emptyList()
+        val idOf = { o: JMap -> o.s("id") ?: o.hashCode().toString() }
+        if (!first.totalKnown) {
+            val out = LinkedHashMap<String, JMap>()
+            first.items.forEach { out.putIfAbsent(idOf(it), it) }
+            var n = 2
+            while (n <= MAX_PAGES) {
+                val items = pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty()
+                // Page vide, ou portail qui ignore `p` et renvoie toujours la même page : fin de la liste.
+                if (items.isEmpty() || items.all { idOf(it) in out }) break
+                items.forEach { out.putIfAbsent(idOf(it), it) }
+                n++
+            }
+            return out.values.toList()
+        }
         val pages = first.pages.coerceIn(1, MAX_PAGES)
-        if (pages == 1 || first.items.isEmpty()) return first.items
+        if (pages == 1) return first.items
         val gate = Semaphore(PAGE_PARALLELISM)
         val rest = coroutineScope {
-            (2..pages).map { n -> async { gate.withPermit { StalkerParse.page(call(a, params + ("p" to n.toString())))?.items.orEmpty() } } }.awaitAll()
+            (2..pages).map { n -> async { gate.withPermit { pageWithRetry(a, params + ("p" to n.toString()))?.items.orEmpty() } } }.awaitAll()
         }
-        return (listOf(first.items) + rest).flatten().distinctBy { it.s("id") ?: it.hashCode().toString() }
+        return (listOf(first.items) + rest).flatten().distinctBy(idOf)
     }
+
+    /**
+     * Une page de liste, avec [PAGE_ATTEMPTS] essais au plus sur délai dépassé, coupure, 429 ou 5xx (délai croissant).
+     * Le jeton périmé est déjà traité par [call] (nouvelle poignée de main) ; un refus persistant n'est pas réessayé ici.
+     */
+    internal suspend fun pageWithRetry(a: Account, params: List<Pair<String, String>>): StalkerPage? {
+        val type = params.firstOrNull { it.first == "type" }?.second ?: "-"
+        var wait = retryDelayMs
+        for (attempt in 1 until PAGE_ATTEMPTS) {
+            try {
+                return StalkerParse.page(call(a, params))
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (e: HttpStatusException) {
+                if (e.code != 429 && e.code < 500) throw e
+                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", StalkerSyncLog.retry(type, attempt, e))
+            } catch (e: StalkerLinkException) {
+                throw e
+            } catch (e: java.io.IOException) {
+                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerSync", StalkerSyncLog.retry(type, attempt, e))
+            }
+            kotlinx.coroutines.delay(wait); wait *= 2
+        }
+        return StalkerParse.page(call(a, params))
+    }
+
+    /** Délai avant la 2e tentative d'une page (doublé ensuite) ; réduit dans les tests. */
+    @Volatile internal var retryDelayMs = 700L
 
     // ───────────────────────── Films et séries ─────────────────────────
 
@@ -294,6 +340,24 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         return VodSplit(movies, series)
     }
 
+    // ───────────────────────── Module « séries » (type=series) ─────────────────────────
+
+    /**
+     * Catégories du module `type=series` (portails Ministra récents, où les séries ne sont plus dans la VOD). Liste vide
+     * si le portail ne propose pas ce module ; erreur réseau propagée (la synchro décide alors de se replier sur la VOD).
+     * Identifiants préfixés par [SERIES_PREFIX].
+     */
+    suspend fun seriesCategories(p: ProviderEntity): List<CategoryEntity> =
+        StalkerParse.categories(p.id, "SERIES", call(accountOf(p), listOf("type" to "series", "action" to "get_categories")))
+            .map { it.copy(remoteId = SERIES_PREFIX + it.remoteId) }
+
+    /** Séries d'une catégorie du module `type=series` ([categoryId] avec ou sans préfixe). */
+    suspend fun seriesOfCategory(p: ProviderEntity, categoryId: String): List<StalkerParse.VodSeries> {
+        val raw = categoryId.removePrefix(SERIES_PREFIX)
+        val items = pagedItems(accountOf(p), listOf("type" to "series", "action" to "get_ordered_list", "category" to raw, "fav" to "0", "sortby" to "added"))
+        return items.mapNotNull { StalkerParse.seriesModuleItem(p.id, p.baseUrl, it, SERIES_PREFIX + raw) }.onEach { rememberSeries(p.id, it) }
+    }
+
     /** Commande et numéros d'épisodes des séries vues à la dernière synchro : la fiche s'ouvre sans nouvel aller-retour. */
     private val seriesHints = java.util.concurrent.ConcurrentHashMap<String, Pair<String, List<Int>>>()
 
@@ -309,29 +373,43 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      */
     suspend fun episodes(p: ProviderEntity, s: SeriesEntity): List<EpisodeEntity> {
         val a = accountOf(p)
-        val base = listOf("type" to "vod", "action" to "get_ordered_list", "movie_id" to s.remoteId, "season_id" to "0", "episode_id" to "0", "fav" to "0", "sortby" to "added")
+        // Série du module `type=series` : saisons et épisodes demandés à ce module, liens de type « series ».
+        val module = s.remoteId.startsWith(SERIES_PREFIX)
+        val apiType = if (module) "series" else "vod"
+        val movieId = s.remoteId.removePrefix(SERIES_PREFIX)
+        val base = listOf("type" to apiType, "action" to "get_ordered_list", "movie_id" to movieId, "season_id" to "0", "episode_id" to "0", "fav" to "0", "sortby" to "added")
         val listed = runCatching { pagedItems(a, base) }.getOrDefault(emptyList())
-        val seasons = listed.filter { it.flag("is_season") }
+        // Module séries : certains portails ne posent pas `is_season` ; un élément qui porte un tableau `series` en est une.
+        val seasons = listed.filter { it.flag("is_season") || (module && !it.flag("is_episode") && it["series"] is List<*>) }
         if (seasons.isNotEmpty()) {
             return seasons.withIndex().flatMap { (i, season) ->
                 val no = StalkerParse.seasonNumber(season, i)
                 val sid = season.s("id") ?: return@flatMap emptyList()
                 val eps = runCatching { pagedItems(a, base.map { if (it.first == "season_id") "season_id" to sid else it }) }.getOrDefault(emptyList())
-                    .filter { it.flag("is_episode") || it.s("cmd") != null }
-                if (eps.isNotEmpty()) eps.withIndex().mapNotNull { (j, e) -> StalkerParse.seasonEpisode(p.id, s.id, s.remoteId, no, e, j) }
+                    .filter { it.flag("is_episode") || (it.s("cmd") != null && !it.flag("is_season")) }
+                if (eps.isNotEmpty()) eps.withIndex().mapNotNull { (j, e) -> StalkerParse.seasonEpisode(p.id, s.id, s.remoteId, no, e, j, apiType) }
                 else {
                     // Saison sans liste d'épisodes : sa commande + son tableau `series`.
                     @Suppress("UNCHECKED_CAST")
                     val nums = (season["series"] as? List<Any?>).orEmpty().mapNotNull { (it as? String)?.toIntOrNull() }
-                    season.s("cmd")?.let { StalkerParse.simpleEpisodes(p.id, s.id, s.remoteId, it, nums, no) }.orEmpty()
+                    season.s("cmd")?.let { StalkerParse.simpleEpisodes(p.id, s.id, s.remoteId, it, nums, no, apiType) }.orEmpty()
                 }
             }
         }
-        val hint = seriesHints["${p.id}:${s.remoteId}"]
-            ?: listed.firstOrNull { it.s("id") == s.remoteId }?.let { o -> (StalkerParse.vod(p.id, p.baseUrl, o, s.categoryId) as? StalkerParse.VodSeries)?.let { it.cmd to it.episodes } }
-            ?: s.categoryId?.let { cat -> runCatching { vodOfCategory(p, cat) }.getOrNull()?.series?.firstOrNull { it.series.remoteId == s.remoteId }?.let { it.cmd to it.episodes } }
+        // Module séries sans saison : épisodes listés directement sous la série.
+        if (module) {
+            val eps = listed.filter { it.flag("is_episode") || it.s("cmd") != null }
+            if (eps.isNotEmpty()) return eps.withIndex().mapNotNull { (j, e) -> StalkerParse.seasonEpisode(p.id, s.id, s.remoteId, 1, e, j, apiType) }
+        }
+        val hint = seriesHints["${p.id}:${s.remoteId}"]?.takeIf { it.first.isNotEmpty() && it.second.isNotEmpty() }
+            ?: listed.firstOrNull { it.s("id") == movieId }?.let { o -> (StalkerParse.vod(p.id, p.baseUrl, o, s.categoryId) as? StalkerParse.VodSeries)?.let { it.cmd to it.episodes } }
+            ?: s.categoryId?.let { cat ->
+                val inCat = if (module) runCatching { seriesOfCategory(p, cat) }.getOrNull() else runCatching { vodOfCategory(p, cat) }.getOrNull()?.series
+                inCat?.firstOrNull { it.series.remoteId == s.remoteId }?.let { it.cmd to it.episodes }
+            }
             ?: return emptyList()
-        return StalkerParse.simpleEpisodes(p.id, s.id, s.remoteId, hint.first, hint.second)
+        if (hint.first.isEmpty()) return emptyList()
+        return StalkerParse.simpleEpisodes(p.id, s.id, s.remoteId, hint.first, hint.second, linkType = apiType)
     }
 
     // ───────────────────────── Lecture, guide, compte ─────────────────────────
@@ -341,9 +419,22 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * (« ffmpeg », « auto ») est retiré. Échec du portail : la commande elle-même si elle est déjà une adresse jouable.
      */
     suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String {
+        if (type != "series") return createLinkAs(p, if (type == "vod") "vod" else "itv", cmd, series, chId)
+        // Épisode du module `type=series` : la plupart des portails le servent par `vod/create_link`, les autres par
+        // `series/create_link`. Premier refus : second module essayé ; échec des deux : la première erreur.
+        return try {
+            createLinkAs(p, "vod", cmd, series, null)
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
+        } catch (first: Exception) {
+            try { createLinkAs(p, "series", cmd, series, null) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Exception) { throw first }
+        }
+    }
+
+    private suspend fun createLinkAs(p: ProviderEntity, type: String, cmd: String, series: Int?, chId: String?): String {
         val params = buildList {
-            add("type" to (if (type == "vod") "vod" else "itv")); add("action" to "create_link"); add("cmd" to cmd)
-            if (type == "vod") add("series" to (series?.toString() ?: ""))   // pas de `series` pour une chaîne
+            add("type" to type); add("action" to "create_link"); add("cmd" to cmd)
+            if (type != "itv") add("series" to (series?.toString() ?: ""))   // pas de `series` pour une chaîne
             add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
         }
         val a = accountOf(p)
@@ -355,7 +446,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
                 if (js == null || js == false || (js is List<*> && js.isEmpty()) || (js is Map<*, *> && js.isEmpty())) "empty_response" else if (rawCmd == null) "no_cmd" else "blank_cmd")
             // Une réponse qui n'est pas une adresse (nom de chaîne, chemin relatif) ne se lit pas : jamais passée au lecteur.
             if (!link.contains("://")) throw StalkerLinkException("not_url")
-            if (type == "vod" || !StalkerLink.hasEmptyStream(link)) return link
+            if (type != "itv" || !StalkerLink.hasEmptyStream(link)) return link
             // Réponse incomplète (`stream=` vide, bug courant pour itv) : identifiant de la chaîne mémorisé, de la commande, ou de la réponse.
             val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd) ?: (js as? JMap)?.s("id")?.takeIf { it.isNotBlank() }
             if (id != null) return StalkerLink.fillEmptyStream(link, id)
@@ -381,7 +472,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     /** [createLink], puis les en-têtes de lecture (jeton à jour : la session existe après l'appel). */
     suspend fun openLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): Play {
         val url = createLink(p, type, cmd, series, chId)
-        if (type != "vod") {
+        if (type != "vod" && type != "series") {
             val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd)
             if (id != null) background.launch {
                 try { setPlayed(p, id) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
@@ -425,7 +516,10 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     private fun enc(s: String) = java.net.URLEncoder.encode(s, "UTF-8")
 
     companion object {
-        private const val MAX_PAGES = 3_000
+        internal const val MAX_PAGES = 20_000
         private const val PAGE_PARALLELISM = 3
+        internal const val PAGE_ATTEMPTS = 3
+        /** Préfixe des catégories et séries venues du module `type=series` (les identifiants du module VOD peuvent coïncider). */
+        const val SERIES_PREFIX = "s:"
     }
 }

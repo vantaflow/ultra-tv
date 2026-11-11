@@ -82,6 +82,20 @@ class IncrementalTable<T>(
             }
         }
 
+        /**
+         * Catégories non lues pendant cette passe (sautées : erreur, délai, réponse vide) : leurs lignes actuelles sont
+         * marquées « vues », donc gardées par [finish] au lieu d'être supprimées. À appeler avant [finish].
+         */
+        fun keepCategories(ids: Collection<String>) {
+            if (bulk || ids.isEmpty()) return   // table vide : rien à garder
+            for (chunk in ids.distinct().chunked(500)) {
+                db.execSQL(
+                    "INSERT OR IGNORE INTO temp.`sync_seen` (`remoteId`) SELECT `remoteId` FROM `${t.table}` WHERE `providerId` = ? AND `categoryId` IN (${chunk.joinToString { "?" }})",
+                    (listOf<Any>(providerId) + chunk).toTypedArray(),
+                )
+            }
+        }
+
         /** Supprime ce qui n'est plus dans la liste et nettoie. Retourne le nombre de lignes supprimées. */
         fun finish(): Int {
             if (bulk) {

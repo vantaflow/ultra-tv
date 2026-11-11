@@ -2,6 +2,14 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Corrigé
+- Portail Stalker (Android) : séries des portails Ministra récents, servies par le module `type=series` (catégories, listes paginées, saisons puis épisodes ; lien demandé en `vod/create_link`, puis `series/create_link` si le portail refuse). Avant : seule la VOD (`type=vod`) était lue, et les portails qui n'y mettent rien n'avaient aucune série.
+- Portail Stalker (Android) : synchro des films et séries tolérante. Une catégorie en échec (erreur 5xx, délai dépassé, réponse vide) est journalisée et sautée, son contenu précédent reste en place, les autres continuent ; une liste de catégories illisible ne saute que la partie concernée (le direct reste). Fin de synchro : « Synchronisation terminée · X catégories ignorées » au lieu d'un échec global.
+- Portail Stalker (Android) : gros catalogues entièrement lus. Le plafond de 3 000 pages coupait les catégories de plus de 42 000 titres (14 par page), il passe à 20 000 pages. Chaque page a jusqu'à 3 tentatives (délai, coupure, 429, 5xx) et un portail sans `total_items` est lu page par page jusqu'à une page vide. Le jeton expiré en pleine synchro est renouvelé (nouvelle poignée de main) sans rien perdre.
+- Portail Stalker (Android) : journaux de synchro nettoyés (étape, type `vod`/`series`, code HTTP, classe d'erreur ; jamais d'adresse, de MAC ni de nom de catégorie), au plus 20 lignes détaillées par synchro, plus un bilan par partie.
+
 ## [1.2.89] — 2026-11-11 (Android) · Bureau 1.2.41 · Worker
 
 ### Nouveau
