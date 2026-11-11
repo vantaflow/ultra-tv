@@ -68,7 +68,7 @@ private enum class Page { MAIN, AUDIO_LANGS, TEXT_LANGS, SEARCH }
  */
 @Composable
 fun SubtitlePanel(
-    X: PlayerExtraStrings, vm: SubtitleViewModel, tracks: List<TrackInfo>, delaySupported: Boolean, isMovie: Boolean, movieTitle: String,
+    X: PlayerExtraStrings, vm: SubtitleViewModel, tracks: List<TrackInfo>, delaySupported: Boolean, isMovie: Boolean, movieTitle: String, isLive: Boolean = false,
     onSelectTrack: (String?) -> Unit, onStyle: (SubtitleStyle) -> Unit, onDownloaded: (String) -> Unit, onClose: () -> Unit,
 ) {
     val settings by vm.settings.collectAsState()
@@ -109,7 +109,11 @@ fun SubtitlePanel(
                     Page.SEARCH -> SearchPage(X, vm, onDownloaded = onDownloaded)
                 }
             }
-            if (page == Page.MAIN) {
+            // Direct : pas de recherche en ligne (un fichier de sous-titres ne se cale pas sur un flux continu) ; on indique
+            // plutôt d'où viennent les sous-titres d'une chaîne.
+            if (page == Page.MAIN && isLive) {
+                if (tracks.isEmpty()) Text(X.liveNoSubtitles, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 26.spx, maxLines = 4)
+            } else if (page == Page.MAIN) {
                 val canSearch = online && isMovie
                 PillButton(X.searchOnline, { if (canSearch) { vm.search(movieTitle); page = Page.SEARCH } }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth().alpha(if (canSearch) 1f else 0.45f))
                 if (!canSearch) Text(if (!isMovie) X.searchMoviesOnly else if (vm.serviceMissing) X.subtitlesNotConfigured else X.searchNeedsProxy, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 26.spx, maxLines = 2)

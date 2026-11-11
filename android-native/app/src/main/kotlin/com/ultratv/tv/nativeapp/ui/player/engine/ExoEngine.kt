@@ -103,7 +103,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 DefaultHttpDataSource.Factory().setUserAgent(config.userAgent).setAllowCrossProtocolRedirects(true)
                     .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
             }
-        val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(
+        // Extracteurs : MPEG-TS avec sous-titres codés (CEA-608 / 708) déclarés — voir [LiveCaptions].
+        val mediaSources = DefaultMediaSourceFactory(ctx, LiveCaptions.extractorsFactory()).setDataSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
         )
         val renderers = AudioOnlyFfmpegRenderersFactory(ctx).apply {
@@ -231,7 +232,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             val f = g.getTrackFormat(ti)
             val tc = com.ultratv.tv.nativeapp.data.subtitles.TrackChoice
             val label = tc.humanLabel(
-                f.language, f.label, if (type == C.TRACK_TYPE_AUDIO) tc.codecLabel(f.sampleMimeType) else null, if (type == C.TRACK_TYPE_AUDIO) f.channelCount else 0,
+                f.language, f.label ?: if (type == C.TRACK_TYPE_TEXT) LiveCaptions.ccLabel(f.sampleMimeType, f.accessibilityChannel) else null, if (type == C.TRACK_TYPE_AUDIO) tc.codecLabel(f.sampleMimeType) else null, if (type == C.TRACK_TYPE_AUDIO) f.channelCount else 0,
                 forced = f.selectionFlags and C.SELECTION_FLAG_FORCED != 0, index = ti + 1, ui = java.util.Locale(config.uiLanguage),
             )
             TrackInfo("$gi:$ti", label, g.isTrackSelected(ti), tc.normalizeLanguage(f.language) ?: tc.languageFromLabel(f.label))
