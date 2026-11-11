@@ -21,18 +21,22 @@ class LiveOsdLogicTest {
         assertEquals(OsdDecision.OpenOsd, decide(OsdKey.DOWN, hidden = true))
     }
 
-    @Test fun ferme_Haut_zappeCommeAvant() {
-        // Avant : Haut = chaîne précédente de la file (zap(false)), sans fermer quoi que ce soit.
-        assertEquals(OsdDecision.Zap(forward = false, closeOsd = false), decide(OsdKey.UP))
+    @Test fun ferme_HautEtBas_ouvrentLOsd() {
+        for (h in listOf(false, true)) {
+            assertEquals(OsdDecision.OpenOsd, decide(OsdKey.UP, hidden = h))
+            assertEquals(OsdDecision.OpenOsd, decide(OsdKey.DOWN, hidden = h))
+        }
     }
 
-    @Test fun ferme_DroiteMenuInfo_engagentLOsd() {
-        for (k in listOf(OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO)) assertEquals("$k", OsdDecision.OpenOsd, decide(k))
+    @Test fun ferme_MenuInfo_engagentLOsd() {
+        for (k in listOf(OsdKey.MENU, OsdKey.INFO)) assertEquals("$k", OsdDecision.OpenOsd, decide(k))
     }
 
-    @Test fun ferme_Gauche_sansDiffere_reviantALaChainePrecedente() {
-        assertEquals(OsdDecision.RecallPrevious, decide(OsdKey.LEFT))
-        assertEquals(OsdDecision.RecallPrevious, decide(OsdKey.LEFT, hidden = true))
+    @Test fun ferme_GaucheDroite_sansDiffere_chainePrecedenteEtSuivante() {
+        for (h in listOf(false, true)) {
+            assertEquals(OsdDecision.Zap(forward = false, closeOsd = false), decide(OsdKey.LEFT, hidden = h))
+            assertEquals(OsdDecision.Zap(forward = true, closeOsd = false), decide(OsdKey.RIGHT, hidden = h))
+        }
     }
 
     @Test fun ouvert_Gauche_resteAuFocus() {
