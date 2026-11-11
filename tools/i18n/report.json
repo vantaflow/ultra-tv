@@ -1,0 +1,28 @@
+{
+ "base": "origin/main",
+ "keys": 1335,
+ "plurals": 16,
+ "per_lang": {
+  "en": 1335,
+  "fr": 1335,
+  "es": 1331,
+  "ar": 1334
+ },
+ "default_to_english_es": [
+  "ds_episode_tag",
+  "ds_episode_short",
+  "ds_hint_ok"
+ ],
+ "default_to_english_ar": [
+  "ds_hint_ok"
+ ],
+ "reprises_manuelles_traitees_par_manual_py": [
+  "i18n/DesignStrings.kt:386: when(lang) à reprendre à la main",
+  "i18n/DesignStringsB1.kt:56: when(lang) à reprendre à la main",
+  "i18n/GuideStrings.kt:58: t(...) avec expression à littéral",
+  "i18n/PersonalizationStrings.kt:26: when(lang) à reprendre à la main",
+  "i18n/PersonalizationStrings.kt:36: when(lang) à reprendre à la main",
+  "ui/profile/ProfileStrings.kt:67: when(lang) à reprendre à la main",
+  "ui/live/LivePreview.kt:180: when(lang) à reprendre à la main"
+ ]
+}
