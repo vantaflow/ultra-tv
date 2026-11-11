@@ -39,7 +39,15 @@ self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
         post({ id: req.id, type: "result", value: await detectLanguages(req.transport, req.source, ctrl.signal) });
         break;
       case "epg": {
-        const n = await syncEpg(req.source, req.transport, ctrl.signal);
+        const counts = { live: 0, movie: 0, series: 0 };
+        const prog = (ratio: number, st?: { bytes: number; programs: number }) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts, bytes: st?.bytes, programs: st?.programs } });
+        let n = 0;
+        let failure: unknown;
+        try { n = await syncEpg(req.source, req.transport, ctrl.signal, prog); }
+        catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; failure = e; }
+        // xmltv.php bloqué, trop lourd ou sans chaîne reconnue : repli get_short_epg (comme la synchro complète).
+        if (n === 0 && req.source.type === "xtream") n = await syncShortEpg(req.source, req.transport, ctrl.signal);
+        if (n === 0 && failure) throw failure;
         post({ id: req.id, type: "result", value: n });
         break;
       }

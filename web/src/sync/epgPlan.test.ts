@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, setSetting } from "@/db/db";
 import { emptySource } from "@/db/sources";
 import type { Source } from "@/db/types";
-import { EXTRA_EPG_KEY, planEpg, syncEpg } from "./epg";
+import { EPG_LIMITS, EXTRA_EPG_KEY, planEpg, syncEpg } from "./epg";
 
 const xtream = (extra: Partial<Source> = {}): Source => ({ ...emptySource(), type: "xtream", server: "http://prov.test", username: "u", password: "p", ...extra });
 const m3u = (extra: Partial<Source> = {}): Source => ({ ...emptySource(), type: "m3u", m3uUrl: "http://x.test/l.m3u", ...extra });
@@ -44,6 +44,7 @@ const prog = (ch: string, label: string) => `<programme start="${xt(Date.now() +
 let server: http.Server;
 let base = "";
 beforeAll(async () => {
+  EPG_LIMITS.retryDelays = []; // ces tests ne visent pas les nouvelles tentatives (voir epgStream.test.ts)
   server = http.createServer((req, res) => {
     const path = (req.url ?? "").split("?")[0]!;
     const pages: Record<string, string> = {

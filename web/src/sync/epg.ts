@@ -1,10 +1,10 @@
 // Guide TV (XMLTV) : lecture en flux, filtré sur les chaînes du catalogue et une fenêtre de temps
-// [maintenant - 3 h ; maintenant + 48 h]. Les titres/descriptions sont décodés des entités XML.
+// [maintenant - 3 h ; maintenant + 3 jours]. Les titres/descriptions sont décodés des entités XML.
 
 import { db, getSetting } from "@/db/db";
 import type { ProgramRow, Source } from "@/db/types";
 import { hasGzipMagic } from "@/lib/gzip";
-import { transportFetch, type Transport } from "@/net/transport";
+import { HttpError, transportFetch, type Transport } from "@/net/transport";
 import { xmltvUrl, xtreamJson } from "@/net/xtream";
 import { credsOf } from "./core";
 import { matchByName, type FeedChannel, type NameMatch, type NameTarget } from "./epgNames";
@@ -34,6 +34,22 @@ export function decodeXml(s: string): string {
     });
 }
 
+/** Programmes par écriture en base (bulkAdd) : assez gros pour amortir les transactions, assez petit pour afficher vite. */
+export const EPG_BATCH = 4000;
+export const EPG_FIRST_BATCH = 500;
+/** Fenêtre utile : de -3 h à +3 jours (l'écran Guide affiche jusqu'à après-demain). */
+export const EPG_WINDOW_BEFORE_MS = 3 * 3600_000;
+export const EPG_WINDOW_AFTER_MS = 72 * 3600_000;
+/**
+ * Bornes du téléchargement d'un guide. Le délai SANS donnée (120 s) est dans le transport et réarmé à chaque morceau :
+ * un gros guide sur une connexion lente n'est jamais coupé tant que des octets arrivent. `totalMs` borne la durée totale
+ * (toutes tentatives comprises) pour qu'aucune attente ne soit infinie ; `retryDelays` = pauses avant chaque nouvelle tentative.
+ */
+export const EPG_LIMITS = { totalMs: 30 * 60_000, retryDelays: [2_000, 6_000] as number[] };
+
+/** Progression : ratio 0..1 (0 si la taille est inconnue) et, quand on les connaît, octets reçus et programmes écrits. */
+export type EpgProgress = (ratio: number, stats?: { bytes: number; programs: number }) => void;
+
 const PROG = /<programme\b([^>]*)>([\s\S]*?)<\/programme>/g;
 const ATTR = (name: string) => new RegExp(`\\b${name}="([^"]*)"`);
 const A_START = ATTR("start");
@@ -61,6 +77,8 @@ export function scanXmltv(
 ): EpgScan {
   let buf = "";
   let out: Omit<ProgramRow, "sourceId">[] = [];
+  // Premiers lots petits (les programmes apparaissent vite à l'écran), puis de plus en plus gros jusqu'à EPG_BATCH.
+  let limit = EPG_FIRST_BATCH;
   // Les identifiants XMLTV et ceux du catalogue ne varient que par la casse chez beaucoup de fournisseurs
   // (« TF1.fr » dans le guide, « tf1.fr » dans les chaînes) : on compare sans casse et on écrit l'identifiant du catalogue.
   // Un même identifiant peut exister sous plusieurs casses dans le catalogue (« tf1.fr » et « TF1.fr ») : une ligne par variante.
@@ -120,7 +138,7 @@ export function scanXmltv(
       for (const own of owns) out.push({ epg: own, start, end, title, desc });
     }
     buf = final ? "" : buf.slice(last);
-    if (out.length >= 2000 || (final && out.length)) { emit(out); out = []; }
+    if (out.length >= limit || (final && out.length)) { emit(out); out = []; limit = Math.min(EPG_BATCH, limit * 2); }
   };
   return {
     push(chunk) {
@@ -161,7 +179,7 @@ export function planEpg(source: Source, extraUrl = ""): EpgPlan {
   return { main, complements };
 }
 
-export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal, onProgress?: (ratio: number) => void): Promise<number> {
+export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal, onProgress?: EpgProgress): Promise<number> {
   if (!source.cid) return 0;
   const plan = planEpg(source, await getSetting<string>(EXTRA_EPG_KEY, ""));
   let written = 0;
@@ -183,7 +201,36 @@ export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal
  * Lit UN guide. [append] : guide complémentaire, il n'écrit que pour les chaînes SANS programme et ne retire rien
  * (sinon le guide principal qu'on vient d'écrire serait supprimé).
  */
-async function syncEpgUrl(source: Source, t: Transport, url: string, signal: AbortSignal | undefined, onProgress: ((ratio: number) => void) | undefined, append: boolean): Promise<number> {
+async function syncEpgUrl(source: Source, t: Transport, url: string, signal: AbortSignal | undefined, onProgress: EpgProgress | undefined, append: boolean): Promise<number> {
+  // Durée totale bornée (toutes tentatives comprises) ; l'annulation de l'appelant reste une AbortError.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(new DOMException("Délai total du guide dépassé", "TimeoutError")), EPG_LIMITS.totalMs);
+  const onParent = () => ctl.abort(signal!.reason);
+  if (signal?.aborted) ctl.abort(signal.reason); else signal?.addEventListener("abort", onParent, { once: true });
+  try {
+    for (let attempt = 0; ; attempt++) {
+      try { return await syncEpgUrlOnce(source, t, url, ctl.signal, onProgress, append); }
+      catch (e) {
+        const wait = EPG_LIMITS.retryDelays[attempt];
+        if (wait === undefined || ctl.signal.aborted || !isTransient(e)) throw e;
+        await new Promise<void>((r) => { const w = setTimeout(r, wait); ctl.signal.addEventListener("abort", () => { clearTimeout(w); r(); }, { once: true }); });
+        if (ctl.signal.aborted) throw e;
+      }
+    }
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", onParent);
+  }
+}
+
+/** Échec qui mérite une nouvelle tentative : réseau, délai sans donnée, HTTP 5xx / 408 / 429. Jamais une annulation volontaire. */
+function isTransient(e: unknown): boolean {
+  if (e instanceof DOMException && e.name === "AbortError") return false;
+  if (e instanceof HttpError) return e.status >= 500 || e.status === 408 || e.status === 429;
+  return true;
+}
+
+async function syncEpgUrlOnce(source: Source, t: Transport, url: string, signal: AbortSignal | undefined, onProgress: EpgProgress | undefined, append: boolean): Promise<number> {
   const sourceId = source.cid;
   if (!sourceId) return 0;
 
@@ -214,19 +261,21 @@ async function syncEpgUrl(source: Source, t: Transport, url: string, signal: Abo
   const first = await reader0.read();
   if (first.done) return 0;
   const gz = hasGzipMagic(first.value);
+  // Octets reçus du réseau (compressés si gzip) : la progression se mesure donc aussi sur les guides .gz.
+  let wire = first.value.byteLength;
   const replay = new ReadableStream<Uint8Array>({
     start(ctrl) { ctrl.enqueue(first.value); },
     async pull(ctrl) {
       const r = await reader0.read();
-      if (r.done) ctrl.close(); else ctrl.enqueue(r.value);
+      if (r.done) ctrl.close(); else { wire += r.value.byteLength; ctrl.enqueue(r.value); }
     },
     cancel() { void reader0.cancel(); },
   });
   stream = gz && "DecompressionStream" in globalThis ? replay.pipeThrough(new DecompressionStream("gzip") as unknown as ReadableWritablePair<Uint8Array, Uint8Array>) : replay;
 
   const now = Date.now();
-  const from = now - 3 * 3600_000;
-  const to = now + 48 * 3600_000;
+  const from = now - EPG_WINDOW_BEFORE_MS;
+  const to = now + EPG_WINDOW_AFTER_MS;
   // L'ancien guide n'est retiré qu'une fois le nouveau reçu en entier : avant, la purge précédait la lecture du flux
   // et une coupure laissait un guide vide. Les nouvelles lignes ont des identifiants supérieurs à `oldMax`.
   const oldMax = ((await db.programs.orderBy(":id").last())?.id as number | undefined) ?? 0;
@@ -234,23 +283,37 @@ async function syncEpgUrl(source: Source, t: Transport, url: string, signal: Abo
 
   let written = 0;
   const pending: Promise<unknown>[] = [];
+  // Écritures en série avec contre-pression : au plus 3 lots en attente, sinon la lecture du flux patiente
+  // (sans cela, un disque plus lent que le réseau accumulait des dizaines de milliers de lignes en mémoire).
+  let chain: Promise<unknown> = Promise.resolve();
+  let queued = 0;
   const wroteFor = new Set<string>();
   const scan = scanXmltv(wanted, from, to, (rows) => {
     written += rows.length;
     for (const r of rows) wroteFor.add(r.epg);
-    pending.push(db.programs.bulkAdd(rows.map((r) => ({ ...r, sourceId }))));
+    const batch = rows.map((r) => ({ ...r, sourceId }));
+    queued++;
+    const w = chain.then(() => db.programs.bulkAdd(batch)).finally(() => { queued--; });
+    chain = w.catch(() => undefined);
+    pending.push(w);
   }, (feeds) => (matched = matchByName(feeds, targets)));
+  let lastReport = 0;
+  const report = () => {
+    const t0 = Date.now();
+    if (t0 - lastReport < 250) return; // au plus 4 messages par seconde
+    lastReport = t0;
+    onProgress?.(total ? Math.min(0.99, wire / total) : 0, { bytes: wire, programs: written });
+  };
   try {
     const reader = stream.getReader();
     const dec = new TextDecoder("utf-8");
-    let read = 0;
     for (;;) {
-      if (signal?.aborted) { void reader.cancel(); throw new DOMException("Annulé", "AbortError"); }
+      if (signal?.aborted) { void reader.cancel(); throw signal.reason instanceof DOMException && signal.reason.name === "TimeoutError" ? signal.reason : new DOMException("Annulé", "AbortError"); }
       const { done, value } = await reader.read();
       if (done) break;
-      read += value.byteLength;
-      if (total && !gz) onProgress?.(Math.min(0.99, read / total));
       scan.push(dec.decode(value, { stream: true }));
+      report();
+      while (queued > 3) await chain;
     }
     scan.push(dec.decode());
     scan.end();

@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { channelsCol, programsFor } from "@/db/queries";
 import type { ChannelRow, ProgramRow, Source } from "@/db/types";
@@ -12,10 +12,10 @@ import { channelTarget } from "@/player/targets";
 import { guideColPx } from "@/lib/guideCol";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
-import { useUi } from "@/state/ui";
-import { syncSourceEpg } from "@/sync/client";
+import { type GuideLoadState, useGuideLoad } from "@/hooks/guideLoad";
+import { sortGuideChannels } from "@/lib/guideOrder";
 import { CategoryList } from "@/ui/CategoryList";
-import { hhmm, StateCard } from "@/ui/common";
+import { hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { NoSource } from "./states";
@@ -48,13 +48,43 @@ function dedupe(rows: ProgramRow[]): ProgramRow[] {
 
 interface Pick { prog: ProgramRow; chan: ChannelRow; x: number; y: number }
 
-function Row({ c, source, from, to, top, now, col, picked, onPick }: { c: ChannelRow; col: number; source: Source; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, e: React.MouseEvent) => void }) {
-  const [progs, setProgs] = useState<ProgramRow[]>([]);
+const sameProgs = (a: ProgramRow[] | undefined, b: ProgramRow[]) =>
+  !!a && a.length === b.length && a.every((p, i) => p.id === b[i]!.id && p.start === b[i]!.start && p.end === b[i]!.end);
+
+/**
+ * Programmes des seules lignes visibles, lus par fenêtre. Pendant le chargement du guide, la lecture est rafraîchie
+ * par lots (toutes les 1,5 s) et ne remplace que les lignes dont le contenu a changé : pas de re-rendu complet à chaque lot écrit.
+ */
+export function useVisibleProgs(cid: number, ids: string[], from: number, to: number, loading: boolean): Map<string, ProgramRow[]> {
+  const [map, setMap] = useState<Map<string, ProgramRow[]>>(new Map());
+  const [tick, setTick] = useState(0);
+  const key = ids.join("\u0001");
+  useEffect(() => {
+    if (!loading) return;
+    const i = setInterval(() => setTick((n) => n + 1), 1500);
+    return () => clearInterval(i);
+  }, [loading]);
   useEffect(() => {
     let dead = false;
-    if (c.epg) void programsFor(source.cid, c.epg, from, to).then((r) => { if (!dead) setProgs(dedupe(r)); });
+    const list = key ? key.split("\u0001") : [];
+    void Promise.all(list.map((id) => programsFor(cid, id, from, to).then(dedupe))).then((rows) => {
+      if (dead) return;
+      setMap((prev) => {
+        let changed = false;
+        const next = new Map(prev);
+        list.forEach((id, i) => { if (!sameProgs(prev.get(`${from}|${id}`), rows[i]!)) { next.set(`${from}|${id}`, rows[i]!); changed = true; } });
+        return changed ? next : prev;
+      });
+    });
     return () => { dead = true; };
-  }, [c.epg, source.cid, from, to]);
+  }, [cid, key, from, to, tick, loading]);
+  return map;
+}
+
+const EMPTY_PROGS: ProgramRow[] = [];
+const NO_CHANS: ChannelRow[] = [];
+
+const Row = memo(function Row({ c, progs, from, to, top, now, col, picked, onPick }: { c: ChannelRow; col: number; progs: ProgramRow[]; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, c: ChannelRow, e: React.MouseEvent) => void }) {
   return (
     <div className="g-row" style={{ position: "absolute", top, left: 0, width: TOTAL_W + col }}>
       <div className="g-chan">
@@ -71,13 +101,33 @@ function Row({ c, source, from, to, top, now, col, picked, onPick }: { c: Channe
           const w = ((e - s) / 60000) * PX_MIN - 3;
           const isNow = p.start <= now && p.end > now;
           return (
-            <button key={p.id} className={`g-prog${isNow ? " now" : ""}${picked?.id === p.id ? " sel" : ""}`} style={{ left, width: Math.max(w, 6) }} onClick={(ev) => onPick(p, ev)} title={p.title}>
+            <button key={p.id} className={`g-prog${isNow ? " now" : ""}${picked?.id === p.id ? " sel" : ""}`} style={{ left, width: Math.max(w, 6) }} onClick={(ev) => onPick(p, c, ev)} title={p.title}>
               <b className="ellipsis">{p.title}</b>
               {w > 90 && <span className="mono">{hhmm(p.start)} – {hhmm(p.end)}</span>}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+});
+
+/** Bandeau discret : chargement en cours (octets reçus) ou échec avec « Réessayer ». La grille reste affichée dessous. */
+export function GuideBanner({ state, onRetry }: { state: GuideLoadState; onRetry: () => void }) {
+  const t = useT();
+  if (state.phase === "idle") return null;
+  if (state.phase === "error") {
+    return (
+      <div className="g-banner err" role="alert">
+        <span>{t("guide.loadError")}</span>
+        <button className="btn sm" onClick={onRetry}>{t("common.retry")}</button>
+      </div>
+    );
+  }
+  return (
+    <div className="g-banner" role="status" aria-live="polite">
+      <span>{state.bytes > 0 ? t("guide.loadingMb", { mb: (state.bytes / 1e6).toFixed(1) }) : t("guide.loading")}</span>
+      <span className="bar" aria-hidden />
     </div>
   );
 }
@@ -92,7 +142,9 @@ function Inner({ source }: { source: Source }) {
   const [cat, setCat] = useState<string | null>(null);
   const [pop, setPop] = useState(false);
   const [pick, setPick] = useState<Pick | null>(null);
-  const [loading, setLoading] = useState(false);
+  // Le guide se charge en arrière-plan à l'ouverture (si absent ou périmé) ; la grille s'affiche tout de suite.
+  const { state: load, reload } = useGuideLoad(source);
+  const loading = load.phase === "loading";
   const scroller = useRef<HTMLDivElement>(null);
   const col = guideColPx(prefs.guideCol);
 
@@ -104,14 +156,19 @@ function Inner({ source }: { source: Source }) {
 
   // Catégorie par défaut : favoris s'il y en a, sinon première catégorie du direct.
   const effCat = cat ?? (favs.length ? "__fav" : "");
-  const chans = useLiveQuery(async () => {
+  const chansQ = useLiveQuery(async () => {
     if (!source.cid) return [];
-    if (effCat === "__fav") return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg);
-    return channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg).limit(GUIDE_MAX_CHANNELS).toArray();
-  }, [source.cid, effCat, favs.length]) ?? [];
-  const hasEpg = useLiveQuery(() => db.programs.where("[sourceId+end]").between([source.cid, 0], [source.cid, Infinity]).count(), [source.cid, loading]) ?? 0;
+    // Tri par numéro de chaîne croissant partout (Tout, catégories, Favoris), puis plafond d'affichage.
+    if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg));
+    return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg).toArray()).slice(0, GUIDE_MAX_CHANNELS);
+  }, [source.cid, effCat, favs.length]);
+  const chans = chansQ ?? NO_CHANS;
 
   const v = useVirtualizer({ count: chans.length, getScrollElement: () => scroller.current, estimateSize: () => 72, overscan: 6 });
+  const items = v.getVirtualItems();
+  const visibleIds = useMemo(() => [...new Set(items.map((it) => chans[it.index]?.epg).filter((e): e is string => !!e))], [items, chans]);
+  const progs = useVisibleProgs(source.cid, visibleIds, from, to, loading);
+  const onPick = useCallback((p: ProgramRow, c: ChannelRow, e: React.MouseEvent) => { e.stopPropagation(); setPick({ prog: p, chan: c, x: e.clientX, y: e.clientY }); }, []);
   const label = effCat === "__fav" ? t("common.favorites") : effCat === "" ? t("guide.withEpg") : cats?.find((c) => c.extId === effCat)?.label ?? t("guide.withEpg");
   const nowX = ((now - from) / 60000) * PX_MIN;
   const days = [t("guide.today"), t("guide.tomorrow"), new Date(Date.now() + 2 * 86400_000).toLocaleDateString(prefs.lang, { weekday: "long" })];
@@ -122,18 +179,6 @@ function Inner({ source }: { source: Source }) {
     usePlayer.getState().open(tg, "full", effCat === "__fav" ? null : effCat || null);
     setPick(null);
   };
-
-  if (hasEpg === 0 && !loading) {
-    return (
-      <StateCard icon="guide" title={t("guide.title")} body={t("guide.empty")} actions={
-        <button className="btn primary" onClick={async () => {
-          setLoading(true);
-          try { await syncSourceEpg(source); } catch { /* guide indisponible */ }
-          setLoading(false);
-          useUi.getState().toast(t("toast.synced"));
-        }}>{t("guide.loadEpg")}</button>} />
-    );
-  }
 
   return (
     <div className="guide" onClick={() => setPick(null)}>
@@ -147,6 +192,7 @@ function Inner({ source }: { source: Source }) {
           <div className="chips" role="group" aria-label={t("a11y.day")}>{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
         </div>
       </header>
+      <GuideBanner state={load} onRetry={reload} />
       <div className="guide-grid" ref={scroller}>
         <div className="g-head" style={{ width: TOTAL_W + col }}>
           <div className="g-corner" />
@@ -156,12 +202,12 @@ function Inner({ source }: { source: Source }) {
         </div>
         <div style={{ position: "relative", height: v.getTotalSize(), width: TOTAL_W + col }}>
           {nowX >= 0 && nowX <= TOTAL_W && <div className="g-now" style={{ insetInlineStart: col + nowX }} />}
-          {v.getVirtualItems().map((it) => {
+          {items.map((it) => {
             const c = chans[it.index]!;
-            return <Row key={c.id} c={c} source={source} from={from} to={to} top={it.start} now={now} col={col} picked={pick?.prog ?? null}
-              onPick={(p, e) => { e.stopPropagation(); setPick({ prog: p, chan: c, x: e.clientX, y: e.clientY }); }} />;
+            return <Row key={c.id} c={c} progs={(c.epg && progs.get(`${from}|${c.epg}`)) || EMPTY_PROGS} from={from} to={to} top={it.start} now={now} col={col} picked={pick?.prog ?? null} onPick={onPick} />;
           })}
         </div>
+        {chansQ && chans.length === 0 && <div className="g-empty">{t("guide.noChannels")}</div>}
       </div>
       {pick && (
         <div className="popover" style={{ left: Math.min(pick.x, window.innerWidth - 400), top: Math.min(pick.y + 12, window.innerHeight - 280), position: "fixed" }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={pick.prog.title}>
