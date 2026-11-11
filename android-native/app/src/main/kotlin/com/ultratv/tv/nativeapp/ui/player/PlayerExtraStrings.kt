@@ -101,6 +101,13 @@ class PlayerExtraStrings(val lang: AppLang) {
     val stillThere get() = t("Still there?", "Toujours là ?", "¿Sigues ahí?", "هل ما زلت هنا؟")
     val imHere get() = t("I'm here", "Je suis là", "Sigo aquí", "أنا هنا")
     val sleepNow get() = t("Stop now", "Arrêter maintenant", "Parar ahora", "إيقاف الآن")
+
+    // Surcouche film / épisode
+    val statusPlaying get() = t("Playing", "Lecture", "Reproduciendo", "قيد التشغيل")
+    val statusPaused get() = t("Paused", "Pause", "Pausa", "متوقف مؤقتًا")
+    val statusLoading get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
+    fun endsAt(time: String) = when (lang) { AppLang.French -> "Se termine à $time"; AppLang.Spanish -> "Termina a las $time"; AppLang.Arabic -> "ينتهي في $time"; else -> "Ends at $time" }
+    val previousEpisode get() = t("Previous episode", "Épisode précédent", "Episodio anterior", "الحلقة السابقة")
     val close get() = t("Close", "Fermer", "Cerrar", "إغلاق")
     fun sleepStopsIn(s: Int) = when (lang) { AppLang.French -> "Arrêt dans $s s"; AppLang.Spanish -> "Se detiene en $s s"; AppLang.Arabic -> "الإيقاف بعد $s ث"; else -> "Stopping in $s s" }
 }

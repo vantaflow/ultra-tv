@@ -184,6 +184,12 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
     /** LibVLC n'a pas de plafond dur : on borne la variante HLS/DASH choisie (pris en compte au prochain [load]). */
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) { this.maxHeight = maxHeight; this.maxBitrateBps = maxBitrateBps }
 
+    /** Nombre de canaux de la première piste audio du média (LibVLC ne l'expose que par la liste des pistes). */
+    private fun audioChannels(): Int? = runCatching {
+        val m = mp.media ?: return@runCatching null
+        (0 until m.trackCount).map { m.getTrack(it) }.filterIsInstance<org.videolan.libvlc.interfaces.IMedia.AudioTrack>().firstOrNull { it.channels > 0 }?.channels
+    }.getOrNull()
+
     override fun stats(): EngineStats {
         if (released) return EngineStats()
         val v = mp.currentVideoTrack
@@ -191,7 +197,7 @@ class VlcEngine(private val ctx: Context, override val config: EngineConfig) : P
         return EngineStats(
             resolution = v?.let { "${it.width}×${it.height}" }, videoCodec = v?.codec,
             frameRate = v?.frameRateNum?.takeIf { it > 0 && v.frameRateDen > 0 }?.let { it.toFloat() / v.frameRateDen },
-            videoBitrateKbps = s?.inputBitrate?.let { (it * 8000).toInt() }, audioCodec = null, audioChannels = null,
+            videoBitrateKbps = s?.inputBitrate?.let { (it * 8000).toInt() }, audioCodec = null, audioChannels = audioChannels(),
             bufferedSeconds = null, droppedFrames = s?.lostPictures, hardwareDecoding = config.decoder != DecoderMode.SOFTWARE,
         )
     }

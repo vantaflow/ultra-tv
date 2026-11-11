@@ -288,12 +288,29 @@ class PlayerViewModel @Inject constructor(
     }
 
     /** Épisode suivant (saison suivante comprise) devenu l'élément courant ; null en fin de série ou hors épisode. */
-    suspend fun nextEpisode(): PlaybackContext.Item? {
+    suspend fun nextEpisode(): PlaybackContext.Item? = stepEpisode(1)
+
+    /** Épisode précédent (saison précédente comprise) devenu l'élément courant ; null au premier épisode ou hors épisode. */
+    suspend fun previousEpisode(): PlaybackContext.Item? = stepEpisode(-1)
+
+    /** (un épisode précède, un épisode suit) l'épisode en cours, sans changer l'élément courant. */
+    suspend fun episodeNeighbors(): Pair<Boolean, Boolean> {
+        val c = playback.current.value ?: return false to false
+        if (c.kind != "EPISODE") return false to false
+        val cur = episodeDao.byRemoteId(c.providerId, c.remoteId) ?: return false to false
+        val all = episodeDao.observeForSeries(cur.seriesId).first()
+        val i = all.indexOfFirst { it.id == cur.id }
+        return (i > 0) to (i >= 0 && i + 1 < all.size)
+    }
+
+    private suspend fun stepEpisode(delta: Int): PlaybackContext.Item? {
         val c = playback.current.value ?: return null
         if (c.kind != "EPISODE") return null
         val cur = episodeDao.byRemoteId(c.providerId, c.remoteId) ?: return null
         val all = episodeDao.observeForSeries(cur.seriesId).first()
-        val nx = all.getOrNull(all.indexOfFirst { it.id == cur.id } + 1) ?: return null
+        val at = all.indexOfFirst { it.id == cur.id }
+        if (at < 0) return null
+        val nx = all.getOrNull(at + delta) ?: return null
         val tag = "S${"%02d".format(java.util.Locale.ROOT, nx.season)}E${"%02d".format(java.util.Locale.ROOT, nx.episode)}"
         val series = c.title.substringBefore(" · ")
         val epTitle = com.ultratv.tv.nativeapp.ui.series.cleanEpisodeTitle(nx.title, series, series)
@@ -597,8 +614,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         skipHasNext = vm.hasNextEpisode()
         skipSegs = vm.skipSegments(dur)
     }
-    val skipOffer = if (isLive || skipSegs.isEmpty() || state.phase != Phase.PLAYING) null
-        else com.ultratv.tv.nativeapp.data.skip.SkipSegmentsLogic.offerAt(skipSegs, pos, dur, item?.kind == "EPISODE", skipHasNext)
+    // derivedStateOf : la position change chaque seconde, mais l'écran n'est recomposé que si l'OFFRE change (apparition /
+    // disparition du bouton), pas à chaque seconde de lecture.
+    val skipOfferState = remember {
+        androidx.compose.runtime.derivedStateOf {
+            if (item?.kind == "LIVE" || skipSegs.isEmpty() || state.phase != Phase.PLAYING) null
+            else com.ultratv.tv.nativeapp.data.skip.SkipSegmentsLogic.offerAt(skipSegs, pos, dur, item?.kind == "EPISODE", skipHasNext)
+        }
+    }
+    val skipOffer = skipOfferState.value
     val doSkip: () -> Unit = {
         val o = skipOffer
         if (o != null && o.toNextEpisode) scope.launch {
@@ -606,6 +630,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             vm.nextEpisode()?.let { currentUrl = it.streamUrl }
         } else o?.targetMs?.let { t -> session.engine?.seekTo(t); pos = t / 1_000 * 1_000 }
     }
+    // Pastilles techniques (film / épisode) : calculées à l'affichage de la surcouche et à chaque changement de flux ou de
+    // moteur, jamais en continu. Deux relectures après la première image (les statistiques audio arrivent un peu plus tard).
+    var badges by remember { mutableStateOf(TechBadges.EMPTY) }
+    LaunchedEffect(currentUrl) { badges = TechBadges.EMPTY }
+    LaunchedEffect(currentUrl, overlayVisible, state.phase, state.combo) {
+        if (isLive || !overlayVisible || state.phase != Phase.PLAYING) return@LaunchedEffect
+        repeat(3) {
+            val b = VodOverlayLogic.badges(session.engine?.stats())
+            if (!b.isEmpty && b != badges) badges = b
+            if (b.quality != null && b.codec != null && b.audio != null) return@LaunchedEffect
+            delay(1_500)
+        }
+    }
+    var epNav by remember { mutableStateOf(false to false) }
+    LaunchedEffect(item?.remoteId) { epNav = if (item?.kind == "EPISODE") vm.episodeNeighbors() else (false to false) }
     var playing by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     LaunchedEffect(Unit) {
@@ -634,6 +673,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
 
     fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
+    // Épisode précédent / suivant (boutons de la surcouche) : la position atteinte est enregistrée avant de changer.
+    fun stepEpisode(delta: Int) {
+        scope.launch {
+            session.engine?.let { e -> vm.recordProgress(e.positionMs, e.durationMs.coerceAtLeast(0)); vm.scrobbleStop(e.positionMs, e.durationMs.coerceAtLeast(0)) }
+            (if (delta > 0) vm.nextEpisode() else vm.previousEpisode())?.let { currentUrl = it.streamUrl }
+            touch()
+        }
+    }
     // Direct : la surcouche sert d'abord de BANDEAU (chaîne, programme) ; Haut/Bas zappent, OK ouvre la liste.
     // Les commandes ne prennent la main (focus) qu'avec Gauche/Droite, Menu ou Info. Sans cette séparation,
     // le 1er zap affichait les commandes et la touche suivante y déplaçait le focus (plus de zapping, OK = pause).
@@ -822,6 +869,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         )
 
         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) {
+            if (!isLive) VodOverlay(
+                title = item?.title ?: title, badges = badges, pos = { pos }, dur = { dur }, speed = speed,
+                playing = playing, loading = state.phase == Phase.LOADING, hasPrev = epNav.first, hasNext = epNav.second, sleepActive = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE,
+                pauseFocus = pauseFocus, X = X,
+                onPrev = { stepEpisode(-1) }, onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
+                onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
+                onNext = { stepEpisode(1) },
+                onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options },
+            ) else {
             Header(item, title, vm, clock, isLive, D, tsSnap?.behindSec, X)
             if (tsActive && tsSnap != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftFooter(
                 tsSnap!!, playing, X, pauseFocus,
@@ -850,10 +906,11 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     touch()
                 },
             )
+            }
         }
         }
         // TV : visible seulement commandes masquées (non focalisable, OK l'exécute). Tactile : toujours, au doigt.
-        if (skipOffer != null && !drawerOpen && panel == Panel.None && !sleepMenu && (touch || !overlayVisible)) SkipChip(
+        if (skipOffer != null && !drawerOpen && panel == Panel.None && !sleepMenu && (touch || !overlayVisible || !isLive)) SkipChip(
             label = when {
                 skipOffer.toNextEpisode -> X.nextEpisode
                 skipOffer.kind == com.ultratv.tv.nativeapp.data.skip.SkipKind.RECAP -> X.skipRecap
@@ -861,7 +918,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 else -> X.skipIntro
             },
             okHint = !touch, onClick = doSkip,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 96.design, bottom = if (touch) 150.design else 96.design),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 96.design, bottom = if (touch) 150.design else if (overlayVisible && !isLive) 340.design else 96.design),
         )
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
