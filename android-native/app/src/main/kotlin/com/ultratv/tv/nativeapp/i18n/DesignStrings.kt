@@ -7,7 +7,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import com.ultratv.tv.nativeapp.R
 
 /**
- * Textes des écrans « Claude Design », lus dans les strings.xml de res/values et res/values-xx selon la langue
+ * Textes des écrans des maquettes de design, lus dans les strings.xml de res/values et res/values-xx selon la langue
  * de l'interface (voir [I18n]). Complète [Strings]. Aucune donnée factice : ce ne sont que des libellés.
  */
 class DesignStrings(val lang: AppLang) {

@@ -77,7 +77,6 @@ android-native/build/
 # Cloudflare wrangler
 .wrangler/
 **/.wrangler/
-.claude/
 
 # Release signing — keystore and env file live outside this repo.
 # See SECURITY.md for the rotation procedure.

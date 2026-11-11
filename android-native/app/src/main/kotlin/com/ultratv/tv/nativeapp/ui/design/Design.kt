@@ -56,7 +56,7 @@ import com.ultratv.tv.nativeapp.R
 import com.ultratv.tv.nativeapp.ui.common.design
 
 /**
- * Système de design « Claude Design » (maquettes 1920×1080). Une cote de la maquette en
+ * Système de design des maquettes (1920×1080). Une cote de la maquette en
  * pixels se convertit avec [design] (dp) et [spx] (sp) : l'échelle d'écran est déjà
  * normalisée sur la hauteur (voir ProvideUiScale), donc 720p, 1080p et 4K sont identiques.
  */
