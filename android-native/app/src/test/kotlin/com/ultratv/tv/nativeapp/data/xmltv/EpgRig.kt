@@ -41,6 +41,7 @@ class EpgRig(
     val repo: ProviderRepository
     val bus = SyncStatusBus()
     val limitsStore: ProviderLimitsStore
+    val prefs: UserPreferencesStore
     val providerId: Long
 
     init {
@@ -52,10 +53,11 @@ class EpgRig(
         val ok = OkHttpClient.Builder().addInterceptor(server.interceptor).build()
         val profiles = ProfileRepository(db.profileDao(), InMemoryProfileStateStore(), CoroutineScope(Dispatchers.Default))
         limitsStore = ProviderLimitsStore(ctx)
+        prefs = UserPreferencesStore(ctx, profiles)
         repo = ProviderRepository(
             providerDao = ProviderDao(db.providerDao()), channelDao = db.channelDao(), movieDao = db.movieDao(), seriesDao = db.seriesDao(),
             episodeDao = db.episodeDao(), categoryDao = db.categoryDao(), xtream = XtreamClient(ok), m3u = M3uParser(ok), parental = ParentalStore(ctx),
-            syncStatus = bus, xmltv = parserFactory(ok), epgDao = db.epgDao(), db = db, prefs = UserPreferencesStore(ctx, profiles),
+            syncStatus = bus, xmltv = parserFactory(ok), epgDao = db.epgDao(), db = db, prefs = prefs,
             adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = limitsStore,
             langDisabled = com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx),
             stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),

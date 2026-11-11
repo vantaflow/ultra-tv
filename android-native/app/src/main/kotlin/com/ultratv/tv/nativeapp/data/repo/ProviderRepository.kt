@@ -209,9 +209,15 @@ class ProviderRepository @Inject constructor(
     private suspend fun globalExtraUrl(): String? =
         prefs.flow.first().extraEpg.trim().takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }
 
-    private suspend fun guidePlan(p: ProviderEntity) = com.ultratv.tv.nativeapp.data.xmltv.GuidePlan.of(
-        p.kind, limits.epgUrls(p.id), limits.customEpg(p.id), globalExtra = globalExtraUrl() != null,
-    )
+    /**
+     * Le guide complémentaire seul (source sans guide propre) n'est lu que si l'utilisateur l'a CHOISI (adresse personnalisée ou
+     * option enregistrée) : la valeur par défaut (XMLTV France) ne doit pas être téléchargée pour toute playlist sans url-tvg.
+     */
+    private suspend fun guidePlan(p: ProviderEntity): com.ultratv.tv.nativeapp.data.xmltv.GuidePlan {
+        val u = prefs.flow.first()
+        val chosen = u.extraEpgChosen && globalExtraUrl() != null
+        return com.ultratv.tv.nativeapp.data.xmltv.GuidePlan.of(p.kind, limits.epgUrls(p.id), limits.customEpg(p.id), globalExtra = chosen)
+    }
 
     /**
      * Xtream : xmltv.php. M3U : url-tvg de l'en-tête. Toute source (Stalker compris) : son « guide de cette source » s'il est

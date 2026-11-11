@@ -115,7 +115,13 @@ class ExtraEpgPlGuideTest {
         }.iterator()
         private var cur = ByteArray(0); private var pos = 0
         var bytes = 0L
-        override fun read(): Int = throw UnsupportedOperationException()
+        override fun read(): Int {
+            while (pos >= cur.size) { if (!chunks.hasNext()) return -1; cur = chunks.next(); pos = 0 }
+            bytes++
+            return cur[pos++].toInt() and 0xFF
+        }
+        override fun available(): Int = cur.size - pos
+        override fun markSupported(): Boolean = false
         override fun read(b: ByteArray, off: Int, len: Int): Int {
             while (pos >= cur.size) { if (!chunks.hasNext()) return -1; cur = chunks.next(); pos = 0 }
             val n = minOf(len, cur.size - pos)
@@ -133,7 +139,7 @@ class ExtraEpgPlGuideTest {
         val t0 = System.nanoTime()
         var emitted = 0
         var maxHeld = 0
-        parser.externalProgrammes(feed, resolver::resolve).forEach { emitted++; maxHeld = maxOf(maxHeld, 1) }
+        parser.externalProgrammes(java.io.BufferedInputStream(feed, 64 * 1024), resolver::resolve).forEach { emitted++; maxHeld = maxOf(maxHeld, 1) }
         val ms = (System.nanoTime() - t0) / 1_000_000
         println("charge guide : ${feed.bytes / 1_000_000} Mo lus, $emitted programmes émis sur ${channels * perChannel}, $ms ms")
         assertEquals(40 * perChannel, emitted)

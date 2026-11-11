@@ -85,16 +85,32 @@ class EpgRepositoryTest {
         assertEquals(EpgState.Idle, r.bus.epg.value)
     }
 
-    @Test fun m3u_sansUrlTvg_nAUcunGuide() = runBlocking {
+    @Test fun m3u_sansUrlTvg_guideComplementaireDesactive_nAUcunGuide() = runBlocking {
+        val r = rig(kind = "M3U", ids = listOf("a"))
+        r.prefs.setExtraEpg("")
+        assertEquals(0, r.repo.syncXmltv(r.providerId))
+        assertTrue(server.requests.isEmpty())
+    }
+
+    @Test fun m3u_sansUrlTvg_valeurParDefautJamaisChoisie_nAUcunGuide() = runBlocking {
         val r = rig(kind = "M3U", ids = listOf("a"))
         assertEquals(0, r.repo.syncXmltv(r.providerId))
         assertTrue(server.requests.isEmpty())
+    }
+
+    @Test fun m3u_sansUrlTvg_guideComplementaireChoisi_estUtilise() = runBlocking {
+        val r = rig(kind = "M3U", ids = listOf("a"))
+        r.prefs.setExtraEpg("http://guide.invalid/pl.xml")
+        server.add("pl.xml", programmes(listOf("a"), 3))
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("a"), epgChannels(r))
     }
 
     // ---- « Guide de cette source » ----
 
     @Test fun stalker_sansAdressePerso_nAUcunGuide_puisAvecAdressePerso_leGuideEstUtilise() = runBlocking {
         val r = rig(kind = "STALKER", ids = listOf("a", "b"))
+        r.prefs.setExtraEpg("")   // guide complémentaire désactivé : aucun guide pour ce portail
         assertEquals(0, r.repo.syncXmltv(r.providerId))
         assertTrue(server.requests.isEmpty())
         r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide.invalid/perso.xml", GuideMode.REPLACE))
