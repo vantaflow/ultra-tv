@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
+- Alertes de l'administrateur dans la langue de l'application : l'appli envoie sa langue, le Worker renvoie la traduction si elle existe (champ `i18n`), sinon le texte par défaut.
 - Page `/apk` du Worker : choix de l'APK Android (64 bits recommandé, 32 bits, universel en dernier recours) pour l'appli Downloader, au lieu du seul APK universel d'environ 220 Mo. Les liens `/download/*` répondent aussi aux requêtes HEAD.
 
 ### Modifié

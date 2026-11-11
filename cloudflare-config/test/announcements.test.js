@@ -116,3 +116,25 @@ describe("alertes : routes", () => {
     expect(page).toContain("&lt;script&gt;");
   });
 });
+
+describe("alertes dans la langue de l'application", () => {
+  const now = 1_000_000;
+  const a = { id: "x", title: "Sorry", message: "Many updates", level: "info", startAt: 1, i18n: { fr: { title: "Désolés", message: "Beaucoup de mises à jour" }, pl: { title: "", message: "Wiele aktualizacji" } } };
+  it("langue traduite → texte traduit", () => {
+    const [r] = activeAnnouncements([a], now, null, null, "fr");
+    expect(r.title).toBe("Désolés");
+    expect(r.message).toBe("Beaucoup de mises à jour");
+  });
+  it("langue sans traduction ou absente → texte par défaut", () => {
+    expect(activeAnnouncements([a], now, null, null, "es")[0].message).toBe("Many updates");
+    expect(activeAnnouncements([a], now)[0].message).toBe("Many updates");
+  });
+  it("code régional accepté, titre vide gardé vide", () => {
+    const [r] = activeAnnouncements([a], now, null, null, "pl-PL");
+    expect(r.message).toBe("Wiele aktualizacji");
+    expect(r.title).toBe("");
+  });
+  it("la table i18n ne sort jamais telle quelle", () => {
+    expect(activeAnnouncements([a], now, null, null, "fr")[0].i18n).toBeUndefined();
+  });
+});

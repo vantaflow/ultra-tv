@@ -62,7 +62,7 @@ export function versionBefore(v, ref) {
  * [audience] (« tv », « mobile », « desktop ») filtre les alertes ciblées ; absente : toutes.
  * Seuls les champs utiles aux applications sortent (pas d'auteur ni de date de création).
  */
-export function activeAnnouncements(list, now = Date.now(), audience = null, version = null) {
+export function activeAnnouncements(list, now = Date.now(), audience = null, version = null, lang = null) {
   // Rang croissant avec la gravité (info 0 … urgent 2) : tri décroissant = la plus grave d'abord.
   const rank = (l) => ANN_LEVELS.indexOf(l);
   return list
@@ -71,7 +71,18 @@ export function activeAnnouncements(list, now = Date.now(), audience = null, ver
     // Ciblage par version : une application qui ne dit pas sa version (1.2.78 et avant) est forcément ancienne.
     .filter((a) => !a.below || !parseVersion(version) || versionBefore(version, a.below))
     .sort((x, y) => rank(y.level) - rank(x.level) || (y.startAt || 0) - (x.startAt || 0))
-    .map((a) => ({ id: a.id, title: a.title, message: a.message, level: a.level, action: a.action && a.action !== "none" ? a.action : null, startAt: a.startAt || null, endAt: a.endAt || null }));
+    .map((a) => ({ id: a.id, ...localized(a, lang), level: a.level, action: a.action && a.action !== "none" ? a.action : null, startAt: a.startAt || null, endAt: a.endAt || null }));
+}
+
+/**
+ * Texte dans la langue de l'application : `i18n` = { fr: { title, message }, pl: {...} } (facultatif). Sans traduction
+ * pour [lang] (ou appli qui n'envoie pas sa langue, 1.2.90 et avant) : le texte par défaut (anglais conseillé).
+ */
+export function localized(a, lang) {
+  const t = lang && a.i18n && typeof a.i18n === "object" ? a.i18n[String(lang).toLowerCase().slice(0, 2)] : null;
+  const message = t && typeof t.message === "string" && t.message.trim() ? t.message : a.message;
+  const title = t && typeof t.title === "string" && t.message ? t.title : a.title;
+  return { title, message };
 }
 
 const clean = (v, max) => String(v || "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, max);

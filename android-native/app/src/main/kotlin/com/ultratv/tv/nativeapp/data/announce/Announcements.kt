@@ -92,10 +92,13 @@ class AnnouncementRepository @Inject constructor(
 
     /** null : réseau ou Worker indisponible (on garde l'état, on réessaiera). */
     suspend fun fetch(audience: String): List<Announcement>? = withContext(Dispatchers.IO) {
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
+        val p = prefs.flow.first()
+        val base = WorkerUrl.normalize(p.workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
         runCatching {
             val version = AnnouncementPlan.versionParam(BuildConfig.VERSION_NAME)
-            http.newCall(Request.Builder().url("$base/api/announcements?audience=$audience&version=$version").get().build()).execute().use { r ->
+            // Langue effective de l'appli : le Worker renvoie l'alerte traduite quand elle existe.
+            val lang = com.ultratv.tv.nativeapp.i18n.I18n.resolve(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(p.language)).code
+            http.newCall(Request.Builder().url("$base/api/announcements?audience=$audience&version=$version&lang=$lang").get().build()).execute().use { r ->
                 if (!r.isSuccessful) null else AnnouncementPlan.parse(r.body?.string().orEmpty())
             }
         }.getOrNull()
