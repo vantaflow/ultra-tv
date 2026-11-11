@@ -425,25 +425,17 @@ private fun GenreProgressBanner(p: GenreDetector.Progress, touch: Boolean) {
     )
 }
 
-/**
- * Barre de choix : Source des catégories · (Tri · Note · Période, en liste + grille) · Affichage · Colonnes, puis le nombre de
- * catégories. Chaque pastille fait défiler ses options à OK (aucune fenêtre : la télécommande reste simple), le choix est mémorisé.
- */
+/** Barre du haut : tri, note minimale et période (pastilles d'origine), puis le nombre de catégories. */
 @Composable
 private fun ChoiceBar(vm: CatalogGridViewModel, lp: CatalogLayoutPrefs, filter: CatalogFilter, split: Boolean, touch: Boolean, categoryCount: Int, down: FocusRequester?) {
     val D = LocalDs.current
     val m = if (down != null) Modifier.focusProperties { this.down = down } else Modifier
     LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed), verticalAlignment = Alignment.CenterVertically) {
-        item(key = "src", contentType = "pill") { Chip(D.catalogSourceName(lp.source), false, m) { vm.setSource(CatalogLayoutRules.next(CategorySource.entries, lp.source)) } }
-        if (split) {
-            item(key = "sort", contentType = "pill") { Chip(D.catalogSortName(filter.sort), false, m) { vm.setFilter(filter.copy(sort = CatalogLayoutRules.next(CatalogFilter.Sort.entries, filter.sort))) } }
-            item(key = "rate", contentType = "pill") { Chip(if (filter.minRating == 0) D.anyRating else "★ ${filter.minRating}+", false, m) { vm.setFilter(filter.copy(minRating = CatalogLayoutRules.next(CatalogFilter.RATINGS, filter.minRating))) } }
-            item(key = "per", contentType = "pill") { Chip(D.periodName(filter.period), false, m) { vm.setFilter(filter.copy(period = CatalogLayoutRules.next(CatalogFilter.Period.entries, filter.period))) } }
-        }
-        if (!touch) {
-            item(key = "lay", contentType = "pill") { Chip(D.catalogLayoutName(lp.layout), false, m) { vm.setLayout(CatalogLayoutRules.next(CatalogLayout.entries, lp.layout)) } }
-            item(key = "col", contentType = "pill") { Chip(D.catalogColumnsName(lp.columns, CatalogLayoutRules.effectiveForLabel(lp.columns, split)), false, m) { vm.setColumns(CatalogLayoutRules.next(CatalogLayoutRules.COLUMN_CHOICES, lp.columns)) } }
-        }
+        // Barre d'origine : tri · note minimale · période, chaque option en pastille (sélection en surbrillance).
+        // Catégories du fournisseur à gauche ; ni source, ni affichage, ni colonnes à régler.
+        items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "pill" }) { o -> Chip(D.catalogSortName(o), filter.sort == o, m) { vm.setFilter(filter.copy(sort = o)) } }
+        items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "pill" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r, m) { vm.setFilter(filter.copy(minRating = r)) } }
+        items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "pill" }) { o -> Chip(D.periodName(o), filter.period == o, m) { vm.setFilter(filter.copy(period = o)) } }
         item(key = "count", contentType = "count") {
             Text(D.categoriesCount(categoryCount), color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 13.sp else 24.spx, maxLines = 1, modifier = Modifier.padding(start = if (touch) 4.dp else 8.design))
         }
