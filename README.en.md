@@ -197,6 +197,57 @@ The device receives a random 256-bit token (hashed on the server, encrypted in t
 - **No stream URL and no credential is displayed** or logged; error messages are filtered (`UserText`). An empty source name does not fall back to the server address.
 - No shared token in the APK. Details, threat model and rotation of old secrets: [SECURITY.md](SECURITY.md).
 
+## Privacy
+
+Ultra TV provides **no content**: you add your own sources (Xtream Codes, M3U, Stalker portal) and the app talks directly to your provider. It contains no ads and no third-party analytics library. The "Worker" is the cloud configuration server ([`cloudflare-config/`](cloudflare-config/)), hosted on Cloudflare; its address can be changed in Settings › Sources › *Dashboard address*.
+
+### Your IPTV credentials
+
+The server address, username, password, stream URLs and the MAC of a Stalker portal are sent **only to your provider**, except in two intended cases:
+
+- **Cloud sync**: on a paired device, a source is sent to the Worker only if you share it (offer shown after adding, or the share button) or add it from the dashboard. It is stored **encrypted** (AES-256-GCM, server-side encryption with a Worker secret key: not end-to-end). When you open the dashboard, the Worker itself queries your provider with these credentials to show the subscription status. If your provider blocks Cloudflare servers, this request goes through a relay hosted on Vercel (code in [`cloudflare-config/relay/`](cloudflare-config/relay/)): it receives the address and credentials for that request only and does not store them.
+- **Send from your phone**: the source typed on the web page is encrypted, kept for 15 minutes at most and deleted as soon as the TV receives it.
+
+Logs and crash reports are scrubbed (`username`, `password`, `token`… parameters, `user:password@`, `/live/user/password/` paths) in the app, then again by the Worker. Limits: a server's domain name can remain in an error message, and adding a Stalker source sends the portal's host name (no port, path, MAC or credentials) in a diagnostic event.
+
+### What the Android app sends on its own
+
+| What | When | To | Content | Turned off by the setting |
+|---|---|---|---|---|
+| Anonymous install count | ≈ 10 s after start, at most once per 20 h, **unpaired** device | Worker `/api/anon/ping` | random install ID, version | Yes |
+| Diagnostic logs | during use, **paired** device | Worker `/api/event` | level, tag, scrubbed message (start, screen shown, smoothness metrics, freezes, key counters, Google TV, update, sync failures), version, model, device label | Yes |
+| Crash reports | on crash (or next start), **paired** device | Worker `/api/crash` | scrubbed stack trace, version, model, Android version | Yes |
+| Update check | 30 s after each launch, or on request | `api.github.com`, then GitHub | request without identifier; if a newer version exists the APK is downloaded and Android's installer asks for confirmation | **No** |
+| Alerts (read) | on open, then every 15 min in the foreground | Worker `/api/announcements` | screen type, version | **No** |
+| Alerts (statistics) | alert shown, dismissed or button used | Worker `/api/announcements/<id>/stat` | event type, random install ID | **No** |
+| Extra guide | during guide sync, if channels have no programme | `xmltvfr.fr` (default) | file download; changeable: Settings › Synchronization | No |
+| Skip intro | when opening a movie/episode (TMDB id known) | `api.theintrodb.org` | TMDB id, season, episode, duration | **No** |
+| TMDB details, ratings | when opening a details page, **paired** device | Worker `/api/tmdb`, `/api/ratings` | cleaned title, year, language, or TMDB id | **No** |
+| TMDB posters | on display | `image.tmdb.org` | image request | **No** |
+| Online subtitles | only on *Search online*, paired device | Worker `/api/subtitles` | title, languages, year | **No** |
+| Cloud sync | paired: at launch, every 6 h; favourites and history ≈ 60 s after a change then every 10 min | Worker | device token, version, edition; display settings; favourites and history per profile (title, poster address, position, duration) | **No** (unpairing stops it) |
+| Trakt | while playing a movie/episode, paired device | Worker `/api/device/trakt` | action, progress, title, year, TMDB ids, season, episode | **No** |
+| DNS | only if you pick a DNS other than the system one (Settings › Playback) | Google, Cloudflare, Quad9 or yours | domain names | No |
+
+Images supplied by your source are loaded directly from the addresses it gives.
+
+### Windows and macOS
+
+No anonymous count, crash report, remote log or alerts. Sends: update check (`api.github.com`, 5 s after launch then every 6 h, no setting to disable it), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
+
+### What the Worker keeps
+
+- **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
+- **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
+- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device and account ID, country, version, model, a device label derived by hashing the Android ID.
+- **Anonymous count**: hash of the install ID, dates, version, country; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
+- **Send from phone**: 15 min at most. **Pairing code**: 10 min.
+- **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
+
+### Turning telemetry off
+
+**Settings › About › *Anonymous crash reports*** (on by default). Off: no more logs, crash reports or anonymous count, and no install ID in send-from-phone. It does **not** turn off the update check, alerts and their statistics, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
+
 ## Automatic tuning
 
 On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, micro-benchmark) and rates it **Low / Medium / High**. From that it derives buffer, parallelism and sync batch size, resolution and bitrate caps (low-memory boxes: 720p / 6 Mb/s) and adjusts the buffer if drop-outs occur. Everything stays adjustable: Settings › Playback (engine, decoding, buffer preset: Low latency, Auto, Balanced, Stable, Custom).
