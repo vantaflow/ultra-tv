@@ -680,7 +680,7 @@ private fun Preview(
         } else {
             Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
         }
-        // Hauteur commune (IntrinsicSize.Min + fillMaxHeight) : un titre sur deux lignes n'agrandit plus une seule carte.
+        // Hauteur fixe : le titre réserve toujours deux lignes (une seule ligne laisse l'espace en bas), cartes de même taille.
         if (upcoming.isNotEmpty()) Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).padding(top = 4.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
             upcoming.forEachIndexed { i, p ->
                 Column(
@@ -688,7 +688,7 @@ private fun Preview(
                     verticalArrangement = Arrangement.spacedBy(6.design),
                 ) {
                     Text(if (i == 0) "${D.nextWord} · ${EpgClock.hm(p.startMs)}" else EpgClock.hm(p.startMs), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.sp(), maxLines = 1)
-                    Text(p.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(p.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 30.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
