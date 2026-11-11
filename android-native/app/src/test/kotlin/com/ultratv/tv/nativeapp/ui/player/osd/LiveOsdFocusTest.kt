@@ -34,6 +34,27 @@ import org.robolectric.annotation.Config
 class LiveOsdFocusTest {
     @get:Rule val rule = createComposeRule()
 
+    /** #85 : ouvert depuis le bandeau (OK / Bas), l'OSD pose le focus sur la barre APRÈS sa composition. */
+    @Test fun ouvertureDepuisLeBandeau_poseLeFocusSurLaBarre() {
+        I18n.init(ApplicationProvider.getApplicationContext())
+        val lang = AppLang.English
+        val full = LiveOsdRenderTest.state(lang)
+        val expanded = androidx.compose.runtime.mutableStateOf(false)
+        val focus = LiveOsdFocus()
+        rule.setContent {
+            CompositionLocalProvider(LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false) {
+                Box(Modifier.fillMaxSize().background(Color.Black)) {
+                    LiveOsd(full.copy(expanded = expanded.value), focus, onAction = {}, onRecent = {})
+                }
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("Pause").assertDoesNotExist()       // bandeau seul : pas de barre
+        rule.runOnIdle { expanded.value = true }
+        rule.waitForIdle()
+        rule.onNodeWithText("Pause").assertIsFocused()
+    }
+
     @Test fun dpad_atteintChaqueBoutonDeLaBarre_puisMonteAuxRecentsEtRedescend() {
         I18n.init(ApplicationProvider.getApplicationContext())
         val lang = AppLang.English
