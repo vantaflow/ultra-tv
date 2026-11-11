@@ -164,10 +164,11 @@ class LiveViewModel @Inject constructor(
     private suspend fun loadNowNext(ids: List<Long>) {
         if (ids.isEmpty()) return
         val now = System.currentTimeMillis()
-        val rows = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 6 * 60 * 60_000) }.groupBy { it.channelId }
-        val add = ids.associateWith { id ->
-            val l = rows[id].orEmpty()
-            l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now }
+        val raw = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 6 * 60 * 60_000) }
+        // Regroupement et recherche du programme en cours / suivant hors thread principal.
+        val add = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val rows = raw.groupBy { it.channelId }
+            ids.associateWith { id -> com.ultratv.tv.nativeapp.ui.common.EpgProgress.currentAndNext(rows[id].orEmpty(), now) }
         }
         _nowNext.value = (_nowNext.value + add).let { m -> if (m.size > 600) add else m }
         // Guide complet absent (box qui n'a pas fini la synchro, XMLTV en échec) : programme court du fournisseur.
@@ -177,11 +178,17 @@ class LiveViewModel @Inject constructor(
         }
     }
 
+    /** Les [count] prochains programmes d'UNE chaîne (panneau de détail) : lecture hors thread principal, une seule chaîne. */
+    suspend fun upcoming(channelId: Long, count: Int = 2): List<EpgEntity> = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val now = System.currentTimeMillis()
+        com.ultratv.tv.nativeapp.ui.common.EpgProgress.upcoming(epgDao.rangeForChannels(listOf(channelId), now, now + 12 * 60 * 60_000), now, count)
+    }
+
     /** Relecture locale seulement (pas de nouvel appel réseau) après un programme court. */
     private suspend fun loadNowNextLocal(ids: List<Long>) {
         val now = System.currentTimeMillis()
         val rows = epgDao.rangeForChannels(ids, now - 30 * 60_000, now + 6 * 60 * 60_000).groupBy { it.channelId }
-        _nowNext.value = _nowNext.value + ids.associateWith { id -> val l = rows[id].orEmpty(); l.firstOrNull { it.startMs <= now && it.endMs > now } to l.firstOrNull { it.startMs > now } }
+        _nowNext.value = _nowNext.value + ids.associateWith { id -> com.ultratv.tv.nativeapp.ui.common.EpgProgress.currentAndNext(rows[id].orEmpty(), now) }
     }
 
     /**
