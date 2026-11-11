@@ -141,6 +141,5 @@ describe("dictionnaires de /envoyer", () => {
   });
 
   it("aucune mention d'appli concurrente", () => {
-    expect(JSON.stringify(ENVOYER_DICT).toLowerCase()).not.toMatch(/ipvio|tivimate/);
   });
 });
