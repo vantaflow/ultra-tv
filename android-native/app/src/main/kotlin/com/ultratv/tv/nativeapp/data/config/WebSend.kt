@@ -23,9 +23,18 @@ data class WebSource(val kind: String, val name: String, val url: String, val us
 
 /** Règles pures de l'envoi depuis le web (testées sans Android). */
 object WebSendLogic {
-    /** Adresse encodée dans le QR : `<worker>/envoyer?c=ABC123`. */
-    fun sendUrl(base: String, code: String): String =
-        base.trimEnd('/') + "/envoyer?c=" + code.uppercase().filter { it.isLetterOrDigit() }
+    /** Langues prises en charge par la page /envoyer du Worker. */
+    private val PAGE_LANGS = setOf("en", "fr", "es", "ar", "pl")
+
+    /**
+     * Adresse encodée dans le QR : `<worker>/envoyer?c=ABC123`, suivie de `&l=<langue>` quand [lang] (code de la langue
+     * effective de l'appli, déjà résolu) est prise en charge : la page s'ouvre alors dans la langue de l'appli.
+     */
+    fun sendUrl(base: String, code: String, lang: String? = null): String {
+        val url = base.trimEnd('/') + "/envoyer?c=" + code.uppercase().filter { it.isLetterOrDigit() }
+        val l = lang?.trim()?.lowercase()
+        return if (l != null && l in PAGE_LANGS) "$url&l=$l" else url
+    }
 
     /** Adresse courte à saisir à la main : `hôte/envoyer`. */
     fun shortAddress(base: String): String =

@@ -20,6 +20,18 @@ class WebSendLogicTest {
     @Test fun `sendUrl encode le code sans tiret en majuscules`() =
         assertEquals("https://w.test/envoyer?c=K7Q2M9", WebSendLogic.sendUrl("https://w.test/", "k7q-2m9"))
 
+    @Test fun `sendUrl ajoute la langue de l'appli quand elle est prise en charge`() {
+        assertEquals("https://w.test/envoyer?c=K7Q2M9&l=en", WebSendLogic.sendUrl("https://w.test", "K7Q2M9", "en"))
+        assertEquals("https://w.test/envoyer?c=K7Q2M9&l=ar", WebSendLogic.sendUrl("https://w.test/", "k7q-2m9", "AR"))
+        assertEquals("https://w.test/envoyer?c=K7Q2M9&l=pl", WebSendLogic.sendUrl("https://w.test", "K7Q2M9", "pl"))
+    }
+
+    @Test fun `sendUrl sans langue ou avec une langue inconnue reste identique`() {
+        assertEquals("https://w.test/envoyer?c=K7Q2M9", WebSendLogic.sendUrl("https://w.test", "K7Q2M9", null))
+        assertEquals("https://w.test/envoyer?c=K7Q2M9", WebSendLogic.sendUrl("https://w.test", "K7Q2M9", "system"))
+        assertEquals("https://w.test/envoyer?c=K7Q2M9", WebSendLogic.sendUrl("https://w.test", "K7Q2M9", "de&x=1"))
+    }
+
     @Test fun `shortAddress donne hote et chemin sans schema`() {
         assertEquals("w.test/envoyer", WebSendLogic.shortAddress("https://w.test/"))
         assertEquals("w.test:8787/envoyer", WebSendLogic.shortAddress("http://w.test:8787"))

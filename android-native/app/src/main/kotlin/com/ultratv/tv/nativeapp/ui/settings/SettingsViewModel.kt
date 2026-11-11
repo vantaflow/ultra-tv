@@ -238,12 +238,15 @@ class SettingsViewModel @Inject constructor(
         webSendJob?.cancel()
         _webSendUi.value = WebSendUi.Requesting
         webSendJob = viewModelScope.launch {
-            val install = if (prefs.flow.first().telemetryEnabled) installIds.get() else null
+            val current = prefs.flow.first()
+            val install = if (current.telemetryEnabled) installIds.get() else null
+            // Langue effective de l'appli (Système résolu) : transmise à la page /envoyer via le QR.
+            val pageLang = com.ultratv.tv.nativeapp.i18n.I18n.resolve(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(current.language)).code
             webSend.run(base, install).collect { ev ->
                 when (ev) {
                     is com.ultratv.tv.nativeapp.data.config.WebSendEvent.CodeReady -> _webSendUi.value = WebSendUi.ShowCode(
                         ev.code,
-                        com.ultratv.tv.nativeapp.data.config.WebSendLogic.sendUrl(base, ev.code),
+                        com.ultratv.tv.nativeapp.data.config.WebSendLogic.sendUrl(base, ev.code, pageLang),
                         com.ultratv.tv.nativeapp.data.config.WebSendLogic.shortAddress(base),
                         ev.expiresInSec,
                     )
