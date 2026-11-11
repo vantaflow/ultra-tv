@@ -18,6 +18,7 @@ import okio.Path.Companion.toOkioPath
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -59,6 +60,12 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
 
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private val weakDecodeDispatcher by lazy {
+        java.util.concurrent.Executors.newFixedThreadPool(1) { r ->
+            Thread({ android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); r.run() }, "utv-decode")
+        }.asCoroutineDispatcher()
+    }
+
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val auto = adaptive.state.value.auto
         val low = auto.lowRam
@@ -81,11 +88,17 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
             // sa propre file de requêtes (les logos n'attendent pas derrière une synchro).
             // Coil 3 : le réseau passe par le module coil-network-okhttp ; le client est toujours construit paresseusement.
             .components {
+                add(com.ultratv.tv.nativeapp.ui.design.TmdbSizeInterceptor)
                 add(OkHttpNetworkFetcherFactory(callFactory = {
                     okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build()
                 }))
             }
-            .apply { if (low) decoderCoroutineContext(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
+            .apply {
+                // Box faible : un seul décodage à la fois, sur un fil de PRIORITÉ ARRIÈRE-PLAN — avant, jusqu'à quatre décodages
+                // d'affiches (≈ 60 ms chacun) se disputaient les quatre cœurs avec le fil principal et le fil de rendu.
+                if (auto.weakUi) decoderCoroutineContext(weakDecodeDispatcher)
+                else if (low) decoderCoroutineContext(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2))
+            }
             // En-têtes de cache HTTP ignorés (ancien respectCacheHeaders(false)) : c'est le comportement par défaut de
             // Coil 3 (CacheStrategy.DEFAULT ; les respecter demanderait le module coil-network-cache-control).
             .memoryCachePolicy(CachePolicy.ENABLED)

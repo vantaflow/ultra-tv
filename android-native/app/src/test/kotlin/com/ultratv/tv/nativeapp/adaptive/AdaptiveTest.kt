@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.adaptive
 
 import com.ultratv.tv.nativeapp.ui.player.engine.BufferPreset
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -58,6 +60,14 @@ class AdaptiveTest {
         val a = AutoTuner.settings(profile(dev(ram = 1000, cls = 128, cores = 2, is64 = false)), NetQuality.POOR, false, 80)
         assertEquals(480, a.maxVideoHeight); assertEquals(2_000_000, a.maxVideoBitrateBps)
     }
+    @Test fun auto_box32Bits2Go_estUneBoxFaibleSansPlafonnerLaVideo() {
+        val d = dev(ram = 2000, cls = 256, cores = 4, is64 = false)
+        assertTrue(DeviceClassifier.weakUi(d))
+        val a = AutoTuner.settings(profile(d), NetQuality.EXCELLENT, false, 80)
+        assertEquals(UiEffects.REDUCED, a.uiEffects); assertTrue(a.weakUi)
+        assertNotEquals(720, a.maxVideoHeight)
+    }
+    @Test fun auto_box64Bits_pasBoxFaible() = assertFalse(DeviceClassifier.weakUi(dev()))
     @Test fun auto_grosseBox_reseauRapide_toutEnPleinEtFaibleLatence() {
         val a = AutoTuner.settings(profile(dev()), NetQuality.EXCELLENT, false, 50)
         assertEquals(UiEffects.FULL, a.uiEffects); assertEquals(BufferPreset.LOW_LATENCY, a.bufferPreset)
