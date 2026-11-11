@@ -1260,6 +1260,7 @@ internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings,
         PlayErrorKind.NETWORK -> D.errNetwork to null
         PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null
         PlayErrorKind.NOT_FOUND -> D.errNotFound to null
+        PlayErrorKind.START_TIMEOUT -> D.errStartTimeout to D.errStartTimeoutHint
         PlayErrorKind.DRM_UNSUPPORTED -> D.errDrmUnsupported to D.errDrmUnsupportedHint
         PlayErrorKind.DRM_LICENSE -> D.errDrmLicense to D.errDrmLicenseHint
         PlayErrorKind.DRM_INVALID -> D.errDrmInvalid to D.errDrmInvalidHint

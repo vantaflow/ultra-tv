@@ -243,6 +243,8 @@
     <string name="ds_err_drm_invalid">إعدادات الحماية ناقصة أو غير صالحة</string>
     <string name="ds_err_drm_invalid_hint">لا توفر القائمة عنوان ترخيص أو مفاتيح صالحة لهذه القناة.</string>
     <string name="ds_err_no_response">هذه القناة لا تستجيب</string>
+    <string name="ds_err_start_timeout">لا يبدأ البث</string>
+    <string name="ds_err_start_timeout_hint">قبل الخادم الاتصال لكنه لا يرسل أي بيانات. حاول مرة أخرى أو اختر قناة أخرى.</string>
     <string name="ds_err_refused">رفض المزود الاتصال</string>
     <string name="ds_err_no_link">لم توفر البوابة رابط القناة</string>
     <string name="ds_err_no_link_hint">جرّب قناة أخرى أو تحقق من المصدر في الإعدادات.</string>

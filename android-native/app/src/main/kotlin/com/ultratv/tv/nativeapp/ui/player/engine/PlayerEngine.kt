@@ -25,6 +25,7 @@ enum class PlayErrorKind {
     DRM_UNSUPPORTED, // flux protégé : système (Widevine / ClearKey) ou niveau de sécurité absent de l'appareil
     DRM_LICENSE,    // flux protégé : licence refusée, expirée ou injoignable
     DRM_INVALID,    // flux protégé : propriétés de la playlist incomplètes ou illisibles
+    START_TIMEOUT,  // aucun progrès de chargement ni image dans le délai de démarrage (flux muet, segments qui ne viennent pas)
     UNKNOWN,
 }
 
@@ -123,6 +124,8 @@ interface PlayerEngine {
     /** Plafonne la qualité (adaptation au réseau et à l'écran) — sans effet sur les moteurs qui ne le permettent pas. */
     fun limitQuality(maxHeight: Int, maxBitrateBps: Int?)
     fun stats(): EngineStats
+    /** Progression du chargement (position tamponnée, ms) ; -1 si le moteur ne l'expose pas. Sert à ne pas couper un démarrage lent mais vivant. */
+    fun loadProgress(): Long = -1L
 
     /** Applique le style de sous-titres. Vrai = pris en compte tout de suite ; faux = au prochain démarrage du moteur. */
     fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean = false

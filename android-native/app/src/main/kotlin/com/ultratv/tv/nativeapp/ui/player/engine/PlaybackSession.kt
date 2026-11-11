@@ -43,6 +43,15 @@ data class SessionState(
 /** Direct bloqué en chargement après avoir joué : délai avant reconnexion. */
 private const val STALL_MS = 12_000L
 
+/**
+ * Démarrage figé : délai sans première image ni progrès de chargement avant de traiter le lancement comme une erreur
+ * (repli vers la combinaison suivante, puis panneau d'erreur). Plus long avec le tampon « Stable » (démarrage plus large).
+ */
+private const val STARTUP_MS = 15_000L
+private const val STARTUP_SLOW_MS = 25_000L
+/** Plafond absolu d'un démarrage qui progresse (VOD lente) : au-delà, même vivant, il est jugé figé. */
+private const val STARTUP_MAX_MS = 90_000L
+
 @UnstableApi
 class PlaybackSession(
     private val ctx: Context,
@@ -109,6 +118,8 @@ class PlaybackSession(
     private var everPlayed = false
     private var reconnectJob: Job? = null
     private var stallJob: Job? = null
+    /** Délai de démarrage : armé à chaque lancement de moteur, levé par la première image (ou Ready, relais du contrôle d'image). */
+    private var startupJob: Job? = null
     private var stableJob: Job? = null
     /** Nouvelle tentative / repli programmés par [onError] : annulés par un zap ou un nouveau moteur (double connexion sinon). */
     private var errorJob: Job? = null
@@ -176,7 +187,7 @@ class PlaybackSession(
         this.props = found?.takeIf { it.isProtected }
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
         syncPresence(); lastHttp = null; playedSinceMs = 0L
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val protectedNow = isProtected
@@ -185,7 +196,7 @@ class PlaybackSession(
         val next = if (isStalkerUrl && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
         props?.let(drmPrecheck)?.let { bad ->
             // Appareil sans le système demandé ou propriétés incomplètes : erreur claire, AUCUN moteur (et jamais VLC).
-            watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); eventsJob?.cancel(); adaptJob?.cancel()
+            watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); eventsJob?.cancel(); adaptJob?.cancel(); startupJob?.cancel()
             releaseEngine(); combo = next
             _state.value = SessionState(Phase.ERROR, bad, next, presetOverride ?: s.bufferPreset, false, true)
             return
@@ -198,11 +209,11 @@ class PlaybackSession(
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false, protectedNow)
-            if (!isStalkerUrl) loadOn(e)
+            if (!isStalkerUrl) { loadOn(e); armStartup(e) }
             else openJob = scope.launch {
                 // Lien frais à chaque ouverture ; en-têtes d'un autre portail (zap entre sources) : moteur recréé.
                 val o = openNow() ?: return@launch
-                if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) e.load(o.url, resumeMs) else launch(combo, o)
+                if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) { e.load(o.url, resumeMs); armStartup(e) } else launch(combo, o)
             }
         } else {
             combo = next
@@ -281,7 +292,7 @@ class PlaybackSession(
         val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -320,6 +331,7 @@ class PlaybackSession(
         e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
         eventsJob = scope.launch { e.events.collect { onEvent(it, e) } }
         loadOn(e, o.url)
+        armStartup(e)
     }
 
     /** Tampon effectif du moteur lancé : un zap ne réutilise le moteur que si ce tampon n'a pas changé. */
@@ -342,13 +354,13 @@ class PlaybackSession(
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
                 if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
-            } else Unit
-            EngineEvent.Ready -> { stallJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
+            EngineEvent.Ready -> { stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
                 val again = firstFrame
-                firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel()
+                firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
                 everPlayed = true
                 if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
                 // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
@@ -375,6 +387,47 @@ class PlaybackSession(
             delay(8_000)
             if (!firstFrame && e.hasVideo) onError(PlayErrorKind.NO_PICTURE)
         }
+    }
+
+    /**
+     * Délai de démarrage : sans première image ni progrès de chargement (position tamponnée du moteur, quand il l'expose)
+     * dans le délai, le lancement est traité comme une erreur de démarrage (repli, puis panneau d'erreur) au lieu de
+     * charger sans fin. Un démarrage qui progresse (VOD lente) prolonge le délai, jusqu'à [STARTUP_MAX_MS].
+     */
+    private fun armStartup(e: PlayerEngine) {
+        startupJob?.cancel()
+        val step = if ((presetOverride ?: settings().bufferPreset) == BufferPreset.STABLE) STARTUP_SLOW_MS else STARTUP_MS
+        startupJob = scope.launch {
+            var last = e.loadProgress()
+            var waited = 0L
+            while (true) {
+                delay(step); waited += step
+                if (firstFrame || engine !== e) return@launch
+                val p = e.loadProgress()
+                if (p > last && waited < STARTUP_MAX_MS) { last = p; continue }
+                break
+            }
+            // Direct qui jouait puis rechargé après une coupure : on retente la reconnexion (bornée), pas de changement de moteur.
+            if (reconnectAllowed && everPlayed) {
+                android.util.Log.i("UltraPlay", "startup stall engine=${combo.engine} ms=$waited -> reconnect")
+                reconnectLive(); return@launch
+            }
+            val next = fallbackAfter(PlayErrorKind.START_TIMEOUT)
+            android.util.Log.i("UltraPlay", "startup stall engine=${combo.engine} ms=$waited -> " + (next?.let { "fallback ${it.engine}" } ?: "error"))
+            onError(PlayErrorKind.START_TIMEOUT)
+        }
+    }
+
+    /**
+     * Combinaison de repli après [kind], ou null (aucun repli : flux protégé, moteur imposé, VLC exclu pour Stalker).
+     * Un démarrage figé n'est pas un souci de décodeur : les combinaisons en décodage logiciel sont sautées (elles ne changent rien à un flux qui n'arrive pas).
+     */
+    private fun fallbackAfter(kind: PlayErrorKind): Combo? {
+        if (!PlaybackPlanner.shouldFallBack(kind, isProtected)) return null
+        val choice = settings().engine
+        val skipVlc = if (isStalkerUrl && choice != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
+        val skipSame = if (kind == PlayErrorKind.START_TIMEOUT) setOf(Combo(EngineKind.EXO, DecoderMode.SOFTWARE), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
+        return PlaybackPlanner.next(choice, tried + skipVlc + skipSame, isProtected)
     }
 
     /**
@@ -410,7 +463,7 @@ class PlaybackSession(
         val k = if (everPlayed && kind == PlayErrorKind.FORMAT && combo.engine == EngineKind.VLC) PlayErrorKind.NETWORK else kind
         if (reconnectAllowed && everPlayed && PlaybackPlanner.shouldReconnectLive(k)) { reconnectLive(); return }
         network.onError()
-        val settingsNow = settings()
+        startupJob?.cancel()
         errorJob?.cancel()
         errorJob = scope.launch {
             if (PlaybackPlanner.shouldRetrySame(kind) && sameRetries < 1) {
@@ -421,14 +474,11 @@ class PlaybackSession(
                 launch(combo)
                 return@launch
             }
-            if (PlaybackPlanner.shouldFallBack(kind, isProtected)) {
-                val skipVlc = if (isStalkerUrl && settingsNow.engine != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
-                val next = PlaybackPlanner.next(settingsNow.engine, tried + skipVlc, isProtected)
-                if (next != null) {
-                    _notices.tryEmit(if (next.engine == EngineKind.VLC) Notice.USING_VLC else if (next.decoder == DecoderMode.SOFTWARE) Notice.USING_SOFTWARE else Notice.USING_EXO)
-                    launch(next)
-                    return@launch
-                }
+            val next = fallbackAfter(kind)
+            if (next != null) {
+                _notices.tryEmit(if (next.engine == EngineKind.VLC) Notice.USING_VLC else if (next.decoder == DecoderMode.SOFTWARE) Notice.USING_SOFTWARE else Notice.USING_EXO)
+                launch(next)
+                return@launch
             }
             releaseEngine()
             // Portail Stalker qui refuse la lecture : message dédié (MAC peut-être utilisée sur un autre appareil).
@@ -439,7 +489,7 @@ class PlaybackSession(
 
     /** Reconnexion du direct sur la même adresse (délais croissants) ; au-delà, écran d'erreur. */
     private fun reconnectLive() {
-        stallJob?.cancel(); stableJob?.cancel()
+        stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel()
         if (reconnectJob?.isActive == true) return
         // Appli en arrière-plan (lecteur en pause) : surtout pas de rechargement — le son repartirait. Le retour sur
         // l'appli relance la lecture (retry) de toute façon.
@@ -462,11 +512,11 @@ class PlaybackSession(
             firstFrame = false; launchedAtNs = System.nanoTime(); watchdog?.cancel(); blackJob?.cancel()
             val e = engine
             if (e != null && e.reusable) {
-                if (!isStalkerUrl) loadOn(e, url, 0)
+                if (!isStalkerUrl) { loadOn(e, url, 0); armStartup(e) }
                 else {
                     // Direct Stalker : nouveau lien (l'ancien est à usage unique) ; en-têtes inchangés → même moteur.
                     val o = openNow(reconnecting = true) ?: return@launch
-                    if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) e.load(o.url, 0) else launch(combo, o)
+                    if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) { e.load(o.url, 0); armStartup(e) } else launch(combo, o)
                 }
             } else launch(combo)
         }
@@ -481,7 +531,7 @@ class PlaybackSession(
 
     fun release() {
         startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
     }
 }

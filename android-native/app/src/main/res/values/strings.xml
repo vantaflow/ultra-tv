@@ -241,6 +241,8 @@
     <string name="ds_err_drm_invalid">Protection settings are incomplete or invalid</string>
     <string name="ds_err_drm_invalid_hint">The playlist lacks a licence URL or valid keys for this channel.</string>
     <string name="ds_err_no_response">This channel is not responding</string>
+    <string name="ds_err_start_timeout">The stream does not start</string>
+    <string name="ds_err_start_timeout_hint">The server accepted the connection but is not sending any data. Try again or pick another channel.</string>
     <string name="ds_err_refused">The provider refused the connection</string>
     <string name="ds_err_no_link">The portal did not provide the channel link</string>
     <string name="ds_err_no_link_hint">Try another channel, or check the source in Settings.</string>

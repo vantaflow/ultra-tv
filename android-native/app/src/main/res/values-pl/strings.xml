@@ -237,6 +237,8 @@
     <string name="ds_err_drm_invalid">Ustawienia ochrony są niekompletne lub nieprawidłowe</string>
     <string name="ds_err_drm_invalid_hint">Na liście brakuje adresu licencji lub prawidłowych kluczy dla tego kanału.</string>
     <string name="ds_err_no_response">Ten kanał nie odpowiada</string>
+    <string name="ds_err_start_timeout">Strumień się nie uruchamia</string>
+    <string name="ds_err_start_timeout_hint">Serwer przyjął połączenie, ale nie wysyła danych. Spróbuj ponownie lub wybierz inny kanał.</string>
     <string name="ds_err_refused">Dostawca odrzucił połączenie</string>
     <string name="ds_err_no_link">Portal nie podał łącza do kanału</string>
     <string name="ds_err_no_link_hint">Wybierz inny kanał lub sprawdź źródło w Ustawieniach.</string>
