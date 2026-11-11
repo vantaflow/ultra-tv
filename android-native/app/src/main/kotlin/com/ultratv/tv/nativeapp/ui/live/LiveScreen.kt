@@ -70,6 +70,7 @@ import com.ultratv.tv.nativeapp.ui.common.prettyCategoryName
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.LiveBadge
 import com.ultratv.tv.nativeapp.i18n.liveHeaderCount
+import com.ultratv.tv.nativeapp.i18n.nextWord
 import androidx.compose.ui.graphics.luminance
 import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.design.LogoBox
@@ -94,6 +95,8 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val selected by vm.selectedCategory.collectAsState()
     val locked by vm.lockedChannels.collectAsState()
     val nowNext by vm.nowNext.collectAsState()
+    // Horloge UNIQUE (toutes les 30 s) : lue seulement au dessin des barres de progression.
+    val clock = com.ultratv.tv.nativeapp.ui.common.rememberEpgClock()
     val favs by vm.favoriteIds.collectAsState()
     val channels = vm.channels.collectAsLazyPagingItems()
     val langView by vm.langView.collectAsState()
@@ -190,7 +193,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val twoPane = touch && com.ultratv.tv.nativeapp.ui.mobile.usesTwoPane(com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current)
     if (touch) MobileLiveLayout(
-        cats = cats, selected = selected, onSelect = { vm.selectCategory(it) }, channels = channels, locked = locked, favs = favs, nowNext = nowNext, vm = vm,
+        cats = cats, selected = selected, onSelect = { vm.selectCategory(it) }, channels = channels, locked = locked, favs = favs, nowNext = nowNext, vm = vm, clock = clock,
         langView = langView, onLang = { langPanel = true }, twoPane = twoPane, D = D,
         selectedChannel = previewChannel ?: focusedChannel.value,
         onTapChannel = { c ->
@@ -223,7 +226,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
 
         // ── Chaînes (640) ──
         Column(
-            Modifier.width(640.design).fillMaxHeight().padding(horizontal = 32.design).padding(top = 54.design)
+            Modifier.width(700.design).fillMaxHeight().padding(horizontal = 32.design).padding(top = 54.design)
                 // Haut/Bas dans la liste : l'aperçu suit de nouveau le focus (fin du maintien après le plein écran).
                 .onPreviewKeyEvent { e -> if (holdAfterReturn && e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && (e.key == androidx.compose.ui.input.key.Key.DirectionUp || e.key == androidx.compose.ui.input.key.Key.DirectionDown)) holdAfterReturn = false; false },
             verticalArrangement = Arrangement.spacedBy(12.design),
@@ -243,7 +246,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                     color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false,
                 )
             }
-            ChannelList(channels, locked, favs, nowNext, selected, vm,
+            ChannelList(channels, locked, favs, nowNext, selected, vm, clock,
                 onFocusChannel = { focusedChannel.value = it },
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
                 onActions = { actionsFor = it },
@@ -260,10 +263,16 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             videoPreview && playingKey != null && shared.owner == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
                 shown != null && (holdAfterReturn || shared.rowKey == channelKey(shown))
         }
+        val shownNow = shown?.let { nowNext[it.id]?.first }
+        // Les deux programmes à venir de la chaîne montrée (cartes « Ensuite ») : une seule lecture, hors thread principal.
+        val upcoming by androidx.compose.runtime.produceState(emptyList<EpgEntity>(), shown?.id, shownNow?.id) {
+            val id = shown?.id
+            value = if (id == null) emptyList() else vm.upcoming(id, 2)
+        }
         Preview(
             channel = shown,
-            now = shown?.let { nowNext[it.id]?.first },
-            next = shown?.let { nowNext[it.id]?.second },
+            now = shownNow,
+            upcoming = upcoming, clock = clock,
             D = D, modifier = Modifier.weight(1f).fillMaxHeight(),
             video = if (videoSession != null && shared != null) ({ logo -> SharedVideo(videoSession, shared, logo) }) else null,
         )
@@ -329,6 +338,7 @@ private fun ChannelList(
     nowNext: Map<Long, Pair<EpgEntity?, EpgEntity?>>,
     selected: String,
     vm: LiveViewModel,
+    clock: androidx.compose.runtime.State<Long>,
     onFocusChannel: (ChannelEntity) -> Unit,
     onPlay: (ChannelEntity) -> Unit,
     onActions: (ChannelEntity) -> Unit,
@@ -402,13 +412,13 @@ private fun ChannelList(
             items(count = channels.itemCount, key = safeKey0, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
                 val c = channels[i]
                 when {
-                    c == null -> Spacer(Modifier.fillMaxWidth().height(88.designT))
+                    c == null -> Spacer(Modifier.fillMaxWidth().height(ROW_H.designT))
                     // Séparateur : en-tête de section, NON focalisable (le D-pad le saute), non lisible.
                     // En tête de liste, la place réservée au-dessus l'affiche déjà ; libellé vide : rien.
                     c.isSeparator -> if (i > 0 && c.title.isNotBlank() && !sameLabel(c.title, categoryName)) SectionHeader(c.title)
                     else -> ChannelRow(
                         c, position = if (c.seq > 0) c.seq else i + 1, locked = "${c.providerId}:${c.remoteId}" in locked, favorite = c.remoteId in favs,
-                        now = nowNext[c.id]?.first,
+                        now = nowNext[c.id]?.first, next = nowNext[c.id]?.second, clock = clock,
                         highlighted = c.id == highlightId,
                         variant = rowIndex.variantAt(i),
                         modifier = (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier)
@@ -568,31 +578,52 @@ internal fun StreamBadges(quality: Int, flags: Int, focused: Boolean, variant: I
 /** Ligne chaîne de 88 px : numéro, logo en boîte fixe 72×48 (Fit), nom (1 ligne), programme en cours, qualité. */
 @Composable
 private fun ChannelRow(
-    c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?,
+    c: ChannelEntity, position: Int, locked: Boolean, favorite: Boolean, now: EpgEntity?, next: EpgEntity?, clock: androidx.compose.runtime.State<Long>,
     modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit, onLongClick: () -> Unit, highlighted: Boolean = false, variant: Int = 1,
 ) {
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) { TouchChannelRow(c, position, locked, favorite, now, highlighted, onClick, onLongClick, variant); return }
     FocusSurface(
         onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep,
         focusedScale = 1.03f, ringWidth = 5.design,
-        modifier = modifier.fillMaxWidth().height(88.designT).onFocusChanged { if (it.isFocused) onFocus() },
+        modifier = modifier.fillMaxWidth().height(ROW_H.designT).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
+        val sub = if (f) Ux.OnFocus2 else Ux.Text3
         Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically) {
-            Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(56.design))
-            Spacer(Modifier.width(20.design))
-            LogoBox(c.logo, c.title, Modifier.width(72.design).height(48.design), radius = 10, pad = 5, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2)
-            Spacer(Modifier.width(20.design))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
-                Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                Text(now?.title.orEmpty(), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(52.design))
+            Spacer(Modifier.width(16.design))
+            // Logo à taille de décodage explicite ; sans logo : initiales sur fond neutre (SlotImage).
+            LogoBox(c.logo, c.title, Modifier.width(88.design).height(60.design), radius = 10, pad = 5, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2, decodeSize = androidx.compose.ui.unit.DpSize(88.design, 60.design))
+            Spacer(Modifier.width(18.design))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.design)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false), style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                    Spacer(Modifier.weight(1f))
+                    if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(8.design)) }
+                    com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
+                    Spacer(Modifier.width(8.design))
+                    StreamBadges(c.quality, c.flags, f, variant)
+                }
+                if (now != null) {
+                    // Horaire (accent) + titre, puis barre de progression dessinée depuis l'horloge partagée.
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.range(now.startMs, now.endMs), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
+                        Spacer(Modifier.width(12.design))
+                        Text(now.title, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    }
+                    com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(now.startMs, now.endMs, clock, heightDp = 3f, track = if (f) Color(0xFFD4D4D8) else Ux.Surface2)
+                } else Text("", maxLines = 1, fontSize = 22.spx)
+                if (next != null) Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(next.startMs), color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, softWrap = false)
+                    Spacer(Modifier.width(12.design))
+                    Text(next.title, color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                }
             }
-            if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(10.design)) }
-            com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
-            Spacer(Modifier.width(8.design))
-            StreamBadges(c.quality, c.flags, f, variant)
         }
     }
 }
+
+/** Hauteur de la carte chaîne TV : nom, programme en cours + barre, programme suivant. */
+private const val ROW_H = 136
 
 // ───────────────────────── Aperçu ─────────────────────────
 
@@ -603,7 +634,7 @@ private fun ChannelRow(
  */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun SharedVideo(session: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession, shared: com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession, logo: @Composable () -> Unit) {
+internal fun SharedVideo(session: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession, shared: com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession, logo: @Composable () -> Unit) {
     val st by session.state.collectAsState()
     DisposableEffect(session) { shared.hostAttached(); onDispose { shared.hostDetached() } }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -616,39 +647,47 @@ private fun SharedVideo(session: com.ultratv.tv.nativeapp.ui.player.engine.Playb
 
 @Composable
 private fun Preview(
-    channel: ChannelEntity?, now: EpgEntity?, next: EpgEntity?, D: DesignStrings, modifier: Modifier,
+    channel: ChannelEntity?, now: EpgEntity?, upcoming: List<EpgEntity>, clock: androidx.compose.runtime.State<Long>, D: DesignStrings, modifier: Modifier,
     /** Vidéo de l'aperçu (session partagée) ; reçoit le logo à superposer tant que l'image n'est pas là. */
     video: (@Composable (logo: @Composable () -> Unit) -> Unit)? = null,
 ) {
-    Column(modifier.padding(start = 32.design, end = 96.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(28.design)) {
+    // Vidéo active : cadre vidéo compact au-dessus, texte resserré. Sinon : logo en en-tête et grand titre.
+    val withVideo = video != null
+    Column(modifier.padding(start = 32.design, end = 72.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
         if (channel == null) return@Column
-        Box(Modifier.fillMaxWidth().height(450.design).clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
-            val logo: @Composable () -> Unit = { LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 24, pad = 96, bg = Ux.Tone) }
-            if (video != null) video(logo) else logo()
+        if (withVideo) Box(Modifier.fillMaxWidth().height(330.design).clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
+            video?.invoke { LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
         }
-        if (now != null) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                LiveBadge(D.live)
-                Text("${EpgClock.range(now.startMs, now.endMs)}", color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
-            }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
+            if (!withVideo) LogoBox(channel.logo, channel.title, Modifier.width(96.design).height(64.design), radius = 12, pad = 6, bg = Ux.Tone, decodeSize = androidx.compose.ui.unit.DpSize(96.design, 64.design))
+            if (now != null) LiveBadge(D.live)
+            Text(
+                if (now != null) channel.title + "  ·  " + EpgClock.range(now.startMs, now.endMs) else channel.title,
+                color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
+            )
         }
-        Text(now?.title ?: channel.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, lineHeight = 48.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(now?.title ?: channel.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = (if (withVideo) 40 else 56).spx, lineHeight = (if (withVideo) 46 else 62).spx, maxLines = if (withVideo) 2 else 3, overflow = TextOverflow.Ellipsis)
         if (now != null) {
-            val frac = ((System.currentTimeMillis() - now.startMs).toFloat() / (now.endMs - now.startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
-            Box(Modifier.fillMaxWidth().height(8.design).clip(RoundedCornerShape(4.design)).background(Ux.Surface2)) { ProgressLine(frac, Modifier.fillMaxWidth(), heightPx = 8) }
             now.description?.takeIf { it.isNotBlank() }?.let {
-                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 35.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 35.spx, maxLines = if (withVideo) 3 else 5, overflow = TextOverflow.Ellipsis)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                Text(EpgClock.hm(now.startMs), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Box(Modifier.weight(1f)) { com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(now.startMs, now.endMs, clock, heightDp = 4f) }
+                Text(EpgClock.hm(now.endMs), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
         } else {
             Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
         }
-        if (next != null) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.design), modifier = Modifier.padding(top = 8.design)) {
-                Text(D.upNext, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${EpgClock.hm(next.startMs)} · ${next.title}", color = Ux.Text, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                    Spacer(Modifier.width(16.design))
-                    Text(durationText(D, next.endMs - next.startMs), color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+        if (upcoming.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top = 4.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
+            upcoming.forEachIndexed { i, p ->
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(16.design)).background(Ux.SurfaceDeep).border(1.dp, Ux.Line, RoundedCornerShape(16.design)).padding(horizontal = 20.design, vertical = 14.design),
+                    verticalArrangement = Arrangement.spacedBy(6.design),
+                ) {
+                    Text(if (i == 0) "${D.nextWord} · ${EpgClock.hm(p.startMs)}" else EpgClock.hm(p.startMs), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.sp(), maxLines = 1)
+                    Text(p.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -657,7 +696,7 @@ private fun Preview(
 
 private fun Int.sp() = androidx.compose.ui.unit.TextUnit(this.toFloat(), androidx.compose.ui.unit.TextUnitType.Sp)
 
-private fun durationText(D: DesignStrings, ms: Long): String {
+internal fun durationText(D: DesignStrings, ms: Long): String {
     val m = (ms / 60_000).toInt()
     return if (m >= 60) D.hourShort.format(m / 60) + if (m % 60 != 0) " " + D.minShort.format(m % 60) else "" else D.minShort.format(m)
 }
@@ -700,7 +739,7 @@ private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, fa
 @Composable
 private fun MobileLiveLayout(
     cats: List<DirectCategory>, selected: String, onSelect: (String) -> Unit, channels: LazyPagingItems<ChannelEntity>,
-    locked: Set<String>, favs: Set<String>, nowNext: Map<Long, Pair<EpgEntity?, EpgEntity?>>, vm: LiveViewModel,
+    locked: Set<String>, favs: Set<String>, nowNext: Map<Long, Pair<EpgEntity?, EpgEntity?>>, vm: LiveViewModel, clock: androidx.compose.runtime.State<Long>,
     langView: com.ultratv.tv.nativeapp.data.repo.LangView, onLang: () -> Unit, twoPane: Boolean, D: DesignStrings,
     selectedChannel: ChannelEntity?, onTapChannel: (ChannelEntity) -> Unit, onWatch: (ChannelEntity) -> Unit, onActions: (ChannelEntity) -> Unit,
 ) {
@@ -722,7 +761,7 @@ private fun MobileLiveLayout(
                 items(cats, key = { it.id }, contentType = { "chip" }) { c -> CatChip(chipLabel(c), c.id == selected) { onSelect(c.id) } }
             }
             com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
-                ChannelList(channels, locked, favs, nowNext, selected, vm, onFocusChannel = {}, onPlay = onTapChannel, onActions = onActions,
+                ChannelList(channels, locked, favs, nowNext, selected, vm, clock, onFocusChannel = {}, onPlay = onTapChannel, onActions = onActions,
                     emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, highlightId = if (twoPane) shown?.id else null)
             }
         }
