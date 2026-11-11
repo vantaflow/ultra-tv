@@ -115,6 +115,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -167,7 +168,8 @@ fun slotFor(startMs: Long, endMs: Long, windowStart: Long, windowMs: Long = GUID
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class GuideGridViewModel @Inject constructor(
-    providerRepo: ProviderRepository,
+    private val providerRepo: ProviderRepository,
+    syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     private val channelDao: ChannelDao,
     private val epgDao: EpgDao,
     private val reminders: RemindersScheduler,
@@ -195,6 +197,13 @@ class GuideGridViewModel @Inject constructor(
     fun record(channel: ChannelEntity, prog: EpgEntity, wholeSeries: Boolean, onResult: (com.ultratv.tv.nativeapp.data.recording.ScheduleResult) -> Unit) {
         viewModelScope.launch { onResult(recScheduler.schedule(channel, prog, wholeSeries)) }
     }
+
+    /** Chargement / « Guide indisponible » : jamais un chargement sans fin (l'échec arrive avec sa raison). */
+    val guideLoad: StateFlow<GuideLoad> = combine(syncBus.epg, syncBus.status) { e, st -> guideLoadState(e, st != null) }
+        .distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), GuideLoad.Idle)
+
+    /** « Réessayer » : relance SEULEMENT le guide de la source active. */
+    fun retryGuide() { viewModelScope.launch { pid.first()?.let { providerRepo.retryEpg(it) } } }
 
     private val pid = providerRepo.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
 
@@ -267,9 +276,10 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     val recordingRunning by vm.recordingRunning.collectAsState()
+    val guideLoad by vm.guideLoad.collectAsState()
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
-        channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm,
+        channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
         onShift = { dir -> vm.setWindowStart(windowStart + dir * 3 * SLOT_MS) },
         onSelect = { c, p -> actionTarget = c to p },
@@ -299,6 +309,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1)
                 val dayLabel = dayName(D, day)
                 Text("$dayLabel · ${EpgClock.range(windowStart, windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
+                if (channels.itemCount > 0) guideProgressLine(D, guideLoad)?.let { Text(it, color = Ux.Accent, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1) }
             }
             DateTimePill(clock, windowStart, day, D)
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
@@ -327,7 +339,8 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         if (channels.itemCount == 0) {
             // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
             // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
-            Text(if (day > 0) D.guideNoDataYet else D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+            if (day > 0 && guideLoad is GuideLoad.Idle) Text(D.guideNoDataYet, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+            else GuideEmptyState(guideLoad, D, onRetry = { vm.retryGuide() }, touch = false)
             return@Column
         }
 
@@ -608,7 +621,7 @@ private val TOUCH_ROW_H = 64.dp
 @Composable
 private fun GuideTouch(
     channels: androidx.paging.compose.LazyPagingItems<ChannelEntity>, programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
-    D: com.ultratv.tv.nativeapp.i18n.DesignStrings, vm: GuideGridViewModel, onDay: (Int) -> Unit, onShift: (Int) -> Unit,
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings, vm: GuideGridViewModel, guideLoad: GuideLoad, onDay: (Int) -> Unit, onShift: (Int) -> Unit,
     onSelect: (ChannelEntity, EpgEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit,
 ) {
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
@@ -620,6 +633,7 @@ private fun GuideTouch(
             Column(Modifier.weight(1f)) {
                 Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, maxLines = 1)
                 Text("${dayName(D, day)} · ${EpgClock.hm(windowStart)} – ${EpgClock.hm(windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 12.sp, maxLines = 1)
+                if (channels.itemCount > 0) guideProgressLine(D, guideLoad)?.let { Text(it, color = Ux.Accent, fontFamily = Manrope, fontSize = 11.sp, maxLines = 1) }
             }
             com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.design.Icons.Chevron, D.today.let { "−3 h" }, Ux.Surface, Ux.Text, { onShift(-1) })
@@ -636,7 +650,7 @@ private fun GuideTouch(
             }
         }
         if (channels.itemCount == 0) {
-            Text(D.guideNoData, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, modifier = Modifier.padding(horizontal = 20.dp))
+            GuideEmptyState(guideLoad, D, onRetry = { vm.retryGuide() }, touch = true, modifier = Modifier.padding(horizontal = 20.dp))
             return@Column
         }
         val state = rememberLazyListState()

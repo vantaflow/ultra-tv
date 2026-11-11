@@ -184,7 +184,8 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
         SyncPart.EPG -> D.stepGuide to Icons.Guide
     }
     val meta = when {
-        error -> D.stateFailed
+        error -> if (step.epgFail != null) com.ultratv.tv.nativeapp.i18n.epgReason(D, step.epgFail) else D.stateFailed
+        active && step.epg != null && step.epg.bytesRead > 0 -> com.ultratv.tv.nativeapp.i18n.epgProgressText(D, step.epg.bytesRead, step.epg.totalBytes, step.epg.programmes)
         step.state == StepState.WAIT -> D.stateWaiting
         step.count != null -> countText(D, step.part, nf.format(step.count))
         done -> if (step.total != null) countText(D, step.part, nf.format(step.total)) else D.stateDone
@@ -211,6 +212,7 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
             }
             Box(Modifier.fillMaxWidth().height(8.design).clip(RoundedCornerShape(4.design)).background(Ux.Surface2)) {
                 if (done) Box(Modifier.fillMaxSize().background(Ux.Text))
+                else if (active && step.epg?.percent != null) Box(Modifier.fillMaxHeight().fillMaxWidth(step.epg.percent!! / 100f).background(Ux.Accent))
                 else if (active) IndeterminateSegment()
             }
         }

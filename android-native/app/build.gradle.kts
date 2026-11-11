@@ -292,6 +292,13 @@ dependencies {
     testImplementation("com.squareup.okhttp3:mockwebserver:5.5.1")
 }
 
+// Appareil faible simulé pour le banc du guide : `-PtestHeap=192m` (tas des tests) et `-PtestCpus=2` (cœurs visibles de la JVM).
+// Sans ces propriétés, rien ne change pour les tests habituels.
+tasks.withType<Test>().configureEach {
+    (findProperty("testHeap") as String?)?.let { maxHeapSize = it }
+    (findProperty("testCpus") as String?)?.let { jvmArgs("-XX:ActiveProcessorCount=$it") }
+}
+
 /**
  * Post-process release APK with apksigner --lineage so it installs in place
  * over the existing debug-signed release. Only runs when the env vars are

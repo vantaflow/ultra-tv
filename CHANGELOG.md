@@ -2,6 +2,18 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Corrigé
+- Guide TV (Android) : un guide lent ou qui « cale » (connexion ouverte sans données) ne charge plus indéfiniment : délai maximal sans donnée (30 s), débit minimal, durée totale bornée, et jusqu'à 3 tentatives avec attente croissante (réseau, 5xx, 408, 429 ; jamais sur 401/403/404 ni XML invalide).
+- Guide TV (Android) : le guide est écrit par lots commités au fil de l'eau (avant : une seule transaction à la fin, guide vide pendant tout le téléchargement) ; l'ancien guide d'une chaîne n'est remplacé qu'au moment où ses nouveaux programmes arrivent.
+- Guide TV (Android) : le gzip est détecté et décompressé en flux aussi pour le guide de la source Xtream et son pré-téléchargement (avant : seul le guide complémentaire).
+- Guide TV (Android) : progression visible (octets lus / taille, programmes écrits) dans l'écran de première synchro et dans le guide ; un échec affiche une raison courte au lieu d'un chargement sans fin.
+- Guide TV (Android) : nouvel état « Guide indisponible » (TV et tactile, FR/EN/ES/AR) avec la raison et un bouton « Réessayer » qui ne relance que le guide.
+- Guide TV (Android) : les chaînes des catégories désactivées ne reçoivent plus de programmes (requête de rattachement filtrée).
+- Playlists M3U (Android) : `url-tvg` / `x-tvg-url` de l'en-tête `#EXTM3U` sont pris en compte (plusieurs adresses séparées par des virgules ; un guide en échec n'empêche pas les suivants), y compris pour une playlist locale.
+- Journaux (Android) : l'échec du guide n'écrit que le type d'erreur, le code HTTP et le nombre de tentatives (jamais d'adresse ni d'identifiants) ; RemoteLog nettoie en plus via LogSanitizer.
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

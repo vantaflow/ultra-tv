@@ -25,7 +25,12 @@ import javax.inject.Inject
 data class Resolved(val ui: FirstSyncUi?)
 
 enum class StepState { DONE, ACTIVE, WAIT, ERROR }
-data class StepUi(val part: SyncPart, val state: StepState, val count: Int?, val total: Int? = null)
+data class StepUi(
+    val part: SyncPart, val state: StepState, val count: Int?, val total: Int? = null,
+    /** Guide : octets lus / taille annoncée et programmes écrits (étape active) ; raison courte de l'échec (étape en erreur). */
+    val epg: com.ultratv.tv.nativeapp.data.xmltv.EpgProgress? = null,
+    val epgFail: com.ultratv.tv.nativeapp.data.xmltv.EpgFailReason? = null,
+)
 
 data class FirstSyncUi(
     val providerId: Long,
@@ -70,7 +75,7 @@ fun firstSyncFinished(parts: List<SyncPart>, done: (SyncPart) -> Boolean, syncRu
 @HiltViewModel
 class FirstSyncViewModel @Inject constructor(
     provider: ProviderRepository,
-    bus: SyncStatusBus,
+    private val bus: SyncStatusBus,
     private val sync: SyncCoordinator,
     channelDao: com.ultratv.tv.nativeapp.data.db.ChannelDao,
     movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
@@ -129,7 +134,12 @@ class FirstSyncViewModel @Inject constructor(
                 else -> StepState.WAIT
             }
             val total = when (part) { SyncPart.LIVE -> cnt.first; SyncPart.VOD -> cnt.second; SyncPart.SERIES -> cnt.third; SyncPart.EPG -> null }
-            StepUi(part, state, if (state == StepState.ACTIVE) st?.count else null, if (state == StepState.DONE) total else null)
+            val epgState = if (part == SyncPart.EPG) bus.epg.value else null
+            val loading = (epgState as? com.ultratv.tv.nativeapp.data.xmltv.EpgState.Loading)?.takeIf { it.providerId == p.id }
+            val failed = (epgState as? com.ultratv.tv.nativeapp.data.xmltv.EpgState.Failed)?.takeIf { it.providerId == p.id }
+            val st2 = if (part == SyncPart.EPG && state != StepState.DONE && failed != null && st?.part != SyncPart.EPG) StepState.ERROR else state
+            StepUi(part, st2, if (st2 == StepState.ACTIVE) st?.count else null, if (st2 == StepState.DONE) total else null,
+                epg = if (st2 == StepState.ACTIVE) loading?.progress else null, epgFail = if (st2 == StepState.ERROR) failed?.reason else null)
         }
         val doneCount = steps.count { it.state == StepState.DONE }
         val percent = when {
