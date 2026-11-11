@@ -2,6 +2,41 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.84] — 2026-11-11 (Android) · Worker
+
+### Nouveau
+- **Nouvel accueil** : « À la une » en plein écran (image de fond, notes IMDb et Rotten Tomatoes, synopsis, Regarder /
+  Plus d'infos), cinq raccourcis avec compteurs (Direct, Films, Séries, Favoris, Guide TV), rangée Direct avec le
+  programme en cours, « Top 10 aujourd'hui ».
+- **Nouvelle fiche film / série** : image de fond plein écran, ligne d'infos, Reprendre S1É3, distribution cliquable ;
+  séries avec saisons à gauche et grandes cartes d'épisodes, « Aller à l'épisode » ; films avec distribution et titres
+  similaires.
+- **Films et Séries par catégories** : liste des catégories avec leur nombre de titres et grille d'affiches ; **genres
+  automatiques** (Action, Comédie, Science-fiction, Anime…) détectés en arrière-plan ; tri, note, période, colonnes.
+- **Direct et Guide TV** : programme en cours avec barre de progression et programme suivant sur chaque chaîne,
+  panneau « En direct » et cartes « Ensuite » ; guide avec le programme sélectionné et l'aperçu vidéo en haut,
+  bouton « Maintenant », ligne de l'heure courante.
+- **Lecteur** : badges qualité / codec / audio, temps restant, « Se termine à », épisode précédent / suivant.
+- **Page acteur / réalisateur** : photo, naissance, biographie, titres présents dans la playlist.
+- **Télécommande et recherche depuis le téléphone** (Réglages › Sources) : QR code vers une page servie par la box sur
+  le réseau local ; recherche dans Films, Séries et Direct, lecture, pause, ±10 s / ±30 s, flèches, OK, Retour.
+  Désactivée par défaut, protégée par une clé.
+- **Mode simple** (Réglages › Affichage ou par profil) : six grandes tuiles (Télé en direct, Reprendre, Films, Séries,
+  Favoris, Rechercher) pour les personnes peu à l'aise.
+- **Mémoire et stockage** (Réglages) : espace utilisé détaillé, mémoire vive, vider le cache d'images, compacter la base,
+  effacer l'historique ou les reprises ; taille du cache, nettoyage automatique, mode économie de mémoire.
+
+### Amélioré
+- **Catégories masquées jamais chargées** : une catégorie désactivée (par sa langue ou à la main) n'est plus écrite en
+  base ni indexée ; Direct, Films et Séries sont traités chacun avec leurs propres catégories. Synchro plus rapide et
+  moins de mémoire.
+- **« Parce que vous avez regardé »** : films classés par ressemblance (genres en commun, réalisateur, acteurs,
+  époque), plus de films hors sujet.
+- Affiches demandées à la taille du cadre et décodées en arrière-plan sur les box faibles.
+
+### Worker
+- Proxy TMDB : fiche personne (`person/{id}`) pour la page acteur.
+
 ## [1.2.83] — 2026-11-11 (Android) · Bureau 1.2.39 · Worker
 
 ### Nouveau
