@@ -1,6 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo } from "react";
-import { categoriesOf, favoritesOf } from "@/db/queries";
+import { favoritesOf, visibleCategories } from "@/db/queries";
 import type { CategoryRow, FavoriteRow, Kind, Source } from "@/db/types";
 import { OTHER_LANG } from "@/sync/core";
 import { useT } from "@/i18n";
@@ -8,7 +8,7 @@ import { usePrefs } from "@/state/prefs";
 
 /** Catégories activées d'un type, triées dans l'ordre du fournisseur. `undefined` pendant le premier chargement. */
 export function useCategories(source: Source | undefined, kind: Kind): CategoryRow[] | undefined {
-  return useLiveQuery(async () => (source?.cid ? (await categoriesOf(source.cid, kind)).filter((c) => c.enabled && c.count > 0) : []), [source?.cid, kind]);
+  return useLiveQuery(() => visibleCategories(source?.cid ?? 0, kind), [source?.cid, kind]);
 }
 
 export function useFavorites(source: Source | undefined, kind?: Kind): FavoriteRow[] {

@@ -421,6 +421,7 @@
   "sync.failed": "فشلت المزامنة",
   "sync.cancelled": "أُلغيت المزامنة.",
   "sync.background": "جارٍ التحديث…",
+  "sync.catalogUpdate": "جارٍ تحديث الكتالوج… {p} %",
   "sync.openApp": "فتح Ultra TV",
   "state.noSourceTitle": "لم يتم إعداد أي مصدر",
   "state.noSourceBody": "أضف اشتراك IPTV للبدء.",

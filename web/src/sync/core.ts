@@ -177,7 +177,10 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
     flags = new Map();
     await db.categories.where("[sourceId+kind]").between([oldCid, ""], [oldCid, "\uffff"]).each((c) => { flags!.set(`${c.kind}:${c.extId}`, c.enabled); flags!.set(`${c.kind}#${c.name}`, c.enabled); });
   }
-  const ctx: Ctx = { source, cid, oldCid, skips, firstGeneration: oldCid === 0, counts, flags, report, switched: false };
+  // Ancien catalogue absent OU vide (première synchro, ou génération perdue puis reconstruite au démarrage) : rien à garder
+  // visible, donc la nouvelle génération est branchée dès la fin du direct. Sinon l'ancien catalogue reste affiché jusqu'à la bascule finale.
+  const oldEmpty = oldCid === 0 || (await generationIsEmpty(oldCid));
+  const ctx: Ctx = { source, cid, oldCid, skips, firstGeneration: oldEmpty, counts, flags, report, switched: false };
 
   report("categories", 0, true);
   try {
@@ -201,6 +204,27 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
   }
   report("done", 1, true);
   return counts;
+}
+
+/** Vrai si la génération n'a plus aucune catégorie (catalogue local perdu). */
+async function generationIsEmpty(cid: number): Promise<boolean> {
+  return (await db.categories.where("[sourceId+kind]").between([cid, ""], [cid, "￿"]).limit(1).count()) === 0;
+}
+
+/**
+ * Écrit les effectifs des catégories d'une génération en cours d'écriture (les écrans ne listent que les catégories non vides).
+ * Appelé à la fin de chaque partie : une génération déjà branchée (première synchro) montre ses catégories sans attendre la fin.
+ * Si la source est déjà branchée, ses totaux (Films, Séries…) suivent.
+ */
+async function flushCategoryCounts(ctx: Ctx, cats: CategoryRow[], ids: number[], catCount: Record<string, number>, kinds: Kind[]) {
+  await db.transaction("rw", db.categories, async () => {
+    for (let i = 0; i < cats.length; i++) {
+      if (!kinds.includes(cats[i]!.kind)) continue;
+      const n = catCount[`${cats[i]!.kind}:${cats[i]!.extId}`] ?? 0;
+      if (n) await db.categories.update(ids[i]!, { count: n });
+    }
+  });
+  if (ctx.switched) await db.sources.update(ctx.source.id!, { counts: { ...ctx.counts } });
 }
 
 type ReportFn = (phase: SyncProgress["phase"], ratio: number, force?: boolean) => void;
@@ -254,6 +278,8 @@ async function syncXtream(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     report("live", Math.min(0.99, liveOrd / approxLive));
   });
   counts.live = (await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).filter((r) => r.sep === 0).count());
+  // Les catégories du direct deviennent « non vides » AVANT la bascule : sinon le direct branché n'afficherait aucune catégorie.
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["live"]);
   // Première synchro : on bascule dès maintenant pour permettre de regarder le direct pendant que films et séries arrivent.
   if (firstGeneration) { await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } }); ctx.switched = true; }
   report("live", 1, true);
@@ -278,6 +304,7 @@ async function syncXtream(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     report("movie", Math.min(0.99, movieOrd / Math.max(1, vodCats.length * 200)));
   });
   counts.movie = movieOrd;
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["movie"]);
   report("movie", 1, true);
 
   // --- Séries ---
@@ -302,14 +329,8 @@ async function syncXtream(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     report("series", Math.min(0.99, serOrd / Math.max(1, serCats.length * 100)));
   });
   counts.series = serOrd;
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["series"]);
   report("series", 1, true);
-
-  await db.transaction("rw", db.categories, async () => {
-    for (let i = 0; i < cats.length; i++) {
-      const n = catCount[`${cats[i]!.kind}:${cats[i]!.extId}`] ?? 0;
-      if (n) await db.categories.update(catIds[i]!, { count: n });
-    }
-  });
 }
 
 /**
@@ -507,6 +528,7 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
   }
   for (let i = 0; i < rows.length; i += 5000) await db.channels.bulkAdd(rows.slice(i, i + 5000));
   counts.live = rows.filter((r) => !r.sep).length;
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["live"]);
   if (firstGeneration) { await db.sources.update(source.id!, { cid: sourceId, counts: { ...counts } }); ctx.switched = true; }
   report("live", 1, true);
 
@@ -570,6 +592,10 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
     await bulk(movies, series);
   }
 
+  // Films (et séries de la VOD) terminés : leurs catégories deviennent visibles sans attendre le module séries.
+  counts.movie = movieOrd; counts.series = serOrd;
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["movie", "series"]);
+
   // --- Séries du module `type=series` (identifiants du portail préfixés « s: » dans les catégories) ---
   const usedIds = new Set<number>();
   for (const catId of moduleWanted) {
@@ -600,13 +626,7 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
   counts.movie = movieOrd; counts.series = serOrd;
   report("movie", 1, true);
   report("series", 1, true);
-
-  await db.transaction("rw", db.categories, async () => {
-    for (let i = 0; i < cats.length; i++) {
-      const n = catCount[`${cats[i]!.kind}:${cats[i]!.extId}`] ?? 0;
-      if (n) await db.categories.update(catIds[i]!, { count: n });
-    }
-  });
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["live", "movie", "series"]);
 }
 
 async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {

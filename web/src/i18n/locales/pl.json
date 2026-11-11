@@ -398,6 +398,7 @@
   "sync.failed": "Synchronizacja nie powiodła się",
   "sync.cancelled": "Synchronizacja anulowana.",
   "sync.background": "Aktualizowanie…",
+  "sync.catalogUpdate": "Aktualizowanie katalogu… {p} %",
   "sync.openApp": "Otwórz Ultra TV",
   "state.noSourceTitle": "Nie skonfigurowano źródła",
   "state.noSourceBody": "Dodaj subskrypcję IPTV, aby zacząć.",
