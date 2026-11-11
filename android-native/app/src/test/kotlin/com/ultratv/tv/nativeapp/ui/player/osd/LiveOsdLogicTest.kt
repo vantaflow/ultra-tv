@@ -26,15 +26,25 @@ class LiveOsdLogicTest {
         assertEquals(OsdDecision.Zap(forward = false, closeOsd = false), decide(OsdKey.UP))
     }
 
-    @Test fun ferme_GaucheDroiteMenuInfo_engagentLOsd() {
-        for (k in listOf(OsdKey.LEFT, OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO)) assertEquals("$k", OsdDecision.OpenOsd, decide(k))
+    @Test fun ferme_DroiteMenuInfo_engagentLOsd() {
+        for (k in listOf(OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO)) assertEquals("$k", OsdDecision.OpenOsd, decide(k))
+    }
+
+    @Test fun ferme_Gauche_sansDiffere_reviantALaChainePrecedente() {
+        assertEquals(OsdDecision.RecallPrevious, decide(OsdKey.LEFT))
+        assertEquals(OsdDecision.RecallPrevious, decide(OsdKey.LEFT, hidden = true))
+    }
+
+    @Test fun ouvert_Gauche_resteAuFocus() {
+        assertEquals(OsdDecision.Pass, decide(OsdKey.LEFT, open = true))
     }
 
     @Test fun ferme_differe_commandesMasquees_GaucheDroiteSautentDe30s() {
         assertEquals(OsdDecision.TimeshiftJump(-30), decide(OsdKey.LEFT, hidden = true, ts = true))
         assertEquals(OsdDecision.TimeshiftJump(30), decide(OsdKey.RIGHT, hidden = true, ts = true))
-        // Bandeau visible (non masqué) : Gauche/Droite engagent l'OSD même en différé.
+        // Bandeau visible (non masqué) : Gauche/Droite engagent l'OSD en différé.
         assertEquals(OsdDecision.OpenOsd, decide(OsdKey.LEFT, hidden = false, ts = true))
+        assertEquals(OsdDecision.OpenOsd, decide(OsdKey.RIGHT, hidden = false, ts = true))
         // Menu n'est jamais un saut.
         assertEquals(OsdDecision.OpenOsd, decide(OsdKey.MENU, hidden = true, ts = true))
     }

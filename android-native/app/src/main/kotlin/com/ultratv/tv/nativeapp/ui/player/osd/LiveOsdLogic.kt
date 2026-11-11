@@ -65,6 +65,8 @@ object LiveOsdLogic {
             OsdKey.LEFT, OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO ->
                 if (tsActive && controlsHidden && (key == OsdKey.LEFT || key == OsdKey.RIGHT))
                     OsdDecision.TimeshiftJump(if (key == OsdKey.LEFT) -TIMESHIFT_JUMP_SEC else TIMESHIFT_JUMP_SEC)
+                // Gauche, sans différé : retour à la chaîne précédente (comme la touche « dernière chaîne »).
+                else if (key == OsdKey.LEFT && !tsActive) OsdDecision.RecallPrevious
                 else OsdDecision.OpenOsd
             else -> OsdDecision.Consume
         }

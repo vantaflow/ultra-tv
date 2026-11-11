@@ -183,6 +183,17 @@ interface ChannelDao {
     @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid")
     fun observeCount(pid: Long): Flow<Int>
 
+    /** Chaînes affichées du Direct (sans décorations ni séparateurs) : total de « Toutes les chaînes » du lecteur. */
+    @Query("SELECT COUNT(*) FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0")
+    suspend fun countLive(pid: Long): Int
+
+    @Query("""
+        SELECT COUNT(*) FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.isSeparator = 0
+    """)
+    suspend fun countFavorites(pid: Long, profileId: Long): Int
+
     /** Rail d'accueil sans favoris : des chaînes avec logo, par ordre alphabétique (hors décorations). */
     /** Mode simple : les premières chaînes de la liste « Tout » (sans décorations ni séparateurs), dans son ordre. */
     @Query("SELECT * FROM channel WHERE providerId = :pid AND junk = 0 AND isSeparator = 0 ORDER BY catRank, num, id LIMIT :limit")
