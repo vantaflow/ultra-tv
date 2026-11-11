@@ -45,6 +45,10 @@ class SeriesDetailViewModel @Inject constructor(
     private val _ratings = kotlinx.coroutines.flow.MutableStateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?>(null)
     val ratings: StateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?> = _ratings
 
+    /** Bande-annonce TMDB (URL YouTube) ; null si introuvable ou appareil non appairé. */
+    private val _trailer = MutableStateFlow<String?>(null)
+    val trailer: StateFlow<String?> = _trailer
+
     /** Épisodes de cette série vus sur Trakt (« SxE »), vide si non lié / série absente de l'historique Trakt. */
     val traktWatchedEpisodes: StateFlow<Set<String>> by lazy {
         combine(_series, trakt.library) { s, lib -> if (s == null) emptySet() else lib.watchedEpisodes(s.title, s.year) }
@@ -101,6 +105,7 @@ class SeriesDetailViewModel @Inject constructor(
             // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
             if (s != null) runCatching { tmdb.forSeries(s) }.getOrNull()?.let {
                 _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
+                it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
                 it.tmdbId?.let { id -> _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id) }.getOrNull() }
             }
         }

@@ -77,3 +77,18 @@ val DesignStrings.fieldPortalLogin get() = t("Portal login (optional)", "Identif
 val DesignStrings.fieldPortalPassword get() = t("Portal password (optional)", "Mot de passe du portail (facultatif)", "Contraseña del portal (opcional)", "كلمة مرور البوابة (اختياري)")
 val DesignStrings.stalkerChecking get() = t("Connecting to the portal…", "Connexion au portail…", "Conectando con el portal…", "جارٍ الاتصال بالبوابة…")
 val DesignStrings.stalkerFailed get() = t("The portal refused the connection. Check the address and the MAC address.", "Le portail a refusé la connexion. Vérifiez l’adresse et l’adresse MAC.", "El portal rechazó la conexión. Comprueba la dirección y la dirección MAC.", "رفضت البوابة الاتصال. تحقّق من العنوان وعنوان MAC.")
+
+// Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
+val DesignStrings.typeMovie get() = t("MOVIE", "FILM", "PELÍCULA", "فيلم")
+val DesignStrings.typeSeries get() = t("SERIES", "SÉRIE", "SERIE", "مسلسل")
+val DesignStrings.directorLabel get() = t("Director", "Réalisateur", "Dirigida por", "إخراج")
+val DesignStrings.favoritesShort get() = t("Favorites", "Favoris", "Favoritos", "المفضلة")
+val DesignStrings.similarTitles get() = t("Similar titles", "Titres similaires", "Títulos similares", "عناوين مشابهة")
+val DesignStrings.jumpToEpisode get() = t("Jump to episode", "Aller à l'épisode", "Ir al episodio", "الانتقال إلى حلقة")
+val DesignStrings.seasonsHelp get() = t("Right = next season · Left = seasons", "Droite = saison suivante · Gauche = saisons", "Derecha = temporada siguiente · Izquierda = temporadas", "يمين = الموسم التالي · يسار = المواسم")
+fun DesignStrings.episodesCount(n: Int) = when (lang) {
+    AppLang.French -> if (n <= 1) "$n épisode" else "$n épisodes"
+    AppLang.Spanish -> if (n == 1) "$n episodio" else "$n episodios"
+    AppLang.Arabic -> "$n حلقة"
+    else -> if (n == 1) "$n episode" else "$n episodes"
+}

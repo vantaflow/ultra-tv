@@ -50,6 +50,12 @@ import com.ultratv.tv.nativeapp.data.repo.PlaybackContext
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
+import com.ultratv.tv.nativeapp.i18n.typeMovie
+import com.ultratv.tv.nativeapp.i18n.directorLabel
+import com.ultratv.tv.nativeapp.i18n.similarTitles
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.verticalScroll
+import kotlinx.coroutines.launch
 import com.ultratv.tv.nativeapp.i18n.traktWatched
 import com.ultratv.tv.nativeapp.ui.common.FavoriteButton
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -100,6 +106,10 @@ class MovieDetailViewModel @Inject constructor(
     private val _photos = MutableStateFlow<Map<String, String>>(emptyMap())
     val photos: StateFlow<Map<String, String>> = _photos.asStateFlow()
 
+    /** Titres proches (même genre, sinon même catégorie) déjà au catalogue : aucune requête réseau. */
+    private val _similar = MutableStateFlow<List<MovieEntity>>(emptyList())
+    val similar: StateFlow<List<MovieEntity>> = _similar.asStateFlow()
+
     private val _resume = MutableStateFlow(0L)
     val resumeMs: StateFlow<Long> = _resume.asStateFlow()
 
@@ -123,6 +133,7 @@ class MovieDetailViewModel @Inject constructor(
             val m = catalog.movieById(id)
             _m.value = m
             _resume.value = if (m == null) 0L else history.resumePositionMs(m.providerId, "MOVIE", m.remoteId)
+            if (m != null) _similar.value = runCatching { catalog.similarMovies(m.providerId, m.remoteId, 12)?.second }.getOrNull().orEmpty()
         }
         // Détails (get_vod_info) en paresseux : cache Room d'abord, réseau seulement si périmé.
         viewModelScope.launch {
@@ -154,13 +165,14 @@ class MovieDetailViewModel @Inject constructor(
     }
 }
 
-@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class)
+@OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun MovieDetailScreen(
     movieId: Long,
     onPlay: (url: String, title: String) -> Unit,
     onBack: () -> Unit = {},
     onOpenPerson: (String) -> Unit = {},
+    onOpenMovie: (Long) -> Unit = {},
     vm: MovieDetailViewModel = hiltViewModel(),
 ) {
     val m by vm.movie.collectAsState()
@@ -240,75 +252,86 @@ fun MovieDetailScreen(
         return
     }
 
+    val similar by vm.similar.collectAsState()
+    val ctxTv = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val scroll = androidx.compose.foundation.rememberScrollState()
     val playRequester = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
     RequestInitialFocus(playRequester, hasFocus = { focused }, key = movie.id)
-    Box(Modifier.fillMaxSize().background(Ux.Bg)) {
-        // Visuel plein écran : fond paysage entier (jamais recadré dans une colonne étroite) fondu vers la gauche ; sinon l'affiche 2:3 nette à droite.
-        Box(Modifier.fillMaxSize().background(Ux.Tone)) {
-            DetailVisual(backdrop, movie.poster, title)
-            Box(Modifier.fillMaxSize().background(com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Ux.Bg, 0.6f to Ux.Bg.copy(alpha = 0.96f), 0.85f to Ux.Bg.copy(alpha = 0.3f), 1f to Color.Transparent)))
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Ux.Bg.copy(alpha = 0.7f))))
-        }
-        BackLink(S.moviesTitle, onBack, Modifier.align(Alignment.TopStart).padding(start = 72.design, top = 40.design))
-        Column(
-            Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 100.design, bottom = 54.design),
-            verticalArrangement = Arrangement.spacedBy(28.design, Alignment.Bottom),
-        ) {
-            Column(Modifier.widthIn(max = 900.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
-                Text(
-                    title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 80.spx, lineHeight = 82.spx,
-                    letterSpacing = (-2).spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
+    val directors = remember(info) { T.presentable(info?.director).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(2) }
+    val cast = remember(people, directors) { people.filter { it !in directors } }
+    val trailerUrl = T.presentable(info?.trailer)
+    val line = remember(year, genre, duration, extRatings, rating) { com.ultratv.tv.nativeapp.ui.detail.buildInfoLine(year, genre, duration, extRatings, rating) }
+    val tween = androidx.compose.animation.core.tween<Float>(160)
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize().background(Ux.Bg)) {
+        val screenH = maxHeight
+        com.ultratv.tv.nativeapp.ui.detail.DetailBackdrop(backdrop, movie.poster, title)
+        com.ultratv.tv.nativeapp.ui.detail.DetailScrim()
+        Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
+            // ─── En-tête : bas de l'écran initial, le focus qui y revient remonte la fiche ───
+            Column(
+                Modifier.fillMaxWidth().height(screenH - 150.design)
+                    .padding(start = 72.design, end = 96.design, top = 56.design)
+                    .focusGroup().onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(0, tween) } },
+                verticalArrangement = Arrangement.spacedBy(18.design, Alignment.Bottom),
+            ) {
+                com.ultratv.tv.nativeapp.ui.detail.TypeBadge(D.typeMovie)
+                com.ultratv.tv.nativeapp.ui.detail.DetailTitle(title)
                 if (skeleton) Skeleton(Modifier.width(420.design).height(30.design))
-                else Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
-                    val bits = listOfNotNull(year, duration, genre) + com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, rating)
-                    bits.forEachIndexed { i, b ->
-                        if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-                        Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 360.design))
-                    }
-                    for (badge in listOfNotNull(quality, langBadge, seenBadge)) {
-                        Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
-                            Text(badge, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+                else com.ultratv.tv.nativeapp.ui.detail.InfoLineRow(line, listOfNotNull(quality, langBadge, seenBadge))
+                if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(12.design)) {
+                    Skeleton(Modifier.fillMaxWidth(0.7f).height(24.design)); Skeleton(Modifier.fillMaxWidth(0.7f).height(24.design)); Skeleton(Modifier.width(520.design).height(24.design))
+                } else plot?.let { com.ultratv.tv.nativeapp.ui.detail.DetailSynopsis(it) }
+                Spacer(Modifier.height(4.design))
+                // Principal : « Reprendre à … » si le film est commencé, sinon « Regarder » (depuis le début).
+                PillButton(
+                    if (resume > 0) D.resumeAt(formatClock(resume)) else S.play,
+                    onClick = { if (resume > 0) vm.play(movie, onPlay) else vm.restart(movie, onPlay) },
+                    heightPx = 76, hPadPx = 44, fontPx = 28, weight = FontWeight.Bold, iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
+                    modifier = Modifier.focusRequester(playRequester).onFocusChanged { focused = it.isFocused },
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
+                    if (resume > 0) PillButton(S.play, onClick = { vm.restart(movie, onPlay) }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play)
+                    com.ultratv.tv.nativeapp.ui.detail.FavoritePill("MOVIE", movie.remoteId)
+                    trailerUrl?.let { url -> PillButton(D.trailerLabel, onClick = { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctxTv, url) }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play) }
+                    // Téléchargement hors ligne (file, pause, reprise, progression).
+                    com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadPill(movie)
+                }
+                // Trakt : watchlist, vu / non vu, note (rien si le compte n'est pas lié).
+                com.ultratv.tv.nativeapp.ui.trakt.TraktMovieActions(movie)
+                com.ultratv.tv.nativeapp.ui.detail.PeopleRow(D.directorLabel, directors, onOpenPerson)
+            }
+
+            // ─── Distribution puis titres similaires : le focus qui y entre amène les deux rangées à l'écran ───
+            Column(
+                Modifier.fillMaxWidth().padding(start = 72.design, end = 72.design, bottom = 60.design)
+                    .onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(scroll.maxValue, tween) } }
+                    .focusGroup(),
+                verticalArrangement = Arrangement.spacedBy(28.design),
+            ) {
+                if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
+                    SectionTitle(D.castTitle, 28)
+                    Row(horizontalArrangement = Arrangement.spacedBy(32.design)) { repeat(5) { Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) { Skeleton(Modifier.size(96.design), circle = true); Skeleton(Modifier.width(80.design).height(18.design)) } } }
+                } else if (cast.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
+                    SectionTitle(D.castTitle, 28)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(24.design)) {
+                        items(cast, key = { it }, contentType = { "person" }) { name ->
+                            // Focalisable : OK ouvre la page de la personne (ses titres dans la playlist).
+                            FocusSurface(onClick = { onOpenPerson(name) }, shape = RoundedCornerShape(24.design), bg = Color.Transparent, focusedScale = 1.04f, focusedBg = Ux.Surface, modifier = Modifier.width(132.design)) {
+                                Column(Modifier.fillMaxWidth().padding(vertical = 8.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
+                                    AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
+                                    Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 28.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                }
+                            }
                         }
                     }
                 }
-                if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
-                    Skeleton(Modifier.fillMaxWidth().height(24.design)); Skeleton(Modifier.fillMaxWidth().height(24.design)); Skeleton(Modifier.width(520.design).height(24.design))
-                } else plot?.let {
-                    Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, lineHeight = 39.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(24.design), verticalAlignment = Alignment.CenterVertically) {
-                PillButton(
-                    S.play, onClick = { if (resume > 0) vm.restart(movie, onPlay) else vm.play(movie, onPlay) },
-                    heightPx = 84, hPadPx = 48, fontPx = 30, weight = FontWeight.Bold, iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
-                    modifier = Modifier.focusRequester(playRequester).onFocusChanged { focused = it.isFocused },
-                )
-                if (resume > 0) PillButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) }, heightPx = 72, fontPx = 26)
-                // Téléchargement hors ligne (remplace l'ancien « Enregistrer » d'un VOD : file, pause, reprise, progression).
-                com.ultratv.tv.nativeapp.ui.downloads.MovieDownloadPill(movie)
-                T.presentable(info?.trailer)?.let { url ->
-                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                    PillButton(D.trailerLabel, onClick = { com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.open(ctx, url) }, heightPx = 72, fontPx = 26)
-                }
-                FavoriteButton(kind = "MOVIE", remoteId = movie.remoteId)
-            }
-            // Trakt : watchlist, vu / non vu, note (rien si le compte n'est pas lié).
-            com.ultratv.tv.nativeapp.ui.trakt.TraktMovieActions(movie)
-            if (skeleton) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
-                SectionTitle(D.castTitle, 28)
-                Row(horizontalArrangement = Arrangement.spacedBy(32.design)) { repeat(5) { Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) { Skeleton(Modifier.size(96.design), circle = true); Skeleton(Modifier.width(80.design).height(18.design)) } } }
-            } else if (people.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
-                SectionTitle(D.castTitle, 28)
-                Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
-                    people.forEach { name ->
-                        // Focalisable : OK ouvre la page de la personne (ses titres dans la playlist).
-                        FocusSurface(onClick = { onOpenPerson(name) }, shape = RoundedCornerShape(24.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedScale = 1.04f, focusedBg = Ux.Surface, modifier = Modifier.width(132.design)) {
-                            Column(Modifier.fillMaxWidth().padding(vertical = 8.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                                AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
-                                Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
+                if (similar.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
+                    SectionTitle(D.similarTitles, 28)
+                    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                        items(similar, key = { it.id }, contentType = { "similar" }) { m ->
+                            com.ultratv.tv.nativeapp.ui.design.VodCard(T.tidy(m.title), m.poster, Modifier.width(170.design), year = m.year) { onOpenMovie(m.id) }
                         }
                     }
                 }
