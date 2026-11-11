@@ -204,6 +204,57 @@ L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiff
 - **Aucune URL de flux, aucun identifiant n'est affiché** ni journalisé ; les messages d'erreur sont filtrés (`UserText`). Un nom de source vide ne reprend pas l'adresse du serveur.
 - Aucun jeton partagé dans l'APK. Détails, modèle de menace et rotation des anciens secrets : [SECURITY.md](SECURITY.md).
 
+## Confidentialité
+
+Ultra TV ne fournit **aucun contenu** : vous ajoutez vos propres sources (Xtream Codes, M3U, portail Stalker) et l'application contacte directement votre fournisseur. Elle ne contient ni publicité ni bibliothèque d'analyse tierce. Le « Worker » est le serveur de configuration cloud ([`cloudflare-config/`](cloudflare-config/)), hébergé chez Cloudflare ; son adresse se change dans Réglages › Sources › *Adresse du tableau de bord*.
+
+### Vos identifiants IPTV
+
+L'adresse du serveur, le nom d'utilisateur, le mot de passe, les adresses de flux et la MAC d'un portail Stalker ne partent **que vers votre fournisseur**, sauf dans deux cas voulus :
+
+- **Synchronisation cloud** : sur un appareil appairé, une source n'est envoyée au Worker que si vous la partagez (proposition après l'ajout, ou bouton de partage) ou si vous l'ajoutez depuis le tableau de bord. Elle est conservée **chiffrée** (AES-256-GCM, chiffrement côté serveur avec une clé secrète du Worker : ce n'est pas du bout en bout). À l'ouverture du tableau de bord, le Worker interroge lui-même votre fournisseur avec ces identifiants pour afficher l'abonnement.
+- **Envoi depuis le téléphone** : la source saisie sur la page web est chiffrée, gardée 15 minutes au plus, supprimée dès que la TV la reçoit.
+
+Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `password`, `token`…, `utilisateur:mot-de-passe@`, chemins `/live/utilisateur/mot-de-passe/`) côté application puis côté Worker. Limites : le nom de domaine d'un serveur peut subsister dans un message d'erreur, et l'ajout d'une source Stalker envoie le nom d'hôte du portail (sans port, chemin, MAC ni identifiants) dans un événement de diagnostic.
+
+### Ce que l'application Android envoie d'elle-même
+
+| Envoi | Quand | Vers | Ce qui part | Coupé par le réglage |
+|---|---|---|---|---|
+| Comptage anonyme | ≈ 10 s après le démarrage, au plus une fois par 20 h, appareil **non appairé** | Worker `/api/anon/ping` | identifiant aléatoire d'installation, version | Oui |
+| Journaux de diagnostic | pendant l'usage, appareil **appairé** | Worker `/api/event` | niveau, étiquette, message nettoyé (démarrage, écran affiché, mesures de fluidité, blocages, compteurs de touches, Google TV, mise à jour, échecs de synchro), version, modèle, étiquette d'appareil | Oui |
+| Rapports de plantage | au plantage (ou au démarrage suivant), appareil **appairé** | Worker `/api/crash` | trace nettoyée, version, modèle, version d'Android | Oui |
+| Mise à jour | 30 s après chaque lancement, ou à la demande | `api.github.com`, puis GitHub | requête sans identifiant ; si une version plus récente existe, l'APK est téléchargé et l'installateur d'Android demande confirmation | **Non** |
+| Alertes (lecture) | à l'ouverture, puis toutes les 15 min au premier plan | Worker `/api/announcements` | type d'écran, version | **Non** |
+| Alertes (statistiques) | alerte affichée, fermée ou bouton utilisé | Worker `/api/announcements/<id>/stat` | type d'événement, identifiant aléatoire d'installation | **Non** |
+| Guide complémentaire | à la synchro du guide, si des chaînes restent sans programme | `xmltvfr.fr` (par défaut) | téléchargement d'un fichier ; modifiable : Réglages › Synchronisation | Non |
+| Passer l'intro | à l'ouverture d'un film ou épisode (identifiant TMDB connu) | `api.theintrodb.org` | identifiant TMDB, saison, épisode, durée | **Non** |
+| Fiches TMDB, notes | à l'ouverture d'une fiche, appareil **appairé** | Worker `/api/tmdb`, `/api/ratings` | titre nettoyé, année, langue, ou identifiant TMDB | **Non** |
+| Affiches TMDB | à l'affichage | `image.tmdb.org` | requête d'image | **Non** |
+| Sous-titres en ligne | seulement sur *Rechercher en ligne*, appareil appairé | Worker `/api/subtitles` | titre, langues, année | **Non** |
+| Synchro cloud | appairé : au lancement, toutes les 6 h ; favoris et historique ≈ 60 s après un changement puis toutes les 10 min | Worker | jeton d'appareil, version, édition ; réglages d'affichage ; favoris et historique par profil (titre, adresse de l'affiche, position, durée) | **Non** (dissocier l'appareil l'arrête) |
+| Trakt | pendant la lecture d'un film ou épisode, appareil appairé | Worker `/api/device/trakt` | action, progression, titre, année, identifiants TMDB, saison, épisode | **Non** |
+| DNS | seulement si vous choisissez un DNS autre que celui du système (Réglages › Lecture) | Google, Cloudflare, Quad9 ou le vôtre | noms de domaine | Non |
+
+Les images fournies par votre source sont chargées directement depuis les adresses qu'elle indique.
+
+### Windows et macOS
+
+Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes. Envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h, sans réglage pour la couper), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
+
+### Ce que le Worker conserve
+
+- **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
+- **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
+- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil et de compte, pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
+- **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, pays ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
+- **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
+- **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
+
+### Couper la télémétrie
+
+**Réglages › À propos › *Rapports de plantage anonymes*** (activé par défaut). Désactivé : plus de journaux, de rapports de plantage ni de comptage anonyme, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, les alertes et leurs statistiques, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+
 ## Réglages automatiques
 
 À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
