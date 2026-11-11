@@ -3,9 +3,18 @@ package com.ultratv.tv.nativeapp.ui.settings
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.junit.Rule
+import com.ultratv.tv.nativeapp.i18n.I18nRule
 
 /** Même garde-fou que TranslationsCompleteTest, pour la table dédiée [DnsStrings]. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class DnsStringsTest {
+    @get:Rule val i18n = I18nRule()
+
     private fun all(l: AppLang): Map<String, String> {
         val s = DnsStrings(l)
         return mapOf(

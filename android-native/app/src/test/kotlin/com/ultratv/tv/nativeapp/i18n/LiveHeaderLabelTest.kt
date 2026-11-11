@@ -6,8 +6,16 @@ import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import java.util.Locale
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.junit.Rule
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class LiveHeaderLabelTest {
+    @get:Rule val i18n = I18nRule()
+
     private lateinit var saved: Locale
     @Before fun setUp() { saved = Locale.getDefault(); Locale.setDefault(Locale.ROOT) }
     @After fun tearDown() { Locale.setDefault(saved) }

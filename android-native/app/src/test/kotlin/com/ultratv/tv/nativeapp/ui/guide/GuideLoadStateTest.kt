@@ -14,8 +14,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.junit.Rule
+import com.ultratv.tv.nativeapp.i18n.I18nRule
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class GuideLoadStateTest {
+    @get:Rule val i18n = I18nRule()
+
     @Test fun etatDuGuide_chargementEchecOuRien() {
         val pr = EpgProgress(1_048_576, 4_194_304, 120)
         assertEquals(GuideLoad.Loading(pr), guideLoadState(EpgState.Loading(1, pr), false))
