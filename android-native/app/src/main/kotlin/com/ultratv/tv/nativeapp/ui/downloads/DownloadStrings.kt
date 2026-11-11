@@ -3,80 +3,61 @@ package com.ultratv.tv.nativeapp.ui.downloads
 import com.ultratv.tv.nativeapp.data.downloads.DownloadError
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.Strings
+import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.i18n.I18n
 
 /**
  * Libellés des téléchargements hors ligne, à part de [com.ultratv.tv.nativeapp.i18n.DesignStrings] pour ne pas se
  * marcher dessus avec les autres chantiers. Vérifiés par TranslationsCompleteTest (en / fr / es / ar).
  */
 class DownloadStrings(val lang: AppLang) {
-    private fun t(en: String, fr: String, es: String, ar: String): String = when (lang) {
-        AppLang.French -> fr
-        AppLang.Spanish -> es
-        AppLang.Arabic -> ar
-        else -> en
-    }
+    private fun tx(id: Int, vararg args: Any): String = I18n.string(lang, id, *args)
+    private fun tp(id: Int, qty: Int, vararg args: Any): String = I18n.plural(lang, id, qty, *args)
 
-    val navTitle get() = t("Downloads", "Téléchargements", "Descargas", "التنزيلات")
-    val download get() = t("Download", "Télécharger", "Descargar", "تنزيل")
-    val downloadSeason get() = t("Download season", "Télécharger la saison", "Descargar temporada", "تنزيل الموسم")
-    val downloaded get() = t("Downloaded", "Téléchargé", "Descargado", "تم التنزيل")
-    val queued get() = t("Waiting", "En attente", "En espera", "في الانتظار")
-    val paused get() = t("Paused", "En pause", "En pausa", "متوقف مؤقتًا")
-    val failed get() = t("Failed", "Échec", "Error", "فشل")
-    val pause get() = t("Pause", "Pause", "Pausar", "إيقاف مؤقت")
-    val resume get() = t("Resume", "Reprendre", "Reanudar", "استئناف")
-    val retry get() = t("Retry", "Réessayer", "Reintentar", "إعادة المحاولة")
-    val cancel get() = t("Cancel", "Annuler", "Cancelar", "إلغاء")
-    val delete get() = t("Delete", "Supprimer", "Eliminar", "حذف")
-    val play get() = t("Play", "Lire", "Reproducir", "تشغيل")
-    val sectionActive get() = t("In progress", "En cours", "En curso", "قيد التنزيل")
-    val sectionDone get() = t("Available offline", "Disponibles hors ligne", "Disponibles sin conexión", "متاحة دون اتصال")
-    val empty get() = t(
-        "No downloads yet. Use “Download” on a movie or an episode to watch it without a connection.",
-        "Aucun téléchargement. Utilisez « Télécharger » sur un film ou un épisode pour le regarder sans connexion.",
-        "Ninguna descarga. Usa «Descargar» en una película o un episodio para verlo sin conexión.",
-        "لا توجد تنزيلات. استخدم «تنزيل» على فيلم أو حلقة لمشاهدته دون اتصال.",
-    )
-    val storageUsed get() = t("Used by downloads", "Utilisé par les téléchargements", "Usado por las descargas", "مستخدم للتنزيلات")
-    fun storageFree(used: String, free: String) = t("$used · $free free", "$used · $free libres", "$used · $free libres", "$used · $free متاحة")
+    val navTitle get() = tx(R.string.dl_nav_title)
+    val download get() = tx(R.string.dl_download)
+    val downloadSeason get() = tx(R.string.dl_download_season)
+    val downloaded get() = tx(R.string.dl_downloaded)
+    val queued get() = tx(R.string.dl_queued)
+    val paused get() = tx(R.string.dl_paused)
+    val failed get() = tx(R.string.dl_failed)
+    val pause get() = tx(R.string.dl_pause)
+    val resume get() = tx(R.string.dl_resume)
+    val retry get() = tx(R.string.dl_retry)
+    val cancel get() = tx(R.string.dl_cancel)
+    val delete get() = tx(R.string.dl_delete)
+    val play get() = tx(R.string.dl_play)
+    val sectionActive get() = tx(R.string.dl_section_active)
+    val sectionDone get() = tx(R.string.dl_section_done)
+    val empty get() = tx(R.string.dl_empty)
+    val storageUsed get() = tx(R.string.dl_storage_used)
+    fun storageFree(used: String, free: String) = tx(R.string.dl_storage_free, used, free)
 
     // Retours à l'utilisateur
-    val queuedToast get() = t("Download added", "Téléchargement ajouté", "Descarga añadida", "تمت إضافة التنزيل")
-    fun seasonQueued(n: Int) = t("$n episodes added to downloads", "$n épisodes ajoutés aux téléchargements", "$n episodios añadidos a las descargas", "تمت إضافة $n حلقات إلى التنزيلات")
-    val alreadyQueued get() = t("Already in your downloads", "Déjà dans vos téléchargements", "Ya está en tus descargas", "موجود بالفعل في تنزيلاتك")
-    val notDownloadable get() = t("Format not downloadable (streaming only)", "Format non téléchargeable (lecture en ligne seulement)", "Formato no descargable (solo en línea)", "صيغة غير قابلة للتنزيل (مشاهدة مباشرة فقط)")
-    val noSpace get() = t("Not enough free space for this download", "Pas assez d’espace libre pour ce téléchargement", "No hay espacio libre suficiente para esta descarga", "لا توجد مساحة كافية لهذا التنزيل")
-    val sourceMissing get() = t("This title is no longer in the source catalogue", "Ce titre n’est plus dans le catalogue de la source", "Este título ya no está en el catálogo de la fuente", "لم يعد هذا العنوان في كتالوج المصدر")
-    val networkError get() = t("Connection lost — it will resume automatically", "Connexion perdue — reprise automatique", "Conexión perdida: se reanudará automáticamente", "انقطع الاتصال — سيُستأنف تلقائيًا")
-    val httpError get() = t("The server refused the download", "Le serveur a refusé le téléchargement", "El servidor rechazó la descarga", "رفض الخادم التنزيل")
-    val storageError get() = t("Could not write the file", "Impossible d’écrire le fichier", "No se pudo escribir el archivo", "تعذّرت كتابة الملف")
-    val connectionWhilePlaying get() = t(
-        "A stream is playing: this download uses another connection of your subscription",
-        "Un flux est en lecture : ce téléchargement utilise une autre connexion de votre abonnement",
-        "Se está reproduciendo una emisión: esta descarga usa otra conexión de tu suscripción",
-        "يتم تشغيل بث: هذا التنزيل يستخدم اتصالًا آخر من اشتراكك",
-    )
-    val connectionBusyDownloading get() = t(
-        "A download is using your subscription’s connection — pause it if playback fails",
-        "Un téléchargement utilise la connexion de votre abonnement — mettez-le en pause si la lecture échoue",
-        "Una descarga está usando la conexión de tu suscripción: ponla en pausa si la reproducción falla",
-        "يستخدم تنزيل اتصال اشتراكك — أوقفه مؤقتًا إذا فشل التشغيل",
-    )
+    val queuedToast get() = tx(R.string.dl_queued_toast)
+    fun seasonQueued(n: Int) = tx(R.string.dl_season_queued, n)
+    val alreadyQueued get() = tx(R.string.dl_already_queued)
+    val notDownloadable get() = tx(R.string.dl_not_downloadable)
+    val noSpace get() = tx(R.string.dl_no_space)
+    val sourceMissing get() = tx(R.string.dl_source_missing)
+    val networkError get() = tx(R.string.dl_network_error)
+    val httpError get() = tx(R.string.dl_http_error)
+    val storageError get() = tx(R.string.dl_storage_error)
+    val connectionWhilePlaying get() = tx(R.string.dl_connection_while_playing)
+    val connectionBusyDownloading get() = tx(R.string.dl_connection_busy_downloading)
 
     // Réglages
-    val wifiOnly get() = t("Download on Wi-Fi only", "Télécharger en Wi-Fi uniquement", "Descargar solo con Wi-Fi", "التنزيل عبر Wi-Fi فقط")
-    val wifiOnlyHint get() = t("Downloads wait for an unmetered network", "Les téléchargements attendent un réseau non limité", "Las descargas esperan una red sin límite", "تنتظر التنزيلات شبكة غير محدودة")
-    val location get() = t("Download location", "Emplacement des téléchargements", "Ubicación de las descargas", "موقع التنزيلات")
-    val locationHint get() = t("Files stay private to Ultra TV", "Les fichiers restent privés à Ultra TV", "Los archivos son privados de Ultra TV", "تبقى الملفات خاصة بتطبيق Ultra TV")
-    val locationExternal get() = t("App storage (external)", "Stockage de l’appli (externe)", "Almacenamiento de la app (externo)", "تخزين التطبيق (خارجي)")
-    val locationInternal get() = t("Internal memory", "Mémoire interne", "Memoria interna", "الذاكرة الداخلية")
+    val wifiOnly get() = tx(R.string.dl_wifi_only)
+    val wifiOnlyHint get() = tx(R.string.dl_wifi_only_hint)
+    val location get() = tx(R.string.dl_location)
+    val locationHint get() = tx(R.string.dl_location_hint)
+    val locationExternal get() = tx(R.string.dl_location_external)
+    val locationInternal get() = tx(R.string.dl_location_internal)
 
     // Notification
-    val notifChannel get() = t("Downloads", "Téléchargements", "Descargas", "التنزيلات")
-    fun notifProgress(count: Int, percent: Int) = t(
-        "$count downloading · $percent%", "$count en cours · $percent %", "$count en curso · $percent %", "$count قيد التنزيل · $percent٪",
-    )
-    val notifStarting get() = t("Preparing downloads…", "Préparation des téléchargements…", "Preparando descargas…", "جارٍ تحضير التنزيلات…")
+    val notifChannel get() = tx(R.string.dl_notif_channel)
+    fun notifProgress(count: Int, percent: Int) = tx(R.string.dl_notif_progress, count, percent)
+    val notifStarting get() = tx(R.string.dl_notif_starting)
 
     /** Message d'un code d'erreur enregistré (jamais le texte brut d'une exception). */
     fun error(code: String?): String = when (code) {
