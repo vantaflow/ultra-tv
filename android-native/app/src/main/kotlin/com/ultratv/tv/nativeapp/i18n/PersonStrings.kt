@@ -1,25 +1,21 @@
 package com.ultratv.tv.nativeapp.i18n
 
+import com.ultratv.tv.nativeapp.R
+
 /** Libellés de l'en-tête des pages acteur / réalisateur. Fichier à part, comme les autres chantiers de libellés. */
-private fun DesignStrings.t(en: String, fr: String, es: String = en, ar: String = en): String = when (lang) {
-    AppLang.French -> fr
-    AppLang.Spanish -> es
-    AppLang.Arabic -> ar
-    else -> en
-}
 
 /** Métier principal d'après le département TMDB ; null si inconnu (rien n'est affiché). */
 fun DesignStrings.personRole(department: String?): String? = when (department) {
-    "Acting" -> t("Actor", "Acteur", "Actor", "ممثل")
-    "Directing" -> t("Director", "Réalisateur", "Director", "مخرج")
-    "Writing" -> t("Writer", "Scénariste", "Guionista", "كاتب")
-    "Production" -> t("Producer", "Producteur", "Productor", "منتج")
+    "Acting" -> tx(R.string.person_person_role_acting)
+    "Directing" -> tx(R.string.person_person_role_directing)
+    "Writing" -> tx(R.string.person_person_role_writing)
+    "Production" -> tx(R.string.person_person_role_production)
     else -> null
 }
 
-fun DesignStrings.personBorn(date: String) = t("born $date", "né(e) le $date", "nac. $date", "وُلد $date")
-val DesignStrings.personReadMore get() = t("Read more", "Lire la suite", "Leer más", "اقرأ المزيد")
-val DesignStrings.personReadLess get() = t("Show less", "Réduire", "Mostrar menos", "عرض أقل")
-fun DesignStrings.personInPlaylist(n: Int) = t("In your playlist · $n", "Dans votre playlist · $n", "En tu lista · $n", "في قائمتك · $n")
-val DesignStrings.personBadgeMovie get() = t("MOVIE", "FILM", "PELÍCULA", "فيلم")
-val DesignStrings.personBadgeSeries get() = t("SERIES", "SÉRIE", "SERIE", "مسلسل")
+fun DesignStrings.personBorn(date: String) = tx(R.string.person_person_born, date)
+val DesignStrings.personReadMore get() = tx(R.string.person_person_read_more)
+val DesignStrings.personReadLess get() = tx(R.string.person_person_read_less)
+fun DesignStrings.personInPlaylist(n: Int) = tx(R.string.person_person_in_playlist, n)
+val DesignStrings.personBadgeMovie get() = tx(R.string.person_person_badge_movie)
+val DesignStrings.personBadgeSeries get() = tx(R.string.person_person_badge_series)

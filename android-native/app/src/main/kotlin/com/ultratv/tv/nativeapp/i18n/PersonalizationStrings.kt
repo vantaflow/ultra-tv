@@ -4,17 +4,12 @@ import com.ultratv.tv.nativeapp.nav.StartScreen
 import com.ultratv.tv.nativeapp.ui.design.AccentChoice
 import com.ultratv.tv.nativeapp.ui.design.TextSize
 import com.ultratv.tv.nativeapp.ui.home.HomeBlock
+import com.ultratv.tv.nativeapp.R
 
 /**
  * Libellés de la personnalisation (accent, taille du texte, rangées de l'accueil, écran d'ouverture) et de l'en-tête
  * de la liste Direct. Fichier à part pour ne pas toucher à [DesignStrings] (évite les conflits entre branches).
  */
-private fun DesignStrings.t(en: String, fr: String, es: String = en, ar: String = en): String = when (lang) {
-    AppLang.French -> fr
-    AppLang.Spanish -> es
-    AppLang.Arabic -> ar
-    else -> en
-}
 
 private fun count(n: Int): String = java.text.NumberFormat.getIntegerInstance().format(n)
 
@@ -23,22 +18,12 @@ private fun count(n: Int): String = java.text.NumberFormat.getIntegerInstance().
 /** « 40 chaînes » avec le bon pluriel (arabe : singulier, duel, pluriel 3–10, singulier accusatif au-delà). */
 fun DesignStrings.channelCount(n: Int): String {
     val f = count(n)
-    return when (lang) {
-        AppLang.French -> if (n <= 1) "$f chaîne" else "$f chaînes"
-        AppLang.Spanish -> if (n == 1) "$f canal" else "$f canales"
-        AppLang.Arabic -> when { n == 1 -> "قناة واحدة"; n == 2 -> "قناتان"; n in 3..10 -> "$f قنوات"; else -> "$f قناة" }
-        else -> if (n == 1) "$f channel" else "$f channels"
-    }
+    return tp(R.plurals.perso_channel_count, n, f)
 }
 
 fun DesignStrings.sectionCount(n: Int): String {
     val f = count(n)
-    return when (lang) {
-        AppLang.French -> if (n <= 1) "$f section" else "$f sections"
-        AppLang.Spanish -> if (n == 1) "$f sección" else "$f secciones"
-        AppLang.Arabic -> when { n == 1 -> "قسم واحد"; n == 2 -> "قسمان"; n in 3..10 -> "$f أقسام"; else -> "$f قسمًا" }
-        else -> if (n == 1) "$f section" else "$f sections"
-    }
+    return tp(R.plurals.perso_section_count, n, f)
 }
 
 /**
@@ -51,47 +36,42 @@ fun DesignStrings.liveHeaderCount(channels: Int, sections: Int): String =
 
 // ── Réglages › Affichage ──
 
-val DesignStrings.personalization get() = t("Personalization", "Personnalisation", "Personalización", "التخصيص")
-val DesignStrings.accentColor get() = t("Accent colour", "Couleur d'accent", "Color de acento", "لون التمييز")
-val DesignStrings.textSizeLabel get() = t("Text size", "Taille du texte", "Tamaño del texto", "حجم النص")
-val DesignStrings.homeRows get() = t("Home rows", "Rangées de l'accueil", "Filas de inicio", "صفوف الصفحة الرئيسية")
-fun DesignStrings.homeRowsSummary(shown: Int, total: Int) = t("$shown of $total shown", "$shown sur $total affichées", "$shown de $total visibles", "$shown من $total معروضة")
-val DesignStrings.homeRowsHint get() = t(
-    "OK shows or hides a row; the arrows move it.",
-    "OK affiche ou masque une rangée ; les flèches la déplacent.",
-    "OK muestra u oculta una fila; las flechas la mueven.",
-    "زر OK يُظهر الصف أو يخفيه، والأسهم تنقله.",
-)
-val DesignStrings.rowShown get() = t("Shown", "Affichée", "Visible", "معروض")
-val DesignStrings.rowHidden get() = t("Hidden", "Masquée", "Oculta", "مخفي")
-val DesignStrings.moveUp get() = t("Move up", "Monter", "Subir", "تحريك لأعلى")
-val DesignStrings.moveDown get() = t("Move down", "Descendre", "Bajar", "تحريك لأسفل")
-val DesignStrings.resetDefault get() = t("Reset", "Réinitialiser", "Restablecer", "إعادة تعيين")
-val DesignStrings.doneLabel get() = t("Done", "Terminé", "Listo", "تم")
-val DesignStrings.traktListsRow get() = t("My Trakt lists", "Mes listes Trakt", "Mis listas de Trakt", "قوائمي على Trakt")
+val DesignStrings.personalization get() = tx(R.string.perso_personalization)
+val DesignStrings.accentColor get() = tx(R.string.perso_accent_color)
+val DesignStrings.textSizeLabel get() = tx(R.string.perso_text_size_label)
+val DesignStrings.homeRows get() = tx(R.string.perso_home_rows)
+fun DesignStrings.homeRowsSummary(shown: Int, total: Int) = tx(R.string.perso_home_rows_summary, shown, total)
+val DesignStrings.homeRowsHint get() = tx(R.string.perso_home_rows_hint)
+val DesignStrings.rowShown get() = tx(R.string.perso_row_shown)
+val DesignStrings.rowHidden get() = tx(R.string.perso_row_hidden)
+val DesignStrings.moveUp get() = tx(R.string.perso_move_up)
+val DesignStrings.moveDown get() = tx(R.string.perso_move_down)
+val DesignStrings.resetDefault get() = tx(R.string.perso_reset_default)
+val DesignStrings.doneLabel get() = tx(R.string.perso_done_label)
+val DesignStrings.traktListsRow get() = tx(R.string.perso_trakt_lists_row)
 
 fun DesignStrings.accentName(a: AccentChoice): String = when (a) {
-    AccentChoice.RED -> t("Red (default)", "Rouge (par défaut)", "Rojo (predeterminado)", "أحمر (افتراضي)")
-    AccentChoice.BLUE -> t("Blue", "Bleu", "Azul", "أزرق")
-    AccentChoice.VIOLET -> t("Purple", "Violet", "Violeta", "بنفسجي")
-    AccentChoice.GREEN -> t("Green", "Vert", "Verde", "أخضر")
-    AccentChoice.ORANGE -> t("Orange", "Orange", "Naranja", "برتقالي")
-    AccentChoice.PINK -> t("Pink", "Rose", "Rosa", "وردي")
+    AccentChoice.RED -> tx(R.string.perso_accent_name_red)
+    AccentChoice.BLUE -> tx(R.string.perso_accent_name_blue)
+    AccentChoice.VIOLET -> tx(R.string.perso_accent_name_violet)
+    AccentChoice.GREEN -> tx(R.string.perso_accent_name_green)
+    AccentChoice.ORANGE -> tx(R.string.perso_accent_name_orange)
+    AccentChoice.PINK -> tx(R.string.perso_accent_name_pink)
 }
 
 fun DesignStrings.textSizeName(s: TextSize): String = when (s) {
-    TextSize.NORMAL -> t("Normal", "Normal", "Normal", "عادي")
-    TextSize.LARGE -> t("Large", "Grand", "Grande", "كبير")
-    TextSize.XLARGE -> t("Extra large", "Très grand", "Muy grande", "كبير جدًا")
+    TextSize.NORMAL -> tx(R.string.perso_text_size_name_normal)
+    TextSize.LARGE -> tx(R.string.perso_text_size_name_large)
+    TextSize.XLARGE -> tx(R.string.perso_text_size_name_xlarge)
 }
 
 fun DesignStrings.startScreenName(s: StartScreen): String = when (s) {
-    StartScreen.HOME -> t("Home (default)", "Accueil (par défaut)", "Inicio (predeterminado)", "الرئيسية (افتراضي)")
-    StartScreen.LIVE -> t("Live TV", "Direct", "En directo", "البث المباشر")
-    StartScreen.MOVIES -> t("Movies", "Films", "Películas", "الأفلام")
-    StartScreen.SERIES -> t("TV shows", "Séries", "Series", "المسلسلات")
-    StartScreen.GUIDE -> t("TV guide", "Guide TV", "Guía de TV", "دليل البرامج")
-    StartScreen.LAST_CHANNEL -> t("Last channel watched", "Dernière chaîne regardée", "Último canal visto", "آخر قناة تمت مشاهدتها")
+    StartScreen.HOME -> tx(R.string.perso_start_screen_name_home)
+    StartScreen.LIVE -> tx(R.string.perso_start_screen_name_live)
+    StartScreen.MOVIES -> tx(R.string.perso_start_screen_name_movies)
+    StartScreen.SERIES -> tx(R.string.perso_start_screen_name_series)
+    StartScreen.GUIDE -> tx(R.string.perso_start_screen_name_guide)
+    StartScreen.LAST_CHANNEL -> tx(R.string.perso_start_screen_name_last_channel)
 }
 
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
