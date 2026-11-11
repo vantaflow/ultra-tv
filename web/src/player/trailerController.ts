@@ -11,7 +11,7 @@ export const YT_ORIGINS = ["https://www.youtube-nocookie.com", "https://www.yout
 /** Adresse du lecteur intégré : commandes à nous (controls=0), aucune vidéo liée en fin de lecture (rel=0). */
 export function trailerEmbedUrl(key: string, origin?: string): string {
   const p = new URLSearchParams({
-    enablejsapi: "1", controls: "0", rel: "0", playsinline: "1", modestbranding: "1", iv_load_policy: "3",
+    enablejsapi: "1", controls: "0", rel: "0", playsinline: "1", modestbranding: "1", iv_load_policy: "3", cc_load_policy: "0",
     disablekb: "1", fs: "0", autoplay: "1",
   });
   // `origin` n'a de sens que pour une page http(s) ; sous le protocole app:// du bureau on l'omet.

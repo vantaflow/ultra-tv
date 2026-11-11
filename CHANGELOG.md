@@ -5,7 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Modifié
-- Worker : la télémétrie (journaux, plantages, relevés anonymes) et la dernière activité des appareils passent de KV à D1 (base `ultratv-telemetry`, binding `DB`), pour rester sous le quota gratuit de 1 000 écritures KV par jour (erreur 10048 qui bloquait l'appairage, l'envoi de sources, la synchro et les annonces). Les comptes, appareils et fournisseurs restent en KV.
+- Bande-annonce (Android et bureau) : plus de sous-titres automatiques de YouTube par-dessus la vidéo.
 
 ## [1.2.91] - 2026-11-12
 
