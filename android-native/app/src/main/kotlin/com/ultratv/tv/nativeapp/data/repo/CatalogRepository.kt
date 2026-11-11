@@ -56,15 +56,31 @@ class CatalogRepository @Inject constructor(
     fun topRatedSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeTopRated(pid, limit)
 
     /**
-     * Films proches d'un film regardé : même genre (premier genre de sa fiche), complétés par sa catégorie du fournisseur.
+     * Films proches d'un film regardé, classés par ressemblance ([SimilarMovies.rank]) : genres en commun (tous, pas
+     * seulement le premier), même réalisateur, acteurs en commun, époque proche. Plus de repli sur la catégorie du
+     * fournisseur (« FR | Films 2024 » n'a aucun rapport de thème) : sans assez de films proches, la rangée se masque.
      * null si le film n'est plus au catalogue. Titre du film de départ en premier.
      */
     suspend fun similarMovies(pid: Long, remoteId: String, limit: Int): Pair<String, List<MovieEntity>>? {
         val seed = movieDao.byRemoteId(pid, remoteId) ?: return null
-        val genre = similarGenreKey(seed.genre)
-        val byGenre = if (genre != null) movieDao.byGenre(pid, genre, seed.id, limit) else emptyList()
-        val byCat = if (byGenre.size < limit && !seed.categoryId.isNullOrBlank()) movieDao.sameCategory(pid, seed.categoryId, seed.id, limit) else emptyList()
-        return seed.title to (byGenre + byCat).distinctBy { it.id }.take(limit)
+        val info = vodInfoDao.get(pid, remoteId)
+        val seedFacts = SimilarMovies.Facts(
+            genres = SimilarMovies.genres(seed.genre ?: info?.genre),
+            people = SimilarMovies.people(seed.cast ?: info?.cast, max = 4),
+            director = SimilarMovies.people(info?.director, max = 1).firstOrNull(),
+            year = seed.year,
+        )
+        if (seedFacts.genres.isEmpty() && seedFacts.people.isEmpty() && seedFacts.director == null) return seed.title to emptyList()
+        // Candidats : chaque genre du film (pas seulement le premier), puis réalisateur et acteurs principaux.
+        val pool = buildList {
+            // Requêtes avec le genre tel qu'écrit dans la base (LIKE), la comparaison se fait ensuite sur la forme normalisée.
+            SimilarMovies.rawGenres(seed.genre ?: info?.genre).take(3).forEach { g -> addAll(movieDao.byGenre(pid, g, seed.id, SIMILAR_POOL)) }
+            (listOfNotNull(seedFacts.director) + seedFacts.people.take(2)).forEach { n -> addAll(movieDao.byPerson(pid, n, SIMILAR_POOL / 4)) }
+        }.distinctBy { it.id }.filter { it.id != seed.id && !it.poster.isNullOrBlank() }
+        val ranked = SimilarMovies.rank(seed.title, seedFacts, pool.map { m ->
+            m to SimilarMovies.Facts(SimilarMovies.genres(m.genre), SimilarMovies.people(m.cast, max = 6), null, m.year)
+        }, limit) { it.title }
+        return seed.title to ranked
     }
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
@@ -278,6 +294,9 @@ private val EPISODE_ORDER = compareBy<com.ultratv.tv.nativeapp.data.db.EpisodeEn
 /** Premier genre d'une fiche (« Action, Aventure » → « Action »), assez long pour un LIKE utile ; null sinon. */
 fun similarGenreKey(genre: String?): String? =
     genre?.split(',', '/', '|', ';')?.map { it.trim() }?.firstOrNull { it.length >= 3 }?.replace("%", "")?.replace("_", "")?.takeIf { it.length >= 3 }
+
+/** Candidats lus par genre pour « Parce que vous avez regardé… » (classés ensuite en mémoire). */
+private const val SIMILAR_POOL = 200
 
 /** Candidats lus pour la recherche approchée (classés ensuite en mémoire). */
 private const val FUZZY_POOL = 800
