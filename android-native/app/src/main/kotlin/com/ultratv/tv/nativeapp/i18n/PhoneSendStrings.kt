@@ -12,6 +12,7 @@ private fun DesignStrings.t(en: String, fr: String, es: String = en, ar: String 
 }
 
 val DesignStrings.cardPhone get() = t("From your phone", "Depuis le téléphone", "Desde el teléfono", "من الهاتف")
+val DesignStrings.cardPhoneDesc get() = t("Send the source from a phone or a computer, no typing with the remote", "Envoyez la source depuis un téléphone ou un ordinateur, sans saisie à la télécommande", "Envía la fuente desde un teléfono o un ordenador, sin teclear con el mando", "أرسل المصدر من هاتف أو حاسوب دون الكتابة بالتحكم عن بعد")
 val DesignStrings.phoneEyebrow get() = t("SEND FROM YOUR PHONE", "ENVOYER DEPUIS VOTRE TÉLÉPHONE", "ENVIAR DESDE TU TELÉFONO", "الإرسال من هاتفك")
 val DesignStrings.phoneTitle get() = t("Send your playlist from a phone or a computer", "Envoyez votre playlist depuis un téléphone ou un ordinateur", "Envía tu lista desde un teléfono o un ordenador", "أرسل قائمتك من هاتف أو حاسوب")
 fun DesignStrings.phoneStep1(address: String) = when (lang) {

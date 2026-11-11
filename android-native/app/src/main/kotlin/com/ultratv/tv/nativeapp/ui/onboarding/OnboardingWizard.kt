@@ -73,7 +73,14 @@ import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 import com.ultratv.tv.nativeapp.ui.settings.M3uDialog
 import com.ultratv.tv.nativeapp.ui.settings.SettingsViewModel
+import com.ultratv.tv.nativeapp.ui.settings.StalkerDialog
 import com.ultratv.tv.nativeapp.ui.settings.XtreamDialog
+import com.ultratv.tv.nativeapp.i18n.cardPhone
+import com.ultratv.tv.nativeapp.i18n.cardPhoneDesc
+import com.ultratv.tv.nativeapp.i18n.formSubStalker
+import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.phoneReceived
+import com.ultratv.tv.nativeapp.i18n.stalkerFailed
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -140,7 +147,19 @@ class OnboardingViewModel @Inject constructor(
 }
 
 private enum class Step { Welcome, Source, Languages, Ready }
-private enum class Form { None, Xtream, M3uUrl }
+private enum class Form { None, Xtream, M3uUrl, Stalker }
+
+/** Types de source proposés à l'étape « Source » de l'assistant. */
+internal enum class SourceOption { XTREAM, STALKER, M3U_URL, M3U_FILE, CLOUD, PHONE }
+
+/**
+ * Options affichées, dans l'ordre : mêmes types que Réglages › Sources › Ajouter. « Depuis le téléphone » est
+ * réservé à la TV / box (sur un téléphone, on saisit déjà sur l'appareil), comme dans Réglages.
+ */
+internal fun sourceOptions(touch: Boolean): List<SourceOption> = buildList {
+    add(SourceOption.XTREAM); add(SourceOption.STALKER); add(SourceOption.M3U_URL); add(SourceOption.M3U_FILE); add(SourceOption.CLOUD)
+    if (!touch) add(SourceOption.PHONE)
+}
 
 @Composable
 fun OnboardingWizard(
@@ -416,6 +435,18 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         }
     }
 
+    // « Depuis le téléphone » : code + QR ; une fois la source reçue (nouvelle source en base), on passe à « Prêt ».
+    val webSendUi by settingsVm.webSendUi.collectAsState()
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+    val phoneReceived = D.phoneReceived
+    val stalkerFailed = D.stalkerFailed
+    var phoneBaseline by remember { mutableStateOf<Int?>(null) }
+    androidx.compose.runtime.LaunchedEffect(phoneBaseline, cloudProviders.size) {
+        val base = phoneBaseline
+        if (base != null && cloudProviders.size > base) { phoneBaseline = null; onAdded() }
+    }
+    val startPhone = { phoneBaseline = cloudProviders.size; settingsVm.startWebSend(phoneReceived, stalkerFailed) }
+
     // Même départ sur TV et smartphone : l'assistant suit l'appairage et enchaîne sur les langues puis la synchro
     // (avant, la carte du smartphone lançait l'appairage seule : synchro en arrière-plan, écran resté sur le choix).
     val startCloud = {
@@ -447,13 +478,17 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             Eyebrow(W.stepLabel.format(2))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, lineHeight = 32.sp, color = Ux.Text)
             Text(W.sourceSubtitle, fontFamily = Manrope, fontSize = 15.sp, lineHeight = 22.sp, color = Ux.Text2)
-            TouchSourceCard(Icons.Monitor, W.cardXtream, W.cardXtreamDesc) { form = Form.Xtream }
-            TouchSourceCard(Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
-            TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
-            TouchSourceCard(Icons.Globe, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cloudSyncHint) { startCloud() }
+            for (o in sourceOptions(touch = true)) when (o) {
+                SourceOption.XTREAM -> TouchSourceCard(Icons.Monitor, W.cardXtream, W.cardXtreamDesc) { form = Form.Xtream }
+                SourceOption.STALKER -> TouchSourceCard(Icons.Monitor, D.kindStalker, D.formSubStalker) { form = Form.Stalker }
+                SourceOption.M3U_URL -> TouchSourceCard(Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
+                SourceOption.M3U_FILE -> TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
+                SourceOption.CLOUD -> TouchSourceCard(Icons.Globe, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud, D.cloudSyncHint) { startCloud() }
+                SourceOption.PHONE -> TouchSourceCard(Icons.Globe, D.cardPhone, D.cardPhoneDesc) { startPhone() }
+            }
             TouchCta(W.later, false, onLater)
         }
-    } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+    } else Column(Modifier.fillMaxSize().verticalScroll(androidx.compose.foundation.rememberScrollState()), verticalArrangement = Arrangement.Center) {
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {
             Eyebrow(W.stepLabel.format(2))
             Text(W.sourceTitle, fontFamily = Sora, fontWeight = FontWeight.Bold,
@@ -461,12 +496,26 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
                 modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true))
             Text(W.sourceSubtitle, fontFamily = Manrope, fontSize = 30.spx, color = Ux.Text2)
         }
-        Spacer(Modifier.height(56.design))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 12.design), horizontalArrangement = Arrangement.spacedBy(32.design)) {
-            SourceCard(Modifier.weight(1f), Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first = true) { form = Form.Xtream }
-            SourceCard(Modifier.weight(1f), Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
-            SourceCard(Modifier.weight(1f), Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
-            SourceCard(Modifier.weight(1f), Icons.Link, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloud, com.ultratv.tv.nativeapp.i18n.LocalDs.current.cardCloudDesc) { startCloud() }
+        Spacer(Modifier.height(40.design))
+        // Trois cartes par ligne : six types de source sur TV / box.
+        Column(Modifier.fillMaxWidth().padding(horizontal = 12.design), verticalArrangement = Arrangement.spacedBy(24.design)) {
+            sourceOptions(touch = false).chunked(3).forEachIndexed { row, opts ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.design)) {
+                    opts.forEachIndexed { i, o ->
+                        val first = row == 0 && i == 0
+                        val m = Modifier.weight(1f)
+                        when (o) {
+                            SourceOption.XTREAM -> SourceCard(m, Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first) { form = Form.Xtream }
+                            SourceOption.STALKER -> SourceCard(m, Icons.Monitor, D.kindStalker, D.formSubStalker, first) { form = Form.Stalker }
+                            SourceOption.M3U_URL -> SourceCard(m, Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc, first) { form = Form.M3uUrl }
+                            SourceOption.M3U_FILE -> SourceCard(m, Icons.File, W.cardM3uFile, W.cardM3uFileDesc, first) { pickFile.launch(arrayOf("*/*")) }
+                            SourceOption.CLOUD -> SourceCard(m, Icons.Link, D.cardCloud, D.cardCloudDesc, first) { startCloud() }
+                            SourceOption.PHONE -> SourceCard(m, Icons.Globe, D.cardPhone, D.cardPhoneDesc, first) { startPhone() }
+                        }
+                    }
+                    repeat(3 - opts.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
         }
         Spacer(Modifier.height(40.design))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -484,8 +533,21 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
             onDismiss = { form = Form.None },
             onSubmit = { n, u -> settingsVm.addM3uAndSync(n, u); form = Form.None; onAdded() },
         )
+        Form.Stalker -> {
+            // Même flux que Réglages › Sources : le portail est sondé avant l'ajout, le dialogue reste ouvert pendant la vérification.
+            var checking by remember { mutableStateOf(false) }
+            StalkerDialog(
+                onDismiss = { form = Form.None },
+                busy = checking,
+                onBack = { form = Form.None },
+            ) { n, u, mac, login, pw ->
+                checking = true
+                settingsVm.addStalkerAndSync(n, u, mac, login, pw, stalkerFailed) { ok -> checking = false; if (ok) { form = Form.None; onAdded() } }
+            }
+        }
         Form.None -> Unit
     }
+    com.ultratv.tv.nativeapp.ui.settings.PhoneSendDialog(webSendUi, onCancel = { phoneBaseline = null; settingsVm.cancelWebSend() }, onRetry = { startPhone() })
 }
 
 @Composable
@@ -496,7 +558,7 @@ private fun SourceCard(modifier: Modifier, icon: String, title: String, desc: St
     FocusSurface(
         onClick = onClick,
         shape = RoundedCornerShape(28.design),
-        modifier = modifier.height(340.design)
+        modifier = modifier.height(280.design)
             .then(if (first) Modifier.focusRequester(requester) else Modifier)
             .onFocusChanged { focused = it.isFocused },
     ) { f ->

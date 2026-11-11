@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Corrigé
+- Android : l'assistant de premier lancement propose enfin « Portail Stalker (MAC) » (TV et smartphone, même saisie et même vérification du portail que Réglages › Sources) et « Depuis le téléphone » (TV / box).
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé
