@@ -14,6 +14,7 @@ import coil3.request.CachePolicy
 import coil3.request.allowHardware
 import coil3.request.allowRgb565
 import coil3.request.crossfade
+import com.ultratv.tv.nativeapp.data.memory.ramState
 import okio.Path.Companion.toOkioPath
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
@@ -57,21 +58,32 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var posters: dagger.Lazy<com.ultratv.tv.nativeapp.data.tmdb.PosterResolver>
     @Inject lateinit var downloads: dagger.Lazy<com.ultratv.tv.nativeapp.data.downloads.DownloadRepository>
 
+    @Inject lateinit var memoryPrefs: dagger.Lazy<com.ultratv.tv.nativeapp.data.memory.MemoryPrefs>
+    @Inject lateinit var memoryManager: dagger.Lazy<com.ultratv.tv.nativeapp.data.memory.MemoryManager>
+
     private val bgScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {
         val auto = adaptive.state.value.auto
         val low = auto.lowRam
+        // Réglages « Mémoire et stockage » : limite du cache disque (Auto = selon l'espace libre) et mode économie de
+        // mémoire (cache mémoire plus petit, décodage réduit, pas de fondu). SharedPreferences : lecture légère, pas la base.
+        val mp = memoryPrefs.get().state.value
+        val limited = low || ramState().limited
+        val economy = com.ultratv.tv.nativeapp.data.memory.EconomyMode.effective(mp.economy, limited)
+        val diskBytes = com.ultratv.tv.nativeapp.data.memory.ImageCacheLimit.bytes(
+            mp.imageCache, runCatching { android.os.StatFs(cacheDir.path).availableBytes }.getOrDefault(0L), limited,
+        )
         return ImageLoader.Builder(this)
             .memoryCache {
                 MemoryCache.Builder()
-                    .maxSizePercent(this, if (low) 0.08 else 0.25)
+                    .maxSizePercent(this, if (economy) 0.08 else 0.25)
                     .build()
             }
             .diskCache {
                 DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache").toOkioPath())
-                    .maxSizeBytes(if (low) 96L * 1024 * 1024 else 256L * 1024 * 1024)
+                    .maxSizeBytes(diskBytes)
                     .build()
             }
             // Client réseau PARTAGÉ (un seul pool de connexions et de fils) ; décodages limités à 2 sur l'entrée de gamme
@@ -85,7 +97,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                     okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build()
                 }))
             }
-            .apply { if (low) decoderCoroutineContext(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
+            .apply { if (economy) decoderCoroutineContext(kotlinx.coroutines.Dispatchers.IO.limitedParallelism(2)) }
             // En-têtes de cache HTTP ignorés (ancien respectCacheHeaders(false)) : c'est le comportement par défaut de
             // Coil 3 (CacheStrategy.DEFAULT ; les respecter demanderait le module coil-network-cache-control).
             .memoryCachePolicy(CachePolicy.ENABLED)
@@ -97,14 +109,18 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
             // Pas de fondu sur l'entrée de gamme : c'est une animation par image chargée.
             // Ni fondu sur télévision : le défilement à la télécommande déclenche des dizaines de chargements, chacun avec
             // une animation d'alpha par image (SlotImage fait de même).
-            .crossfade(!low && !com.ultratv.tv.nativeapp.ui.common.isTelevision(this))
+            .crossfade(!economy && !com.ultratv.tv.nativeapp.ui.common.isTelevision(this))
             .build()
     }
 
     /** Pression mémoire : on rend d'abord les caches d'images (le plus facile à reconstruire depuis le disque). */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        val low = runCatching { adaptive.state.value.auto.lowRam }.getOrDefault(false)
+        val low = runCatching {
+            com.ultratv.tv.nativeapp.data.memory.EconomyMode.effective(
+                memoryPrefs.get().state.value.economy, adaptive.state.value.auto.lowRam || ramState().limited,
+            )
+        }.getOrDefault(false)
         if (level >= TRIM_MEMORY_RUNNING_LOW || (low && level >= TRIM_MEMORY_UI_HIDDEN)) {
             runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
             runCatching { posters.get().trim() }
@@ -175,6 +191,14 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                     repo.refreshIfStale(com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository.langParam(p.language, java.util.Locale.getDefault().language))
                 }
             }
+        }
+
+        // Nettoyage automatique (fichiers temporaires anciens, cache d'images au-delà de la limite) 30 s après le départ,
+        // et planification quotidienne via WorkManager ; sans effet pendant une synchro ni si le réglage est coupé.
+        bgScope.launch {
+            kotlinx.coroutines.delay(30_000)
+            runCatching { memoryManager.get().autoClean() }
+            runCatching { memoryManager.get().applySchedule() }
         }
 
         // Base migrée depuis la version 17 : ordre précalculé du Direct rempli en tâche de fond, après le premier écran

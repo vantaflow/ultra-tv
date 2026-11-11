@@ -43,7 +43,7 @@ class TimeshiftViewModel @Inject constructor(
         com.ultratv.tv.nativeapp.data.recording.ConnectionPolicy.onPlayRequested(recDao.observeRunningCount().first() > 0, maxConnections(providerId)) !=
             com.ultratv.tv.nativeapp.data.recording.ConnectionWarning.NONE
 
-    private val dir = File(ctx.cacheDir, "timeshift")
+    private val dir = File(ctx.cacheDir, com.ultratv.tv.nativeapp.data.memory.TimeshiftRegistry.DIR_NAME)
     // Flux continu : ni délai global (callTimeout) ni lecture arrêtée trop tôt.
     private val client = http.newBuilder().callTimeout(0, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
     private var proxy: TimeshiftProxy? = null
@@ -73,6 +73,7 @@ class TimeshiftViewModel @Inject constructor(
         val p = TimeshiftProxy(client, upstreamUrl, userAgent, File(dir, "buf-${System.nanoTime()}.ts"), plan.capacityBytes, plan.assumedBytesPerSec)
         p.start()
         proxy = p
+        com.ultratv.tv.nativeapp.data.memory.TimeshiftRegistry.active = true
         return p.localUrl(null)
     }
 
@@ -94,7 +95,7 @@ class TimeshiftViewModel @Inject constructor(
     }
 
     /** Ferme le flux amont (libère la connexion du fournisseur) et supprime le tampon. */
-    fun deactivate() { proxy?.close(); proxy = null }
+    fun deactivate() { proxy?.close(); proxy = null; com.ultratv.tv.nativeapp.data.memory.TimeshiftRegistry.active = false }
 
     override fun onCleared() { deactivate() }
 }

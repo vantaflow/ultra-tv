@@ -97,7 +97,8 @@ private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLO
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
-    LANGUAGES("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18"), PROFILES("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"), MESSAGES("M4 5h16v11H8l-4 4z"), ABOUT("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"),
+    LANGUAGES("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18"), PROFILES("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0"),
+    MEMORY("M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"), MESSAGES("M4 5h16v11H8l-4 4z"), ABOUT("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 11v6M12 7h.01"),
 }
 
 /** Réglages (maquettes Reglages / Synchro / ReglagesAffichage / Diagnostic) : rubriques à gauche, volet à droite. */
@@ -116,7 +117,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     androidx.compose.runtime.LaunchedEffect(dbg) {
         dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; showPane = true; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
     }
-    val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, D.rubMessages, D.rubAbout)
+    val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, com.ultratv.tv.nativeapp.ui.memory.MemoryStrings(D.lang).title, D.rubMessages, D.rubAbout)
     val pane: @Composable () -> Unit = {
             when (Rub.entries[rub]) {
                 Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
@@ -127,6 +128,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
                 Rub.LANGUAGES -> LanguagesPane(panes, app)
                 Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
+                Rub.MEMORY -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { com.ultratv.tv.nativeapp.ui.memory.MemoryPane() }
                 Rub.MESSAGES -> com.ultratv.tv.nativeapp.ui.common.AnnouncementHistoryPane()
                 Rub.ABOUT -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { AboutPane(vm, panes, app, onNavigate) }
             }
