@@ -294,7 +294,10 @@ Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes
 L'interface existe en français, anglais, espagnol et arabe (langues officielles). D'autres langues sont les bienvenues : elles peuvent être partielles, l'anglais s'affiche pour les textes manquants.
 
 - Seule l'interface se traduit, jamais le contenu des playlists (chaînes, catégories, titres, guide).
-- Sans Git : Weblate, <https://hosted.weblate.org/projects/ultra-tv/> (bientôt).
+- Sans Git : Weblate, <https://hosted.weblate.org/projects/ultra-tv/>.
+
+[![État de la traduction](https://hosted.weblate.org/widget/ultra-tv/svg-badge.svg)](https://hosted.weblate.org/engage/ultra-tv/)
+
 - Avec GitHub : ajoutez les fichiers de langue et ouvrez une pull request.
 - Une erreur de traduction ? Utilisez le [modèle d'issue « Translation »](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
 

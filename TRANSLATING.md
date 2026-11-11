@@ -19,7 +19,7 @@ A community language becomes official when it is **100 % translated** and a **re
 
 ## Option A: Weblate (no Git needed)
 
-Translation site: <https://hosted.weblate.org/projects/ultra-tv/> (coming soon).
+Translation site: <https://hosted.weblate.org/projects/ultra-tv/>.
 
 1. Create a Weblate account (or sign in with GitHub).
 2. Open the project and pick your language (or ask for a new one).
