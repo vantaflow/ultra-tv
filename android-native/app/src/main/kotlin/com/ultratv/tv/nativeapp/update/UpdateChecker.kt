@@ -81,7 +81,7 @@ object UpdateChecker {
                 val body = resp.body?.string().orEmpty()
                 val json = JSONObject(body)
                 val tag = json.optString("tag_name").trim()           // e.g. "v1.0.5"
-                val notes = json.optString("body").take(280)
+                val notes = json.optString("body").take(8_000)
                 val verName = tag.removePrefix("v")
                 val remoteCode = versionCodeFromName(verName) ?: run {
                     RemoteLog.warn(TAG, "unparseable tag $tag")

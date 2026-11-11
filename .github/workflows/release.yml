@@ -140,11 +140,21 @@ jobs:
           sha256sum *.apk $(ls *.dm 2>/dev/null) > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
+      # Notes de la release = section de la version dans le CHANGELOG : l'appli en tire le résumé des nouveautés
+      # affiché dans l'invite de mise à jour (UpdateNotes).
+      - name: Release notes from CHANGELOG
+        working-directory: ${{ github.workspace }}
+        run: |
+          V="$(cat VERSION)"
+          awk -v v="$V" 'index($0, "## [" v "]") == 1 { on = 1; next } on && /^## \[/ { exit } on' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          echo "---- notes ($(wc -l < "$RUNNER_TEMP/notes.md") lignes)"; head -20 "$RUNNER_TEMP/notes.md"
+
       - name: Create GitHub release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
+          body_path: ${{ runner.temp }}/notes.md
           generate_release_notes: true
           files: |
             dist/*.apk

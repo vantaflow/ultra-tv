@@ -9,6 +9,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
   code et un code ; la playlist (Xtream, M3U ou Stalker) se saisit sur le téléphone ou l'ordinateur, sur la page
   `/envoyer`, **sans compte**, puis la TV l'ajoute et la synchronise. L'envoi est chiffré, gardé 15 min au plus et remis
   une seule fois.
+- **Synchro plus rapide** : à la première synchronisation, films et séries sont écrits en masse (index et recherche
+  reconstruits une fois à la fin), l'analyse et l'écriture se font en parallèle, films, séries et guide se téléchargent
+  pendant l'écriture du direct, et la synchro tourne en priorité basse pour ne pas faire saccader l'écran.
+- Accueil : les rangées « Parce que vous avez regardé… », « Films les mieux notés » et « Séries les mieux notées »
+  s'affichent juste sous « Reprendre ».
+- Mises à jour : l'invite affiche un **résumé des nouveautés** de la version proposée.
 - Tableau de bord › Administration : **installations sans compte** (total, actives 7 jours, nouvelles) et sources
   envoyées depuis le web, comptées par un relevé anonyme quotidien (identifiant aléatoire et version ; rien si la
   télémétrie est coupée).

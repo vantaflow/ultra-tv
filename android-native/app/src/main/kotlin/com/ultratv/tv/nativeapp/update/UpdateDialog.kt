@@ -74,6 +74,9 @@ fun UpdateDialog(onClose: () -> Unit = {}) {
                 else -> D.updateDefaultBody
             },
             iconPath = StateIcons.Download,
+            // Résumé des nouveautés (notes de la release, tirées du CHANGELOG) ; masqué en cas d'erreur.
+            details = if (mismatch || failed || launched) emptyList() else remember(update.notes) { UpdateNotes.summary(update.notes) },
+            detailsTitle = D.updateWhatsNew,
             primaryLabel = if (downloading) s.updateDownloading else s.updateInstall,
             onPrimary = {
                 if (downloading || mismatch) return@StateCard

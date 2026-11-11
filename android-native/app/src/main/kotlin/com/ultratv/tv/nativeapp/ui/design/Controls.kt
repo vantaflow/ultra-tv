@@ -193,6 +193,9 @@ fun StateCard(
     onSecondary: () -> Unit = {},
     progress: Float? = null,
     primaryFocus: FocusRequester? = null,
+    /** Points affichés sous le texte (ex. nouveautés d'une mise à jour), une ou deux lignes chacun. */
+    details: List<String> = emptyList(),
+    detailsTitle: String? = null,
 ) {
     Column(modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
         Box(Modifier.width(80.design).height(80.design).clip(RoundedCornerShape(40.design)).background(badge), contentAlignment = Alignment.Center) {
@@ -200,6 +203,10 @@ fun StateCard(
         }
         Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 38.spx, lineHeight = 42.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
         Text(body, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
+        if (details.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
+            if (detailsTitle != null) Text(detailsTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx)
+            details.forEach { Text("•  $it", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+        }
         if (progress != null) ProgressLine(progress, Modifier.fillMaxWidth().clip(RoundedCornerShape(5.design)), heightPx = 10, track = Ux.Surface2)
         Row(horizontalArrangement = Arrangement.spacedBy(16.design), modifier = Modifier.padding(top = 4.design)) {
             PillButton(primaryLabel, onPrimary, heightPx = 64, hPadPx = 34, fontPx = 22, weight = FontWeight.Bold, bg = Ux.Cta, modifier = if (primaryFocus != null) Modifier.focusRequester(primaryFocus) else Modifier)

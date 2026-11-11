@@ -19,6 +19,10 @@ import com.ultratv.tv.nativeapp.ui.catalog.PosterItem
 enum class HomeSectionId(val contentType: String) {
     RESUME("resume"),
     TRAKT_UP_NEXT("posters"),
+    // Rangées calculées en local (sans Trakt), montées juste sous « Reprendre » pour qu'on les remarque.
+    BECAUSE_WATCHED("posters"),
+    TOP_MOVIES("posters"),
+    TOP_SERIES("posters"),
     TRAKT_WATCHLIST("posters"),
     TRAKT_RECOMMENDED("posters"),
     TRAKT_TRENDING("posters"),
@@ -29,12 +33,9 @@ enum class HomeSectionId(val contentType: String) {
     TRAKT_LIST_3("posters"),
     TRAKT_LIST_4("posters"),
     TRAKT_LIST_5("posters"),
-    BECAUSE_WATCHED("posters"),
     RECENT_CHANNELS("resume"),
     LATEST_MOVIES("posters"),
     LATEST_SERIES("posters"),
-    TOP_MOVIES("posters"),
-    TOP_SERIES("posters"),
     CHANNELS("channels"),
 }
 
@@ -120,17 +121,17 @@ const val MIN_LOCAL_ROW = 4
 private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
+    if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
+    if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)
+    if (rows.topSeries.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_SERIES)
     if (rows.watchlist.isNotEmpty()) add(HomeSectionId.TRAKT_WATCHLIST)
     if (rows.recommended.isNotEmpty()) add(HomeSectionId.TRAKT_RECOMMENDED)
     if (rows.trending.isNotEmpty()) add(HomeSectionId.TRAKT_TRENDING)
     if (rows.popular.isNotEmpty()) add(HomeSectionId.TRAKT_POPULAR)
     rows.traktLists.take(TRAKT_LIST_SECTIONS.size).forEachIndexed { i, l -> if (l.cards.isNotEmpty()) add(TRAKT_LIST_SECTIONS[i]) }
-    if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
     if (rows.recentChannels.isNotEmpty()) add(HomeSectionId.RECENT_CHANNELS)
     if (rows.latestMovies.isNotEmpty()) add(HomeSectionId.LATEST_MOVIES)
     if (rows.latestSeries.isNotEmpty()) add(HomeSectionId.LATEST_SERIES)
-    if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)
-    if (rows.topSeries.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_SERIES)
     if (rows.channels.isNotEmpty()) add(HomeSectionId.CHANNELS)
 }
 
