@@ -29,12 +29,26 @@ import kotlinx.coroutines.withContext
  * release (vérifié avant installation) puis lance l'installation système ; « Plus tard » ferme.
  * Le message d'erreur affiché est celui, localisé, de l'application : jamais le texte brut d'une exception.
  */
+/**
+ * Une seule invite à la fois : l'invite peut être demandée à la fois par À propos et par le bouton « Mettre à jour »
+ * d'une alerte ; sans ce verrou, deux fenêtres identiques s'empilaient.
+ */
+private object UpdateDialogSlot {
+    var owner: Any? by mutableStateOf(null)
+}
+
+/** [onClose] : appelé quand l'utilisateur ferme l'invite (« Plus tard », Retour). */
 @Composable
-fun UpdateDialog() {
+fun UpdateDialog(onClose: () -> Unit = {}) {
     val info by UpdateChecker.state.collectAsState()
-    val update = info ?: return
-    var dismissed by remember(update.tag) { mutableStateOf(false) }
-    if (dismissed) return
+    val token = remember { Any() }
+    androidx.compose.runtime.DisposableEffect(token) { onDispose { if (UpdateDialogSlot.owner === token) UpdateDialogSlot.owner = null } }
+    val update = info
+    var dismissed by remember(update?.tag) { mutableStateOf(false) }
+    val wants = update != null && !dismissed
+    if (wants && UpdateDialogSlot.owner == null) androidx.compose.runtime.SideEffect { if (UpdateDialogSlot.owner == null) UpdateDialogSlot.owner = token }
+    if (!wants && UpdateDialogSlot.owner === token) androidx.compose.runtime.SideEffect { UpdateDialogSlot.owner = null }
+    if (update == null || dismissed || UpdateDialogSlot.owner !== token) return
 
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -46,7 +60,7 @@ fun UpdateDialog() {
     var job by remember(update.tag) { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     // « Plus tard » et Retour ferment TOUJOURS, même pendant le téléchargement (annulé) :
     // avant, la carte restait bloquée sur « Téléchargement… » si l'installation n'aboutissait pas.
-    val close: () -> Unit = { job?.cancel(); downloading = false; dismissed = true }
+    val close: () -> Unit = { job?.cancel(); downloading = false; dismissed = true; onClose() }
     val s = LocalStrings.current
     val D = LocalDs.current
 

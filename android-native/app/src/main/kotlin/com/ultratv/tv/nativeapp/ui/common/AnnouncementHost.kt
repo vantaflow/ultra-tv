@@ -17,6 +17,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -110,6 +111,8 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
         }
     }
 
+    fun updateClosed() { _updating.value = false }
+
     fun history(): List<ReceivedAnnouncement> = repo.history()
 
     companion object {
@@ -137,18 +140,27 @@ fun AnnouncementHost(suppressed: Boolean, vm: AnnouncementViewModel = hiltViewMo
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     LaunchedEffect(Unit) { vm.start(touch) }
     val updating by vm.updating.collectAsState()
-    if (updating) com.ultratv.tv.nativeapp.update.UpdateDialog()
+    // Fermée, l'invite libère le bouton : un nouvel appui sur « Mettre à jour » la rouvre.
+    if (updating) com.ultratv.tv.nativeapp.update.UpdateDialog(onClose = vm::updateClosed)
     val a by vm.current.collectAsState()
     val shown = a ?: return
     if (suppressed && !AnnouncementPlan.showDuringPlayback(shown)) return
     LaunchedEffect(shown.id) { vm.onShown(shown) }
-    if (suppressed || AnnouncementPlan.isBanner(shown)) AnnouncementBanner(shown, vm) else AnnouncementDialog(shown, vm)
+    // Urgente AVEC bouton pendant la lecture : le bandeau s'efface sans la clore, la fenêtre (et son bouton)
+    // s'affiche à la fin de la lecture ; sinon le bouton n'était jamais proposé avant le lancement suivant.
+    if (suppressed || AnnouncementPlan.isBanner(shown)) AnnouncementBanner(shown, vm, keepPending = suppressed && shown.action != null)
+    else AnnouncementDialog(shown, vm)
 }
 
 @Composable
-private fun AnnouncementBanner(shown: Announcement, vm: AnnouncementViewModel) {
+private fun AnnouncementBanner(shown: Announcement, vm: AnnouncementViewModel, keepPending: Boolean = false) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
-    LaunchedEffect(shown.id) { delay(AnnouncementViewModel.BANNER_MS); vm.dismiss(shown, byUser = false) }
+    var hidden by remember(shown.id) { androidx.compose.runtime.mutableStateOf(false) }
+    LaunchedEffect(shown.id) {
+        delay(AnnouncementViewModel.BANNER_MS)
+        if (keepPending) hidden = true else vm.dismiss(shown, byUser = false)
+    }
+    if (hidden) return
     val accent = accentOf(shown.level)
     Box(Modifier.fillMaxSize().padding(end = 96.design, top = 54.design), contentAlignment = Alignment.TopEnd) {
         Row(

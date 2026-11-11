@@ -28,13 +28,14 @@ object UpdateInstaller {
     fun trySession(ctx: Context, apk: File, dm: File): Boolean {
         val prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (prefs.getBoolean(KEY_NO_SESSION, false)) return false
+        val installer = ctx.packageManager.packageInstaller
+        var id = -1
         return runCatching {
-            val installer = ctx.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL).apply {
                 setAppPackageName(ctx.packageName)
                 if (Build.VERSION.SDK_INT >= 31) setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
-            val id = installer.createSession(params)
+            id = installer.createSession(params)
             installer.openSession(id).use { s ->
                 write(s, "base.apk", apk)
                 write(s, "base.dm", dm)
@@ -46,6 +47,8 @@ object UpdateInstaller {
             true
         }.getOrElse {
             RemoteLog.warn(TAG, "session refused: ${it.javaClass.simpleName} ${it.message}")
+            // Session créée puis échec (écriture, commit) : abandonnée, sinon ses fichiers restent sur l'appareil.
+            if (id >= 0) runCatching { installer.abandonSession(id) }
             markRefused(ctx)
             false
         }

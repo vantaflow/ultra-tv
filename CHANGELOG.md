@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.82] — 2026-11-11 (Android)
+
+### Corrigé
+- Bouton « Mettre à jour » d'une alerte : la fenêtre de mise à jour se rouvre à chaque appui (elle ne s'ouvrait qu'une
+  fois), et une seule fenêtre s'affiche même si À propos en demande une en même temps.
+- Alerte urgente avec bouton reçue pendant la lecture : le bandeau s'efface sans la clore, la fenêtre et son bouton
+  s'affichent à la fin de la lecture (le bouton n'était proposé qu'au lancement suivant).
+- Mise à jour avec profil de démarrage : une installation refusée en cours de route est abandonnée, ses fichiers
+  temporaires ne restent plus sur l'appareil.
+
 ## [1.2.81] — 2026-11-05 (Android)
 
 ### Maintenance
