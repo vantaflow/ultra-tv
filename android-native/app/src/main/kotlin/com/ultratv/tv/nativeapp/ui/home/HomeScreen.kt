@@ -391,14 +391,7 @@ private fun ShortcutCard(sc: ShortcutUi, modifier: Modifier, onClick: () -> Unit
     val brush = remember(sc.id) { shortcutColors(sc.id).let { (a, b) -> androidx.compose.ui.graphics.Brush.linearGradient(listOf(a, b)) } }
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(24.design), bg = Color.Transparent, focusedBg = Color.Transparent, focusedScale = 1.04f, ringWidth = 5.design, modifier = modifier.height(ShortcutHeight)) { f ->
         Box(Modifier.fillMaxSize().background(brush)) {
-            // Décor à droite : vignette (Films, Séries) ou logos de chaînes (Direct), décodés à leur taille réelle.
-            if (sc.thumb != null) {
-                ThumbImage(sc.thumb, "", Modifier.align(Alignment.CenterEnd).width(110.design).fillMaxHeight(), radius = 0, decodeSize = DpSize(110.design, ShortcutHeight))
-                Box(Modifier.align(Alignment.CenterEnd).width(150.design).fillMaxHeight().background(androidx.compose.ui.graphics.Brush.horizontalGradient(listOf(Color.Transparent, Color(0x66000000)))))
-            }
-            if (sc.logos.isNotEmpty()) Row(Modifier.align(Alignment.CenterEnd).padding(end = 22.design), horizontalArrangement = Arrangement.spacedBy((-14).design)) {
-                sc.logos.take(2).forEach { u -> LogoBox(u, "", Modifier.size(56.design), radius = 28, pad = 6, bg = Color(0xFFF2F2F5), decodeSize = DpSize(56.design, 56.design)) }
-            }
+            // Pas de vignette ni de logos : ils recouvraient le compteur (« 30 435 films ») ; l'icône suffit.
             if (f) Box(Modifier.fillMaxSize().background(Color(0x1FFFFFFF)))
             Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 DIcon(shortcutIcon(sc.id), 44.design, Color.White, strokeWidth = 2f)
