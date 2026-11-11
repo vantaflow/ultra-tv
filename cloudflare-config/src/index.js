@@ -40,7 +40,7 @@ import {
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
-import { pickEnvoyerLang, langFromCookie } from "./i18n/envoyer.js";
+import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
@@ -165,7 +165,7 @@ async function route(req, env, ctx) {
   // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).
   if (path === "/api/announcements" && m === "GET") {
     const aud = url.searchParams.get("audience");
-    const items = activeAnnouncements(await loadAnnouncements(env), Date.now(), ANN_AUDIENCES.includes(aud) && aud !== "all" ? aud : null, url.searchParams.get("version"));
+    const items = activeAnnouncements(await loadAnnouncements(env), Date.now(), ANN_AUDIENCES.includes(aud) && aud !== "all" ? aud : null, url.searchParams.get("version"), url.searchParams.get("lang") || fromAcceptLanguage(req.headers.get("accept-language")));
     return json({ items }, 200, { "cache-control": "public, max-age=60" });
   }
   { const sm = path.match(/^\/api\/announcements\/([0-9a-f]{8,32})\/stat$/); if (sm && m === "POST") return announcementStat(req, env, sm[1]); }
