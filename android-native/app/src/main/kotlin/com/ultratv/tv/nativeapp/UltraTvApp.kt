@@ -144,6 +144,12 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(base)
+        // Textes de l'interface : avant tout fournisseur de contenu, récepteur ou worker qui afficherait un libellé.
+        com.ultratv.tv.nativeapp.i18n.I18n.init(this)
+    }
+
     override fun onCreate() {
         super.onCreate()
         // Départ de la mesure « démarrage à froid » (jusqu'à la première image affichée sur un écran).

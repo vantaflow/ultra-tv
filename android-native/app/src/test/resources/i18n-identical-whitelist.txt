@@ -1,0 +1,27 @@
+# Clés absentes d'une langue officielle car identiques à l'anglais (le repli natif affiche l'anglais).
+# Format : langue|clé. Générée par tools/i18n/migrate.py ; à compléter à la main pour un nom propre ou un sigle.
+fr|app_name
+fr|nav_home
+fr|nav_live
+fr|nav_settings
+es|app_name
+es|nav_home
+es|nav_live
+es|nav_settings
+es|sync_channel
+es|sync_notification
+es|tv_favorites_channel
+es|search_hint
+es|ds_episode_tag
+es|ds_episode_short
+es|ds_hint_ok
+es|lp_seconds
+ar|app_name
+ar|nav_home
+ar|nav_live
+ar|nav_settings
+ar|sync_channel
+ar|sync_notification
+ar|tv_favorites_channel
+ar|search_hint
+ar|ds_hint_ok

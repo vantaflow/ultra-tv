@@ -1,0 +1,10 @@
+# Écarts acceptés entre l'ancien code (golden) et les ressources : uniquement des pluriels corrigés pour n = 0.
+# Format : langue|clé du golden|raison
+# Les <plurals> d'Android suivent les règles CLDR de chaque langue ; l'ancien code avait des conditions codées à la main.
+fr|DesignStrings.sections(0)|CLDR : en français 0 est au singulier (« 0 section » ; l'ancien « n == 1 » donnait « 0 sections »)
+fr|DesignStrings.syncSkippedCategories(0)|CLDR : « 0 catégorie ignorée » (l'ancien « n == 1 » donnait « 0 catégories »)
+fr|DesignStrings/DirectGuideStringsKt.minutesRemaining(0)|ancien faux texte « 1 min restante » pour 0 ; « 0 min restante » (singulier français pour 0)
+es|DesignStrings/DirectGuideStringsKt.minutesRemaining(0)|ancien faux texte « 1 min restante » pour 0 ; « 0 min restantes »
+en|DesignStrings/DesignStringsB1Kt.recScheduled(0)|ancien « n <= 1 » : « Recording scheduled » pour 0 ; désormais « 0 recordings scheduled » (la fonction n'est appelée qu'avec n >= 1)
+es|DesignStrings/DesignStringsB1Kt.recScheduled(0)|idem en espagnol : « 0 grabaciones programadas »
+ar|DesignStrings/DesignStringsB1Kt.recScheduled(0)|idem en arabe : « تمت جدولة 0 تسجيلات »
