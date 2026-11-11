@@ -1467,4 +1467,10 @@
     <string name="trailer_err_no_webview">This device cannot play trailers inside the app (no web component available).</string>
     <string name="trailer_show_qr">Show the link as a QR code</string>
     <string name="trailer_qr_hint">Scan with your phone to watch the trailer there.</string>
+    <string name="osd_recent_channels">Recent channels</string>
+    <string name="osd_picture_format">Picture format</string>
+    <string name="osd_history">History</string>
+    <string name="osd_history_empty">No recent channels yet</string>
+    <string name="osd_remaining">%1$s left</string>
+    <string name="osd_banner_hint">OK / ▼ Controls  ·  ▲ Zap  ·  0-9 Number</string>
 </resources>

@@ -117,6 +117,22 @@ import com.ultratv.tv.nativeapp.ui.player.engine.Phase
 import com.ultratv.tv.nativeapp.ui.player.engine.PlayErrorKind
 import com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession
 import com.ultratv.tv.nativeapp.ui.player.engine.PrefsChannelPlaybackMemory
+import com.ultratv.tv.nativeapp.ui.player.osd.LiveOsd
+import com.ultratv.tv.nativeapp.ui.player.osd.LiveOsdFocus
+import com.ultratv.tv.nativeapp.ui.player.osd.LiveOsdLogic
+import com.ultratv.tv.nativeapp.ui.player.osd.LiveOsdState
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdActionId
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdActionInputs
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdActions
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdBadge
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdChannelInfo
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdDecision
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdKey
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdModel
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdProgress
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdRecent
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdStage
+import com.ultratv.tv.nativeapp.ui.player.osd.liveOsdStrings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -197,6 +213,24 @@ class PlayerViewModel @Inject constructor(
         viewModelScope.launch {
             recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, maxMinutes)
             Toaster.ok(toastTemplate.format(maxMinutes))
+        }
+    }
+
+    /**
+     * La chaîne regardée est-elle dans les favoris du profil ? Même clé que la liste du Direct
+     * (`LiveViewModel.toggleFavorite`) : fournisseur de la chaîne, genre « LIVE », identifiant distant.
+     */
+    val isFavoriteNow: StateFlow<Boolean> = playback.current.flatMapLatest { item ->
+        if (item == null || item.kind != "LIVE") flowOf(false) else catalogRepo.isFavorite(item.providerId, "LIVE", item.remoteId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    /** Ajoute la chaîne regardée aux favoris, ou l'en retire (bouton de l'OSD du Direct). */
+    fun toggleFavorite() {
+        val c = playback.current.value ?: return
+        if (c.kind != "LIVE") return
+        viewModelScope.launch {
+            val on = catalogRepo.isFavorite(c.providerId, "LIVE", c.remoteId).first()
+            catalogRepo.setFavorite(c.providerId, "LIVE", c.remoteId, !on)
         }
     }
 
@@ -329,6 +363,19 @@ class PlayerViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Zappe vers une chaîne de l'historique du profil (rangée « Chaînes récentes » de l'OSD). Dans la file en cours : [zapTo].
+     * Sinon la file devient la catégorie de la chaîne (comme le choix d'une catégorie dans la liste) ; le code parental est
+     * demandé de la même façon (ParentalGuard) pour une chaîne verrouillée.
+     */
+    suspend fun zapToRecent(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
+        val inQueue = zapQueue.state.value?.channels?.any { it.id == channel.id } == true
+        if (inQueue && browsedEntries.value == null) return zapTo(channel)
+        val inCategory = channel.categoryId?.let { channelDao.windowCategory(channel.providerId, it, 300, 0) }.orEmpty()
+        val list = if (inCategory.any { it.id == channel.id }) inCategory else listOf(channel) + inCategory
+        return guard.request(channel) { zapQueue.set(list, channel); setLive(channel, channel.streamUrl); channel.streamUrl }
+    }
+
     /** Épisode suivant (saison suivante comprise) devenu l'élément courant ; null en fin de série ou hors épisode. */
     suspend fun nextEpisode(): PlaybackContext.Item? = stepEpisode(1)
 
@@ -419,7 +466,7 @@ private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
  */
 @OptIn(UnstableApi::class)
 @Composable
-fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> Unit)? = null, vm: PlayerViewModel = hiltViewModel()) {
+fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> Unit)? = null, onNavigate: ((String) -> Unit)? = null, vm: PlayerViewModel = hiltViewModel()) {
     // Le lecteur reste sombre quel que soit le thème de l'application.
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -493,12 +540,14 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Quitter le lecteur : la vidéo est une couche à part (SurfaceView) qui restait affichée jusqu'à la destruction de
     // l'écran — après la composition de l'écran suivant et la libération du moteur. On la met en pause et on la MASQUE
     // tout de suite, puis on quitte (la libération se fait ensuite, dans onDispose).
-    val leave: () -> Unit = leave@{
-        if (handBack[0] && shared != null) { shared.demote(); onBack(); return@leave }
+    // [finish] : ce qui suit la sortie (Retour : onBack ; raccourci de l'OSD : onNavigate, qui ferme le lecteur puis ouvre la route).
+    val leaveThen: (() -> Unit) -> Unit = leave@{ finish ->
+        if (handBack[0] && shared != null) { shared.demote(); finish(); return@leave }
         session.engine?.pause()
         session.container.visibility = android.view.View.INVISIBLE
-        onBack()
+        finish()
     }
+    val leave: () -> Unit = { leaveThen(onBack) }
     // Liste des chaînes (OK) maintenue À JOUR pendant toute la lecture du direct : abonnée seulement à l'ouverture du
     // tiroir, elle relisait la file, son guide et les compteurs de catégories à chaque OK (tiroir vide un moment).
     // Collecte sans lecture de valeur : aucune recomposition du lecteur.
@@ -748,11 +797,20 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             touch()
         }
     }
-    // Direct : la surcouche sert d'abord de BANDEAU (chaîne, programme) ; Haut/Bas zappent, OK ouvre la liste.
-    // Les commandes ne prennent la main (focus) qu'avec Gauche/Droite, Menu ou Info. Sans cette séparation,
-    // le 1er zap affichait les commandes et la touche suivante y déplaçait le focus (plus de zapping, OK = pause).
+    // Direct : la surcouche sert d'abord de BANDEAU (étage haut de l'OSD : chaîne, programme) ; Haut zappe, OK ou Bas ouvrent
+    // l'OSD complet (récents + barre de contrôles, focus sur la barre ; voir LiveOsdLogic.decide). Gauche/Droite/Menu/Info
+    // l'ouvrent aussi. Sans cette séparation, le 1er zap affichait les commandes et la touche suivante y déplaçait le focus
+    // (plus de zapping, OK = pause).
     var controlsEngaged by remember { mutableStateOf(false) }
     LaunchedEffect(overlayVisible) { if (!overlayVisible) controlsEngaged = false }
+    // OSD complet à la télécommande ; étage qui porte le focus (Retour : récents → barre → fermeture).
+    val osdOpen = isLive && overlayVisible && controlsEngaged
+    var osdStage by remember { mutableStateOf(OsdStage.CONTROLS) }
+    val osdFocus = remember { LiveOsdFocus() }
+    val osdBack = if (isLive) LiveOsdLogic.backEffect(osdOpen, osdStage, state.phase == Phase.PLAYING) else LiveOsdLogic.BackEffect.NOT_OSD
+    // Historique du profil relu à l'ouverture de l'OSD (télécommande : OSD complet ; tactile : surcouche visible).
+    val osdShown = isLive && overlayVisible && (controlsEngaged || touch)
+    LaunchedEffect(osdShown) { if (osdShown) zap.loadRecent() }
     BackHandler {
         when {
             zap.isEntering -> zap.cancelEntry()
@@ -762,24 +820,100 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // précédente : touche « chaîne précédente » de la télécommande pour cela (KEYCODE_LAST_CHANNEL).
             panel != Panel.None -> panel = Panel.None
             drawerOpen -> drawerOpen = false
-            // Direct : seul le panneau de commandes (gauche/droite/menu) se referme d'abord ; le simple bandeau
-            // d'information affiché après un zap ne retient pas Retour.
-            overlayVisible && state.phase == Phase.PLAYING && (!isLive || controlsEngaged) -> overlayVisible = false
+            // Direct, OSD ouvert : Retour dans les récents ramène le focus sur la barre ; dans la barre, il ferme l'OSD.
+            osdBack == LiveOsdLogic.BackEffect.FOCUS_CONTROLS -> { touch(); runCatching { osdFocus.bar.requestFocus() } }
+            osdBack == LiveOsdLogic.BackEffect.CLOSE_OSD -> overlayVisible = false
+            // Direct : seul l'OSD complet se referme d'abord ; le simple bandeau d'information affiché après un zap
+            // ne retient pas Retour (Retour quitte alors le lecteur, voir l'issue #30).
+            !isLive && overlayVisible && state.phase == Phase.PLAYING -> overlayVisible = false
             else -> leave()
         }
     }
     val rootFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) { rootFocus.requestFocus() }
+    // OSD refermé : le focus revient à la racine, où les touches du Direct sont lues.
+    LaunchedEffect(osdOpen, isLive, state.phase == Phase.ERROR) { if (LiveOsdLogic.shouldRestoreRootFocus(isLive, osdOpen, state.phase == Phase.ERROR)) runCatching { rootFocus.requestFocus() } }
+    // Focus de la barre de l'OSD : posé par LiveOsd lui-même, APRÈS sa composition (réessayé quelques images, la demande échoue
+    // tant que le bouton n'est pas attaché), y compris à l'ouverture par OK / Bas depuis le bandeau.
     val pauseFocus = remember { FocusRequester() }
     LaunchedEffect(overlayVisible) { if (overlayVisible && panel == Panel.None) runCatching { pauseFocus.requestFocus() } }
-    // Commandes du direct engagées depuis le bandeau : la barre apparaît à la composition suivante ; on attend qu'elle soit
-    // affichée (quelques images, la demande échoue tant que le bouton n'est pas attaché) avant d'y poser le focus.
-    LaunchedEffect(controlsEngaged) {
-        if (!controlsEngaged || panel != Panel.None) return@LaunchedEffect
-        repeat(10) {
-            androidx.compose.runtime.withFrameNanos { }
-            if (runCatching { pauseFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+
+    // ── OSD du Direct (ui/player/osd) : boutons de la barre, récents, favori ; partagés par la TV et le tactile paysage.
+    val togglePlay: () -> Unit = {
+        if (isLive && replayProg == null && !tsActive) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }
+        touch()
+    }
+    val toggleReplay: () -> Unit = {
+        val rp = replayProg
+        if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
+        else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
+        touch()
+    }
+    val O = liveOsdStrings()
+    val osdLabels = remember(O, D, X, S) { O.labels(D, X, S) }
+    val isFavNow by vm.isFavoriteNow.collectAsState()
+    val pipSupported = remember { context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE) }
+    val currentKey = item?.let { "${it.providerId}:${it.remoteId}" }
+    val osdRecents = remember(zapRecent, currentKey) {
+        OsdModel.recents(zapRecent.map { OsdRecent("${it.channel.providerId}:${it.channel.remoteId}", it.channel.logo, it.number.takeIf { n -> n > 0 }, it.channel.title, it.now) }, currentKey)
+    }
+    val osdActions = if (!isLive) emptyList() else OsdActions.build(
+        OsdActionInputs(
+            playing = playing, tsActive = tsActive, isFavorite = isFavNow, aspect = aspect,
+            // Différé : « Retour au direct » ; sinon « Depuis le début » / « Retour au direct » du replay.
+            replayLabel = if (tsActive) X.backToLive else if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null,
+            replayActive = tsActive || replayProg != null,
+            sleepActive = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE || sleepDeadline > 0,
+            pipSupported = pipSupported, shortcuts = onNavigate != null,
+        ),
+        osdLabels,
+    )
+    // Raccourcis (Ma liste, Films…) : le lecteur se ferme (même sortie que Retour) puis la route s'ouvre.
+    val navigateTo: (String) -> Unit = { route -> onNavigate?.let { go -> leaveThen { go(route) } } }
+    val onOsdAction: (OsdActionId) -> Unit = { id ->
+        touch()
+        when (id) {
+            OsdActionId.PLAY_PAUSE -> togglePlay()
+            OsdActionId.JUMP_BACK -> tsJump(-LiveOsdLogic.TIMESHIFT_JUMP_SEC)
+            OsdActionId.JUMP_FORWARD -> tsJump(LiveOsdLogic.TIMESHIFT_JUMP_SEC)
+            OsdActionId.AUDIO -> panel = Panel.Tracks
+            OsdActionId.SUBS -> panel = Panel.Subtitles
+            OsdActionId.ASPECT -> aspect = LiveOsdLogic.nextAspect(aspect)        // même état que le panneau Lecteur
+            OsdActionId.CHANNELS -> drawerOpen = true
+            // Historique : pas d'écran « regardé récemment » pour le Direct ; on place le focus sur la rangée des chaînes récentes.
+            OsdActionId.HISTORY -> if (osdRecents.isNotEmpty()) runCatching { osdFocus.recents.requestFocus() } else Toaster.show(O.historyEmpty)
+            OsdActionId.FAVORITE -> vm.toggleFavorite()
+            OsdActionId.RECORD -> vm.recordLive(120, S.recordingQueuedTemplate)
+            OsdActionId.PIP -> if (!context.enterPip()) Toaster.show(M.pipUnavailable)
+            OsdActionId.REPLAY -> if (tsActive) tsBackToLive() else toggleReplay()
+            OsdActionId.SLEEP -> sleepMenu = true
+            OsdActionId.PLAYER -> panel = Panel.Options
+            else -> OsdActions.routeOf(id)?.let(navigateTo)
         }
+    }
+    val onOsdRecent: (String) -> Unit = { key ->
+        zapRecent.firstOrNull { "${it.channel.providerId}:${it.channel.remoteId}" == key }?.let { r ->
+            touch(); controlsEngaged = false
+            scope.launch { vm.zapToRecent(r.channel)?.let { currentUrl = it } }
+        }
+    }
+    // Étage haut : programme du guide (ou nom de la chaîne), fenêtre du différé, horloge.
+    val osdNext by vm.nextProgramme.collectAsState()
+    val osdChannelNumber = if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { it > 0 } else null
+    val osdState = if (!isLive) null else {
+        val snap = tsSnap?.takeIf { tsActive }
+        val nowMs = System.currentTimeMillis()
+        LiveOsdState(
+            channel = OsdChannelInfo(item?.poster, osdChannelNumber, item?.title ?: title, item?.badge),
+            programme = OsdModel.programme(
+                nowProg, osdNext, nowMs, X.thenWord,
+                tsWindow = snap?.let { OsdProgress(EpgClock.wall(nowMs - it.windowSec * 1000L), EpgClock.wall(nowMs), it.fraction, directMark = X.directMark) },
+                remaining = O::remaining, hm = EpgClock::hm, range = EpgClock::range,
+            ),
+            badge = snap?.let { OsdBadge(X.delayed + " · " + com.ultratv.tv.nativeapp.ui.player.timeshift.behindLabel(it.behindSec), true) } ?: OsdBadge(D.live, false),
+            clock = clock, actions = osdActions, recents = osdRecents, recentsTitle = O.recentChannels,
+            expanded = controlsEngaged || touch, hint = O.bannerHint,
+        )
     }
 
     Box(
@@ -835,33 +969,39 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 // Bouton « Passer l'intro » affiché (commandes masquées) : OK l'exécute au lieu d'afficher les commandes.
                 if (hidden && okKey && skipOffer != null) { doSkip(); return@onPreviewKeyEvent true }
                 if (isLive && panel == Panel.None && !drawerOpen) {
-                    // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
-                    if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_LAST_CHANNEL) {
-                        if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }   // chaîne verrouillée : code demandé (ParentalGuard)
-                        return@onPreviewKeyEvent true
+                    val code = ev.nativeKeyEvent.keyCode
+                    val osdKey = when {
+                        code == android.view.KeyEvent.KEYCODE_LAST_CHANNEL -> OsdKey.LAST_CHANNEL
+                        // Touche TV (télécommandes Google TV, ex. Mecool G10) : liste des chaînes.
+                        code == android.view.KeyEvent.KEYCODE_TV || ev.key == Key.Guide -> OsdKey.GUIDE
+                        ev.key == Key.ChannelUp || ev.key == Key.PageUp -> OsdKey.CHANNEL_UP
+                        ev.key == Key.ChannelDown || ev.key == Key.PageDown -> OsdKey.CHANNEL_DOWN
+                        okKey -> OsdKey.OK
+                        ev.key == Key.DirectionUp -> OsdKey.UP
+                        ev.key == Key.DirectionDown -> OsdKey.DOWN
+                        ev.key == Key.DirectionLeft -> OsdKey.LEFT
+                        ev.key == Key.DirectionRight -> OsdKey.RIGHT
+                        ev.key == Key.Menu -> OsdKey.MENU
+                        ev.key == Key.Info -> OsdKey.INFO
+                        else -> OsdKey.OTHER
                     }
-                    // Touche TV (télécommandes Google TV, ex. Mecool G10) : liste des chaînes.
-                    if (ev.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_TV || ev.key == Key.Guide) { drawerOpen = true; return@onPreviewKeyEvent true }
-                    // Touches chaîne +/- : zap, quel que soit l'état de la surcouche.
-                    if (ev.key == Key.ChannelUp || ev.key == Key.ChannelDown || ev.key == Key.PageUp || ev.key == Key.PageDown) {
-                        val next = ev.key == Key.ChannelDown || ev.key == Key.PageDown
-                        touch(); controlsEngaged = false; scope.launch { vm.zap(next)?.let { currentUrl = it } }; return@onPreviewKeyEvent true
-                    }
-                    if (!controlsEngaged) {
-                        when {
-                            // OK ouvre la liste des chaînes (sans afficher les commandes derrière).
-                            okKey -> { drawerOpen = true; return@onPreviewKeyEvent true }
-                            ev.key == Key.DirectionUp || ev.key == Key.DirectionDown -> {
-                                touch(); scope.launch { vm.zap(ev.key == Key.DirectionDown)?.let { currentUrl = it } }; return@onPreviewKeyEvent true
-                            }
-                            ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight || ev.key == Key.Menu || ev.key == Key.Info -> {
-                                if (tsActive && hidden && (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight)) { tsJump(if (ev.key == Key.DirectionLeft) -30 else 30); touch(); return@onPreviewKeyEvent true }
-                                // Le focus est posé APRÈS la composition de la barre (voir LaunchedEffect(controlsEngaged)) : demandé ici,
-                                // la barre n'existait pas encore (bandeau seul), la demande échouait et aucune option n'était sélectionnable.
-                                touch(); controlsEngaged = true; return@onPreviewKeyEvent true
-                            }
-                            else -> { touch(); return@onPreviewKeyEvent true }
+                    // Décision pure (LiveOsdLogic) : OSD fermé, OK / Bas l'ouvrent, Haut zappe ; OSD ouvert, le focus de Compose circule.
+                    when (val d = LiveOsdLogic.decide(osdKey, osdOpen = controlsEngaged, controlsHidden = hidden, tsActive = tsActive, errorShown = state.phase == Phase.ERROR)) {
+                        // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
+                        OsdDecision.RecallPrevious -> {
+                            if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }   // chaîne verrouillée : code demandé (ParentalGuard)
+                            return@onPreviewKeyEvent true
                         }
+                        OsdDecision.OpenChannels -> { drawerOpen = true; return@onPreviewKeyEvent true }
+                        // Touches chaîne +/- : zap, quel que soit l'état de la surcouche.
+                        is OsdDecision.Zap -> {
+                            touch(); if (d.closeOsd) controlsEngaged = false
+                            scope.launch { vm.zap(d.forward)?.let { currentUrl = it } }; return@onPreviewKeyEvent true
+                        }
+                        is OsdDecision.TimeshiftJump -> { tsJump(d.seconds); touch(); return@onPreviewKeyEvent true }
+                        OsdDecision.OpenOsd -> { touch(); controlsEngaged = true; return@onPreviewKeyEvent true }
+                        OsdDecision.Consume -> { touch(); return@onPreviewKeyEvent true }
+                        OsdDecision.Pass -> Unit
                     }
                 }
                 touch()
@@ -887,26 +1027,19 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 fraction = if (st != null && en != null && en > st) ((progressNow - st).toFloat() / (en - st)).coerceIn(0f, 1f) else 0f
                 startLabel = st?.let { EpgClock.hm(it) }.orEmpty(); endLabel = en?.let { EpgClock.hm(it) }.orEmpty()
             } else { fraction = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f; startLabel = fmt(pos); endLabel = if (dur > 0) fmt(dur) else "" }
-            val togglePlay: () -> Unit = {
-                if (isLive && replayProg == null && !tsActive) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }
-                touch()
-            }
-            val replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null
+            // Direct : mêmes boutons que la barre de l'OSD (ordre et libellés de OsdActions), en pilules tactiles ; VOD inchangée.
             val pillList = buildList {
-                if (isLive && !portrait) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.channels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", { drawerOpen = true }))
-                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.tracks, "M4 6h16M4 12h10M4 18h6", { panel = Panel.Tracks }))
-                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.subsPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Subs, { panel = Panel.Subtitles }))
-                if (isLive && replayLabel != null) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(replayLabel, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Replay, {
-                    val rp = replayProg
-                    if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
-                    else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
-                    touch()
-                }, active = replayProg != null))
-                if (isLive) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", { vm.recordLive(120, S.recordingQueuedTemplate) }))
-                if (tsActive) add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.backToLive, "M7 4v16l13-8z", { tsBackToLive(); touch() }, active = true))
-                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.sleepPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Moon, { sleepMenu = true }, active = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE))
-                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.pip, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Pip, { if (!context.enterPip()) Toaster.show(M.pipUnavailable) }))
-                add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", { panel = Panel.Options }))
+                if (isLive) {
+                    // Portrait : la liste des chaînes est sous la vidéo et le bandeau a ses propres boutons lecture / sauts.
+                    osdActions.filter { !portrait || it.id !in PORTRAIT_HIDDEN }
+                        .forEach { a -> add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(listOfNotNull(a.label, a.detail).joinToString(" · "), a.icon, { onOsdAction(a.id) }, a.active, a.fillIcon)) }
+                } else {
+                    add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.tracks, "M4 6h16M4 12h10M4 18h6", { panel = Panel.Tracks }))
+                    add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.subsPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Subs, { panel = Panel.Subtitles }))
+                    add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(X.sleepPill, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Moon, { sleepMenu = true }, active = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE))
+                    add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(M.pip, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Pip, { if (!context.enterPip()) Toaster.show(M.pipUnavailable) }))
+                    add(com.ultratv.tv.nativeapp.ui.mobile.ControlPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", { panel = Panel.Options }))
+                }
             }
             val nextProg by vm.nextProgramme.collectAsState()
             val thenLine = if (isLive && !tsActive) ProgrammeInfo.thenLine(X.thenWord, nextProg, EpgClock::hm) else null
@@ -946,7 +1079,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                             onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = leave,
                         )
                         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
-                            MobileControls(
+                            // Direct paysage : l'OSD (étage haut, récents, pilules défilantes) remplace les commandes habituelles.
+                            if (osdState != null && !portrait) LiveOsd(
+                                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent,
+                                backDescription = M.a11yBack, onBack = leave,
+                                topEnd = if (lockedLandscape) ({ com.ultratv.tv.nativeapp.ui.mobile.PlayerRoundButton(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Fullscreen, M.rotateHint) { context.lockOrientation(false) } }) else null,
+                            ) else MobileControls(
                                 isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = thenLine, playing = playing,
                                 fraction = fraction, startLabel = startLabel, endLabel = endLabel, seekable = !isLive && dur > 0, compact = portrait,
                                 onBack = leave, onTogglePlay = togglePlay,
@@ -993,36 +1131,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onNext = { stepEpisode(1) },
                 onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options }, onAudio = { panel = Panel.Tracks },
-            ) else {
-            Header(item, title, vm, clock, isLive, D, tsSnap?.behindSec, X, X.thenWord)
-            if (tsActive && tsSnap != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftFooter(
-                tsSnap!!, playing, X, pauseFocus,
-                onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
-                onJump = { tsJump(it); touch() }, onLive = { tsBackToLive(); touch() },
-            ) else if (isLive && !controlsEngaged && !com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
-                // Bandeau seul (après un zap) : la télécommande zappe / ouvre la liste, les commandes ne sont pas encore
-                // actives. Les afficher quand même faisait croire à des boutons sans effet : on indique comment les atteindre.
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
-                    Text(X.bannerHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1,
-                        modifier = Modifier.padding(bottom = 54.design).clip(RoundedCornerShape(30.design)).background(Color(0xCC0A0A0C)).padding(horizontal = 28.design, vertical = 14.design))
-                }
-            } else Footer(
-                isLive = isLive, pos = pos, dur = dur, playing = playing, programme = vm.nowProgramme.collectAsState().value, D = D, pauseFocus = pauseFocus,
-                onToggle = { if (isLive && replayProg == null) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
-                onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
-                onTracks = { panel = Panel.Tracks }, onOptions = { panel = Panel.Options },
-                onRecord = { vm.recordLive(120, S.recordingQueuedTemplate) }, onChannels = { drawerOpen = true },
-                sleepLabel = X.sleepPill, onSleepPill = { sleepMenu = true }, subLabel = X.subsPill, onSubs = { panel = Panel.Subtitles },
-                sleepActive = sleepDeadline > 0, replayActive = replayProg != null,
-                replayLabel = if (replayProg != null) X.backToLive else if (canReplay) X.fromStart else null,
-                onReplay = {
-                    val rp = replayProg
-                    if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
-                    else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
-                    touch()
-                },
+            ) else if (osdState != null) LiveOsd(
+                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent,
+                initialStage = OsdStage.CONTROLS, onStage = { osdStage = it },
             )
-            }
         }
         }
         // TV : visible seulement commandes masquées (non focalisable, OK l'exécute). Tactile : toujours, au doigt.
@@ -1085,6 +1197,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
 
 private fun Modifier.androidx_focusable() = this.focusable()
 
+/** Boutons de la barre du Direct absents de la barre de pilules du mode portrait (déjà couverts par la vidéo et la liste). */
+private val PORTRAIT_HIDDEN = setOf(OsdActionId.CHANNELS, OsdActionId.HISTORY, OsdActionId.PLAY_PAUSE, OsdActionId.JUMP_BACK, OsdActionId.JUMP_FORWARD)
+
 /** Bouton « Passer l'intro » (maquette : pastille claire en bas à droite, au-dessus de la vidéo). */
 @Composable
 private fun SkipChip(label: String, okHint: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
@@ -1103,139 +1218,7 @@ private fun SkipChip(label: String, okHint: Boolean, onClick: () -> Unit, modifi
 
 // ───────────────────────── Surcouche ─────────────────────────
 
-@Composable
-private fun Header(item: PlaybackContext.Item?, fallbackTitle: String, vm: PlayerViewModel, clock: String, isLive: Boolean, D: DesignStrings, tsBehindSec: Int? = null, X: com.ultratv.tv.nativeapp.ui.player.PlayerExtraStrings? = null, thenLabel: String = "") {
-    val programme by vm.nowProgramme.collectAsState()
-    val next by vm.nextProgramme.collectAsState()
-    Row(
-        // Hauteur MINIMALE (et non fixe) : badge + titre dépassaient de quelques pixels et le bas des lettres était coupé,
-        // davantage avec la taille de police agrandie de certaines box.
-        Modifier.fillMaxWidth().heightIn(min = 200.design).background(Color(0xD10A0A0C)).padding(horizontal = 96.design, vertical = 44.design),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.design), modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-                if (isLive) { if (tsBehindSec != null && X != null) com.ultratv.tv.nativeapp.ui.player.timeshift.TimeshiftBadge(tsBehindSec, X) else LiveBadge(D.live) }
-                // Un seul titre : avec un programme du guide la chaîne passe en petit ; sinon son nom EST le titre.
-                val name = item?.title ?: fallbackTitle
-                if (programme != null || !isLive) Text(name, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                item?.badge?.let { b -> Text(b, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design)) }
-            }
-            Text(
-                if (isLive) (programme?.title ?: item?.title ?: fallbackTitle) else (item?.title ?: fallbackTitle),
-                color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, lineHeight = 48.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            )
-            if (isLive) ProgrammeInfo.thenLine(thenLabel, next, EpgClock::hm)?.let { line ->
-                Text(line, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Text(clock, color = Color(0xFFE4E4E7), fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 36.spx, maxLines = 1)
-    }
-}
-
-@Composable
-private fun Footer(
-    isLive: Boolean, pos: Long, dur: Long, playing: Boolean, programme: EpgEntity?, D: DesignStrings, pauseFocus: FocusRequester,
-    onToggle: () -> Unit, onSeek: (Long) -> Unit, onTracks: () -> Unit, onOptions: () -> Unit, onRecord: () -> Unit, onChannels: () -> Unit,
-    sleepLabel: String, onSleepPill: () -> Unit, subLabel: String, onSubs: () -> Unit, replayLabel: String?, onReplay: () -> Unit,
-    sleepActive: Boolean = false, replayActive: Boolean = false,
-) {
-    val now = System.currentTimeMillis()
-    val frac: Float; val startLabel: String; val endLabel: String
-    if (isLive) {
-        val s = programme?.startMs; val e = programme?.endMs
-        frac = if (s != null && e != null && e > s) ((now - s).toFloat() / (e - s)).coerceIn(0f, 1f) else 0f
-        startLabel = s?.let { EpgClock.hm(it) }.orEmpty(); endLabel = e?.let { EpgClock.hm(it) }.orEmpty()
-    } else {
-        frac = if (dur > 0) (pos.toFloat() / dur).coerceIn(0f, 1f) else 0f
-        startLabel = fmt(pos); endLabel = if (dur > 0) fmt(dur) else ""
-    }
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomStart) {
-    Column(
-        Modifier.fillMaxWidth().background(Color(0xF20A0A0C)).padding(start = 96.design, end = 96.design, top = 40.design, bottom = 54.design),
-        verticalArrangement = Arrangement.spacedBy(28.design),
-    ) {
-        if (startLabel.isNotEmpty() || endLabel.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
-            Text(startLabel, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
-            androidx.compose.foundation.layout.BoxWithConstraints(Modifier.weight(1f).height(28.design)) {
-                Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Line))
-                Box(Modifier.align(Alignment.CenterStart).fillMaxWidth(frac).height(10.design).clip(RoundedCornerShape(5.design)).background(Ux.Accent))
-                Box(Modifier.align(Alignment.CenterStart).offset(x = maxWidth * frac - 14.design).size(28.design).clip(CircleShape).background(Color.White))
-            }
-            Text(endLabel, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
-        }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-            Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
-                if (!isLive) RoundButton(72, "M11 5L4 12l7 7M20 5l-7 7 7 7", onClick = { onSeek(-10_000) })
-                PauseButton(playing, pauseFocus, onToggle)
-                if (!isLive) RoundButton(72, "M13 5l7 7-7 7M4 5l7 7-7 7", onClick = { onSeek(10_000) })
-            }
-            // Une seule ligne (défilante si l'écran est étroit). « Affichage » ouvrait le même panneau que « Lecteur » : fusionnés.
-            androidx.compose.foundation.lazy.LazyRow(
-                Modifier.weight(1f).padding(start = 32.design),
-                horizontalArrangement = Arrangement.spacedBy(14.design, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (isLive) item { OptionPill(D.pChannels, "M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01", onChannels) }
-                if (isLive && replayLabel != null) item { OptionPill(replayLabel, "M3 12a9 9 0 1 0 3-6.7M3 4v5h5", onReplay, active = replayActive) }
-                item { OptionPill(D.pTracks, "M4 6h16M4 12h10M4 18h6", onTracks) }
-                item { OptionPill(subLabel, "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6", onSubs) }
-                if (isLive) item { OptionPill(D.pRecord, "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z", onRecord) }
-                item { OptionPill(sleepLabel, "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z", onSleepPill, active = sleepActive) }
-                item { OptionPill(D.pPlayer, "M3 5h18v12H3zM8 21h8M12 17v4", onOptions) }
-            }
-        }
-    }
-    }
-}
-
 private fun fmt(ms: Long): String { val s = ms / 1000; val h = s / 3600; val m = s % 3600 / 60; val sec = s % 60; return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%d:%02d".format(m, sec) }
-
-@Composable
-private fun RoundButton(sizePx: Int, icon: String, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Surface2, modifier = Modifier.size(sizePx.design)) { f ->
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { DIcon(icon, 30.design, if (f) Ux.TextOnLight else Ux.Text) }
-    }
-}
-
-@Composable
-private fun PauseButton(playing: Boolean, focus: FocusRequester, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = CircleShape, bg = Ux.Cta, modifier = Modifier.size(96.design).focusRequester(focus)) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (playing) DIcon("M7 4h3.5v16H7zM13.5 4H17v16h-3.5z", 36.design, Ux.TextOnLight, fill = true) else DIcon("M7 4v16l13-8z", 36.design, Ux.TextOnLight, fill = true)
-        }
-    }
-}
-
-/**
- * Pilule de la barre du lecteur, lisible depuis le canapé : fond opaque à 95 % plus clair que la barre, liseré fin,
- * libellé et icône BLANCS à pleine opacité (24 px, gras). Focus = fond clair + texte foncé + anneau accent ;
- * [active] (minuterie de veille armée, lecture depuis le début…) = fond accent + texte contrasté, visible sans focus.
- */
-@Composable
-private fun OptionPill(label: String, icon: String, onClick: () -> Unit, active: Boolean = false) {
-    val bg = if (active) Ux.Accent else PILL_BG
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(32.design), bg = bg, ringWidth = 5.design, modifier = Modifier.height(64.designT)) { f ->
-        val ink = when { f -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Color.White }
-        Row(
-            Modifier.then(if (!f && !active) Modifier.border(2.design, PILL_EDGE, RoundedCornerShape(32.design)) else Modifier)
-                .padding(horizontal = 24.design).height(64.designT),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DIcon(icon, 26.design, ink, strokeWidth = 2.4f)
-            Spacer(Modifier.width(12.design))
-            Text(label, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, softWrap = false)
-            if (active && !f) {
-                Spacer(Modifier.width(10.design))
-                Box(Modifier.size(10.design).clip(CircleShape).background(ink))
-            }
-        }
-    }
-}
-
-/** Fond des pilules du lecteur (#2C2C34 à 95 %) : blanc dessus = 13:1 ; liseré blanc à 22 % pour les détacher de l'image. */
-private val PILL_BG = Color(0xF22C2C34)
-private val PILL_EDGE = Color(0x38FFFFFF)
 
 /**
  * Chargement : l'image du programme (ou le logo) en plein écran, floutée et assombrie, le visuel net au centre,

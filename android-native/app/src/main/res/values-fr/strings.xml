@@ -1479,4 +1479,10 @@
     <string name="trailer_err_no_webview">Cet appareil ne peut pas lire les bandes-annonces dans l’appli (aucun composant web disponible).</string>
     <string name="trailer_show_qr">Afficher le lien en QR code</string>
     <string name="trailer_qr_hint">Scannez avec votre téléphone pour y voir la bande-annonce.</string>
+    <string name="osd_recent_channels">Chaînes récentes</string>
+    <string name="osd_picture_format">Format d\'image</string>
+    <string name="osd_history">Historique</string>
+    <string name="osd_history_empty">Aucune chaîne récente pour l\'instant</string>
+    <string name="osd_remaining">reste %1$s</string>
+    <string name="osd_banner_hint">OK / ▼ Commandes  ·  ▲ Zapper  ·  0-9 Numéro</string>
 </resources>

@@ -1470,4 +1470,10 @@
     <string name="trailer_err_no_webview">Este dispositivo no puede reproducir tráilers dentro de la aplicación (no hay componente web disponible).</string>
     <string name="trailer_show_qr">Mostrar el enlace como código QR</string>
     <string name="trailer_qr_hint">Escanea con tu teléfono para ver el tráiler allí.</string>
+    <string name="osd_recent_channels">Canales recientes</string>
+    <string name="osd_picture_format">Formato de imagen</string>
+    <string name="osd_history">Historial</string>
+    <string name="osd_history_empty">Aún no hay canales recientes</string>
+    <string name="osd_remaining">quedan %1$s</string>
+    <string name="osd_banner_hint">OK / ▼ Controles  ·  ▲ Zapear  ·  0-9 Número</string>
 </resources>

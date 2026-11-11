@@ -702,7 +702,11 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
             val rawTitle = entry.arguments?.getString("title").orEmpty()
             val url = java.net.URLDecoder.decode(rawUrl, "UTF-8")
             val title = java.net.URLDecoder.decode(rawTitle, "UTF-8")
-            PlayerScreen(url = url, title = title, onBack = { nav.popBackStack() }, onHome = { nav.popBackStack(Routes.HOME, false) })
+            PlayerScreen(
+                url = url, title = title, onBack = { nav.popBackStack() }, onHome = { nav.popBackStack(Routes.HOME, false) },
+                // Raccourcis de l'OSD du Direct (Ma liste, Films, Séries, Enregistrements, Réglages) : le lecteur se ferme, puis la route s'ouvre.
+                onNavigate = { route -> nav.popBackStack(); nav.navigate(route) { launchSingleTop = true } },
+            )
         }
     }
 }

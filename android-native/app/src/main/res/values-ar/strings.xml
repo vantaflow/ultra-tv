@@ -1521,4 +1521,10 @@
     <string name="trailer_err_no_webview">لا يستطيع هذا الجهاز تشغيل الإعلانات داخل التطبيق (لا يتوفر مكوّن ويب).</string>
     <string name="trailer_show_qr">عرض الرابط كرمز QR</string>
     <string name="trailer_qr_hint">امسح الرمز بهاتفك لمشاهدة الإعلان هناك.</string>
+    <string name="osd_recent_channels">القنوات الأخيرة</string>
+    <string name="osd_picture_format">تنسيق الصورة</string>
+    <string name="osd_history">السجل</string>
+    <string name="osd_history_empty">لا توجد قنوات حديثة بعد</string>
+    <string name="osd_remaining">المتبقي %1$s</string>
+    <string name="osd_banner_hint">OK / ▼ الأوامر  ·  ▲ التنقّل  ·  0-9 الرقم</string>
 </resources>
