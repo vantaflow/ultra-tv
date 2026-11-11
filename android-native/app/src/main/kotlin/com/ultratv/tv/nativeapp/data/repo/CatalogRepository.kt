@@ -42,6 +42,7 @@ class CatalogRepository @Inject constructor(
     private val favoriteDao: FavoriteDao,
     private val epgDao: EpgDao,
     private val vodInfoDao: VodInfoDao,
+    private val genreDao: com.ultratv.tv.nativeapp.data.db.GenreDao,
     private val xtream: XtreamClient,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
@@ -70,7 +71,9 @@ class CatalogRepository @Inject constructor(
             director = SimilarMovies.people(info?.director, max = 1).firstOrNull(),
             year = seed.year,
         )
-        if (seedFacts.genres.isEmpty() && seedFacts.people.isEmpty() && seedFacts.director == null) return seed.title to emptyList()
+        // Genres automatiques (title_genre) : utilisés quand le film de départ n'a pas de genre texte, ou pour compléter la liste.
+        val seedCodes = genreDao.genresOf(pid, "MOVIE", listOf(remoteId)).map { it.genre }.toSet()
+        if (seedFacts.genres.isEmpty() && seedFacts.people.isEmpty() && seedFacts.director == null && seedCodes.isEmpty()) return seed.title to emptyList()
         // Candidats : chaque genre du film (pas seulement le premier), puis réalisateur et acteurs principaux.
         val pool = buildList {
             // Requêtes avec le genre tel qu'écrit dans la base (LIKE), la comparaison se fait ensuite sur la forme normalisée.
@@ -80,7 +83,17 @@ class CatalogRepository @Inject constructor(
         val ranked = SimilarMovies.rank(seed.title, seedFacts, pool.map { m ->
             m to SimilarMovies.Facts(SimilarMovies.genres(m.genre), SimilarMovies.people(m.cast, max = 6), null, m.year)
         }, limit) { it.title }
-        return seed.title to ranked
+        if (ranked.size >= limit || seedCodes.isEmpty()) return seed.title to ranked
+        // Complément par genres automatiques : candidats sans genre texte (ou genre texte différent), comparés par code.
+        val codePool = seedCodes.take(3).flatMap { g -> movieDao.byAutoGenre(pid, g, seed.id, SIMILAR_POOL) }
+            .distinctBy { it.id }.filter { !it.poster.isNullOrBlank() && ranked.none { r -> r.id == it.id } }
+        val codesById = codePool.map { it.remoteId }.chunked(900)
+            .flatMap { genreDao.genresOf(pid, "MOVIE", it) }.groupBy({ it.remoteId }, { it.genre })
+        val seedByCode = SimilarMovies.Facts(seedCodes, seedFacts.people, seedFacts.director, seed.year)
+        val extra = SimilarMovies.rank(seed.title, seedByCode, codePool.map { m ->
+            m to SimilarMovies.Facts(codesById[m.remoteId].orEmpty().toSet(), SimilarMovies.people(m.cast, max = 6), null, m.year)
+        }, limit - ranked.size) { it.title }
+        return seed.title to (ranked + extra)
     }
     fun firstChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeFirstClean(pid, limit)
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)

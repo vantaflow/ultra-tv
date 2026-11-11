@@ -42,8 +42,14 @@ data class GenreSource(
     val mask: Int,
 )
 
+/** Genre automatique d'un titre (lecture pour « Parce que vous avez regardé »). */
+data class TitleGenreRow(val remoteId: String, val genre: String)
+
 @Dao
 interface GenreDao {
+    @Query("SELECT remoteId AS remoteId, genre AS genre FROM title_genre WHERE providerId = :pid AND kind = :kind AND remoteId IN (:remoteIds) AND genre != 'OTHER'")
+    suspend fun genresOf(pid: Long, kind: String, remoteIds: List<String>): List<TitleGenreRow>
+
     // Titres à (re)classer : aucune ligne de genre au niveau de données actuel (nouveau titre, ou donnée apparue depuis).
     // Pagination par clé (id > :afterId) : chaque lot repart de l'index, jamais d'OFFSET.
     @Query("""
