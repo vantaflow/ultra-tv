@@ -289,6 +289,17 @@ Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes
 
 À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
 
+## Aider à traduire
+
+L'interface existe en français, anglais, espagnol et arabe (langues officielles). D'autres langues sont les bienvenues : elles peuvent être partielles, l'anglais s'affiche pour les textes manquants.
+
+- Seule l'interface se traduit, jamais le contenu des playlists (chaînes, catégories, titres, guide).
+- Sans Git : Weblate, <https://hosted.weblate.org/projects/ultra-tv/> (bientôt).
+- Avec GitHub : ajoutez les fichiers de langue et ouvrez une pull request.
+- Une erreur de traduction ? Utilisez le [modèle d'issue « Translation »](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
+
+Le guide complet est dans [TRANSLATING.md](TRANSLATING.md).
+
 ## Pour les développeurs
 
 Stack : Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt.

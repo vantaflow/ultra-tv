@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Documentation
+- Documentation : guide de traduction (TRANSLATING.md) et modèle d'issue pour les traductions
+
 ## [1.2.90] — 2026-11-11 (Android) · Bureau 1.2.42 · Worker
 
 ### Nouveau
