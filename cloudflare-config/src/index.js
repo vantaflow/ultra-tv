@@ -38,7 +38,7 @@ import {
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
-import { loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
+import { envoyerPage, loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
 
@@ -134,6 +134,12 @@ async function route(req, env, ctx) {
   // ---- API application TV (jeton d'appareil / appairage) ----
   if (path === "/api/pair/start" && m === "POST") return pairStart(req, env);
   if (path === "/api/pair/poll" && m === "POST") return pairPoll(req, env);
+  // Envoi d'une source depuis un téléphone / un ordinateur, sans compte : code + secret remis à la TV.
+  if (path === "/api/envoi/start" && m === "POST") return envoiStart(req, env);
+  if (path === "/api/envoi/send" && m === "POST") return envoiSend(req, env);
+  if (path === "/api/envoi/poll" && m === "POST") return envoiPoll(req, env);
+  // Relevé anonyme d'installation (appareils sans compte) : identifiant aléatoire, version, pays.
+  if (path === "/api/anon/ping" && m === "POST") return anonPing(req, env);
   if (path === "/api/config" && m === "GET") return deviceConfig(req, env);
   if (path === "/api/device/rotate" && m === "POST") return deviceRotate(req, env);
   if (path === "/api/device/providers" && (m === "POST" || m === "PUT")) return devicePutProvider(req, env);
@@ -178,6 +184,7 @@ async function route(req, env, ctx) {
   if (path === "/assets/jsqr.js" && m === "GET") return new Response(JSQR_SOURCE, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 
   // ---- pages publiques ----
+  if (path === "/envoyer" && m === "GET") return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")) });
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/login" && m === "POST") return doLogin(req, env);
   if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
@@ -223,9 +230,10 @@ async function route(req, env, ctx) {
     const providers = await loadProviders(env, sess.acct);
     const admin = isAdmin(env, sess.acct);
     const adminRows = admin ? await adminAccounts(env) : null;
+    const anonRows = admin ? await adminAnon(env) : [];
     const announcements = admin ? await loadAnnouncements(env) : null;
     const annStats = announcements ? await announcementStats(env, announcements) : null;
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, announcements, annStats });
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, anonRows, announcements, annStats });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.
@@ -471,6 +479,141 @@ async function pairPoll(req, env) {
   if (r.status === "pending") return json({ status: "pending" }, 202);
   if (r.status === "ready") return json({ token: r.token, deviceId: r.deviceId });
   return json({ error: "not_found" }, 404);
+}
+
+// ---- envoi d'une source depuis un téléphone / un ordinateur (sans compte) ----------------
+// 1. La TV demande un code (6 caractères) et un secret ; elle affiche le code et un QR vers /envoyer?c=CODE.
+// 2. Le téléphone envoie la source (page publique) ; elle est chiffrée, gardée 15 min au plus dans le Durable Object du code.
+// 3. La TV l'interroge (code + secret) : la source lui est remise UNE fois puis supprimée.
+// Les identifiants de la source ne sont jamais journalisés (ni console, ni événements).
+
+const ENVOI_TTL_S = 900;
+const ENVOI_LOCK = { threshold: 8, baseSec: 60, capSec: 3600 }; // par IP : codes devinés
+const ENVOI_KINDS = ["XTREAM", "M3U", "STALKER"];
+
+function newEnvoiCode() {
+  return [...crypto.getRandomValues(new Uint8Array(6))].map((b) => PAIR_ALPHABET[b & 31]).join("");
+}
+/** « k7q-2m9 » → « K7Q2M9 » ; null si la longueur ou l'alphabet ne conviennent pas. */
+function normalizeEnvoiCode(raw) {
+  const c = String(raw ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return c.length === 6 && [...c].every((ch) => PAIR_ALPHABET.includes(ch)) ? c : null;
+}
+
+// Identifiant d'installation aléatoire de l'appli (UUID) : seul son empreinte est gardée.
+const validInstall = (v) => (typeof v === "string" && /^[A-Za-z0-9-]{16,64}$/.test(v) ? v : null);
+const anonKey = async (install) => `anon:${(await sha256Hex(`anon:${install}`)).slice(0, 32)}`;
+
+async function envoiStart(req, env) {
+  const rl = await limited(env, `envoistart:ip:${clientIp(req)}`, 20, 3600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 2048);
+  if (body.error) return body.error;
+  const install = validInstall(body.value.install);
+  const secret = randomToken(32);
+  const secretHash = await sha256Hex(secret);
+  const installHash = install ? await anonKey(install) : "";
+  for (let i = 0; i < 5; i++) {
+    const code = newEnvoiCode();
+    const r = await guardStub(env, `envoi:${code}`).envoiInit({ secretHash, installHash, ttlSec: ENVOI_TTL_S });
+    if (r.ok) return json({ code, secret, expiresIn: ENVOI_TTL_S, interval: 3 });
+  }
+  return json({ error: "unavailable" }, 503);
+}
+
+async function envoiSend(req, env) {
+  if (!sameOrigin(req)) return json({ error: "forbidden" }, 403);
+  const ip = clientIp(req);
+  const lock = await lockedOut(env, `lock:envoi:${ip}`, true);
+  if (lock) return lock;
+  const rl = await limited(env, `envoisend:ip:${ip}`, 30, 3600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 8 * 1024);
+  if (body.error) return body.error;
+  const b = body.value;
+  const code = normalizeEnvoiCode(b.code);
+  // Même validation que le tableau de bord et les appareils (adresse http/https, MAC, identifiants).
+  const kind = typeof b.kind === "string" ? b.kind.toUpperCase() : "";
+  if (!ENVOI_KINDS.includes(kind)) return json({ error: "kind" }, 400);
+  const r = parseDeviceProvider({ kind, name: b.name, url: b.url, username: b.username, password: b.password, mac: b.mac }, null);
+  if (r.error) return json({ error: r.error }, 400);
+  const fail = async () => {
+    const f = await guardStub(env, `lock:envoi:${ip}`).lockFail(ENVOI_LOCK);
+    return f.locked ? tooMany(f.retryAfter, true) : json({ error: "code" }, 404);
+  };
+  if (!code) return fail();
+  const p = r.provider;
+  const named = typeof b.name === "string" && sanitizeText(b.name, 64).trim() ? p.name : "";
+  const blob = await encryptJson(keysFromEnv(env), {
+    kind: p.kind, name: named, url: p.url, username: p.username || "", password: p.password || "", ...(p.kind === "STALKER" ? { mac: p.mac } : {}),
+  }, `envoi:${code}`);
+  const put = await guardStub(env, `envoi:${code}`).envoiPut(blob);
+  if (put.status === "unknown") return fail();
+  if (put.status === "used") return json({ error: "used" }, 409);
+  return json({ ok: true });
+}
+
+async function envoiPoll(req, env) {
+  const rl = await limited(env, `envoipoll:ip:${clientIp(req)}`, 300, 600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 2048);
+  if (body.error) return body.error;
+  const code = normalizeEnvoiCode(body.value.code);
+  const secret = typeof body.value.secret === "string" ? body.value.secret.slice(0, 128) : "";
+  if (!code || !secret) return json({ error: "not_found" }, 404);
+  const r = await guardStub(env, `envoi:${code}`).envoiTake(await sha256Hex(secret));
+  if (r.status === "pending") return json({ status: "pending" }, 202);
+  if (r.status !== "ready") return json({ error: "not_found" }, 404);
+  let provider;
+  try { provider = await decryptJson(keysFromEnv(env), r.blob, `envoi:${code}`); } catch { return json({ error: "unreadable" }, 410); }
+  // Compte l'envoi dans les statistiques de l'installation (si la TV a communiqué son identifiant, télémétrie active).
+  if (r.installHash) await anonTouch(env, r.installHash, req, { web: 1 }).catch(() => {});
+  return json({ status: "ready", provider });
+}
+
+// ---- appareils sans compte : relevé anonyme -------------------------------------------------
+// `anon:<empreinte>` : premier / dernier relevé, version, pays, sources envoyées par le web. Les mêmes champs sont
+// dans les métadonnées KV, pour que la vue d'administration n'ait qu'un `list` à faire (aucune lecture par clé).
+
+const ANON_TTL_S = 180 * 24 * 3600;
+const ANON_REFRESH_MS = 6 * 3600_000;
+
+/** Met à jour (ou crée) l'enregistrement [key] ; renouvelle le TTL de 180 jours. `web` : sources envoyées en plus. */
+async function anonTouch(env, key, req, { version = null, web = 0 } = {}) {
+  const now = Date.now();
+  const cur = (await env.CONFIG.getWithMetadata(key, "json")).metadata;
+  const ver = version || cur?.v || null;
+  // Au plus une écriture par 6 h et par installation (sauf nouvelle version ou envoi), l'appli ne relève qu'une fois par jour.
+  if (cur && !web && now - cur.l < ANON_REFRESH_MS && cur.v === ver) return;
+  const rec = { f: cur?.f || now, l: now, v: ver, c: countryOf(req) || cur?.c || null, w: (cur?.w || 0) + web };
+  await env.CONFIG.put(key, JSON.stringify(rec), { expirationTtl: ANON_TTL_S, metadata: rec });
+}
+
+async function anonPing(req, env) {
+  const rl = await limited(env, `anonping:ip:${clientIp(req)}`, 30, 3600, true);
+  if (rl) return rl;
+  const body = await readJson(req, 1024);
+  if (body.error) return body.error;
+  const install = validInstall(body.value.install);
+  if (!install) return json({ error: "install" }, 400);
+  await anonTouch(env, await anonKey(install), req, { version: appVersionOf(body.value.version) });
+  return json({ ok: true });
+}
+
+/** Installations sans compte (métadonnées seules, jamais d'identifiant) : [{first, last, version, country, web}]. */
+async function adminAnon(env) {
+  const rows = [];
+  let cursor;
+  for (let i = 0; i < 20; i++) {
+    const page = await env.CONFIG.list({ prefix: "anon:", cursor });
+    for (const k of page.keys) {
+      const m = k.metadata;
+      if (m && m.f) rows.push({ first: m.f, last: m.l || m.f, version: m.v || "", country: m.c || null, web: m.w || 0 });
+    }
+    if (page.list_complete) break;
+    cursor = page.cursor;
+  }
+  return rows;
 }
 
 async function confirmPairing(env, acct, form) {

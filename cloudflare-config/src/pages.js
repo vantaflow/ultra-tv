@@ -13,6 +13,7 @@ const CSS = `
 :root[data-theme=light]{color-scheme:light;--bg:#F6F6F8;--s1:#FFFFFF;--s2:#F0F0F3;--bd:#E1E1E7;--fg:#121216;--fg2:#3A3A44;--mut:#5B5B66;--acc-h:#B9141F;--acc-soft:rgba(217,30,43,.08);--acc-fg:#C4121E;--dng:#B4121D;--ok:#15803D;--ok-soft:rgba(21,128,61,.09);--ring:#D91E2B;--glow:rgba(217,30,43,.07);--shadow:0 1px 2px rgba(18,18,22,.05),0 8px 24px rgba(18,18,22,.06);--fr:#121216}
 :root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;background:var(--bg) radial-gradient(900px 420px at 50% -140px,var(--glow),transparent 70%) no-repeat;color:var(--fg);font:15px/1.55 var(--ff);padding:0 16px 40px;-webkit-font-smoothing:antialiased;overflow-wrap:anywhere}
 a{color:var(--acc-fg);text-decoration:none;font-weight:600;border-radius:6px} a:hover{text-decoration:underline}
@@ -456,6 +457,71 @@ ${pairForm(csrfInput, code || "")}
 <p class="alt"><a href="/">Annuler</a></p></div></main>`, n, `<script nonce="${n}">${PAIR_JS}${SCAN_JS}</script>`, true);
 }
 
+// ---- Envoi d'une source depuis un téléphone / ordinateur (page publique, sans compte) ----
+// Le script envoie du JSON à /api/envoi/send ; la validation est refaite côté Worker (celle-ci n'est qu'un confort).
+const ENVOI_JS = `(function(){
+var f=document.getElementById('envoi-form');if(!f)return;
+var kind=document.getElementById('kind'),code=document.getElementById('code'),msg=document.getElementById('envoi-msg'),btn=document.getElementById('send');
+var groups={XTREAM:['g-url','g-user','g-pass'],M3U:['g-url'],STALKER:['g-url','g-mac']};
+var ALL=['g-url','g-user','g-pass','g-mac'];
+var LABEL={XTREAM:'Adresse du serveur',M3U:'Adresse de la playlist M3U',STALKER:'Adresse du portail'};
+var HOLD={XTREAM:'http://serveur:8080',M3U:'http://exemple.com/liste.m3u',STALKER:'http://portail:8080/c/'};
+function apply(){var k=kind.value,on=groups[k]||[];
+ALL.forEach(function(id){var g=document.getElementById(id),show=on.indexOf(id)>=0;g.hidden=!show;g.querySelectorAll('input').forEach(function(i){i.disabled=!show;});});
+document.getElementById('url').placeholder=HOLD[k];document.getElementById('l-url').firstChild.nodeValue=LABEL[k];}
+kind.addEventListener('change',apply);apply();
+document.getElementById('show-pw').addEventListener('change',function(e){document.getElementById('pass').type=e.target.checked?'text':'password';});
+code.addEventListener('input',function(){var p=code.selectionStart;code.value=code.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);});
+function say(cls,t){msg.className='notice '+cls;msg.textContent=t;msg.hidden=false;}
+var ERR={code:'Code inconnu ou expiré. Vérifie l\\u2019écran de ta TV.',used:'Une source a déjà été envoyée avec ce code. Relance \\u00ab\\u00a0Depuis le téléphone\\u00a0\\u00bb sur la TV pour en envoyer une autre.',
+url:'Adresse invalide : elle doit commencer par http:// ou https://.',creds:'Identifiant et mot de passe obligatoires.',mac:'Adresse MAC invalide (format 00:1A:79:XX:XX:XX).',kind:'Type de source invalide.'};
+function okUrl(v){try{var u=new URL(v);return (u.protocol==='http:'||u.protocol==='https:')&&!!u.hostname;}catch(e){return false;}}
+f.addEventListener('submit',function(ev){ev.preventDefault();msg.hidden=true;
+var k=kind.value,c=code.value.trim(),url=document.getElementById('url').value.trim();
+if(c.length!==6){say('err',ERR.code);return;}
+if(!okUrl(url)){say('err',ERR.url);return;}
+var body={code:c,kind:k,name:document.getElementById('name').value.trim(),url:url};
+if(k==='XTREAM'){body.username=document.getElementById('user').value.trim();body.password=document.getElementById('pass').value;if(!body.username||!body.password){say('err',ERR.creds);return;}}
+if(k==='STALKER'){body.mac=document.getElementById('mac').value.trim();if(!/^([0-9A-Fa-f]{2}[:-]?){5}[0-9A-Fa-f]{2}$/.test(body.mac)){say('err',ERR.mac);return;}}
+btn.disabled=true;
+fetch('/api/envoi/send',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),credentials:'omit'})
+.then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {s:r.status,j:j};});})
+.then(function(x){btn.disabled=false;
+if(x.s===200&&x.j.ok){f.hidden=true;document.getElementById('envoi-done').hidden=false;msg.hidden=true;return;}
+if(x.s===429){say('err','Trop de tentatives. Réessaie dans quelques minutes.');return;}
+say('err',ERR[x.j.error]||'L\\u2019envoi a échoué. Réessaie.');})
+.catch(function(){btn.disabled=false;say('err','Connexion impossible. Vérifie ton réseau et réessaie.');});});
+})();`;
+
+/** « Envoyer une playlist à ma TV » : formulaire public (code de la TV + source). `code` : celui du QR, déjà normalisé ou null. */
+export function envoyerPage(n, { code = null } = {}) {
+  return layout("Ultra TV — envoyer une source", `
+<main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
+<div class="panel"><h1>Envoyer à ma TV</h1><p class="sub">Ajoute une source sur ta TV sans rien taper à la télécommande. Aucun compte nécessaire.</p>
+<div id="envoi-msg" class="notice err" role="alert" hidden></div>
+<div id="envoi-done" hidden><div class="notice ok" role="status">${ico("info")}<span>Source envoyée. Ta TV l'ajoute et lance la synchronisation dans quelques secondes. Tu peux fermer cette page.</span></div></div>
+<form id="envoi-form" novalidate autocomplete="off">
+<label for="code">Code affiché sur la TV <span class="hint">(6 caractères)</span></label>
+<input id="code" name="code" required maxlength="6" value="${e(code || "")}" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" placeholder="K7Q2M9"/>
+<label for="kind">Type de source</label>
+<select id="kind" name="kind"><option value="XTREAM">Xtream Codes</option><option value="M3U">Lien M3U</option><option value="STALKER">Portail Stalker (MAC)</option></select>
+<label for="name">Nom <span class="hint">(facultatif)</span></label>
+<input id="name" name="name" maxlength="64" placeholder="Ma source"/>
+<div id="g-url"><label for="url" id="l-url">Adresse du serveur</label>
+<input id="url" name="url" type="url" required maxlength="2048" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="http://serveur:8080"/></div>
+<div id="g-user"><label for="user">Identifiant</label>
+<input id="user" name="username" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/></div>
+<div id="g-pass"><label for="pass">Mot de passe</label>
+<input id="pass" name="password" type="password" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/>
+<label class="row" for="show-pw"><input id="show-pw" type="checkbox"/> <span>Afficher le mot de passe</span></label></div>
+<div id="g-mac" hidden><label for="mac">Adresse MAC</label>
+<input id="mac" name="mac" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="00:1A:79:XX:XX:XX"/></div>
+<div class="row"><button id="send" class="block" type="submit">Envoyer</button></div>
+</form>
+<noscript><p class="note">JavaScript est nécessaire pour envoyer la source.</p></noscript>
+<p class="note">Les identifiants ne servent qu'à ajouter la source sur ta TV : ils sont chiffrés, conservés 15 minutes au plus et supprimés dès que la TV les a reçus.</p></div></main>`, n, `<script nonce="${n}">${ENVOI_JS}</script>`);
+}
+
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
 const frDate = (ms) => { const d = new Date(ms); return `${d.getUTCDate()} ${MOIS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 const LIC_STATUS = { active: "Active", trial: "Essai", expired: "Expirée", suspended: "Suspendue", revoked: "Révoquée" };
@@ -479,9 +545,9 @@ function licenseLine(lic, now = Date.now()) {
   return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, announcements = null, annStats = null }) {
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, anonRows = [], announcements = null, annStats = null }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
-  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, me: acct.login, announcements: announcements || [], annStats: annStats || {}, csrfInput }) : null;
+  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, anon: anonRows || [], me: acct.login, announcements: announcements || [], annStats: annStats || {}, csrfInput }) : null;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const provRows = providers.map((p) => {
@@ -798,7 +864,7 @@ ${rows || `<p class="muted small">Aucune alerte.</p>`}</section>`;
 const ANN_SCRIPT = `document.querySelectorAll('.ann-form').forEach(function(f){f.addEventListener('submit',function(){
 [['start','startMs'],['end','endMs']].forEach(function(p){var v=f.querySelector('[name='+p[0]+']').value;f.querySelector('[name='+p[1]+']').value=v?String(new Date(v).getTime()):'';});});});`;
 
-export function adminSection({ rows: all, me, now = Date.now(), announcements = [], annStats = {}, csrfInput = "" }) {
+export function adminSection({ rows: all, anon = [], me, now = Date.now(), announcements = [], annStats = {}, csrfInput = "" }) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
   const DAY = 86400_000;
   // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
@@ -822,9 +888,18 @@ export function adminSection({ rows: all, me, now = Date.now(), announcements = 
     return `<div class="bars">${pairs.map(([k, v]) => `<div class="bar"><span class="bl">${e(label(k))}</span><span class="bt"><i data-w="${Math.round((100 * v) / max)}"></i></span><span class="bv">${v}${total ? ` <small>${pct(v, total)} %</small>` : ""}</span></div>`).join("")}</div>`;
   };
   const kv = (pairs) => `<dl class="kv">${pairs.map(([k, v]) => `<dt>${e(k)}</dt><dd>${e(String(v))}</dd>`).join("")}</dl>`;
-  const countries = count(rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]));
+  // Installations sans compte (relevé anonyme) : comptées à part, ET intégrées aux répartitions versions / pays.
+  const anonActive7 = anon.filter((x) => x.last && now - x.last < 7 * DAY).length;
+  const anonNew7 = anon.filter((x) => x.first && now - x.first < 7 * DAY).length;
+  const anonWeb = anon.reduce((t, x) => t + (x.web || 0), 0);
+  const anonCountries = count(anon.map((x) => x.country));
+  const anonVersions = count(anon.map((x) => x.version || "inconnue"));
+  const countries = count([...rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]), ...anon.map((x) => x.country)]);
   const models = count(devices.map((x) => x.model || "inconnu")).slice(0, 10);
-  const versions = count(devices.map((x) => x.version || "inconnue")).slice(0, 10);
+  const versions = count([...devices.map((x) => x.version || "inconnue"), ...anon.map((x) => x.version || "inconnue")]).slice(0, 10);
+  // « 12 » avec, quand il y en a, la part venue des installations sans compte.
+  const withAnon = (list) => (k) => { const n = (list.find((p) => p[0] === k) || [0, 0])[1]; return n ? ` (dont ${n} sans compte)` : ""; };
+  const verNote = withAnon(anonVersions), cntNote = withAnon(anonCountries);
   // Inscriptions par semaine (8 dernières semaines, la plus récente en bas).
   const weeks = [];
   for (let w = 7; w >= 0; w--) {
@@ -841,7 +916,7 @@ export function adminSection({ rows: all, me, now = Date.now(), announcements = 
   };
   const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});` + ANN_SCRIPT;
   return { script, html: `<div class="section-h" id="administration"><h2>Administration</h2><span class="muted small">Statistiques et comptes de tous les utilisateurs.</span></div>
-<div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}</div>
+<div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}${tile(anon.length, "installations sans compte")}</div>
 <div class="agrid">
 <section class="panel"><h2>Croissance</h2>
 ${kv([["Nouveaux comptes ces 7 jours", newSince(7 * DAY)], ["Nouveaux comptes ces 30 jours", newSince(30 * DAY)]])}
@@ -852,11 +927,14 @@ ${bars([["Avec un appareil appairé", withDev], ["Actifs ces 30 jours", activeSi
 <section class="panel"><h2>Appareils</h2>
 ${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length]])}
 <h3>Modèles</h3>${bars(models)}
-<h3>Versions de l'appli</h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`))}</section>
+<h3>Versions de l'appli <span class="muted small">(appareils appairés + installations sans compte)</span></h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`) + verNote(k))}</section>
+<section class="panel"><h2>Installations sans compte</h2>
+<p class="muted small">Appareils qui n'ont pas de compte : relevé anonyme au démarrage (identifiant aléatoire, version, pays), si la télémétrie de l'appli est activée.</p>
+${kv([["Installations (total)", anon.length], ["Actives ces 7 jours", anonActive7], ["Nouvelles ces 7 jours", anonNew7], ["Sources envoyées depuis le web", anonWeb]])}</section>
 <section class="panel"><h2>Sources et services</h2>
 ${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
 ${announcementsPanel(announcements, csrfInput, now, annStats)}
-<section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, countryLabel) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
+<section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, (k) => countryLabel(k) + cntNote(k)) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
 </div>
 <div class="section-h mt16"><h3>Comptes <span class="count">${rows.length}</span></h3><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
 <p class="muted small mt16">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>

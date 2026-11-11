@@ -119,6 +119,39 @@ export class Guard extends DurableObject {
     return { status: "pending" };
   }
 
+  // ---- envoi d'une source depuis un téléphone / un ordinateur (sans compte) -------------
+  // Une instance par code. La TV garde le secret (haché ici) ; la source envoyée reste CHIFFRÉE (blob fourni par
+  // l'appelant), n'est livrée qu'une fois à la TV puis supprimée, et l'instance s'efface seule peu après l'expiration.
+  async envoiInit({ secretHash, installHash, ttlSec }) {
+    if (await this.ctx.storage.get("e")) return { ok: false };
+    const until = Date.now() + ttlSec * 1000;
+    await this.ctx.storage.put("e", { secretHash, installHash: installHash || "", until, state: "pending" });
+    await this.#expireAt(until + 60 * 1000);
+    return { ok: true };
+  }
+
+  /** Dépose la source (un seul envoi par code). */
+  async envoiPut(blob) {
+    const e = await this.ctx.storage.get("e");
+    if (!e || e.until <= Date.now()) return { status: "unknown" };
+    if (e.state !== "pending") return { status: "used" };
+    await this.ctx.storage.put("e", { ...e, state: "ready", blob });
+    return { status: "ok" };
+  }
+
+  /** La source n'est livrée qu'une fois : l'entrée est supprimée à la remise. */
+  async envoiTake(secretHash) {
+    const e = await this.ctx.storage.get("e");
+    if (!e || !timingSafeEqual(e.secretHash, secretHash)) return { status: "unknown" };
+    if (e.until <= Date.now()) {
+      await this.ctx.storage.delete("e");
+      return { status: "unknown" };
+    }
+    if (e.state !== "ready") return { status: "pending" };
+    await this.ctx.storage.delete("e");
+    return { status: "ready", blob: e.blob, installHash: e.installHash };
+  }
+
   // ---- statistiques d'une alerte (une instance par alerte) ------------------
   /**
    * Compte [kind] une seule fois par appareil (identifiant d'installation haché par l'appelant). L'instance
