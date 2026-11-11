@@ -26,13 +26,41 @@ jobs:
     name: Build minimal ffmpeg (${{ matrix.target }})
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read   # lecture des artefacts du dernier build réussi
     strategy:
       matrix:
         target: [win, linux]
     steps:
       - uses: actions/checkout@v7
+      # Script de compilation inchangé depuis le dernier build réussi : son ffmpeg est réutilisé tel quel (pas d'apt,
+      # pas de compilation). Sinon, ou si l'artefact a expiré, compilation complète ci-dessous.
+      - name: Reuse ffmpeg from last successful build
+        id: reuse
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -u
+          script=electron/scripts/build-ffmpeg-min.sh
+          here=$(git hash-object "$script")
+          for run in $(gh run list -R "$GITHUB_REPOSITORY" --workflow desktop-release.yml --status success --limit 5 --json databaseId -q '.[].databaseId'); do
+            sha=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" -q .head_sha) || continue
+            then_=$(gh api "repos/$GITHUB_REPOSITORY/contents/$script?ref=$sha" -q .sha 2>/dev/null) || continue
+            [ "$then_" = "$here" ] || { echo "run $run : script différent"; continue; }
+            rm -rf electron/vendor/ffmpeg && mkdir -p electron/vendor/ffmpeg
+            if gh run download "$run" -R "$GITHUB_REPOSITORY" -n "ffmpeg-$TARGET" -D electron/vendor/ffmpeg 2>/dev/null && [ -n "$(ls -A electron/vendor/ffmpeg)" ]; then
+              echo "ffmpeg-$TARGET réutilisé depuis le run $run ($sha)"; ls -la electron/vendor/ffmpeg
+              echo "ok=true" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            echo "run $run : artefact indisponible"
+          done
+          echo "Aucun ffmpeg réutilisable : compilation complète"
       # Le miroir Azure d'Ubuntu ne répond pas toujours (DNS) : 3 essais, puis bascule sur archive.ubuntu.com.
       - name: Toolchain
+        if: steps.reuse.outputs.ok != 'true'
+        timeout-minutes: 15
         run: |
           pkgs="nasm libssl-dev gcc-mingw-w64-x86-64"
           for i in 1 2 3; do
@@ -41,11 +69,12 @@ jobs:
               sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/apt-mirrors.txt 2>/dev/null || true
               sudo sed -i 's#^URIs: mirror+file:/etc/apt/apt-mirrors.txt#URIs: http://archive.ubuntu.com/ubuntu/#' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
             fi
-            sudo apt-get update -q -o Acquire::Retries=3 && sudo apt-get install -y -q -o Acquire::Retries=3 $pkgs && exit 0
+            timeout 240 sudo apt-get update -q -o Acquire::Retries=3 && timeout 400 sudo apt-get install -y -q -o Acquire::Retries=3 $pkgs && exit 0
             echo "Essai $i échoué"; sleep 20
           done
           exit 1
       - name: Build
+        if: steps.reuse.outputs.ok != 'true'
         working-directory: electron
         run: bash scripts/build-ffmpeg-min.sh ${{ matrix.target }}
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
