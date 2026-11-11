@@ -34,8 +34,9 @@ Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en l
   <img src="docs/screenshots/fr/home.png" alt="Accueil" width="48%" />
   <img src="docs/screenshots/fr/live.png" alt="Direct" width="48%" />
   <img src="docs/screenshots/fr/guide.png" alt="Guide des programmes" width="48%" />
-  <img src="docs/screenshots/fr/detail.png" alt="Fiche film" width="48%" />
-  <img src="docs/screenshots/fr/series.png" alt="Fiche série et épisodes" width="48%" />
+  <img src="docs/screenshots/fr/detail.png" alt="Fiche série : saisons et épisodes" width="48%" />
+  <img src="docs/screenshots/fr/categories.png" alt="Films par catégories du fournisseur" width="48%" />
+  <img src="docs/screenshots/fr/home-rows.png" alt="Accueil : Top 10, Reprendre, Parce que vous avez regardé" width="48%" />
   <img src="docs/screenshots/fr/search.png" alt="Recherche en temps réel" width="48%" />
   <img src="docs/screenshots/fr/kairo.png" alt="« À suivre » et « Nouveautés » d'Ultra TV dans le lanceur Kairo" width="48%" />
   <img src="docs/screenshots/fr/player.png" alt="Lecteur" width="48%" />
