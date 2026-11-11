@@ -2,6 +2,15 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.85] — 2026-11-11 (Android)
+
+### Corrigé
+- Fiche série : « Aller à l'épisode » et « Télécharger la saison » sont atteignables à la télécommande (Haut depuis le
+  premier épisode y mène ; avant, le focus les sautait).
+- Fiche série : Haut et Bas vont à l'élément juste au-dessus ou au-dessous, sans sauter vers « Lecture » ni vers
+  l'épisode à reprendre.
+- Fiche série : aide « Appui long sur un épisode : le télécharger ».
+
 ## [1.2.84] — 2026-11-11 (Android) · Worker
 
 ### Nouveau

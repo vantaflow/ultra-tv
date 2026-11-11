@@ -66,6 +66,7 @@ import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.episodesCount
 import com.ultratv.tv.nativeapp.i18n.jumpToEpisode
 import com.ultratv.tv.nativeapp.i18n.seasonsHelp
+import com.ultratv.tv.nativeapp.i18n.longPressDownload
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
 import com.ultratv.tv.nativeapp.i18n.typeSeries
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -146,6 +147,8 @@ fun SeriesDetailTv(
     val listState = rememberLazyListState()
     val entry = remember { FocusRequester() }
     val seasonEntry = remember { FocusRequester() }
+    // Barre « Aller à l'épisode » / « Télécharger la saison » : Haut depuis le 1er épisode y mène (avant, il la sautait).
+    val toolbarReq = remember { FocusRequester() }
     var jumpOpen by remember { mutableStateOf(false) }
     val hasTarget = data.target != null
 
@@ -206,12 +209,12 @@ fun SeriesDetailTv(
                 Modifier.fillMaxWidth().height(paneHeight)
                     .clip(RoundedCornerShape(28.design)).background(Ux.Bg.copy(alpha = 0.80f)).padding(24.design)
                     .onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(scroll.maxValue, tween(160)) } }
-                    .focusProperties { enter = { if (shownNow.isEmpty()) FocusRequester.Default else entry } }
+                    // Haut / Bas vont à l'élément juste au-dessus / au-dessous (pas de saut vers l'épisode à reprendre).
                     .focusGroup(),
                 horizontalArrangement = Arrangement.spacedBy(28.design),
             ) {
                 SeasonsColumn(
-                    seasons = data.seasons, active = data.activeSeason, episodes = data.episodes, upTo = if (hasTarget) playRequester else FocusRequester.Default,
+                    seasons = data.seasons, active = data.activeSeason, episodes = data.episodes, upTo = FocusRequester.Default,
                     seasonEntry = seasonEntry, awayKey = awayFromSeasons, D = D,
                     onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } },
                     modifier = Modifier.width(320.design),
@@ -221,21 +224,18 @@ fun SeriesDetailTv(
                     Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
                         Text(D.seasonsHelp, color = Ux.Text3, fontFamily = Manrope, fontSize = 21.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                         if (shown.isNotEmpty()) {
-                            PillButton(D.jumpToEpisode, onClick = { jumpOpen = true }, heightPx = 56, hPadPx = 28, fontPx = 22, modifier = Modifier.focusProperties { up = if (hasTarget) playRequester else FocusRequester.Default })
+                            PillButton(D.jumpToEpisode, onClick = { jumpOpen = true }, heightPx = 56, hPadPx = 28, fontPx = 22, modifier = Modifier.focusRequester(toolbarReq))
                             PillButton(
                                 dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) }, heightPx = 56, hPadPx = 28, fontPx = 22,
                                 iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download,
-                                modifier = Modifier.focusProperties { up = if (hasTarget) playRequester else FocusRequester.Default },
                             )
                         }
                     }
+                    if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     when {
                         shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                         else -> LazyColumn(
                             Modifier.fillMaxSize()
-                                .focusProperties {
-                                    enter = { if (listState.layoutInfo.visibleItemsInfo.any { it.index == entryNow }) entry else FocusRequester.Default }
-                                }
                                 .onPreviewKeyEvent { ev ->
                                     if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                                     when (ev.key) {
@@ -257,7 +257,7 @@ fun SeriesDetailTv(
                                     seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
                                     modifier = Modifier
                                         .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
-                                        .then(if (i == 0 && hasTarget) Modifier.focusProperties { up = playRequester } else Modifier),
+                                        .then(if (i == 0) Modifier.focusProperties { up = toolbarReq } else Modifier),
                                     onLongClick = { val d = data.downloads[ep.remoteId]; if (d != null) dlVm.act(d, dlStrings) else dlVm.downloadEpisode(series, ep, dlStrings) },
                                     onClick = { onPlayEpisode(ep) },
                                 )
@@ -302,7 +302,6 @@ private fun SeasonsColumn(
     LaunchedEffect(Unit) { val i = seasons.indexOf(active); if (i > 2) state.scrollToItem(i - 1) }
     LazyColumn(
         modifier
-            .focusProperties { enter = { if (seasons.indexOf(active) in state.layoutInfo.visibleItemsInfo.map { it.index }) seasonEntry else FocusRequester.Default } }
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.key == awayKey) {
                     pending?.takeIf { it != active }?.let(onSeason)

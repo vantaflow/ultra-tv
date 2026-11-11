@@ -86,6 +86,7 @@ val DesignStrings.favoritesShort get() = t("Favorites", "Favoris", "Favoritos", 
 val DesignStrings.similarTitles get() = t("Similar titles", "Titres similaires", "Títulos similares", "عناوين مشابهة")
 val DesignStrings.jumpToEpisode get() = t("Jump to episode", "Aller à l'épisode", "Ir al episodio", "الانتقال إلى حلقة")
 val DesignStrings.seasonsHelp get() = t("Right = next season · Left = seasons", "Droite = saison suivante · Gauche = saisons", "Derecha = temporada siguiente · Izquierda = temporadas", "يمين = الموسم التالي · يسار = المواسم")
+val DesignStrings.longPressDownload get() = t("Long press an episode to download it", "Appui long sur un épisode : le télécharger", "Mantén pulsado un episodio para descargarlo", "اضغط مطولًا على حلقة لتنزيلها")
 fun DesignStrings.episodesCount(n: Int) = when (lang) {
     AppLang.French -> if (n <= 1) "$n épisode" else "$n épisodes"
     AppLang.Spanish -> if (n == 1) "$n episodio" else "$n episodios"
