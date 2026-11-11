@@ -29,7 +29,7 @@
 
 | Appareil | Lien |
 |---|---|
-| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | **[APK 64 bits (arm64) — recommandé](https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64)**, léger (≈ 67 Mo), pour la plupart des box et téléphones récents · **[APK 32 bits (armv7)](https://ultratv-config.khalilbenaz.workers.dev/download/android-armv7)** pour les appareils 32 bits (Chromecast avec Google TV HD, vieilles box) · [APK universel](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) (≈ 227 Mo) en dernier recours · sur une box : appli Downloader, code **`5248504`**. Si l'installation échoue, prenez la version 32 bits. |
+| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5248504`** |
 | **Windows** (x64) | [Installeur .exe](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
 | **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
@@ -195,6 +195,24 @@ adb install-multiple -r UltraTV-<version>-armeabi-v7a.apk UltraTV-<version>-arme
 Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U, **portail Stalker** ou **Depuis le cloud**), saisissez-la, puis choisissez vos catégories (seules les catégories actives sont téléchargées).
 
 Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
+
+### Quel APK prendre ?
+
+| Votre appareil | APK | Lien court (à taper dans Downloader) |
+|---|---|---|
+| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 67 Mo), recommandé | [`ultratv-config.khalilbenaz.workers.dev/download/android-arm64`](https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64) |
+| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv-config.khalilbenaz.workers.dev/download/android-32`](https://ultratv-config.khalilbenaz.workers.dev/download/android-32) |
+| Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv-config.khalilbenaz.workers.dev/download/android-universal`](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) |
+
+`ultratv-config.khalilbenaz.workers.dev/download/android` renvoie l'APK arm64. Dans Downloader, saisissez le code **`5248504`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+
+### Installation impossible (« problème de package »)
+
+- **Espace libre** : prévoyez au moins 500 Mo ; l'APK universel (227 Mo) en demande davantage que les APK par processeur.
+- **Mauvais APK** : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits (`android-32`) plutôt que l'universel.
+- **Ancienne version signée autrement** : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez. Vos sources restent dans le cloud si vous l'avez activé.
+- **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier `.sha256` (ou `SHA256SUMS.txt`) publié avec lui ; retéléchargez en cas de différence.
+- **Android 9 minimum** : les versions plus anciennes ne sont pas prises en charge.
 
 ## Synchronisation cloud
 

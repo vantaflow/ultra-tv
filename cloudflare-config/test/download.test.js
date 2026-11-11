@@ -28,9 +28,10 @@ describe("liens de téléchargement", () => {
   it("Android : routes arm64, armv7 (32 bits) et universel", async () => {
     const dest = async (p) => (await downloadRedirect(p)).headers.get("location");
     expect(await dest("android-arm64")).toMatch(/\/latest\/download\/UltraTV-arm64-v8a\.apk$/);
+    expect(await dest("android-32")).toMatch(/\/latest\/download\/UltraTV-armeabi-v7a\.apk$/);
     expect(await dest("android-armv7")).toMatch(/\/latest\/download\/UltraTV-armeabi-v7a\.apk$/);
     expect(await dest("android-universal")).toMatch(/\/latest\/download\/UltraTV\.apk$/);
-    expect(Object.keys(ANDROID_URLS)).toHaveLength(4);
+    expect(Object.keys(ANDROID_URLS)).toHaveLength(5);
   });
   it("bureau : redirection, repli sur la page des releases si GitHub échoue", async () => {
     const ok = await downloadRedirect("windows", async () => new Response(JSON.stringify(releases), { status: 200 }));

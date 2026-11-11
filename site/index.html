@@ -163,7 +163,12 @@
     <div class="card">
       <h3>Android <span data-version>1.2.0</span></h3>
       <p>Android 9 ou plus récent (TV, smartphone, tablette). Choisissez la version 64 bits (arm64) pour la plupart des box et téléphones récents, la version 32 bits (armv7) pour un Chromecast avec Google TV HD ou une vieille box, et l'universel si vous ne savez pas. Si l'installation échoue, prenez la version 32 bits.</p>
-      <p><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64">⬇ APK 64 bits (arm64) — recommandé</a> <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-armv7">⬇ APK 32 bits (armv7)</a> <a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-universal">⬇ APK universel (dernier recours)</a></p>
+      <table style="width:100%;border-collapse:collapse;font-size:.95rem">
+        <tr><th align="left">Votre appareil</th><th align="left">APK</th></tr>
+        <tr><td>Fire TV Stick récent, Shield, box et téléphones 64 bits</td><td><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64">⬇ arm64 (recommandé)</a><br><code>…/download/android-arm64</code></td></tr>
+        <tr><td><strong>Chromecast avec Google TV (HD)</strong>, vieilles box 32 bits</td><td><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-32">⬇ 32 bits</a><br><code>…/download/android-32</code></td></tr>
+        <tr><td>Vous ne savez pas</td><td><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev/download/android-universal">⬇ Universel (dernier recours)</a><br><code>…/download/android-universal</code></td></tr>
+      </table>
       <p class="meta">Autres processeurs (x86_64) et fichiers versionnés <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code> sur la <a href="https://github.com/vantaflow/ultra-tv/releases/latest">page de la version</a>. Somme SHA-256 incluse.</p>
     </div>
     <div class="card">
@@ -182,6 +187,17 @@
       <p><a class="btn" href="https://ultratv-config.khalilbenaz.workers.dev" rel="noopener">ultratv-config.khalilbenaz.workers.dev</a></p>
     </div>
   </div>
+</section>
+
+<section id="aide-installation">
+  <h2>Installation impossible ?</h2>
+  <ul>
+    <li><strong>Espace libre</strong> : prévoyez au moins 500 Mo ; l'APK universel (227 Mo) en demande plus que les APK par processeur.</li>
+    <li><strong>Mauvais APK</strong> : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits plutôt que l'universel.</li>
+    <li><strong>Ancienne version signée autrement</strong> : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez.</li>
+    <li><strong>Téléchargement tronqué</strong> : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier <code>.sha256</code> publié ; retéléchargez en cas de différence.</li>
+    <li><strong>Android 9 minimum.</strong></li>
+  </ul>
 </section>
 
 <section id="installer">

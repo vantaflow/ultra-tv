@@ -1,4 +1,4 @@
-// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -armv7, -universal), /windows, /mac, /linux.
+// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /linux.
 // Android : l'APK universel de la dernière release (« Latest » = Android). Bureau : les releases « desktop-v* » ne sont
 // pas « Latest » et leurs fichiers portent le numéro de version ; on lit la dernière release bureau via l'API GitHub
 // (cache 1 h) et on redirige vers le fichier de la plateforme.
@@ -11,7 +11,8 @@ export const ANDROID_URL = `${LATEST}/UltraTV-arm64-v8a.apk`;
 export const ANDROID_URLS = {
   android: ANDROID_URL,
   "android-arm64": ANDROID_URL,
-  "android-armv7": `${LATEST}/UltraTV-armeabi-v7a.apk`, // 32 bits : Chromecast avec Google TV HD, vieilles box
+  "android-32": `${LATEST}/UltraTV-armeabi-v7a.apk`, // 32 bits : Chromecast avec Google TV HD, vieilles box
+  "android-armv7": `${LATEST}/UltraTV-armeabi-v7a.apk`, // alias de android-32
   "android-universal": `${LATEST}/UltraTV.apk`,
 };
 const PATTERNS = {
