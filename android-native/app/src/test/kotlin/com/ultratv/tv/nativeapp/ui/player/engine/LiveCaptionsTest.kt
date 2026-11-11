@@ -60,12 +60,24 @@ class LiveCaptionsTest {
     }
 
     private fun extractFrom(factory: androidx.media3.extractor.ExtractorsFactory, data: ByteArray): Output {
-        val ds = ByteArrayDataSource(data); ds.open(DataSpec(Uri.EMPTY))
-        val input: ExtractorInput = DefaultExtractorInput(ds, 0, data.size.toLong())
+        // Longueur inconnue, comme un flux direct : avec une longueur connue, l'extracteur TS cherche la durée en
+        // demandant des repositionnements (RESULT_SEEK), que l'on gère quand même ci-dessous.
+        fun open(at: Long): ExtractorInput {
+            val ds = ByteArrayDataSource(data); ds.open(DataSpec.Builder().setUri(Uri.EMPTY).setPosition(at).build())
+            return DefaultExtractorInput(ds, at, C.LENGTH_UNSET.toLong())
+        }
+        var input = open(0)
         val extractor: Extractor = factory.createExtractors().first { e -> (e.sniff(input)).also { input.resetPeekPosition() } }
         val out = Output(); extractor.init(out)
         val pos = PositionHolder()
-        while (extractor.read(input, pos) != Extractor.RESULT_END_OF_INPUT) { /* lit tout le flux */ }
+        var guard = 0
+        while (true) {
+            check(++guard < 1_000_000) { "lecture du flux sans fin" }
+            when (extractor.read(input, pos)) {
+                Extractor.RESULT_END_OF_INPUT -> break
+                Extractor.RESULT_SEEK -> input = open(pos.position)
+            }
+        }
         return out
     }
 
@@ -75,7 +87,7 @@ class LiveCaptionsTest {
         val client = OkHttpClient.Builder().addInterceptor(server.interceptor).build()
         client.newCall(Request.Builder().url("http://xtream.invalid/live/test/test/100001.ts").build()).execute().use { r ->
             assertEquals(200, r.code)
-            assertEquals("video/mp2t", r.header("Content-Type"))
+            assertEquals("video/mp2t", r.body.contentType()?.toString())
             assertTrue(server.requests.contains("live_ts"))
             return r.body.bytes()
         }
