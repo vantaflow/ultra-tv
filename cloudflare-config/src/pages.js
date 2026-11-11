@@ -475,7 +475,7 @@ var kind=document.getElementById('kind'),code=document.getElementById('code'),ms
 var groups={XTREAM:['g-url','g-user','g-pass'],M3U:['g-url'],STALKER:['g-url','g-mac'],GUIDE:['g-url']};
 var ALL=['g-url','g-user','g-pass','g-mac'];
 var LABEL={XTREAM:T.lblXtream,M3U:T.lblM3u,STALKER:T.lblStalker,GUIDE:T.lblGuide};
-var HOLD={XTREAM:'http://serveur:8080',M3U:'http://exemple.com/liste.m3u',STALKER:'http://portail:8080/c/',GUIDE:'https://exemple.com/guide.xml.gz'};
+var HOLD={XTREAM:'http://server:8080',M3U:'http://example.com/list.m3u',STALKER:'http://portal:8080/c/',GUIDE:'https://example.com/guide.xml.gz'};
 function apply(){var k=kind.value,on=groups[k]||[];
 ALL.forEach(function(id){var g=document.getElementById(id),show=on.indexOf(id)>=0;g.hidden=!show;g.querySelectorAll('input').forEach(function(i){i.disabled=!show;});});
 document.getElementById('url').placeholder=HOLD[k];document.getElementById('l-url').firstChild.nodeValue=LABEL[k];}
@@ -533,7 +533,7 @@ export function envoyerPage(n, { code = null, lang = "en" } = {}) {
 <label for="name">${e(t.nameLabel)} <span class="hint">${e(t.optional)}</span></label>
 <input id="name" name="name" maxlength="64" placeholder="${e(t.namePh)}"/>
 <div id="g-url"><label for="url" id="l-url">${e(t.urlLabel)}</label>
-<input id="url" name="url" dir="ltr" type="url" required maxlength="2048" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="http://serveur:8080"/></div>
+<input id="url" name="url" dir="ltr" type="url" required maxlength="2048" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="http://server:8080"/></div>
 <div id="g-user"><label for="user">${e(t.userLabel)}</label>
 <input id="user" name="username" dir="ltr" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/></div>
 <div id="g-pass"><label for="pass">${e(t.passLabel)}</label>
