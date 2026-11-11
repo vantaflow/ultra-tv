@@ -1,6 +1,4 @@
-import type { Dict } from "./fr";
-
-export const en: Dict = {
+{
   "app.name": "Ultra TV",
   "nav.home": "Home",
   "nav.live": "Live",
@@ -11,7 +9,6 @@ export const en: Dict = {
   "nav.favorites": "Favorites",
   "nav.settings": "Settings",
   "nav.account": "Subscription",
-
   "common.watch": "Watch",
   "common.play": "Play",
   "common.resume": "Resume",
@@ -42,7 +39,8 @@ export const en: Dict = {
   "common.series": "series",
   "common.addFav": "Add to favorites",
   "common.removeFav": "Remove from favorites",
-  "common.seasons": "{n} seasons",
+  "common.seasons_one": "{count} season",
+  "common.seasons_other": "{count} seasons",
   "common.season": "Season {n}",
   "common.episodeShort": "E{n}",
   "common.minLeft": "{t} left",
@@ -56,10 +54,12 @@ export const en: Dict = {
   "common.chooseCategory": "Category",
   "common.langsLabel": "Languages: {l}",
   "common.langsAll": "all",
-  "common.items": "{n} items",
-  "common.channelsCount": "{n} channels",
-  "common.sections": "{n} sections",
-
+  "common.items_one": "{n} item",
+  "common.items_other": "{n} items",
+  "common.channelsCount_one": "{count} channel",
+  "common.channelsCount_other": "{count} channels",
+  "common.sections_one": "{count} section",
+  "common.sections_other": "{count} sections",
   "home.featured": "Featured",
   "home.resume": "Continue watching",
   "home.favChannels": "Favorite channels",
@@ -97,13 +97,11 @@ export const en: Dict = {
   "settings.traktListsHint": "Up to 5 rows, only titles available in your playlist",
   "home.guide": "TV guide",
   "home.emptyHero": "Pick a channel in Live to get started.",
-
   "live.preview": "The preview starts when you select a channel.",
   "live.previewHint": "Enter: play · double-click or F: full screen",
   "live.filterChannels": "Filter channels…",
   "live.noChannels": "No channels in this category.",
   "live.nowNext": "Program",
-
   "guide.title": "TV guide",
   "guide.today": "Today",
   "guide.tomorrow": "Tomorrow",
@@ -115,7 +113,6 @@ export const en: Dict = {
   "guide.loadEpg": "Load the guide",
   "guide.withEpg": "Channels with guide",
   "guide.capped": "Showing the first {n} channels; pick a category to see more.",
-
   "vod.sortBy": "Sort",
   "vod.minRating": "Minimum rating",
   "vod.anyRating": "Any rating",
@@ -141,7 +138,6 @@ export const en: Dict = {
   "vod.infoError": "Could not load the details. Playback is still possible.",
   "vod.resumeEp": "Resume S{s} E{e}",
   "vod.startEp": "Play S{s} E{e}",
-
   "search.title": "Search",
   "search.placeholder": "Channels, movies, series…",
   "search.channels": "Channels",
@@ -152,12 +148,10 @@ export const en: Dict = {
   "search.empty": "No results for “{q}”.",
   "search.hint": "Type at least 2 letters. Shortcut: / or Ctrl/Cmd + K.",
   "search.searching": "Searching…",
-
   "fav.title": "Favorites",
   "fav.emptyTitle": "No favorites yet",
   "fav.emptyBody": "Click the heart on a channel, movie or series to add it here.",
   "fav.browse": "Browse Live",
-
   "player.live": "Live",
   "player.pause": "Pause",
   "player.back10": "Back 10 seconds",
@@ -209,7 +203,6 @@ export const en: Dict = {
   "player.stat.buffer": "Buffer",
   "player.stat.dropped": "Dropped frames",
   "player.stat.codec": "Stream",
-
   "set.title": "Settings",
   "set.sources": "Sources",
   "set.display": "Display",
@@ -283,7 +276,8 @@ export const en: Dict = {
   "set.manageCats": "Manage categories",
   "set.catsSummary": "{a} active · {d} disabled",
   "set.catsApply": "Apply and sync",
-  "set.catsPending": "{n} change(s) to apply",
+  "set.catsPending_one": "{count} change to apply",
+  "set.catsPending_other": "{count} changes to apply",
   "set.catsAllLangs": "All languages",
   "set.catsMoreLangs": "More languages ({n})",
   "set.catsFewerLangs": "Fewer languages",
@@ -312,7 +306,6 @@ export const en: Dict = {
   "set.sk.nav": "Move in a list",
   "set.sk.open": "Open / play",
   "set.sk.esc": "Back",
-
   "src.title": "Add a source",
   "src.step": "STEP {a} OF {b}",
   "src.which": "Where do your channels come from?",
@@ -373,16 +366,16 @@ export const en: Dict = {
   "src.macHint": "Digits and letters A to F: colons are added for you.",
   "src.portalLogin": "Portal login (optional)",
   "src.portalPassword": "Portal password (optional)",
-
   "lang.title": "Which languages do you watch in?",
   "lang.eyebrow": "LANGUAGES DETECTED IN YOUR SOURCE",
   "lang.lead": "Only content in these languages is downloaded and shown. Faster sync, smoother app. You can change this at any time.",
-  "lang.summary": "{n} language(s) · {c} categories",
+  "lang.summary_one": "{count} language · {c} categories",
+  "lang.summary_other": "{count} languages · {c} categories",
   "lang.all": "All languages",
   "lang.other": "Other",
-  "lang.cats": "{n} categories",
+  "lang.cats_one": "{count} category",
+  "lang.cats_other": "{count} categories",
   "lang.detecting": "Analyzing your source…",
-
   "sync.eyebrow": "FIRST SYNC",
   "sync.title": "Preparing your catalog",
   "sync.lead": "Live channels arrive first. Movies, series and the TV guide keep loading in the background.",
@@ -401,7 +394,6 @@ export const en: Dict = {
   "sync.cancelled": "Sync cancelled.",
   "sync.background": "Updating…",
   "sync.openApp": "Open Ultra TV",
-
   "state.noSourceTitle": "No source configured",
   "state.noSourceBody": "Add an IPTV subscription to get started.",
   "state.emptyCatalog": "Empty catalog",
@@ -417,13 +409,11 @@ export const en: Dict = {
   "state.updateLater": "It will also install when you quit the app.",
   "state.later": "Later",
   "state.downloading": "Downloading the update… {p} %",
-
   "profile.who": "Who's watching?",
   "profile.main": "Main",
   "profile.add": "Add",
   "profile.manage": "Manage profiles",
   "profile.default": "Profile",
-
   "pin.title": "Protected content",
   "toast.favAdded": "Added to favorites",
   "toast.favRemoved": "Removed from favorites",
@@ -456,7 +446,8 @@ export const en: Dict = {
   "cloud.syncDone": "Cloud synced: {a} added, {u} updated, {r} removed",
   "cloud.upToDate": "Cloud up to date",
   "cloud.devices": "Account devices",
-  "cloud.devicesCount": "{n} device(s) on the account",
+  "cloud.devicesCount_one": "{count} device on the account",
+  "cloud.devicesCount_other": "{count} devices on the account",
   "cloud.thisDevice": "this device",
   "cloud.unpair": "Unpair this device",
   "cloud.unpairConfirm": "Unpair this device from the cloud? Sources stay but will no longer be synced.",
@@ -473,7 +464,8 @@ export const en: Dict = {
   "cloud.unshare": "Stop sharing",
   "cloud.prefsSync": "Sync categories and languages between devices",
   "cloud.prefsSyncDesc": "Disabled categories of a cloud source follow your other devices.",
-  "cloud.badgeShared": "Cloud · shared with {n} devices",
+  "cloud.badgeShared_one": "Cloud · shared with {count} device",
+  "cloud.badgeShared_other": "Cloud · shared with {count} devices",
   "cloud.badgeAll": "Cloud · shared with all devices",
   "cloud.badgeCloud": "Cloud",
   "cloud.badgeFrom": "Cloud · from {n}",
@@ -490,5 +482,5 @@ export const en: Dict = {
   "a11y.volume": "Volume",
   "key.space": "Space",
   "key.esc": "Esc",
-  "key.enter": "Enter",
-};
+  "key.enter": "Enter"
+}

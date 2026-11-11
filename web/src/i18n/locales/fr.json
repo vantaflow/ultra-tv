@@ -1,5 +1,4 @@
-// Dictionnaire de référence (français). Les autres langues sont typées sur ces clés.
-export const fr = {
+{
   "app.name": "Ultra TV",
   "nav.home": "Accueil",
   "nav.live": "Direct",
@@ -10,7 +9,6 @@ export const fr = {
   "nav.favorites": "Favoris",
   "nav.settings": "Réglages",
   "nav.account": "Abonnement",
-
   "common.watch": "Regarder",
   "common.play": "Lecture",
   "common.resume": "Reprendre",
@@ -41,7 +39,9 @@ export const fr = {
   "common.series": "séries",
   "common.addFav": "Ajouter aux favoris",
   "common.removeFav": "Retirer des favoris",
-  "common.seasons": "{n} saisons",
+  "common.seasons_one": "{count} saison",
+  "common.seasons_many": "{count} de saisons",
+  "common.seasons_other": "{count} saisons",
   "common.season": "Saison {n}",
   "common.episodeShort": "É{n}",
   "common.minLeft": "Reste {t}",
@@ -55,10 +55,15 @@ export const fr = {
   "common.chooseCategory": "Catégorie",
   "common.langsLabel": "Langues : {l}",
   "common.langsAll": "toutes",
-  "common.items": "{n} éléments",
-  "common.channelsCount": "{n} chaînes",
-  "common.sections": "{n} sections",
-
+  "common.items_one": "{n} élément",
+  "common.items_many": "{n} d’éléments",
+  "common.items_other": "{n} éléments",
+  "common.channelsCount_one": "{count} chaîne",
+  "common.channelsCount_many": "{count} de chaînes",
+  "common.channelsCount_other": "{count} chaînes",
+  "common.sections_one": "{count} section",
+  "common.sections_many": "{count} de sections",
+  "common.sections_other": "{count} sections",
   "home.featured": "À la une",
   "home.resume": "Reprendre la lecture",
   "home.favChannels": "Chaînes favorites",
@@ -96,13 +101,11 @@ export const fr = {
   "settings.traktListsHint": "5 rangées au plus, seulement les titres présents dans ta playlist",
   "home.guide": "Guide TV",
   "home.emptyHero": "Choisissez une chaîne dans le direct pour démarrer.",
-
   "live.preview": "L’aperçu démarre à la sélection d’une chaîne.",
   "live.previewHint": "Entrée : lire · double-clic ou F : plein écran",
   "live.filterChannels": "Filtrer les chaînes…",
   "live.noChannels": "Aucune chaîne dans cette catégorie.",
   "live.nowNext": "Programme",
-
   "guide.title": "Guide TV",
   "guide.today": "Aujourd’hui",
   "guide.tomorrow": "Demain",
@@ -114,7 +117,6 @@ export const fr = {
   "guide.loadEpg": "Charger le guide",
   "guide.withEpg": "Chaînes avec guide",
   "guide.capped": "Les {n} premières chaînes sont affichées ; choisissez une catégorie pour en voir d’autres.",
-
   "vod.sortBy": "Trier",
   "vod.minRating": "Note minimale",
   "vod.anyRating": "Toutes notes",
@@ -140,7 +142,6 @@ export const fr = {
   "vod.infoError": "Impossible de charger la fiche. La lecture reste possible.",
   "vod.resumeEp": "Reprendre S{s} É{e}",
   "vod.startEp": "Lire S{s} É{e}",
-
   "search.title": "Recherche",
   "search.placeholder": "Chaînes, films, séries…",
   "search.channels": "Chaînes",
@@ -151,12 +152,10 @@ export const fr = {
   "search.empty": "Aucun résultat pour « {q} ».",
   "search.hint": "Tapez au moins 2 lettres. Raccourci : / ou Ctrl/Cmd + K.",
   "search.searching": "Recherche…",
-
   "fav.title": "Favoris",
   "fav.emptyTitle": "Aucun favori pour l’instant",
   "fav.emptyBody": "Cliquez sur le cœur d’une chaîne, d’un film ou d’une série pour l’ajouter ici.",
   "fav.browse": "Parcourir le direct",
-
   "player.live": "En direct",
   "player.pause": "Pause",
   "player.back10": "Reculer de 10 secondes",
@@ -208,7 +207,6 @@ export const fr = {
   "player.stat.buffer": "Tampon",
   "player.stat.dropped": "Images perdues",
   "player.stat.codec": "Flux",
-
   "set.title": "Réglages",
   "set.sources": "Sources",
   "set.display": "Affichage",
@@ -282,7 +280,9 @@ export const fr = {
   "set.manageCats": "Gérer les catégories",
   "set.catsSummary": "{a} actives · {d} désactivées",
   "set.catsApply": "Appliquer et synchroniser",
-  "set.catsPending": "{n} modification(s) à appliquer",
+  "set.catsPending_one": "{count} modification à appliquer",
+  "set.catsPending_many": "{count} de modifications à appliquer",
+  "set.catsPending_other": "{count} modifications à appliquer",
   "set.catsAllLangs": "Toutes les langues",
   "set.catsMoreLangs": "Plus de langues ({n})",
   "set.catsFewerLangs": "Moins de langues",
@@ -311,7 +311,6 @@ export const fr = {
   "set.sk.nav": "Naviguer dans une liste",
   "set.sk.open": "Ouvrir / lire",
   "set.sk.esc": "Retour",
-
   "src.title": "Ajouter une source",
   "src.step": "ÉTAPE {a} SUR {b}",
   "src.which": "D’où viennent vos chaînes ?",
@@ -372,16 +371,18 @@ export const fr = {
   "src.macHint": "Chiffres et lettres A à F : les deux-points s’ajoutent seuls.",
   "src.portalLogin": "Identifiant du portail (facultatif)",
   "src.portalPassword": "Mot de passe du portail (facultatif)",
-
   "lang.title": "Dans quelles langues regardez-vous ?",
   "lang.eyebrow": "LANGUES DÉTECTÉES DANS VOTRE SOURCE",
   "lang.lead": "Seuls les contenus dans ces langues sont téléchargés et affichés. Synchro plus rapide, application plus fluide. Modifiable à tout moment.",
-  "lang.summary": "{n} langue(s) · {c} catégories",
+  "lang.summary_one": "{count} langue · {c} catégories",
+  "lang.summary_many": "{count} de langues · {c} catégories",
+  "lang.summary_other": "{count} langues · {c} catégories",
   "lang.all": "Toutes les langues",
   "lang.other": "Autres",
-  "lang.cats": "{n} catégories",
+  "lang.cats_one": "{count} catégorie",
+  "lang.cats_many": "{count} de catégories",
+  "lang.cats_other": "{count} catégories",
   "lang.detecting": "Analyse de votre source…",
-
   "sync.eyebrow": "PREMIÈRE SYNCHRONISATION",
   "sync.title": "Préparation de votre catalogue",
   "sync.lead": "Les chaînes en direct arrivent en premier. Films, séries et guide TV continuent en arrière-plan.",
@@ -400,7 +401,6 @@ export const fr = {
   "sync.cancelled": "Synchronisation annulée.",
   "sync.background": "Mise à jour…",
   "sync.openApp": "Ouvrir Ultra TV",
-
   "state.noSourceTitle": "Aucune source configurée",
   "state.noSourceBody": "Ajoutez un abonnement IPTV pour commencer.",
   "state.emptyCatalog": "Catalogue vide",
@@ -416,13 +416,11 @@ export const fr = {
   "state.updateLater": "La mise à jour s’installera aussi à la fermeture de l’application.",
   "state.later": "Plus tard",
   "state.downloading": "Téléchargement de la mise à jour… {p} %",
-
   "profile.who": "Qui regarde ?",
   "profile.main": "Principal",
   "profile.add": "Ajouter",
   "profile.manage": "Gérer les profils",
   "profile.default": "Profil",
-
   "pin.title": "Contenu protégé",
   "toast.favAdded": "Ajouté aux favoris",
   "toast.favRemoved": "Retiré des favoris",
@@ -455,7 +453,9 @@ export const fr = {
   "cloud.syncDone": "Cloud synchronisé : {a} ajoutée(s), {u} modifiée(s), {r} retirée(s)",
   "cloud.upToDate": "Cloud à jour",
   "cloud.devices": "Appareils du compte",
-  "cloud.devicesCount": "{n} appareil(s) sur le compte",
+  "cloud.devicesCount_one": "{count} appareil sur le compte",
+  "cloud.devicesCount_many": "{count} d’appareils sur le compte",
+  "cloud.devicesCount_other": "{count} appareils sur le compte",
   "cloud.thisDevice": "cet appareil",
   "cloud.unpair": "Dissocier cet appareil",
   "cloud.unpairConfirm": "Dissocier cet appareil du cloud ? Les sources restent mais ne seront plus synchronisées.",
@@ -472,7 +472,9 @@ export const fr = {
   "cloud.unshare": "Ne plus partager",
   "cloud.prefsSync": "Synchroniser catégories et langues entre appareils",
   "cloud.prefsSyncDesc": "Les catégories désactivées d’une source du compte suivent vos autres appareils.",
-  "cloud.badgeShared": "Cloud · partagée avec {n} appareils",
+  "cloud.badgeShared_one": "Cloud · partagée avec {count} appareil",
+  "cloud.badgeShared_many": "Cloud · partagée avec {count} d’appareils",
+  "cloud.badgeShared_other": "Cloud · partagée avec {count} appareils",
   "cloud.badgeAll": "Cloud · partagée avec tous les appareils",
   "cloud.badgeCloud": "Cloud",
   "cloud.badgeFrom": "Cloud · depuis {n}",
@@ -489,8 +491,5 @@ export const fr = {
   "a11y.volume": "Volume",
   "key.space": "Espace",
   "key.esc": "Échap",
-  "key.enter": "Entrée",
-} as const;
-
-export type Key = keyof typeof fr;
-export type Dict = Record<Key, string>;
+  "key.enter": "Entrée"
+}

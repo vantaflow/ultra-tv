@@ -1,6 +1,4 @@
-import type { Dict } from "./fr";
-
-export const es: Dict = {
+{
   "app.name": "Ultra TV",
   "nav.home": "Inicio",
   "nav.live": "En directo",
@@ -11,7 +9,6 @@ export const es: Dict = {
   "nav.favorites": "Favoritos",
   "nav.settings": "Ajustes",
   "nav.account": "Suscripción",
-
   "common.watch": "Ver",
   "common.play": "Reproducir",
   "common.resume": "Continuar",
@@ -42,7 +39,9 @@ export const es: Dict = {
   "common.series": "series",
   "common.addFav": "Añadir a favoritos",
   "common.removeFav": "Quitar de favoritos",
-  "common.seasons": "{n} temporadas",
+  "common.seasons_one": "{count} temporada",
+  "common.seasons_many": "{count} de temporadas",
+  "common.seasons_other": "{count} temporadas",
   "common.season": "Temporada {n}",
   "common.episodeShort": "E{n}",
   "common.minLeft": "Quedan {t}",
@@ -56,10 +55,15 @@ export const es: Dict = {
   "common.chooseCategory": "Categoría",
   "common.langsLabel": "Idiomas: {l}",
   "common.langsAll": "todos",
-  "common.items": "{n} elementos",
-  "common.channelsCount": "{n} canales",
-  "common.sections": "{n} secciones",
-
+  "common.items_one": "{n} elemento",
+  "common.items_many": "{n} de elementos",
+  "common.items_other": "{n} elementos",
+  "common.channelsCount_one": "{count} canal",
+  "common.channelsCount_many": "{count} de canales",
+  "common.channelsCount_other": "{count} canales",
+  "common.sections_one": "{count} sección",
+  "common.sections_many": "{count} de secciones",
+  "common.sections_other": "{count} secciones",
   "home.featured": "Destacado",
   "home.resume": "Continuar viendo",
   "home.favChannels": "Canales favoritos",
@@ -97,13 +101,11 @@ export const es: Dict = {
   "settings.traktListsHint": "Hasta 5 filas, solo títulos disponibles en tu lista",
   "home.guide": "Guía TV",
   "home.emptyHero": "Elige un canal en directo para empezar.",
-
   "live.preview": "La vista previa empieza al seleccionar un canal.",
   "live.previewHint": "Intro: reproducir · doble clic o F: pantalla completa",
   "live.filterChannels": "Filtrar canales…",
   "live.noChannels": "No hay canales en esta categoría.",
   "live.nowNext": "Programa",
-
   "guide.title": "Guía TV",
   "guide.today": "Hoy",
   "guide.tomorrow": "Mañana",
@@ -115,7 +117,6 @@ export const es: Dict = {
   "guide.loadEpg": "Cargar la guía",
   "guide.withEpg": "Canales con guía",
   "guide.capped": "Se muestran los primeros {n} canales; elija una categoría para ver más.",
-
   "vod.sortBy": "Ordenar",
   "vod.minRating": "Nota mínima",
   "vod.anyRating": "Cualquier nota",
@@ -141,7 +142,6 @@ export const es: Dict = {
   "vod.infoError": "No se pudo cargar la ficha. La reproducción sigue disponible.",
   "vod.resumeEp": "Continuar T{s} E{e}",
   "vod.startEp": "Ver T{s} E{e}",
-
   "search.title": "Buscar",
   "search.placeholder": "Canales, películas, series…",
   "search.channels": "Canales",
@@ -152,12 +152,10 @@ export const es: Dict = {
   "search.empty": "Sin resultados para «{q}».",
   "search.hint": "Escribe al menos 2 letras. Atajo: / o Ctrl/Cmd + K.",
   "search.searching": "Buscando…",
-
   "fav.title": "Favoritos",
   "fav.emptyTitle": "Aún no hay favoritos",
   "fav.emptyBody": "Pulsa el corazón de un canal, película o serie para añadirlo aquí.",
   "fav.browse": "Explorar el directo",
-
   "player.live": "En directo",
   "player.pause": "Pausa",
   "player.back10": "Retroceder 10 segundos",
@@ -209,7 +207,6 @@ export const es: Dict = {
   "player.stat.buffer": "Búfer",
   "player.stat.dropped": "Fotogramas perdidos",
   "player.stat.codec": "Flujo",
-
   "set.title": "Ajustes",
   "set.sources": "Fuentes",
   "set.display": "Pantalla",
@@ -283,7 +280,9 @@ export const es: Dict = {
   "set.manageCats": "Gestionar categorías",
   "set.catsSummary": "{a} activas · {d} desactivadas",
   "set.catsApply": "Aplicar y sincronizar",
-  "set.catsPending": "{n} cambio(s) por aplicar",
+  "set.catsPending_one": "{count} cambio por aplicar",
+  "set.catsPending_many": "{count} de cambios por aplicar",
+  "set.catsPending_other": "{count} cambios por aplicar",
   "set.catsAllLangs": "Todos los idiomas",
   "set.catsMoreLangs": "Más idiomas ({n})",
   "set.catsFewerLangs": "Menos idiomas",
@@ -312,7 +311,6 @@ export const es: Dict = {
   "set.sk.nav": "Moverse por una lista",
   "set.sk.open": "Abrir / reproducir",
   "set.sk.esc": "Volver",
-
   "src.title": "Añadir una fuente",
   "src.step": "PASO {a} DE {b}",
   "src.which": "¿De dónde vienen tus canales?",
@@ -373,16 +371,18 @@ export const es: Dict = {
   "src.macHint": "Cifras y letras de la A a la F: los dos puntos se añaden solos.",
   "src.portalLogin": "Usuario del portal (opcional)",
   "src.portalPassword": "Contraseña del portal (opcional)",
-
   "lang.title": "¿En qué idiomas ves la televisión?",
   "lang.eyebrow": "IDIOMAS DETECTADOS EN TU FUENTE",
   "lang.lead": "Solo se descarga y muestra el contenido en estos idiomas. Sincronización más rápida, aplicación más fluida. Se puede cambiar en cualquier momento.",
-  "lang.summary": "{n} idioma(s) · {c} categorías",
+  "lang.summary_one": "{count} idioma · {c} categorías",
+  "lang.summary_many": "{count} de idiomas · {c} categorías",
+  "lang.summary_other": "{count} idiomas · {c} categorías",
   "lang.all": "Todos los idiomas",
   "lang.other": "Otros",
-  "lang.cats": "{n} categorías",
+  "lang.cats_one": "{count} categoría",
+  "lang.cats_many": "{count} de categorías",
+  "lang.cats_other": "{count} categorías",
   "lang.detecting": "Analizando tu fuente…",
-
   "sync.eyebrow": "PRIMERA SINCRONIZACIÓN",
   "sync.title": "Preparando tu catálogo",
   "sync.lead": "Los canales en directo llegan primero. Películas, series y guía TV siguen cargando en segundo plano.",
@@ -401,7 +401,6 @@ export const es: Dict = {
   "sync.cancelled": "Sincronización cancelada.",
   "sync.background": "Actualizando…",
   "sync.openApp": "Abrir Ultra TV",
-
   "state.noSourceTitle": "Ninguna fuente configurada",
   "state.noSourceBody": "Añade una suscripción IPTV para empezar.",
   "state.emptyCatalog": "Catálogo vacío",
@@ -417,13 +416,11 @@ export const es: Dict = {
   "state.updateLater": "También se instalará al cerrar la aplicación.",
   "state.later": "Más tarde",
   "state.downloading": "Descargando la actualización… {p} %",
-
   "profile.who": "¿Quién está viendo?",
   "profile.main": "Principal",
   "profile.add": "Añadir",
   "profile.manage": "Gestionar perfiles",
   "profile.default": "Perfil",
-
   "pin.title": "Contenido protegido",
   "toast.favAdded": "Añadido a favoritos",
   "toast.favRemoved": "Quitado de favoritos",
@@ -456,7 +453,9 @@ export const es: Dict = {
   "cloud.syncDone": "Nube sincronizada: {a} añadida(s), {u} modificada(s), {r} retirada(s)",
   "cloud.upToDate": "Nube al día",
   "cloud.devices": "Dispositivos de la cuenta",
-  "cloud.devicesCount": "{n} dispositivo(s) en la cuenta",
+  "cloud.devicesCount_one": "{count} dispositivo en la cuenta",
+  "cloud.devicesCount_many": "{count} de dispositivos en la cuenta",
+  "cloud.devicesCount_other": "{count} dispositivos en la cuenta",
   "cloud.thisDevice": "este dispositivo",
   "cloud.unpair": "Desvincular este dispositivo",
   "cloud.unpairConfirm": "¿Desvincular este dispositivo de la nube? Las fuentes se conservan pero ya no se sincronizarán.",
@@ -473,7 +472,9 @@ export const es: Dict = {
   "cloud.unshare": "Dejar de compartir",
   "cloud.prefsSync": "Sincronizar categorías e idiomas entre dispositivos",
   "cloud.prefsSyncDesc": "Las categorías desactivadas de una fuente de la nube siguen a tus otros dispositivos.",
-  "cloud.badgeShared": "Nube · compartida con {n} dispositivos",
+  "cloud.badgeShared_one": "Nube · compartida con {count} dispositivo",
+  "cloud.badgeShared_many": "Nube · compartida con {count} de dispositivos",
+  "cloud.badgeShared_other": "Nube · compartida con {count} dispositivos",
   "cloud.badgeAll": "Nube · compartida con todos los dispositivos",
   "cloud.badgeCloud": "Nube",
   "cloud.badgeFrom": "Nube · desde {n}",
@@ -490,5 +491,5 @@ export const es: Dict = {
   "a11y.volume": "Volumen",
   "key.space": "Espacio",
   "key.esc": "Esc",
-  "key.enter": "Intro",
-};
+  "key.enter": "Intro"
+}

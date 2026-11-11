@@ -219,13 +219,13 @@ export function Onboarding() {
             {detected.map((l) => (
               <button key={l.code} className="lang-tile" role="checkbox" aria-checked={chosen.has(l.code)} onClick={() => setChosen((c) => { const n = new Set(c); if (n.has(l.code)) n.delete(l.code); else n.add(l.code); return n; })}>
                 <span className="code">{l.code === OTHER_LANG ? "…" : l.code}</span>
-                <span><b style={{ display: "block", fontSize: "0.9375rem" }}>{langLabel(l.code, prefs.lang, t)}</b><span className="n">{t("lang.cats", { n: l.categories })}</span></span>
+                <span><b style={{ display: "block", fontSize: "0.9375rem" }}>{langLabel(l.code, prefs.lang, t)}</b><span className="n">{t("lang.cats", { count: l.categories })}</span></span>
               </button>
             ))}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <button className="btn" onClick={() => setChosen(chosen.size === detected.length ? new Set() : new Set(detected.map((l) => l.code)))}>{t("lang.all")}</button>
-            <span className="muted grow">{t("lang.summary", { n: chosen.size, c: catsTotal })}</span>
+            <span className="muted grow">{t("lang.summary", { count: chosen.size, c: catsTotal })}</span>
             <button className="btn primary lg" disabled={chosen.size === 0} onClick={() => setStep("sync")}>{t("common.continue")}</button>
           </div>
         </main>

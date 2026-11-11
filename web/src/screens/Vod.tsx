@@ -79,7 +79,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
         <div className="page-head">
           <div>
             <h1>{title}</h1>
-            <div className="sub">{rows.count != null ? t("common.items", { n: rows.count.toLocaleString(prefs.lang) }) : t("common.loading")}{catLabel ? ` · ${catLabel}` : ""}</div>
+            <div className="sub">{rows.count != null ? t("common.items", { count: rows.count, n: rows.count.toLocaleString(prefs.lang) }) : t("common.loading")}{catLabel ? ` · ${catLabel}` : ""}</div>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <div className="search-box" style={{ width: "14rem" }}>
