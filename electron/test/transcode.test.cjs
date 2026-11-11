@@ -25,7 +25,8 @@ test("transcodeArgs : vidéo copiée, audio AAC, MPEG-TS, -ss avant -i", () => {
 
 test("ffmpegCandidates : embarqué d'abord, Homebrew sur macOS", () => {
   const c = ffmpegCandidates({ resourcesPath: "/app/res", platform: "darwin", env: {} });
-  assert.strictEqual(c[0], "/app/res/ffmpeg/ffmpeg");
+  // Chemin construit avec le séparateur du système qui lance les tests (\ sous Windows).
+  assert.strictEqual(c[0], require("node:path").join("/app/res", "ffmpeg", "ffmpeg"));
   assert.ok(c.includes("/opt/homebrew/bin/ffmpeg"));
   assert.strictEqual(ffmpegCandidates({ platform: "win32", env: {} }).at(-1), "ffmpeg.exe");
 });

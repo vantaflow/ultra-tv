@@ -2,7 +2,7 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [1.2.83] — 2026-11-11 (Android) · Bureau 1.2.38 · Worker
+## [1.2.83] — 2026-11-11 (Android) · Bureau 1.2.39 · Worker
 
 ### Nouveau
 - **« Depuis le téléphone »** (Réglages › Sources › Ajouter une source, et accueil sans source) : la TV affiche un QR
