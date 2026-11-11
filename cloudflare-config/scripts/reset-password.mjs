@@ -37,10 +37,17 @@ const raw = wrangler(["get", `acct:${login}`], { stdio: ["ignore", "pipe", "igno
 let acct;
 try { acct = JSON.parse(raw); } catch { console.error(`Compte « ${login} » introuvable.`); process.exit(1); }
 
-const pw = await ask("Nouveau mot de passe (10 caractères min.) : ");
+// Sans terminal interactif (ex. « ! » de Claude Code) : mot de passe lu dans UTV_NEW_PASSWORD.
+const fromEnv = process.env.UTV_NEW_PASSWORD;
+let pw;
+if (fromEnv) pw = fromEnv;
+else if (!process.stdin.isTTY) { console.error("Pas de terminal interactif : lancez le script dans PowerShell, ou définissez UTV_NEW_PASSWORD."); process.exit(1); }
+else {
+  pw = await ask("Nouveau mot de passe (10 caractères min.) : ");
+  const pw2 = await ask("Confirmer : ");
+  if (pw !== pw2) { console.error("Les deux saisies diffèrent."); process.exit(1); }
+}
 if (pw.length < 10) { console.error("Trop court."); process.exit(1); }
-const pw2 = await ask("Confirmer : ");
-if (pw !== pw2) { console.error("Les deux saisies diffèrent."); process.exit(1); }
 
 acct.passwordHash = await hashPassword(pw);
 delete acct.salt;
