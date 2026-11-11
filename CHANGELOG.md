@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
+- Bureau : les contrôles du lecteur réapparaissaient sans arrêt pendant la lecture (Windows émet des `mousemove` sans déplacement). Ils ne s'affichent plus qu'au vrai mouvement de la souris (seuil de 3 px), à une touche ou à un clic, et se masquent après 3 s ; ils restent affichés tant que la barre est survolée ou focalisée ou qu'un panneau est ouvert
 - Bureau : une synchro dont le serveur ne répond pas (liste des films, des séries ou du direct en erreur, playlist M3U vide ou page d'erreur) « réussissait » avec une partie vide et remplaçait le bon catalogue : toutes les catégories disparaissaient. Elle échoue désormais franchement et l'ancien catalogue reste en place
 - Bureau : catégories (Séries) qui disparaissaient après la mise à jour d'un portail Stalker (le préfixe « s: » des catégories du module séries faisait perdre les choix d'activation, puis le filtre de langues les masquait toutes) ; les choix sont retrouvés par nom, et un catalogue local vide pour une source déjà synchronisée est reconstruit automatiquement au démarrage (message « Catalogue reconstruit après la mise à jour »)
 
