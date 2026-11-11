@@ -5,6 +5,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.cardPhone
+import com.ultratv.tv.nativeapp.i18n.phoneReceived
 import com.ultratv.tv.nativeapp.i18n.stalkerFailed
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
 import android.content.Intent
@@ -91,7 +93,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, PHONE, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -233,6 +235,12 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     // Accueil vide › « Depuis le cloud » : ouvre directement l'appairage.
     val cloudReq by com.ultratv.tv.nativeapp.StartupNav.cloudPairRequest.collectAsState()
     androidx.compose.runtime.LaunchedEffect(cloudReq) { if (cloudReq) { com.ultratv.tv.nativeapp.StartupNav.cloudPairRequest.value = false; vm.startPairing() } }
+    val webSendUi by vm.webSendUi.collectAsState()
+    val phoneReceived = D.phoneReceived
+    val stalkerFailed = D.stalkerFailed
+    // Accueil vide › « Depuis le téléphone » : ouvre directement la fenêtre d'envoi.
+    val phoneReq by com.ultratv.tv.nativeapp.StartupNav.phoneSendRequest.collectAsState()
+    androidx.compose.runtime.LaunchedEffect(phoneReq) { if (phoneReq) { com.ultratv.tv.nativeapp.StartupNav.phoneSendRequest.value = false; vm.startWebSend(phoneReceived, stalkerFailed) } }
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf(OpenDialog.NONE) }
@@ -338,9 +346,12 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud)), null,
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
+            // « Depuis le téléphone » : pour TV et box seulement (sur un téléphone, on est déjà sur l'appareil qui saisirait).
+            + (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) emptyList() else listOf(OpenDialog.PHONE to D.cardPhone)), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
+        OpenDialog.PHONE -> { dialog = OpenDialog.NONE; vm.startWebSend(phoneReceived, stalkerFailed) }
         OpenDialog.XTREAM -> XtreamDialog({ dialog = OpenDialog.NONE }) { n, u, user, pw -> vm.addAndSync(n, u, user, pw); dialog = OpenDialog.NONE }
         OpenDialog.M3U_URL -> M3uDialog({ dialog = OpenDialog.NONE }) { n, u -> vm.addM3uAndSync(n, u); dialog = OpenDialog.NONE }
         OpenDialog.STALKER -> {
@@ -391,6 +402,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     val wantPairing by com.ultratv.tv.nativeapp.StartupNav.startPairing.collectAsState()
     androidx.compose.runtime.LaunchedEffect(wantPairing) { if (wantPairing) { com.ultratv.tv.nativeapp.StartupNav.startPairing.value = false; vm.startPairing() } }
     CloudPairingDialog(pairingUi, onCancel = { vm.cancelPairing() }, onRetry = { vm.startPairing() })
+    PhoneSendDialog(webSendUi, onCancel = { vm.cancelWebSend() }, onRetry = { vm.startWebSend(phoneReceived, stalkerFailed) })
 }
 
 // ───────────────────────── Synchronisation ─────────────────────────

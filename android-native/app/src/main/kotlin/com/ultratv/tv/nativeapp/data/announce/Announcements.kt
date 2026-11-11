@@ -81,7 +81,7 @@ class AnnouncementRepository @Inject constructor(
     private val http: OkHttpClient,
     private val prefs: UserPreferencesStore,
 ) {
-    private val sp = ctx.getSharedPreferences("announcements", Context.MODE_PRIVATE)
+    private val sp = ctx.getSharedPreferences(com.ultratv.tv.nativeapp.data.config.InstallId.PREFS, Context.MODE_PRIVATE)
 
     /** null : réseau ou Worker indisponible (on garde l'état, on réessaiera). */
     suspend fun fetch(audience: String): List<Announcement>? = withContext(Dispatchers.IO) {
@@ -106,9 +106,7 @@ class AnnouncementRepository @Inject constructor(
     }
 
     /** Identifiant aléatoire propre à cette installation (aucun lien avec le compte ni le matériel). */
-    private fun installId(): String = sp.getString("install", null) ?: java.util.UUID.randomUUID().toString().also {
-        sp.edit().putString("install", it).apply()
-    }
+    private fun installId(): String = com.ultratv.tv.nativeapp.data.config.InstallId.of(sp)
 
     fun history(): List<ReceivedAnnouncement> = runCatching {
         val arr = org.json.JSONArray(sp.getString("history", "[]"))

@@ -93,6 +93,11 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 |---|---|---|---|
 | POST | `/api/pair/start` | aucune (limité par IP : 10/h) | La TV demande un code et un secret de sondage |
 | POST | `/api/pair/poll` | secret de sondage | La TV récupère son jeton (une seule fois) |
+| POST | `/api/envoi/start` | aucune (débit par IP) | « Depuis le téléphone » : la TV obtient un code de 6 caractères et un secret |
+| POST | `/api/envoi/send` | code (débit et verrouillage par IP) | Le téléphone envoie la source (Xtream, M3U, Stalker), chiffrée et gardée 15 min au plus |
+| POST | `/api/envoi/poll` | code + secret | La TV récupère la source (une seule fois, puis supprimée) |
+| GET | `/envoyer?c=CODE` | aucune | Page publique d'envoi (sans compte) |
+| POST | `/api/anon/ping` | aucune (débit par IP) | Relevé anonyme d'une installation sans compte (`anon:<empreinte>`, TTL 180 jours) |
 | GET | `/api/config` | `Bearer` jeton d'appareil | Fournisseurs déchiffrés pour cet appareil |
 | POST | `/api/device/rotate` | `Bearer` | Nouveau jeton, l'ancien meurt |
 | POST | `/api/event`, `/api/crash` | `Bearer` | Télémétrie nettoyée et bornée |

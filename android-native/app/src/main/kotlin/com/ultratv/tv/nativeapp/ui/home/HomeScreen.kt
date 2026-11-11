@@ -52,6 +52,7 @@ import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.cardPhone
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
 import com.ultratv.tv.nativeapp.i18n.traktListRow
@@ -97,6 +98,7 @@ fun HomeScreen(
     onGoSeries: () -> Unit,
     onGoSettings: () -> Unit,
     onGoCloud: () -> Unit = {},
+    onGoPhone: () -> Unit = {},
     onGoGuide: () -> Unit = {},
     onGoSearch: () -> Unit = {},
     onGoFavorites: () -> Unit = {},
@@ -170,7 +172,7 @@ fun HomeScreen(
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
                     when (slot) {
                         HomeTopSlot.HERO -> if (h != null) Hero(h, onOpen = openHero, onGuide = onGoGuide, takeFocus = !heroFocusDone, onFocused = onHeroFocused)
-                        HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud)
+                        HomeTopSlot.NO_SOURCE -> EmptyCard(D.homeNoSource, D.syncCloudHint, D.addSource, onGoSettings, D.cardCloud, onGoCloud, action3 = D.cardPhone, onAction3 = onGoPhone)
                         // Sources héritées non prises en charge seulement (ex. Stalker, retiré en 1.1.1) : rien ne se chargera, on le dit.
                         HomeTopSlot.UNSUPPORTED -> EmptyCard(D.unsupportedSource, D.unsupportedSourceHint, D.openSourceSettings, onGoSettings, takeFocus = false)
                         // Source en erreur : message lisible, bouton explicite, aucun focus d'office (l'utilisateur reste sur le rail : « Accueil » n'ouvre pas les Réglages).
@@ -319,7 +321,7 @@ private fun Hero(h: HeroItem, onOpen: (HeroItem) -> Unit, onGuide: () -> Unit, t
 }
 
 @Composable
-private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit, action2: String? = null, onAction2: () -> Unit = {}, takeFocus: Boolean = true) {
+private fun EmptyCard(title: String, hint: String, action: String, onAction: () -> Unit, action2: String? = null, onAction2: () -> Unit = {}, takeFocus: Boolean = true, action3: String? = null, onAction3: () -> Unit = {}) {
     Column(
         Modifier.fillMaxWidth().padding(end = 96.design).clip(RoundedCornerShape(32.design)).background(Ux.SurfaceDeep).padding(56.design),
         verticalArrangement = Arrangement.spacedBy(20.design),
@@ -332,6 +334,7 @@ private fun EmptyCard(title: String, hint: String, action: String, onAction: () 
         Row(horizontalArrangement = Arrangement.spacedBy(24.design)) {
             PillButton(action, onClick = onAction, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.focusRequester(requester).onFocusChanged { focused = it.isFocused })
             if (action2 != null) PillButton(action2, onClick = onAction2, weight = FontWeight.Bold)
+            if (action3 != null) PillButton(action3, onClick = onAction3, weight = FontWeight.Bold)
         }
     }
 }

@@ -139,7 +139,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
 }
 
 @Composable
-private fun Step(n: Int, text: String) {
+internal fun Step(n: Int, text: String) {
     Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.Top) {
         Text("$n", color = Ux.AccentInk, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx)
         Text(text, color = Ux.Text, fontFamily = Manrope, fontSize = 28.spx, lineHeight = 36.spx, maxLines = 2)
@@ -147,7 +147,7 @@ private fun Step(n: Int, text: String) {
 }
 
 @Composable
-private fun CodeBoxes(code: String) {
+internal fun CodeBoxes(code: String) {
     // Les 8 cases + le tiret doivent TOUJOURS tenir : à 72 px fixes elles débordaient
     // de la colonne sur une TV 1080p et les deux derniers caractères étaient coupés
     // (code saisi incomplet → « code invalide »). On réduit les cases à la largeur dispo.

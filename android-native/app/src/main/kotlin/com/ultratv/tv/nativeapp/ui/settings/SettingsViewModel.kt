@@ -23,6 +23,14 @@ sealed interface PairingUi {
     data class Failed(val message: String) : PairingUi
 }
 
+/** Fenêtre « Depuis le téléphone » (envoi de source depuis le web, sans compte). */
+sealed interface WebSendUi {
+    data object Idle : WebSendUi
+    data object Requesting : WebSendUi
+    data class ShowCode(val code: String, val sendUrl: String, val address: String, val expiresInSec: Int) : WebSendUi
+    data object Failed : WebSendUi
+}
+
 data class SettingsState(
     val providers: List<ProviderEntity> = emptyList(),
     val syncing: Boolean = false,
@@ -41,6 +49,8 @@ class SettingsViewModel @Inject constructor(
     private val sync: com.ultratv.tv.nativeapp.data.sync.SyncCoordinator,
     private val cloudSync: com.ultratv.tv.nativeapp.data.config.CloudSyncManager,
     private val syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
+    private val webSend: com.ultratv.tv.nativeapp.data.config.WebSend,
+    private val installIds: com.ultratv.tv.nativeapp.data.config.InstallIdStore,
 ) : ViewModel() {
 
     // ---- Synchro cloud multi-appareils ----
@@ -193,6 +203,60 @@ class SettingsViewModel @Inject constructor(
     fun cancelPairing() {
         pairingJob?.cancel()
         _pairing.value = PairingUi.Idle
+    }
+
+    // ---- Envoi d'une source depuis un téléphone / un ordinateur (sans compte) ----
+
+    private val _webSendUi = MutableStateFlow<WebSendUi>(WebSendUi.Idle)
+    val webSendUi: StateFlow<WebSendUi> = _webSendUi.asStateFlow()
+    private var webSendJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Demande un code, l'affiche (avec son QR), attend l'envoi du téléphone puis ajoute la source EXACTEMENT comme les
+     * fenêtres Xtream / M3U / Stalker (même ajout, même synchronisation). [receivedText] / [stalkerFailedText] : libellés
+     * localisés fournis par l'écran. L'identifiant d'installation n'est transmis que si la télémétrie est activée.
+     */
+    fun startWebSend(receivedText: String, stalkerFailedText: String) {
+        val base = validWorkerUrl(workerBaseUrl.value)
+        if (base == null) {
+            _message.value = "Set a valid https:// Worker URL first."
+            return
+        }
+        webSendJob?.cancel()
+        _webSendUi.value = WebSendUi.Requesting
+        webSendJob = viewModelScope.launch {
+            val install = if (prefs.flow.first().telemetryEnabled) installIds.get() else null
+            webSend.run(base, install).collect { ev ->
+                when (ev) {
+                    is com.ultratv.tv.nativeapp.data.config.WebSendEvent.CodeReady -> _webSendUi.value = WebSendUi.ShowCode(
+                        ev.code,
+                        com.ultratv.tv.nativeapp.data.config.WebSendLogic.sendUrl(base, ev.code),
+                        com.ultratv.tv.nativeapp.data.config.WebSendLogic.shortAddress(base),
+                        ev.expiresInSec,
+                    )
+                    is com.ultratv.tv.nativeapp.data.config.WebSendEvent.Received -> {
+                        _webSendUi.value = WebSendUi.Idle
+                        com.ultratv.tv.nativeapp.ui.common.Toaster.ok(receivedText)
+                        addWebSource(ev.source, stalkerFailedText)
+                    }
+                    com.ultratv.tv.nativeapp.data.config.WebSendEvent.Expired,
+                    is com.ultratv.tv.nativeapp.data.config.WebSendEvent.Failed -> _webSendUi.value = WebSendUi.Failed
+                }
+            }
+        }
+    }
+
+    fun cancelWebSend() {
+        webSendJob?.cancel()
+        _webSendUi.value = WebSendUi.Idle
+    }
+
+    private fun addWebSource(s: com.ultratv.tv.nativeapp.data.config.WebSource, stalkerFailedText: String) {
+        when (s.kind) {
+            "XTREAM" -> addAndSync(s.name, s.url, s.username, s.password)
+            "M3U" -> addM3uAndSync(s.name, s.url)
+            "STALKER" -> addStalkerAndSync(s.name, s.url, s.mac, s.username, s.password, stalkerFailedText)
+        }
     }
 
     /** Oublie le jeton local. Pour le révoquer côté serveur, supprimer l'appareil dans le tableau de bord. */

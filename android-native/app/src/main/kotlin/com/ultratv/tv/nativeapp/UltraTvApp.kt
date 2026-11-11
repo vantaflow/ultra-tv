@@ -46,6 +46,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var prefsStore: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore>
     @Inject lateinit var liveOrderBackfill: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.LiveOrderBackfill>
     @Inject lateinit var cloudSync: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.CloudSyncManager>
+    @Inject lateinit var anonPing: dagger.Lazy<com.ultratv.tv.nativeapp.data.config.AnonPingReporter>
 
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
@@ -146,6 +147,10 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                 com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
         }
+
+        // Relevé anonyme d'installation (appareils sans compte) : au plus une fois par jour, seulement si la télémétrie est
+        // activée. Différé de quelques secondes : rien d'urgent au démarrage, jamais bloquant.
+        bgScope.launch { kotlinx.coroutines.delay(10_000); runCatching { anonPing.get().reportIfDue() } }
 
         // Google TV : Watch Next + chaîne Favoris, alimentés par la base (sans effet hors Android TV).
         // Démarrée après le premier écran : ses observateurs de base n'ont rien d'urgent.

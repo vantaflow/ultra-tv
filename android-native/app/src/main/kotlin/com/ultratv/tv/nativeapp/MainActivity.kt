@@ -82,6 +82,8 @@ object StartupNav {
     val debugRub = MutableStateFlow<Int?>(null)
     /** Demande d'appairage cloud depuis un autre écran (accueil vide) : Réglages › Sources la consomme. */
     val cloudPairRequest = MutableStateFlow(false)
+    /** Demande d'envoi depuis le téléphone (accueil vide) : Réglages › Sources ouvre la fenêtre « Depuis le téléphone ». */
+    val phoneSendRequest = MutableStateFlow(false)
     /** Demande d'ouverture de la Recherche (touche Recherche / micro de la télécommande), depuis n'importe quel écran. */
     val searchRequest = MutableStateFlow(0)
     /** Build debug : requête préremplie (Recherche) et thème forcé (captures). */
@@ -555,6 +557,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController) {
                 onGoSeries = { nav.navigate(Routes.SERIES) },
                 onGoSettings = { nav.navigate(Routes.SETTINGS) },
                 onGoCloud = { StartupNav.cloudPairRequest.value = true; nav.navigate(Routes.SETTINGS) },
+                onGoPhone = { StartupNav.phoneSendRequest.value = true; nav.navigate(Routes.SETTINGS) },
                 onGoGuide = { nav.navigate(Routes.GUIDE) },
                 onGoSearch = { nav.navigate(Routes.SEARCH) },
                 onGoFavorites = { nav.navigate(Routes.FAVORITES) },
