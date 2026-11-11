@@ -9,6 +9,7 @@ import { PlayerHost } from "@/player/PlayerHost";
 import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
+import { SyncPill } from "@/ui/SyncPill";
 import { resolveTheme, usePrefs } from "@/state/prefs";
 import { startSourcesWatcher, useActiveSource, useSources } from "@/state/sources";
 import { isStaleSyncing, needsFirstSync } from "@/lib/syncPolicy";
@@ -182,6 +183,7 @@ function Shell() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      {!bare && <SyncPill />}
       <Toasts />
       <UpdateReady />
     </div>

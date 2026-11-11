@@ -400,6 +400,7 @@
   "sync.failed": "La synchronisation a échoué",
   "sync.cancelled": "Synchronisation annulée.",
   "sync.background": "Mise à jour…",
+  "sync.catalogUpdate": "Mise à jour du catalogue… {p} %",
   "sync.openApp": "Ouvrir Ultra TV",
   "state.noSourceTitle": "Aucune source configurée",
   "state.noSourceBody": "Ajoutez un abonnement IPTV pour commencer.",

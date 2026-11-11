@@ -37,6 +37,10 @@ export const seriesCol = (cid: number, cat: string | null, sort: VodSort) => vod
 export const categoriesOf = (cid: number, kind: Kind): Promise<CategoryRow[]> =>
   db.categories.where("[sourceId+kind]").equals([cid, kind]).sortBy("ord");
 
+/** Catégories affichées (activées et non vides) d'une génération de catalogue : requête des écrans Direct, Films et Séries. */
+export const visibleCategories = async (cid: number, kind: Kind): Promise<CategoryRow[]> =>
+  cid ? (await categoriesOf(cid, kind)).filter((c) => c.enabled && c.count > 0) : [];
+
 export const LEGACY_SCAN_LIMIT = 2000;
 
 /**

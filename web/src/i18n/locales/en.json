@@ -393,6 +393,7 @@
   "sync.failed": "Sync failed",
   "sync.cancelled": "Sync cancelled.",
   "sync.background": "Updating…",
+  "sync.catalogUpdate": "Updating the catalog… {p} %",
   "sync.openApp": "Open Ultra TV",
   "state.noSourceTitle": "No source configured",
   "state.noSourceBody": "Add an IPTV subscription to get started.",
