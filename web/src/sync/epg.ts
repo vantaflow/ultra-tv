@@ -7,6 +7,7 @@ import { hasGzipMagic } from "@/lib/gzip";
 import { transportFetch, type Transport } from "@/net/transport";
 import { xmltvUrl, xtreamJson } from "@/net/xtream";
 import { credsOf } from "./core";
+import { matchByName, type FeedChannel, type NameMatch, type NameTarget } from "./epgNames";
 
 
 const XMLTV_TIME = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:\s*([+-])(\d{2})(\d{2}))?/;
@@ -41,11 +42,22 @@ const A_CHAN = ATTR("channel");
 const TITLE = /<title\b[^>]*>([\s\S]*?)<\/title>/;
 const DESC = /<desc\b[^>]*>([\s\S]*?)<\/desc>/;
 
+const CHAN = /<channel\b([^>]*)>([\s\S]*?)<\/channel>/g;
+const A_ID = ATTR("id");
+const DISPLAY = /<display-name\b[^>]*>([\s\S]*?)<\/display-name>/g;
+const MAX_FEED_CHANNELS = 50_000;
+
 export interface EpgScan { push(chunk: string): void; end(): void }
 
-/** Extrait les programmes d'un flux de texte XMLTV (par blocs), sans jamais garder le document entier. */
+/**
+ * Extrait les programmes d'un flux de texte XMLTV (par blocs), sans jamais garder le document entier.
+ * [byName] : repli par nom pour les chaînes du guide dont l'identifiant n'est pas dans [wanted]. Les `<channel>` (qui précèdent
+ * les `<programme>`) sont lus en flux ; au premier programme, le rapprochement est calculé UNE fois. Seuls les programmes des
+ * chaînes retenues sont gardés.
+ */
 export function scanXmltv(
   wanted: Set<string>, from: number, to: number, emit: (rows: Omit<ProgramRow, "sourceId">[]) => void,
+  byName?: (feeds: FeedChannel[]) => NameMatch,
 ): EpgScan {
   let buf = "";
   let out: Omit<ProgramRow, "sourceId">[] = [];
@@ -54,6 +66,40 @@ export function scanXmltv(
   // Un même identifiant peut exister sous plusieurs casses dans le catalogue (« tf1.fr » et « TF1.fr ») : une ligne par variante.
   const index = new Map<string, string[]>();
   for (const w0 of wanted) { const w = String(w0); const k = w.toLowerCase(); index.set(k, [...(index.get(k) ?? []), w]); }
+  const feeds: FeedChannel[] = [];
+  let named = !byName;
+  const applyNames = () => {
+    if (!byName) return;
+    for (const [k, owns] of byName(feeds).index) {
+      const cur = index.get(k) ?? [];
+      for (const o of owns) if (!cur.includes(o)) cur.push(o);
+      index.set(k, cur);
+    }
+    feeds.length = 0;
+  };
+  /** Lit les `<channel>` placés avant le premier `<programme>` et les retire du tampon. */
+  const drainChannels = () => {
+    const stop = buf.indexOf("<programme");
+    const head = stop < 0 ? buf : buf.slice(0, stop);
+    CHAN.lastIndex = 0;
+    let last = 0;
+    let m: RegExpExecArray | null;
+    while ((m = CHAN.exec(head)) !== null) {
+      last = CHAN.lastIndex;
+      const id = A_ID.exec(m[1]!)?.[1];
+      if (!id || feeds.length >= MAX_FEED_CHANNELS) continue;
+      const names: string[] = [];
+      DISPLAY.lastIndex = 0;
+      let d: RegExpExecArray | null;
+      while ((d = DISPLAY.exec(m[2]!)) !== null) names.push(decodeXml(d[1]!).trim());
+      feeds.push({ id: decodeXml(id), names });
+    }
+    if (stop >= 0) { named = true; applyNames(); buf = buf.slice(stop); return; }
+    // Pas encore de programme : on ne garde que la balise `<channel` restée ouverte, le reste est déjà lu.
+    const open = head.lastIndexOf("<channel");
+    const rest = head.slice(open > last ? open : last);
+    buf = rest.length > 1 << 16 ? rest.slice(-64) : rest;
+  };
   const drain = (final: boolean) => {
     PROG.lastIndex = 0;
     let last = 0;
@@ -79,10 +125,12 @@ export function scanXmltv(
   return {
     push(chunk) {
       buf += chunk;
+      if (!named) drainChannels();
+      if (!named) return;
       if (buf.includes("</programme>")) drain(false);
-      else if (buf.length > 1 << 16 && !buf.includes("<programme")) buf = buf.slice(-32); // en-tête : liste de chaînes
+      else if (buf.length > 1 << 16 && !buf.includes("<programme")) buf = buf.slice(-32); // en-tête sans programme
     },
-    end() { drain(true); },
+    end() { if (named) drain(true); },
   };
 }
 
@@ -140,13 +188,21 @@ async function syncEpgUrl(source: Source, t: Transport, url: string, signal: Abo
   if (!sourceId) return 0;
 
   const wanted = new Set<string>();
-  await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).each((c) => { if (c.epg) wanted.add(c.epg); });
+  const chans: NameTarget[] = [];
+  await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).each((c) => {
+    if (c.epg) wanted.add(c.epg);
+    if (!c.sep && c.id != null) chans.push({ id: c.id, name: c.name, epg: c.epg, country: c.country });
+  });
   if (append) {
     const have = new Set<string>();
     await db.programs.where("[sourceId+end]").between([sourceId, Date.now()], [sourceId, Infinity]).each((p) => { have.add(p.epg); });
     for (const id of have) wanted.delete(id);
   }
-  if (wanted.size === 0) return 0;
+  // Rapprochement par nom (repli) : chaînes sans identifiant EPG, ou dont l'identifiant ne figure pas dans ce guide. En mode
+  // complément, seules celles restées sans programme sont visées.
+  const targets = append ? chans.filter((c) => !c.epg || wanted.has(c.epg)) : chans;
+  if (wanted.size === 0 && targets.length === 0) return 0;
+  let matched: NameMatch = { index: new Map(), assign: new Map() };
 
   const res = await transportFetch(t, url, { signal, userAgent: source.userAgent, referer: source.referer });
   const total = Number(res.headers.get("content-length")) || 0;
@@ -178,10 +234,12 @@ async function syncEpgUrl(source: Source, t: Transport, url: string, signal: Abo
 
   let written = 0;
   const pending: Promise<unknown>[] = [];
+  const wroteFor = new Set<string>();
   const scan = scanXmltv(wanted, from, to, (rows) => {
     written += rows.length;
+    for (const r of rows) wroteFor.add(r.epg);
     pending.push(db.programs.bulkAdd(rows.map((r) => ({ ...r, sourceId }))));
-  });
+  }, (feeds) => (matched = matchByName(feeds, targets)));
   try {
     const reader = stream.getReader();
     const dec = new TextDecoder("utf-8");
@@ -204,6 +262,10 @@ async function syncEpgUrl(source: Source, t: Transport, url: string, signal: Abo
     throw e;
   }
   if (!append) await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).filter((p) => (p.id ?? 0) <= oldMax).delete();
+  // Chaînes sans identifiant EPG rattachées par leur nom : elles prennent celui de la chaîne du guide (c'est lui que lit l'écran).
+  for (const [chanId, feedId] of matched.assign) {
+    if (wroteFor.has(feedId)) await db.channels.update(chanId, { epg: feedId });
+  }
   onProgress?.(1);
   return written;
 }
