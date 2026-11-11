@@ -625,6 +625,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBack = { nav.popBackStack() },
                 onOpenPerson = { name -> nav.navigate(Routes.person(name)) },
+                onOpenMovie = { mid -> nav.navigate(Routes.movieDetail(mid)) },
             )
         }
         screen(
@@ -651,6 +652,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 seriesId = id,
                 onPlayEpisode = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBack = { nav.popBackStack() },
+                onOpenPerson = { name -> nav.navigate(Routes.person(name)) },
             )
         }
         screen(Routes.SEARCH) {

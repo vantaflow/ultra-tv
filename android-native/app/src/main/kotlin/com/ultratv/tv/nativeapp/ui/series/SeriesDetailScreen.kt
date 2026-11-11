@@ -66,6 +66,7 @@ fun SeriesDetailScreen(
     seriesId: Long,
     onPlayEpisode: (url: String, title: String) -> Unit,
     onBack: () -> Unit = {},
+    onOpenPerson: (String) -> Unit = {},
     vm: SeriesDetailViewModel = hiltViewModel(),
 ) {
     val s by vm.series.collectAsState()
@@ -74,6 +75,7 @@ fun SeriesDetailScreen(
     val watched by vm.watched.collectAsState()
     val traktSeen by vm.traktWatchedEpisodes.collectAsState()
     val extRatings by vm.ratings.collectAsState()
+    val trailerUrl by vm.trailer.collectAsState()
     LaunchedEffect(seriesId) { vm.load(seriesId) }
 
     val series = s
@@ -83,13 +85,13 @@ fun SeriesDetailScreen(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(S.detailLoading, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx) }
         return
     }
-    val seasons = remember(eps) { eps.map { it.season }.distinct().sorted() }
+    val seasons = remember(eps) { com.ultratv.tv.nativeapp.ui.detail.seasonsOf(eps) }
     val progress = remember(watched) { watched.associateBy { it.remoteId } }
     // Épisode à reprendre : le dernier regardé non terminé, sinon le suivant du dernier terminé, sinon le tout premier.
     val target: EpisodeEntity? = remember(eps, watched, traktSeen) { resumeTarget(eps, watched, traktSeen) }
-    val resuming = target != null && progress[target.remoteId]?.let { it.positionMs > 0 } == true
+    val resuming = target != null && com.ultratv.tv.nativeapp.ui.detail.isResuming(progress[target.remoteId]?.positionMs)
     var season by remember(series.id) { mutableStateOf<Int?>(null) }
-    val activeSeason = season ?: target?.season ?: seasons.firstOrNull()
+    val activeSeason = com.ultratv.tv.nativeapp.ui.detail.activeSeasonOf(seasons, season, target?.season)
     val shown = remember(eps, activeSeason) { eps.filter { it.season == activeSeason } }
     // Téléchargements hors ligne de la série (par identifiant d'épisode) et avertissement « connexion » avant une lecture en ligne.
     val dlVm: com.ultratv.tv.nativeapp.ui.downloads.DownloadActionsViewModel = hiltViewModel()
@@ -172,105 +174,17 @@ fun SeriesDetailScreen(
         return
     }
 
-    val playRequester = remember { FocusRequester() }
-    var focused by remember { mutableStateOf(false) }
-    // Une seule fois par série, quand le bouton apparaît : clé stable (les épisodes rechargés changent d'identifiant interne).
-    RequestInitialFocus(playRequester, hasFocus = { focused }, key = series.remoteId to (target != null))
-
-    Row(
-        Modifier.fillMaxSize().background(Ux.Bg).padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design),
-        horizontalArrangement = Arrangement.spacedBy(64.design),
-    ) {
-        Column(Modifier.width(560.design).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(20.design)) {
-            BackLink(S.seriesTitle, onBack)
-            PosterImage(series.poster, series.name, Modifier.width(300.design).aspectRatio(2f / 3f), radius = 22)
-            Text(com.ultratv.tv.nativeapp.data.repo.TitleCleaner.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx, lineHeight = 59.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            val tc = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
-            val bits = listOfNotNull(series.year?.toString(), if (seasons.isNotEmpty()) D.seasonsCount(seasons.size) else null, tc.presentable(series.genre)) +
-                com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, series.rating?.takeIf { it > 0.0 && it <= 10.0 })
-            Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
-                bits.forEachIndexed { i, b ->
-                    if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-                    Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.design))
-                }
-                series.lang.takeIf { it.isNotBlank() }?.uppercase()?.let { l ->
-                    Box(Modifier.border(2.design, Ux.LineKey, RoundedCornerShape(8.design)).padding(horizontal = 12.design, vertical = 4.design)) {
-                        Text(l, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
-                    }
-                }
-            }
-            tc.presentable(series.plot)?.let {
-                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            }
-            Spacer(Modifier.weight(1f))
-            Row(horizontalArrangement = Arrangement.spacedBy(20.design), verticalAlignment = Alignment.CenterVertically) {
-                if (target != null) PillButton(
-                    if (resuming) D.resumeEpisode(target.season, target.episode) else D.playEpisodeLabel(target.season, target.episode),
-                    onClick = { vm.playEpisode(series.name, series.remoteId, series.providerId, target, onPlayEpisode) },
-                    heightPx = 76, hPadPx = 40, fontPx = 26, weight = FontWeight.Bold, iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
-                    modifier = Modifier.focusRequester(playRequester).onFocusChanged { focused = it.isFocused },
-                )
-                FavoriteButton(kind = "SERIES", remoteId = series.remoteId)
-                // Trakt : watchlist, note, saison / épisodes vus (rien si le compte n'est pas lié).
-                com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, eps, activeSeason)
-            }
-        }
-        Column(Modifier.weight(1f).fillMaxHeight().padding(top = 44.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
-            if (seasons.size > 1) LazyRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(12.design)) {
-                items(seasons, key = { it }) { n ->
-                    val sel = n == activeSeason
-                    FocusSurface(
-                        onClick = { season = n }, shape = RoundedCornerShape(28.design), bg = if (sel) Ux.Cta else Ux.Surface,
-                        modifier = Modifier.height(56.design),
-                    ) { f ->
-                        Box(Modifier.height(56.design).padding(horizontal = 28.design), contentAlignment = Alignment.Center) {
-                            Text(D.seasonLabel(n), color = if (f || sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
-                        }
-                    }
-                }
-            } else Spacer(Modifier.weight(1f))
-            if (shown.isNotEmpty()) PillButton(
-                dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) },
-                heightPx = 56, hPadPx = 28, fontPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download,
-            )
-            }
-            when {
-                shown.isEmpty() && loading -> Text(S.detailLoading, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
-                shown.isEmpty() -> Text(S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
-                else -> {
-                    // Entrer dans la liste (→ depuis « Lecture », en bas à gauche) : l'épisode à reprendre, sinon le premier —
-                    // et non l'épisode le plus proche à l'écran (souvent celui du milieu ou du bas).
-                    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-                    val entryIndex = shown.indexOfFirst { it.remoteId == target?.remoteId }.takeIf { it >= 0 } ?: 0
-                    val entry = remember { FocusRequester() }
-                    LazyColumn(
-                        Modifier.fillMaxSize()
-                            .focusProperties {
-                                enter = {
-                                    val visible = listState.layoutInfo.visibleItemsInfo.any { it.index == entryIndex }
-                                    if (visible) entry else FocusRequester.Default
-                                }
-                            }
-                            .focusGroup(),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(14.design),
-                    ) {
-                        itemsIndexed(shown, key = { _, it -> "${it.season}:${it.episode}:${it.remoteId}" }) { i, ep ->
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
-                                EpisodeRow(ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, progress[ep.remoteId], D, traktSeen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen,
-                                    modifier = Modifier.weight(1f).then(if (i == entryIndex) Modifier.focusRequester(entry) else Modifier)) { vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
-                                // Téléchargement de l'épisode (→ depuis la ligne).
-                                com.ultratv.tv.nativeapp.ui.downloads.EpisodeDownloadButton(series, ep, downloads[ep.remoteId], dlVm)
-                            }
-                        }
-                    }
-                    // Épisode à reprendre hors écran : la liste s'y place pour qu'il soit le point d'entrée.
-                    LaunchedEffect(entryIndex) { if (entryIndex > 0) listState.scrollToItem(entryIndex) }
-                }
-            }
-        }
-    }
+    com.ultratv.tv.nativeapp.ui.detail.SeriesDetailTv(
+        data = com.ultratv.tv.nativeapp.ui.detail.SeriesDetailData(
+            series = series, episodes = eps, seasons = seasons, activeSeason = activeSeason, target = target, resuming = resuming,
+            progress = progress, traktSeen = traktSeen, ratings = extRatings, trailerUrl = trailerUrl, downloads = downloads, loading = loading,
+        ),
+        onSeason = { season = it },
+        onPlayTarget = { target?.let { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) } },
+        onPlayEpisode = { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) },
+        onOpenPerson = onOpenPerson,
+        dlVm = dlVm, dlStrings = dlStrings,
+    )
 }
 
 /**
