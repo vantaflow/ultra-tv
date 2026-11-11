@@ -321,7 +321,7 @@ data class Strings(
     val change: String get() = common.change
 }
 
-/** Textes de l'assistant de premier lancement (maquette Claude Design). `stepLabel` contient %d. */
+/** Textes de l'assistant de premier lancement (maquette de design). `stepLabel` contient %d. */
 data class WizardStrings(
     val stepWelcome: String,
     val stepSource: String,

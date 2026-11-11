@@ -80,9 +80,9 @@ def apply(CAT, ROOT, KT):
          " * affiche l'anglais (res/values), la langue source. Voir [I18n].\n"
          " */\nenum class AppLang")
     _sub(kt / "i18n/DesignStrings.kt",
-         r" \* Textes des écrans « Claude Design », EN / FR / ES / AR côte à côte \(une ligne = une chaîne,\n"
+         r" \* Textes des écrans des maquettes de design, EN / FR / ES / AR côte à côte \(une ligne = une chaîne,\n"
          r" \* impossible d'oublier une langue\)\. Complète \[Strings\]\. Aucune donnée factice : ce ne sont que\n"
          r" \* des libellés d'interface\.\n",
-         " * Textes des écrans « Claude Design », lus dans les strings.xml de res/values et res/values-xx selon la langue\n"
+         " * Textes des écrans des maquettes de design, lus dans les strings.xml de res/values et res/values-xx selon la langue\n"
          " * de l'interface (voir [I18n]). Complète [Strings]. Aucune donnée factice : ce ne sont que des libellés.\n")
 
