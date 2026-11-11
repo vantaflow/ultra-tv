@@ -109,7 +109,7 @@ describe("envoi d'une source depuis le web (sans compte)", () => {
   });
 
   it("la page /envoyer est publique, échappe le code et porte une CSP", async () => {
-    const res = await call("/envoyer?c=k7q-2m9");
+    const res = await call("/envoyer?c=k7q-2m9&l=fr");
     expect(res.status).toBe(200);
     expect(res.headers.get("content-security-policy")).toContain("script-src 'nonce-");
     const html = await res.text();

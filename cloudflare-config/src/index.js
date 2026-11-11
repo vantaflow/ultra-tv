@@ -40,7 +40,8 @@ import {
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
-import { envoyerPage, loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
+import { pickEnvoyerLang, langFromCookie } from "./i18n/envoyer.js";
+import { envoyerPage,loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
 
@@ -188,7 +189,11 @@ async function route(req, env, ctx) {
 
   // ---- pages publiques ----
   { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux)$/); if (dm && m === "GET") return downloadRedirect(dm[1]); }
-  if (path === "/envoyer" && m === "GET") return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")) });
+  if (path === "/envoyer" && m === "GET") {
+    // Langue : paramètre `l`, puis cookie de préférence, puis Accept-Language, sinon anglais.
+    const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
+    return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")), lang });
+  }
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/login" && m === "POST") return doLogin(req, env);
   if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
