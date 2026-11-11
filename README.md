@@ -25,6 +25,18 @@
 
 ---
 
+## Télécharger
+
+| Appareil | Lien |
+|---|---|
+| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | [UltraTV.apk](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) · sur une box : appli Downloader, code **`5248504`** |
+| **Windows** (x64) | [Installeur .exe](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
+| **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
+| **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
+
+Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'est nécessaire.
+
+
 Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **portails Stalker / Ministra** par adresse MAC). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
 
 > Les captures TV ci-dessous viennent d'une **vraie box Android TV** (Android 14, 2 Go de RAM) ; Ultra TV ne fournit aucun contenu. Le lecteur, les profils, les langues et les captures en anglais et en arabe utilisent des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).

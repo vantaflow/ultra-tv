@@ -28,6 +28,7 @@ import {
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
+import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
@@ -186,6 +187,7 @@ async function route(req, env, ctx) {
   if (path === "/assets/jsqr.js" && m === "GET") return new Response(JSQR_SOURCE, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 
   // ---- pages publiques ----
+  { const dm = path.match(/^\/download\/(android|windows|mac|linux)$/); if (dm && m === "GET") return downloadRedirect(dm[1]); }
   if (path === "/envoyer" && m === "GET") return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")) });
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
   if (path === "/login" && m === "POST") return doLogin(req, env);

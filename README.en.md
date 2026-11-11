@@ -25,6 +25,18 @@
 
 ---
 
+## Download
+
+| Device | Link |
+|---|---|
+| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+) | [UltraTV.apk](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) · on a box: Downloader app, code **`5248504`** |
+| **Windows** (x64) | [.exe installer](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
+| **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
+| **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
+
+Automatic updates afterwards, on every platform. No account needed.
+
+
 Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
 
 > The screenshots below use **synthetic data** (a local fake Xtream server, `android-native/tools/fake-xtream`). Channel and programme names come from that data set, not from the app. The French README shows screenshots taken on a real Android TV box.
