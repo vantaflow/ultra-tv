@@ -855,7 +855,7 @@ interface EpgDao {
     suspend fun rangeForChannels(channelIds: List<Long>, nowMs: Long, windowEndMs: Long): List<EpgEntity>
 
     /** Full programme list for one channel within a time window — used by the
-     *  TiviMate-style "tonight's schedule" column on the Live screen. */
+     *  "tonight's schedule" column on the Live screen. */
     @Query("SELECT * FROM epg WHERE channelId = :cid AND endMs >= :fromMs AND startMs <= :toMs ORDER BY startMs")
     suspend fun forChannelInRange(cid: Long, fromMs: Long, toMs: Long): List<EpgEntity>
 }

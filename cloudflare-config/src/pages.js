@@ -4,6 +4,7 @@
 import { escapeHtml as e, html } from "./http.js";
 import { parsePairQr } from "./qr.js";
 import { displayUrl, maskMac, xtreamCredsOf } from "./store.js";
+import { ENVOYER_COOKIE, ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "./i18n/envoyer.js";
 
 const CSS = `
 @font-face{font-family:Sora;src:url(/assets/sora.woff2) format("woff2");font-weight:100 800;font-display:swap}
@@ -22,8 +23,8 @@ h1{font-size:26px;font-weight:700} h2{font-size:18px;font-weight:650} h3{font-si
 p{margin:0}
 .sub,.muted{color:var(--mut)} .sub{margin-top:6px} .small{font-size:13px}
 :focus-visible{outline:3px solid var(--ring);outline-offset:2px}
-.skip{position:absolute;left:-999px;top:8px;background:var(--acc);color:var(--on-acc);padding:10px 14px;border-radius:10px;z-index:9}
-.skip:focus{left:16px}
+.skip{position:absolute;inset-inline-start:16px;top:-80px;background:var(--acc);color:var(--on-acc);padding:10px 14px;border-radius:10px;z-index:9}
+.skip:focus{top:8px}
 /* Marque */
 .brand{white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:10px;color:var(--fg);font-family:var(--fh);font-weight:700;font-size:18px}
 .logo{width:36px;height:36px;flex:none;display:block}
@@ -33,6 +34,8 @@ p{margin:0}
 .theme-toggle{position:fixed;right:16px;bottom:16px;z-index:50;display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--bd);background:var(--s1);color:var(--fg2);font:600 13px var(--ff);cursor:pointer;box-shadow:var(--shadow)}
 .theme-toggle:hover{color:var(--fg);border-color:var(--mut)}
 .theme-toggle:focus-visible{outline:3px solid var(--ring);outline-offset:2px}
+.langs{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;margin-top:18px;font-size:13px}
+.langs a{color:var(--mut);font-weight:500;padding:4px 2px} .langs a[aria-current]{color:var(--fg);font-weight:700;text-decoration:underline}
 /* Surfaces */
 .layout{max-width:1120px;margin:0 auto}
 .panel{background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -232,14 +235,19 @@ const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' vi
 
 // Thème choisi (Automatique / Clair / Sombre), gardé dans le navigateur ; appliqué AVANT le premier rendu (pas de flash).
 const THEME_HEAD = `try{var t=localStorage.getItem('utv-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}`;
-const THEME_TOGGLE = `(function(){var b=document.getElementById('theme-toggle');if(!b)return;var L={auto:'Thème : automatique',light:'Thème : clair',dark:'Thème : sombre'},O=['auto','light','dark'];
+// JSON sûr à insérer dans un <script> : jamais de </script> ni de séparateurs de ligne Unicode.
+const jsonForScript = (v) => JSON.stringify(v).replace(/</g, "\\u003c").replace(new RegExp("[\\u2028\\u2029]", "g"), (c) => "\\u" + c.charCodeAt(0).toString(16));
+// Libellés en français par défaut (autres pages) ; la page /envoyer fournit les siens.
+const themeToggle = (L = { auto: "Thème : automatique", light: "Thème : clair", dark: "Thème : sombre" }, change = "changer") => `(function(){var b=document.getElementById('theme-toggle');if(!b)return;var L=${jsonForScript(L)},O=['auto','light','dark'];
 function cur(){try{return localStorage.getItem('utv-theme')||'auto';}catch(e){return 'auto';}}
-function show(t){b.textContent=L[t];b.setAttribute('aria-label',L[t]+' (changer)');}
+function show(t){b.textContent=L[t];b.setAttribute('aria-label',L[t]+' ('+${jsonForScript(change)}+')');}
 b.addEventListener('click',function(){var t=O[(O.indexOf(cur())+1)%3];try{if(t==='auto')localStorage.removeItem('utv-theme');else localStorage.setItem('utv-theme',t);}catch(e){}
 if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);show(t);});show(cur());})();`;
 
-function layout(title, body, n, extra = "", camera = false) {
-  return html(`<!doctype html><html lang="fr"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">Aller au contenu</a>${body}<button type="button" class="theme-toggle" id="theme-toggle">Thème</button><script nonce="${n}">${THEME_TOGGLE}</script>${extra}</body></html>`, n, 200, { camera });
+// `loc` : langue, sens d'écriture et libellés du gabarit (français par défaut ; seule la page /envoyer est traduite).
+function layout(title, body, n, extra = "", camera = false, loc = {}) {
+  const { lang = "fr", dir = "ltr", skip = "Aller au contenu", themeBtn = "Thème", themeLabels, themeChange } = loc;
+  return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">${e(skip)}</a>${body}<button type="button" class="theme-toggle" id="theme-toggle">${e(themeBtn)}</button><script nonce="${n}">${themeToggle(themeLabels, themeChange)}</script>${extra}</body></html>`, n, 200, { camera });
 }
 
 const AUTH_ERR = {
@@ -459,13 +467,15 @@ ${pairForm(csrfInput, code || "")}
 
 // ---- Envoi d'une source depuis un téléphone / ordinateur (page publique, sans compte) ----
 // Le script envoie du JSON à /api/envoi/send ; la validation est refaite côté Worker (celle-ci n'est qu'un confort).
-const ENVOI_JS = `(function(){
+// `t` : dictionnaire de la langue de la page (src/i18n/envoyer.js), passé en JSON ; les textes ne sont jamais collés dans le code.
+const envoiJs = (t) => `(function(){
+var T=${jsonForScript(t)};
 var f=document.getElementById('envoi-form');if(!f)return;
 var kind=document.getElementById('kind'),code=document.getElementById('code'),msg=document.getElementById('envoi-msg'),btn=document.getElementById('send');
 var groups={XTREAM:['g-url','g-user','g-pass'],M3U:['g-url'],STALKER:['g-url','g-mac'],GUIDE:['g-url']};
 var ALL=['g-url','g-user','g-pass','g-mac'];
-var LABEL={XTREAM:'Adresse du serveur',M3U:'Adresse de la playlist M3U',STALKER:'Adresse du portail',GUIDE:'Adresse du guide XMLTV (.xml ou .xml.gz)'};
-var HOLD={XTREAM:'http://serveur:8080',M3U:'http://exemple.com/liste.m3u',STALKER:'http://portail:8080/c/',GUIDE:'https://exemple.com/guide.xml.gz'};
+var LABEL={XTREAM:T.lblXtream,M3U:T.lblM3u,STALKER:T.lblStalker,GUIDE:T.lblGuide};
+var HOLD={XTREAM:'http://server:8080',M3U:'http://example.com/list.m3u',STALKER:'http://portal:8080/c/',GUIDE:'https://example.com/guide.xml.gz'};
 function apply(){var k=kind.value,on=groups[k]||[];
 ALL.forEach(function(id){var g=document.getElementById(id),show=on.indexOf(id)>=0;g.hidden=!show;g.querySelectorAll('input').forEach(function(i){i.disabled=!show;});});
 document.getElementById('url').placeholder=HOLD[k];document.getElementById('l-url').firstChild.nodeValue=LABEL[k];}
@@ -473,8 +483,7 @@ kind.addEventListener('change',apply);apply();
 document.getElementById('show-pw').addEventListener('change',function(e){document.getElementById('pass').type=e.target.checked?'text':'password';});
 code.addEventListener('input',function(){var p=code.selectionStart;code.value=code.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);});
 function say(cls,t){msg.className='notice '+cls;msg.textContent=t;msg.hidden=false;}
-var ERR={code:'Code inconnu ou expiré. Vérifie l\\u2019écran de ta TV.',used:'Une source a déjà été envoyée avec ce code. Relance \\u00ab\\u00a0Depuis le téléphone\\u00a0\\u00bb sur la TV pour en envoyer une autre.',
-url:'Adresse invalide : elle doit commencer par http:// ou https://.',creds:'Identifiant et mot de passe obligatoires.',mac:'Adresse MAC invalide (format 00:1A:79:XX:XX:XX).',kind:'Type de source invalide.',guide:'Adresse de guide invalide : http:// ou https://, finissant par .xml ou .xml.gz.'};
+var ERR={code:T.errCode,used:T.errUsed,url:T.errUrl,creds:T.errCreds,mac:T.errMac,kind:T.errKind,guide:T.errGuide};
 function okUrl(v){try{var u=new URL(v);return (u.protocol==='http:'||u.protocol==='https:')&&!!u.hostname;}catch(e){return false;}}
 f.addEventListener('submit',function(ev){ev.preventDefault();msg.hidden=true;
 var k=kind.value,c=code.value.trim(),url=document.getElementById('url').value.trim();
@@ -489,38 +498,59 @@ fetch('/api/envoi/send',{method:'POST',headers:{'content-type':'application/json
 .then(function(r){return r.json().catch(function(){return {};}).then(function(j){return {s:r.status,j:j};});})
 .then(function(x){btn.disabled=false;
 if(x.s===200&&x.j.ok){f.hidden=true;document.getElementById('envoi-done').hidden=false;msg.hidden=true;return;}
-if(x.s===429){say('err','Trop de tentatives. Réessaie dans quelques minutes.');return;}
-say('err',ERR[x.j.error]||'L\\u2019envoi a échoué. Réessaie.');})
-.catch(function(){btn.disabled=false;say('err','Connexion impossible. Vérifie ton réseau et réessaie.');});});
+if(x.s===429){say('err',T.errRate);return;}
+say('err',ERR[x.j.error]||T.errFail);})
+.catch(function(){btn.disabled=false;say('err',T.errNet);});});
 })();`;
 
-/** « Envoyer une playlist à ma TV » : formulaire public (code de la TV + source). `code` : celui du QR, déjà normalisé ou null. */
-export function envoyerPage(n, { code = null } = {}) {
-  return layout("Ultra TV — envoyer une source", `
+// Sélecteur de langue : mémorise le choix dans un cookie (1 an, limité à /envoyer) puis laisse le lien recharger la page.
+const ENVOI_LANG_JS = `(function(){var C=${jsonForScript(ENVOYER_COOKIE)};
+document.querySelectorAll('a[data-lang]').forEach(function(a){a.addEventListener('click',function(){
+try{document.cookie=C+'='+a.getAttribute('data-lang')+'; Path=/envoyer; Max-Age=31536000; SameSite=Lax; Secure';}catch(e){}});});})();`;
+
+/**
+ * « Envoyer une playlist à ma TV » : formulaire public (code de la TV + source), dans la langue `lang`
+ * (en/fr/es/ar/pl, déjà résolue par pickEnvoyerLang ; inconnue → anglais). `code` : celui du QR, déjà normalisé ou null.
+ */
+export function envoyerPage(n, { code = null, lang = "en" } = {}) {
+  if (!ENVOYER_LANGS.includes(lang)) lang = "en";
+  const t = ENVOYER_DICT[lang];
+  const dir = ENVOYER_DIR[lang];
+  const langLinks = ENVOYER_LANGS.map((l) => {
+    const href = `/envoyer?${code ? `c=${encodeURIComponent(code)}&` : ""}l=${l}`;
+    return `<a href="${e(href)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`;
+  }).join("");
+  const res = layout(t.title, `
 <main id="main" class="auth"><div class="brand">${LOGO}<span>Ultra TV</span></div>
-<div class="panel"><h1>Envoyer à ma TV</h1><p class="sub">Ajoute une source sur ta TV sans rien taper à la télécommande. Aucun compte nécessaire.</p>
+<div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
 <div id="envoi-msg" class="notice err" role="alert" hidden></div>
-<div id="envoi-done" hidden><div class="notice ok" role="status">${ico("info")}<span>Source envoyée. Ta TV l'ajoute et lance la synchronisation dans quelques secondes. Tu peux fermer cette page.</span></div></div>
+<div id="envoi-done" hidden><div class="notice ok" role="status">${ico("info")}<span>${e(t.done)}</span></div></div>
 <form id="envoi-form" novalidate autocomplete="off">
-<label for="code">Code affiché sur la TV <span class="hint">(6 caractères)</span></label>
-<input id="code" name="code" required maxlength="6" value="${e(code || "")}" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" placeholder="K7Q2M9"/>
-<label for="kind">Type de source</label>
-<select id="kind" name="kind"><option value="XTREAM">Xtream Codes</option><option value="M3U">Lien M3U</option><option value="STALKER">Portail Stalker (MAC)</option><option value="GUIDE">Guide XMLTV (adresse)</option></select>
-<label for="name">Nom <span class="hint">(facultatif)</span></label>
-<input id="name" name="name" maxlength="64" placeholder="Ma source"/>
-<div id="g-url"><label for="url" id="l-url">Adresse du serveur</label>
-<input id="url" name="url" type="url" required maxlength="2048" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="http://serveur:8080"/></div>
-<div id="g-user"><label for="user">Identifiant</label>
-<input id="user" name="username" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/></div>
-<div id="g-pass"><label for="pass">Mot de passe</label>
-<input id="pass" name="password" type="password" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/>
-<label class="row" for="show-pw"><input id="show-pw" type="checkbox"/> <span>Afficher le mot de passe</span></label></div>
-<div id="g-mac" hidden><label for="mac">Adresse MAC</label>
-<input id="mac" name="mac" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="00:1A:79:XX:XX:XX"/></div>
-<div class="row"><button id="send" class="block" type="submit">Envoyer</button></div>
+<label for="code">${e(t.codeLabel)} <span class="hint">${e(t.codeHint)}</span></label>
+<input id="code" name="code" dir="ltr" required maxlength="6" value="${e(code || "")}" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" placeholder="K7Q2M9"/>
+<label for="kind">${e(t.kindLabel)}</label>
+<select id="kind" name="kind"><option value="XTREAM">${e(t.kindXtream)}</option><option value="M3U">${e(t.kindM3u)}</option><option value="STALKER">${e(t.kindStalker)}</option><option value="GUIDE">${e(t.kindGuide)}</option></select>
+<label for="name">${e(t.nameLabel)} <span class="hint">${e(t.optional)}</span></label>
+<input id="name" name="name" maxlength="64" placeholder="${e(t.namePh)}"/>
+<div id="g-url"><label for="url" id="l-url">${e(t.urlLabel)}</label>
+<input id="url" name="url" dir="ltr" type="url" required maxlength="2048" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="http://server:8080"/></div>
+<div id="g-user"><label for="user">${e(t.userLabel)}</label>
+<input id="user" name="username" dir="ltr" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/></div>
+<div id="g-pass"><label for="pass">${e(t.passLabel)}</label>
+<input id="pass" name="password" dir="ltr" type="password" maxlength="256" autocapitalize="none" autocomplete="off" spellcheck="false"/>
+<label class="row" for="show-pw"><input id="show-pw" type="checkbox"/> <span>${e(t.showPw)}</span></label></div>
+<div id="g-mac" hidden><label for="mac">${e(t.macLabel)}</label>
+<input id="mac" name="mac" dir="ltr" maxlength="17" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="00:1A:79:XX:XX:XX"/></div>
+<div class="row"><button id="send" class="block" type="submit">${e(t.send)}</button></div>
 </form>
-<noscript><p class="note">JavaScript est nécessaire pour envoyer la source.</p></noscript>
-<p class="note">Les identifiants ne servent qu'à ajouter la source sur ta TV : ils sont chiffrés, conservés 15 minutes au plus et supprimés dès que la TV les a reçus.</p></div></main>`, n, `<script nonce="${n}">${ENVOI_JS}</script>`);
+<noscript><p class="note">${e(t.noscript)}</p></noscript>
+<p class="note">${e(t.note)}</p>
+<nav class="langs" aria-label="${e(t.langLabel)}">${langLinks}</nav></div></main>`, n,
+    `<script nonce="${n}">${envoiJs(t)}</script><script nonce="${n}">${ENVOI_LANG_JS}</script>`, false,
+    { lang, dir, skip: t.skip, themeBtn: t.themeBtn, themeLabels: { auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }, themeChange: t.themeChange });
+  // La page dépend de l'URL, du cookie de préférence et d'Accept-Language : les caches doivent le savoir.
+  res.headers.append("vary", "Cookie, Accept-Language");
+  return res;
 }
 
 const MOIS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];

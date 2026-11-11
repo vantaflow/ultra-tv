@@ -8,6 +8,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Android (TV) : l'OSD complet du direct reste affiché 8 s sans touche (5 s pour le simple bandeau), le temps de lire le programme et de choisir.
 
 ### Corrigé
+- Worker : la page `/envoyer` (celle du QR « Depuis le téléphone ») n'existait qu'en français : un utilisateur non francophone croyait lire une autre langue. Elle est maintenant disponible en anglais, français, espagnol, arabe (sens d'écriture droite à gauche) et polonais, messages de validation et d'erreur compris. Langue choisie dans l'ordre : paramètre `l` de l'adresse (`/envoyer?c=CODE&l=en`), cookie du sélecteur, en-tête `Accept-Language` (qualités `q=` respectées), sinon anglais. Un petit sélecteur de langue (qui garde le code et mémorise le choix 1 an, `SameSite=Lax`, `Secure`) est ajouté sous le formulaire. Le fonctionnement de l'envoi (code, chiffrement, types, validation) est inchangé ; les autres pages restent en français.
+- Android : le QR et le lien « Depuis le téléphone » ajoutent `&l=<langue de l'appli>` (en, fr, es, ar, pl ; « Système » résolu) : la page d'envoi s'ouvre dans la langue de l'appli.
+
+### Corrigé
 - Android (mode simple) : « Direct » relance la dernière chaîne avec une file de zapping, même si elle n'est pas dans les favoris (sa catégorie, dans l'ordre du Direct). Avant, haut / bas ne changeaient plus de chaîne.
 
 ### Corrigé
