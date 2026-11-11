@@ -5,6 +5,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import com.ultratv.tv.nativeapp.data.stalker.applyTo
 import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
@@ -46,10 +47,12 @@ class HttpRangeDownloader(
         baseBackoffMs: Long = 2_000,
         onProgress: suspend (done: Long, total: Long) -> Unit = { _, _ -> },
         shouldStop: suspend () -> Boolean = { false },
+        /** Adresse `stalker://` : lien NEUF (et en-têtes MAG) à chaque tentative, le lien d'un portail ne servant qu'une fois. */
+        open: (suspend () -> com.ultratv.tv.nativeapp.data.stalker.StreamOpen)? = null,
     ): Outcome {
         var attempt = 0
         while (true) {
-            val r = attemptOnce(url, finalFile, onProgress, shouldStop)
+            val r = attemptOnce(url, finalFile, onProgress, shouldStop, open)
             if (r !is Outcome.Failed || !r.retryable || attempt >= maxAttempts - 1) return r
             sleep(baseBackoffMs shl attempt.coerceAtMost(6))
             if (shouldStop()) return Outcome.Stopped
@@ -62,12 +65,18 @@ class HttpRangeDownloader(
         finalFile: File,
         onProgress: suspend (Long, Long) -> Unit,
         shouldStop: suspend () -> Boolean,
+        open: (suspend () -> com.ultratv.tv.nativeapp.data.stalker.StreamOpen)? = null,
     ): Outcome = withContext(Dispatchers.IO) {
         val part = DownloadPlan.partFile(finalFile)
         val dir = finalFile.parentFile ?: return@withContext Outcome.Failed(DownloadError.STORAGE, false)
         if (!dir.exists() && !dir.mkdirs()) return@withContext Outcome.Failed(DownloadError.STORAGE, false)
         val have = if (part.exists()) part.length() else 0L
-        val req = Request.Builder().url(url).header("User-Agent", userAgent).apply {
+        val opened = if (open == null) null else try { open() } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+            val code = (t as? com.ultratv.tv.nativeapp.data.net.HttpStatusException)?.code
+            return@withContext if (code != null) Outcome.Failed(DownloadError.HTTP, retryable = code >= 500 || code == 408 || code == 429) else Outcome.Failed(DownloadError.NETWORK, true)
+        }
+        val req = Request.Builder().url(opened?.url ?: url).header("User-Agent", userAgent).apply {
+            opened?.applyTo(this)
             if (have > 0) header("Range", "bytes=$have-")
         }.build()
         try {

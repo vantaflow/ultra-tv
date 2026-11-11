@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -354,9 +355,28 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     /** Lien jouable + en-têtes que le lecteur doit envoyer avec (mêmes que le client : un portail refuse le flux sinon). */
     data class Play(val url: String, val headers: Map<String, String>, val userAgent: String)
 
+    /** Envoi « en route, sans attendre » de `itv/set_played` : jamais bloquant pour la lecture, erreur ignorée (journal nettoyé). */
+    private val background = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * Ce que fait un boîtier MAG au démarrage d'une chaîne (`itv/set_played&itv_id=<id>`), mêmes en-têtes et même jeton que
+     * les autres appels. Certains portails n'activent la session de lecture qu'après cet appel.
+     */
+    suspend fun setPlayed(p: ProviderEntity, channelId: String) {
+        call(accountOf(p), listOf("type" to "itv", "action" to "set_played", "itv_id" to channelId))
+    }
+
     /** [createLink], puis les en-têtes de lecture (jeton à jour : la session existe après l'appel). */
     suspend fun openLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): Play {
         val url = createLink(p, type, cmd, series, chId)
+        if (type != "vod") {
+            val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd)
+            if (id != null) background.launch {
+                try { setPlayed(p, id) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+                    com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.setPlayedFailed(t))
+                }
+            }
+        }
         return Play(url, playbackHeaders(accountOf(p)), StalkerDevice.USER_AGENT)
     }
 

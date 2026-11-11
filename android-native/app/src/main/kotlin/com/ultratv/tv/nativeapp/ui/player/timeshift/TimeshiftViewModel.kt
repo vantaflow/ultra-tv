@@ -7,6 +7,7 @@ import com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
 import com.ultratv.tv.nativeapp.data.timeshift.TimeshiftMath
 import com.ultratv.tv.nativeapp.data.timeshift.TimeshiftPlanner
 import com.ultratv.tv.nativeapp.data.timeshift.TimeshiftProxy
+import com.ultratv.tv.nativeapp.data.timeshift.TimeshiftUpstream
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import okhttp3.OkHttpClient
@@ -34,6 +35,7 @@ class TimeshiftViewModel @Inject constructor(
     private val adaptive: AdaptiveProfile,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val recDao: com.ultratv.tv.nativeapp.data.db.RecordingDao,
+    private val urls: com.ultratv.tv.nativeapp.data.stalker.StreamUrlResolver,
 ) : ViewModel() {
     /** Connexions simultanées de la source (`user_info.max_connections`, 1 tant qu'elle n'est pas lue). */
     fun maxConnections(providerId: Long) = limits.maxConnections(providerId)
@@ -60,6 +62,8 @@ class TimeshiftViewModel @Inject constructor(
     }.getOrNull()
 
     fun support(url: String): TimeshiftSupport = when {
+        // Portail Stalker : le vrai lien (HTTP) n'est demandé qu'au démarrage du relais ; un HLS y échouera (flux non MPEG-TS).
+        com.ultratv.tv.nativeapp.data.stalker.StalkerLink.isStalker(url) -> if (plan() == null) TimeshiftSupport.NO_SPACE else TimeshiftSupport.OK
         !(url.startsWith("http://") || url.startsWith("https://")) -> TimeshiftSupport.NOT_HTTP
         url.substringBefore('?').endsWith(".m3u8", ignoreCase = true) -> TimeshiftSupport.HLS_UNSUPPORTED
         plan() == null -> TimeshiftSupport.NO_SPACE
@@ -70,7 +74,8 @@ class TimeshiftViewModel @Inject constructor(
     fun activate(upstreamUrl: String, userAgent: String): String? {
         deactivate()
         val plan = plan() ?: return null
-        val p = TimeshiftProxy(client, upstreamUrl, userAgent, File(dir, "buf-${System.nanoTime()}.ts"), plan.capacityBytes, plan.assumedBytesPerSec)
+        val p = TimeshiftProxy(client, upstreamUrl, userAgent, File(dir, "buf-${System.nanoTime()}.ts"), plan.capacityBytes, plan.assumedBytesPerSec,
+            TimeshiftUpstream({ urls.open(it) }, { urls.presence(it) }))
         p.start()
         proxy = p
         com.ultratv.tv.nativeapp.data.memory.TimeshiftRegistry.active = true

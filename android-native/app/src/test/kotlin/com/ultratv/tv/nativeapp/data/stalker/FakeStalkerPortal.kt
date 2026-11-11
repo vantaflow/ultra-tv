@@ -33,6 +33,11 @@ class FakeStalkerPortal(val mac: String = "00:1A:79:AB:CD:EF") {
     val watchdogs = CopyOnWriteArrayList<Long>()
     /** Nombre d'ouvertures de live.php à refuser en 403 quel que soit les en-têtes (portail capricieux). */
     @Volatile var forbidNextLive = 0
+    /** Nombre d'ouvertures de live.php à refuser en 503 (panne passagère du serveur de flux). */
+    @Volatile var failLive5xx = 0
+    @Volatile var setPlayedStatus = 200
+    val setPlayedIds = CopyOnWriteArrayList<String>()
+    val setPlayedRequests = CopyOnWriteArrayList<RecordedRequest>()
     private val opened = ConcurrentHashMap<String, Long>()
     @Volatile private var lastWatchdog: Long? = null
     private val usedTokens = ConcurrentHashMap.newKeySet<String>()
@@ -77,6 +82,7 @@ class FakeStalkerPortal(val mac: String = "00:1A:79:AB:CD:EF") {
         if (key == "stb/handshake") return json("""{"js":{"token":"TOKEN${handshakes.incrementAndGet()}","random":"x"}}""")
         if (r.getHeader("Authorization").isNullOrEmpty()) return json("Authorization failed.")
         return when (key) {
+            "itv/set_played" -> if (setPlayedStatus != 200) MockResponse().setResponseCode(setPlayedStatus) else { setPlayedIds += u.queryParameter("itv_id").orEmpty(); setPlayedRequests += r; json("""{"js":true}""") }
             "stb/get_profile" -> json("""{"js":{"id":"1","status":0}}""")
             "itv/create_link" -> {
                 createLinks.incrementAndGet()
@@ -99,6 +105,7 @@ class FakeStalkerPortal(val mac: String = "00:1A:79:AB:CD:EF") {
             r.getHeader("Authorization")?.startsWith("Bearer TOKEN") == true
         val code = when {
             !mag || forbidNextLive > 0 -> { if (forbidNextLive > 0) forbidNextLive--; 403 }
+            failLive5xx > 0 -> { failLive5xx--; 503 }
             u.queryParameter("stream").isNullOrEmpty() -> 404
             !usedTokens.add(u.queryParameter("play_token").orEmpty()) -> 458   // lien à usage unique
             else -> 200

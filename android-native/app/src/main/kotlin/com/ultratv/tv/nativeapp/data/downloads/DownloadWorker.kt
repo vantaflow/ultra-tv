@@ -107,7 +107,8 @@ class DownloadWorker @AssistedInject constructor(
         val catalogUrl = repo.currentUrl(d)
         if (catalogUrl.isNullOrBlank()) { fail(d.id, DownloadError.SOURCE_MISSING); return false }
         // Portail Stalker : lien temporaire demandé maintenant (sans effet sur une URL Xtream / M3U).
-        val url = com.ultratv.tv.nativeapp.data.stalker.StreamUrls.resolve(applicationContext, catalogUrl)
+        val first = try { com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(applicationContext, catalogUrl) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { null }
+        val url = first?.url ?: catalogUrl
         if (com.ultratv.tv.nativeapp.data.stalker.StalkerLink.isStalker(url) || !DownloadPlan.isDownloadable(url)) {
             fail(d.id, DownloadError.NOT_DOWNLOADABLE); return false
         }
@@ -117,11 +118,18 @@ class DownloadWorker @AssistedInject constructor(
         val hash = DownloadPlan.sha256(catalogUrl)
         if (hash != d.urlHash) { runCatching { DownloadPlan.partFile(file).delete() }; dao.setUrlHash(d.id, hash) }
         progress[d.id] = d.doneBytes to d.totalBytes
+        // Portail Stalker : le 1er lien est déjà ouvert (validation) ; chaque nouvelle tentative en redemande un (usage unique).
+        var pending = first
+        val reopen: (suspend () -> com.ultratv.tv.nativeapp.data.stalker.StreamOpen)? =
+            if (com.ultratv.tv.nativeapp.data.stalker.StalkerLink.isStalker(catalogUrl)) {
+                { pending?.also { pending = null } ?: com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(applicationContext, catalogUrl) }
+            } else null
         val outcome = try {
             downloader.download(
                 url, file,
                 onProgress = { done, total -> progress[d.id] = done to total; dao.setProgress(d.id, done, total) },
                 shouldStop = { dao.byId(d.id)?.state != DownloadState.RUNNING },
+                open = reopen,
             )
         } finally {
             progress.remove(d.id)

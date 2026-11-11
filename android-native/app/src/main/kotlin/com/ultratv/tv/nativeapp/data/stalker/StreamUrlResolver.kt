@@ -7,6 +7,7 @@ import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -91,4 +92,24 @@ object StreamUrls {
             EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().resolve(url)
         }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.getOrDefault(url)
     }
+}
+
+/** En-têtes et User-Agent d'un flux ouvert, appliqués à une requête OkHttp (téléchargement, enregistrement, relais de différé). */
+fun StreamOpen.applyTo(b: okhttp3.Request.Builder): okhttp3.Request.Builder {
+    headers.forEach { (k, v) -> b.header(k, v) }
+    userAgent?.let { b.header("User-Agent", it) }
+    return b
+}
+
+/**
+ * Client dont toutes les requêtes vers l'hôte du flux portent les en-têtes de [o] (HLS : playlist et segments). Un autre
+ * hôte (CDN, redirection) ne reçoit jamais le cookie ni le jeton. Sans en-tête à ajouter, le client est rendu tel quel.
+ */
+fun okhttp3.OkHttpClient.withStreamHeaders(o: StreamOpen): okhttp3.OkHttpClient {
+    if (o.headers.isEmpty() && o.userAgent == null) return this
+    val home = o.url.toHttpUrlOrNull() ?: return this
+    return newBuilder().addInterceptor { chain ->
+        val req = chain.request()
+        chain.proceed(if (req.url.host == home.host && req.url.port == home.port) o.applyTo(req.newBuilder()).build() else req)
+    }.build()
 }

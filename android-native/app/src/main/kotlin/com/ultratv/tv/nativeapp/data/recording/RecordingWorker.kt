@@ -9,6 +9,9 @@ import com.ultratv.tv.nativeapp.data.db.RecordingDao
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
+import com.ultratv.tv.nativeapp.data.stalker.withStreamHeaders
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -57,12 +60,15 @@ class RecordingWorker @AssistedInject constructor(
             try {
                 dao.updateProgress(id, "running", 0, 0, null, null)
                 // Portail Stalker : le lien de lecture n'existe qu'au moment de l'enregistrement (create_link).
-                val src = urls.resolve(r.sourceUrl)
-                val cancelled = if (src.contains(".m3u8", ignoreCase = true)) {
-                    runHls(id, src, file, maxDurationMs)
-                } else {
-                    runHttp(id, src, file)
-                }
+                val opened = urls.open(r.sourceUrl)
+                val src = opened.url
+                // En-têtes MAG (User-Agent, Cookie, Bearer) pour l'hôte du flux seulement ; lien neuf à chaque exécution du travail.
+                val http = ok.withStreamHeaders(opened)
+                // Un enregistrement de plusieurs heures : sans signal de présence, le portail peut couper le flux.
+                val presence = if (opened.stalker) launch { while (true) { urls.presence(r.sourceUrl); delay(120_000) } } else null
+                val cancelled = try {
+                    if (src.contains(".m3u8", ignoreCase = true)) runHls(http, id, src, file, maxDurationMs) else runHttp(http, id, src, file)
+                } finally { presence?.cancel() }
                 // The download path may have short-circuited on user cancel and
                 // already written the "cancelled" status — don't clobber it with
                 // "done".
@@ -88,7 +94,7 @@ class RecordingWorker @AssistedInject constructor(
     }
 
     /** Returns true if the download was cancelled (status already written). */
-    private suspend fun runHttp(id: Long, url: String, file: File): Boolean {
+    private suspend fun runHttp(ok: OkHttpClient, id: Long, url: String, file: File): Boolean {
         val resp = ok.newCall(Request.Builder().url(url).build()).execute()
         // Non-2xx is terminal (404/410/invalid) — IllegalStateException maps to
         // Result.failure() in doWork, not a retry.
@@ -119,7 +125,7 @@ class RecordingWorker @AssistedInject constructor(
     }
 
     /** Returns true if recording was cancelled (status already written). */
-    private suspend fun runHls(id: Long, url: String, file: File, maxDurationMs: Long): Boolean {
+    private suspend fun runHls(ok: OkHttpClient, id: Long, url: String, file: File, maxDurationMs: Long): Boolean {
         val recorder = HlsRecorder(
             ok = ok,
             sourceM3u8 = url,
