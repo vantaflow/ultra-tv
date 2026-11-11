@@ -8,6 +8,7 @@ import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.DecodeSequenceMode
@@ -340,6 +341,51 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
     private suspend inline fun <T : Any> arrAt(p: ProviderEntity, action: String, crossinline transform: (JsonObject) -> T?): List<T> =
         withStream(p, action, { _, o -> transform(o) }, null) { seq -> seq.toList() }
 
+    private fun urlOf(p: ProviderEntity, action: String, categoryId: String? = null): String =
+        "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action" +
+            (categoryId?.let { "&category_id=${it.urlEnc()}" } ?: "")
+
+    /** Télécharge la réponse d'une action dans un fichier temporaire (le thread appelant est bloqué : à appeler sur IO). */
+    private fun downloadToFile(url: String): java.io.File {
+        val f = java.io.File.createTempFile("xtream-", ".json")
+        try {
+            com.ultratv.tv.nativeapp.data.sync.SyncThread.background { ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) throw HttpStatusException(resp.code)
+                val body = resp.body?.byteStream()
+                // Tampon de 64 Ko : le copyTo par défaut (8 Ko) multiplie les appels système sur une box lente.
+                if (body != null) f.outputStream().use { out -> body.copyTo(out, 64 * 1024) }
+            } }
+            return f
+        } catch (t: Throwable) { f.delete(); throw t }
+    }
+
+    // ---- Pré-téléchargement : films / séries / guide se téléchargent pendant que le direct s'écrit ----
+
+    private val prefetched = java.util.concurrent.ConcurrentHashMap<String, kotlinx.coroutines.Deferred<java.io.File>>()
+    private fun prefetchKey(p: ProviderEntity, action: String) = "${p.id}|$action"
+
+    /**
+     * Lance en arrière-plan le téléchargement (dans un fichier temporaire) d'une grosse liste ([action] : `get_vod_streams`,
+     * `get_series`…). [withVodStreams] / [withSeries] consomment ensuite ce fichier au lieu de retélécharger : le réseau
+     * travaille pendant que le processeur écrit les parties précédentes. Sans effet si déjà lancé. Un échec du
+     * pré-téléchargement n'est jamais fatal : la partie retélécharge elle-même (et remonte alors l'erreur).
+     */
+    fun prefetch(scope: kotlinx.coroutines.CoroutineScope, p: ProviderEntity, action: String) {
+        prefetched.computeIfAbsent(prefetchKey(p, action)) {
+            scope.async(Dispatchers.IO) { downloadToFile(urlOf(p, action)) }
+        }
+    }
+
+    /** Annule les pré-téléchargements non consommés de la source et supprime leurs fichiers (fin ou échec de synchro). */
+    fun discardPrefetch(p: ProviderEntity) {
+        val prefix = "${p.id}|"
+        for (k in prefetched.keys.filter { it.startsWith(prefix) }) {
+            val d = prefetched.remove(k) ?: continue
+            d.cancel()
+            d.invokeOnCompletion { if (it == null) runCatching { d.getCompleted().delete() } }
+        }
+    }
+
     @OptIn(ExperimentalSerializationApi::class)
     private suspend fun <T : Any, R> withStream(
         p: ProviderEntity,
@@ -354,29 +400,34 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         spool: Boolean = false,
         block: suspend (Sequence<T>) -> R,
     ): R = withContext(Dispatchers.IO) {
-        val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}&action=$action" +
-            (categoryId?.let { "&category_id=${it.urlEnc()}" } ?: "")
-        var tmp: java.io.File? = null
-        try {
+        val url = urlOf(p, action, categoryId)
+        if (spool) {
+            // Fichier pré-téléchargé (voir [prefetch]) sinon téléchargement maintenant ; dans tous les cas la connexion
+            // a abouti AVANT que [block] ne touche aux données locales.
+            val pre = prefetched.remove(prefetchKey(p, action))
+            val file = (if (pre != null) runCatching { pre.await() }.getOrNull() else null) ?: downloadToFile(url)
+            try {
+                if (file.length() == 0L) block(emptySequence())
+                else file.inputStream().use { stream -> consume(stream, p, transform, block) }
+            } finally { file.delete() }
+        } else {
             ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
                 if (!resp.isSuccessful) throw HttpStatusException(resp.code)
                 val body = resp.body?.byteStream() ?: return@withContext block(emptySequence())
-                val raw: java.io.InputStream = if (!spool) body else {
-                    val f = java.io.File.createTempFile("xtream-", ".json").also { tmp = it }
-                    f.outputStream().buffered().use { out -> body.copyTo(out) }
-                    f.inputStream()
-                }
-                raw.use { stream ->
-                    val input = ControlCharFilter(stream).buffered()
-                    // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
-                    val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
-                        .mapNotNull { transform(p, it) }
-                    block(items)
-                }
+                consume(body, p, transform, block)
             }
-        } finally {
-            tmp?.delete()
         }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private suspend fun <T : Any, R> consume(
+        stream: java.io.InputStream, p: ProviderEntity, transform: (ProviderEntity, JsonObject) -> T?, block: suspend (Sequence<T>) -> R,
+    ): R {
+        val input = ControlCharFilter(stream).buffered(64 * 1024)
+        // Un objet à la fois : la mémoire reste plate quelle que soit la taille de la réponse.
+        val items = json.decodeToSequence(input, JsonObject.serializer(), DecodeSequenceMode.AUTO_DETECT)
+            .mapNotNull { transform(p, it) }
+        return block(items)
     }
 
     /** Note sur 10 ; les fournisseurs envoient parfois 0, une note sur 100 ou n'importe quoi (608) : sinon rien. */

@@ -4,6 +4,7 @@ import android.util.Xml
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -44,13 +45,51 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
         window: LongRange = defaultWindow(),
         block: suspend (Sequence<EpgEntity>) -> R,
     ): R = withContext(Dispatchers.IO) {
-        val url = "${p.baseUrl}/xmltv.php?username=${java.net.URLEncoder.encode(p.username, "UTF-8")}" +
-            "&password=${java.net.URLEncoder.encode(p.password, "UTF-8")}"
-        ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+        // Flux pré-téléchargé pendant l'écriture du catalogue (voir [prefetch]) : lu depuis le fichier, sans attendre le réseau.
+        val pre = prefetched.remove(p.id)?.let { runCatching { it.await() }.getOrNull() }
+        if (pre != null) {
+            try {
+                pre.inputStream().buffered(64 * 1024).use { block(programmes(it, channelXmltvIdToLocalId, window)) }
+            } finally { pre.delete() }
+        } else ok.newCall(Request.Builder().url(feedUrl(p)).build()).execute().use { resp ->
             if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
-            val stream = resp.body?.byteStream()?.buffered() ?: error("Empty xmltv body")
+            val stream = resp.body?.byteStream()?.buffered(64 * 1024) ?: error("Empty xmltv body")
             block(programmes(stream, channelXmltvIdToLocalId, window))
         }
+    }
+
+    private fun feedUrl(p: ProviderEntity) = "${p.baseUrl}/xmltv.php?username=${java.net.URLEncoder.encode(p.username, "UTF-8")}" +
+        "&password=${java.net.URLEncoder.encode(p.password, "UTF-8")}"
+
+    private val prefetched = java.util.concurrent.ConcurrentHashMap<Long, kotlinx.coroutines.Deferred<java.io.File>>()
+
+    /**
+     * Télécharge le flux XMLTV de la source dans un fichier temporaire, en arrière-plan : [withProgrammes] le lit ensuite
+     * depuis le disque. Pendant la première synchro, les 80 Mo du guide arrivent donc pendant que le direct, les films
+     * et les séries s'écrivent (avant : téléchargement après eux, réseau au repos pendant toute leur écriture).
+     * Un échec n'est jamais fatal : [withProgrammes] retélécharge alors lui-même.
+     */
+    fun prefetch(scope: kotlinx.coroutines.CoroutineScope, p: ProviderEntity) {
+        prefetched.computeIfAbsent(p.id) {
+            scope.async(Dispatchers.IO) {
+                val f = java.io.File.createTempFile("xmltv-", ".xml")
+                try {
+                    com.ultratv.tv.nativeapp.data.sync.SyncThread.background { ok.newCall(Request.Builder().url(feedUrl(p)).build()).execute().use { resp ->
+                        if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
+                        val body = resp.body?.byteStream() ?: error("Empty xmltv body")
+                        f.outputStream().use { out -> body.copyTo(out, 64 * 1024) }
+                    } }
+                    f
+                } catch (t: Throwable) { f.delete(); throw t }
+            }
+        }
+    }
+
+    /** Annule le pré-téléchargement non consommé de la source et supprime son fichier. */
+    fun discardPrefetch(p: ProviderEntity) {
+        val d = prefetched.remove(p.id) ?: return
+        d.cancel()
+        d.invokeOnCompletion { if (it == null) runCatching { d.getCompleted().delete() } }
     }
 
     /**
