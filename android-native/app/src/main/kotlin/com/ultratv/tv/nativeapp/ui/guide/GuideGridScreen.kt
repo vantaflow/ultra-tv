@@ -607,8 +607,11 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
     val playingKey by (shared?.channelKey ?: MutableStateFlow<String?>(null)).collectAsState()
+    // Propriétaire observé : au retour du plein écran, [SharedLiveSession.demote] arrive APRÈS la recomposition du guide ;
+    // sans cette lecture, l'aperçu restait sur le logo alors que le son de la chaîne continuait.
+    val ownerNow by (shared?.ownerState ?: MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.NONE)).collectAsState()
     val session = shared?.session?.takeIf {
-        videoPreview && playingKey != null && shared.owner == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
+        videoPreview && playingKey != null && ownerNow == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
             channel != null && shared.rowKey == com.ultratv.tv.nativeapp.ui.live.channelKey(channel)
     }
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {

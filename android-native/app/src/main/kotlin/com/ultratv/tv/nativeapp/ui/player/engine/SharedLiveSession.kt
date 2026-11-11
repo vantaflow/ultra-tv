@@ -49,7 +49,10 @@ class SharedLiveSession(
     private val adoptTimeoutMs: Long = 10_000,
 ) {
     var owner: LiveOwner = LiveOwner.NONE
-        private set
+        private set(v) { field = v; _ownerState.value = v }
+    private val _ownerState = MutableStateFlow(LiveOwner.NONE)
+    /** [owner] observable : un écran qui revient du plein écran se redessine quand l'aperçu reprend la main ([demote]). */
+    val ownerState: StateFlow<LiveOwner> = _ownerState.asStateFlow()
     var session: PlaybackSession? = null
         private set
 

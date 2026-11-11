@@ -259,8 +259,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         // Retour du plein écran : la chaîne qui joue (dernier zap) tant que l'utilisateur n'a pas bougé.
         val shown = (if (holdAfterReturn) heldChannel else null) ?: previewChannel ?: (0 until minOf(channels.itemCount, 20)).firstNotNullOfOrNull { i -> channels.peek(i)?.takeIf { !it.isSeparator } }
         // Vidéo affichée seulement si l'aperçu joue la ligne montrée (sinon logo : jamais l'image d'une autre chaîne).
+        val ownerNow by (shared?.ownerState ?: kotlinx.coroutines.flow.MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.NONE)).collectAsState()
         val videoSession = shared?.session?.takeIf {
-            videoPreview && playingKey != null && shared.owner == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
+            videoPreview && playingKey != null && ownerNow == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW &&
                 shown != null && (holdAfterReturn || shared.rowKey == channelKey(shown))
         }
         val shownNow = shown?.let { nowNext[it.id]?.first }
