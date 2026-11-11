@@ -1526,7 +1526,7 @@
     <string name="osd_history">السجل</string>
     <string name="osd_history_empty">لا توجد قنوات حديثة بعد</string>
     <string name="osd_remaining">المتبقي %1$s</string>
-    <string name="osd_banner_hint">OK / ▼ الأوامر  ·  ▲ التنقّل  ·  0-9 الرقم  ·  ◀ السابقة</string>
+    <string name="osd_banner_hint">OK القنوات  ·  ▼ الأوامر  ·  ▲ التنقّل  ·  ◀ السابقة  ·  0-9 الرقم</string>
     <string name="osd_drawer_all">كل القنوات</string>
     <string name="osd_no_previous">لا توجد قناة سابقة</string>
     <string name="osd_drawer_hint">OK للتبديل · ▲▼ تصفح · ◀ الفئات · ▶ القنوات · ‹ إغلاق</string>

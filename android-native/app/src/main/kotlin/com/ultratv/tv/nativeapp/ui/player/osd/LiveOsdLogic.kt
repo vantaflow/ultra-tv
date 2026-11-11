@@ -60,7 +60,9 @@ object LiveOsdLogic {
         if (osdOpen) return OsdDecision.Pass
         // OSD fermé (masqué ou simple bandeau après un zap).
         return when (key) {
-            OsdKey.OK, OsdKey.DOWN -> OsdDecision.OpenOsd
+            // OK : liste des chaînes (habitude des utilisateurs, demandé) ; Bas ouvre l'OSD complet.
+            OsdKey.OK -> OsdDecision.OpenChannels
+            OsdKey.DOWN -> OsdDecision.OpenOsd
             OsdKey.UP -> OsdDecision.Zap(forward = false, closeOsd = false)
             OsdKey.LEFT, OsdKey.RIGHT, OsdKey.MENU, OsdKey.INFO ->
                 if (tsActive && controlsHidden && (key == OsdKey.LEFT || key == OsdKey.RIGHT))
