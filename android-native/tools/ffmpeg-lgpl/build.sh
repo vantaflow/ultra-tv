@@ -12,8 +12,8 @@ MEDIA3_VER="${1:-$(sed -n 's/^media3 = "\(.*\)"/\1/p' "$(dirname "$0")/../../gra
 FFMPEG_BRANCH="${FFMPEG_BRANCH:-release/6.0}"
 NDK_VER="${NDK_VER:-26.1.10909125}"
 MIN_API="${MIN_API:-23}"
-# Décodeurs audio utiles aux flux IPTV (même liste que Jellyfin) : tous LGPL dans FFmpeg.
-DECODERS=(flac alac pcm_mulaw pcm_alaw mp3 aac ac3 eac3 dca mlp truehd)
+# Décodeurs audio utiles aux flux IPTV (liste de Jellyfin + opus et vorbis) : tous LGPL dans FFmpeg.
+DECODERS=(flac alac pcm_mulaw pcm_alaw mp3 aac ac3 eac3 dca mlp truehd opus vorbis)
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 WORK="${WORK:-$ROOT/build/ffmpeg-lgpl}"
