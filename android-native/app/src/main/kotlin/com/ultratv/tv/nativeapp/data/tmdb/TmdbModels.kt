@@ -21,6 +21,8 @@ data class TmdbDetails(
     val originalLanguage: String?,
     /** Photos de la distribution et de la réalisation : nom en minuscules → `profile_path`. */
     val photos: Map<String, String> = emptyMap(),
+    /** Identifiants de genres TMDB (« 28,12 ») : alimentent les genres automatiques des écrans Films / Séries. */
+    val genreIds: List<Int> = emptyList(),
 )
 
 /**
@@ -42,6 +44,8 @@ data class TmdbInfoEntity(
     val trailerKey: String? = null,
     val originalLanguage: String? = null,
     val lang: String = "",
+    /** Identifiants de genres TMDB séparés par des virgules (null = inconnus : fiche enrichie avant la v20). */
+    val genreIds: String? = null,
     val fetchedAt: Long = System.currentTimeMillis(),
 ) {
     val posterUrl: String? get() = posterPath?.let { TmdbImages.poster(it) }

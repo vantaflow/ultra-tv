@@ -136,7 +136,8 @@ class TmdbRepository @Inject constructor(
                 kind = kind.path, providerId = pid, remoteId = rid, tmdbId = d?.tmdbId, overview = d?.overview,
                 posterPath = d?.posterPath, backdropPath = d?.backdropPath, rating = d?.rating,
                 cast = d?.cast?.takeIf { it.isNotEmpty() }?.joinToString(", "), trailerKey = d?.trailerKey,
-                originalLanguage = d?.originalLanguage, lang = lang, fetchedAt = now,
+                originalLanguage = d?.originalLanguage, lang = lang,
+                genreIds = d?.genreIds?.takeIf { it.isNotEmpty() }?.joinToString(","), fetchedAt = now,
             )
             dao.upsert(row)
             if (d != null) photoCache["${kind.path}:${d.tmdbId}"] = d.photos.mapValues { TmdbImages.profile(it.value) }

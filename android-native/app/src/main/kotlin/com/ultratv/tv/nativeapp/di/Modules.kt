@@ -57,6 +57,7 @@ object DatabaseModule {
     @Provides fun provideVodInfoDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.VodInfoDao = db.vodInfoDao()
     @Provides fun provideTmdbDao(db: UltraDb): com.ultratv.tv.nativeapp.data.tmdb.TmdbDao = db.tmdbDao()
     @Provides fun provideReminderDao(db: UltraDb): com.ultratv.tv.nativeapp.data.reminders.ReminderDao = db.reminderDao()
+    @Provides fun provideGenreDao(db: UltraDb): com.ultratv.tv.nativeapp.data.db.GenreDao = db.genreDao()
     @Provides fun provideDownloadDao(db: UltraDb): com.ultratv.tv.nativeapp.data.downloads.DownloadDao = db.downloadDao()
 }
 
