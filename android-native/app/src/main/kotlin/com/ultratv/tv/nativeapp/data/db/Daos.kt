@@ -412,10 +412,11 @@ interface MovieDao {
 
     /** Rangée d'un genre automatique (vue « Rangées ») : les plus récents d'abord. */
     @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) ORDER BY addedKey DESC LIMIT :limit")
+    fun observeGenreRow(pid: Long, genre: String, limit: Int): Flow<List<MovieEntity>>
+
     /** Films proches par genre automatique (title_genre), hors film de départ : pour « Parce que vous avez regardé ». */
     @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND m.id != :excludeId AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) ORDER BY rating DESC, id DESC LIMIT :limit")
     suspend fun byAutoGenre(pid: Long, genre: String, excludeId: Long, limit: Int): List<MovieEntity>
-    fun observeGenreRow(pid: Long, genre: String, limit: Int): Flow<List<MovieEntity>>
 
     @Query("UPDATE movie SET plot = :plot, cast = :cast, genre = :genre, duration = :duration, backdrop = :backdrop WHERE id = :id")
     suspend fun updateDetails(id: Long, plot: String?, cast: String?, genre: String?, duration: String?, backdrop: String?)
