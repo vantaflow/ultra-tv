@@ -155,7 +155,7 @@ fun HomeScreen(
     val playHistory: (WatchHistoryEntity) -> Unit = remember(vm, onPlay) { { e -> vm.playFromHistory(e); onPlay(e.streamUrl, e.title) } }
     val openHero: (HeroItem) -> Unit = remember(onOpenMovie, onOpenSeries) { { h -> if (h.kind == HeroItem.Kind.SERIES) onOpenSeries(h.id) else onOpenMovie(h.id) } }
     val openPoster: (PosterCardUi) -> Unit = remember(onOpenMovie, onOpenSeries) { { p -> if (p.isShow) onOpenSeries(p.item.id) else onOpenMovie(p.item.id) } }
-    val playChannel: (ChannelEntity) -> Unit = remember(onPlay) { { c -> onPlay(c.streamUrl, c.title) } }
+    val playChannel: (ChannelEntity) -> Unit = remember(vm, onPlay) { { c -> vm.playChannel(c) { onPlay(c.streamUrl, c.title) } } }
     // « Regarder » : film → lecture directe ; série → fiche (l'épisode à reprendre y est choisi).
     val watchHero: (HeroItem) -> Unit = remember(vm, onPlay, openHero) { { h -> val u = h.streamUrl; if (u != null) { vm.playHero(h); onPlay(u, h.title) } else openHero(h) } }
     val onShortcut: (ShortcutId) -> Unit = remember(onGoLive, onGoMovies, onGoSeries, onGoFavorites, onGoGuide) {

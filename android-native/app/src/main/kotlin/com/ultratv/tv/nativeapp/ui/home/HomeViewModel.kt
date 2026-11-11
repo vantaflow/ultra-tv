@@ -81,6 +81,7 @@ class HomeViewModel @Inject constructor(
     private val prefsStore: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
+    private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
 ) : ViewModel() {
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
@@ -325,6 +326,18 @@ class HomeViewModel @Inject constructor(
         )
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeRows.EMPTY)
+
+    /**
+     * Chaîne de la rangée « Direct » : contexte « LIVE » + file de zapping AVANT d'ouvrir le lecteur. Sans lui, le lecteur
+     * gardait le contexte précédent (commandes d'un film, OK = pause au lieu de la liste des chaînes).
+     */
+    fun playChannel(c: com.ultratv.tv.nativeapp.data.db.ChannelEntity, then: () -> Unit) {
+        playback.set(PlaybackContext.Item(c.providerId, "LIVE", c.remoteId, c.title, c.logo, c.streamUrl))
+        viewModelScope.launch {
+            runCatching { liveZap.prepare(c.providerId, c.remoteId, c.title, c.logo, c.streamUrl) }
+            then()
+        }
+    }
 
     /** Sets the playback context from a history entry so the player can record proper context. */
     fun playFromHistory(h: WatchHistoryEntity) {
