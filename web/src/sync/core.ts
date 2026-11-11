@@ -350,19 +350,28 @@ async function streamIntoDb<T>(
     if (e instanceof TruncatedError && contiguous) todo = todo.filter((id) => !perCat.has(id) || id === lastCat);
     console.warn(`[sync] ${action} : liste complète indisponible (${e instanceof Error ? e.message : e}), reprise sur ${todo.length} catégorie(s)`);
   }
+  let failed = 0;
   for (const id of todo) {
     // Deux essais par catégorie (une coupure isolée ne doit pas la vider) ; les doublons sont filtrés.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    let ok = false;
+    for (let attempt = 0; attempt < 2 && !ok; attempt++) {
       assertNotAborted(signal);
       try {
         const res = await xtreamStream(t, c, action, { category_id: id }, signal);
         await streamObjects<T>(res, deduped, { signal, batchSize: 3000 });
-        break;
+        ok = true;
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") throw e;
       }
     }
+    if (!ok) failed++;
   }
+  // Serveur injoignable ou en erreur (réseau pas encore prêt au démarrage, limite de connexions…) : sans élément reçu, ou avec
+  // la moitié des catégories en échec, la synchro échoue franchement et l'ancien catalogue reste en place. Avant, la partie
+  // restait vide, la synchro « réussissait » et l'ancienne génération était supprimée : toutes les catégories disparaissaient.
+  let received = 0;
+  for (const n of perCat.values()) received += n;
+  if (failed > 0 && (received === 0 || failed * 2 >= todo.length)) throw new Error(`${action} : réponse du serveur indisponible`);
 }
 
 /**
@@ -602,7 +611,12 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
 
 async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {
   report("live", 0, true);
-  const entries = parseM3u(await readM3u(t, source, signal));
+  const text = await readM3u(t, source, signal);
+  const entries = parseM3u(text);
+  // Réponse qui n'est pas une playlist (page d'erreur, corps vide) ou playlist vidée alors que la source avait des chaînes :
+  // échec franc, l'ancien catalogue reste en place (sinon il était remplacé par un catalogue vide).
+  if (!text.includes("#EXTM3U") && !text.includes("#EXTINF")) throw new Error("not-m3u");
+  if (entries.length === 0 && source.counts.live > 0) throw new Error("not-m3u");
   const groups = new Map<string, number>();
   const rows: ChannelRow[] = [];
   entries.forEach((e, i) => {
