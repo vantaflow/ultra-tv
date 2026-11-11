@@ -79,7 +79,7 @@ export async function stalkerLinkOf(t: PlayTarget): Promise<string | null> {
   if (hit) return hit;
   const row = await db.series.where("[sourceId+seriesId]").equals([t.cid, t.seriesId]).first();
   const base = row?.url ? parseStalkerLink(row.url) : null;
-  return base && t.episode != null ? stalkerLink("vod", base.cmd, t.episode) : null;
+  return base && t.episode != null ? stalkerLink(base.type === "series" ? "series" : "vod", base.cmd, t.episode) : null;
 }
 
 const clients = new Map<string, StalkerClient>();

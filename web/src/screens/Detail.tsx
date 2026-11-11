@@ -13,7 +13,7 @@ import { seriesInfo, vodInfo, type SeriesInfo, type VodInfo } from "@/net/xtream
 import { usePlayer } from "@/player/store";
 import { movieTarget } from "@/player/targets";
 import { stalkerClientFor } from "@/player/resolve";
-import { parseStalkerLink, type StalkerEpisode } from "@/net/stalker";
+import { SERIES_PREFIX, parseStalkerLink, type StalkerEpisode } from "@/net/stalker";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
@@ -47,7 +47,9 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
         try {
           const row = await db.series.where("[sourceId+seriesId]").equals([source.cid, id]).first();
           const base = row?.url ? parseStalkerLink(row.url) : null;
-          const eps = await (await stalkerClientFor(source)).episodes(String(id), base?.cmd ?? null, row?.eps ?? null);
+          // Série du module `type=series` : identifiant du portail préfixé « s: » (l'identifiant local peut être un condensé).
+          const portalId = base?.type === "series" ? SERIES_PREFIX + (row?.portalId ?? String(id)) : String(id);
+          const eps = await (await stalkerClientFor(source)).episodes(portalId, base?.cmd ?? null, row?.eps ?? null);
           const json = stalkerSeriesInfo(eps);
           await db.details.put({ key, json, fetchedAt: Date.now() });
           if (!dead) setState({ info: json as T, error: false });
