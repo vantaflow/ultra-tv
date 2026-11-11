@@ -5,6 +5,7 @@
 import type Hls from "hls.js";
 import type { Level } from "hls.js";
 import type MpegtsNs from "mpegts.js";
+import { StartupWatchdog } from "./startup";
 import { bestTrackIndex, trackLabel } from "./trackChoice";
 import { requestHeaders, wrapUrl, type Transport } from "@/net/transport";
 
@@ -57,25 +58,39 @@ export class PlayerEngine {
   preferredAudio: string[] = [];
   uiLang = "en";
   private audioManual = false;
+  /** Démarrage figé (aucune lecture ni progrès de chargement) : erreur plutôt que chargement sans fin. */
+  private startup: StartupWatchdog;
 
   constructor(private video: HTMLVideoElement, private getTransport: () => Transport, private ev: EngineEvents) {
     const v = video;
-    v.addEventListener("playing", () => this.ev.onState("playing"));
+    this.startup = new StartupWatchdog(
+      () => {
+        let buffered = 0;
+        for (let i = 0; i < v.buffered.length; i++) buffered = Math.max(buffered, v.buffered.end(i));
+        return { ready: v.readyState >= 3, progress: v.readyState + buffered };
+      },
+      () => this.fail("startup"),
+    );
+    v.addEventListener("playing", () => { this.startup.stop(); this.ev.onState("playing"); });
     v.addEventListener("pause", () => { if (!v.ended) this.ev.onState("paused"); });
     v.addEventListener("waiting", () => this.ev.onState("buffering"));
-    v.addEventListener("ended", () => this.ev.onState("ended"));
-    v.addEventListener("error", () => this.ev.onError(`media:${v.error?.code ?? 0}`));
+    v.addEventListener("ended", () => { this.startup.stop(); this.ev.onState("ended"); });
+    v.addEventListener("error", () => this.fail(`media:${v.error?.code ?? 0}`));
     v.addEventListener("loadedmetadata", () => this.emitTracks());
     // Lecteur natif (MKV/MP4) : pistes audio exposées par le navigateur quand il les prend en charge (Safari, Chromium à drapeau).
     const nat = (v as unknown as { audioTracks?: EventTarget & ArrayLike<{ language: string; label: string; enabled: boolean }> }).audioTracks;
     for (const k of ["addtrack", "removetrack", "change"]) nat?.addEventListener?.(k, () => this.emitTracks());
   }
 
+  /** Erreur du moteur : le délai de démarrage n'a plus lieu d'être (le lecteur décide du repli). */
+  private fail(code: string) { this.startup.stop(); this.ev.onError(code); }
+
   async load(a: LoadArgs): Promise<void> {
     const my = ++this.token;
     this.audioManual = false;
     this.teardown();
     this.ev.onState("loading");
+    this.startup.start();
     const t = this.getTransport();
     const headers = requestHeaders(t, { userAgent: a.userAgent, referer: a.referer });
     try {
@@ -83,7 +98,7 @@ export class PlayerEngine {
       else if (a.format === "ts") await this.loadTs(a, t, headers, my);
       else this.loadNative(a, t);
     } catch {
-      if (my === this.token) this.ev.onError("load");
+      if (my === this.token) this.fail("load");
     }
   }
 
@@ -132,18 +147,18 @@ export class PlayerEngine {
     hls.on(HlsCtor.Events.SUBTITLE_TRACKS_UPDATED, () => this.emitTracks());
     hls.on(HlsCtor.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
-      if (d.type === HlsCtor.ErrorTypes.NETWORK_ERROR && d.response?.code === undefined && d.details === "manifestLoadError") { this.ev.onError("manifest"); return; }
+      if (d.type === HlsCtor.ErrorTypes.NETWORK_ERROR && d.response?.code === undefined && d.details === "manifestLoadError") { this.fail("manifest"); return; }
       if (d.type === HlsCtor.ErrorTypes.MEDIA_ERROR) {
         // Flux au codec cassé : recoverMediaError sans limite bouclait indéfiniment et le repli de format ne venait jamais.
         const now = Date.now();
         this.mediaRecoveries = this.mediaRecoveries.filter((t) => now - t < 30_000);
         this.mediaRecoveries.push(now);
-        if (this.mediaRecoveries.length > 3) { this.ev.onError("hls:media"); return; }
+        if (this.mediaRecoveries.length > 3) { this.fail("hls:media"); return; }
         if (this.mediaRecoveries.length === 2) hls.swapAudioCodec();
         hls.recoverMediaError();
         return;
       }
-      this.ev.onError(`hls:${d.details}`);
+      this.fail(`hls:${d.details}`);
     });
     hls.attachMedia(this.video);
     hls.loadSource(wrap(a.url));
@@ -153,13 +168,13 @@ export class PlayerEngine {
   private async loadTs(a: LoadArgs, t: Transport, headers: Record<string, string>, my: number) {
     const mod = (await import("mpegts.js")).default;
     if (my !== this.token) return;
-    if (!mod.isSupported()) { this.ev.onError("mpegts-unsupported"); return; }
+    if (!mod.isSupported()) { this.fail("mpegts-unsupported"); return; }
     const player = mod.createPlayer(
       { type: "mpegts", isLive: a.live, url: wrapUrl(t, a.url), headers } as never,
       { enableWorker: true, liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 8, liveBufferLatencyMinRemain: 1.5, lazyLoadMaxDuration: 60 } as never,
     );
     this.engineName = "mpegts.js";
-    player.on(mod.Events.ERROR, () => this.ev.onError("mpegts"));
+    player.on(mod.Events.ERROR, () => this.fail("mpegts"));
     player.on(mod.Events.MEDIA_INFO, (i: unknown) => {
       const info = i as { videoCodec?: string; audioCodec?: string };
       this.codec = [info.videoCodec, info.audioCodec].filter(Boolean).join(" · ");
@@ -245,5 +260,5 @@ export class PlayerEngine {
     this.video.load();
   }
 
-  stop() { this.token++; this.teardown(); this.ev.onState("idle"); }
+  stop() { this.token++; this.startup.stop(); this.teardown(); this.ev.onState("idle"); }
 }

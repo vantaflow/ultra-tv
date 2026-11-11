@@ -232,6 +232,8 @@
     <string name="ds_err_drm_invalid">Los ajustes de protección están incompletos o no son válidos</string>
     <string name="ds_err_drm_invalid_hint">La lista no incluye URL de licencia ni claves válidas para este canal.</string>
     <string name="ds_err_no_response">Este canal no responde</string>
+    <string name="ds_err_start_timeout">La transmisión no arranca</string>
+    <string name="ds_err_start_timeout_hint">El servidor aceptó la conexión pero no envía datos. Inténtalo de nuevo o elige otro canal.</string>
     <string name="ds_err_refused">El proveedor rechazó la conexión</string>
     <string name="ds_err_no_link">El portal no proporcionó el enlace del canal</string>
     <string name="ds_err_no_link_hint">Prueba otro canal o revisa la fuente en Ajustes.</string>

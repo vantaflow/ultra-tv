@@ -47,7 +47,7 @@ object PlaybackPlanner {
 
     /** Un repli ne sert à rien si le problème n'est ni le format ni le décodage. */
     fun shouldFallBack(kind: PlayErrorKind, protectedStream: Boolean = false) = !protectedStream && when (kind) {
-        PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE, PlayErrorKind.UNKNOWN -> true
+        PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE, PlayErrorKind.START_TIMEOUT, PlayErrorKind.UNKNOWN -> true
         else -> false
     }
 

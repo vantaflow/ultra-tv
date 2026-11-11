@@ -300,6 +300,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .build()
     }
 
+    override fun loadProgress(): Long = runCatching { player.bufferedPosition }.getOrDefault(-1L)
     override fun stats(): EngineStats {
         val v = player.videoFormat; val a = player.audioFormat
         val counters = player.videoDecoderCounters

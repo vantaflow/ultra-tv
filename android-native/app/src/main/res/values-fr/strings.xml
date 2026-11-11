@@ -240,6 +240,8 @@
     <string name="ds_err_drm_invalid">Les réglages de protection sont incomplets ou invalides</string>
     <string name="ds_err_drm_invalid_hint">La playlist ne fournit pas d\'URL de licence ni de clés valides pour cette chaîne.</string>
     <string name="ds_err_no_response">Cette chaîne ne répond pas</string>
+    <string name="ds_err_start_timeout">Le flux ne démarre pas</string>
+    <string name="ds_err_start_timeout_hint">Le serveur a accepté la connexion mais n\'envoie aucune donnée. Réessayez ou choisissez une autre chaîne.</string>
     <string name="ds_err_refused">Le fournisseur a refusé la connexion</string>
     <string name="ds_err_no_link">Le portail n\'a pas fourni le lien de la chaîne</string>
     <string name="ds_err_no_link_hint">Essayez une autre chaîne, ou vérifiez la source dans les Réglages.</string>

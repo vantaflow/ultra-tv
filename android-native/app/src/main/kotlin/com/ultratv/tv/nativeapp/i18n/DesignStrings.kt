@@ -283,6 +283,8 @@ class DesignStrings(val lang: AppLang) {
     val errDrmInvalid get() = tx(R.string.ds_err_drm_invalid)
     val errDrmInvalidHint get() = tx(R.string.ds_err_drm_invalid_hint)
     val errNoResponse get() = tx(R.string.ds_err_no_response)
+    val errStartTimeout get() = tx(R.string.ds_err_start_timeout)
+    val errStartTimeoutHint get() = tx(R.string.ds_err_start_timeout_hint)
     val errRefused get() = tx(R.string.ds_err_refused)
     val errNoLink get() = tx(R.string.ds_err_no_link)
     val errNoLinkHint get() = tx(R.string.ds_err_no_link_hint)
