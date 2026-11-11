@@ -8,11 +8,20 @@ import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.Strings
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.junit.Rule
+import com.ultratv.tv.nativeapp.i18n.I18nRule
 
 /** Libellés : langue reconnue depuis la table du rail TV, bouton selon l'état, messages d'erreur sans texte brut. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class DownloadStringsTest {
-    private fun table(name: String): Strings =
-        Class.forName("com.ultratv.tv.nativeapp.i18n.StringsKt").getDeclaredField(name).apply { isAccessible = true }.get(null) as Strings
+    @get:Rule val i18n = I18nRule()
+
+    private fun table(name: String): Strings = com.ultratv.tv.nativeapp.i18n.stringsOf(
+        mapOf("EN" to AppLang.English, "FR" to AppLang.French, "ES" to AppLang.Spanish, "AR" to AppLang.Arabic).getValue(name))
 
     @Test fun of_chaqueTableDuRail_donneSaLangue() {
         assertEquals(AppLang.English, DownloadStrings.of(table("EN")).lang)

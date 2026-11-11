@@ -179,6 +179,8 @@ android {
     lint {
         abortOnError = false
         checkReleaseBuilds = false
+        // Les langues communautaires (pl…) seront partielles : une clé absente retombe sur l'anglais, ce n'est pas une erreur.
+        warning += "MissingTranslation"
     }
 
     packaging {
