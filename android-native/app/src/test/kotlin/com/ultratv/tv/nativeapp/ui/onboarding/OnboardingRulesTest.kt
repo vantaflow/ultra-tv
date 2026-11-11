@@ -14,3 +14,21 @@ class OnboardingRulesTest {
     @Test fun playlistDejaPresente_masque() =
         assertFalse(shouldShowOnboarding(hasSeenOnboarding = false, providerCount = 1))
 }
+
+class SourceOptionsTest {
+    @Test fun tv_proposeStalkerEtTelephone() {
+        val o = sourceOptions(touch = false)
+        assertTrue(SourceOption.STALKER in o)
+        assertTrue(SourceOption.PHONE in o)
+        assertTrue(o.size == o.toSet().size)
+    }
+
+    @Test fun tactile_proposeStalker_maisPasTelephone() {
+        val o = sourceOptions(touch = true)
+        assertTrue(SourceOption.STALKER in o)
+        assertFalse(SourceOption.PHONE in o)
+    }
+
+    @Test fun stalkerSuitXtream() =
+        assertTrue(sourceOptions(false).take(2) == listOf(SourceOption.XTREAM, SourceOption.STALKER))
+}
