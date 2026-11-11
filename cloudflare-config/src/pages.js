@@ -462,10 +462,10 @@ ${pairForm(csrfInput, code || "")}
 const ENVOI_JS = `(function(){
 var f=document.getElementById('envoi-form');if(!f)return;
 var kind=document.getElementById('kind'),code=document.getElementById('code'),msg=document.getElementById('envoi-msg'),btn=document.getElementById('send');
-var groups={XTREAM:['g-url','g-user','g-pass'],M3U:['g-url'],STALKER:['g-url','g-mac']};
+var groups={XTREAM:['g-url','g-user','g-pass'],M3U:['g-url'],STALKER:['g-url','g-mac'],GUIDE:['g-url']};
 var ALL=['g-url','g-user','g-pass','g-mac'];
-var LABEL={XTREAM:'Adresse du serveur',M3U:'Adresse de la playlist M3U',STALKER:'Adresse du portail'};
-var HOLD={XTREAM:'http://serveur:8080',M3U:'http://exemple.com/liste.m3u',STALKER:'http://portail:8080/c/'};
+var LABEL={XTREAM:'Adresse du serveur',M3U:'Adresse de la playlist M3U',STALKER:'Adresse du portail',GUIDE:'Adresse du guide XMLTV (.xml ou .xml.gz)'};
+var HOLD={XTREAM:'http://serveur:8080',M3U:'http://exemple.com/liste.m3u',STALKER:'http://portail:8080/c/',GUIDE:'https://exemple.com/guide.xml.gz'};
 function apply(){var k=kind.value,on=groups[k]||[];
 ALL.forEach(function(id){var g=document.getElementById(id),show=on.indexOf(id)>=0;g.hidden=!show;g.querySelectorAll('input').forEach(function(i){i.disabled=!show;});});
 document.getElementById('url').placeholder=HOLD[k];document.getElementById('l-url').firstChild.nodeValue=LABEL[k];}
@@ -474,12 +474,13 @@ document.getElementById('show-pw').addEventListener('change',function(e){documen
 code.addEventListener('input',function(){var p=code.selectionStart;code.value=code.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);});
 function say(cls,t){msg.className='notice '+cls;msg.textContent=t;msg.hidden=false;}
 var ERR={code:'Code inconnu ou expiré. Vérifie l\\u2019écran de ta TV.',used:'Une source a déjà été envoyée avec ce code. Relance \\u00ab\\u00a0Depuis le téléphone\\u00a0\\u00bb sur la TV pour en envoyer une autre.',
-url:'Adresse invalide : elle doit commencer par http:// ou https://.',creds:'Identifiant et mot de passe obligatoires.',mac:'Adresse MAC invalide (format 00:1A:79:XX:XX:XX).',kind:'Type de source invalide.'};
+url:'Adresse invalide : elle doit commencer par http:// ou https://.',creds:'Identifiant et mot de passe obligatoires.',mac:'Adresse MAC invalide (format 00:1A:79:XX:XX:XX).',kind:'Type de source invalide.',guide:'Adresse de guide invalide : http:// ou https://, finissant par .xml ou .xml.gz.'};
 function okUrl(v){try{var u=new URL(v);return (u.protocol==='http:'||u.protocol==='https:')&&!!u.hostname;}catch(e){return false;}}
 f.addEventListener('submit',function(ev){ev.preventDefault();msg.hidden=true;
 var k=kind.value,c=code.value.trim(),url=document.getElementById('url').value.trim();
 if(c.length!==6){say('err',ERR.code);return;}
 if(!okUrl(url)){say('err',ERR.url);return;}
+if(k==='GUIDE'&&!/\\.xml(\\.gz)?$/i.test(new URL(url).pathname)){say('err',ERR.guide);return;}
 var body={code:c,kind:k,name:document.getElementById('name').value.trim(),url:url};
 if(k==='XTREAM'){body.username=document.getElementById('user').value.trim();body.password=document.getElementById('pass').value;if(!body.username||!body.password){say('err',ERR.creds);return;}}
 if(k==='STALKER'){body.mac=document.getElementById('mac').value.trim();if(!/^([0-9A-Fa-f]{2}[:-]?){5}[0-9A-Fa-f]{2}$/.test(body.mac)){say('err',ERR.mac);return;}}
@@ -504,7 +505,7 @@ export function envoyerPage(n, { code = null } = {}) {
 <label for="code">Code affiché sur la TV <span class="hint">(6 caractères)</span></label>
 <input id="code" name="code" required maxlength="6" value="${e(code || "")}" autocapitalize="characters" autocomplete="off" spellcheck="false" inputmode="text" placeholder="K7Q2M9"/>
 <label for="kind">Type de source</label>
-<select id="kind" name="kind"><option value="XTREAM">Xtream Codes</option><option value="M3U">Lien M3U</option><option value="STALKER">Portail Stalker (MAC)</option></select>
+<select id="kind" name="kind"><option value="XTREAM">Xtream Codes</option><option value="M3U">Lien M3U</option><option value="STALKER">Portail Stalker (MAC)</option><option value="GUIDE">Guide XMLTV (adresse)</option></select>
 <label for="name">Nom <span class="hint">(facultatif)</span></label>
 <input id="name" name="name" maxlength="64" placeholder="Ma source"/>
 <div id="g-url"><label for="url" id="l-url">Adresse du serveur</label>

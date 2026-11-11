@@ -4,6 +4,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Nouveau
+- EPG personnalisé (Android) : Réglages › Synchronisation › Guide complémentaire › « Adresse personnalisée… ». Adresse `http://` ou `https://` finissant par `.xml` ou `.xml.gz` (query string tolérée), saisie à la télécommande ou envoyée depuis le téléphone (page `/envoyer`, nouveau type « Guide XMLTV »).
+- L'adresse est vérifiée AVANT l'enregistrement : requête réseau lisant les premiers Ko (gzip détecté par ses octets magiques) qui doivent contenir une balise `<tv` ; messages clairs (adresse invalide, injoignable, code HTTP, pas un guide XMLTV) en français, anglais, espagnol et arabe. Le guide complémentaire accepte désormais `http://` (avant : `https://` seulement).
+- Guide par source (Android) : Réglages › Sources › menu de la source › « Guide de cette source », avec le mode « remplacer » (seule cette adresse est lue) ou « compléter » (guide du fournisseur, puis cette adresse pour les chaînes sans programme). Pour une playlist M3U sans `url-tvg` et pour un portail Stalker, qui a maintenant un guide dès qu'une adresse est définie (chaînes rattachées par `epgChannelId`, sinon par nom). Stocké par identifiant de source, sans migration Room.
+- Bureau : « Guide complémentaire (adresse) » dans Réglages › Synchronisation, et, dans les options avancées d'une source, le rôle de l'adresse du guide (remplacer ou compléter) avec un bouton « Vérifier l'adresse » ; même vérification avant l'enregistrement.
+- Worker : la page `/envoyer` accepte le type « Guide XMLTV » (adresse validée, remise à la TV une seule fois comme une source).
+
 ### Corrigé
 - Portail Stalker (Android) : séries des portails Ministra récents, servies par le module `type=series` (catégories, listes paginées, saisons puis épisodes ; lien demandé en `vod/create_link`, puis `series/create_link` si le portail refuse). Avant : seule la VOD (`type=vod`) était lue, et les portails qui n'y mettent rien n'avaient aucune série.
 - Portail Stalker (Android) : synchro des films et séries tolérante. Une catégorie en échec (erreur 5xx, délai dépassé, réponse vide) est journalisée et sautée, son contenu précédent reste en place, les autres continuent ; une liste de catégories illisible ne saute que la partie concernée (le direct reste). Fin de synchro : « Synchronisation terminée · X catégories ignorées » au lieu d'un échec global.

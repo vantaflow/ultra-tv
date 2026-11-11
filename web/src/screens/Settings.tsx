@@ -1,13 +1,15 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { db } from "@/db/db";
+import { db, getSetting, setSetting } from "@/db/db";
 import { deleteSource, saveSource } from "@/db/sources";
 import { categoriesOf } from "@/db/queries";
 import type { CategoryRow, Kind, Source } from "@/db/types";
 import { LANGS, useT, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
-import { bridge, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
+import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
+import { guideErrorForSave } from "@/lib/guideAddress";
+import { EXTRA_EPG_KEY } from "@/sync/epg";
 import { ACCENTS, PROFILE_COLORS, usePrefs, type Theme } from "@/state/prefs";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
@@ -228,6 +230,9 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
           setBusy(true); setErr(null);
           try {
             const out = kind === "m3u-link" ? convertToXtream(s) ?? s : s;
+            // « Guide de cette source » : adresse vérifiée (forme + réseau) avant d'enregistrer.
+            const guideErr = await guideErrorForSave(await currentTransport(), out.epgUrl, (k) => t(k));
+            if (guideErr) { setErr(guideErr); return; }
             if (kind !== "m3u-file") await testSource(out);
             await saveSource(out);
             if (out !== s) void useSync.getState().start(out, { preserveFlags: true, silent: true });
@@ -321,10 +326,40 @@ function SyncPane() {
       <Pref label={t("set.syncWhen")}>
         <Seg<"launch" | "manual"> label={t("set.syncWhen")} value={p.syncOn} onChange={(syncOn) => p.set({ syncOn })} options={[{ v: "launch", label: t("set.syncLaunch") }, { v: "manual", label: t("set.syncManual") }]} />
       </Pref>
+      <ExtraEpgPref />
       <Pref label={t("set.manageCats")} desc={t("set.catsSummary", { a, d: cats.length - a })}>
         <button className="btn" onClick={() => nav("/settings/categories")}>{t("set.manageCats")}<Icon name="chevron" size={16} /></button>
       </Pref>
     </>
+  );
+}
+
+/** Guide complémentaire : adresse d'un guide XMLTV lue pour les chaînes sans programme, vérifiée avant l'enregistrement. */
+function ExtraEpgPref() {
+  const t = useT();
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { void getSetting<string>(EXTRA_EPG_KEY, "").then(setUrl); }, []);
+  const save = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const msg = await guideErrorForSave(await currentTransport(), url, (k) => t(k));
+      if (msg) { setErr(msg); return; }
+      await setSetting(EXTRA_EPG_KEY, url.trim());
+      setUrl(url.trim());
+      useUi.getState().toast(t("set.extraEpgSaved"));
+    } finally { setBusy(false); }
+  };
+  return (
+    <Pref label={t("set.extraEpg")} desc={t("set.extraEpgDesc")}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <input className="input" aria-label={t("set.extraEpg")} value={url} spellCheck={false} autoCapitalize="off" placeholder="https://…/guide.xml.gz" style={{ minWidth: "16rem" }}
+          onChange={(e) => { setUrl(e.target.value); setErr(null); }} onKeyDown={(e) => { if (e.key === "Enter" && !busy) void save(); }} />
+        <button className="btn" disabled={busy} onClick={() => void save()}>{busy ? t("src.epgChecking") : t("set.extraEpgSave")}</button>
+      </div>
+      {err && <div className="alert err" role="alert"><Icon name="alert" size={20} />{err}</div>}
+    </Pref>
   );
 }
 

@@ -205,11 +205,10 @@ class ProviderRepository @Inject constructor(
         }
     }
 
-    private fun hasGuideFeed(p: ProviderEntity): Boolean = when (p.kind) {
-        "XTREAM" -> true
-        "M3U", "M3U_LOCAL" -> limits.epgUrls(p.id).isNotEmpty()
-        else -> false
-    }
+    private fun guidePlan(p: ProviderEntity) = com.ultratv.tv.nativeapp.data.xmltv.GuidePlan.of(p.kind, limits.epgUrls(p.id), limits.customEpg(p.id))
+
+    /** Xtream : xmltv.php. M3U : url-tvg de l'en-tête. Toute source (Stalker compris) : son « guide de cette source » s'il est défini. */
+    private fun hasGuideFeed(p: ProviderEntity): Boolean = guidePlan(p).hasFeed
 
     /**
      * Guide de la source PUIS guide complémentaire (chaînes restées sans programme). Le complément est tenté même si
@@ -230,9 +229,16 @@ class ProviderRepository @Inject constructor(
         val report = { b: Long?, t: Long?, c: Int? -> if (b != null) bytes = b; if (t != null) totalBytes = t; if (c != null) count = c; emit() }
         syncStatus.setEpg(EpgState.Loading(p.id, EpgProgress(0, -1, 0)))
         try {
-            val own = runCatching { if (p.kind == "XTREAM") syncProviderXmltv(p, report) else syncTvgFeeds(p, report) }
+            val plan = guidePlan(p)
+            val own = runCatching {
+                when {
+                    plan.replaceUrl != null -> syncCustomReplace(p, plan.replaceUrl, report)   // « Guide de cette source » en mode remplacer
+                    p.kind == "XTREAM" -> syncProviderXmltv(p, report)
+                    else -> syncTvgFeeds(p, report)
+                }
+            }
             // Le complément ne compte que le programme de la source (pas de barre d'octets propre).
-            val extra = runCatching { syncExtraEpg(p) { c -> report(null, null, (own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
+            val extra = runCatching { syncExtraEpg(p, plan.completeUrl) { c -> report(null, null, (own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
             val total = (own.getOrNull() ?: 0) + extra
             emit(force = true)
             if (own.isFailure && extra == 0) throw own.exceptionOrNull()!!
@@ -261,9 +267,48 @@ class ProviderRepository @Inject constructor(
         }
     }
 
-    /** Guide complémentaire (Réglages › Synchronisation) pour les chaînes sans programme ; 0 si désactivé. */
-    private suspend fun syncExtraEpg(p: ProviderEntity, onCount: (Int) -> Unit): Int {
-        val url = prefs.flow.first().extraEpg.takeIf { it.startsWith("https://") } ?: return 0
+    /**
+     * Guides complémentaires pour les chaînes sans programme : d'abord « Guide de cette source » (mode compléter, [sourceUrl]),
+     * puis le guide complémentaire des Réglages (http ou https) ; 0 si aucun. Un guide en échec n'empêche pas le suivant.
+     */
+    private suspend fun syncExtraEpg(p: ProviderEntity, sourceUrl: String?, onCount: (Int) -> Unit): Int {
+        val global = prefs.flow.first().extraEpg.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }
+        var total = 0
+        for (url in listOfNotNull(sourceUrl, global).distinct()) {
+            try {
+                total += syncExtraEpgFrom(p, url) { c -> onCount(total + c) }
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) { /* guide complémentaire : jamais bloquant */ }
+        }
+        return total
+    }
+
+    /**
+     * « Guide de cette source » en mode remplacer : seul ce guide est lu, pour TOUTES les chaînes. Rattachement par
+     * identifiant EPG (`epgChannelId`, `xmltv_id` pour Stalker), sinon par nom (même résolveur que le guide complémentaire).
+     */
+    private suspend fun syncCustomReplace(p: ProviderEntity, url: String, report: (Long?, Long?, Int?) -> Unit): Int {
+        val targets = channelDao.epgTitles(p.id)
+        if (targets.isEmpty()) return 0
+        val resolver = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.Resolver(targets)
+        var total = 0
+        val cleared = HashSet<Long>()
+        xmltv.withExternal(url, resolver::resolve, onBytes = { b, t -> report(b, t, null) }) { seq ->
+            var run = 0
+            com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
+                seq.forEachBatchAhead(INSERT_BATCH) { batch ->
+                    writeEpgBatch(batch, cleared)
+                    run += batch.size
+                    total = maxOf(total, run)
+                    report(null, null, total)
+                }
+            }
+        }
+        return total
+    }
+
+    private suspend fun syncExtraEpgFrom(p: ProviderEntity, url: String, onCount: (Int) -> Unit): Int {
         val have = epgDao.channelsWithProgrammes(p.id, System.currentTimeMillis()).toHashSet()
         val targets = channelDao.epgTitles(p.id).filter { it.id !in have }
         if (targets.isEmpty()) return 0
@@ -495,7 +540,7 @@ class ProviderRepository @Inject constructor(
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
         if (p.kind == "M3U_LOCAL") {
             // Playlist locale : catalogue importé une fois ; son guide (url-tvg) est téléchargé s'il est périmé.
-            if (prefs.flow.first().syncEpg && limits.epgUrls(p.id).isNotEmpty() &&
+            if (prefs.flow.first().syncEpg && hasGuideFeed(p) &&
                 SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis())) syncXmltv(p.id, onProgress)
             return channelDao.count(p.id)
         }

@@ -493,7 +493,17 @@ async function pairPoll(req, env) {
 
 const ENVOI_TTL_S = 900;
 const ENVOI_LOCK = { threshold: 8, baseSec: 60, capSec: 3600 }; // par IP : codes devinés
-const ENVOI_KINDS = ["XTREAM", "M3U", "STALKER"];
+const ENVOI_KINDS = ["XTREAM", "M3U", "STALKER", "GUIDE"];
+
+/** Adresse de guide XMLTV : http(s), hôte, chemin finissant par .xml ou .xml.gz (query string tolérée). null si invalide. */
+function parseGuideUrl(raw) {
+  if (typeof raw !== "string" || raw.length > 2048) return null;
+  let u;
+  try { u = new URL(raw.trim()); } catch { return null; }
+  if ((u.protocol !== "http:" && u.protocol !== "https:") || !u.hostname) return null;
+  const path = u.pathname.toLowerCase();
+  return path.endsWith(".xml") || path.endsWith(".xml.gz") ? u.href : null;
+}
 
 function newEnvoiCode() {
   return [...crypto.getRandomValues(new Uint8Array(6))].map((b) => PAIR_ALPHABET[b & 31]).join("");
@@ -539,7 +549,10 @@ async function envoiSend(req, env) {
   // Même validation que le tableau de bord et les appareils (adresse http/https, MAC, identifiants).
   const kind = typeof b.kind === "string" ? b.kind.toUpperCase() : "";
   if (!ENVOI_KINDS.includes(kind)) return json({ error: "kind" }, 400);
-  const r = parseDeviceProvider({ kind, name: b.name, url: b.url, username: b.username, password: b.password, mac: b.mac }, null);
+  // GUIDE : adresse d'un guide XMLTV pour le guide complémentaire de la TV (pas une source ; la TV la vérifie avant de l'enregistrer).
+  const guideUrl = kind === "GUIDE" ? parseGuideUrl(b.url) : null;
+  if (kind === "GUIDE" && !guideUrl) return json({ error: "url" }, 400);
+  const r = kind === "GUIDE" ? { provider: { kind, name: "", url: guideUrl } } : parseDeviceProvider({ kind, name: b.name, url: b.url, username: b.username, password: b.password, mac: b.mac }, null);
   if (r.error) return json({ error: r.error }, 400);
   const fail = async () => {
     const f = await guardStub(env, `lock:envoi:${ip}`).lockFail(ENVOI_LOCK);

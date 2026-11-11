@@ -51,7 +51,20 @@ class SettingsViewModel @Inject constructor(
     private val syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     private val webSend: com.ultratv.tv.nativeapp.data.config.WebSend,
     private val installIds: com.ultratv.tv.nativeapp.data.config.InstallIdStore,
+    private val guideChecker: com.ultratv.tv.nativeapp.data.xmltv.GuideChecker,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
 ) : ViewModel() {
+
+    // ---- « Guide de cette source » (adresse EPG propre à une source) ----
+
+    fun customGuide(providerId: Long) = limits.customEpg(providerId)
+    suspend fun verifyGuide(url: String) = guideChecker.check(url)
+
+    /** Enregistre (ou, [url] vide, retire) le guide de la source, puis recharge son guide. */
+    fun setCustomGuide(providerId: Long, url: String, mode: com.ultratv.tv.nativeapp.data.xmltv.GuideMode) {
+        limits.setCustomEpg(providerId, if (url.isBlank()) null else com.ultratv.tv.nativeapp.data.xmltv.CustomGuide(url.trim(), mode))
+        repo.retryEpg(providerId)
+    }
 
     // ---- Synchro cloud multi-appareils ----
 
@@ -216,7 +229,7 @@ class SettingsViewModel @Inject constructor(
      * fenêtres Xtream / M3U / Stalker (même ajout, même synchronisation). [receivedText] / [stalkerFailedText] : libellés
      * localisés fournis par l'écran. L'identifiant d'installation n'est transmis que si la télémétrie est activée.
      */
-    fun startWebSend(receivedText: String, stalkerFailedText: String) {
+    fun startWebSend(receivedText: String, stalkerFailedText: String, guideMessage: (com.ultratv.tv.nativeapp.data.xmltv.GuideCheck) -> String = { "" }) {
         val base = validWorkerUrl(workerBaseUrl.value)
         if (base == null) {
             _message.value = "Set a valid https:// Worker URL first."
@@ -237,7 +250,7 @@ class SettingsViewModel @Inject constructor(
                     is com.ultratv.tv.nativeapp.data.config.WebSendEvent.Received -> {
                         _webSendUi.value = WebSendUi.Idle
                         com.ultratv.tv.nativeapp.ui.common.Toaster.ok(receivedText)
-                        addWebSource(ev.source, stalkerFailedText)
+                        addWebSource(ev.source, stalkerFailedText, guideMessage)
                     }
                     com.ultratv.tv.nativeapp.data.config.WebSendEvent.Expired,
                     is com.ultratv.tv.nativeapp.data.config.WebSendEvent.Failed -> _webSendUi.value = WebSendUi.Failed
@@ -251,8 +264,16 @@ class SettingsViewModel @Inject constructor(
         _webSendUi.value = WebSendUi.Idle
     }
 
-    private fun addWebSource(s: com.ultratv.tv.nativeapp.data.config.WebSource, stalkerFailedText: String) {
+    private fun addWebSource(s: com.ultratv.tv.nativeapp.data.config.WebSource, stalkerFailedText: String, guideMessage: (com.ultratv.tv.nativeapp.data.xmltv.GuideCheck) -> String) {
         when (s.kind) {
+            // Adresse de guide envoyée depuis le téléphone : vérifiée comme à la télécommande, puis enregistrée comme guide complémentaire.
+            "GUIDE" -> viewModelScope.launch {
+                val r = guideChecker.check(s.url)
+                if (r == com.ultratv.tv.nativeapp.data.xmltv.GuideCheck.Ok) {
+                    prefs.setExtraEpg(s.url)
+                    com.ultratv.tv.nativeapp.ui.common.Toaster.ok(guideMessage(r))
+                } else com.ultratv.tv.nativeapp.ui.common.Toaster.err(guideMessage(r))
+            }
             "XTREAM" -> addAndSync(s.name, s.url, s.username, s.password)
             "M3U" -> addM3uAndSync(s.name, s.url)
             "STALKER" -> addStalkerAndSync(s.name, s.url, s.mac, s.username, s.password, stalkerFailedText)

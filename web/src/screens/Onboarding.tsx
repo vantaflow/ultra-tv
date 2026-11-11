@@ -5,7 +5,8 @@ import { db } from "@/db/db";
 import { emptySource, getSource, saveSource } from "@/db/sources";
 import type { Source } from "@/db/types";
 import { useT, type TFn } from "@/i18n";
-import { HttpError, isElectron } from "@/net/transport";
+import { HttpError, currentTransport, isElectron } from "@/net/transport";
+import { guideErrorForSave } from "@/lib/guideAddress";
 import { usePrefs } from "@/state/prefs";
 import { useSync } from "@/state/sync";
 import { detectSourceLanguages, testSource } from "@/sync/client";
@@ -100,6 +101,9 @@ export function Onboarding() {
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
     setBusy(true);
     try {
+      // « Guide de cette source » (options avancées) : adresse vérifiée (forme + réseau) avant d'enregistrer.
+      const guideErr = await guideErrorForSave(await currentTransport(), s.epgUrl, (k) => t(k));
+      if (guideErr) { setErr(guideErr); setBusy(false); return; }
       if (kind === "m3u-file") await db.details.put({ key: "m3ufile:tmp", json: fileText, fetchedAt: Date.now() });
       const r = await testSource(s);
       const saved: Source = { ...s, expDate: r.expDate, maxConnections: r.maxConnections, ...(r.stalkerApi ? { stalkerApi: r.stalkerApi } : {}) };

@@ -51,6 +51,11 @@ object WebSendLogic {
         o ?: return null
         val kind = o.optString("kind").uppercase()
         val url = o.optString("url").trim()
+        // GUIDE : adresse d'un guide XMLTV (guide complémentaire), revérifiée ici comme à la saisie sur la TV.
+        if (kind == "GUIDE") {
+            if (com.ultratv.tv.nativeapp.data.xmltv.GuideAddress.validate(url) !is com.ultratv.tv.nativeapp.data.xmltv.GuideAddress.Validation.Ok) return null
+            return WebSource(kind, "", url, "", "", "")
+        }
         if (kind !in setOf("XTREAM", "M3U", "STALKER") || !httpUrl(url)) return null
         val user = o.optString("username"); val pass = o.optString("password")
         if (kind == "XTREAM" && (user.isBlank() || pass.isBlank())) return null

@@ -44,6 +44,18 @@ describe("envoi d'une source depuis le web (sans compte)", () => {
     expect(p.mac).toBe("00:1A:79:AB:CD:EF");
   });
 
+  it("adresse de guide XMLTV (GUIDE) : http(s) finissant par .xml ou .xml.gz, query tolérée", async () => {
+    const a = await start();
+    expect((await send(a.code, { kind: "GUIDE", url: "https://guide.test/epg.xml.gz?token=abc" })).status).toBe(200);
+    expect((await (await poll(a.code, a.secret)).json()).provider).toEqual({ kind: "GUIDE", name: "", url: "https://guide.test/epg.xml.gz?token=abc", username: "", password: "" });
+    const b = await start();
+    const err = async (url) => { const r = await send(b.code, { kind: "GUIDE", url }); return [r.status, (await r.json()).error]; };
+    expect(await err("ftp://guide.test/epg.xml")).toEqual([400, "url"]);
+    expect(await err("https://guide.test/epg")).toEqual([400, "url"]);
+    expect(await err("https://guide.test/epg.gz")).toEqual([400, "url"]);
+    expect(await err("")).toEqual([400, "url"]);
+  });
+
   it("le secret est obligatoire pour récupérer (le code seul ne suffit pas)", async () => {
     const s = await start();
     await send(s.code, XTREAM);

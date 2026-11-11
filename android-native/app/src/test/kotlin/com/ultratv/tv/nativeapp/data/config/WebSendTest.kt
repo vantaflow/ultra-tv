@@ -34,6 +34,16 @@ class WebSendLogicTest {
 
     private fun src(vararg kv: Pair<String, String>) = JSONObject().also { o -> kv.forEach { (k, v) -> o.put(k, v) } }
 
+    @Test fun `parseSource guide XMLTV valide`() {
+        val s = WebSendLogic.parseSource(src("kind" to "GUIDE", "url" to "https://g.test/epg.xml.gz?t=1"))!!
+        assertEquals(WebSource("GUIDE", "", "https://g.test/epg.xml.gz?t=1", "", "", ""), s)
+    }
+
+    @Test fun `parseSource guide refuse ftp et adresse sans extension xml`() {
+        assertNull(WebSendLogic.parseSource(src("kind" to "GUIDE", "url" to "ftp://g.test/epg.xml")))
+        assertNull(WebSendLogic.parseSource(src("kind" to "GUIDE", "url" to "https://g.test/epg")))
+    }
+
     @Test fun `parseSource Xtream valide`() {
         val s = WebSendLogic.parseSource(src("kind" to "XTREAM", "name" to " Salon ", "url" to "http://s.test:8080", "username" to "u", "password" to "p"))!!
         assertEquals(WebSource("XTREAM", "Salon", "http://s.test:8080", "u", "p", ""), s)

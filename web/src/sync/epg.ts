@@ -1,7 +1,7 @@
 // Guide TV (XMLTV) : lecture en flux, filtré sur les chaînes du catalogue et une fenêtre de temps
 // [maintenant - 3 h ; maintenant + 48 h]. Les titres/descriptions sont décodés des entités XML.
 
-import { db } from "@/db/db";
+import { db, getSetting } from "@/db/db";
 import type { ProgramRow, Source } from "@/db/types";
 import { hasGzipMagic } from "@/lib/gzip";
 import { transportFetch, type Transport } from "@/net/transport";
@@ -86,14 +86,66 @@ export function scanXmltv(
   };
 }
 
+/** Réglage « guide complémentaire » (adresse http(s) d'un guide XMLTV pour les chaînes sans programme) ; "" = aucun. */
+export const EXTRA_EPG_KEY = "epg.extra";
+
+export interface EpgPlan {
+  /** Guide principal : remplace l'ancien guide de la source une fois reçu en entier. "" = aucun. */
+  main: string;
+  /** Guides lus ensuite, SEULEMENT pour les chaînes restées sans programme (le guide principal n'est pas touché). */
+  complements: string[];
+}
+
+/**
+ * Quels guides lire pour une source.
+ *  - « Guide de cette source » ([Source.epgUrl]) en mode « remplacer » (défaut, comportement historique) : seul lui est lu ;
+ *  - mode « compléter » : guide du fournisseur (Xtream : xmltv.php) puis cette adresse pour les chaînes sans programme.
+ *    M3U / Stalker n'ont pas de guide de fournisseur : l'adresse est alors le guide principal ;
+ *  - [extraUrl] (réglage global) complète en dernier, pour toutes les sources.
+ */
+export function planEpg(source: Source, extraUrl = ""): EpgPlan {
+  const provider = source.type === "xtream" ? xmltvUrl(credsOf(source)) : "";
+  const custom = (source.epgUrl ?? "").trim();
+  const complete = (source.epgMode ?? "replace") === "complete";
+  const main = custom && (!complete || !provider) ? custom : provider;
+  const extra = /^https?:\/\//i.test(extraUrl.trim()) ? extraUrl.trim() : "";
+  const complements = [...(custom && complete && provider ? [custom] : []), ...(extra ? [extra] : [])].filter((u, i, a) => u !== main && a.indexOf(u) === i);
+  return { main, complements };
+}
+
 export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal, onProgress?: (ratio: number) => void): Promise<number> {
+  if (!source.cid) return 0;
+  const plan = planEpg(source, await getSetting<string>(EXTRA_EPG_KEY, ""));
+  let written = 0;
+  let failure: unknown;
+  if (plan.main) {
+    try { written += await syncEpgUrl(source, t, plan.main, signal, onProgress, false); }
+    catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; failure = e; }
+  }
+  // Compléments : tentés même si le guide principal a échoué ; leur propre échec n'est jamais bloquant.
+  for (const url of plan.complements) {
+    try { written += await syncEpgUrl(source, t, url, signal, undefined, true); }
+    catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; failure ??= plan.main ? undefined : e; }
+  }
+  if (failure && written === 0) throw failure;
+  return written;
+}
+
+/**
+ * Lit UN guide. [append] : guide complémentaire, il n'écrit que pour les chaînes SANS programme et ne retire rien
+ * (sinon le guide principal qu'on vient d'écrire serait supprimé).
+ */
+async function syncEpgUrl(source: Source, t: Transport, url: string, signal: AbortSignal | undefined, onProgress: ((ratio: number) => void) | undefined, append: boolean): Promise<number> {
   const sourceId = source.cid;
   if (!sourceId) return 0;
-  const url = source.epgUrl || (source.type === "xtream" ? xmltvUrl(credsOf(source)) : "");
-  if (!url) return 0;
 
   const wanted = new Set<string>();
   await db.channels.where("[sourceId+ord]").between([sourceId, -1], [sourceId, Infinity]).each((c) => { if (c.epg) wanted.add(c.epg); });
+  if (append) {
+    const have = new Set<string>();
+    await db.programs.where("[sourceId+end]").between([sourceId, Date.now()], [sourceId, Infinity]).each((p) => { have.add(p.epg); });
+    for (const id of have) wanted.delete(id);
+  }
   if (wanted.size === 0) return 0;
 
   const res = await transportFetch(t, url, { signal, userAgent: source.userAgent, referer: source.referer });
@@ -151,7 +203,7 @@ export async function syncEpg(source: Source, t: Transport, signal?: AbortSignal
     await dropNew().catch(() => undefined);
     throw e;
   }
-  await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).filter((p) => (p.id ?? 0) <= oldMax).delete();
+  if (!append) await db.programs.where("[sourceId+end]").between([sourceId, 0], [sourceId, Infinity]).filter((p) => (p.id ?? 0) <= oldMax).delete();
   onProgress?.(1);
   return written;
 }

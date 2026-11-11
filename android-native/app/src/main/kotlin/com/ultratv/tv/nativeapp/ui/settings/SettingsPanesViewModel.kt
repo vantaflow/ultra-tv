@@ -45,6 +45,7 @@ class SettingsPanesViewModel @Inject constructor(
     private val sync: SyncCoordinator,
     private val languages: com.ultratv.tv.nativeapp.data.repo.LanguageManager,
     val adaptive: AdaptiveProfile,
+    private val guideChecker: com.ultratv.tv.nativeapp.data.xmltv.GuideChecker,
 ) : ViewModel() {
     val state: StateFlow<UserPrefs> = prefs.flow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserPrefs())
     val provider: StateFlow<ProviderEntity?> = providers.observeProviders().map { ps -> ps.firstOrNull { it.active } ?: ps.firstOrNull() }
@@ -70,6 +71,7 @@ class SettingsPanesViewModel @Inject constructor(
 
     /** Active / désactive un type de contenu. Désactivé + [purge] : les données déjà téléchargées sont supprimées. */
     fun setExtraEpg(url: String) = viewModelScope.launch { prefs.setExtraEpg(url) }
+    suspend fun verifyGuide(url: String) = guideChecker.check(url)
 
     fun setPart(part: String, on: Boolean, purge: Boolean) {
         viewModelScope.launch {
