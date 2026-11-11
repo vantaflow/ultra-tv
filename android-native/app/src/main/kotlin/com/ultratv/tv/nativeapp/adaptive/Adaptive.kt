@@ -40,6 +40,13 @@ data class DeviceProfile(val info: DeviceInfo, val tier: Tier)
 
 object DeviceClassifier {
     /**
+     * Box faible : Android 32 bits, quatre cœurs ou moins et moins de ~2,6 Go (ex. Skyworth Amlogic armeabi-v7a).
+     * Sert à ne pas laisser le décodage des images concurrencer l'interface pour le processeur ; ne touche ni aux effets
+     * (mesuré : les couper ne change rien aux images en retard) ni au niveau (tier), donc ne plafonne pas la vidéo.
+     */
+    fun weakUi(i: DeviceInfo): Boolean = !i.is64Bit && i.cores <= 4 && i.ramMb < 2600
+
+    /**
      * LOW : drapeau low-RAM, moins de ~1,8 Go (Chromecast HD, box à 1 Go), classe mémoire < 160 Mo, ou machine très lente.
      * Sinon un score (RAM, cœurs, 64 bits, classe mémoire, benchmark) départage MID / HIGH.
      */
@@ -103,6 +110,8 @@ data class AutoSettings(
     val refreshHours: Int,
     val connectTimeoutMs: Int,
     val readTimeoutMs: Int,
+    /** Box faible (voir [DeviceClassifier.weakUi]) : décodage d'images en tâche de fond, un seul à la fois. */
+    val weakUi: Boolean = false,
 )
 
 object AutoTuner {
@@ -112,6 +121,7 @@ object AutoTuner {
     fun settings(device: DeviceProfile, quality: NetQuality, metered: Boolean, ttfbMs: Int?): AutoSettings {
         val tier = device.tier
         val i = device.info
+        val weak = DeviceClassifier.weakUi(i)
         val bufferPreset = when (quality) {
             NetQuality.POOR, NetQuality.FAIR -> BufferPreset.STABLE
             NetQuality.GOOD -> if (tier == Tier.LOW) BufferPreset.AUTO else BufferPreset.BALANCED
@@ -144,6 +154,7 @@ object AutoTuner {
             refreshHours = when (tier) { Tier.LOW -> 12; Tier.MID -> 8; Tier.HIGH -> 6 },
             connectTimeoutMs = ((ttfbMs ?: 1_500) * 4).coerceIn(5_000, 20_000),
             readTimeoutMs = if (quality <= NetQuality.FAIR) 30_000 else 20_000,
+            weakUi = weak,
         )
     }
 }
