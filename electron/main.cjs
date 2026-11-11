@@ -21,6 +21,7 @@ const autoUpdateMod = require("./autoupdate.cjs");
 const { cloudRequest } = require("./cloudfetch.cjs");
 const { computeWindowFit } = require("./windowfit.cjs");
 const dnsMod = require("./dns.cjs");
+const trailer = require("./trailer.cjs");
 
 const APP_SCHEME = "app";
 const APP_HOST = "ultratv";
@@ -40,6 +41,8 @@ const CSP = [
   "img-src 'self' data: blob: http://127.0.0.1:*",
   "media-src 'self' blob: http://127.0.0.1:*",
   "connect-src 'self' http://127.0.0.1:*",
+  // Bande-annonce : lecteur YouTube integre en iframe (aucun script distant : l'API est pilotee par postMessage).
+  `frame-src ${trailer.TRAILER_FRAME_SRC.join(" ")}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'none'",
@@ -279,6 +282,11 @@ function setupSession() {
       callback({ responseHeaders: headers });
     });
   }
+
+  // Lecteur de bande-annonce : app:// n'envoie pas de Referer, YouTube refuse alors l'integration (voir trailer.cjs).
+  ses.webRequest.onBeforeSendHeaders({ urls: trailer.TRAILER_EMBED_URLS }, (details, callback) => {
+    callback({ requestHeaders: trailer.withTrailerReferer(details.requestHeaders) });
+  });
 
   const ALLOWED_PERMISSIONS = new Set(["fullscreen", "clipboard-sanitized-write"]);
   ses.setPermissionRequestHandler((wc, permission, callback, details) => {

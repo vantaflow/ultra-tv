@@ -498,5 +498,11 @@
   "key.esc": "Esc",
   "key.enter": "Intro",
   "set.translateHelp": "Ayudar a traducir Ultra TV",
-  "set.translateHelpSub": "¿Falta tu idioma o contiene un error?"
+  "set.translateHelpSub": "¿Falta tu idioma o contiene un error?",
+  "trailer.button": "Tráiler",
+  "trailer.loading": "Cargando el tráiler…",
+  "trailer.errNotFound": "Este tráiler ya no está disponible (eliminado o privado).",
+  "trailer.errEmbed": "El propietario de este vídeo no permite reproducirlo fuera de YouTube.",
+  "trailer.errConfig": "Este tráiler no se puede reproducir en la aplicación por ahora.",
+  "trailer.errUnknown": "No se pudo reproducir el tráiler."
 }

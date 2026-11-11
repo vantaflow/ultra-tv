@@ -528,5 +528,11 @@
   "key.esc": "خروج",
   "key.enter": "إدخال",
   "set.translateHelp": "ساعد في ترجمة Ultra TV",
-  "set.translateHelpSub": "لغتك غير متوفرة أو تحتوي على خطأ؟"
+  "set.translateHelpSub": "لغتك غير متوفرة أو تحتوي على خطأ؟",
+  "trailer.button": "الإعلان",
+  "trailer.loading": "جارٍ تحميل الإعلان…",
+  "trailer.errNotFound": "هذا الإعلان لم يعد متاحًا (محذوف أو خاص).",
+  "trailer.errEmbed": "صاحب هذا الفيديو لا يسمح بتشغيله خارج يوتيوب.",
+  "trailer.errConfig": "تعذّر تشغيل هذا الإعلان داخل التطبيق حاليًا.",
+  "trailer.errUnknown": "تعذّر تشغيل الإعلان."
 }

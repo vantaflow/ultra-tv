@@ -27,6 +27,8 @@ import { nextEpisode } from "@/trakt/progress";
 import { tmdbOf } from "@/player/trakt";
 import { NoSource } from "./states";
 import { ratingLabels, useRatings } from "@/hooks/ratings";
+import { useTrailerKey } from "@/hooks/trailer";
+import { TrailerPlayer } from "@/player/TrailerPlayer";
 
 const WEEK = 7 * 86400_000;
 
@@ -112,6 +114,8 @@ function MovieInner({ source }: { source: Source }) {
   const hist = useLiveQuery(() => db.history.get(histKey(prefs.profileId, source.id!, "movie", sid)), [sid, prefs.profileId]);
   const seenMovie = useIsWatchedMovie();
   const ext = useRatings("movie", tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id), movie?.title, movie?.year);
+  const trailerKey = useTrailerKey("movie", info?.info?.youtube_trailer, tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id), movie?.title, movie?.year);
+  const [trailerOpen, setTrailerOpen] = useState(false);
   if (movie === undefined) return <div className="detail" />;
   if (!movie) return <StateCard icon="alert" title={t("vod.empty")} actions={<button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button>} />;
   const i = info?.info;
@@ -136,6 +140,7 @@ function MovieInner({ source }: { source: Source }) {
         <div className="actions">
           <button className="btn primary lg" onClick={() => play()}><Icon name="play" size={20} fill />{t("common.play")}</button>
           {resume > 0 && <button className="btn lg" onClick={() => play(resume)}>{t("common.resumeAt", { t: fmtClock(resume) })}</button>}
+          {trailerKey && <button className="btn lg" onClick={() => setTrailerOpen(true)}><Icon name="play" size={20} />{t("trailer.button")}</button>}
           <button className="btn icon lg" aria-label={t(isFav ? "common.removeFav" : "common.addFav")} aria-pressed={isFav} onClick={async () => {
             const on = await toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "movie", refId: sid, name: m.title, image: m.poster });
             useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
@@ -144,6 +149,7 @@ function MovieInner({ source }: { source: Source }) {
         <TraktMovieActions title={m.title} year={m.year} tmdb={tmdbOf((i as { tmdb_id?: unknown } | undefined)?.tmdb_id)} seen={seenMovie(m.title, m.year)} />
         <Cast names={[...splitNames(i?.director).map((n) => n), ...splitNames(i?.cast ?? i?.actors)]} label={t("vod.cast")} />
       </div>
+      {trailerOpen && trailerKey && <TrailerPlayer ytKey={trailerKey} title={`${m.title} · ${t("trailer.button")}`} onClose={() => setTrailerOpen(false)} />}
     </div>
   );
 }
@@ -188,6 +194,8 @@ function SeriesInner({ source }: { source: Source }) {
   const parsed = useMemo(() => parseEpisodes(info), [info]);
   const seenEps = useWatchedEpisodes(row?.title, row?.year);
   const ext = useRatings("tv", tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), row?.title, row?.year);
+  const trailerKey = useTrailerKey("tv", info?.info?.youtube_trailer, tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), row?.title, row?.year);
+  const [trailerOpen, setTrailerOpen] = useState(false);
   const [season, setSeason] = useState<number | null>(null);
   const histBy = useMemo(() => new Map(hist.map((h) => [h.epId ?? -1, h] as [number, HistoryRow])), [hist]);
   const last = useMemo(() => [...hist].sort((a, b) => b.updatedAt - a.updatedAt)[0], [hist]);
@@ -226,6 +234,7 @@ function SeriesInner({ source }: { source: Source }) {
                 {resumeEp && last ? t("vod.resumeEp", { s: resumeEp.season, e: resumeEp.num }) : t("vod.startEp", { s: main.season, e: main.num })}
               </button>
             )}
+            {trailerKey && <button className="btn lg" onClick={() => setTrailerOpen(true)}><Icon name="play" size={20} />{t("trailer.button")}</button>}
             <button className="btn icon lg" aria-label={t(isFav ? "common.removeFav" : "common.addFav")} aria-pressed={isFav} onClick={async () => {
               const on = await toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "series", refId: sid, name: s.title, image: s.poster });
               useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
@@ -256,6 +265,7 @@ function SeriesInner({ source }: { source: Source }) {
           })}
         </section>
       </div>
+      {trailerOpen && trailerKey && <TrailerPlayer ytKey={trailerKey} title={`${s.title} · ${t("trailer.button")}`} onClose={() => setTrailerOpen(false)} />}
     </div>
   );
 }
