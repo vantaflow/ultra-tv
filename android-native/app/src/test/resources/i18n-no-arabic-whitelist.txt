@@ -1,0 +1,10 @@
+# Valeurs arabes sans lettre arabe (codes, formats, sigles).
+# Format : langue|clé. Générée par tools/i18n/whitelists.py ; maintenue à la main ensuite.
+ar|ds_engine_exo
+ar|ds_engine_vlc
+ar|str_settings_add_xtream
+ar|str_pref_theme_amoled
+ar|wiz_bullet_xtream
+ar|wiz_card_xtream
+ar|wiz_kind_xtream
+ar|wiz_hint_ok

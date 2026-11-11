@@ -531,7 +531,13 @@ def process_mobile_kt(base):
 
 # ---------------------------------------------------------------- XML
 
-LEGACY_NOTE = "Ressources Android historiques (manifeste, canaux de notification) : inchangées."
+PLURAL_QUANTITIES = {
+    "en": ["one", "other"],
+    "fr": ["one", "many", "other"],
+    "es": ["one", "many", "other"],
+    "ar": ["zero", "one", "two", "few", "many", "other"],
+}
+LEGACY_NOTE ="Ressources Android historiques (manifeste, canaux de notification) : inchangées."
 
 
 def xml_text(s):
@@ -575,7 +581,7 @@ def write_xml(base):
             if lg in ("en", "fr") else []
         out = ['<?xml version="1.0" encoding="utf-8"?>',
                "<!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->",
-               "<resources>"]
+               '<resources xmlns:tools="http://schemas.android.com/tools">']
         if legacy:
             out.append(f"    <!-- {LEGACY_NOTE} -->")
             out += ["    " + l for l in legacy]
@@ -595,8 +601,12 @@ def write_xml(base):
                     fl = ' formatted="false"' if format_flag(v) else ""
                     lines.append(f'    <string name="{k}"{fl}>{xml_text(v)}</string>')
                 else:
-                    items = "".join(f'\n        <item quantity="{q}">{xml_text(t)}</item>' for q, t in v.items())
-                    lines.append(f'    <plurals name="{k}">{items}\n    </plurals>')
+                    # Quantités CLDR de la langue complétées avec « other » : même texte qu'avant, lint MissingQuantity content
+                    full = {q: v.get(q, v["other"]) for q in PLURAL_QUANTITIES[lg]}
+                    items = "".join(f'\n        <item quantity="{q}">{xml_text(t)}</item>' for q, t in full.items())
+                    # « one » sans nombre (« Enregistrement programmé ») : voulu, 0 et 1 sont le même cas en français
+                    ign = ' tools:ignore="ImpliedQuantity"' if "%" not in full.get("one", "%") else ""
+                    lines.append(f'    <plurals name="{k}"{ign}>{items}\n    </plurals>')
             if lines:
                 out.append(f"\n    <!-- {rel} -->")
                 out += lines
@@ -633,6 +643,8 @@ def main():
     manual.apply(CAT, ROOT, KT)
     write_xml(a.base)
     write_whitelist()
+    import whitelists
+    print('listes blanches (identiques, sans arabe) :', whitelists.write(RES, ROOT / 'android-native/app/src/test/resources'))
     n = {lg: sum(1 for e in CAT.entries.values() if lg in e["values"]) for lg in LANGS}
     rep = {
         "base": a.base,

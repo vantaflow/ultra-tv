@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="app_name">UTV</string>
     <string name="nav_home">Home</string>
@@ -459,7 +459,7 @@
     <string name="dsb1_remind_set">Reminder set</string>
     <string name="dsb1_starts_in_one_min">Starts in 1 min</string>
     <string name="dsb1_watch_word">Watch</string>
-    <plurals name="dsb1_rec_scheduled">
+    <plurals name="dsb1_rec_scheduled" tools:ignore="ImpliedQuantity">
         <item quantity="one">Recording scheduled</item>
         <item quantity="other">%1$s recordings scheduled</item>
     </plurals>
@@ -501,6 +501,7 @@
     <string name="dg_now_badge">NOW</string>
     <string name="dg_now_button">Now</string>
     <plurals name="dg_minutes_remaining">
+        <item quantity="one">%1$s min left</item>
         <item quantity="other">%1$s min left</item>
     </plurals>
     <string name="dg_help_programs">Programmes</string>

@@ -79,6 +79,47 @@ class StringsXmlCompletenessTest {
         javaClass.classLoader!!.getResourceAsStream("i18n-identical-whitelist.txt")!!.readBytes().toString(Charsets.UTF_8)
             .lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toSet()
 
+    private fun listFile(name: String): Set<String> =
+        javaClass.classLoader!!.getResourceAsStream(name)!!.readBytes().toString(Charsets.UTF_8)
+            .lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }.toSet()
+
+    private fun texts(r: Res): List<Pair<String, String>> = when (r) {
+        is Res.Str -> listOf("" to r.text)
+        is Res.Plural -> r.items.toList()
+        is Res.Arr -> r.items.mapIndexed { i, t -> i.toString() to t }
+    }
+
+    /** Une valeur identique à l'anglais est soit un oubli de traduction, soit volontaire (liste blanche). */
+    @Test fun valeurIdentiqueALAnglais_doitEtreSurListeBlanche() {
+        val en = load("values")
+        val wl = listFile("i18n-same-as-english-whitelist.txt")
+        val problems = mutableListOf<String>()
+        val used = mutableSetOf<String>()
+        for (lang in OFFICIAL) for ((k, v) in load(folderOf(lang))) {
+            val e = en[k] ?: continue
+            if (texts(v) != texts(e)) continue
+            if ("$lang|$k" in wl) used += "$lang|$k" else problems += "$lang|$k : identique à l'anglais « ${texts(v).first().second} » (non traduit ?)"
+        }
+        val stale = wl - used
+        assertTrue("Liste blanche périmée (valeur désormais différente) :\n${stale.joinToString("\n")}", stale.isEmpty())
+        assertTrue("${problems.size} valeur(s) identique(s) à l'anglais :\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
+    /** Toute valeur arabe contient une lettre arabe (U+0600–U+06FF), sauf noms propres, formats et codes (liste blanche). */
+    @Test fun arabe_contientDesLettresArabes() {
+        val arabic = Regex("[\\u0600-\\u06FF]")
+        val wl = listFile("i18n-no-arabic-whitelist.txt")
+        val problems = mutableListOf<String>()
+        val used = mutableSetOf<String>()
+        for ((k, v) in load("values-ar")) {
+            if (texts(v).all { arabic.containsMatchIn(it.second) }) continue
+            if ("ar|$k" in wl) used += "ar|$k" else problems += "ar|$k : sans lettre arabe « ${texts(v).first().second} »"
+        }
+        val stale = wl - used
+        assertTrue("Liste blanche périmée :\n${stale.joinToString("\n")}", stale.isEmpty())
+        assertTrue("${problems.size} valeur(s) arabe(s) sans lettre arabe :\n" + problems.joinToString("\n"), problems.isEmpty())
+    }
+
     private fun folderOf(lang: String) = if (lang == "en") "values" else "values-$lang"
 
     @Test fun anglais_estLaSource_nonVide() {
