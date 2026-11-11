@@ -27,6 +27,17 @@ val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
 
+// Clé de signature des releases (créée le 11/11/2026 sur le Mac de développement, copie dans les secrets GitHub
+// ULTRA2_*) : rangée dans ~/.config/ultra-tv/signing (ultra.keystore, ultra.lineage, signing.properties). Présente,
+// elle signe aussi les builds debug : un APK construit sur ce poste s'installe par-dessus la version publiée, sans
+// désinstaller ni perdre les données. Absente (autre machine, CI sans secrets) : clé debug locale, comme avant.
+val sharedSigningDir: File = file(System.getenv("ULTRA_SIGNING_DIR") ?: "${System.getProperty("user.home")}/.config/ultra-tv/signing")
+val sharedSigning = Properties().apply {
+    File(sharedSigningDir, "signing.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+}
+val sharedKeystore: File? = File(sharedSigningDir, "ultra.keystore")
+    .takeIf { it.isFile && !sharedSigning.getProperty("storePassword").isNullOrBlank() && !sharedSigning.getProperty("keyAlias").isNullOrBlank() }
+
 // URL du Worker (configuration cloud + télémétrie). Ce n'est PAS un secret : le
 // Worker authentifie chaque appareil par un jeton obtenu à l'appairage. Il n'existe
 // donc plus de jeton de télémétrie embarqué dans l'APK. Surcharge au build :
@@ -79,6 +90,12 @@ android {
     // proof-of-rotation signing block, allowing it to install over the
     // existing debug-key install without "INSTALL_FAILED_UPDATE_INCOMPATIBLE".
     signingConfigs {
+        if (sharedKeystore != null) create("shared") {
+            storeFile = sharedKeystore
+            storePassword = sharedSigning.getProperty("storePassword")
+            keyAlias = sharedSigning.getProperty("keyAlias")
+            keyPassword = sharedSigning.getProperty("keyPassword")?.takeIf { it.isNotBlank() } ?: sharedSigning.getProperty("storePassword")
+        }
         create("release") {
             val ksPath = System.getenv("ULTRA_KEYSTORE")
             if (!ksPath.isNullOrBlank() && file(ksPath).exists()) {
@@ -103,6 +120,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             isMinifyEnabled = false
+            if (sharedKeystore != null) signingConfig = signingConfigs.getByName("shared")
         }
         release {
             // R8 full-mode: shrinks resources + obfuscates code. ~18 MB → ~8 MB.
@@ -282,11 +300,13 @@ tasks.register("resignRelease") {
     // that Gradle's configuration cache can't serialize — opt out explicitly.
     notCompatibleWithConfigurationCache("hand-rolled apksigner exec")
     doLast {
-        val ks = System.getenv("ULTRA_KEYSTORE") ?: return@doLast
-        val ksPwd = System.getenv("ULTRA_KEYSTORE_PASSWORD") ?: return@doLast
-        val alias = System.getenv("ULTRA_KEY_ALIAS") ?: return@doLast
-        val keyPwd = System.getenv("ULTRA_KEY_PASSWORD") ?: ksPwd
-        val lineage = System.getenv("ULTRA_LINEAGE") ?: return@doLast
+        // CI : variables ULTRA_* ; poste de développement : clé partagée de ~/.config/ultra-tv/signing.
+        val ks = System.getenv("ULTRA_KEYSTORE")?.takeIf { it.isNotBlank() } ?: sharedKeystore?.path ?: return@doLast
+        val ksPwd = System.getenv("ULTRA_KEYSTORE_PASSWORD")?.takeIf { it.isNotBlank() } ?: sharedSigning.getProperty("storePassword") ?: return@doLast
+        val alias = System.getenv("ULTRA_KEY_ALIAS")?.takeIf { it.isNotBlank() } ?: sharedSigning.getProperty("keyAlias") ?: return@doLast
+        val keyPwd = System.getenv("ULTRA_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: sharedSigning.getProperty("keyPassword")?.takeIf { it.isNotBlank() } ?: ksPwd
+        val lineage = System.getenv("ULTRA_LINEAGE")?.takeIf { it.isNotBlank() }
+            ?: File(sharedSigningDir, "ultra.lineage").takeIf { it.isFile }?.path ?: return@doLast
 
         // Avec les splits ABI, AGP produit un APK par processeur + l'universel
         // (app-<abi>-release.apk, app-universal-release.apk) : on les re-signe TOUS.

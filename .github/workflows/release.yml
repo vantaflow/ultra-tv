@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - "v*"
+  # Lancée sur un tag par la fusion automatique Dependabot (un tag poussé par un workflow ne déclenche pas « push »).
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -48,11 +50,13 @@ jobs:
       # producing an installable debug-signed APK. When present, we materialise
       # the base64 keystore + lineage to disk and the resignRelease task re-signs
       # the APK with the rotation lineage via apksigner.
+      # Clé de signature : la clé « ULTRA2_* » (créée le 11/11/2026, rangée sur le Mac de développement) dès que sa
+      # chaîne de rotation existe (workflow « Signing rotate ») ; sinon l'ancienne clé « ULTRA_* », gardée en secours.
       - name: Materialise signing keystore (if configured)
         id: signing
         env:
-          ULTRA_KEYSTORE_BASE64: ${{ secrets.ULTRA_KEYSTORE_BASE64 }}
-          ULTRA_LINEAGE_BASE64: ${{ secrets.ULTRA_LINEAGE_BASE64 }}
+          ULTRA_KEYSTORE_BASE64: ${{ secrets.ULTRA2_LINEAGE_BASE64 != '' && secrets.ULTRA2_KEYSTORE_BASE64 || secrets.ULTRA_KEYSTORE_BASE64 }}
+          ULTRA_LINEAGE_BASE64: ${{ secrets.ULTRA2_LINEAGE_BASE64 != '' && secrets.ULTRA2_LINEAGE_BASE64 || secrets.ULTRA_LINEAGE_BASE64 }}
         run: |
           if [ -n "$ULTRA_KEYSTORE_BASE64" ]; then
             echo "$ULTRA_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ultra.keystore"
@@ -71,9 +75,9 @@ jobs:
       - name: Build release APK
         env:
           ULTRA_KEYSTORE: ${{ steps.signing.outputs.keystore }}
-          ULTRA_KEYSTORE_PASSWORD: ${{ secrets.ULTRA_KEYSTORE_PASSWORD }}
-          ULTRA_KEY_ALIAS: ${{ secrets.ULTRA_KEY_ALIAS }}
-          ULTRA_KEY_PASSWORD: ${{ secrets.ULTRA_KEY_PASSWORD }}
+          ULTRA_KEYSTORE_PASSWORD: ${{ secrets.ULTRA2_LINEAGE_BASE64 != '' && secrets.ULTRA2_KEYSTORE_PASSWORD || secrets.ULTRA_KEYSTORE_PASSWORD }}
+          ULTRA_KEY_ALIAS: ${{ secrets.ULTRA2_LINEAGE_BASE64 != '' && secrets.ULTRA2_KEY_ALIAS || secrets.ULTRA_KEY_ALIAS }}
+          ULTRA_KEY_PASSWORD: ${{ secrets.ULTRA2_LINEAGE_BASE64 != '' && secrets.ULTRA2_KEY_PASSWORD || secrets.ULTRA_KEY_PASSWORD }}
           ULTRA_LINEAGE: ${{ steps.signing.outputs.lineage }}
         run: |
           chmod +x gradlew

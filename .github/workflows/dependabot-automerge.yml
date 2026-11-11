@@ -1,35 +1,95 @@
-# Fusion automatique des mises à jour MINEURES / correctifs de Dependabot, une fois toutes les vérifications passées.
-# Les versions majeures restent à valider à la main.
+# Mises à jour Dependabot appliquées jusqu'à l'application, sans intervention :
+#   1. une fois la CI de la PR terminée avec succès (et toutes ses autres vérifications), les mises à jour des groupes
+#      « *-mineures » et « actions » sont fusionnées (squash) ; les groupes « *-majeures » restent à valider à la main ;
+#   2. si la PR fusionnée touche l'application Android, la version est incrémentée (correctif), le CHANGELOG complété,
+#      le tag vX.Y.Z créé et la release lancée : les appareils se voient proposer la mise à jour comme d'habitude.
+#
+# Déclenché par workflow_run (contexte de la branche principale, jeton en écriture) : le déclencheur
+# pull_request_target ne démarrait plus pour les PR Dependabot depuis le 9 novembre 2026 (« startup_failure »).
 name: Dependabot auto-merge
-on: pull_request_target
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
 permissions:
   contents: write
   pull-requests: write
+  actions: write
+concurrency:
+  # Une fusion + release à la fois : deux PR terminées ensemble ne prennent pas le même numéro de version.
+  group: dependabot-automerge
+  cancel-in-progress: false
 jobs:
   automerge:
-    if: github.actor == 'dependabot[bot]'
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'dependabot/')
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      BRANCH: ${{ github.event.workflow_run.head_branch }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - id: meta
-        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-      - if: steps.meta.outputs.update-type != 'version-update:semver-major'
-        # Aucune vérification n'est « obligatoire » sur main : on attend nous-mêmes la fin de toutes les vérifications
-        # de la PR et on ne fusionne que si elles ont TOUTES réussi (un échec laisse la PR ouverte).
+      - name: Fusionner la mise à jour (hors versions majeures)
+        id: merge
         run: |
-          # Ce job est lui-même une vérification de la PR : on l'exclut, sinon il s'attendrait indéfiniment.
-          sleep 60
+          set -euo pipefail
+          case "$BRANCH" in
+            *-majeures-*) echo "Version majeure ($BRANCH) : validation manuelle."; exit 0 ;;
+          esac
+          pr=$(gh pr list --head "$BRANCH" --state open --json number,headRefOid -q ".[] | select(.headRefOid == \"$HEAD_SHA\") | .number")
+          [ -n "$pr" ] || { echo "Aucune PR ouverte pour $HEAD_SHA (déjà fusionnée ou mise à jour depuis)."; exit 0; }
+          # Les autres vérifications de la PR (tests du Worker…) doivent aussi avoir réussi.
           while :; do
-            states=$(gh pr checks "$PR_URL" --json name,bucket --jq '[.[] | select(.name != "automerge") | .bucket] | unique | join(",")')
+            states=$(gh pr checks "$pr" --json bucket --jq '[.[].bucket] | unique | join(",")')
             case "$states" in
               *fail*|*cancel*) echo "Vérifications en échec ($states) : pas de fusion."; exit 0 ;;
               *pending*|"") sleep 30 ;;
               *) break ;;
             esac
           done
-          gh pr merge --squash "$PR_URL"
+          files=$(gh pr view "$pr" --json files -q '.files[].path')
+          title=$(gh pr view "$pr" --json title -q .title)
+          gh pr merge "$pr" --squash --delete-branch --match-head-commit "$HEAD_SHA"
+          if printf '%s\n' "$files" | grep -q '^android-native/'; then
+            echo "android=true" >> "$GITHUB_OUTPUT"
+            { echo "title<<EOF"; echo "$title (#$pr)"; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.merge.outputs.android == 'true'
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Nouvelle version de l'application
+        if: steps.merge.outputs.android == 'true'
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TITLE: ${{ steps.merge.outputs.title }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          old=$(tr -d '[:space:]' < VERSION)
+          IFS=. read -r ma mi pa <<< "$old"
+          new="$ma.$mi.$((pa + 1))"
+          echo "$new" > VERSION
+          python3 - "$new" "$TITLE" <<'PY'
+          import sys, datetime
+          new, title = sys.argv[1], sys.argv[2]
+          p = "CHANGELOG.md"; s = open(p, encoding="utf-8").read()
+          i = s.index("\n## [") + 1
+          entry = f"## [{new}] — {datetime.date.today().isoformat()} (Android)\n\n### Technique\n- Mise à jour des dépendances (Dependabot) : {title}.\n\n"
+          open(p, "w", encoding="utf-8").write(s[:i] + entry + s[i:])
+          PY
+          git add VERSION CHANGELOG.md
+          git commit -m "$new : mise à jour des dépendances"
+          git push origin HEAD:main
+          git tag "v$new"
+          git push origin "v$new"
+          # Un tag poussé avec le jeton du workflow ne déclenche pas d'autre workflow : la release est lancée ici.
+          gh workflow run release.yml --ref "v$new"
+          echo "Release v$new lancée."
