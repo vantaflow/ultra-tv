@@ -1446,4 +1446,10 @@
     <string name="mob_from_cloud">From the cloud</string>
     <string name="mob_open_dashboard">Open the dashboard</string>
     <string name="mob_dashboard_address">Dashboard address</string>
+
+    <!-- Lien « Aider à traduire » (Réglages › Langue) -->
+    <string name="translate_help">Help translate Ultra TV</string>
+    <string name="translate_help_sub">Your language is missing or has a mistake?</string>
+    <string name="translate_help_scan">Scan the QR code with your phone to translate in your browser.</string>
+    <string name="translate_help_close">Close</string>
 </resources>

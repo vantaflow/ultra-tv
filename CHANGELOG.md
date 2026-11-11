@@ -4,6 +4,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Langues : polonais (premier jet, relecture bienvenue sur Weblate)
+- Lien « Aider à traduire » dans Réglages › Langue (TV avec QR code, mobile, bureau)
+
 ### Documentation
 - Documentation : guide de traduction (TRANSLATING.md) et modèle d'issue pour les traductions
 

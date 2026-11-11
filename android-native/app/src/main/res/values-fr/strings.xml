@@ -1458,4 +1458,10 @@
     <string name="mob_from_cloud">Depuis le cloud</string>
     <string name="mob_open_dashboard">Ouvrir le tableau de bord</string>
     <string name="mob_dashboard_address">Adresse du tableau de bord</string>
+
+    <!-- Lien « Aider à traduire » (Réglages › Langue) -->
+    <string name="translate_help">Aider à traduire Ultra TV</string>
+    <string name="translate_help_sub">Votre langue manque ou contient une erreur ?</string>
+    <string name="translate_help_scan">Scannez le QR code avec votre téléphone pour traduire dans votre navigateur.</string>
+    <string name="translate_help_close">Fermer</string>
 </resources>

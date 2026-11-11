@@ -684,6 +684,7 @@ private fun LanguagesPane(panes: SettingsPanesViewModel, app: AppViewModel) {
         PrefRow(D.contentLanguages, if (selected.isEmpty()) D.allLanguages else selected.joinToString(" · ") { it.uppercase() }) { picker = true }
         SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
         SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
+        TranslateHelpRow(D)
         // Les langues masquées ne sont pas chargées : plus rapide, moins de mémoire.
         androidx.tv.material3.Text(D.langHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 4, modifier = Modifier.padding(top = 14.design))
     }
