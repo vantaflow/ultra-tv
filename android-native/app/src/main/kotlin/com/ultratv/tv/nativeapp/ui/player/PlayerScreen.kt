@@ -1266,6 +1266,8 @@ private fun PlayerSidePanel(
                         OptionGroup(D.subtitles) {
                             OptionRow(D.off, null, subs.none { it.selected }) { e?.selectSubtitle(null); onSubsChoice(false); onClose() }
                             subs.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectSubtitle(t.id); onSubsChoice(true); onClose() } }
+                            // Direct sans aucune piste (ex. chaîne sans sous-titres codés) : on l'explique au lieu de laisser un « Off » seul.
+                            if (isLive && subs.isEmpty()) Text(com.ultratv.tv.nativeapp.ui.player.playerExtras().liveNoSubtitles, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 26.spx, maxLines = 5)
                         }
                     }
                     SideTab.DISPLAY -> {

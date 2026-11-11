@@ -22,6 +22,7 @@ import com.ultratv.tv.nativeapp.data.sync.SyntheticXtream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -97,7 +98,7 @@ class LiveCaptionsTest {
         assertTrue(LiveCaptions.TS_FLAGS and DefaultTsPayloadReaderFactory.FLAG_DETECT_ACCESS_UNITS != 0)
         val mimes = LiveCaptions.CLOSED_CAPTION_FORMATS.map { it.sampleMimeType }
         assertTrue(MimeTypes.APPLICATION_CEA608 in mimes)
-        assertTrue(MimeTypes.APPLICATION_CEA708 in mimes)
+        assertFalse(MimeTypes.APPLICATION_CEA708 in mimes)
         assertEquals("CC1", LiveCaptions.ccLabel(MimeTypes.APPLICATION_CEA608, 1))
         assertEquals(null, LiveCaptions.ccLabel(MimeTypes.APPLICATION_SUBRIP, 1))
     }
@@ -115,8 +116,29 @@ class LiveCaptionsTest {
         assertTrue(out.tracks.values.any { it.type == C.TRACK_TYPE_AUDIO })
     }
 
-    @Test fun flux_sans_sei_expose_quand_meme_la_piste_declaree() {
-        val out = extractFrom(LiveCaptions.extractorsFactory(), SyntheticLiveTs.bytes(withCea608 = false))
+    @Test fun flux_avec_sei_la_piste_cc_est_proposee() {
+        val probe = LiveCaptions.CcProbe()
+        extractFrom(LiveCaptions.extractorsFactory(probe), SyntheticLiveTs.bytes(withCea608 = true))
+        println("608 vu=" + probe.hasData(MimeTypes.APPLICATION_CEA608, 1) + " 708 vu=" + probe.hasData(MimeTypes.APPLICATION_CEA708, 1))
+        assertTrue(probe.isVisible(MimeTypes.APPLICATION_CEA608, 1))
+        // SEI en 608 seulement : la voie 708 ne doit pas être proposée à tort.
+        assertFalse("708 proposée alors que le flux n'a que du 608", probe.isVisible(MimeTypes.APPLICATION_CEA708, 1))
+    }
+
+    @Test fun flux_sans_sei_aucune_piste_cc_n_est_proposee() {
+        val probe = LiveCaptions.CcProbe()
+        val out = extractFrom(LiveCaptions.extractorsFactory(probe), SyntheticLiveTs.bytes(withCea608 = false))
+        // L'extracteur déclare bien les voies (c'est la déclaration), mais aucune donnée n'arrive : rien à proposer.
         assertTrue(out.tracks.values.any { it.format?.sampleMimeType == MimeTypes.APPLICATION_CEA608 })
+        assertFalse(probe.isVisible(MimeTypes.APPLICATION_CEA608, 1))
+        assertFalse(probe.isVisible(MimeTypes.APPLICATION_CEA708, 1))
+        // Les autres pistes de texte (DVB, télétexte…) ne sont jamais masquées.
+        assertTrue(probe.isVisible(MimeTypes.APPLICATION_SUBRIP, 0))
+    }
+
+    @Test fun sondage_remis_a_zero_au_changement_de_chaine() {
+        val probe = LiveCaptions.CcProbe()
+        probe.markSeen(MimeTypes.APPLICATION_CEA608, 1); assertTrue(probe.isVisible(MimeTypes.APPLICATION_CEA608, 1))
+        probe.clear(); assertFalse(probe.isVisible(MimeTypes.APPLICATION_CEA608, 1))
     }
 }

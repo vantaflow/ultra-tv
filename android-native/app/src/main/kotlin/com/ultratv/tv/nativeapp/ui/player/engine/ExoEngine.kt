@@ -59,6 +59,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     /** Écouteur gardé en champ : retiré AVANT la libération (aucun événement d'un lecteur en cours de destruction). */
+    /** Voies CC (CEA-608/708) dont des données ont réellement été reçues : seules celles-ci sont proposées. */
+    private val ccProbe = LiveCaptions.CcProbe()
+
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
@@ -104,7 +107,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                     .setConnectTimeoutMs(connectMs).setReadTimeoutMs(readMs)
             }
         // Extracteurs : MPEG-TS avec sous-titres codés (CEA-608 / 708) déclarés — voir [LiveCaptions].
-        val mediaSources = DefaultMediaSourceFactory(ctx, LiveCaptions.extractorsFactory()).setDataSourceFactory(
+        val mediaSources = DefaultMediaSourceFactory(ctx, LiveCaptions.extractorsFactory(ccProbe)).setDataSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
         )
         val renderers = AudioOnlyFfmpegRenderersFactory(ctx).apply {
@@ -150,7 +153,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     private data class Flat(val gi: Int, val ti: Int, val group: androidx.media3.common.Tracks.Group, val cand: com.ultratv.tv.nativeapp.data.subtitles.TrackChoice.Candidate)
 
     private fun flat(type: Int): List<Flat> = player.currentTracks.groups.withIndex().filter { it.value.type == type }.flatMap { (gi, g) ->
-        (0 until g.length).filter { g.isTrackSupported(it) }.map { ti -> val f = g.getTrackFormat(ti); Flat(gi, ti, g, com.ultratv.tv.nativeapp.data.subtitles.TrackChoice.Candidate(f.language, f.label)) }
+        (0 until g.length).filter { g.isTrackSupported(it) && ccProbe.isVisible(g.getTrackFormat(it).sampleMimeType, g.getTrackFormat(it).accessibilityChannel) }.map { ti -> val f = g.getTrackFormat(ti); Flat(gi, ti, g, com.ultratv.tv.nativeapp.data.subtitles.TrackChoice.Candidate(f.language, f.label)) }
     }
 
     /**
@@ -203,6 +206,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
         audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null
+        ccProbe.clear()   // chaîne suivante : les CC vus sur la précédente ne comptent plus
         if (player.mediaItemCount > 0) {
             player.stop()
             // Moteur réutilisé (zap) : les choix de pistes faits à la main sur la chaîne précédente ne la suivent pas.
@@ -228,7 +232,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override val durationMs get() = if (player.duration == C.TIME_UNSET) -1L else player.duration
 
     private fun tracks(type: Int): List<TrackInfo> = player.currentTracks.groups.withIndex().filter { it.value.type == type }.flatMap { (gi, g) ->
-        (0 until g.length).map { ti ->
+        (0 until g.length).filter { ccProbe.isVisible(g.getTrackFormat(it).sampleMimeType, g.getTrackFormat(it).accessibilityChannel) }.map { ti ->
             val f = g.getTrackFormat(ti)
             val tc = com.ultratv.tv.nativeapp.data.subtitles.TrackChoice
             val label = tc.humanLabel(
