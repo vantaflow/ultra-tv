@@ -2,6 +2,10 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+- Android : décodeur audio FFmpeg sous licence LGPL (AC-3, E-AC-3, DTS, TrueHD…) à la place du décodeur GPL-3.0
+
 ## [1.2.86] — 2026-11-11 (Android)
 
 ### Nouveau
