@@ -106,7 +106,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         val mediaSources = DefaultMediaSourceFactory(ctx).setDataSourceFactory(
             androidx.media3.datasource.DefaultDataSource.Factory(ctx, http),
         )
-        val renderers = DefaultRenderersFactory(ctx).apply {
+        val renderers = AudioOnlyFfmpegRenderersFactory(ctx).apply {
             setEnableDecoderFallback(true)
             when (config.decoder) {
                 DecoderMode.HARDWARE -> { setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF); setMediaCodecSelector(hardwareFirst) }
@@ -338,5 +338,28 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     private companion object {
         /** Attente maximale de la destruction des décodeurs sur le fil principal (le reste se termine en arrière-plan). */
         const val RELEASE_WAIT_MS = 50L
+    }
+}
+
+/**
+ * Le décodeur FFmpeg LGPL (libs/media3-decoder-ffmpeg-lgpl.aar) contient aussi `ExperimentalFfmpegVideoRenderer`, que
+ * DefaultRenderersFactory charge tout seul. Compilé sans décodeur vidéo, il refusait les images (« Invalid data ») et le
+ * lecteur restait bloqué, sans image ni son (1.2.87). FFmpeg ne sert ici qu'à l'audio (AC-3, E-AC-3, DTS…) : la vidéo
+ * reste aux décodeurs matériels / logiciels de MediaCodec.
+ */
+@UnstableApi
+private class AudioOnlyFfmpegRenderersFactory(ctx: android.content.Context) : DefaultRenderersFactory(ctx) {
+    override fun buildVideoRenderers(
+        context: android.content.Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: androidx.media3.exoplayer.mediacodec.MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        eventHandler: android.os.Handler,
+        eventListener: androidx.media3.exoplayer.video.VideoRendererEventListener,
+        allowedVideoJoiningTimeMs: Long,
+        out: java.util.ArrayList<androidx.media3.exoplayer.Renderer>,
+    ) {
+        super.buildVideoRenderers(context, extensionRendererMode, mediaCodecSelector, enableDecoderFallback, eventHandler, eventListener, allowedVideoJoiningTimeMs, out)
+        out.removeAll { it.javaClass.name.contains("FfmpegVideoRenderer") }
     }
 }

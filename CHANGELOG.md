@@ -2,6 +2,13 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.88] — 2026-11-11 (Android)
+
+### Corrigé
+- Lecture : le décodeur FFmpeg LGPL de la 1.2.87 contenait aussi un décodeur vidéo, chargé automatiquement par le lecteur ;
+  sans codec vidéo, il pouvait bloquer la lecture (ni image ni son). FFmpeg ne sert plus qu'à l'audio (AC-3, E-AC-3,
+  DTS…), la vidéo reste aux décodeurs de l'appareil.
+
 ## [1.2.87] — 2026-11-11 (Android) · Bureau 1.2.40 · Worker
 
 ### Nouveau
