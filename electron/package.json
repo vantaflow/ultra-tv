@@ -1,6 +1,6 @@
 {
   "name": "ultratv-desktop",
-  "version": "1.2.37",
+  "version": "1.2.38",
   "description": "Ultra TV desktop - Electron shell around the web app.",
   "author": "Ultra TV",
   "license": "MIT",
@@ -19,7 +19,9 @@
     "icons": "node scripts/make-icons.mjs",
     "package:mac": "npm run prepare:web && electron-builder --mac dmg zip --universal --publish never",
     "package:win": "npm run prepare:web && electron-builder --win nsis --x64 --publish never",
-    "package:linux": "npm run prepare:web && electron-builder --linux AppImage --x64 --publish never"
+    "package:linux": "npm run prepare:web && electron-builder --linux AppImage --x64 --publish never",
+    "build:ffmpeg:win": "bash scripts/build-ffmpeg-min.sh win",
+    "build:ffmpeg:linux": "bash scripts/build-ffmpeg-min.sh linux"
   },
   "dependencies": {
     "electron-updater": "^6.8.11"
@@ -46,6 +48,7 @@
       "updates.cjs",
       "cloudfetch.cjs",
       "dns.cjs",
+      "transcode.cjs",
       "web-dist/**/*",
       "package.json"
     ],
@@ -101,7 +104,16 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
@@ -119,7 +131,16 @@
         }
       ],
       "category": "AudioVideo",
-      "icon": "build/icon.png"
+      "icon": "build/icon.png",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg",
+          "to": "ffmpeg",
+          "filter": [
+            "**/*"
+          ]
+        }
+      ]
     },
     "afterSign": "scripts/adhoc-sign.cjs"
   }

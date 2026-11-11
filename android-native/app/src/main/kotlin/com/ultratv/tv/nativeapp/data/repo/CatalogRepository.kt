@@ -48,8 +48,24 @@ class CatalogRepository @Inject constructor(
 ) {
     fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
     fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
+    fun heroSeriesList(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeHeroes(pid, limit)
+    fun heroMovieList(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeHeroes(pid, limit)
     fun latestMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeLatest(pid, limit)
     fun latestSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeLatest(pid, limit)
+    fun topRatedMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTopRated(pid, limit)
+    fun topRatedSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeTopRated(pid, limit)
+
+    /**
+     * Films proches d'un film regardé : même genre (premier genre de sa fiche), complétés par sa catégorie du fournisseur.
+     * null si le film n'est plus au catalogue. Titre du film de départ en premier.
+     */
+    suspend fun similarMovies(pid: Long, remoteId: String, limit: Int): Pair<String, List<MovieEntity>>? {
+        val seed = movieDao.byRemoteId(pid, remoteId) ?: return null
+        val genre = similarGenreKey(seed.genre)
+        val byGenre = if (genre != null) movieDao.byGenre(pid, genre, seed.id, limit) else emptyList()
+        val byCat = if (byGenre.size < limit && !seed.categoryId.isNullOrBlank()) movieDao.sameCategory(pid, seed.categoryId, seed.id, limit) else emptyList()
+        return seed.title to (byGenre + byCat).distinctBy { it.id }.take(limit)
+    }
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
@@ -137,10 +153,19 @@ class CatalogRepository @Inject constructor(
      */
     suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
+        var movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit)
+        var series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit)
+        // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
+        if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
+            FuzzySearch.candidateMatch(query)?.let { loose ->
+                movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+                series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+            }
+        }
         return SearchResults(
             channels = channelDao.searchFts(pid, match, limit),
-            movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit),
-            series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit),
+            movies = movies,
+            series = series,
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
             programs = if (includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
         )
@@ -249,3 +274,10 @@ internal fun vodInfoTtlMs(v: VodInfoEntity): Long =
     if (v.plot == null && v.cast == null && v.genre == null && v.backdrop == null) DAY_MS else 7 * DAY_MS
 
 private val EPISODE_ORDER = compareBy<com.ultratv.tv.nativeapp.data.db.EpisodeEntity>({ it.season }, { it.episode }, { it.remoteId })
+
+/** Premier genre d'une fiche (« Action, Aventure » → « Action »), assez long pour un LIKE utile ; null sinon. */
+fun similarGenreKey(genre: String?): String? =
+    genre?.split(',', '/', '|', ';')?.map { it.trim() }?.firstOrNull { it.length >= 3 }?.replace("%", "")?.replace("_", "")?.takeIf { it.length >= 3 }
+
+/** Candidats lus pour la recherche approchée (classés ensuite en mémoire). */
+private const val FUZZY_POOL = 800

@@ -17,6 +17,8 @@ object Routes {
 
     fun movieDetail(id: Long) = "movies/$id"
     fun seriesDetail(id: Long) = "series/$id"
+    const val PERSON = "person/{name}"
+    fun person(name: String) = "person/" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20")
     fun player(url: String, title: String): String {
         val u = java.net.URLEncoder.encode(url, "UTF-8")
         val t = java.net.URLEncoder.encode(title, "UTF-8")

@@ -178,6 +178,7 @@ fun FocusSurface(
     // L'élément activé (OK ou appui long) se signale comme ouvreur : une fenêtre qu'il ouvre lui rend le focus en se
     // fermant (menu d'une chaîne du Direct : le focus retombait sur la catégorie « Favoris », en haut à gauche).
     val self = remember { androidx.compose.ui.focus.FocusRequester() }
+    val anim = LocalAnimations.current
     // Premier élément d'une zone qui le demande (volet des Réglages) : cible d'entrée du focus.
     com.ultratv.tv.nativeapp.ui.common.LocalFirstFocusSlot.current?.let { slot ->
         androidx.compose.runtime.DisposableEffect(slot) { slot.offer(self); onDispose { slot.release(self) } }
@@ -186,7 +187,7 @@ fun FocusSurface(
         modifier
             .focusRequester(self)
             .graphicsLayer {
-                val s = if (focused) focusedScale else 1f
+                val s = if (focused) anim.focusScale(focusedScale) else 1f
                 scaleX = s; scaleY = s
             }
             .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)

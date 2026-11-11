@@ -1,0 +1,40 @@
+name: FFmpeg LGPL (décodeur audio Media3)
+
+# Construit le décodeur audio FFmpeg de Media3 SANS GPL (android-native/tools/ffmpeg-lgpl/build.sh) et le publie
+# comme artefact. Le fichier .aar se copie ensuite dans android-native/app/libs/ : build.gradle.kts le préfère alors
+# à org.jellyfin.media3:media3-ffmpeg-decoder (GPL-3.0).
+on:
+  workflow_dispatch:
+    inputs:
+      media3:
+        description: "Version de Media3 (vide = celle de libs.versions.toml)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  NDK_VER: 26.1.10909125
+  CMAKE_VER: 3.31.1
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: NDK et CMake
+        run: sudo ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --install "ndk;${NDK_VER}" "cmake;${CMAKE_VER}"
+      - name: Construire FFmpeg (LGPL) et l'extension Media3
+        run: android-native/tools/ffmpeg-lgpl/build.sh ${{ inputs.media3 }}
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: media3-decoder-ffmpeg-lgpl
+          path: |
+            android-native/app/libs/media3-decoder-ffmpeg-lgpl.aar
+            android-native/app/libs/media3-decoder-ffmpeg-lgpl.ffmpeg-commit.txt

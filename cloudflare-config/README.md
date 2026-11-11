@@ -64,6 +64,7 @@ wrangler secret put OPS_TOKEN          # >= 32 caractères : mot de passe de /cr
 wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (fiches enrichies)
 wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
 wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
+wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
 wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 

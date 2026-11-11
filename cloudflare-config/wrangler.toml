@@ -29,6 +29,7 @@ new_sqlite_classes = ["Guard"]
 #   TMDB_READ_TOKEN     jeton v4 TMDB (proxy /api/tmdb/*, envoyé en Bearer ; prioritaire)
 #   TMDB_API_KEY        clé v3 TMDB, repli si le jeton est absent (jamais embarquée dans l'application)
 #   OPENSUBTITLES_API_KEY  clé OpenSubtitles (proxy /api/subtitles/*) ; absente -> 503 et l'application désactive l'option
+#   OMDB_API_KEY        clé OMDb (notes IMDb / Rotten Tomatoes, /api/ratings) ; absente -> 503 et les notes sont masquées
 #   ACCOUNT_RELAY_KEY   clé partagée avec le relais d'abonnement (même valeur que RELAY_KEY sur Vercel, >= 32 caractères)
 
 # Relais d'abonnement hors Cloudflare (relay/, projet Vercel utv-relay) : fournisseurs qui bloquent les serveurs

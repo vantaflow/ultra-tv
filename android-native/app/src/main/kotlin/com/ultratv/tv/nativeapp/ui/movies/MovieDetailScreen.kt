@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -82,7 +83,12 @@ class MovieDetailViewModel @Inject constructor(
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
+    private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
 ) : ViewModel() {
+
+    /** Notes IMDb / Rotten Tomatoes (Worker → OMDb) ; null tant qu'inconnues. */
+    private val _ratings = MutableStateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?>(null)
+    val ratings: StateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?> = _ratings.asStateFlow()
 
     /** Position de reprise en ms (0 = jamais commencé). */
     private val _info = MutableStateFlow<com.ultratv.tv.nativeapp.data.db.VodInfoEntity?>(null)
@@ -132,6 +138,7 @@ class MovieDetailViewModel @Inject constructor(
                     _info.value = com.ultratv.tv.nativeapp.data.tmdb.mergeVodInfo(source, m, t)
                     _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(m, t)
                     _photos.value = runCatching { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrDefault(emptyMap())
+                    _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrNull()
                 }
             }
         }
@@ -153,6 +160,7 @@ fun MovieDetailScreen(
     movieId: Long,
     onPlay: (url: String, title: String) -> Unit,
     onBack: () -> Unit = {},
+    onOpenPerson: (String) -> Unit = {},
     vm: MovieDetailViewModel = hiltViewModel(),
 ) {
     val m by vm.movie.collectAsState()
@@ -175,6 +183,7 @@ fun MovieDetailScreen(
     val info by vm.info.collectAsState()
     val infoLoading by vm.infoLoading.collectAsState()
     val photos by vm.photos.collectAsState()
+    val extRatings by vm.ratings.collectAsState()
     val T = com.ultratv.tv.nativeapp.data.repo.TitleCleaner
     val title = remember(movie.id) { T.tidy(movie.title) }
     val year = movie.year?.toString() ?: T.presentable(info?.releaseDate)?.take(4)?.takeIf { it.all(Char::isDigit) }
@@ -204,7 +213,7 @@ fun MovieDetailScreen(
         com.ultratv.tv.nativeapp.ui.mobile.MobileDetailFrame(backdrop, movie.poster, title, onBack) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 33.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
             if (skeleton) Skeleton(Modifier.width(220.dp).height(18.dp))
-            else com.ultratv.tv.nativeapp.ui.mobile.MetaRow(listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) }), listOfNotNull(quality, langBadge, seenBadge))
+            else com.ultratv.tv.nativeapp.ui.mobile.MetaRow(listOfNotNull(year, duration, genre) + com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, rating), listOfNotNull(quality, langBadge, seenBadge))
             com.ultratv.tv.nativeapp.ui.mobile.MobilePrimaryButton(S.play, { if (resume > 0) vm.restart(movie, onPlay) else vm.play(movie, onPlay) })
             if (resume > 0) com.ultratv.tv.nativeapp.ui.mobile.MobileSecondaryButton(D.resumeAt(formatClock(resume)), onClick = { vm.play(movie, onPlay) })
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -220,7 +229,7 @@ fun MovieDetailScreen(
                 Text(D.castTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 4.dp))
                 androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                     items(people) { name ->
-                        Column(Modifier.width(60.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.width(60.dp).clickable { onOpenPerson(name) }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             AvatarImage(photos[name.lowercase()], name, Modifier.size(52.dp))
                             Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 11.sp, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
@@ -253,7 +262,7 @@ fun MovieDetailScreen(
                 )
                 if (skeleton) Skeleton(Modifier.width(420.design).height(30.design))
                 else Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
-                    val bits = listOfNotNull(year, duration, genre, rating?.let { String.format(java.util.Locale.ROOT, "★ %.1f", it) })
+                    val bits = listOfNotNull(year, duration, genre) + com.ultratv.tv.nativeapp.data.tmdb.RatingsLogic.labels(extRatings, rating)
                     bits.forEachIndexed { i, b ->
                         if (i > 0) Text("·", color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
                         Text(b, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 360.design))
@@ -294,9 +303,12 @@ fun MovieDetailScreen(
                 SectionTitle(D.castTitle, 28)
                 Row(horizontalArrangement = Arrangement.spacedBy(32.design)) {
                     people.forEach { name ->
-                        Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
-                            AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
-                            Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        // Focalisable : OK ouvre la page de la personne (ses titres dans la playlist).
+                        FocusSurface(onClick = { onOpenPerson(name) }, shape = RoundedCornerShape(24.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedScale = 1.04f, focusedBg = Ux.Surface, modifier = Modifier.width(132.design)) {
+                            Column(Modifier.fillMaxWidth().padding(vertical = 8.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) {
+                                AvatarImage(photos[name.lowercase()], name, Modifier.size(96.design))
+                                Text(name, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 30.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
                         }
                     }
                 }

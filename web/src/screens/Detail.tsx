@@ -26,6 +26,7 @@ import { TraktMovieActions, TraktSeriesActions } from "@/trakt/TraktUi";
 import { nextEpisode } from "@/trakt/progress";
 import { tmdbOf } from "@/player/trakt";
 import { NoSource } from "./states";
+import { ratingLabels, useRatings } from "@/hooks/ratings";
 
 const WEEK = 7 * 86400_000;
 
@@ -79,11 +80,13 @@ function Facts({ items }: { items: (string | number | null | undefined)[] }) {
 }
 
 function Cast({ names, label }: { names: string[]; label: string }) {
+  const nav = useNavigate();
   if (!names.length) return null;
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
       <h2 style={{ fontSize: "1.125rem" }}>{label}</h2>
-      <div className="cast">{names.slice(0, 8).map((n, i) => <div key={i} className="c"><i>{n.trim().slice(0, 1).toUpperCase()}</i><span>{n.trim()}</span></div>)}</div>
+      {/* Un nom ouvre la page de la personne : ses films et séries dans la playlist. */}
+      <div className="cast">{names.slice(0, 8).map((n, i) => <button key={i} type="button" className="c" onClick={() => nav(`/person/${encodeURIComponent(n.trim())}`)}><i>{n.trim().slice(0, 1).toUpperCase()}</i><span>{n.trim()}</span></button>)}</div>
     </section>
   );
 }
@@ -106,6 +109,7 @@ function MovieInner({ source }: { source: Source }) {
   const favs = useFavorites(source, "movie");
   const hist = useLiveQuery(() => db.history.get(histKey(prefs.profileId, source.id!, "movie", sid)), [sid, prefs.profileId]);
   const seenMovie = useIsWatchedMovie();
+  const ext = useRatings("movie", tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id), movie?.title, movie?.year);
   if (movie === undefined) return <div className="detail" />;
   if (!movie) return <StateCard icon="alert" title={t("vod.empty")} actions={<button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button>} />;
   const i = info?.info;
@@ -123,7 +127,7 @@ function MovieInner({ source }: { source: Source }) {
         <button className="back" onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.movies")}</button>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <h1>{m.title}{seenMovie(m.title, m.year) && <span className="seen-badge" title={t("trakt.watched")}><Icon name="check" size={16} stroke={3} />{t("trakt.watched")}</span>}</h1>
-          <Facts items={[m.year ?? presentable(i?.releasedate ?? i?.release_date)?.slice(0, 4), dur, presentable(i?.genre), m.rating > 0 ? `★ ${m.rating.toFixed(1)}` : null, m.ext.toUpperCase()]} />
+          <Facts items={[m.year ?? presentable(i?.releasedate ?? i?.release_date)?.slice(0, 4), dur, presentable(i?.genre), ...ratingLabels(ext, m.rating), m.ext.toUpperCase()]} />
           <p className="plot clamp-4">{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}
         </div>
@@ -181,6 +185,7 @@ function SeriesInner({ source }: { source: Source }) {
   const hist = useLiveQuery(() => db.history.where("[profile+sourceId]").equals([prefs.profileId, source.id!]).filter((h) => h.seriesId === sid).toArray(), [sid, prefs.profileId]) ?? [];
   const parsed = useMemo(() => parseEpisodes(info), [info]);
   const seenEps = useWatchedEpisodes(row?.title, row?.year);
+  const ext = useRatings("tv", tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), row?.title, row?.year);
   const [season, setSeason] = useState<number | null>(null);
   const histBy = useMemo(() => new Map(hist.map((h) => [h.epId ?? -1, h] as [number, HistoryRow])), [hist]);
   const last = useMemo(() => [...hist].sort((a, b) => b.updatedAt - a.updatedAt)[0], [hist]);
@@ -209,7 +214,7 @@ function SeriesInner({ source }: { source: Source }) {
           <button className="back" style={{ position: "static" }} onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.series")}</button>
           <div className="poster-big"><Img src={i?.cover || s.poster} /></div>
           <h1 style={{ fontSize: "2.25rem" }}>{s.title}</h1>
-          <Facts items={[s.year, parsed.seasons.length ? t("common.seasons", { n: parsed.seasons.length }) : null, presentable(i?.genre), s.rating > 0 ? `★ ${s.rating.toFixed(1)}` : null]} />
+          <Facts items={[s.year, parsed.seasons.length ? t("common.seasons", { n: parsed.seasons.length }) : null, presentable(i?.genre), ...ratingLabels(ext, s.rating)]} />
           <p className="plot clamp-4" style={{ fontSize: "0.9375rem" }}>{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}
           <div className="actions">

@@ -29,9 +29,12 @@ enum class HomeSectionId(val contentType: String) {
     TRAKT_LIST_3("posters"),
     TRAKT_LIST_4("posters"),
     TRAKT_LIST_5("posters"),
+    BECAUSE_WATCHED("posters"),
     RECENT_CHANNELS("resume"),
     LATEST_MOVIES("posters"),
     LATEST_SERIES("posters"),
+    TOP_MOVIES("posters"),
+    TOP_SERIES("posters"),
     CHANNELS("channels"),
 }
 
@@ -41,6 +44,7 @@ val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
     HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR, HomeSectionId.CHANNELS,
     HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3,
     HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
+    HomeSectionId.BECAUSE_WATCHED, HomeSectionId.TOP_MOVIES, HomeSectionId.TOP_SERIES,
 )
 
 /** Rangées « liste Trakt », dans l'ordre. */
@@ -88,6 +92,11 @@ data class HomeRows(
     val recentChannels: List<ResumeCardUi> = emptyList(),
     val latestMovies: List<PosterCardUi> = emptyList(),
     val latestSeries: List<PosterCardUi> = emptyList(),
+    /** « Parce que vous avez regardé [becauseTitle] » : films proches du dernier film regardé. */
+    val becauseTitle: String = "",
+    val because: List<PosterCardUi> = emptyList(),
+    val topMovies: List<PosterCardUi> = emptyList(),
+    val topSeries: List<PosterCardUi> = emptyList(),
     val channels: List<ChannelCardUi> = emptyList(),
     val showingFavorites: Boolean = false,
     /** Ordre et rangées masquées choisis par l'utilisateur (Réglages › Affichage). */
@@ -105,6 +114,9 @@ data class HomeRows(
  */
 fun homeSectionOrder(rows: HomeRows): List<HomeSectionId> = rows.layout.apply(presentSections(rows))
 
+/** Rangées calculées en local : affichées seulement avec assez de titres (une rangée de 2 affiches fait vide). */
+const val MIN_LOCAL_ROW = 4
+
 private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
@@ -113,9 +125,12 @@ private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.trending.isNotEmpty()) add(HomeSectionId.TRAKT_TRENDING)
     if (rows.popular.isNotEmpty()) add(HomeSectionId.TRAKT_POPULAR)
     rows.traktLists.take(TRAKT_LIST_SECTIONS.size).forEachIndexed { i, l -> if (l.cards.isNotEmpty()) add(TRAKT_LIST_SECTIONS[i]) }
+    if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
     if (rows.recentChannels.isNotEmpty()) add(HomeSectionId.RECENT_CHANNELS)
     if (rows.latestMovies.isNotEmpty()) add(HomeSectionId.LATEST_MOVIES)
     if (rows.latestSeries.isNotEmpty()) add(HomeSectionId.LATEST_SERIES)
+    if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)
+    if (rows.topSeries.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_SERIES)
     if (rows.channels.isNotEmpty()) add(HomeSectionId.CHANNELS)
 }
 
@@ -205,4 +220,21 @@ fun pivotScrollDistance(
     val spaceUnderPivot = containerSize - initialTarget
     val target = if (childSmallerThanParent && spaceUnderPivot < childSize) containerSize - childSize else initialTarget
     return offset - target
+}
+
+/** Nombre de titres « à la une » qui défilent. */
+const val HERO_POOL = 6
+/** Durée d'affichage de chaque titre « à la une ». */
+const val HERO_ROTATE_MS = 9_000L
+
+/** Alterne séries et films (série d'abord), sans doublon, au plus [max]. */
+fun <T> interleaveHeroes(series: List<T>, movies: List<T>, max: Int): List<T> {
+    val out = ArrayList<T>(max)
+    var i = 0
+    while (out.size < max && (i < series.size || i < movies.size)) {
+        series.getOrNull(i)?.let { if (it !in out && out.size < max) out += it }
+        movies.getOrNull(i)?.let { if (it !in out && out.size < max) out += it }
+        i++
+    }
+    return out
 }

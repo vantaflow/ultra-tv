@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
-import { searchByWords } from "@/db/queries";
+import { searchByWords, searchFuzzy } from "@/db/queries";
 import type { ChannelRow, MovieRow, ProgramRow, SeriesRow, Source } from "@/db/types";
 import { useDebounced } from "@/hooks/misc";
 import { useT } from "@/i18n";
@@ -64,7 +64,13 @@ function Inner({ source }: { source: Source }) {
       searchByWords(db.movies, source.cid, nq, 30),
       searchByWords(db.series, source.cid, nq, 30),
       searchPrograms(source.cid, nq).catch(() => []),
-    ]).then(([channels, movies, series, programs]) => { if (!dead) { setRes({ channels, movies, series, programs }); setBusy(false); } }, () => { if (!dead) setBusy(false); });
+    ]).then(async ([channels, movies, series, programs]) => {
+      // Aucun film ni série : repli tolérant aux fautes de frappe (« brekin bad » → Breaking Bad).
+      if (!movies.length && !series.length && nq.trim().length >= 4) {
+        [movies, series] = await Promise.all([searchFuzzy(db.movies, source.cid, nq, 30), searchFuzzy(db.series, source.cid, nq, 30)]);
+      }
+      if (!dead) { setRes({ channels, movies, series, programs }); setBusy(false); }
+    }).catch(() => { if (!dead) setBusy(false); });
     return () => { dead = true; };
   }, [dq, source.cid]);
 

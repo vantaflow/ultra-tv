@@ -38,7 +38,12 @@ class SeriesDetailViewModel @Inject constructor(
     private val history: com.ultratv.tv.nativeapp.data.repo.HistoryRepository,
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
+    private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
 ) : ViewModel() {
+
+    /** Notes IMDb / Rotten Tomatoes (Worker → OMDb) ; null tant qu'inconnues. */
+    private val _ratings = kotlinx.coroutines.flow.MutableStateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?>(null)
+    val ratings: StateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?> = _ratings
 
     /** Épisodes de cette série vus sur Trakt (« SxE »), vide si non lié / série absente de l'historique Trakt. */
     val traktWatchedEpisodes: StateFlow<Set<String>> by lazy {
@@ -94,7 +99,10 @@ class SeriesDetailViewModel @Inject constructor(
             _series.value = s
             _loading.value = false
             // Fiche enrichie TMDB (désactivée si l'appareil n'est pas appairé) : comble ce que la source ne fournit pas.
-            if (s != null) runCatching { tmdb.forSeries(s) }.getOrNull()?.let { _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it) }
+            if (s != null) runCatching { tmdb.forSeries(s) }.getOrNull()?.let {
+                _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
+                it.tmdbId?.let { id -> _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id) }.getOrNull() }
+            }
         }
         viewModelScope.launch {
             catalog.episodes(id).collect { _episodes.value = it }

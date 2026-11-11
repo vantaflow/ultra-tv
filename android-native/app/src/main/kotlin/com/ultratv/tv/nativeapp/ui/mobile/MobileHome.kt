@@ -178,6 +178,9 @@ fun MobileHomeScreen(
                     HomeSectionId.TRAKT_TRENDING -> TraktPosterRow(D.traktTrending, rows.trending, wide, openPoster)
                     HomeSectionId.TRAKT_POPULAR -> TraktPosterRow(D.traktPopular, rows.popular, wide, openPoster)
                     HomeSectionId.TRAKT_UP_NEXT -> TraktPosterRow(D.traktUpNext, rows.upNext, wide, openPoster)
+                    HomeSectionId.BECAUSE_WATCHED -> TraktPosterRow(D.becauseWatched(rows.becauseTitle), rows.because, wide, openPoster)
+                    HomeSectionId.TOP_MOVIES -> TraktPosterRow(D.topRatedMovies, rows.topMovies, wide, openPoster)
+                    HomeSectionId.TOP_SERIES -> TraktPosterRow(D.topRatedSeries, rows.topSeries, wide, openPoster)
                     HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
                         rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster) }
                     HomeSectionId.CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {

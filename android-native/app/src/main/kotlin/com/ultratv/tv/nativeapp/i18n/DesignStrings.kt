@@ -83,6 +83,33 @@ class DesignStrings(val lang: AppLang) {
     val recentlyWatched get() = t("Recently watched", "Dernières chaînes regardées", "Vistos recientemente", "شوهدت مؤخرًا")
     val latestMovies get() = t("Latest movies", "Derniers films ajoutés", "Últimas películas", "أحدث الأفلام")
     val latestSeries get() = t("Latest series", "Dernières séries ajoutées", "Últimas series", "أحدث المسلسلات")
+    val becauseWatchedBlock get() = t("Because you watched…", "Parce que vous avez regardé…", "Porque viste…", "لأنك شاهدت…")
+    fun becauseWatched(title: String) = t("Because you watched %s", "Parce que vous avez regardé %s", "Porque viste %s", "لأنك شاهدت %s").format(title)
+    val topRatedMovies get() = t("Top rated movies", "Films les mieux notés", "Películas mejor valoradas", "الأفلام الأعلى تقييمًا")
+    val topRatedSeries get() = t("Top rated series", "Séries les mieux notées", "Series mejor valoradas", "المسلسلات الأعلى تقييمًا")
+    val anyRating get() = t("Any rating", "Toutes notes", "Cualquier nota", "كل التقييمات")
+    val animOff get() = t("Off", "Désactivées", "Desactivadas", "متوقفة")
+    fun animationName(l: com.ultratv.tv.nativeapp.ui.design.AnimationLevel) = when (l) {
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.AUTO -> themeAuto
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.OFF -> animOff
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.SUBTLE -> reduced
+        com.ultratv.tv.nativeapp.ui.design.AnimationLevel.NORMAL -> full
+    }
+    val personLoading get() = t("Looking for titles in your playlist…", "Recherche des titres dans votre playlist…", "Buscando títulos en tu lista…", "جارٍ البحث عن العناوين في قائمتك…")
+    val personEmpty get() = t("No title with this person in your playlist", "Aucun titre avec cette personne dans votre playlist", "Ningún título con esta persona en tu lista", "لا توجد عناوين لهذا الشخص في قائمتك")
+    fun catalogSortName(o: com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort) = when (o) {
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.PROVIDER -> t("Provider order", "Ordre du fournisseur", "Orden del proveedor", "ترتيب المزوّد")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT -> t("Recently added", "Ajouts récents", "Añadidos recientes", "المضاف حديثًا")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RATING -> t("Top rated", "Mieux notés", "Mejor valorados", "الأعلى تقييمًا")
+    }
+    fun periodName(o: com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period) = when (o) {
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.ALL -> t("All years", "Toutes années", "Todos los años", "كل السنوات")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.Y2020S -> t("2020s", "Années 2020", "Años 2020", "العقد 2020")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.Y2010S -> t("2010s", "Années 2010", "Años 2010", "العقد 2010")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.Y2000S -> t("2000s", "Années 2000", "Años 2000", "العقد 2000")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.Y1990S -> t("1990s", "Années 90", "Años 90", "التسعينيات")
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.OLDER -> t("Before 1990", "Avant 1990", "Antes de 1990", "قبل 1990")
+    }
     /** Nom de la chaîne d'accueil Google TV des derniers ajouts. */
     // Sans « Ultra TV · » : Google TV et les lanceurs (Kairo…) affichent déjà l'appli à côté (« Ultra TV · Nouveautés · UTV »),
     // et la chaîne Favoris n'avait pas ce préfixe.

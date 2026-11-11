@@ -6,9 +6,11 @@
 const API = "https://api.themoviedb.org/3/";
 const ID = "[1-9][0-9]{0,9}";
 const ALLOWED_PATHS = [
-  /^search\/(movie|tv)$/,
+  /^search\/(movie|tv|person)$/,
   new RegExp(`^(movie|tv)/${ID}$`),
   new RegExp(`^(movie|tv)/${ID}/(images|videos|credits)$`),
+  // Pages acteurs / réalisateurs : filmographie, rapprochée ensuite de la playlist par l'application.
+  new RegExp(`^person/${ID}/combined_credits$`),
 ];
 const APPEND_OK = new Set(["credits", "videos", "images"]);
 const LANG = /^[a-z]{2}(-[A-Z]{2})?$/;

@@ -383,3 +383,33 @@ export async function traktWrite(base: string, token: string, path: TraktWritePa
     return o.ok === true ? "ok" : "failed";
   } catch { return "failed"; }
 }
+
+/** Notes externes (Worker → OMDb). Champ absent = inconnu. */
+export interface ExternalRatings { imdb?: number; rt?: number; mc?: number; imdbId?: string }
+
+/**
+ * Notes IMDb / Rotten Tomatoes d'un film ou d'une série : par identifiant TMDB, sinon titre + année.
+ * null : Worker sans clé OMDb (503), titre inconnu. Lève sur 401 / 429 / réseau (l'appelant ignore).
+ */
+export async function fetchRatings(base: string, token: string, q: { kind: "movie" | "tv"; tmdb?: number; title?: string; year?: number }): Promise<ExternalRatings | null> {
+  const p = new URLSearchParams({ kind: q.kind });
+  if (q.tmdb) p.set("tmdb", String(q.tmdb));
+  else { if (!q.title) return null; p.set("title", q.title.slice(0, 120)); if (q.year) p.set("year", String(q.year)); }
+  const r = await http({ url: `${base}/api/ratings?${p}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 503 || r.status === 404) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("ratings", r.status);
+  const o = parse<{ ratings?: ExternalRatings | null }>(r);
+  return o.ratings ?? null;
+}
+
+/** GET via le proxy TMDB du Worker (chemins autorisés par le Worker). null : introuvable / non configuré. */
+export async function tmdbGet(base: string, token: string, pathAndQuery: string): Promise<unknown | null> {
+  const r = await http({ url: `${base}/api/tmdb/${pathAndQuery}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404 || r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("tmdb", r.status);
+  return parse<unknown>(r);
+}

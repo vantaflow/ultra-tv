@@ -22,6 +22,12 @@ class PlayerExtraStrings(val lang: AppLang) {
     val zapHint get() = t("Back: previous channel · ▲▼ zap · 0-9 number", "Retour : chaîne précédente · ▲▼ zapper · 0-9 numéro", "Atrás: canal anterior · ▲▼ zapear · 0-9 número", "رجوع: القناة السابقة · ▲▼ تنقّل · 0-9 رقم")
     val noChannelNumber get() = t("No such channel", "Aucune chaîne à ce numéro", "Ningún canal con ese número", "لا توجد قناة بهذا الرقم")
 
+    // Passer l'intro (TheIntroDB)
+    val skipIntro get() = t("Skip intro", "Passer l'intro", "Saltar intro", "تخطي المقدمة")
+    val skipRecap get() = t("Skip recap", "Passer le résumé", "Saltar resumen", "تخطي الملخص")
+    val skipCredits get() = t("Skip credits", "Passer le générique", "Saltar créditos", "تخطي الشارة")
+    val nextEpisode get() = t("Next episode", "Épisode suivant", "Siguiente episodio", "الحلقة التالية")
+
     // Replay
     val fromStart get() = t("From the start", "Depuis le début", "Desde el principio", "من البداية")
     val backToLive get() = t("Back to live", "Revenir au direct", "Volver al directo", "العودة إلى البث المباشر")

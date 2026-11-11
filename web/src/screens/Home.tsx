@@ -1,4 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { useEffect, useState } from "react";
 import { HScroll } from "@/ui/HScroll";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
@@ -81,6 +82,22 @@ function UpNextSection({ title, rows, onOpen }: { title: string; rows: UpNextRow
   );
 }
 
+/** Rangées calculées en local : affichées seulement avec assez de titres (une rangée de 2 affiches fait vide). */
+const MIN_LOCAL_ROW = 4;
+
+interface PosterItem { key: number; kind: "movie" | "tv"; title: string; year: number | null; image: string | null; meta?: string; watched?: boolean; open: () => void }
+
+function PosterSection({ title, items }: { title: string; items: PosterItem[] }) {
+  return (
+    <section>
+      <h2 className="section-title">{title}</h2>
+      <HScroll className="row-scroll">
+        {items.map((m) => <div key={m.key} style={{ flex: "0 0 9.5rem" }}><PosterCard kind={m.kind} year={m.year} title={m.title} image={m.image} meta={m.meta ?? (m.year ? String(m.year) : undefined)} watched={m.watched} onClick={m.open} /></div>)}
+      </HScroll>
+    </section>
+  );
+}
+
 function HomeInner({ source }: { source: Source }) {
   const t = useT();
   const nav = useNavigate();
@@ -95,11 +112,52 @@ function HomeInner({ source }: { source: Source }) {
   const openTrakt = (r: TraktRow) => nav(r.kind === "movie" ? `/movie/${r.ref}` : `/serie/${r.ref}`);
   const movies = useLiveQuery(() => db.movies.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
   const series = useLiveQuery(() => db.series.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
+  // Mieux notés : note du fournisseur (index [sourceId+rating]), affiche obligatoire.
+  const topMovies = useLiveQuery(() => db.movies.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).limit(20).toArray(), [source.cid]) ?? [];
+  const topSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).limit(20).toArray(), [source.cid]) ?? [];
+  // « Parce que vous avez regardé X » : dernier film de l'historique, puis les mieux notés de la même catégorie.
+  const because = useLiveQuery(async () => {
+    const last = (await historyOf(profileId, source.id!)).find((h) => h.kind === "movie");
+    if (!last) return null;
+    const seed = await db.movies.where("[sourceId+streamId]").equals([source.cid, last.refId]).first();
+    if (!seed) return null;
+    const list = await db.movies.where("[sourceId+catExt+rating]").between([source.cid, seed.catExt, 0], [source.cid, seed.catExt, Infinity]).reverse()
+      .filter((m) => m.streamId !== seed.streamId && !!m.poster).limit(20).toArray();
+    return { title: seed.title, list };
+  }, [profileId, source.id, source.cid]);
+
+  // « À la une » qui défile : la chaîne mise en avant, puis les séries les mieux notées avec image paysage.
+  const heroSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((x) => !!x.backdrop).limit(5).toArray(), [source.cid]) ?? [];
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const animations = usePrefs((p) => p.animations);
+  const heroCount = 1 + heroSeries.length;
+  useEffect(() => {
+    if (heroCount < 2 || heroPaused || document.documentElement.dataset.anim === "off") return;
+    const iv = window.setInterval(() => setHeroIdx((k) => (k + 1) % heroCount), 9_000);
+    return () => window.clearInterval(iv);
+  }, [heroCount, heroPaused, animations]);
+  const slide = heroIdx % heroCount === 0 ? null : heroSeries[(heroIdx % heroCount) - 1] ?? null;
 
   if (!source.cid) return <EmptyCatalog />;
   return (
     <div className="page">
-      <section className="hero" aria-label={t("home.featured")}>
+      <section className="hero" aria-label={t("home.featured")}
+        onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}
+        onFocus={() => setHeroPaused(true)} onBlur={() => setHeroPaused(false)}>
+        {slide ? (
+          <>
+            <div className="art" aria-hidden="true"><div key={slide.id} className="slide-bg" style={{ backgroundImage: `url("${(slide.backdrop || slide.poster || "").replace(/"/g, "%22")}")` }} /></div>
+            <div className="meta">
+              <span className="badge-live">{t("nav.series")}</span>
+              <span>{[slide.year, slide.rating > 0 ? `★ ${slide.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}</span>
+            </div>
+            <h2>{slide.title}</h2>
+            <div className="actions">
+              <button className="btn primary lg" onClick={() => nav(`/serie/${slide.seriesId}`)}><Icon name="play" size={20} fill />{t("common.watch")}</button>
+            </div>
+          </>
+        ) : (<>
         <div className="art" aria-hidden="true">{nn.now?.title && featured?.logo && <Img src={featured.logo} contain />}</div>
         {featured ? (
           <>
@@ -114,6 +172,12 @@ function HomeInner({ source }: { source: Source }) {
             </div>
           </>
         ) : <h2>{t("home.emptyHero")}</h2>}
+</>)}
+        {heroCount > 1 && (
+          <div className="dots" role="tablist" aria-label={t("home.featured")}>
+            {Array.from({ length: heroCount }, (_, k) => <button key={k} type="button" role="tab" aria-current={k === heroIdx % heroCount} aria-label={String(k + 1)} onClick={() => setHeroIdx(k)} />)}
+          </div>
+        )}
       </section>
 
       {hist.length > 0 && (
@@ -145,6 +209,10 @@ function HomeInner({ source }: { source: Source }) {
         </section>
       )}
 
+      {because && because.list.length >= MIN_LOCAL_ROW && (
+        <PosterSection title={t("home.because", { t: because.title })} items={because.list.map((m) => ({ key: m.id!, kind: "movie" as const, title: m.title, year: m.year, image: m.poster, open: () => nav(`/movie/${m.streamId}`), watched: seen(m.title, m.year) }))} />
+      )}
+
       {movies.length > 0 && (
         <section>
           <h2 className="section-title">{t("home.newMovies")}<button className="btn sm" onClick={() => nav("/movies")}>{t("common.all")}</button></h2>
@@ -160,6 +228,12 @@ function HomeInner({ source }: { source: Source }) {
             {series.map((m) => <div key={m.id} style={{ flex: "0 0 9.5rem" }}><PosterCard kind="tv" year={m.year} title={m.title} image={m.poster} meta={m.year ? String(m.year) : undefined} onClick={() => nav(`/serie/${m.seriesId}`)} /></div>)}
           </HScroll>
         </section>
+      )}
+      {topMovies.length >= MIN_LOCAL_ROW && (
+        <PosterSection title={t("home.topMovies")} items={topMovies.map((m) => ({ key: m.id!, kind: "movie" as const, title: m.title, year: m.year, image: m.poster, meta: `★ ${m.rating.toFixed(1)}`, open: () => nav(`/movie/${m.streamId}`), watched: seen(m.title, m.year) }))} />
+      )}
+      {topSeries.length >= MIN_LOCAL_ROW && (
+        <PosterSection title={t("home.topSeries")} items={topSeries.map((m) => ({ key: m.id!, kind: "tv" as const, title: m.title, year: m.year, image: m.poster, meta: `★ ${m.rating.toFixed(1)}`, open: () => nav(`/serie/${m.seriesId}`) }))} />
       )}
     </div>
   );

@@ -2,6 +2,41 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.2.83] — 2026-11-11 (Android) · Bureau 1.2.38 · Worker
+
+### Nouveau
+- **« Depuis le téléphone »** (Réglages › Sources › Ajouter une source, et accueil sans source) : la TV affiche un QR
+  code et un code ; la playlist (Xtream, M3U ou Stalker) se saisit sur le téléphone ou l'ordinateur, sur la page
+  `/envoyer`, **sans compte**, puis la TV l'ajoute et la synchronise. L'envoi est chiffré, gardé 15 min au plus et remis
+  une seule fois.
+- Tableau de bord › Administration : **installations sans compte** (total, actives 7 jours, nouvelles) et sources
+  envoyées depuis le web, comptées par un relevé anonyme quotidien (identifiant aléatoire et version ; rien si la
+  télémétrie est coupée).
+- Lecteur : bouton **« Passer l'intro »** pendant le générique de début d'un film ou d'un épisode, **« Passer le résumé »** pendant le « précédemment dans… », et **« Épisode suivant »** pendant le générique de fin d'un épisode (« Passer le générique » quand une scène suit le générique d'un film). Télécommande : OK, commandes masquées ; tactile : un appui. Rien n'est sauté sans action de l'utilisateur.
+- Bureau (Windows, macOS, navigateur) : même bouton en plein écran, au clic ou avec la touche S (ou Entrée).
+- Les passages viennent de TheIntroDB (base communautaire, sans clé) : seuls l'identifiant TMDB, la saison, l'épisode et la durée sont envoyés, jamais d'identifiant ni d'adresse IPTV. Titre inconnu, TMDB non relié ou réseau absent : aucun bouton.
+- Fiches film et série : notes **IMDb** et **Rotten Tomatoes** (« IMDb 8.8 · RT 87% ») via OMDb ; sans clé OMDb sur le Worker, la note habituelle reste affichée.
+- Accueil : rangées **« Parce que vous avez regardé… »** (films proches du dernier film regardé), **« Films les mieux notés »** et **« Séries les mieux notées »**, calculées en local (sans Trakt), réglables dans Rangées de l'accueil.
+- **« À la une » défile** : 6 titres (séries et films les mieux notés), un toutes les 9 s, avec fondu et points ; le bureau alterne la chaîne mise en avant et les séries les mieux notées (pause au survol).
+- Recherche **tolérante aux fautes de frappe** (« brekin bad » → Breaking Bad) quand la recherche exacte ne trouve aucun film ni série.
+- Films et séries : **tri** (fournisseur, ajouts récents, mieux notés ; chaque tri suit un index de la base, sans retri de tout le catalogue), **note minimale** (6+, 7+, 8+) et **période** (décennies) ; un filtre actif sur « Tous » affiche une grille filtrée.
+- **Pages acteurs et réalisateurs** : un nom de la distribution ouvre ses films et séries présents dans la playlist (filmographie TMDB rapprochée par titre et année, plus les fiches qui le citent).
+- Réglages › Affichage › **Animations** : Automatique (selon l'appareil ; sur le bureau, selon le système), Désactivées, Réduites, Complètes.
+- Bureau : **son AC-3 / E-AC-3 / DTS** — quand un film ou une chaîne joue sans son, l'audio est converti en AAC par ffmpeg (version minimale LGPL d'environ 3 Mo, embarquée sous Windows et Linux ; macOS : ffmpeg installé, sinon un message explique comment l'installer).
+
+### Worker
+- `/envoyer`, `POST /api/envoi/start|send|poll` (envoi sans compte, Durable Object, limites de débit) et
+  `POST /api/anon/ping` (relevé anonyme).
+- `GET /api/ratings` (notes OMDb, appareil appairé, cache 7 jours) : secret facultatif `OMDB_API_KEY`.
+- Proxy TMDB : `search/person` et `person/{id}/combined_credits` autorisés (pages acteurs).
+
+### Signature
+- Nouvelle clé de signature des releases, avec chaîne de rotation depuis l'ancienne : les appareils existants
+  acceptent la mise à jour sans désinstaller.
+
+### Licences
+- Le décodeur FFmpeg Android `org.jellyfin.media3:media3-ffmpeg-decoder` est publié sous GPL-3.0 : `android-native/tools/ffmpeg-lgpl/build.sh` (workflow « FFmpeg LGPL ») construit une version LGPL, utilisée automatiquement une fois déposée dans `android-native/app/libs/`. Voir `THIRD_PARTY_NOTICES.md`.
+
 ## [1.2.82] — 2026-11-11 (Android)
 
 ### Corrigé

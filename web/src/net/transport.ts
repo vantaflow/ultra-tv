@@ -16,6 +16,8 @@ export interface UltraTvBridge {
   arch?: string;
   version?: string;
   proxyBase: string;
+  /** Conversion audio AC-3 / DTS → AAC par ffmpeg (route /tx du proxy) disponible. */
+  transcode?: boolean;
   secretsSecure?: boolean;
   encrypt(plain: string): Promise<string>;
   decrypt(cipher: string): Promise<string>;
@@ -75,7 +77,8 @@ function b64url(s: string): string {
 
 export function wrapUrl(t: Transport, url: string): string {
   switch (t.mode) {
-    case "electron": return t.base + b64url(url);
+    // Déjà une adresse du proxy (conversion audio /tx) : pas de second enrobage.
+    case "electron": return url.startsWith(t.base) ? url : t.base + b64url(url);
     case "proxy": {
       const u = new URL(t.url);
       u.searchParams.set("target", url);

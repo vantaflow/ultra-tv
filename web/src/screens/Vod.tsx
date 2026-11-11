@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { moviesCol, searchByWords, seriesCol, type VodSort } from "@/db/queries";
+import { filterActive, matchesFilter, NO_FILTER, PERIODS, RATINGS, type VodFilter } from "@/lib/vodFilter";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
@@ -41,10 +42,15 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const [sort, setSort] = useState<VodSort>("recent");
   const [filter, setFilter] = useState("");
   const [pop, setPop] = useState(false);
+  const [vf, setVf] = useState<VodFilter>(NO_FILTER);
+  const narrowed = filterActive(vf);
   const dq = useDebounced(filter, 250);
   const total = kind === "movie" ? source.counts.movie : source.counts.series;
 
-  const make = () => (kind === "movie" ? moviesCol(source.cid, cat || null, sort) : seriesCol(source.cid, cat || null, sort)) as import("dexie").Collection<Item, unknown>;
+  const make = () => {
+    const col = (kind === "movie" ? moviesCol(source.cid, cat || null, sort) : seriesCol(source.cid, cat || null, sort)) as import("dexie").Collection<Item, unknown>;
+    return narrowed ? col.filter((r) => matchesFilter(r, vf)) : col;
+  };
   // Filtre texte = mode tableau. Dans « Tout » : index par mot (200 résultats, retriés selon le tri choisi) ;
   // dans une catégorie : balayage de la catégorie seule (déjà bornée par l'index).
   const arrayMode = dq.trim().length > 0;
@@ -53,11 +59,11 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
     const q = normText(dq.trim());
     if (q && cat === "") {
       const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
-      return sortHits(await searchByWords(table, source.cid, q, 200), sort);
+      return sortHits(await searchByWords(table, source.cid, q, 200, narrowed ? (r) => matchesFilter(r, vf) : undefined), sort);
     }
     return (q ? make().filter((r) => r.norm.includes(q)) : make()).limit(2000).toArray();
-  }, [arrayMode, dq, cat, sort, source.cid, kind]);
-  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, source.lastSyncAt, cat, sort, kind, arrayMode], 96);
+  }, [arrayMode, dq, cat, sort, source.cid, kind, vf]);
+  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, source.lastSyncAt, cat, sort, kind, arrayMode, vf], 96);
   const rows: Rows<Item> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
 
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
@@ -92,8 +98,14 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
           {cat !== "" && !chips.some((c) => c.extId === cat) && <button className="chip" role="tab" aria-selected>{catLabel}</button>}
           <button className="chip" onClick={() => setPop(true)}>{t("common.allCategories")} ▾</button>
         </HScroll>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <Seg label={t("vod.minRating")} value={String(vf.minRating)} onChange={(v) => setVf({ ...vf, minRating: Number(v) })}
+            options={RATINGS.map((r) => ({ v: String(r), label: r === 0 ? t("vod.anyRating") : `★ ${r}+` }))} />
+          <Seg label={t("vod.period")} value={vf.period} onChange={(v) => setVf({ ...vf, period: v })}
+            options={PERIODS.map((p) => ({ v: p, label: t(`vod.period.${p}`) }))} />
+        </div>
       </div>
-      {cat === "" && !arrayMode && (cats?.length ?? 0) > 0 ? (
+      {cat === "" && !arrayMode && !narrowed && (cats?.length ?? 0) > 0 ? (
         <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={sort}
           onSeeAll={(id) => prefs.set({ liveCat: { ...prefs.liveCat, [key]: id } })}
           onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />
