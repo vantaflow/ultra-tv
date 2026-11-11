@@ -7,6 +7,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Worker : la télémétrie (journaux, plantages, relevés anonymes) et la dernière activité des appareils passent de KV à D1 (base `ultratv-telemetry`, binding `DB`), pour rester sous le quota gratuit de 1 000 écritures KV par jour (erreur 10048 qui bloquait l'appairage, l'envoi de sources, la synchro et les annonces). Les comptes, appareils et fournisseurs restent en KV.
 
+## [Bureau 1.2.44] — 2026-11-12
+
+Windows, macOS, Linux. Détail dans la section [1.2.91] (lignes « Bureau : »).
+
+### Corrigé
+- Catégories qui disparaissaient après une mise à jour (reconstruction automatique du catalogue au démarrage).
+- Fenêtre bornée à l'écran (petits écrans, mise à l'échelle Windows) et écrans qui défilent.
+- Contrôles du lecteur qui réapparaissaient sans mouvement de souris (Windows).
+- Catalogue visible pendant la synchro, avec la progression.
+- Lecteur : plus de chargement sans fin quand un flux ne démarre pas.
+- Guide complémentaire rapproché aussi par nom de chaîne.
+
+### Ajouté
+- Guide ouvert directement, chargé progressivement, chaînes triées par numéro (favoris compris).
+- Bande-annonce lue dans l'appli (lecteur intégré, nos commandes).
+
 ## [1.2.91] - 2026-11-12
 
 ### Ajouté
