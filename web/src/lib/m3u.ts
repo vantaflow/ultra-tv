@@ -17,6 +17,8 @@ export interface M3uEntry {
   userAgent: string | null;
   referrer: string | null;
   headers: Record<string, string>;
+  /** Flux protégé (DRM) : la playlist déclare `inputstream.adaptive.license_type` (Widevine, ClearKey…). Jamais lu sur ordinateur. */
+  protected: boolean;
   rawAttributes: Record<string, string>;
 }
 
@@ -44,6 +46,8 @@ export function parseM3u(text: string): M3uEntry[] {
   };
   let havePending = false;
   let pendingGroup: string | null = null;
+  // #KODIPROP placés AVANT #EXTINF : gardés pour la prochaine entrée.
+  let preHeaders: Record<string, string> = {};
 
   const reset = () => {
     pending = { rawAttributes: {}, headers: {}, duration: -1, catchUpDays: 0 };
@@ -68,7 +72,7 @@ export function parseM3u(text: string): M3uEntry[] {
       const attrs = parseAttributes(meta);
       pending = {
         rawAttributes: attrs,
-        headers: {},
+        headers: preHeaders,
         name,
         duration: Number.isFinite(duration) ? duration : -1,
         tvgId: attrs["tvg-id"] ?? null,
@@ -82,6 +86,7 @@ export function parseM3u(text: string): M3uEntry[] {
         userAgent: null,
         referrer: null,
       };
+      preHeaders = {};
       havePending = true;
       continue;
     }
@@ -96,11 +101,12 @@ export function parseM3u(text: string): M3uEntry[] {
     if (line.startsWith("#EXTVLCOPT:") || line.startsWith("#KODIPROP:")) {
       const eq = line.indexOf("=");
       if (eq < 0) continue;
+      const target = havePending ? pending.headers : preHeaders;
       const key = line.slice(line.indexOf(":") + 1, eq).trim().toLowerCase();
       const value = line.slice(eq + 1).trim();
-      if (key === "http-user-agent") pending.userAgent = value;
-      else if (key === "http-referrer") pending.referrer = value;
-      else pending.headers[key] = value;
+      if (key === "http-user-agent" && havePending) pending.userAgent = value;
+      else if (key === "http-referrer" && havePending) pending.referrer = value;
+      else target[key] = value;
       continue;
     }
 
@@ -122,6 +128,7 @@ export function parseM3u(text: string): M3uEntry[] {
         userAgent: pending.userAgent ?? null,
         referrer: pending.referrer ?? null,
         headers: pending.headers ?? {},
+        protected: !!(pending.headers?.["inputstream.adaptive.license_type"] ?? "").trim(),
         rawAttributes: pending.rawAttributes ?? {},
       });
       reset();

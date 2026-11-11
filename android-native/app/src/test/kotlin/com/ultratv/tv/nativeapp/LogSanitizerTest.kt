@@ -56,4 +56,9 @@ class LogSanitizerTest {
     @Test fun `retire les caracteres de controle`() {
         assertEquals("abc", LogSanitizer.sanitize("a\u0000b\u001bc"))
     }
+
+    @Test fun `masque les cles de licence des flux proteges`() {
+        val out = LogSanitizer.sanitize("license_key=4060a865887842679cbf91ae5bae1e72:fc35340837310cc0fb53de97e22a69e0 license_url=https://l.invalid/x")
+        assertTrue(out, !out.contains("fc3534") && !out.contains("l.invalid"))
+    }
 }

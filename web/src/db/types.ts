@@ -83,6 +83,8 @@ export interface ChannelRow {
   archive: 0 | 1;
   /** M3U : URL de flux fournie par la playlist (jamais journalisée) ; portail Stalker : adresse interne `stalker:…`. */
   url?: string;
+  /** M3U : flux protégé (DRM) déclaré par la playlist ; jamais lu sur ordinateur. Aucune clé ni URL de licence n'est conservée. */
+  drm?: 1;
 }
 
 export interface MovieRow {

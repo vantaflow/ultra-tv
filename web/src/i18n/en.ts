@@ -181,6 +181,7 @@ export const en: Dict = {
   "player.speed": "SPEED",
   "player.engine": "ENGINE",
   "player.error": "Playback failed.",
+  "player.drmUnsupported": "Protected stream not supported on computer",
   "player.errorHint": "The source may have reached its simultaneous connection limit, or the stream is unavailable.",
   "player.retry": "Retry",
   "player.skipIntro": "Skip intro",

@@ -54,12 +54,18 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
 
         var pending: String? = null   // dernière ligne #EXTINF en attente d'URL
         val usedIds = HashSet<String>()
+        // Propriétés de flux protégé (#KODIPROP / #EXTVLCOPT) : valables jusqu'à la prochaine URL, avant ou après #EXTINF.
+        var props = StreamPropsBuilder()
         while (true) {
             val raw = reader.readLine() ?: break
             val line = raw.trim()
             if (line.isEmpty()) continue
-            if (line.startsWith("#EXTINF")) { pending = line; continue }
+            if (line.startsWith("#EXTINF")) { if (pending != null) props = StreamPropsBuilder(); pending = line; continue }
+            if (line.startsWith("#KODIPROP", ignoreCase = true)) { props.acceptKodiProp(line); continue }
+            if (line.startsWith("#EXTVLCOPT", ignoreCase = true)) { props.acceptVlcOpt(line); continue }
             if (line.startsWith("#")) continue
+            val streamProps = props.build()
+            props = StreamPropsBuilder()
             val info = pending ?: continue
             pending = null
 
@@ -92,6 +98,7 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
                 // Rattrapage : `catchup-source` + `catchup-days` (voir Catchup.kt).
                 catchupSource = attrs["catchup-source"]?.takeIf { it.isNotBlank() },
                 catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+                props = streamProps?.toJson(),
             )
         }
         return M3uResult(channels, groupsSeen.values.toList())

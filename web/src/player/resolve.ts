@@ -24,6 +24,8 @@ export interface PlayTarget {
   channel?: { ord: number; catExt: string | null; num: number; epg: string | null; archive: boolean; q: number; logo: string | null };
   /** M3U : URL de flux de la playlist. */
   url?: string;
+  /** Flux protégé (DRM) : jamais lu sur ordinateur. */
+  protectedStream?: boolean;
   seriesId?: number;
   season?: number;
   episode?: number;
@@ -37,6 +39,7 @@ export interface Candidate { url: string; format: Format; label: string }
 export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean }): Candidate[] {
   // Portail Stalker : le lien n'existe qu'au moment de jouer (voir stalkerCandidate, asynchrone).
   if (source.type === "stalker") return [];
+  if (t.protectedStream) return [];
   const c = credsOf(source);
   const out: Candidate[] = [];
   const add = (url: string, format: Format, label: string) => { if (!out.some((o) => o.url === url)) out.push({ url, format, label }); };

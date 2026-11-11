@@ -28,6 +28,8 @@ data class SessionState(
     val combo: Combo = Combo(EngineKind.EXO, DecoderMode.AUTO),
     val bufferPreset: BufferPreset = BufferPreset.AUTO,
     val hasPicture: Boolean = false,
+    /** Flux protégé (Widevine / ClearKey) : Media3 seul, aucun repli ; le choix VLC et le lecteur externe ne sont pas proposés. */
+    val isProtected: Boolean = false,
 )
 
 /**
@@ -54,6 +56,10 @@ class PlaybackSession(
     private val subtitles: () -> com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings = { com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings() },
     /** Langue de l'interface (ISO 639-1) : langue audio par défaut quand aucune préférence n'est réglée. */
     private val uiLanguage: () -> String = { java.util.Locale.getDefault().language },
+    /** Propriétés de lecture (flux protégé) d'une chaîne « fournisseur:chaîne » ; null = aucune recherche (flux ordinaires seulement). */
+    private val propsLookup: (suspend (String) -> com.ultratv.tv.nativeapp.data.m3u.StreamProps?)? = null,
+    /** Contrôle d'un flux protégé avant d'ouvrir un lecteur (système pris en charge, propriétés complètes) ; null = lecture possible. */
+    private val drmPrecheck: (com.ultratv.tv.nativeapp.data.m3u.StreamProps) -> PlayErrorKind? = { DrmMedia.precheck(it) },
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
 ) {
     private val _state = MutableStateFlow(SessionState())
@@ -65,6 +71,9 @@ class PlaybackSession(
         private set
 
     private var url = ""
+    private var props: com.ultratv.tv.nativeapp.data.m3u.StreamProps? = null
+    private val isProtected get() = props?.isProtected == true
+    private var startJob: Job? = null
     private var key: String? = null
     private var resumeMs = 0L
     private var tried = mutableSetOf<Combo>()
@@ -131,13 +140,31 @@ class PlaybackSession(
     private var hostedOnce = false
 
     /** Ouvre [url]. [channelKey] = « fournisseur:chaîne » pour la mémoire par chaîne (null = pas de mémoire). */
-    fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
+    fun start(url: String, channelKey: String?, resumeMs: Long = 0, props: com.ultratv.tv.nativeapp.data.m3u.StreamProps? = null) {
+        startJob?.cancel()
+        val lookup = propsLookup
+        if (props == null && lookup != null && channelKey != null) {
+            // Les propriétés d'un flux protégé sont lues dans la base (jamais dans l'URL) avant d'ouvrir le moteur.
+            startJob = scope.launch { begin(url, channelKey, resumeMs, runCatching { lookup(channelKey) }.getOrNull()) }
+        } else begin(url, channelKey, resumeMs, props)
+    }
+
+    private fun begin(url: String, channelKey: String?, resumeMs: Long, found: com.ultratv.tv.nativeapp.data.m3u.StreamProps?) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
+        this.props = found?.takeIf { it.isProtected }
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
         reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
-        val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
+        val protectedNow = isProtected
+        val next = PlaybackPlanner.initial(s.engine, s.decoder, if (protectedNow) null else channelKey?.let { memory.combo(it) }, protectedNow)
+        props?.let(drmPrecheck)?.let { bad ->
+            // Appareil sans le système demandé ou propriétés incomplètes : erreur claire, AUCUN moteur (et jamais VLC).
+            watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); eventsJob?.cancel(); adaptJob?.cancel()
+            releaseEngine(); combo = next
+            _state.value = SessionState(Phase.ERROR, bad, next, presetOverride ?: s.bufferPreset, false, true)
+            return
+        }
         val e = engine
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
@@ -145,8 +172,8 @@ class PlaybackSession(
         if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && _state.value.phase != Phase.ERROR) {
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
-            _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false)
-            e.load(url, resumeMs)
+            _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false, protectedNow)
+            loadOn(e)
         } else {
             combo = next
             launch(combo)
@@ -159,7 +186,10 @@ class PlaybackSession(
     fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; launch(combo) }
 
     /** Changement manuel (pilule « Lecteur ») : on le mémorise tout de suite pour cette chaîne. */
-    fun switchTo(c: Combo) { manualSwitch = true; tried = mutableSetOf(); combo = c; key?.let { memory.remember(it, c, null) }; launch(c) }
+    fun switchTo(c0: Combo) {
+        val c = PlaybackPlanner.manualCombo(c0, isProtected)   // flux protégé : le choix VLC est ignoré
+        manualSwitch = true; tried = mutableSetOf(); combo = c; if (!isProtected) key?.let { memory.remember(it, c, null) }; launch(c)
+    }
 
     /** Choix manuel de la piste audio : appliqué, puis sa langue est retenue pour ce titre (jamais l'identifiant de piste). */
     fun selectAudio(id: String) {
@@ -171,7 +201,14 @@ class PlaybackSession(
 
     fun setBufferPreset(p: BufferPreset) { presetOverride = p; key?.let { memory.remember(it, null, p) }; launch(combo) }
 
-    private fun launch(c: Combo) {
+    /** Ouvre le flux sur [e] : en flux protégé, avec ses propriétés de licence. */
+    private fun loadOn(e: PlayerEngine, resume: Long = resumeMs) {
+        val p = props
+        if (p != null && p.isProtected) e.loadProtected(url, resume, p) else e.load(url, resume)
+    }
+
+    private fun launch(c0: Combo) {
+        val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
         reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
@@ -180,7 +217,7 @@ class PlaybackSession(
         val s = settings()
         val buffer = bufferFor(s)
         launchedBuffer = buffer
-        _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
+        _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false, isProtected)
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil3.SingletonImageLoader.get(ctx).memoryCache?.clear() }
         val sub = subtitles()
@@ -193,6 +230,11 @@ class PlaybackSession(
         val textPref = if (sub.autoOn) tc.effectivePreferred(sub.languages.text, null, ui) else emptyList()
         val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureView)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
+        if (isProtected && !e.supportsProtected) {
+            runCatching { e.release() }
+            _state.value = _state.value.copy(phase = Phase.ERROR, error = PlayErrorKind.DRM_UNSUPPORTED)
+            return
+        }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))
         if (muted) e.setMuted(true)
@@ -200,7 +242,7 @@ class PlaybackSession(
         container.visibility = android.view.View.VISIBLE
         e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
         eventsJob = scope.launch { e.events.collect { onEvent(it, e) } }
-        e.load(url, resumeMs)
+        loadOn(e)
     }
 
     /** Tampon effectif du moteur lancé : un zap ne réutilise le moteur que si ce tampon n'a pas changé. */
@@ -277,7 +319,9 @@ class PlaybackSession(
         }
     }
 
-    private fun onError(kind: PlayErrorKind) {
+    private fun onError(kind0: PlayErrorKind) {
+        // Flux protégé : décodeur sécurisé absent ou image noire = niveau de sécurité de l'appareil insuffisant.
+        val kind = if (isProtected && (kind0 == PlayErrorKind.DECODER || kind0 == PlayErrorKind.NO_PICTURE)) PlayErrorKind.DRM_UNSUPPORTED else kind0
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
         // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
         // VLC ne donne pas de code : après un rechargement, une coupure serveur arrive classée FORMAT ; si le flux a déjà
@@ -296,8 +340,8 @@ class PlaybackSession(
                 launch(combo)
                 return@launch
             }
-            if (PlaybackPlanner.shouldFallBack(kind)) {
-                val next = PlaybackPlanner.next(settingsNow.engine, tried)
+            if (PlaybackPlanner.shouldFallBack(kind, isProtected)) {
+                val next = PlaybackPlanner.next(settingsNow.engine, tried, isProtected)
                 if (next != null) {
                     _notices.tryEmit(if (next.engine == EngineKind.VLC) Notice.USING_VLC else if (next.decoder == DecoderMode.SOFTWARE) Notice.USING_SOFTWARE else Notice.USING_EXO)
                     launch(next)
@@ -328,7 +372,7 @@ class PlaybackSession(
             delay(wait)
             firstFrame = false; launchedAtNs = System.nanoTime(); watchdog?.cancel(); blackJob?.cancel()
             val e = engine
-            if (e != null && e.reusable) e.load(url, 0) else launch(combo)
+            if (e != null && e.reusable) loadOn(e, 0) else launch(combo)
         }
     }
 
@@ -340,7 +384,7 @@ class PlaybackSession(
     }
 
     fun release() {
-        eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
+        startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
         reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
         releaseEngine()
     }

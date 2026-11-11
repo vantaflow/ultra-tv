@@ -216,7 +216,18 @@ val MIGRATION_19_20 = object : Migration(19, 20) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+/**
+ * 20 → 21 (flux protégés Widevine / ClearKey) : colonne `channel.props` (JSON des propriétés de lecture lues dans la
+ * playlist M3U), nulle pour toutes les chaînes existantes. SCHÉMA SEULEMENT : aucune donnée réécrite ; les propriétés
+ * arrivent à la prochaine synchro de la playlist.
+ */
+val MIGRATION_20_21 = object : Migration(20, 21) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `channel` ADD COLUMN `props` TEXT")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

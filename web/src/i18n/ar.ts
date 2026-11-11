@@ -181,6 +181,7 @@ export const ar: Dict = {
   "player.speed": "السرعة",
   "player.engine": "المحرّك",
   "player.error": "فشل التشغيل.",
+  "player.drmUnsupported": "البث المحمي غير مدعوم على الحاسوب",
   "player.errorHint": "ربما بلغ المصدر حدّ الاتصالات المتزامنة، أو أن البث غير متاح.",
   "player.retry": "إعادة المحاولة",
   "player.skipIntro": "تخطي المقدمة",

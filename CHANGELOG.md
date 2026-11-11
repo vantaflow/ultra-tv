@@ -2,6 +2,16 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Nouveau
+- Android : lecture des flux protégés Widevine et ClearKey (DASH et HLS) d'une playlist M3U : `#KODIPROP` (`license_type`, `license_key`, `manifest_type`) et `#EXTVLCOPT` (`http-user-agent`, `http-referrer`).
+- Android : propriétés de lecture stockées avec la chaîne (colonne `channel.props`, migration Room 20 → 21), jamais journalisées ni envoyées au cloud.
+- Android : lecteur Media3 avec configuration DRM (licence Widevine et en-têtes, clés ClearKey locales converties en réponse de licence JSON).
+- Android : message clair (français, anglais, espagnol, arabe) quand l'appareil ne prend pas en charge le système ou le niveau de sécurité, ou quand la licence est refusée.
+- Android : un flux protégé ne bascule jamais vers VLC (repli automatique, choix manuel et lecteur externe exclus) ; l'erreur est affichée.
+- Bureau : un flux protégé n'est pas lu ; message « Flux protégé non pris en charge sur ordinateur ».
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

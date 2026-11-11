@@ -68,6 +68,8 @@ export function PlayerHost() {
 
   const [state, setState] = useState<PlayState>("idle");
   const [error, setError] = useState(false);
+  /** Flux protégé (DRM) : aucune lecture tentée, message dédié sans bouton « Réessayer ». */
+  const [drmBlocked, setDrmBlocked] = useState(false);
   // Image sans son (AC-3/DTS non décodables) : message non bloquant, jamais l'écran d'erreur.
   const [noAudio, setNoAudio] = useState(false);
   const silentIdxRef = useRef<number | null>(null);
@@ -154,6 +156,13 @@ export function PlayerHost() {
     setTracks(NO_TRACKS);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
+    setDrmBlocked(!!target.protectedStream);
+    if (target.protectedStream) {
+      engineRef.current?.stop();
+      setNoAudio(false);
+      setError(true); setState("error");
+      return;
+    }
     if (source.type === "stalker") {
       // Portail Stalker : lien à durée de vie courte demandé au portail (create_link) au moment de jouer.
       let dead = false;
@@ -506,9 +515,9 @@ export function PlayerHost() {
       {error && (
         <div className="pstate">
           <div className="msg">
-            <b>{t("player.error")}</b>
-            <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>
-            <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>
+            <b>{t(drmBlocked ? "player.drmUnsupported" : "player.error")}</b>
+            {!drmBlocked && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>}
+            {!drmBlocked && <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>}
           </div>
         </div>
       )}

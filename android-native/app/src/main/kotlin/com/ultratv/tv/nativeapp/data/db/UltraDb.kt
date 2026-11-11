@@ -27,7 +27,7 @@ import androidx.room.RoomDatabase
         com.ultratv.tv.nativeapp.data.downloads.DownloadEntity::class,
         TitleGenreEntity::class,
     ],
-    version = 20,
+    version = 21,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {

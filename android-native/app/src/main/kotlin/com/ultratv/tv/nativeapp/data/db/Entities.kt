@@ -96,6 +96,11 @@ data class ChannelEntity(
      * réordonne ses catégories. 0 = pas encore calculé (lignes d'avant la migration 18, corrigées par elle).
      */
     @androidx.room.ColumnInfo(defaultValue = "0") val catRank: Int = 0,
+    /**
+     * Flux protégé (Widevine / ClearKey) : JSON de [com.ultratv.tv.nativeapp.data.m3u.StreamProps] lu dans la playlist M3U
+     * (#KODIPROP / #EXTVLCOPT) ; null = flux ordinaire. SECRET DE LECTURE : jamais journalisé, jamais envoyé au cloud.
+     */
+    val props: String? = null,
 )
 
 @Entity(tableName = "category", indices = [Index(value = ["providerId", "kind", "remoteId"], unique = true)])
