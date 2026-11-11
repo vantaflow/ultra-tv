@@ -226,7 +226,7 @@ L'adresse du serveur, le nom d'utilisateur, le mot de passe, les adresses de flu
 - **Synchronisation cloud** : sur un appareil appairé, une source n'est envoyée au Worker que si vous la partagez (proposition après l'ajout, ou bouton de partage) ou si vous l'ajoutez depuis le tableau de bord. Elle est conservée **chiffrée** (AES-256-GCM, chiffrement côté serveur avec une clé secrète du Worker : ce n'est pas du bout en bout). À l'ouverture du tableau de bord, le Worker interroge lui-même votre fournisseur avec ces identifiants pour afficher l'abonnement. Si votre fournisseur bloque les serveurs Cloudflare, cette requête passe par un relais hébergé chez Vercel (code dans [`cloudflare-config/relay/`](cloudflare-config/relay/)) : il reçoit alors l'adresse et les identifiants le temps de la requête, sans les enregistrer.
 - **Envoi depuis le téléphone** : la source saisie sur la page web est chiffrée, gardée 15 minutes au plus, supprimée dès que la TV la reçoit.
 
-Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `password`, `token`…, `utilisateur:mot-de-passe@`, chemins `/live/utilisateur/mot-de-passe/`) côté application puis côté Worker. Limites : le nom de domaine d'un serveur peut subsister dans un message d'erreur, et l'ajout d'une source Stalker envoie le nom d'hôte du portail (sans port, chemin, MAC ni identifiants) dans un événement de diagnostic.
+Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `password`, `token`…, `utilisateur:mot-de-passe@`, chemins `/live/utilisateur/mot-de-passe/`) côté application puis côté Worker. Limite : le nom de domaine d'un serveur peut subsister dans un message d'erreur. L'ajout d'une source Stalker n'envoie que des événements de parcours (« tentative d'ajout », succès ou échec, classe d'erreur), jamais le nom d'hôte du portail.
 
 ### Ce que l'application Android envoie d'elle-même
 
@@ -237,7 +237,7 @@ Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `pa
 | Rapports de plantage | au plantage (ou au démarrage suivant), appareil **appairé** | Worker `/api/crash` | trace nettoyée, version, modèle, version d'Android | Oui |
 | Mise à jour | 30 s après chaque lancement, ou à la demande | `api.github.com`, puis GitHub | requête sans identifiant ; si une version plus récente existe, l'APK est téléchargé et l'installateur d'Android demande confirmation | **Non** |
 | Alertes (lecture) | à l'ouverture, puis toutes les 15 min au premier plan | Worker `/api/announcements` | type d'écran, version | **Non** |
-| Alertes (statistiques) | alerte affichée, fermée ou bouton utilisé | Worker `/api/announcements/<id>/stat` | type d'événement, identifiant aléatoire d'installation | **Non** |
+| Alertes (statistiques) | alerte affichée, fermée ou bouton utilisé | Worker `/api/announcements/<id>/stat` | type d'événement, identifiant aléatoire d'installation | Oui |
 | Guide complémentaire | à la synchro du guide, si des chaînes restent sans programme | `xmltvfr.fr` (par défaut) | téléchargement d'un fichier ; modifiable : Réglages › Synchronisation | Non |
 | Passer l'intro | à l'ouverture d'un film ou épisode (identifiant TMDB connu) | `api.theintrodb.org` | identifiant TMDB, saison, épisode, durée | **Non** |
 | Fiches TMDB, notes | à l'ouverture d'une fiche, appareil **appairé** | Worker `/api/tmdb`, `/api/ratings` | titre nettoyé, année, langue, ou identifiant TMDB | **Non** |
@@ -251,20 +251,20 @@ Les images fournies par votre source sont chargées directement depuis les adres
 
 ### Windows et macOS
 
-Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes. Envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h, sans réglage pour la couper), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
+Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes. Envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
 
 ### Ce que le Worker conserve
 
 - **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
 - **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
-- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil et de compte, pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
+- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
 - **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, pays ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
 - **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
 
 ### Couper la télémétrie
 
-**Réglages › À propos › *Rapports de plantage anonymes*** (activé par défaut). Désactivé : plus de journaux, de rapports de plantage ni de comptage anonyme, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, les alertes et leurs statistiques, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+**Réglages › À propos › *Télémétrie et rapports de plantage*** (activé par défaut). Désactivé : plus de journaux de diagnostic, de rapports de plantage, de comptage anonyme ni de statistiques d'alertes, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
 
 ## Réglages automatiques
 

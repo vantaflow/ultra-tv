@@ -294,6 +294,8 @@ export const en: Dict = {
   "set.profileName": "Profile name",
   "set.about.version": "Version {v}",
   "set.about.update": "Check for updates",
+  "set.about.autoUpdate": "Check for updates automatically",
+  "set.about.autoUpdateD": "At launch, then every 6 hours. Off: only the manual check contacts GitHub.",
   "set.about.updateNone": "You are up to date.",
   "set.about.updateAvail": "Update {v} available.",
   "set.about.updateFail": "Couldn’t check for updates. Try again later or download the latest version from the website.",

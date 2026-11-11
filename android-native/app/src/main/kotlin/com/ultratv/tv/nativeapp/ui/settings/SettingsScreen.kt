@@ -703,7 +703,7 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
             }
         }
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
-        SwitchPrefRow(D.telemetry, p.telemetryEnabled) { app.setTelemetry(it) }
+        SwitchPrefRow(D.telemetry, p.telemetryEnabled, hint = D.telemetryHint) { app.setTelemetry(it) }
         // Attribution exigée par les conditions d'utilisation de l'API TMDB.
         androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, modifier = Modifier.padding(top = 14.design))
     }

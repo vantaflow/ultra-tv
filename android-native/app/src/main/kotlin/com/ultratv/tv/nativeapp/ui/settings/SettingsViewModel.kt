@@ -374,7 +374,7 @@ class SettingsViewModel @Inject constructor(
     fun addStalkerAndSync(name: String, portal: String, mac: String, login: String, password: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             _syncing.value = true
-            StalkerTelemetry.addAttempt(portal)
+            StalkerTelemetry.addAttempt()
             try {
                 // addStalker sonde le portail (point d'entrée + poignée de main) avant d'enregistrer la source.
                 val id = repo.addStalker(name, portal, mac, login, password, probe = true)

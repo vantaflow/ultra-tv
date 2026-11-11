@@ -69,6 +69,13 @@ object AnnouncementPlan {
     fun next(items: List<Announcement>, seen: Set<String>, shownThisLaunch: Set<String>): Announcement? =
         items.firstOrNull { a -> if (a.level == URGENT) a.id !in shownThisLaunch else a.id !in seen }
 
+    /**
+     * Corps de la statistique d'alerte, ou null si la télémétrie est coupée (aucune statistique, donc aucun
+     * identifiant d'installation, n'est alors envoyé).
+     */
+    fun statBody(kind: String, installId: () -> String, telemetryEnabled: Boolean): String? =
+        if (!telemetryEnabled) null else JSONObject().put("kind", kind).put("device", installId()).toString()
+
     /** Identifiants vus encore utiles : ceux des alertes toujours diffusées (la liste ne grossit pas sans fin). */
     fun pruneSeen(seen: Set<String>, items: List<Announcement>, fetchedOk: Boolean): Set<String> =
         if (!fetchedOk) seen else seen.intersect(items.map { it.id }.toSet())
@@ -96,12 +103,13 @@ class AnnouncementRepository @Inject constructor(
 
     /**
      * Statistique de l'alerte [id] ([kind] : shown, dismissed, action) avec l'identifiant d'installation aléatoire de
-     * l'appareil (compté une fois par appareil côté Worker). Sans effet si le réseau manque : rien n'est rejoué.
+     * l'appareil (compté une fois par appareil côté Worker). Sans effet si la télémétrie est coupée ou si le réseau manque : rien n'est rejoué.
      */
     suspend fun stat(id: String, kind: String) = withContext(Dispatchers.IO) {
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext
-        val body = JSONObject().put("kind", kind).put("device", installId()).toString()
-            .toRequestBody("application/json".toMediaType())
+        val p = prefs.flow.first()
+        val json = AnnouncementPlan.statBody(kind, { installId() }, p.telemetryEnabled) ?: return@withContext
+        val base = WorkerUrl.normalize(p.workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext
+        val body = json.toRequestBody("application/json".toMediaType())
         runCatching { http.newCall(Request.Builder().url("$base/api/announcements/$id/stat").post(body).build()).execute().close() }
     }
 

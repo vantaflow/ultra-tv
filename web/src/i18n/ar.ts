@@ -294,6 +294,8 @@ export const ar: Dict = {
   "set.profileName": "اسم الملف الشخصي",
   "set.about.version": "الإصدار {v}",
   "set.about.update": "البحث عن تحديث",
+  "set.about.autoUpdate": "البحث عن التحديثات تلقائيًا",
+  "set.about.autoUpdateD": "عند التشغيل ثم كل 6 ساعات. عند الإيقاف: البحث اليدوي وحده يتصل بـ GitHub.",
   "set.about.updateNone": "لديك أحدث إصدار.",
   "set.about.updateAvail": "التحديث {v} متاح.",
   "set.about.updateFail": "تعذّر البحث عن تحديثات. أعد المحاولة لاحقًا أو نزّل أحدث إصدار من الموقع.",

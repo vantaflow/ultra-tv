@@ -2,9 +2,19 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [Non publié]
+## [1.2.87] — 2026-11-11 (Android) · Bureau 1.2.40 · Worker
 
+### Nouveau
 - Android : décodeur audio FFmpeg sous licence LGPL (AC-3, E-AC-3, DTS, TrueHD…) à la place du décodeur GPL-3.0
+
+### Corrigé (confidentialité)
+- Android : les statistiques d'alertes ne sont plus envoyées (donc plus d'identifiant d'installation) quand la télémétrie est coupée ; la lecture des alertes continue.
+- Android : l'ajout d'un portail Stalker n'envoie plus le nom d'hôte du portail dans l'événement de diagnostic.
+- Worker : les journaux et rapports de plantage ne stockent plus l'identifiant du compte (qui peut être une adresse e-mail) mais une empreinte HMAC courte et non réversible ; les pages `/logs` et `/crashes` affichent cette empreinte. Les relevés déjà stockés gardent l'ancien champ jusqu'à leur expiration (7 jours pour les journaux, 30 jours pour les plantages).
+- Android : le réglage « Rapports de plantage anonymes » devient **« Télémétrie et rapports de plantage »** (FR/EN/ES/AR), avec un sous-texte qui indique ce qu'il coupe : journaux de diagnostic, rapports de plantage, comptage anonyme et statistiques d'alertes.
+- Bureau : nouveau réglage « Vérifier les mises à jour automatiquement » (Réglages › À propos, activé par défaut, mémorisé) qui coupe les vérifications automatiques ; « Rechercher une mise à jour » reste utilisable.
+- Android : le message de clé de signature n'indique plus le lien court tinyurl mais l'adresse directe `github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk`.
+- README et site : documentation de confidentialité mise à jour en conséquence.
 
 ## [1.2.86] — 2026-11-11 (Android)
 

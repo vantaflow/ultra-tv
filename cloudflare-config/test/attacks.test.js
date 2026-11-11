@@ -140,6 +140,25 @@ describe("ingestion de crashs et d'événements", () => {
     expect(kv).not.toContain("hunter2");
     expect(kv).toContain("<redacted>");
   });
+  it("POST_apiEvent_etCrash_neStockentJamaisLeIdentifiantDuCompte", async () => {
+    const acct = await newAccount("alice.exemple@example.test"); const dev = await pairDevice(acct);
+    expect((await call("/api/event", { method: "POST", ip: dev.ip, headers: bearer(dev.token), json: { message: "marqueur-confid" } })).status).toBe(200);
+    expect((await call("/api/crash", { method: "POST", ip: dev.ip, headers: bearer(dev.token), json: { stack: "marqueur-confid" } })).status).toBe(200);
+    const kv = await allKv();
+    const rel = Object.entries(kv).filter(([k, v]) => (k.startsWith("event:") || k.startsWith("crash:")) && v.includes("marqueur-confid"));
+    expect(rel.length).toBe(2);
+    for (const [, v] of rel) {
+      expect(v).not.toContain("alice.exemple");
+      const o = JSON.parse(v);
+      expect(o.acct).toMatch(/^[A-Za-z0-9_-]{12}$/);
+    }
+    expect(JSON.parse(rel[0][1]).acct).toBe(JSON.parse(rel[1][1]).acct); // stable : corrélation possible
+    for (const path of ["/logs", "/crashes"]) {
+      const html = await (await call(path, { ip: freshIp(), headers: basic(OPS) })).text();
+      expect(html).not.toContain("alice.exemple");
+      expect(html).toContain(JSON.parse(rel[0][1]).acct);
+    }
+  });
   it("POST_apiEvent_tropGros_413", async () => {
     const acct = await newAccount(); const dev = await pairDevice(acct);
     const r = await call("/api/event", { method: "POST", ip: dev.ip, headers: bearer(dev.token), json: { message: "a".repeat(20_000) } });

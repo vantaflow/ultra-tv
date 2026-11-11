@@ -19,7 +19,7 @@ import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual, 
 import {
   ConfigError, json, redirect, tooMany, nonce, readJson, readForm, readLimited, sameOrigin, clientIp,
   withSecurityHeaders, readCookie, sessionCookieHeader, clearCookieHeader, COOKIE, signSession, verifySession,
-  csrfToken, parseBearer, parseOpsSecret, assertSessionSecret,
+  csrfToken, parseBearer, parseOpsSecret, assertSessionSecret, hmac,
 } from "./http.js";
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
@@ -1332,6 +1332,11 @@ const LEVELS = ["debug", "info", "warn", "error"];
 const int = (v) => (Number.isFinite(v) ? Math.trunc(v) : null);
 const rand = (n) => [...crypto.getRandomValues(new Uint8Array(n))].map((b) => b.toString(16).padStart(2, "0")).join("");
 
+/** Empreinte courte et non réversible d'un compte pour les journaux et plantages (corrélation seulement). */
+export async function opsAccountId(env, login) {
+  return (await hmac(env.SESSION_SECRET, `ops-acct:${login}`)).slice(0, 12);
+}
+
 async function ingest(req, env, kind) {
   const { auth, res } = await deviceAuth(req, env);
   if (res) return res;
@@ -1347,8 +1352,9 @@ async function ingest(req, env, kind) {
     mac: sanitizeText(b.mac, 32) || null, // étiquette fournie par l'appareil, non fiable
     version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
     device: sanitizeText(b.device, 128) || null,
-    // Compte et pays : relier un relevé à son propriétaire dans la vue d'exploitation (jamais l'adresse IP).
-    acct: auth.acct.login, country: countryOf(req),
+    // Compte et pays : le compte n'est jamais stocké en clair (l'identifiant peut être une adresse e-mail) mais sous la
+    // forme d'une empreinte HMAC courte, non réversible sans SESSION_SECRET ; jamais l'adresse IP.
+    acct: await opsAccountId(env, auth.acct.login), country: countryOf(req),
   };
   // Version de l'appli de l'appareil (déjà présente dans chaque relevé) : gardée sur l'appareil quand elle change.
   const ver = appVersionOf(b.version);

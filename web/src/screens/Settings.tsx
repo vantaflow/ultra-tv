@@ -15,6 +15,7 @@ import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
 import { setCategoriesEnabled } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
+import { readAutoUpdate, writeAutoUpdate } from "@/net/autoUpdate";
 import { Icon, type IconName } from "@/ui/Icon";
 import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
@@ -423,6 +424,8 @@ function AboutPane() {
   const b = bridge();
   const update = useUi((s) => s.update);
   const [msg, setMsg] = useState<string | null>(null);
+  const [autoUpd, setAutoUpd] = useState<boolean | null>(null);
+  useEffect(() => { void readAutoUpdate().then(setAutoUpd); }, []);
   return (
     <>
       <h2>{t("set.about")}</h2>
@@ -438,6 +441,11 @@ function AboutPane() {
           }}>{t("set.about.update")}</button>
         )}
       </Pref>
+      {autoUpd !== null && (
+        <Pref label={t("set.about.autoUpdate")} desc={t("set.about.autoUpdateD")}>
+          <Switch on={autoUpd} onChange={(v) => { setAutoUpd(v); void writeAutoUpdate(v).then(setAutoUpd); }} label={t("set.about.autoUpdate")} />
+        </Pref>
+      )}
       {(msg || update?.state === "downloading") && <div className="alert">{update?.state === "downloading" ? t("state.downloading", { p: Math.round(update.percent ?? 0) }) : msg}</div>}
       <div className="eyebrow">{t("set.about.shortcuts")}</div>
       <div className="hotkeys">

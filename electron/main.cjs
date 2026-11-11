@@ -17,6 +17,7 @@ const { findFfmpeg } = require("./transcode.cjs");
 const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
+const autoUpdateMod = require("./autoupdate.cjs");
 const { cloudRequest } = require("./cloudfetch.cjs");
 const dnsMod = require("./dns.cjs");
 
@@ -79,6 +80,10 @@ function loadDnsSettings() {
     dnsSettings = { ...dnsMod.DEFAULT_SETTINGS };
   }
 }
+
+// Verification automatique des mises a jour (autoupdate.cjs) : activee par defaut, memorisee dans userData/autoupdate.json.
+let autoUpdateEnabled = true;
+const autoUpdateFile = () => path.join(app.getPath("userData"), "autoupdate.json");
 
 /** Applique le reglage a Chromium (configureHostResolver peut etre rappele a chaud). */
 function applyChromiumDns() {
@@ -329,6 +334,12 @@ function registerIpc() {
   handle("ut:fullscreen:get", () => { const w = win(); return w ? w.isFullScreen() : false; });
   handle("ut:update:check", () => updater.check());
   handle("ut:update:install", () => updater.install());
+  handle("ut:update:auto:get", () => autoUpdateEnabled);
+  handle("ut:update:auto:set", (value) => {
+    autoUpdateEnabled = !!value;
+    autoUpdateMod.saveAutoUpdate(autoUpdateFile(), autoUpdateEnabled);
+    return autoUpdateEnabled;
+  });
   handle("ut:open-external", async (url) => {
     if (typeof url !== "string" || url.length > 4096 || !isHttpUrl(url)) throw new Error("invalid-url");
     await shell.openExternal(url);
@@ -470,6 +481,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     // DNS applique avant toute requete (proxy, fenetre, mises a jour).
     loadDnsSettings();
+    autoUpdateEnabled = autoUpdateMod.loadAutoUpdate(autoUpdateFile());
     applyChromiumDns();
     ffmpegPath = findFfmpeg({ resourcesPath: app.isPackaged ? process.resourcesPath : null });
     proxy = createProxyServer({
@@ -500,9 +512,8 @@ if (!app.requestSingleInstanceLock()) {
     createWindow();
 
     if (app.isPackaged && !IS_DEV && !HEADLESS) {
-      setTimeout(() => void updater.check(), 5000);
-      // Application laissee ouverte longtemps : nouvelle verification toutes les 6 h.
-      setInterval(() => void updater.check(), 6 * 3600_000);
+      // 5 s apres le lancement, puis toutes les 6 h : seulement si le reglage est actif (le bouton manuel reste utilisable).
+      autoUpdateMod.scheduleAutoChecks({ check: () => updater.check(), isEnabled: () => autoUpdateEnabled });
     }
 
     app.on("activate", () => {

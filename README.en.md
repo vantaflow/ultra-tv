@@ -220,7 +220,7 @@ The server address, username, password, stream URLs and the MAC of a Stalker por
 - **Cloud sync**: on a paired device, a source is sent to the Worker only if you share it (offer shown after adding, or the share button) or add it from the dashboard. It is stored **encrypted** (AES-256-GCM, server-side encryption with a Worker secret key: not end-to-end). When you open the dashboard, the Worker itself queries your provider with these credentials to show the subscription status. If your provider blocks Cloudflare servers, this request goes through a relay hosted on Vercel (code in [`cloudflare-config/relay/`](cloudflare-config/relay/)): it receives the address and credentials for that request only and does not store them.
 - **Send from your phone**: the source typed on the web page is encrypted, kept for 15 minutes at most and deleted as soon as the TV receives it.
 
-Logs and crash reports are scrubbed (`username`, `password`, `token`… parameters, `user:password@`, `/live/user/password/` paths) in the app, then again by the Worker. Limits: a server's domain name can remain in an error message, and adding a Stalker source sends the portal's host name (no port, path, MAC or credentials) in a diagnostic event.
+Logs and crash reports are scrubbed (`username`, `password`, `token`… parameters, `user:password@`, `/live/user/password/` paths) in the app, then again by the Worker. Limit: a server's domain name can remain in an error message. Adding a Stalker source only sends journey events ("add attempt", success or failure, error class), never the portal's host name.
 
 ### What the Android app sends on its own
 
@@ -231,7 +231,7 @@ Logs and crash reports are scrubbed (`username`, `password`, `token`… paramete
 | Crash reports | on crash (or next start), **paired** device | Worker `/api/crash` | scrubbed stack trace, version, model, Android version | Yes |
 | Update check | 30 s after each launch, or on request | `api.github.com`, then GitHub | request without identifier; if a newer version exists the APK is downloaded and Android's installer asks for confirmation | **No** |
 | Alerts (read) | on open, then every 15 min in the foreground | Worker `/api/announcements` | screen type, version | **No** |
-| Alerts (statistics) | alert shown, dismissed or button used | Worker `/api/announcements/<id>/stat` | event type, random install ID | **No** |
+| Alerts (statistics) | alert shown, dismissed or button used | Worker `/api/announcements/<id>/stat` | event type, random install ID | Yes |
 | Extra guide | during guide sync, if channels have no programme | `xmltvfr.fr` (default) | file download; changeable: Settings › Synchronization | No |
 | Skip intro | when opening a movie/episode (TMDB id known) | `api.theintrodb.org` | TMDB id, season, episode, duration | **No** |
 | TMDB details, ratings | when opening a details page, **paired** device | Worker `/api/tmdb`, `/api/ratings` | cleaned title, year, language, or TMDB id | **No** |
@@ -245,20 +245,20 @@ Images supplied by your source are loaded directly from the addresses it gives.
 
 ### Windows and macOS
 
-No anonymous count, crash report, remote log or alerts. Sends: update check (`api.github.com`, 5 s after launch then every 6 h, no setting to disable it), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
+No anonymous count, crash report, remote log or alerts. Sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
 
 ### What the Worker keeps
 
 - **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
 - **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
-- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device and account ID, country, version, model, a device label derived by hashing the Android ID.
+- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
 - **Anonymous count**: hash of the install ID, dates, version, country; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
 - **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
 
 ### Turning telemetry off
 
-**Settings › About › *Anonymous crash reports*** (on by default). Off: no more logs, crash reports or anonymous count, and no install ID in send-from-phone. It does **not** turn off the update check, alerts and their statistics, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
+**Settings › About › *Telemetry and crash reports*** (on by default). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
 
 ## Automatic tuning
 

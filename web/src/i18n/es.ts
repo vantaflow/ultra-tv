@@ -294,6 +294,8 @@ export const es: Dict = {
   "set.profileName": "Nombre del perfil",
   "set.about.version": "Versión {v}",
   "set.about.update": "Buscar actualizaciones",
+  "set.about.autoUpdate": "Buscar actualizaciones automáticamente",
+  "set.about.autoUpdateD": "Al iniciar y después cada 6 horas. Desactivado: solo la búsqueda manual contacta con GitHub.",
   "set.about.updateNone": "Tienes la última versión.",
   "set.about.updateAvail": "Actualización {v} disponible.",
   "set.about.updateFail": "No se pudo buscar actualizaciones. Inténtalo más tarde o descarga la última versión desde el sitio.",

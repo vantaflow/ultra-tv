@@ -945,14 +945,14 @@ ${announcementsPanel(announcements, csrfInput, now, annStats)}
 export function eventsPage(n, items) {
   const rows = items.map((it) => {
     const lvl = String(it.level || "info").toLowerCase();
-    return `<tr class="lvl-${e(lvl)}"><td>${e(fmtTime(it.ts))}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td>${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${e(it.deviceId || "")}</td></tr>`;
+    return `<tr class="lvl-${e(lvl)}"><td>${e(fmtTime(it.ts))}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td>${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${e(it.deviceId || "")}</td><td>${e(it.acct || "")}</td></tr>`;
   }).join("");
   return layout("Ultra TV — journaux", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Journaux — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 7 jours. Messages nettoyés côté serveur.</p>
-<div class="tablewrap"><table><thead><tr><th>Date</th><th>Niveau</th><th>Tag</th><th>Message</th><th>Appareil</th><th>Version</th><th>ID</th></tr></thead><tbody>${rows}</tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th>Date</th><th>Niveau</th><th>Tag</th><th>Message</th><th>Appareil</th><th>Version</th><th>ID</th><th>Compte (empreinte)</th></tr></thead><tbody>${rows}</tbody></table></div>
 ${rows ? "" : `<div class="empty mt16"><strong>Aucun événement</strong></div>`}</main>`, n);
 }
 
 export function crashesPage(n, items) {
-  const rows = items.map((it) => `<div class="panel"><div><strong>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</strong> · ${e(it.device || "")} · SDK ${e(it.androidSdk ?? "?")} · ${e(fmtTime(it.ts))} · ${e(it.deviceId || "")}</div><pre>${e(it.stack || "")}</pre></div>`).join("");
+  const rows = items.map((it) => `<div class="panel"><div><strong>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</strong> · ${e(it.device || "")} · SDK ${e(it.androidSdk ?? "?")} · ${e(fmtTime(it.ts))} · ${e(it.deviceId || "")}${it.acct ? ` · compte ${e(it.acct)}` : ""}</div><pre>${e(it.stack || "")}</pre></div>`).join("");
   return layout("Ultra TV — crashs", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Crashs — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 30 jours.</p>${rows || `<div class="empty"><strong>Aucun crash</strong></div>`}</main>`, n);
 }

@@ -293,6 +293,8 @@ export const fr = {
   "set.profileName": "Nom du profil",
   "set.about.version": "Version {v}",
   "set.about.update": "Rechercher une mise à jour",
+  "set.about.autoUpdate": "Vérifier les mises à jour automatiquement",
+  "set.about.autoUpdateD": "Au lancement puis toutes les 6 h. Désactivé : seule la recherche manuelle contacte GitHub.",
   "set.about.updateNone": "Vous avez la dernière version.",
   "set.about.updateAvail": "Mise à jour {v} disponible.",
   "set.about.updateFail": "Impossible de vérifier les mises à jour. Réessayez plus tard ou téléchargez la dernière version sur le site.",

@@ -7,12 +7,6 @@ import org.junit.Test
 
 /** Adresses fictives uniquement (.invalid) ; MAC du préfixe générique des boîtiers MAG. */
 class StalkerTelemetryTest {
-    @Test fun hoteSeul_jamaisLeChemin_niLePort_niLaRequete() {
-        assertEquals("portail-fictif.invalid", StalkerTelemetry.portalHost("http://Portail-Fictif.invalid:8080/c/?mac=00:1A:79:00:00:01"))
-        assertEquals("portail-fictif.invalid", StalkerTelemetry.portalHost("portail-fictif.invalid/stalker_portal/c/"))
-        assertEquals("invalid", StalkerTelemetry.portalHost(""))
-    }
-
     @Test fun erreur_seulementSaClasse() {
         assertEquals("IllegalStateException", StalkerTelemetry.errorClass(IllegalStateException("http://portail-fictif.invalid 00:1A:79:00:00:01")))
         assertEquals("unknown", StalkerTelemetry.errorClass(null))
@@ -35,10 +29,12 @@ class StalkerTelemetryTest {
         val old = StalkerTelemetry.sink
         StalkerTelemetry.sink = { got += it }
         try {
-            StalkerTelemetry.addAttempt("http://portail-fictif.invalid:8080/c/")
+            StalkerTelemetry.addAttempt()
             StalkerTelemetry.probeFailed(java.io.IOException("00:1A:79:00:00:01 refusé"))
         } finally { StalkerTelemetry.sink = old }
         assertTrue(got.isNotEmpty())
+        assertEquals("add attempt", got.first())
+        got.forEach { m -> assertFalse(m, m.contains("portail-fictif") || m.contains("host=")) }
         got.forEach { m -> assertFalse(m, m.contains("00:1A:79") || m.contains("8080") || m.contains("/c/")) }
     }
 }

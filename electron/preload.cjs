@@ -33,6 +33,8 @@ contextBridge.exposeInMainWorld("ultratv", {
   onFullscreenChange: (cb) => subscribe("ut:fullscreen:changed", cb),
   checkForUpdates: () => ipcRenderer.invoke("ut:update:check"),
   installUpdate: () => ipcRenderer.invoke("ut:update:install"),
+  getAutoUpdate: () => ipcRenderer.invoke("ut:update:auto:get"),
+  setAutoUpdate: (value) => ipcRenderer.invoke("ut:update:auto:set", !!value),
   onUpdateStatus: (cb) => subscribe("ut:update:status", cb),
   openExternal: (url) => ipcRenderer.invoke("ut:open-external", String(url)),
   setTitleBarTheme: (isDark) => ipcRenderer.invoke("ut:titlebar-theme", !!isDark),

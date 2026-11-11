@@ -94,7 +94,9 @@ indisponible (ou Linux `basic_text`), le format est `plain:v1:<base64>` (simple 
 ## Mise a jour automatique
 
 `electron-updater` (GitHub Releases, `vantaflow/ultra-tv`) : verification 5 s apres le lancement (hors dev et
-`ULTRATV_HEADLESS`), telechargement automatique, installation a la fermeture. Le statut est pousse au renderer
+`ULTRATV_HEADLESS`) puis toutes les 6 h, seulement si le reglage « Verifier les mises a jour automatiquement »
+(Reglages › A propos, active par defaut, memorise dans `userData/autoupdate.json`, `autoupdate.cjs`) est actif ; le bouton
+« Rechercher une mise a jour » reste utilisable. Telechargement automatique, installation a la fermeture. Le statut est pousse au renderer
 (`onUpdateStatus`) : `checking | available | not-available | downloading | downloaded | unavailable | error`.
 
 - La release doit etre **publiee** (le workflow cree un brouillon) pour etre vue par les clients.

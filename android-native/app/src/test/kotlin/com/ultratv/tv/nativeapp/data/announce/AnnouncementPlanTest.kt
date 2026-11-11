@@ -52,4 +52,13 @@ class AnnouncementPlanTest {
         assertEquals("id10", h.first().id)
         assertEquals(1, h.count { it.id == "id10" })
     }
+
+    @Test fun statBody_aucuneStatistiqueQuandLaTelemetrieEstCoupee() {
+        var asked = false
+        assertNull(AnnouncementPlan.statBody("shown", { asked = true; "abc" }, telemetryEnabled = false))
+        assertTrue("l'identifiant d'installation ne doit même pas être lu", !asked)
+        val body = AnnouncementPlan.statBody("shown", { "abc" }, telemetryEnabled = true)
+        assertEquals("shown", org.json.JSONObject(body!!).getString("kind"))
+        assertEquals("abc", org.json.JSONObject(body).getString("device"))
+    }
 }
