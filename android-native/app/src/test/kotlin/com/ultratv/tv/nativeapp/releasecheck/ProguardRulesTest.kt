@@ -20,4 +20,11 @@ class ProguardRulesTest {
     fun regles_clientRtmp_presentes() {
         assertTrue(rules.contains("-keep class io.antmedia.rtmp_client.** { *; }"))
     }
+
+    /** La page du lecteur de bande-annonce appelle les méthodes du pont par leur nom : renommées par R8, plus aucun événement. */
+    @Test
+    fun regles_pontBandeAnnonce_presentes() {
+        assertTrue(rules.contains("-keepclassmembers class com.ultratv.tv.nativeapp.ui.trailer.TrailerBridge"))
+        assertTrue(rules.contains("@android.webkit.JavascriptInterface <methods>;"))
+    }
 }

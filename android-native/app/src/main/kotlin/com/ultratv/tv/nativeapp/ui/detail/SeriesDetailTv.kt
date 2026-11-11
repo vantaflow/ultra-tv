@@ -60,6 +60,7 @@ import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings
 import com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer
+import com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
@@ -123,7 +124,6 @@ fun SeriesDetailTv(
     val series = data.series
     val S = LocalStrings.current
     val D = LocalDs.current
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberCoroutineScope()
     val scroll = rememberScrollState()
     val playRequester = remember { FocusRequester() }
@@ -150,6 +150,9 @@ fun SeriesDetailTv(
     // Barre « Aller à l'épisode » / « Télécharger la saison » : Haut depuis le 1er épisode y mène (avant, il la sautait).
     val toolbarReq = remember { FocusRequester() }
     var jumpOpen by remember { mutableStateOf(false) }
+    // Bande-annonce : clé YouTube (TMDB), lue dans l'appli par le lecteur intégré.
+    val trailerKey = remember(data.trailerUrl) { data.trailerUrl?.let(TmdbTrailer::keyOf) }
+    var trailerOpen by remember { mutableStateOf(false) }
     val hasTarget = data.target != null
 
     suspend fun focusEntry() {
@@ -197,7 +200,7 @@ fun SeriesDetailTv(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
                     FavoritePill("SERIES", series.remoteId)
-                    data.trailerUrl?.let { url -> PillButton(D.trailerLabel, onClick = { TmdbTrailer.open(ctx, url) }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play) }
+                    if (trailerKey != null) PillButton(D.trailerLabel, onClick = { trailerOpen = true }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play)
                     com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, data.episodes, data.activeSeason)
                 }
                 val cast = remember(series.cast) { T.presentable(series.cast).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(4) }
@@ -279,6 +282,7 @@ fun SeriesDetailTv(
         },
         onDismiss = { jumpOpen = false },
     )
+    if (trailerOpen && trailerKey != null) TrailerPlayer(trailerKey, T.tidy(series.title), onClose = { trailerOpen = false })
 }
 
 /** Colonne des saisons : « Saison 1 · 24 épisodes » ; la saison choisie est surlignée, le focus la choisit après une courte pause. */

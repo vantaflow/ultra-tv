@@ -1457,4 +1457,17 @@
     <string name="translate_help_sub">¿Falta tu idioma o contiene un error?</string>
     <string name="translate_help_scan">Escanea el código QR con tu teléfono para traducir desde el navegador.</string>
     <string name="translate_help_close">Cerrar</string>
+    <string name="trailer_play">Reproducir</string>
+    <string name="trailer_pause">Pausar</string>
+    <string name="trailer_back10">Retroceder 10 segundos</string>
+    <string name="trailer_fwd10">Adelantar 10 segundos</string>
+    <string name="trailer_close">Cerrar</string>
+    <string name="trailer_loading">Cargando el tráiler…</string>
+    <string name="trailer_err_not_found">Este tráiler ya no está disponible (eliminado o privado).</string>
+    <string name="trailer_err_embed">El propietario de este vídeo no permite reproducirlo fuera de YouTube.</string>
+    <string name="trailer_err_config">Este tráiler no se puede reproducir en la aplicación por ahora.</string>
+    <string name="trailer_err_unknown">No se pudo reproducir el tráiler.</string>
+    <string name="trailer_err_no_webview">Este dispositivo no puede reproducir tráilers dentro de la aplicación (no hay componente web disponible).</string>
+    <string name="trailer_show_qr">Mostrar el enlace como código QR</string>
+    <string name="trailer_qr_hint">Escanea con tu teléfono para ver el tráiler allí.</string>
 </resources>

@@ -51,3 +51,9 @@
 
 # Client RTMP (AAR sans règles) : même mécanique JNI.
 -keep class io.antmedia.rtmp_client.** { *; }
+
+# Bande-annonce intégrée : la page du lecteur appelle ces méthodes PAR LEUR NOM (pont JavaScript) ; sans cette règle R8
+# les renomme et le lecteur ne reçoit plus aucun événement en release seulement.
+-keepclassmembers class com.ultratv.tv.nativeapp.ui.trailer.TrailerBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
