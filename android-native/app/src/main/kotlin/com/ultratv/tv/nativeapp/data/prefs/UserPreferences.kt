@@ -130,6 +130,8 @@ data class UserPrefs(
     val homeHidden: String = "",
     /** Écran d'ouverture : "" (= hérité de « Reprendre au lancement »), "home", "live", "movies", "series", "guide", "last". */
     val startScreen: String = "",
+    /** Mode simple : grandes tuiles à la place de l'accueil (surchargé PAR PROFIL, voir ProfilePrefs.simpleMode). */
+    val simpleMode: Boolean = false,
 )
 
 @Singleton
@@ -281,6 +283,8 @@ class UserPreferencesStore @Inject constructor(
     /** Ordre et rangées masquées de l'accueil, écrits ensemble (une seule émission du flux). */
     suspend fun setHomeLayout(orderCsv: String, hiddenCsv: String) = update { it[Keys.homeOrder] = orderCsv; it[Keys.homeHidden] = hiddenCsv }
     suspend fun setStartScreen(key: String) = update { it[Keys.startScreen] = key }
+    /** Mode simple du profil COURANT. */
+    suspend fun setSimpleMode(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SIMPLE_MODE, v.toString())
     suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
     suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
     suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }

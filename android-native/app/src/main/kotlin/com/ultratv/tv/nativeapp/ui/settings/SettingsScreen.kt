@@ -517,6 +517,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     val logosUri by vm.localLogosFolderUri.collectAsState()
     PaneTitle(D.rubDisplay)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        // Mode simple : grandes tuiles à la place de l'accueil (profil courant) ; la sortie demande le code parental s'il existe.
+        com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }

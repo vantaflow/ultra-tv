@@ -31,7 +31,7 @@ import com.ultratv.tv.nativeapp.ui.settings.AddProviderDialog
 import com.ultratv.tv.nativeapp.ui.settings.FormField
 import kotlinx.coroutines.launch
 
-private enum class ProfileAction { RENAME, COLOR, KIDS, PIN, PIN_REMOVE, DELETE }
+private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, PIN, PIN_REMOVE, DELETE }
 
 /** Réglages › Profils : liste, création, renommage, couleur, profil Enfants, PIN, suppression, mode de démarrage. */
 @Composable
@@ -39,6 +39,9 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     val S = ProfileStrings(LocalDs.current.lang)
     val profiles by vm.profiles.collectAsState()
     val startup by vm.startupMode.collectAsState()
+    val simpleIds by vm.simpleModeIds.collectAsState()
+    val pinSet by vm.parentalPinSet.collectAsState()
+    val SM = com.ultratv.tv.nativeapp.i18n.SimpleStrings(LocalDs.current.lang)
     var menuFor by remember { mutableStateOf<ProfileEntity?>(null) }
     var action by remember { mutableStateOf<Pair<ProfileEntity, ProfileAction>?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -49,7 +52,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
         profiles.forEach { p ->
             PrefRow(
                 label = p.name,
-                value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.pinHash != null) S.protectedHint else null).joinToString(" · "),
+                value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.id in simpleIds) SM.settingName else null, if (p.pinHash != null) S.protectedHint else null).joinToString(" · "),
             ) { menuFor = p }
         }
         if (ProfileRules.canAdd(profiles.size)) PillButton(S.newProfile, { creating = true }, heightPx = 64, hPadPx = 32, fontPx = 22, bg = Ux.Surface2, iconPath = "M12 5v14M5 12h14")
@@ -64,6 +67,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             add(ProfileAction.RENAME to S.rename)
             add(ProfileAction.COLOR to S.color)
             add(ProfileAction.KIDS to "${S.kidsProfile} : ${if (p.isKids) S.pinSet else S.pinNone}")
+            add(ProfileAction.SIMPLE to if (p.id in simpleIds) SM.profileOn else SM.profileOff)
             add(ProfileAction.PIN to "${S.pin} : ${if (p.pinHash != null) S.pinSet else S.pinNone}")
             if (p.pinHash != null) add(ProfileAction.PIN_REMOVE to S.pinRemove)
             add(ProfileAction.DELETE to if (ProfileRules.canDelete(profiles.size)) S.delete else S.deleteLast)
@@ -71,6 +75,10 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
         ChoiceDialog(p.name, opts, null, onPick = { a ->
             menuFor = null
             if (a == ProfileAction.KIDS) vm.setKids(p.id, !p.isKids)
+            else if (a == ProfileAction.SIMPLE) {
+                // Activer : libre. Désactiver : code parental s'il existe.
+                if (p.id in simpleIds && com.ultratv.tv.nativeapp.ui.simple.SimpleHome.exitNeedsPin(pinSet)) action = p to a else vm.setSimpleMode(p.id, p.id !in simpleIds)
+            }
             else if (a == ProfileAction.PIN_REMOVE) vm.setPin(p.id, null)
             else if (a != ProfileAction.DELETE || ProfileRules.canDelete(profiles.size)) action = p to a
         }, onDismiss = { menuFor = null })
@@ -80,6 +88,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
         val close = { action = null }
         when (a) {
             ProfileAction.RENAME -> ProfileEditDialog(p, vm, onDismiss = close)
+            ProfileAction.SIMPLE -> com.ultratv.tv.nativeapp.ui.simple.ExitSimpleModePin(onUnlocked = { vm.setSimpleMode(p.id, false); close() }, onCancel = close)
             ProfileAction.COLOR -> ChoiceDialog(S.color, ProfileColors.palette.mapIndexed { i, c -> c to S.colorNames[i] }, p.color, { vm.setColor(p.id, it); close() }, close)
             ProfileAction.PIN -> {
                 PinPad(title = S.pin, subtitle = p.name, onComplete = { vm.setPin(p.id, it); close() }, onCancel = close)

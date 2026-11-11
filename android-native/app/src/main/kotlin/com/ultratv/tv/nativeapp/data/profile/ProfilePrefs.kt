@@ -21,6 +21,8 @@ data class ProfilePrefs(
     val languages: String? = null,
     val includeMulti: Boolean? = null,
     val includeUnknownLang: Boolean? = null,
+    /** Mode simple (grandes tuiles à la place de l'accueil) : propre à chaque profil. */
+    val simpleMode: Boolean? = null,
 ) {
     /** Applique les surcharges du profil sur les préférences globales. [isKids] force le contrôle parental. */
     fun applyTo(base: UserPrefs, isKids: Boolean = false): UserPrefs = base.copy(
@@ -34,6 +36,7 @@ data class ProfilePrefs(
         languages = languages ?: base.languages,
         includeMulti = includeMulti ?: base.includeMulti,
         includeUnknownLang = includeUnknownLang ?: base.includeUnknownLang,
+        simpleMode = simpleMode ?: base.simpleMode,
     )
 
     companion object {
@@ -47,6 +50,7 @@ data class ProfilePrefs(
         const val LANGUAGES = "languages"
         const val INCLUDE_MULTI = "include_multi"
         const val INCLUDE_UNKNOWN = "include_unknown"
+        const val SIMPLE_MODE = "simple_mode"
 
         fun fromMap(m: Map<String, String>) = ProfilePrefs(
             theme = m[THEME]?.let { AppTheme.parse(it) },
@@ -59,6 +63,7 @@ data class ProfilePrefs(
             languages = m[LANGUAGES],
             includeMulti = m[INCLUDE_MULTI]?.toBooleanStrictOrNull(),
             includeUnknownLang = m[INCLUDE_UNKNOWN]?.toBooleanStrictOrNull(),
+            simpleMode = m[SIMPLE_MODE]?.toBooleanStrictOrNull(),
         )
     }
 }

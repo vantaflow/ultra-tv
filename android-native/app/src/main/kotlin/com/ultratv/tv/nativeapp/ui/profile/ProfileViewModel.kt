@@ -24,6 +24,9 @@ class ProfileViewModel @Inject constructor(
     val startupMode: StateFlow<StartupMode> = repo.startupMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StartupMode.ALWAYS_ASK)
     val parentalPinSet: StateFlow<Boolean> = parental.pinHash.map { it != null }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
+    val simpleModeIds: StateFlow<Set<Long>> = repo.simpleModeProfileIds.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    fun setSimpleMode(id: Long, on: Boolean) = viewModelScope.launch { repo.setSimpleModeFor(id, on) }
+
     fun select(id: Long) = viewModelScope.launch { repo.select(id) }
     fun requestSwitch() = repo.requestSwitch()
     fun cancelSwitch() = repo.cancelSwitch()

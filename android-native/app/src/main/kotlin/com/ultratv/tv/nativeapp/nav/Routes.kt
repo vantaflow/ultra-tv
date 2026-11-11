@@ -12,6 +12,8 @@ object Routes {
     const val FAVORITES = "favorites"
     const val SETTINGS = "settings"
     const val DOWNLOADS = "downloads"
+    /** Mode simple : liste de chaînes à gros caractères (favoris d'abord), ouverte par la tuile « Télé en direct ». */
+    const val SIMPLE_CHANNELS = "simple-channels"
     // Player accepts a stream URL (URL-encoded) + title.
     const val PLAYER = "player?url={url}&title={title}"
 

@@ -39,7 +39,7 @@ val MORE_ROUTES = listOf(Routes.SERIES, Routes.FAVORITES, "recordings", Routes.D
 
 fun tabForRoute(route: String?): MobileTab = when {
     route == null || route == Routes.HOME -> MobileTab.HOME
-    route == Routes.LIVE || route.startsWith("player") -> MobileTab.LIVE
+    route == Routes.LIVE || route == Routes.SIMPLE_CHANNELS || route.startsWith("player") -> MobileTab.LIVE
     route == Routes.GUIDE -> MobileTab.GUIDE
     route == Routes.MOVIES || route.startsWith("movies/") -> MobileTab.MOVIES
     else -> MobileTab.MORE
@@ -51,7 +51,7 @@ fun isFullscreenRoute(route: String?): Boolean = route?.startsWith("player") == 
 /** Entrée du rail latéral tactile : la route la plus proche porte l'état actif. */
 fun railRouteFor(route: String?): String = when {
     route == null -> Routes.HOME
-    route.startsWith("player") -> Routes.LIVE
+    route.startsWith("player") || route == Routes.SIMPLE_CHANNELS -> Routes.LIVE
     route.startsWith("movies/") -> Routes.MOVIES
     route.startsWith("series/") -> Routes.SERIES
     route == "categories" || route == "diagnostic" || route == "locked-channels" -> Routes.SETTINGS
