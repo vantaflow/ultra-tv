@@ -4,120 +4,118 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.i18n.I18n
 
 /**
  * Libellés des fonctions du lot B2 (zapping, veille, replay, timeshift, sous-titres), à part de
  * [com.ultratv.tv.nativeapp.i18n.DesignStrings] pour ne pas se marcher dessus avec les autres chantiers.
  */
 class PlayerExtraStrings(val lang: AppLang) {
-    private fun t(en: String, fr: String, es: String = en, ar: String = en): String = when (lang) {
-        AppLang.French -> fr
-        AppLang.Spanish -> es
-        AppLang.Arabic -> ar
-        else -> en
-    }
+    private fun tx(id: Int, vararg args: Any): String = I18n.string(lang, id, *args)
+    private fun tp(id: Int, qty: Int, vararg args: Any): String = I18n.plural(lang, id, qty, *args)
 
     // Zapping
-    val recent get() = t("RECENT", "RÉCENTES", "RECIENTES", "الأخيرة")
-    val zapHint get() = t("Back: previous channel · ▲▼ zap · 0-9 number", "Retour : chaîne précédente · ▲▼ zapper · 0-9 numéro", "Atrás: canal anterior · ▲▼ zapear · 0-9 número", "رجوع: القناة السابقة · ▲▼ تنقّل · 0-9 رقم")
-    val noChannelNumber get() = t("No such channel", "Aucune chaîne à ce numéro", "Ningún canal con ese número", "لا توجد قناة بهذا الرقم")
+    val recent get() = tx(R.string.pex_recent)
+    val zapHint get() = tx(R.string.pex_zap_hint)
+    val noChannelNumber get() = tx(R.string.pex_no_channel_number)
 
     // Passer l'intro (TheIntroDB)
-    val skipIntro get() = t("Skip intro", "Passer l'intro", "Saltar intro", "تخطي المقدمة")
-    val skipRecap get() = t("Skip recap", "Passer le résumé", "Saltar resumen", "تخطي الملخص")
-    val skipCredits get() = t("Skip credits", "Passer le générique", "Saltar créditos", "تخطي الشارة")
-    val nextEpisode get() = t("Next episode", "Épisode suivant", "Siguiente episodio", "الحلقة التالية")
+    val skipIntro get() = tx(R.string.pex_skip_intro)
+    val skipRecap get() = tx(R.string.pex_skip_recap)
+    val skipCredits get() = tx(R.string.pex_skip_credits)
+    val nextEpisode get() = tx(R.string.pex_next_episode)
 
     // Replay
-    val fromStart get() = t("From the start", "Depuis le début", "Desde el principio", "من البداية")
-    val backToLive get() = t("Back to live", "Revenir au direct", "Volver al directo", "العودة إلى البث المباشر")
+    val fromStart get() = tx(R.string.pex_from_start)
+    val backToLive get() = tx(R.string.pex_back_to_live)
 
     // Sous-titres
-    val subsPill get() = t("Subtitles", "Sous-titres", "Subtítulos", "الترجمة")
-    val subtitlesTitle get() = t("Subtitles", "Sous-titres", "Subtítulos", "الترجمة")
-    val previewText get() = t("Subtitle preview\nwith your settings", "Aperçu des sous-titres\navec vos réglages", "Vista previa de subtítulos\ncon tus ajustes", "معاينة الترجمة\nبإعداداتك")
-    val off get() = t("Off", "Désactivés", "Desactivados", "متوقفة")
-    val track get() = t("Track", "Piste", "Pista", "المسار")
-    val size get() = t("Size", "Taille", "Tamaño", "الحجم")
-    val color get() = t("Colour", "Couleur", "Color", "اللون")
-    val background get() = t("Background", "Fond", "Fondo", "الخلفية")
-    val outline get() = t("Outline", "Contour", "Contorno", "الحدود")
-    val position get() = t("Position", "Position", "Posición", "الموضع")
-    val delay get() = t("Offset", "Décalage", "Desfase", "التأخير")
-    val delayVlcOnly get() = t("VLC only", "VLC uniquement", "Solo VLC", "VLC فقط")
-    val audioLangs get() = t("Audio languages", "Langues audio", "Idiomas de audio", "لغات الصوت")
-    val textLangs get() = t("Subtitle languages", "Langues sous-titres", "Idiomas de subtítulos", "لغات الترجمة")
-    val langOrderHint get() = t("Pick in order of preference", "Choisir dans l'ordre de préférence", "Elige por orden de preferencia", "اختر بترتيب التفضيل")
-    val searchOnline get() = t("Search subtitles online", "Chercher des sous-titres en ligne", "Buscar subtítulos en línea", "البحث عن ترجمات")
-    val searchNeedsProxy get() = t("Pair this device with your Worker to enable it", "Appairez l'appareil à votre Worker pour l'activer", "Vincula el dispositivo a tu Worker para activarlo", "اربط الجهاز بالـ Worker لتفعيله")
-    val liveNoSubtitles get() = t("This channel does not broadcast subtitles (or none has appeared yet). Closed captions appear here as soon as the channel sends them.", "Cette chaîne ne diffuse pas de sous-titres (ou aucun n'est encore apparu). Les sous-titres codés s'affichent ici dès que la chaîne les envoie.", "Este canal no emite subtítulos (o aún no ha aparecido ninguno). Los subtítulos ocultos aparecerán aquí en cuanto el canal los envíe.", "هذه القناة لا تبث ترجمة (أو لم تظهر أي ترجمة بعد). ستظهر الترجمة المضمّنة هنا بمجرد أن تبثها القناة.")
-    val searchMoviesOnly get() = t("Available for movies only", "Disponible pour les films uniquement", "Solo para películas", "متاح للأفلام فقط")
-    val subtitlesNotConfigured get() = t("Subtitle search is not enabled on your Worker (OpenSubtitles key missing)", "La recherche de sous-titres n'est pas activée sur votre Worker (clé OpenSubtitles absente)", "La búsqueda de subtítulos no está activada en su Worker (falta la clave de OpenSubtitles)", "البحث عن الترجمات غير مفعّل على الـ Worker الخاص بك (مفتاح OpenSubtitles غير موجود)")
-    val searching get() = t("Searching…", "Recherche…", "Buscando…", "جارٍ البحث…")
-    val noSubtitleFound get() = t("No subtitles found", "Aucun sous-titre trouvé", "No se encontraron subtítulos", "لا توجد ترجمات")
-    val subtitleAdded get() = t("Subtitles added", "Sous-titres ajoutés", "Subtítulos añadidos", "تمت إضافة الترجمة")
-    val back get() = t("Back", "Retour", "Atrás", "رجوع")
+    val subsPill get() = tx(R.string.pex_subs_pill)
+    val subtitlesTitle get() = tx(R.string.pex_subtitles_title)
+    val previewText get() = tx(R.string.pex_preview_text)
+    val off get() = tx(R.string.pex_off)
+    val track get() = tx(R.string.pex_track)
+    val size get() = tx(R.string.pex_size)
+    val color get() = tx(R.string.pex_color)
+    val background get() = tx(R.string.pex_background)
+    val outline get() = tx(R.string.pex_outline)
+    val position get() = tx(R.string.pex_position)
+    val delay get() = tx(R.string.pex_delay)
+    val delayVlcOnly get() = tx(R.string.pex_delay_vlc_only)
+    val audioLangs get() = tx(R.string.pex_audio_langs)
+    val textLangs get() = tx(R.string.pex_text_langs)
+    val langOrderHint get() = tx(R.string.pex_lang_order_hint)
+    val searchOnline get() = tx(R.string.pex_search_online)
+    val searchNeedsProxy get() = tx(R.string.pex_search_needs_proxy)
+    val liveNoSubtitles get() = tx(R.string.pex_live_no_subtitles)
+    val searchMoviesOnly get() = tx(R.string.pex_search_movies_only)
+    val subtitlesNotConfigured get() = tx(R.string.pex_subtitles_not_configured)
+    val searching get() = tx(R.string.pex_searching)
+    val noSubtitleFound get() = tx(R.string.pex_no_subtitle_found)
+    val subtitleAdded get() = tx(R.string.pex_subtitle_added)
+    val back get() = tx(R.string.pex_back)
     fun sizeName(v: com.ultratv.tv.nativeapp.data.subtitles.SubSize) = when (v) {
-        com.ultratv.tv.nativeapp.data.subtitles.SubSize.SMALL -> t("Small", "Petite", "Pequeño", "صغير")
-        com.ultratv.tv.nativeapp.data.subtitles.SubSize.MEDIUM -> t("Medium", "Moyenne", "Mediano", "متوسط")
-        com.ultratv.tv.nativeapp.data.subtitles.SubSize.LARGE -> t("Large", "Grande", "Grande", "كبير")
-        com.ultratv.tv.nativeapp.data.subtitles.SubSize.XLARGE -> t("Extra large", "Très grande", "Muy grande", "كبير جدًا")
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.SMALL -> tx(R.string.pex_size_name_small)
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.MEDIUM -> tx(R.string.pex_size_name_medium)
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.LARGE -> tx(R.string.pex_size_name_large)
+        com.ultratv.tv.nativeapp.data.subtitles.SubSize.XLARGE -> tx(R.string.pex_size_name_xlarge)
     }
     fun colorName(v: com.ultratv.tv.nativeapp.data.subtitles.SubColor) = when (v) {
-        com.ultratv.tv.nativeapp.data.subtitles.SubColor.WHITE -> t("White", "Blanc", "Blanco", "أبيض")
-        com.ultratv.tv.nativeapp.data.subtitles.SubColor.YELLOW -> t("Yellow", "Jaune", "Amarillo", "أصفر")
-        com.ultratv.tv.nativeapp.data.subtitles.SubColor.CYAN -> t("Cyan", "Cyan", "Cian", "سماوي")
-        com.ultratv.tv.nativeapp.data.subtitles.SubColor.GREEN -> t("Green", "Vert", "Verde", "أخضر")
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.WHITE -> tx(R.string.pex_color_name_white)
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.YELLOW -> tx(R.string.pex_color_name_yellow)
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.CYAN -> tx(R.string.pex_color_name_cyan)
+        com.ultratv.tv.nativeapp.data.subtitles.SubColor.GREEN -> tx(R.string.pex_color_name_green)
     }
     fun backgroundName(v: com.ultratv.tv.nativeapp.data.subtitles.SubBackground) = when (v) {
-        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.NONE -> t("None", "Aucun", "Ninguno", "بلا")
-        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.SEMI -> t("Semi-transparent", "Semi-transparent", "Semitransparente", "شبه شفاف")
-        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.OPAQUE -> t("Opaque", "Opaque", "Opaco", "معتم")
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.NONE -> tx(R.string.pex_background_name_none)
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.SEMI -> tx(R.string.pex_background_name_semi)
+        com.ultratv.tv.nativeapp.data.subtitles.SubBackground.OPAQUE -> tx(R.string.pex_background_name_opaque)
     }
     fun outlineName(v: com.ultratv.tv.nativeapp.data.subtitles.SubOutline) = when (v) {
-        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.NONE -> t("None", "Aucun", "Ninguno", "بلا")
-        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THIN -> t("Thin", "Fin", "Fino", "رفيع")
-        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THICK -> t("Thick", "Épais", "Grueso", "سميك")
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.NONE -> tx(R.string.pex_outline_name_none)
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THIN -> tx(R.string.pex_outline_name_thin)
+        com.ultratv.tv.nativeapp.data.subtitles.SubOutline.THICK -> tx(R.string.pex_outline_name_thick)
     }
     fun positionName(v: com.ultratv.tv.nativeapp.data.subtitles.SubPosition) = when (v) {
-        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.BOTTOM -> t("Bottom", "Bas", "Abajo", "أسفل")
-        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.RAISED -> t("Raised", "Relevé", "Elevado", "مرتفع")
-        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.HIGH -> t("High", "Haut", "Alto", "عالٍ")
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.BOTTOM -> tx(R.string.pex_position_name_bottom)
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.RAISED -> tx(R.string.pex_position_name_raised)
+        com.ultratv.tv.nativeapp.data.subtitles.SubPosition.HIGH -> tx(R.string.pex_position_name_high)
     }
 
     // Pause du direct
-    val delayed get() = t("TIME-SHIFTED", "EN DIFFÉRÉ", "EN DIFERIDO", "مؤجّل")
-    val directMark get() = t("LIVE", "DIRECT", "DIRECTO", "مباشر")
-    val tsHls get() = t("Pause is unavailable on this stream (HLS)", "Pause du direct indisponible sur ce flux (HLS)", "Pausa no disponible en esta señal (HLS)", "الإيقاف المؤقت غير متاح لهذا البث (HLS)")
-    val tsNoSpace get() = t("Not enough free space to pause live TV", "Espace libre insuffisant pour mettre le direct en pause", "Espacio libre insuficiente para pausar el directo", "مساحة التخزين غير كافية لإيقاف البث مؤقتًا")
-    val tsFailed get() = t("Live buffer interrupted, back to live", "Tampon interrompu, retour au direct", "Búfer interrumpido, volviendo al directo", "انقطع التخزين المؤقت، العودة إلى المباشر")
+    val delayed get() = tx(R.string.pex_delayed)
+    val directMark get() = tx(R.string.pex_direct_mark)
+    val tsHls get() = tx(R.string.pex_ts_hls)
+    val tsNoSpace get() = tx(R.string.pex_ts_no_space)
+    val tsFailed get() = tx(R.string.pex_ts_failed)
 
     // Fiche programme, « Ensuite », pistes
-    val infoNow get() = t("ON NOW", "EN COURS", "EN EMISIÓN", "يُعرض الآن")
-    val infoNoGuide get() = t("No programme information for this channel", "Pas d'information de programme pour cette chaîne", "Sin información de programa para este canal", "لا تتوفر معلومات البرنامج لهذه القناة")
-    val thenWord get() = t("Next", "Ensuite", "A continuación", "التالي")
-    val audioPill get() = t("Audio", "Audio", "Audio", "الصوت")
-    val settingsPill get() = t("Settings", "Réglages", "Ajustes", "الإعدادات")
+    val infoNow get() = tx(R.string.pex_info_now)
+    val infoNoGuide get() = tx(R.string.pex_info_no_guide)
+    val thenWord get() = tx(R.string.pex_then_word)
+    val audioPill get() = tx(R.string.pex_audio_pill)
+    val settingsPill get() = tx(R.string.pex_settings_pill)
 
     // Veille
-    val sleepPill get() = t("Sleep", "Veille", "Dormir", "السكون")
+    val sleepPill get() = tx(R.string.pex_sleep_pill)
     /** Bandeau du direct (après un zap) : les commandes ne sont pas encore actives, on dit comment les atteindre. */
-    val bannerHint get() = t("◀ ▶ Controls  ·  OK Channels  ·  ▲ ▼ Zap", "◀ ▶ Commandes  ·  OK Chaînes  ·  ▲ ▼ Zapper", "◀ ▶ Controles  ·  OK Canales  ·  ▲ ▼ Zapear", "◀ ▶ الأوامر  ·  OK القنوات  ·  ▲ ▼ التنقّل")
-    val sleepTitle get() = t("Sleep timer", "Minuterie de veille", "Temporizador", "مؤقّت السكون")
-    val sleepEndOfProgramme get() = t("End of programme", "Fin du programme", "Fin del programa", "نهاية البرنامج")
-    val sleepOff get() = t("Cancel timer", "Annuler la minuterie", "Cancelar", "إلغاء المؤقّت")
-    val stillThere get() = t("Still there?", "Toujours là ?", "¿Sigues ahí?", "هل ما زلت هنا؟")
-    val imHere get() = t("I'm here", "Je suis là", "Sigo aquí", "أنا هنا")
-    val sleepNow get() = t("Stop now", "Arrêter maintenant", "Parar ahora", "إيقاف الآن")
+    val bannerHint get() = tx(R.string.pex_banner_hint)
+    val sleepTitle get() = tx(R.string.pex_sleep_title)
+    val sleepEndOfProgramme get() = tx(R.string.pex_sleep_end_of_programme)
+    val sleepOff get() = tx(R.string.pex_sleep_off)
+    val stillThere get() = tx(R.string.pex_still_there)
+    val imHere get() = tx(R.string.pex_im_here)
+    val sleepNow get() = tx(R.string.pex_sleep_now)
 
     // Surcouche film / épisode
-    val statusPlaying get() = t("Playing", "Lecture", "Reproduciendo", "قيد التشغيل")
-    val statusPaused get() = t("Paused", "Pause", "Pausa", "متوقف مؤقتًا")
-    val statusLoading get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
-    fun endsAt(time: String) = when (lang) { AppLang.French -> "Se termine à $time"; AppLang.Spanish -> "Termina a las $time"; AppLang.Arabic -> "ينتهي في $time"; else -> "Ends at $time" }
-    val previousEpisode get() = t("Previous episode", "Épisode précédent", "Episodio anterior", "الحلقة السابقة")
-    val close get() = t("Close", "Fermer", "Cerrar", "إغلاق")
-    fun sleepStopsIn(s: Int) = when (lang) { AppLang.French -> "Arrêt dans $s s"; AppLang.Spanish -> "Se detiene en $s s"; AppLang.Arabic -> "الإيقاف بعد $s ث"; else -> "Stopping in $s s" }
+    val statusPlaying get() = tx(R.string.pex_status_playing)
+    val statusPaused get() = tx(R.string.pex_status_paused)
+    val statusLoading get() = tx(R.string.pex_status_loading)
+    fun endsAt(time: String) = tx(R.string.pex_ends_at, time)
+    val previousEpisode get() = tx(R.string.pex_previous_episode)
+    val close get() = tx(R.string.pex_close)
+    fun sleepStopsIn(s: Int) = tx(R.string.pex_sleep_stops_in, s)
 }
 
 @Composable

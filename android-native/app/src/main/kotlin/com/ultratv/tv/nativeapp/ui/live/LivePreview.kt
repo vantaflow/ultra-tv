@@ -40,6 +40,8 @@ import kotlinx.coroutines.flow.stateIn
 import androidx.lifecycle.viewModelScope
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.i18n.I18n
 
 /**
  * Aperçu VIDÉO du Direct : la chaîne focalisée joue dans le cadre de droite après un court délai ; OK la passe en
@@ -164,24 +166,20 @@ class LivePreviewViewModel @Inject constructor(
 }
 
 class LivePreviewStrings(val lang: AppLang) {
-    private fun t(en: String, fr: String, es: String = en, ar: String = en): String = when (lang) {
-        AppLang.French -> fr
-        AppLang.Spanish -> es
-        AppLang.Arabic -> ar
-        else -> en
-    }
-    val row get() = t("Video preview in Live TV", "Aperçu vidéo dans le Direct", "Vista previa de vídeo en Directo", "معاينة الفيديو في البث المباشر")
-    val hint get() = t("The focused channel plays next to the list; OK goes full screen instantly", "La chaîne sélectionnée joue à côté de la liste ; OK passe en plein écran sans attente", "El canal seleccionado se reproduce junto a la lista; OK pasa a pantalla completa al instante", "تُعرض القناة المحددة بجانب القائمة؛ زر OK للانتقال الفوري إلى ملء الشاشة")
-    val sound get() = t("Preview sound", "Son de l’aperçu", "Sonido de la vista previa", "صوت المعاينة")
-    val delay get() = t("Delay before preview", "Délai avant l’aperçu", "Retraso antes de la vista previa", "المهلة قبل المعاينة")
-    val delayHint get() = t("Shorter: faster, but more streams opened while scrolling", "Plus court : plus rapide, mais plus de flux ouverts en parcourant la liste", "Más corto: más rápido, pero se abren más flujos al desplazarse", "أقصر: أسرع، لكن تُفتح بثوث أكثر أثناء التصفح")
+    private fun tx(id: Int, vararg args: Any): String = I18n.string(lang, id, *args)
+    private fun tp(id: Int, qty: Int, vararg args: Any): String = I18n.plural(lang, id, qty, *args)
+    val row get() = tx(R.string.lp_row)
+    val hint get() = tx(R.string.lp_hint)
+    val sound get() = tx(R.string.lp_sound)
+    val delay get() = tx(R.string.lp_delay)
+    val delayHint get() = tx(R.string.lp_delay_hint)
     fun seconds(ms: Int): String {
         val s = if (ms % 1_000 == 0) (ms / 1_000).toString() else "%.1f".format(java.util.Locale.ROOT, ms / 1_000f)
-        return when (lang) { AppLang.French -> s.replace('.', ',') + " s"; AppLang.Arabic -> "$s ث"; else -> "$s s" }
+        return tx(R.string.lp_seconds, if (lang == AppLang.French) s.replace('.', ',') else s)
     }
-    val autoLowRam get() = t("Auto (off on low-memory devices)", "Auto (désactivé sur les box à faible mémoire)", "Auto (desactivado en equipos con poca memoria)", "تلقائي (معطّل على الأجهزة محدودة الذاكرة)")
-    val on get() = t("On", "Activé", "Activado", "مفعّل")
-    val off get() = t("Off", "Désactivé", "Desactivado", "معطّل")
+    val autoLowRam get() = tx(R.string.lp_auto_low_ram)
+    val on get() = tx(R.string.lp_on)
+    val off get() = tx(R.string.lp_off)
 }
 
 @Composable

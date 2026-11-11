@@ -41,34 +41,32 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 import javax.inject.Inject
+import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.i18n.I18n
 
 /** Textes de l'écran « Abonnement » (EN / FR / ES / AR). */
 class AccountStrings(private val lang: AppLang) {
-    private fun t(en: String, fr: String, es: String, ar: String) = when (lang) {
-        AppLang.French -> fr
-        AppLang.Spanish -> es
-        AppLang.Arabic -> ar
-        else -> en
-    }
-    val title get() = t("Subscription", "Abonnement", "Suscripción", "الاشتراك")
-    val sub get() = t("Your IPTV subscription, as reported by your provider.", "Votre abonnement IPTV, tel que l'indique votre fournisseur.", "Tu suscripción IPTV, según tu proveedor.", "اشتراك IPTV الخاص بك كما يُبلغ عنه مزوّدك.")
-    val iptv get() = t("IPTV subscription", "Abonnement IPTV", "Suscripción IPTV", "اشتراك IPTV")
-    val source get() = t("Source", "Source", "Fuente", "المصدر")
-    val account get() = t("Account status", "État du compte", "Estado de la cuenta", "حالة الحساب")
-    val expires get() = t("Expires", "Expire le", "Caduca el", "ينتهي في")
-    val daysLeft get() = t("days left", "jours restants", "días restantes", "يوم متبقٍ")
-    val conns get() = t("Connections in use", "Connexions utilisées", "Conexiones en uso", "الاتصالات المستخدمة")
-    val created get() = t("Created", "Créé le", "Creada el", "أُنشئ في")
-    val trial get() = t("Trial account", "Compte d'essai", "Cuenta de prueba", "حساب تجريبي")
-    val yes get() = t("Yes", "Oui", "Sí", "نعم")
-    val server get() = t("Server", "Serveur", "Servidor", "الخادم")
-    val never get() = t("No expiry date", "Pas de date d'expiration", "Sin fecha de caducidad", "بدون تاريخ انتهاء")
-    val unknown get() = t("Unknown", "Inconnu", "Desconocido", "غير معروف")
-    val refresh get() = t("Refresh", "Actualiser", "Actualizar", "تحديث")
-    val loading get() = t("Loading…", "Chargement…", "Cargando…", "جارٍ التحميل…")
-    val offline get() = t("Could not reach the provider. Try again later.", "Fournisseur injoignable. Réessayez plus tard.", "No se pudo contactar con el proveedor. Inténtalo más tarde.", "تعذّر الوصول إلى المزوّد. حاول لاحقًا.")
-    val noSource get() = t("No source configured.", "Aucune source configurée.", "No hay ninguna fuente configurada.", "لا يوجد مصدر.")
-    val noXtream get() = t("This source type does not provide subscription details.", "Ce type de source ne fournit pas d'informations d'abonnement.", "Este tipo de fuente no proporciona datos de suscripción.", "هذا النوع من المصادر لا يوفّر معلومات الاشتراك.")
+    private fun tx(id: Int, vararg args: Any): String = I18n.string(lang, id, *args)
+    private fun tp(id: Int, qty: Int, vararg args: Any): String = I18n.plural(lang, id, qty, *args)
+    val title get() = tx(R.string.acct_title)
+    val sub get() = tx(R.string.acct_sub)
+    val iptv get() = tx(R.string.acct_iptv)
+    val source get() = tx(R.string.acct_source)
+    val account get() = tx(R.string.acct_account)
+    val expires get() = tx(R.string.acct_expires)
+    val daysLeft get() = tx(R.string.acct_days_left)
+    val conns get() = tx(R.string.acct_conns)
+    val created get() = tx(R.string.acct_created)
+    val trial get() = tx(R.string.acct_trial)
+    val yes get() = tx(R.string.acct_yes)
+    val server get() = tx(R.string.acct_server)
+    val never get() = tx(R.string.acct_never)
+    val unknown get() = tx(R.string.acct_unknown)
+    val refresh get() = tx(R.string.acct_refresh)
+    val loading get() = tx(R.string.acct_loading)
+    val offline get() = tx(R.string.acct_offline)
+    val noSource get() = tx(R.string.acct_no_source)
+    val noXtream get() = tx(R.string.acct_no_xtream)
 }
 
 data class AccountState(val sourceName: String? = null, val xtream: Boolean = false, val account: XtreamAccount? = null, val failed: Boolean = false, val loading: Boolean = true)
