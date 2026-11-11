@@ -25,7 +25,8 @@ jobs:
       - name: Verify tag matches VERSION
         working-directory: ${{ github.workspace }}
         run: |
-          TAG="${GITHUB_REF_NAME}"
+          # Pré-version de test : « v1.2.91-rc1 » est accepté pour VERSION 1.2.91 (jamais « latest », voir plus bas).
+          TAG="${GITHUB_REF_NAME%%-rc*}"
           EXPECTED="v$(cat VERSION)"
           echo "tag=$TAG expected=$EXPECTED"
           if [ "$TAG" != "$EXPECTED" ]; then
@@ -162,6 +163,9 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
           body_path: ${{ runner.temp }}/notes.md
+          # Tag « -rcN » : pré-version de test, jamais « latest » (ni l'appli ni /download/android ne la proposent).
+          prerelease: ${{ contains(github.ref_name, '-rc') }}
+          make_latest: ${{ contains(github.ref_name, '-rc') && 'false' || 'true' }}
           generate_release_notes: true
           files: |
             dist/*.apk
