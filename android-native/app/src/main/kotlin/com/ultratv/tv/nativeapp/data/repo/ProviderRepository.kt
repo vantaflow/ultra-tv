@@ -183,7 +183,7 @@ class ProviderRepository @Inject constructor(
     suspend fun syncXmltv(providerId: Long, onProgress: (String) -> Unit = {}): Int {
         val p = providerDao.byId(providerId) ?: return 0
         // Xtream : xmltv.php. Playlists M3U (distantes ou locales) : seulement si leur en-tête annonce un guide (url-tvg).
-        if (!hasGuideFeed(p)) return 0
+        if (!hasGuideFeed(p)) return 0   // y compris le guide complémentaire seul (source sans guide propre)
         fun step(s: String, pct: Int?) {
             onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
         }
@@ -205,10 +205,26 @@ class ProviderRepository @Inject constructor(
         }
     }
 
-    private fun guidePlan(p: ProviderEntity) = com.ultratv.tv.nativeapp.data.xmltv.GuidePlan.of(p.kind, limits.epgUrls(p.id), limits.customEpg(p.id))
+    /** Adresse du guide complémentaire global (Réglages), ou null s'il est désactivé ou invalide. */
+    private suspend fun globalExtraUrl(): String? =
+        prefs.flow.first().extraEpg.trim().takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }
 
-    /** Xtream : xmltv.php. M3U : url-tvg de l'en-tête. Toute source (Stalker compris) : son « guide de cette source » s'il est défini. */
-    private fun hasGuideFeed(p: ProviderEntity): Boolean = guidePlan(p).hasFeed
+    private suspend fun guidePlan(p: ProviderEntity) = com.ultratv.tv.nativeapp.data.xmltv.GuidePlan.of(
+        p.kind, limits.epgUrls(p.id), limits.customEpg(p.id), globalExtra = globalExtraUrl() != null,
+    )
+
+    /**
+     * Xtream : xmltv.php. M3U : url-tvg de l'en-tête. Toute source (Stalker compris) : son « guide de cette source » s'il est
+     * défini, sinon le guide complémentaire des Réglages (une playlist sans url-tvg y trouve ses programmes).
+     */
+    private suspend fun hasGuideFeed(p: ProviderEntity): Boolean = guidePlan(p).hasFeed
+
+    /**
+     * Fin du dernier programme à comparer à [SyncPolicy.epgNeedsRefresh]. Source servie par le seul guide complémentaire :
+     * pas de relecture horaire d'un gros guide quand rien ne correspond (seulement le délai ordinaire de 12 h).
+     */
+    private suspend fun epgLastEnd(p: ProviderEntity): Long? =
+        if (guidePlan(p).extraOnly) Long.MAX_VALUE else epgDao.lastEndForProvider(p.id)
 
     /**
      * Guide de la source PUIS guide complémentaire (chaînes restées sans programme). Le complément est tenté même si
@@ -238,11 +254,17 @@ class ProviderRepository @Inject constructor(
                 }
             }
             // Le complément ne compte que le programme de la source (pas de barre d'octets propre).
-            val extra = runCatching { syncExtraEpg(p, plan.completeUrl) { c -> report(null, null, (own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
+            var extraError: Throwable? = null
+            val extra = runCatching {
+                syncExtraEpg(p, plan.completeUrl, allChannels = plan.extraOnly, onError = { extraError = it }) { c -> report(null, null, (own.getOrNull() ?: 0) + c) }
+            }.getOrDefault(0)
             val total = (own.getOrNull() ?: 0) + extra
             emit(force = true)
             if (own.isFailure && extra == 0) throw own.exceptionOrNull()!!
-            if (total == 0) throw EmptyGuideException()
+            // Guide complémentaire seul : un échec (réseau, délai) remonte pour être réessayé ; un guide lu mais sans aucune
+            // chaîne rapprochée n'est pas une panne (chaînes « sans programme », pas de relecture en boucle).
+            if (plan.extraOnly && extra == 0) extraError?.let { throw it }
+            if (total == 0 && !plan.extraOnly) throw EmptyGuideException()
             syncStatus.setEpg(EpgState.Idle)
             return total
         } catch (c: kotlinx.coroutines.CancellationException) {
@@ -271,15 +293,17 @@ class ProviderRepository @Inject constructor(
      * Guides complémentaires pour les chaînes sans programme : d'abord « Guide de cette source » (mode compléter, [sourceUrl]),
      * puis le guide complémentaire des Réglages (http ou https) ; 0 si aucun. Un guide en échec n'empêche pas le suivant.
      */
-    private suspend fun syncExtraEpg(p: ProviderEntity, sourceUrl: String?, onCount: (Int) -> Unit): Int {
-        val global = prefs.flow.first().extraEpg.takeIf { it.startsWith("http://", true) || it.startsWith("https://", true) }
+    private suspend fun syncExtraEpg(
+        p: ProviderEntity, sourceUrl: String?, allChannels: Boolean = false, onError: (Throwable) -> Unit = {}, onCount: (Int) -> Unit,
+    ): Int {
+        val global = globalExtraUrl()
         var total = 0
         for (url in listOfNotNull(sourceUrl, global).distinct()) {
             try {
-                total += syncExtraEpgFrom(p, url) { c -> onCount(total + c) }
+                total += syncExtraEpgFrom(p, url, allChannels) { c -> onCount(total + c) }
             } catch (c: kotlinx.coroutines.CancellationException) {
                 throw c
-            } catch (t: Throwable) { /* guide complémentaire : jamais bloquant */ }
+            } catch (t: Throwable) { onError(t) /* guide complémentaire : jamais bloquant pour la source */ }
         }
         return total
     }
@@ -308,8 +332,9 @@ class ProviderRepository @Inject constructor(
         return total
     }
 
-    private suspend fun syncExtraEpgFrom(p: ProviderEntity, url: String, onCount: (Int) -> Unit): Int {
-        val have = epgDao.channelsWithProgrammes(p.id, System.currentTimeMillis()).toHashSet()
+    /** [allChannels] : source sans guide propre, toutes ses chaînes sont visées (et rafraîchies à chaque synchro). */
+    private suspend fun syncExtraEpgFrom(p: ProviderEntity, url: String, allChannels: Boolean, onCount: (Int) -> Unit): Int {
+        val have = if (allChannels) emptySet() else epgDao.channelsWithProgrammes(p.id, System.currentTimeMillis()).toHashSet()
         val targets = channelDao.epgTitles(p.id).filter { it.id !in have }
         if (targets.isEmpty()) return 0
         val resolver = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.Resolver(targets)
@@ -541,7 +566,7 @@ class ProviderRepository @Inject constructor(
         if (p.kind == "M3U_LOCAL") {
             // Playlist locale : catalogue importé une fois ; son guide (url-tvg) est téléchargé s'il est périmé.
             if (prefs.flow.first().syncEpg && hasGuideFeed(p) &&
-                SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis())) syncXmltv(p.id, onProgress)
+                SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgLastEnd(p), System.currentTimeMillis())) syncXmltv(p.id, onProgress)
             return channelDao.count(p.id)
         }
         val now = System.currentTimeMillis()
@@ -556,7 +581,13 @@ class ProviderRepository @Inject constructor(
         if (p.kind == "M3U") return syncM3u(providerId, onProgress).also {
             providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis())
             // Guide annoncé par la playlist (url-tvg) : après les chaînes, sans jamais faire échouer la synchro.
-            if (SyncPart.EPG in due) runCatching { syncXmltv(p.id, onProgress) }
+            // `due` ne contient jamais EPG pour une M3U : le guide est relu s'il est périmé (ou jamais lu : premier ajout), y compris
+            // le guide complémentaire seul d'une playlist sans url-tvg.
+            if (u.syncEpg && (heavyOk || force)) {
+                val fresh = providerDao.byId(p.id) ?: p
+                if (SyncPart.EPG in due || SyncPolicy.epgNeedsRefresh(fresh.lastEpgSyncAt, epgLastEnd(fresh), System.currentTimeMillis()))
+                    runCatching { syncXmltv(p.id, onProgress) }
+            }
         }
         // Portail Stalker : même moteur (catégories, langues, purge, ordre du Direct), autres requêtes ; pas de guide XMLTV.
 
@@ -1104,7 +1135,7 @@ class ProviderRepository @Inject constructor(
             if (syncMutex.isLocked) return@launch
             syncMutex.withLock {
                 for (p in providerDao.observeAll().first().filter { hasGuideFeed(it) }) {
-                    if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
+                    if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgLastEnd(p), System.currentTimeMillis()))
                         runCatching { syncXmltv(p.id) }
                 }
             }

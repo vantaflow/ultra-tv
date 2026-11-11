@@ -138,6 +138,25 @@ class CustomGuideTest {
         assertEquals(true, GuidePlan.of("STALKER", emptyList(), CustomGuide(custom, GuideMode.REPLACE)).hasFeed)
     }
 
+    // Retour utilisateur : playlist M3U sans url-tvg + guide complémentaire personnalisé des Réglages = « aucune information ».
+    @Test fun plan_guideComplementaireSeul_m3uSansUrlTvg() {
+        assertEquals(GuidePlan(null, null, true, extraOnly = true), GuidePlan.of("M3U", emptyList(), null, globalExtra = true))
+        assertEquals(GuidePlan(null, null, true, extraOnly = true), GuidePlan.of("M3U_LOCAL", emptyList(), null, globalExtra = true))
+        assertEquals(GuidePlan(null, null, true, extraOnly = true), GuidePlan.of("STALKER", emptyList(), null, globalExtra = true))
+    }
+
+    @Test fun plan_guideComplementaireSeul_pasPourUneSourceAvecGuidePropre() {
+        assertEquals(GuidePlan(null, null, true), GuidePlan.of("M3U", listOf("http://x.invalid/g.xml"), null, globalExtra = true))
+        assertEquals(GuidePlan(null, null, true), GuidePlan.of("XTREAM", emptyList(), null, globalExtra = true))
+        // Guide complémentaire désactivé : source sans guide, comme avant.
+        assertEquals(GuidePlan(null, null, false), GuidePlan.of("M3U", emptyList(), null, globalExtra = false))
+    }
+
+    @Test fun plan_guideDeLaSource_prioriteSurLeComplementGlobal() {
+        assertEquals(GuidePlan(custom, null, true), GuidePlan.of("M3U", emptyList(), CustomGuide(custom, GuideMode.REPLACE), globalExtra = true))
+        assertEquals(GuidePlan(null, custom, true), GuidePlan.of("M3U", emptyList(), CustomGuide(custom, GuideMode.COMPLETE), globalExtra = true))
+    }
+
     @Test fun plan_adressePersoInvalide_ignoree() {
         assertEquals(GuidePlan(null, null, false), GuidePlan.of("STALKER", emptyList(), CustomGuide("ftp://x.invalid/g.xml", GuideMode.REPLACE)))
     }

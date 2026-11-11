@@ -56,11 +56,14 @@ data class CustomGuide(val url: String, val mode: GuideMode)
 
 /**
  * Ce que la synchro du guide d'une source doit faire. [replaceUrl] : seul guide à lire ; [completeUrl] : guide lu en plus,
- * pour les chaînes sans programme ; [hasFeed] : la source a au moins un guide (sinon la synchro du guide est sautée).
+ * pour les chaînes sans programme ; [hasFeed] : la synchro du guide a quelque chose à lire (sinon elle est sautée) ;
+ * [extraOnly] : la source n'a AUCUN guide propre (ni `url-tvg`, ni « guide de cette source ») et seul le guide
+ * complémentaire des Réglages s'applique : toutes ses chaînes sont « sans programme » et reçoivent le complément.
  */
-data class GuidePlan(val replaceUrl: String?, val completeUrl: String?, val hasFeed: Boolean) {
+data class GuidePlan(val replaceUrl: String?, val completeUrl: String?, val hasFeed: Boolean, val extraOnly: Boolean = false) {
     companion object {
-        fun of(kind: String, providerFeeds: List<String>, custom: CustomGuide?): GuidePlan {
+        /** [globalExtra] : un guide complémentaire global (Réglages › Synchronisation) est actif. */
+        fun of(kind: String, providerFeeds: List<String>, custom: CustomGuide?, globalExtra: Boolean = false): GuidePlan {
             val c = custom?.takeIf { GuideAddress.validate(it.url) is GuideAddress.Validation.Ok }
             val own = when (kind) {
                 "XTREAM" -> true
@@ -68,7 +71,7 @@ data class GuidePlan(val replaceUrl: String?, val completeUrl: String?, val hasF
                 else -> false   // Stalker : aucun guide XMLTV propre au portail
             }
             return when {
-                c == null -> GuidePlan(null, null, own)
+                c == null -> GuidePlan(null, null, own || globalExtra, extraOnly = !own && globalExtra)
                 c.mode == GuideMode.REPLACE -> GuidePlan(c.url.trim(), null, true)
                 else -> GuidePlan(null, c.url.trim(), true)
             }
