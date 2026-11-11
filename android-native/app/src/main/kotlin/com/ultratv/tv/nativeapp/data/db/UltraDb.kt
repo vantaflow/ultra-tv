@@ -26,8 +26,9 @@ import androidx.room.RoomDatabase
         com.ultratv.tv.nativeapp.data.profile.ProfileHiddenCategoryEntity::class,
         com.ultratv.tv.nativeapp.data.downloads.DownloadEntity::class,
         TitleGenreEntity::class,
+        ChannelOrderEntity::class,
     ],
-    version = 21,
+    version = 22,
     exportSchema = true,
 )
 abstract class UltraDb : RoomDatabase() {
@@ -47,4 +48,5 @@ abstract class UltraDb : RoomDatabase() {
     abstract fun reminderDao(): com.ultratv.tv.nativeapp.data.reminders.ReminderDao
     abstract fun downloadDao(): com.ultratv.tv.nativeapp.data.downloads.DownloadDao
     abstract fun genreDao(): GenreDao
+    abstract fun channelOrderDao(): ChannelOrderDao
 }

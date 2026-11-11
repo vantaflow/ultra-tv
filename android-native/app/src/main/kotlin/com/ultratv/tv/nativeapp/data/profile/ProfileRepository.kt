@@ -110,7 +110,7 @@ class ProfileRepository(
     /** Supprime un profil et ses données. Refuse (false) pour le dernier profil. */
     suspend fun delete(id: Long): Boolean {
         if (!ProfileRules.canDelete(dao.count())) return false
-        dao.deleteFavoritesOf(id); dao.deleteHistoryOf(id); dao.deletePrefsOf(id); dao.deleteHiddenOf(id)
+        dao.deleteFavoritesOf(id); dao.deleteHistoryOf(id); dao.deletePrefsOf(id); dao.deleteHiddenOf(id); dao.deleteChannelOrderOf(id)
         dao.deleteProfile(id)
         val remaining = dao.observeAllOnce()
         if (current.value?.id == id) remaining.firstOrNull()?.let { state.setCurrentId(it.id) }

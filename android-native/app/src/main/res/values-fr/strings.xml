@@ -1488,4 +1488,13 @@
     <string name="osd_drawer_all">Toutes les chaînes</string>
     <string name="osd_no_previous">Pas de chaîne précédente</string>
     <string name="osd_drawer_hint">OK zapper · ▲▼ parcourir · ◀ catégories · ▶ chaînes · ‹ fermer</string>
+    <!-- ui/live/ChannelOrderStrings.kt -->
+    <string name="cor_move">Déplacer</string>
+    <string name="cor_reset">Réinitialiser l’ordre</string>
+    <string name="cor_title">Déplacer la chaîne</string>
+    <string name="cor_hint">Haut / Bas : déplacer la chaîne · OK : valider · Retour : annuler</string>
+    <string name="cor_up">Monter</string>
+    <string name="cor_down">Descendre</string>
+    <string name="cor_done">Valider</string>
+    <string name="cor_cancel">Annuler</string>
 </resources>

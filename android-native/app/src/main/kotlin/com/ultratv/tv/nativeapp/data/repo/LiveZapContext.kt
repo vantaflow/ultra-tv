@@ -16,9 +16,10 @@ class LiveZapContext @Inject constructor(
     private val queue: LivePlaybackQueue,
     private val playback: PlaybackContext,
     private val profiles: ProfileRepository,
+    private val order: ChannelOrderRepository,
 ) {
     suspend fun prepare(providerId: Long, remoteId: String, title: String, logo: String?, streamUrl: String) {
-        val favs = runCatching { channelDao.favoritesList(providerId, profiles.currentIdNow) }.getOrDefault(emptyList())
+        val favs = runCatching { order.favorites(providerId) }.getOrDefault(emptyList())
         val cur = favs.firstOrNull { it.remoteId == remoteId }
         if (cur != null) queue.set(favs, cur)
         else {
@@ -26,8 +27,7 @@ class LiveZapContext @Inject constructor(
             val cat = ch?.categoryId
             val list = if (ch == null || cat == null) emptyList() else runCatching {
                 // Une catégorie peut compter des milliers de chaînes : fenêtre autour de la chaîne.
-                val rank = channelDao.rankCategory(providerId, cat, ch.num, ch.id)
-                channelDao.windowCategory(providerId, cat, QUEUE_WINDOW, (rank - QUEUE_WINDOW / 2).coerceAtLeast(0))
+                order.categoryWindow(providerId, cat, ch, QUEUE_WINDOW)
             }.getOrDefault(emptyList())
             if (ch != null && list.any { it.id == ch.id }) queue.set(list, ch) else queue.clear()
         }

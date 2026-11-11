@@ -110,6 +110,9 @@ interface ProfileDao {
     @Query("DELETE FROM favorite WHERE profileId = :id")
     suspend fun deleteFavoritesOf(id: Long)
 
+    @Query("DELETE FROM channel_order WHERE profileId = :id")
+    suspend fun deleteChannelOrderOf(id: Long)
+
     @Query("DELETE FROM watch_history WHERE profileId = :id")
     suspend fun deleteHistoryOf(id: Long)
 

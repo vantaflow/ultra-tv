@@ -1476,4 +1476,13 @@
     <string name="osd_drawer_all">All channels</string>
     <string name="osd_no_previous">No previous channel</string>
     <string name="osd_drawer_hint">OK zap · ▲▼ browse · ◀ categories · ▶ channels · ‹ close</string>
+    <!-- ui/live/ChannelOrderStrings.kt -->
+    <string name="cor_move">Move</string>
+    <string name="cor_reset">Reset order</string>
+    <string name="cor_title">Move channel</string>
+    <string name="cor_hint">Up / Down: move the channel · OK: confirm · Back: cancel</string>
+    <string name="cor_up">Move up</string>
+    <string name="cor_down">Move down</string>
+    <string name="cor_done">Done</string>
+    <string name="cor_cancel">Cancel</string>
 </resources>

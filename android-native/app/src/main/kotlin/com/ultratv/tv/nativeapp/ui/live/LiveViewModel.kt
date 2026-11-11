@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /** Catégorie « Tout » (toutes les chaînes) et « Favoris » (colonne de gauche du Direct). */
@@ -71,6 +72,7 @@ class LiveViewModel @Inject constructor(
     syncBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     private val backfill: com.ultratv.tv.nativeapp.data.repo.LiveOrderBackfill,
     private val db: com.ultratv.tv.nativeapp.data.db.UltraDb,
+    private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
     @dagger.hilt.android.qualifiers.ApplicationContext private val appCtx: android.content.Context,
 ) : ViewModel() {
 
@@ -127,24 +129,86 @@ class LiveViewModel @Inject constructor(
         .distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
+    /** Listes (catégories, favoris) de la source qui ont un ORDRE PERSONNEL pour le profil courant. */
+    val customScopes: StateFlow<Set<String>> = pid.flatMapLatest { id -> if (id == null) flowOf(emptySet()) else channelOrder.observeScopes(id) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    /** Déplacement en cours d'une chaîne (menu « Déplacer ») ; null = aucun. */
+    data class MoveState(val scope: String, val key: String, val title: String)
+    private val _move = MutableStateFlow<MoveState?>(null)
+    val moveState: StateFlow<MoveState?> = _move.asStateFlow()
+    private var moveKeys: List<String> = emptyList()
+    private var movePid: Long = 0
+    private var moveBefore: Map<String, Int> = emptyMap()
+    private val moveLock = kotlinx.coroutines.sync.Mutex()
+
+    /** « Déplacer » : la liste affichée (catégorie ou favoris, pas « Tout ») devient modifiable. */
+    fun startMove(channel: ChannelEntity) {
+        val scope = selectedCategory.value
+        if (scope == CATEGORY_ALL) return
+        viewModelScope.launch {
+            moveLock.withLock {
+                movePid = channel.providerId
+                moveKeys = channelOrder.orderedKeys(movePid, scope)
+                moveBefore = channelOrder.positions(movePid, scope)
+                _move.value = MoveState(scope, channel.remoteId, channel.title)
+            }
+        }
+    }
+
+    /** Monte (delta < 0) ou descend (delta > 0) la chaîne en cours de déplacement ; la liste affichée suit aussitôt. */
+    fun moveStep(delta: Int) {
+        viewModelScope.launch {
+            moveLock.withLock {
+                val m = _move.value ?: return@withLock
+                val next = com.ultratv.tv.nativeapp.data.repo.ChannelOrder.move(moveKeys, m.key, delta)
+                if (next == moveKeys) return@withLock
+                moveKeys = next
+                channelOrder.save(movePid, m.scope, next)
+            }
+        }
+    }
+
+    /** OK : garde le nouvel ordre. */
+    fun commitMove() { viewModelScope.launch { moveLock.withLock { _move.value = null } } }
+
+    /** Retour : remet l'ordre d'avant le déplacement. */
+    fun cancelMove() {
+        viewModelScope.launch {
+            moveLock.withLock {
+                val m = _move.value ?: return@withLock
+                channelOrder.restore(movePid, m.scope, moveBefore)
+                _move.value = null
+            }
+        }
+    }
+
+    /** « Réinitialiser l'ordre » de la liste affichée (catégorie ou favoris) : retour à l'ordre naturel. */
+    fun resetOrder() {
+        val scope = selectedCategory.value
+        if (scope == CATEGORY_ALL) return
+        val id = providers.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id } ?: return
+        viewModelScope.launch { channelOrder.reset(id, scope) }
+    }
+
     /** Source « Tout » en cours (pagination par clé) : invalidée À LA MAIN, voir [allInvalidations]. */
     @Volatile private var allSource: com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource? = null
 
     /** Chaînes de la catégorie choisie, paginées (Paging 3 sur Room : seules les lignes visibles sont chargées). */
-    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId, ranked) { a -> a.toList() }   // liste : égalité par contenu (un Array se compare par référence)
+    val channels: Flow<PagingData<ChannelEntity>> = combine(pid, selectedCategory.debounce(120), hiddenStore.hidden, _langView, profiles.currentId, ranked, customScopes) { a -> a.toList() }   // liste : égalité par contenu (un Array se compare par référence)
         .distinctUntilChanged()
         .flatMapLatest { arr ->
-            @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
+            @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView; val custom = arr[6] as Set<String>
             if (id == null) flowOf(PagingData.empty())
             else Pager(PagingConfig(pageSize = 40, prefetchDistance = 24, initialLoadSize = 60, enablePlaceholders = false)) {
                 when {
-                    cat == CATEGORY_FAVORITES -> channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
+                    cat == CATEGORY_FAVORITES -> if (com.ultratv.tv.nativeapp.data.repo.ChannelOrder.FAVORITES_SCOPE in custom) channelDao.pagedFavoritesOrdered(id, lv.useLang, lv.langs, profiles.currentIdNow) else channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
                     cat == CATEGORY_ALL -> {
                         val hiddenIds = hidden.filter { it.startsWith("LIVE:$id:") }.map { it.substringAfterLast(':') }
                         if (arr[5] == true) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource(channelDao, id, com.ultratv.tv.nativeapp.data.repo.LiveAllFilter(hiddenIds, lv.useLang, lv.langs)).also { allSource = it }
                         else if (hiddenIds.isEmpty()) channelDao.pagedAllLegacy(id, lv.useLang, lv.langs) else channelDao.pagedAllExcludingLegacy(id, hiddenIds, lv.useLang, lv.langs)
                     }
-                    else -> channelDao.pagedForCategory(id, cat, lv.useLang, lv.langs)
+                    else -> if (cat in custom) channelDao.pagedForCategoryOrdered(id, cat, lv.useLang, lv.langs, profiles.currentIdNow) else channelDao.pagedForCategory(id, cat, lv.useLang, lv.langs)
                 }
             }.flow
         }
@@ -282,7 +346,7 @@ class LiveViewModel @Inject constructor(
                 val channel = if (exact) channel0 else preferredVariant(channel0)
                 val cat = selectedCategory.value
                 val window = when (cat) {
-                    CATEGORY_FAVORITES -> channelDao.favoritesList(channel.providerId, profiles.currentIdNow)
+                    CATEGORY_FAVORITES -> channelOrder.favorites(channel.providerId)
                     CATEGORY_ALL -> if (ranked.value && channel.catRank > 0) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, channel)
                     else {
                         // Repli (ordre pas encore précalculé) : ancienne méthode, même ordre.
@@ -290,8 +354,7 @@ class LiveViewModel @Inject constructor(
                         channelDao.windowAllLegacy(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
-                        val rank = channelDao.rankCategory(channel.providerId, cat, channel.num, channel.id)
-                        channelDao.windowCategory(channel.providerId, cat, 401, (rank - 200).coerceAtLeast(0))
+                        channelOrder.categoryWindow(channel.providerId, cat, channel, 401)
                     }
                 }
                 zapQueue.set(_langView.value.filter(window) { it.lang }.map { if (it.id == channel0.id) channel else it }.ifEmpty { listOf(channel) }, channel)
