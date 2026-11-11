@@ -1048,7 +1048,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             var needsRestart by remember { mutableStateOf(false) }
             val closeSubs = { panel = Panel.None; if (needsRestart) session.retry() }     // VLC : le style se fixe à la création du moteur
             com.ultratv.tv.nativeapp.ui.player.subtitles.SubtitlePanel(
-                X, subVm, subTracks, delaySupported = eng?.kind == EngineKind.VLC, isMovie = item?.kind == "MOVIE", movieTitle = item?.title ?: title,
+                X, subVm, subTracks, delaySupported = eng?.kind == EngineKind.VLC, isMovie = item?.kind == "MOVIE", movieTitle = item?.title ?: title, isLive = isLive,
                 onSelectTrack = { id -> eng?.selectSubtitle(id); subVm.setAutoOn(id != null); subTracks = subTracks.map { it.copy(selected = it.id == id) } },
                 onStyle = { st -> if (eng?.applySubtitleStyle(st) == false) needsRestart = true; eng?.setSubtitleDelay(st.delayMs) },
                 onDownloaded = { path -> if (eng?.addExternalSubtitle(path) == true) Toaster.ok(X.subtitleAdded) },
@@ -1364,6 +1364,8 @@ private fun PlayerSidePanel(
                         OptionGroup(D.subtitles) {
                             OptionRow(D.off, null, subs.none { it.selected }) { e?.selectSubtitle(null); onSubsChoice(false); onClose() }
                             subs.forEach { t -> OptionRow(t.label, null, t.selected) { e?.selectSubtitle(t.id); onSubsChoice(true); onClose() } }
+                            // Direct sans aucune piste (ex. chaîne sans sous-titres codés) : on l'explique au lieu de laisser un « Off » seul.
+                            if (isLive && subs.isEmpty()) Text(com.ultratv.tv.nativeapp.ui.player.playerExtras().liveNoSubtitles, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 26.spx, maxLines = 5)
                         }
                     }
                     SideTab.DISPLAY -> {

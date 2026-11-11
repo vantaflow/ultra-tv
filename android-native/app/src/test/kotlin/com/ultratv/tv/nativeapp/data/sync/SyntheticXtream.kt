@@ -109,6 +109,13 @@ class SyntheticXtream(
     val interceptor = Interceptor { chain ->
         val req = chain.request()
         val url = req.url
+        // Flux direct : /live/<utilisateur>/<mot de passe>/<id>.ts → petit MPEG-TS synthétique avec sous-titres CEA-608.
+        if (url.encodedPath.startsWith("/live/") && url.encodedPath.endsWith(".ts")) {
+            requests += "live_ts"
+            val ts = SyntheticLiveTs.bytes()
+            return@Interceptor Response.Builder().request(req).protocol(Protocol.HTTP_1_1).code(200).message("ok")
+                .body(ts.inputStream().source().buffer().asResponseBody("video/mp2t".toMediaType(), ts.size.toLong())).build()
+        }
         val key = when {
             url.encodedPath.endsWith("xmltv.php") -> "xmltv"
             else -> url.queryParameter("action") ?: "user_info"
