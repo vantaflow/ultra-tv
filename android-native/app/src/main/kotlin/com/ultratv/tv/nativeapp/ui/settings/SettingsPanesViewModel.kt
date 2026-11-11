@@ -43,6 +43,7 @@ class SettingsPanesViewModel @Inject constructor(
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
     private val sync: SyncCoordinator,
+    private val languages: com.ultratv.tv.nativeapp.data.repo.LanguageManager,
     val adaptive: AdaptiveProfile,
 ) : ViewModel() {
     val state: StateFlow<UserPrefs> = prefs.flow.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UserPrefs())
@@ -87,9 +88,19 @@ class SettingsPanesViewModel @Inject constructor(
     fun setDecoder(v: String) = viewModelScope.launch { prefs.setDecoderMode(v) }
     fun setBufferPreset(v: String) = viewModelScope.launch { prefs.setBufferPreset(v) }
     fun backToAuto() = viewModelScope.launch { prefs.resetPlaybackToAuto() }
-    fun setLanguages(csv: String) = viewModelScope.launch { prefs.setLanguages(csv); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
+    /** Résultat du dernier changement de langues (purge / resynchronisation) : l'écran affiche le message. */
+    private val _langNotice = kotlinx.coroutines.flow.MutableSharedFlow<com.ultratv.tv.nativeapp.data.repo.LanguageManager.Outcome>(extraBufferCapacity = 4)
+    val langNotice: kotlinx.coroutines.flow.SharedFlow<com.ultratv.tv.nativeapp.data.repo.LanguageManager.Outcome> = _langNotice
+
+    private fun changeLanguages(languages: Set<String>? = null, multi: Boolean? = null, unknown: Boolean? = null) = viewModelScope.launch {
+        val out = this@SettingsPanesViewModel.languages.change(languages, multi, unknown)
+        com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed()
+        if (out.changed) _langNotice.tryEmit(out)
+    }
+
+    fun setLanguages(csv: String) = changeLanguages(languages = csv.split(',').filter { it.isNotBlank() }.toSet())
     fun setPreferredQuality(v: String) = viewModelScope.launch { prefs.setPreferredQuality(v) }
     fun setSyncDisplayPrefs(v: Boolean) = viewModelScope.launch { prefs.setSyncDisplayPrefs(v); if (v) com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
-    fun setIncludeMulti(v: Boolean) = viewModelScope.launch { prefs.setIncludeMulti(v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
-    fun setIncludeUnknown(v: Boolean) = viewModelScope.launch { prefs.setIncludeUnknownLang(v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed() }
+    fun setIncludeMulti(v: Boolean) = changeLanguages(multi = v)
+    fun setIncludeUnknown(v: Boolean) = changeLanguages(unknown = v)
 }

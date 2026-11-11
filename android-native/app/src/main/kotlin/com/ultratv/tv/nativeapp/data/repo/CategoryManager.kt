@@ -34,6 +34,7 @@ class CategoryManager @Inject constructor(
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
     private val sync: SyncCoordinator,
+    private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
 ) {
     fun observe(pid: Long, kind: String, query: String): Flow<List<CategoryRow>> {
         val counts: Flow<List<CategoryCount>> = when (kind) { "LIVE" -> channelDao.observeCategoryCounts(pid); "MOVIE" -> movieDao.observeCategoryCounts(pid); else -> seriesDao.observeCategoryCounts(pid) }
@@ -47,6 +48,8 @@ class CategoryManager @Inject constructor(
 
     suspend fun setEnabled(pid: Long, kind: String, ids: List<String>, enabled: Boolean) {
         if (ids.isEmpty()) return
+        // Décision manuelle : la catégorie ne dépend plus de la langue (réactiver une langue n'y touchera pas).
+        langDisabled.remove(pid, kind, ids)
         db.withTransaction {
             ids.chunked(500).forEach { chunk ->
                 categoryDao.setEnabled(pid, kind, chunk, enabled)

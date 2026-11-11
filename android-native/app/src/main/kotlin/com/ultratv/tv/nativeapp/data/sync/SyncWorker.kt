@@ -128,6 +128,20 @@ class SyncCoordinator @Inject constructor(@ApplicationContext private val ctx: C
         WorkManager.getInstance(ctx).enqueueUniqueWork("sync-$providerId", ExistingWorkPolicy.KEEP, req)
     }
 
+    /**
+     * Resynchronisation COMPLÈTE d'une source après le retour d'une langue masquée. Nom de travail distinct de [request] :
+     * une synchro déjà en cours (qui a lu les anciennes langues) ne doit pas faire ignorer celle-ci (politique KEEP) ;
+     * le dépôt les exécute l'une après l'autre.
+     */
+    fun requestResync(providerId: Long) {
+        val req = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInputData(workDataOf(SyncWorker.KEY_PROVIDER to providerId, SyncWorker.KEY_FORCE to true))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .setBackoffCriteria(androidx.work.BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
+        WorkManager.getInstance(ctx).enqueueUniqueWork("resync-$providerId", ExistingWorkPolicy.REPLACE, req)
+    }
+
     /** Télécharge seulement ces catégories (réactivation) : requêtes ciblées si le serveur filtre. */
     fun requestCategories(providerId: Long, kind: String, ids: List<String>) {
         val req = OneTimeWorkRequestBuilder<SyncWorker>()

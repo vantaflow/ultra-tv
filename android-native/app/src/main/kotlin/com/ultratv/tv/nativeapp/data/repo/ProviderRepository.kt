@@ -44,6 +44,7 @@ class ProviderRepository @Inject constructor(
     private val adaptive: com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
+    private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
 ) {
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
@@ -134,20 +135,30 @@ class ProviderRepository @Inject constructor(
             val res = m3u.fetch(p.baseUrl, p.id)
             step("Parsed ${res.channels.size} channels…", 60)
             val pinSet = parental.isSet()
-            val cats = if (!pinSet) res.categories
+            val locked = if (!pinSet) res.categories
             else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
+            // Langues masquées : catégories désactivées (état de l'utilisateur conservé) et titres sautés avant l'écriture.
+            val u = prefs.flow.first()
+            val before = categoryDao.forProviderKind(p.id, "LIVE")
+            val cats = CatalogPlan.merge(locked, before, LangSelection.of(u.languages, u.includeMulti, u.includeUnknownLang).selected, u.includeMulti, u.includeUnknownLang)
+            noteLangDisabled(p.id, "LIVE", cats, before)
+            val enabledCats = cats.filter { it.enabled }.map { it.remoteId }.toHashSet()
+            val langByCat = cats.associate { it.remoteId to it.lang }
+            val channels = res.channels
+                .filter { it.categoryId == null || it.categoryId in enabledCats }
+                .map { c -> c.copy(lang = LanguageDetector.forItem(c.name, c.categoryId?.let { langByCat[it] }.orEmpty())) }
             // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
             // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
             db.withTransaction {
                 categoryDao.deleteForProviderKind(p.id, "LIVE")
                 categoryDao.upsertAll(cats)
                 channelDao.deleteForProvider(p.id)
-                step("Saving ${res.channels.size} channels…", 90)
+                step("Saving ${channels.size} channels…", 90)
                 val ranks = LiveOrder.ranks(categoryDao.forProviderKind(p.id, LiveOrder.KIND))
-                insertChunked(res.channels) { channelDao.upsertAll(ranks.stamp(it)) }
+                insertChunked(channels) { channelDao.upsertAll(ranks.stamp(it)) }
             }
-            step("Done — ${res.channels.size} channels", 100)
-            return res.channels.size
+            step("Done — ${channels.size} channels", 100)
+            return channels.size
         } finally {
             syncStatus.clear()
         }
@@ -592,7 +603,9 @@ class ProviderRepository @Inject constructor(
         val langs = u.languages.split(',').filter { it.isNotBlank() }.toSet()
         if (spec.kind == "LIVE") liveIds = channelDao.idsByRemote(p.id).associate { it.remoteId to it.id }
         val fetched = lock(catsAhead?.await() ?: spec.fetchCats(p))
-        val merged = CatalogPlan.merge(fetched, categoryDao.forProviderKind(p.id, spec.kind), langs, u.includeMulti, u.includeUnknownLang)
+        val before = categoryDao.forProviderKind(p.id, spec.kind)
+        val merged = CatalogPlan.merge(fetched, before, langs, u.includeMulti, u.includeUnknownLang)
+        noteLangDisabled(p.id, spec.kind, merged, before)
         val enabledIds = merged.filter { it.enabled }.map { it.remoteId }
         val disabledIds = merged.filter { !it.enabled }.map { it.remoteId }
         val langByCat = merged.associate { it.remoteId to it.lang }
@@ -664,6 +677,12 @@ class ProviderRepository @Inject constructor(
         }
     }
 
+    /** Catégories NOUVELLES désactivées par la langue : la raison est retenue (réactivées avec leur langue, pas les autres). */
+    private fun noteLangDisabled(pid: Long, kind: String, merged: List<CategoryEntity>, before: List<CategoryEntity>) {
+        val known = before.map { it.remoteId }.toHashSet()
+        langDisabled.add(pid, kind, merged.filter { !it.enabled && it.remoteId !in known }.map { it.remoteId })
+    }
+
     private suspend fun <T : Any> streamAllInto(
         p: ProviderEntity, spec: PartSpec<T>, all: Boolean, enabledSet: Set<String>, langByCat: Map<String, String>,
         progress: (Float, Int) -> Unit,
@@ -677,6 +696,8 @@ class ProviderRepository @Inject constructor(
                 db.withTransaction {
                   com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
                     val pass = inc.begin(db.openHelper.writableDatabase, p.id)
+                    // Catégories désactivées (langue masquée ou choix de l'utilisateur) : titres sautés ICI, avant toute
+                    // écriture (ni base, ni index plein texte, ni guide). Une catégorie active est chargée EN ENTIER.
                     seq.filter { all || spec.catOf(it) == null || spec.catOf(it) in enabledSet }
                         .map { spec.withLang(it, langByCat[spec.catOf(it)].orEmpty()) }
                         .forEachBatchAhead(adaptive.state.value.auto.insertBatch) { batch ->
@@ -735,6 +756,8 @@ class ProviderRepository @Inject constructor(
      */
     suspend fun syncCategoriesNow(providerId: Long, kind: String, ids: List<String>) {
         val p = providerDao.byId(providerId) ?: return
+        // M3U : une seule liste, pas de requête par catégorie ; la liste est relue en entier (les langues masquées n'y sont plus écrites).
+        if (p.kind == "M3U" && ids.isNotEmpty()) { syncAll(providerId, force = true); return }
         if ((p.kind != "XTREAM" && p.kind != "STALKER") || ids.isEmpty()) return
         val part = when (kind) { "LIVE" -> SyncPart.LIVE; "MOVIE" -> SyncPart.VOD; else -> SyncPart.SERIES }
         // Serveur qui ignore `category_id` : pas de chargement ciblé possible, synchro complète (verrou global).
