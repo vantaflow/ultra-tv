@@ -31,7 +31,7 @@ img { display: block; }
 .muted { color: var(--text-3); }
 
 /* ---------- Coque : rail + contenu ---------- */
-.app { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); height: 100%; }
+.app { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
 .app.no-rail { grid-template-columns: minmax(0, 1fr); }
 .titlebar-drag { position: fixed; top: 0; left: var(--rail-w); right: 0; height: 28px; -webkit-app-region: drag; z-index: 5; pointer-events: none; }
 .mac .rail { padding-top: 44px; }
@@ -139,7 +139,7 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .chan-card span { font-size: 0.8125rem; color: var(--text-3); }
 
 /* ---------- Direct (liste + aperçu) ---------- */
-.split { display: grid; grid-template-columns: minmax(22rem, 27rem) minmax(0, 1fr); height: 100%; }
+.split { display: grid; grid-template-columns: minmax(22rem, 27rem) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
 .split.wide { grid-template-columns: 17rem minmax(22rem, 27rem) minmax(0, 1fr); }
 .col { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-inline-end: 1px solid var(--line); }
 .col:last-child { border-inline-end: 0; }
@@ -254,7 +254,7 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .popover h4 { font-size: 1rem; }
 
 /* ---------- Réglages ---------- */
-.settings { display: grid; grid-template-columns: minmax(14rem, 19rem) minmax(0, 1fr); height: 100%; }
+.settings { display: grid; grid-template-columns: minmax(14rem, 19rem) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); height: 100%; }
 .settings .nav { padding: 1.75rem 1rem 1.5rem 1.25rem; display: flex; flex-direction: column; gap: 0.375rem; border-inline-end: 1px solid var(--line); overflow-y: auto; }
 .settings .nav h1 { font-size: 1.75rem; margin-bottom: 1rem; padding-inline-start: 0.5rem; }
 .nav-item { height: 3rem; padding: 0 1rem; border-radius: 0.875rem; display: flex; align-items: center; gap: 0.875rem; color: var(--text-2); font-weight: 600; font-size: 0.9375rem; text-align: start; }
@@ -339,10 +339,10 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 
 /* ---------- Modale / toasts ---------- */
 .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); z-index: 80; display: flex; align-items: center; justify-content: center; padding: 2rem; }
-.modal { background: var(--surface); border-radius: 1.5rem; padding: 1.75rem; width: min(34rem, 100%); max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 1.25rem; box-shadow: var(--shadow); }
+.modal { background: var(--surface); border-radius: 1.5rem; padding: 1.75rem; width: min(34rem, 100%); max-height: 100%; padding-bottom: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: 1.25rem; box-shadow: var(--shadow); }
 .modal.wide { width: min(46rem, 100%); }
 .modal h3 { font-size: 1.375rem; }
-.modal .foot { display: flex; justify-content: flex-end; gap: 0.625rem; }
+.modal .foot { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 0.625rem; position: sticky; bottom: 0; z-index: 1; margin-top: auto; padding: 0.75rem 0 1.5rem; background: var(--surface); }
 .toasts { position: fixed; bottom: 1.5rem; inset-inline-start: calc(var(--rail-w) + 1.5rem); z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; pointer-events: none; }
 .toast { background: var(--sel-bg); color: var(--sel-ink); padding: 0.75rem 1.125rem; border-radius: 0.875rem; font-weight: 600; font-size: 0.875rem; box-shadow: var(--shadow); animation: toast-in 0.2s ease-out; }
 @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
