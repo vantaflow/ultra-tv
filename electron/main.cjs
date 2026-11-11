@@ -9,7 +9,7 @@
 //    jeton (proxy.cjs) ; la tolerance TLS n'existe que sur ce chemin.
 //  - aucune URL de source ni identifiant n'est journalise.
 
-const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme, safeStorage, net } = require("electron");
+const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme, safeStorage, net, screen } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
@@ -19,6 +19,7 @@ const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
 const autoUpdateMod = require("./autoupdate.cjs");
 const { cloudRequest } = require("./cloudfetch.cjs");
+const { computeWindowFit } = require("./windowfit.cjs");
 const dnsMod = require("./dns.cjs");
 
 const APP_SCHEME = "app";
@@ -399,11 +400,19 @@ function buildMenu() {
 
 function createWindow() {
   const isMac = process.platform === "darwin";
+  // Taille bornée à la zone de travail de l'écran sous le curseur (zoom Windows pris en compte :
+  // workArea est en DIP). Évite une fenêtre coupée en bas sur un portable 1366x768 à 125 %.
+  let fit;
+  try {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+    fit = computeWindowFit(display.workArea, display.scaleFactor, null);
+  } catch {
+    fit = computeWindowFit(null, 1, null);
+  }
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    minWidth: 1024,
-    minHeight: 640,
+    ...fit.bounds,
+    minWidth: fit.minWidth,
+    minHeight: fit.minHeight,
     backgroundColor: "#0A0A0C",
     title: "Ultra TV",
     show: !HEADLESS,
