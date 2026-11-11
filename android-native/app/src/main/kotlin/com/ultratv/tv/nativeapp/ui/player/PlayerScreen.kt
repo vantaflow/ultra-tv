@@ -496,26 +496,6 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
         vm.nextEpisode()?.let { currentUrl = it.streamUrl }
     }
-    // Passer l'intro / le rappel / le générique (TheIntroDB) : passages chargés une fois la durée connue, par élément.
-    // Rien n'est jamais sauté sans l'utilisateur : un bouton s'affiche pendant le passage, OK (ou un appui) l'exécute.
-    var skipSegs by remember { mutableStateOf(emptyList<com.ultratv.tv.nativeapp.data.skip.SkipSegment>()) }
-    var skipHasNext by remember { mutableStateOf(false) }
-    val skipDurKnown = dur > 0
-    LaunchedEffect(item?.remoteId, skipDurKnown) {
-        skipSegs = emptyList(); skipHasNext = false
-        if (isLive || !skipDurKnown || (item?.kind != "MOVIE" && item?.kind != "EPISODE")) return@LaunchedEffect
-        skipHasNext = vm.hasNextEpisode()
-        skipSegs = vm.skipSegments(dur)
-    }
-    val skipOffer = if (isLive || skipSegs.isEmpty() || state.phase != Phase.PLAYING) null
-        else com.ultratv.tv.nativeapp.data.skip.SkipSegmentsLogic.offerAt(skipSegs, pos, dur, item?.kind == "EPISODE", skipHasNext)
-    val doSkip: () -> Unit = {
-        val o = skipOffer
-        if (o != null && o.toNextEpisode) scope.launch {
-            session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
-            vm.nextEpisode()?.let { currentUrl = it.streamUrl }
-        } else o?.targetMs?.let { t -> session.engine?.seekTo(t); pos = t / 1_000 * 1_000 }
-    }
     // Application quittée (Accueil, autre appli, veille) hors image dans l'image : plus de son en arrière-plan.
     // Au retour, le direct repart au bord du direct ; un film reprend où il en était.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -606,6 +586,26 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Position / durée / horloge (500 ms) ; masquage de la surcouche après 5 s sans action.
     var pos by remember { mutableLongStateOf(0L) }
     var dur by remember { mutableLongStateOf(-1L) }
+    // Passer l'intro / le rappel / le générique (TheIntroDB) : passages chargés une fois la durée connue, par élément.
+    // Rien n'est jamais sauté sans l'utilisateur : un bouton s'affiche pendant le passage, OK (ou un appui) l'exécute.
+    var skipSegs by remember { mutableStateOf(emptyList<com.ultratv.tv.nativeapp.data.skip.SkipSegment>()) }
+    var skipHasNext by remember { mutableStateOf(false) }
+    val skipDurKnown = dur > 0
+    LaunchedEffect(item?.remoteId, skipDurKnown) {
+        skipSegs = emptyList(); skipHasNext = false
+        if (isLive || !skipDurKnown || (item?.kind != "MOVIE" && item?.kind != "EPISODE")) return@LaunchedEffect
+        skipHasNext = vm.hasNextEpisode()
+        skipSegs = vm.skipSegments(dur)
+    }
+    val skipOffer = if (isLive || skipSegs.isEmpty() || state.phase != Phase.PLAYING) null
+        else com.ultratv.tv.nativeapp.data.skip.SkipSegmentsLogic.offerAt(skipSegs, pos, dur, item?.kind == "EPISODE", skipHasNext)
+    val doSkip: () -> Unit = {
+        val o = skipOffer
+        if (o != null && o.toNextEpisode) scope.launch {
+            session.engine?.let { e -> val d = e.durationMs.coerceAtLeast(0); if (d > 0) { vm.recordProgress(d, d); vm.scrobbleStop(d, d) } }
+            vm.nextEpisode()?.let { currentUrl = it.streamUrl }
+        } else o?.targetMs?.let { t -> session.engine?.seekTo(t); pos = t / 1_000 * 1_000 }
+    }
     var playing by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     LaunchedEffect(Unit) {
