@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db/db";
 import { emptySource } from "@/db/sources";
-import { syncEpg } from "./epg";
+import { EPG_LIMITS, syncEpg } from "./epg";
 
 // Heures XMLTV relatives à « maintenant » : le guide ne garde que [-3 h ; +48 h].
 const xt = (ms: number) => new Date(ms).toISOString().replace(/[-:T]/g, "").slice(0, 14) + " +0000";
@@ -13,6 +13,7 @@ let server: http.Server;
 let mode: "ok" | "cut" = "ok";
 let base = "";
 beforeAll(async () => {
+  EPG_LIMITS.retryDelays = []; // ce test vise la conservation de l'ancien guide, pas les nouvelles tentatives
   server = http.createServer((_req, res) => {
     const body = `<tv>${prog("a", 1)}${prog("a", 2)}</tv>`;
     if (mode === "cut") {

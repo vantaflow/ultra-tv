@@ -190,4 +190,7 @@ export interface SyncProgress {
   /** Portail Stalker : catégories sautées pendant la synchro (la synchro a réussi ; leur contenu précédent est gardé). */
   skipped?: number;
   message?: string;
+  /** Phase « epg » : octets du guide reçus et programmes écrits jusqu'ici. */
+  bytes?: number;
+  programs?: number;
 }

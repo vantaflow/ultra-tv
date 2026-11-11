@@ -42,7 +42,7 @@ export const cancelWork = () => worker?.postMessage({ id: 0, type: "cancel" } sa
 
 export const syncSource = (source: Source, onProgress: (p: SyncProgress) => void, opts: { epg?: boolean; preserveFlags?: boolean } = {}) =>
   call<{ live: number; movie: number; series: number }>({ type: "sync", source, epg: opts.epg ?? true, preserveFlags: opts.preserveFlags }, onProgress);
-export const syncSourceEpg = (source: Source) => call<number>({ type: "epg", source });
+export const syncSourceEpg = (source: Source, onProgress?: (p: SyncProgress) => void) => call<number>({ type: "epg", source }, onProgress);
 export const detectSourceLanguages = (source: Source) =>
   call<{ languages: DetectedLanguage[]; counts: Record<"live" | "movie" | "series", number> }>({ type: "detect", source });
 export const testSource = (source: Source) =>
