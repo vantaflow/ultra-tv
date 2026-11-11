@@ -219,6 +219,8 @@
   "DesignStrings.getErrPortalRefusedHint()": "Puede que la MAC se esté usando en otro dispositivo.",
   "DesignStrings.getErrRefused()": "El proveedor rechazó la conexión",
   "DesignStrings.getErrRefusedHint()": "Otro dispositivo o flujo puede estar usando tu única conexión.",
+  "DesignStrings.getErrStartTimeout()": "La transmisión no arranca",
+  "DesignStrings.getErrStartTimeoutHint()": "El servidor aceptó la conexión pero no envía datos. Inténtalo de nuevo o elige otro canal.",
   "DesignStrings.getEtaAbout()": "unos %s restantes",
   "DesignStrings.getEtaLessThanMinute()": "menos de un minuto",
   "DesignStrings.getEtaMinutes()": "%d min",

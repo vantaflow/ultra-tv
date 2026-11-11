@@ -219,6 +219,8 @@
   "DesignStrings.getErrPortalRefusedHint()": "La MAC est peut-être utilisée sur un autre appareil.",
   "DesignStrings.getErrRefused()": "Le fournisseur a refusé la connexion",
   "DesignStrings.getErrRefusedHint()": "Un autre appareil ou flux utilise peut-être déjà votre connexion unique.",
+  "DesignStrings.getErrStartTimeout()": "Le flux ne démarre pas",
+  "DesignStrings.getErrStartTimeoutHint()": "Le serveur a accepté la connexion mais n'envoie aucune donnée. Réessayez ou choisissez une autre chaîne.",
   "DesignStrings.getEtaAbout()": "environ %s restantes",
   "DesignStrings.getEtaLessThanMinute()": "moins d\u2019une minute",
   "DesignStrings.getEtaMinutes()": "%d min",

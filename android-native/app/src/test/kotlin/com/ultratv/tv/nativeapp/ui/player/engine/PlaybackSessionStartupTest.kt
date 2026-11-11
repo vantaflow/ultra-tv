@@ -79,6 +79,7 @@ class PlaybackSessionStartupTest {
         ctx, scope, FrameLayout(ctx), { settings(choice) }, InMemoryChannelPlaybackMemory(), NetworkMonitor(ctx),
         isLive = live, autoFrameRate = false, userAgent = "test",
         propsLookup = { k -> if (k == "1:p") wv else null },
+        drmPrecheck = { null },   // Robolectric n'a pas de Widevine : le contrôle réel refuserait avant tout moteur
         opener = { StreamOpen(if (it.startsWith("stalker://")) "http://portal.invalid/real.ts" else it) },
         engineFactory = { k, c -> FakeEngine(k, c).also { created += it } },
     )
