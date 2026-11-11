@@ -13,6 +13,10 @@ import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.sync.SyncPolicy
 import com.ultratv.tv.nativeapp.data.m3u.M3uParser
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
+import com.ultratv.tv.nativeapp.data.xmltv.EmptyGuideException
+import com.ultratv.tv.nativeapp.data.xmltv.EpgErrors
+import com.ultratv.tv.nativeapp.data.xmltv.EpgProgress
+import com.ultratv.tv.nativeapp.data.xmltv.EpgState
 import com.ultratv.tv.nativeapp.data.xmltv.XmltvParser
 import com.ultratv.tv.nativeapp.data.xtream.XtreamClient
 import androidx.room.withTransaction
@@ -112,6 +116,7 @@ class ProviderRepository @Inject constructor(
             ),
         )
         val res = m3u.parse(text, pid)
+        limits.setEpgUrls(pid, res.epgUrls)
         val pinSet = parental.isSet()
         val cats = if (!pinSet) res.categories
         else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
@@ -134,6 +139,7 @@ class ProviderRepository @Inject constructor(
             step("Downloading playlist…", 20)
             val res = m3u.fetch(p.baseUrl, p.id)
             step("Parsed ${res.channels.size} channels…", 60)
+            limits.setEpgUrls(p.id, res.epgUrls)   // url-tvg / x-tvg-url de l'en-tête : guide de cette playlist
             val pinSet = parental.isSet()
             val locked = if (!pinSet) res.categories
             else res.categories.map { it.copy(locked = adultRegex.containsMatchIn(it.name)) }
@@ -176,35 +182,83 @@ class ProviderRepository @Inject constructor(
      */
     suspend fun syncXmltv(providerId: Long, onProgress: (String) -> Unit = {}): Int {
         val p = providerDao.byId(providerId) ?: return 0
-        // Local M3U can't fetch xmltv ; seuls les Xtream ont un guide XMLTV.
-        if (p.kind != "XTREAM") return 0
+        // Xtream : xmltv.php. Playlists M3U (distantes ou locales) : seulement si leur en-tête annonce un guide (url-tvg).
+        if (!hasGuideFeed(p)) return 0
         fun step(s: String, pct: Int?) {
             onProgress(s); syncStatus.set(SyncStatusBus.Status(p.name, s, pct))
         }
         try {
             step("Fetching xmltv…", 10)
-            val total = syncXmltvInternal(p) { c -> step("EPG: $c programmes", null) }
+            val total = syncXmltvInternal(p) { pr -> step("EPG: ${pr.programmes} programmes", pr.percent) }
             providerDao.markSynced(p.id, SyncPart.EPG, System.currentTimeMillis())
             purgePastEpg()
             step("Done — $total programmes", 100)
             return total
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            throw c
         } catch (t: Throwable) {
-            syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed: ${com.ultratv.tv.nativeapp.ui.common.UserText.safe(t.message.orEmpty())}", null))
+            // Le détail est dans les journaux (nettoyés) et dans l'état du guide ; jamais de message brut (adresse, identifiants).
+            syncStatus.set(SyncStatusBus.Status(p.name, "EPG fetch failed", null))
             return 0
         } finally {
             syncStatus.clear()
         }
     }
 
+    private fun hasGuideFeed(p: ProviderEntity): Boolean = when (p.kind) {
+        "XTREAM" -> true
+        "M3U", "M3U_LOCAL" -> limits.epgUrls(p.id).isNotEmpty()
+        else -> false
+    }
+
     /**
      * Guide de la source PUIS guide complémentaire (chaînes restées sans programme). Le complément est tenté même si
      * le guide de la source échoue ; l'erreur de la source ne remonte que si rien n'a pu être ajouté.
+     * Publie l'état du guide (chargement + progression, échec + raison) sur le [SyncStatusBus] : l'écran de première
+     * synchro et le guide ne restent jamais sur un chargement sans fin. Le détail technique part dans les journaux nettoyés.
      */
-    private suspend fun syncXmltvInternal(p: ProviderEntity, onCount: (Int) -> Unit): Int {
-        val own = runCatching { syncProviderXmltv(p, onCount) }
-        val extra = runCatching { syncExtraEpg(p) { c -> onCount((own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
-        if (own.isFailure && extra == 0) throw own.exceptionOrNull()!!
-        return (own.getOrNull() ?: 0) + extra
+    private suspend fun syncXmltvInternal(p: ProviderEntity, onProgress: (EpgProgress) -> Unit): Int {
+        var bytes = 0L; var totalBytes = -1L; var count = 0; var lastEmit = 0L
+        fun emit(force: Boolean = false) {
+            val now = System.nanoTime()
+            if (!force && now - lastEmit < 250_000_000L) return
+            lastEmit = now
+            val pr = EpgProgress(bytes, totalBytes, count)
+            syncStatus.setEpg(EpgState.Loading(p.id, pr))
+            onProgress(pr)
+        }
+        val report = { b: Long?, t: Long?, c: Int? -> if (b != null) bytes = b; if (t != null) totalBytes = t; if (c != null) count = c; emit() }
+        syncStatus.setEpg(EpgState.Loading(p.id, EpgProgress(0, -1, 0)))
+        try {
+            val own = runCatching { if (p.kind == "XTREAM") syncProviderXmltv(p, report) else syncTvgFeeds(p, report) }
+            // Le complément ne compte que le programme de la source (pas de barre d'octets propre).
+            val extra = runCatching { syncExtraEpg(p) { c -> report(null, null, (own.getOrNull() ?: 0) + c) } }.getOrDefault(0)
+            val total = (own.getOrNull() ?: 0) + extra
+            emit(force = true)
+            if (own.isFailure && extra == 0) throw own.exceptionOrNull()!!
+            if (total == 0) throw EmptyGuideException()
+            syncStatus.setEpg(EpgState.Idle)
+            return total
+        } catch (c: kotlinx.coroutines.CancellationException) {
+            syncStatus.setEpg(EpgState.Idle)
+            throw c
+        } catch (t: Throwable) {
+            val attempts = (t as? XmltvParser.FetchException)?.attempts ?: 1
+            syncStatus.setEpg(EpgState.Failed(p.id, com.ultratv.tv.nativeapp.data.net.NetErrors.classify(t), EpgErrors.reason(t)))
+            com.ultratv.tv.nativeapp.RemoteLog.warn("EPG", EpgErrors.logLine(t, attempts))
+            throw t
+        }
+    }
+
+    /** Écrit un lot de programmes en UNE transaction (commitée tout de suite : le guide l'affiche au fil de l'eau). */
+    private suspend fun writeEpgBatch(batch: List<com.ultratv.tv.nativeapp.data.db.EpgEntity>, cleared: MutableSet<Long>) {
+        // Les anciens programmes d'une chaîne sont supprimés au premier lot qui la contient (et non plus tout le guide d'un
+        // coup au départ) : le guide déjà chargé reste visible pendant la mise à jour.
+        val fresh = batch.asSequence().map { it.channelId }.distinct().filter { cleared.add(it) }.toList()
+        db.withTransaction {
+            fresh.chunked(500).forEach { epgDao.deleteForChannels(it) }
+            epgDao.upsertAll(batch)
+        }
     }
 
     /** Guide complémentaire (Réglages › Synchronisation) pour les chaînes sans programme ; 0 si désactivé. */
@@ -216,17 +270,22 @@ class ProviderRepository @Inject constructor(
         val resolver = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.Resolver(targets)
         var total = 0
         xmltv.withExternal(url, resolver::resolve) { seq ->
+            var run = 0
             seq.forEachBatchAhead(INSERT_BATCH) { batch ->
                 db.withTransaction { epgDao.upsertAll(batch) }
-                total += batch.size
+                run += batch.size
+                total = maxOf(total, run)
                 onCount(total)
             }
         }
         return total
     }
 
-    /** Télécharge le XMLTV de la source en flux (fenêtre −2 h / +24 h) et l'insère par lots. Les erreurs remontent. */
-    private suspend fun syncProviderXmltv(p: ProviderEntity, onCount: (Int) -> Unit): Int {
+    /**
+     * Télécharge le XMLTV de la source en flux (fenêtre −2 h / +24 h) et l'insère par lots, chacun commité. Seules les
+     * chaînes PRÉSENTES et NON MASQUÉES (catégorie active) sont lues (voir `epgMapping`). Les erreurs remontent.
+     */
+    private suspend fun syncProviderXmltv(p: ProviderEntity, report: (Long?, Long?, Int?) -> Unit): Int {
         // Build (xmltv channel id → local channel id) map for matching.
         // Plusieurs flux d'une même chaîne (HD, 4K, UHD…) partagent souvent le même identifiant EPG : TOUS reçoivent
         // le programme (avant : seul le dernier, les autres restaient « sans information »).
@@ -237,21 +296,75 @@ class ProviderRepository @Inject constructor(
         val shifted = TimeshiftChannels.plan(channelDao.epgTitles(p.id), map)
         if (map.isEmpty()) return 0
         var total = 0
-        xmltv.withProgrammes(p, map) { seq ->
-            db.withTransaction { com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
-                epgDao.deleteForProvider(p.id)
+        val cleared = HashSet<Long>()
+        xmltv.withProgrammes(p, map, onBytes = { b, t -> report(b, t, null) }) { seq ->
+            // Reprise après une erreur : le flux repart du début ; les lignes déjà écrites sont remplacées (index unique).
+            var run = 0
+            com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
                 seq.forEachBatchAhead(INSERT_BATCH) { raw ->
                     val batch = if (siblings.isEmpty() && shifted.isEmpty()) raw else raw.flatMap { e ->
                         listOf(e) + siblings[e.channelId].orEmpty().map { id -> e.copy(id = 0, channelId = id) } +
                             shifted[e.channelId].orEmpty().map { (id, h) -> e.copy(id = 0, channelId = id, startMs = e.startMs + h * 3_600_000L, endMs = e.endMs + h * 3_600_000L) }
                     }
-                    epgDao.upsertAll(batch)
-                    total += batch.size
-                    onCount(total)
+                    writeEpgBatch(batch, cleared)
+                    run += batch.size
+                    total = maxOf(total, run)
+                    report(null, null, total)
                 }
-            } }
+            }
         }
         return total
+    }
+
+    /**
+     * Guides annoncés par l'en-tête de la playlist M3U (`url-tvg` / `x-tvg-url`, une ou plusieurs adresses). Chaque chaîne est
+     * rattachée par son `tvg-id`. Un guide en échec n'empêche pas les suivants ; l'erreur ne remonte que si TOUS échouent.
+     */
+    private suspend fun syncTvgFeeds(p: ProviderEntity, report: (Long?, Long?, Int?) -> Unit): Int {
+        val byEpg = channelDao.epgMapping(p.id).groupBy({ it.epgChannelId }, { it.id })
+        if (byEpg.isEmpty()) return 0
+        val resolve = { id: String, _: List<String> -> byEpg[id].orEmpty().map { it to 0 } }
+        var total = 0
+        val cleared = HashSet<Long>()
+        var firstError: Throwable? = null
+        var okCount = 0
+        for (url in limits.epgUrls(p.id)) {
+            try {
+                var base = total
+                xmltv.withExternal(url, resolve, onBytes = { b, t -> report(b, t, null) }) { seq ->
+                    var run = 0
+                    com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
+                        seq.forEachBatchAhead(INSERT_BATCH) { batch ->
+                            writeEpgBatch(batch, cleared)
+                            run += batch.size
+                            total = maxOf(total, base + run)
+                            report(null, null, total)
+                        }
+                    }
+                }
+                okCount++
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                if (firstError == null) firstError = t
+            }
+        }
+        if (okCount == 0) firstError?.let { throw it }
+        return total
+    }
+
+    /** Relance SEULEMENT le guide de la source (bouton « Réessayer » du guide) : ni catalogue, ni films, ni séries. */
+    fun retryEpg(providerId: Long) {
+        if (syncStatus.epg.value is EpgState.Loading) return
+        syncStatus.setEpg(EpgState.Loading(providerId, EpgProgress(0, -1, 0)))
+        epgScope.launch {
+            try {
+                syncMutex.withLock { syncXmltv(providerId) }
+            } finally {
+                // Source disparue ou sans guide : on ne laisse jamais un chargement sans fin.
+                if ((syncStatus.epg.value as? EpgState.Loading)?.providerId == providerId) syncStatus.setEpg(EpgState.Idle)
+            }
+        }
     }
 
     suspend fun addXtream(name: String, baseUrl: String, username: String, password: String): Long {
@@ -379,7 +492,12 @@ class ProviderRepository @Inject constructor(
         }
         val p = providerDao.byId(providerId) ?: return 0
         // Local M3U is parsed once at import — re-syncing requires picking the file again.
-        if (p.kind == "M3U_LOCAL") return channelDao.count(p.id)
+        if (p.kind == "M3U_LOCAL") {
+            // Playlist locale : catalogue importé une fois ; son guide (url-tvg) est téléchargé s'il est périmé.
+            if (prefs.flow.first().syncEpg && limits.epgUrls(p.id).isNotEmpty() &&
+                SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis())) syncXmltv(p.id, onProgress)
+            return channelDao.count(p.id)
+        }
         val now = System.currentTimeMillis()
         val u = prefs.flow.first()
         val a = adaptive.state.value
@@ -389,7 +507,11 @@ class ProviderRepository @Inject constructor(
         val due = SyncPolicy.dueParts(p, now, ttl, channelDao.count(p.id), force || u.syncMode == "launch", enabledParts, heavyOk)
         if (due.isEmpty()) return 0
 
-        if (p.kind == "M3U") return syncM3u(providerId, onProgress).also { providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis()) }
+        if (p.kind == "M3U") return syncM3u(providerId, onProgress).also {
+            providerDao.markSynced(p.id, SyncPart.LIVE, System.currentTimeMillis())
+            // Guide annoncé par la playlist (url-tvg) : après les chaînes, sans jamais faire échouer la synchro.
+            if (SyncPart.EPG in due) runCatching { syncXmltv(p.id, onProgress) }
+        }
         // Portail Stalker : même moteur (catégories, langues, purge, ordre du Direct), autres requêtes ; pas de guide XMLTV.
 
         // Connexions simultanées autorisées (user_info) : alimente les avertissements enregistrement/lecture et le timeshift.
@@ -450,7 +572,7 @@ class ProviderRepository @Inject constructor(
                     SyncPart.SERIES -> written += syncXtreamPart(p, seriesPart(p.kind), ::maybeLock, { c, n -> step(part, "Series: $n", n, c) }, catsAhead[part])
                     SyncPart.EPG -> {
                         // Le guide ne doit jamais faire échouer le reste : erreur isolée, réessayée au TTL suivant.
-                        val ok = runCatching { syncXmltvInternal(p) { c -> step(part, "EPG: $c", c, c / 400_000f) } }
+                        val ok = runCatching { syncXmltvInternal(p) { pr -> step(part, "EPG: ${pr.programmes}", pr.programmes, pr.percent?.div(100f) ?: (pr.programmes / 400_000f)) } }
                         if (ok.isFailure) { doneBefore += weights.getValue(part); continue }
                     }
                 }
@@ -817,7 +939,7 @@ class ProviderRepository @Inject constructor(
             // Synchro en cours : elle s'occupe du guide (et effacer sa bannière de progression serait une gêne).
             if (syncMutex.isLocked) return@launch
             syncMutex.withLock {
-                for (p in providerDao.observeAll().first().filter { it.kind == "XTREAM" }) {
+                for (p in providerDao.observeAll().first().filter { hasGuideFeed(it) }) {
                     if (SyncPolicy.epgNeedsRefresh(p.lastEpgSyncAt, epgDao.lastEndForProvider(p.id), System.currentTimeMillis()))
                         runCatching { syncXmltv(p.id) }
                 }

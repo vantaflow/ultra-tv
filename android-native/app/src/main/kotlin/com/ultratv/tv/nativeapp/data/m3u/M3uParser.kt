@@ -6,10 +6,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import com.ultratv.tv.nativeapp.data.xmltv.parseTvgUrls
 import javax.inject.Inject
 import javax.inject.Singleton
 
-data class M3uResult(val channels: List<ChannelEntity>, val categories: List<CategoryEntity>)
+data class M3uResult(val channels: List<ChannelEntity>, val categories: List<CategoryEntity>, val epgUrls: List<String> = emptyList())
 
 /**
  * Streaming-friendly M3U parser. Reads the standard extended-M3U format:
@@ -51,6 +52,8 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
         val channels = ArrayList<ChannelEntity>()
         val groupsSeen = LinkedHashMap<String, CategoryEntity>()
         var seq = 0
+        var epgUrls: List<String> = emptyList()
+        var headerSeen = false
 
         var pending: String? = null   // dernière ligne #EXTINF en attente d'URL
         val usedIds = HashSet<String>()
@@ -60,6 +63,8 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
             val raw = reader.readLine() ?: break
             val line = raw.trim()
             if (line.isEmpty()) continue
+            // En-tête : `#EXTM3U url-tvg="a.xml,b.xml.gz"` (aussi x-tvg-url) : guides à utiliser pour cette playlist.
+            if (!headerSeen && line.startsWith("#EXTM3U")) { headerSeen = true; epgUrls = parseTvgUrls(line); continue }
             if (line.startsWith("#EXTINF")) { if (pending != null) props = StreamPropsBuilder(); pending = line; continue }
             if (line.startsWith("#KODIPROP", ignoreCase = true)) { props.acceptKodiProp(line); continue }
             if (line.startsWith("#EXTVLCOPT", ignoreCase = true)) { props.acceptVlcOpt(line); continue }
@@ -101,6 +106,6 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
                 props = streamProps?.toJson(),
             )
         }
-        return M3uResult(channels, groupsSeen.values.toList())
+        return M3uResult(channels, groupsSeen.values.toList(), epgUrls)
     }
 }

@@ -9,9 +9,11 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.xmlpull.v1.XmlPullParser
+import com.ultratv.tv.nativeapp.data.net.HttpStatusException
+import java.io.BufferedInputStream
+import java.io.IOException
 import java.io.InputStream
 import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Streaming XMLTV parser. Reads `<tv>` containing `<channel id="…">` /
@@ -24,38 +26,91 @@ import javax.inject.Singleton
  * Programmes are emitted only when the [channelXmltvIdToLocalId] map contains
  * a matching xmltv `channel="..."` — unmapped channels are skipped silently.
  */
-@Singleton
-class XmltvParser @Inject constructor(okBase: OkHttpClient) {
+class XmltvParser internal constructor(
+    okBase: OkHttpClient,
+    internal val limits: EpgLimits,
+    private val sleeper: suspend (Long) -> Unit = { kotlinx.coroutines.delay(it) },
+) {
+    @Inject constructor(okBase: OkHttpClient) : this(okBase, EpgLimits())
 
-    // Flux de 80 Mo : pas de délai d'appel global, 10 s de connexion, 30 s d'inactivité.
+    // Flux de 150 Mo : pas de délai d'appel global (le chien de garde de [GuardedInput] borne la durée), connexion et inactivité limitées.
     private val ok: OkHttpClient = okBase.newBuilder()
-        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+        .connectTimeout(limits.connectMs, java.util.concurrent.TimeUnit.MILLISECONDS)
+        .readTimeout(limits.stallMs, java.util.concurrent.TimeUnit.MILLISECONDS)
         .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
         .build()
+
+    /** Une tentative a échoué définitivement après [attempts] essais ; [cause] porte le détail (classé par NetErrors). */
+    class FetchException(cause: Throwable, val attempts: Int) : IOException(cause.message, cause)
+
+    /**
+     * Ouvre [request], surveille la connexion (calage, débit, durée), décompresse le gzip EN FLUX et passe le flux à
+     * [consume]. Échec réseau / 5xx / 408 / 429 / délai : jusqu'à [EpgLimits.maxAttempts] essais avec attente croissante.
+     * [consume] est donc rejoué depuis le début : ses écritures doivent être idempotentes (la table epg remplace sur
+     * (chaîne, début)). Jamais de nouvel essai sur 401/403/404 ni sur un XML invalide.
+     */
+    private suspend fun <R> fetch(request: Request, onBytes: (Long, Long) -> Unit, consume: suspend (InputStream) -> R): R {
+        var attempt = 1
+        while (true) {
+            try {
+                return fetchOnce(request, onBytes, consume)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                if (attempt >= limits.maxAttempts || !EpgErrors.retryable(t)) throw FetchException(t, attempt)
+                sleeper(limits.backoff(attempt))
+                attempt++
+            }
+        }
+    }
+
+    private suspend fun <R> fetchOnce(request: Request, onBytes: (Long, Long) -> Unit, consume: suspend (InputStream) -> R): R {
+        val call = ok.newCall(request)
+        val resp = call.execute()
+        resp.use {
+            if (!resp.isSuccessful) throw HttpStatusException(resp.code)
+            val body = resp.body ?: error("Empty xmltv body")
+            val len = body.contentLength()
+            val guard = GuardedInput(
+                body.byteStream(), limits,
+                onAbort = { call.cancel(); runCatching { resp.close() } },
+                onBytes = { onBytes(it, len) }, expectedBytes = len,
+            )
+            return guard.use { consume(maybeGunzip(BufferedInputStream(it, 64 * 1024))) }
+        }
+    }
 
     /**
      * Ouvre le flux XMLTV et passe à [block] une séquence PARESSEUSE de programmes
      * (filtrés par [window] et par chaînes présentes). Rien n'est accumulé : le
-     * appelant insère par lots au fil de l'eau, la mémoire reste plate pour 80 Mo de XML.
+     * appelant insère par lots au fil de l'eau, la mémoire reste plate pour 150 Mo de XML.
+     * [onBytes] : (octets lus, taille annoncée ou -1). [block] peut être rejoué (nouvelle tentative) : idempotent.
      */
     suspend fun <R> withProgrammes(
         p: ProviderEntity,
         channelXmltvIdToLocalId: Map<String, Long>,
         window: LongRange = defaultWindow(),
+        onBytes: (Long, Long) -> Unit = { _, _ -> },
         block: suspend (Sequence<EpgEntity>) -> R,
     ): R = withContext(Dispatchers.IO) {
         // Flux pré-téléchargé pendant l'écriture du catalogue (voir [prefetch]) : lu depuis le fichier, sans attendre le réseau.
         val pre = prefetched.remove(p.id)?.let { runCatching { it.await() }.getOrNull() }
         if (pre != null) {
             try {
-                pre.inputStream().buffered(64 * 1024).use { block(programmes(it, channelXmltvIdToLocalId, window)) }
+                val size = pre.length()
+                return@withContext pre.inputStream().use { fin ->
+                    val counting = object : java.io.FilterInputStream(fin) {
+                        var n = 0L
+                        override fun read(b: ByteArray, off: Int, len: Int): Int = super.read(b, off, len).also { if (it > 0) { n += it; onBytes(n, size) } }
+                    }
+                    block(programmes(maybeGunzip(BufferedInputStream(counting, 64 * 1024)), channelXmltvIdToLocalId, window))
+                }
+            } catch (e: IOException) {
+                // Fichier abîmé : retéléchargement ci-dessous.
+            } catch (e: org.xmlpull.v1.XmlPullParserException) {
             } finally { pre.delete() }
-        } else ok.newCall(Request.Builder().url(feedUrl(p)).build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
-            val stream = resp.body?.byteStream()?.buffered(64 * 1024) ?: error("Empty xmltv body")
-            block(programmes(stream, channelXmltvIdToLocalId, window))
         }
+        fetch(Request.Builder().url(feedUrl(p)).build(), onBytes) { stream -> block(programmes(stream, channelXmltvIdToLocalId, window)) }
     }
 
     private fun feedUrl(p: ProviderEntity) = "${p.baseUrl}/xmltv.php?username=${java.net.URLEncoder.encode(p.username, "UTF-8")}" +
@@ -65,8 +120,8 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
 
     /**
      * Télécharge le flux XMLTV de la source dans un fichier temporaire, en arrière-plan : [withProgrammes] le lit ensuite
-     * depuis le disque. Pendant la première synchro, les 80 Mo du guide arrivent donc pendant que le direct, les films
-     * et les séries s'écrivent (avant : téléchargement après eux, réseau au repos pendant toute leur écriture).
+     * depuis le disque. Pendant la première synchro, les 150 Mo du guide arrivent donc pendant que le direct, les films
+     * et les séries s'écrivent. Même surveillance et mêmes reprises que [withProgrammes] (jamais d'attente infinie).
      * Un échec n'est jamais fatal : [withProgrammes] retélécharge alors lui-même.
      */
     fun prefetch(scope: kotlinx.coroutines.CoroutineScope, p: ProviderEntity) {
@@ -74,13 +129,33 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
             scope.async(Dispatchers.IO) {
                 val f = java.io.File.createTempFile("xmltv-", ".xml")
                 try {
-                    com.ultratv.tv.nativeapp.data.sync.SyncThread.background { ok.newCall(Request.Builder().url(feedUrl(p)).build()).execute().use { resp ->
-                        if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
-                        val body = resp.body?.byteStream() ?: error("Empty xmltv body")
-                        f.outputStream().use { out -> body.copyTo(out, 64 * 1024) }
-                    } }
+                    com.ultratv.tv.nativeapp.data.sync.SyncThread.background {
+                        fetchRaw(Request.Builder().url(feedUrl(p)).build()) { body -> f.outputStream().use { out -> body.copyTo(out, 64 * 1024) } }
+                    }
                     f
                 } catch (t: Throwable) { f.delete(); throw t }
+            }
+        }
+    }
+
+    /** Comme [fetch] mais sans décompression : le fichier garde les octets du serveur (le gzip est lu au moment de l'analyse). */
+    private suspend fun fetchRaw(request: Request, consume: (InputStream) -> Unit) {
+        var attempt = 1
+        while (true) {
+            try {
+                val call = ok.newCall(request)
+                call.execute().use { resp ->
+                    if (!resp.isSuccessful) throw HttpStatusException(resp.code)
+                    val body = resp.body ?: error("Empty xmltv body")
+                    GuardedInput(body.byteStream(), limits, onAbort = { call.cancel(); runCatching { resp.close() } }, expectedBytes = body.contentLength()).use(consume)
+                }
+                return
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                if (attempt >= limits.maxAttempts || !EpgErrors.retryable(t)) throw FetchException(t, attempt)
+                sleeper(limits.backoff(attempt))
+                attempt++
             }
         }
     }
@@ -93,25 +168,19 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
     }
 
     /**
-     * Guide complémentaire à une URL publique (gzip détecté automatiquement). Les `<channel>` précèdent les
-     * `<programme>` : chaque chaîne du guide est résolue (identifiant, noms affichés) vers 0..n chaînes locales,
-     * puis ses programmes sont émis pour chacune (décalés de N heures pour « X +N »).
+     * Guide à une URL (guide complémentaire, `url-tvg` d'une playlist M3U ; gzip détecté automatiquement). Les `<channel>`
+     * précèdent les `<programme>` : chaque chaîne du guide est résolue (identifiant, noms affichés) vers 0..n chaînes
+     * locales, puis ses programmes sont émis pour chacune (décalés de N heures pour « X +N »). Mêmes délais et reprises
+     * que [withProgrammes].
      */
     suspend fun <R> withExternal(
         url: String,
         resolve: (feedId: String, names: List<String>) -> List<Pair<Long, Int>>,
         window: LongRange = defaultWindow(),
+        onBytes: (Long, Long) -> Unit = { _, _ -> },
         block: suspend (Sequence<EpgEntity>) -> R,
     ): R = withContext(Dispatchers.IO) {
-        ok.newCall(Request.Builder().url(url).header("User-Agent", "UltraTV").build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw com.ultratv.tv.nativeapp.data.net.HttpStatusException(resp.code)
-            val raw = resp.body?.byteStream()?.buffered() ?: error("Empty xmltv body")
-            raw.mark(2)
-            val gz = raw.read() == 0x1f && raw.read() == 0x8b
-            raw.reset()
-            val input = if (gz) java.util.zip.GZIPInputStream(raw, 64 * 1024).buffered() else raw
-            block(externalProgrammes(input, resolve, window))
-        }
+        fetch(Request.Builder().url(url).header("User-Agent", "UltraTV").build(), onBytes) { input -> block(externalProgrammes(input, resolve, window)) }
     }
 
     fun externalProgrammes(
@@ -123,9 +192,13 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
         parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false)
         parser.setInput(input, null)
         val map = HashMap<String, List<Pair<Long, Int>>>()
+        // Guide sans balises <channel> (rare, mais vu) : les identifiants des programmes sont résolus directement.
+        var sawChannel = false
+        val unresolved = HashSet<String>()
         var event = parser.eventType
         while (event != XmlPullParser.END_DOCUMENT) {
             if (event == XmlPullParser.START_TAG && parser.name == "channel") {
+                sawChannel = true
                 val id = parser.getAttributeValue(null, "id")
                 val names = ArrayList<String>(2)
                 while (true) {
@@ -136,7 +209,12 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
                 }
                 if (id != null) resolve(id, names).takeIf { it.isNotEmpty() }?.let { map[id] = it }
             } else if (event == XmlPullParser.START_TAG && parser.name == "programme") {
-                val targets = parser.getAttributeValue(null, "channel")?.let { map[it] }
+                val chAttr = parser.getAttributeValue(null, "channel")
+                var targets = chAttr?.let { map[it] }
+                if (targets == null && chAttr != null && !sawChannel && unresolved.add(chAttr)) {
+                    val r = resolve(chAttr, emptyList())
+                    if (r.isNotEmpty()) { map[chAttr] = r; unresolved.remove(chAttr); targets = r }
+                }
                 val start = parseDate(parser.getAttributeValue(null, "start"))
                 val stop = parseDate(parser.getAttributeValue(null, "stop"))
                 if (targets == null || start == null || stop == null || stop <= start) skipToEndTag(parser, "programme")
@@ -153,7 +231,7 @@ class XmltvParser @Inject constructor(okBase: OkHttpClient) {
                             else -> skipToEndTag(parser, parser.name)
                         }
                     }
-                    if (title != null) for ((cid, h) in targets) {
+                    if (title != null) for ((cid, h) in targets!!) {
                         val s = start + h * 3_600_000L; val t = stop + h * 3_600_000L
                         if (t >= window.first && s <= window.last) yield(EpgEntity(channelId = cid, title = title, description = desc, startMs = s, endMs = t))
                     }

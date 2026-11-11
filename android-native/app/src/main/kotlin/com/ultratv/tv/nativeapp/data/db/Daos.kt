@@ -129,7 +129,9 @@ interface ChannelDao {
     fun observeForCategory(pid: Long, cat: String): Flow<List<ChannelEntity>>
 
     /** Seulement (id, epgChannelId) : évite de charger 40 000 entités complètes pour l'EPG. */
-    @Query("SELECT id, epgChannelId FROM channel WHERE providerId = :pid AND epgChannelId IS NOT NULL AND epgChannelId != ''")
+    // Chaînes des catégories désactivées exclues : leurs programmes ne sont jamais gardés.
+    @Query("""SELECT id, epgChannelId FROM channel WHERE providerId = :pid AND epgChannelId IS NOT NULL AND epgChannelId != ''
+        AND (categoryId IS NULL OR categoryId NOT IN (SELECT remoteId FROM category WHERE providerId = :pid AND kind = 'LIVE' AND enabled = 0))""")
     suspend fun epgMapping(pid: Long): List<EpgMapping>
 
     /** (remoteId → id) : la resynchronisation réécrit les chaînes en gardant leur identifiant (programmes, liens). */
@@ -793,6 +795,9 @@ interface EpgDao {
 
     @Query("DELETE FROM epg WHERE channelId = :cid")
     suspend fun deleteForChannel(cid: Long)
+
+    @Query("DELETE FROM epg WHERE channelId IN (:cids)")
+    suspend fun deleteForChannels(cids: List<Long>)
 
     @Query("DELETE FROM epg WHERE channelId IN (SELECT id FROM channel WHERE providerId = :pid)")
     suspend fun deleteForProvider(pid: Long)

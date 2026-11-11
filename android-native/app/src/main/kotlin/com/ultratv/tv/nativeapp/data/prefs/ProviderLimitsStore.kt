@@ -22,6 +22,11 @@ class ProviderLimitsStore @Inject constructor(@ApplicationContext ctx: Context) 
 
     fun setMaxConnections(providerId: Long, value: Int) { sp.edit().putInt("max_conn_$providerId", value.coerceAtLeast(1)).apply() }
 
+    /** Adresses de guide (`url-tvg` / `x-tvg-url`) de l'en-tête de la playlist M3U de la source, séparées par un saut de ligne. */
+    fun epgUrls(providerId: Long): List<String> = sp.getString("epg_urls_$providerId", "").orEmpty().split('\n').filter { it.isNotBlank() }
+
+    fun setEpgUrls(providerId: Long, urls: List<String>) { sp.edit().putString("epg_urls_$providerId", urls.joinToString("\n")).apply() }
+
     companion object {
         const val DEFAULT_MAX_CONNECTIONS = 1
 

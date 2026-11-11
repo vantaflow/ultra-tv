@@ -39,4 +39,9 @@ class SyncStatusBus @Inject constructor() {
         val cur = _failure.value ?: return
         if (providerId == null || cur.providerId == providerId) _failure.value = null
     }
+
+    /** État du GUIDE seul (chargement avec progression, échec avec raison) : lu par le guide et la première synchro. */
+    private val _epg = MutableStateFlow<com.ultratv.tv.nativeapp.data.xmltv.EpgState>(com.ultratv.tv.nativeapp.data.xmltv.EpgState.Idle)
+    val epg: StateFlow<com.ultratv.tv.nativeapp.data.xmltv.EpgState> = _epg
+    fun setEpg(s: com.ultratv.tv.nativeapp.data.xmltv.EpgState) { _epg.value = s }
 }
