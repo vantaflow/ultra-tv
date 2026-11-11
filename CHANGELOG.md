@@ -31,12 +31,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - **Catégories masquées jamais chargées** : une catégorie désactivée (par sa langue ou à la main) n'est plus écrite en
   base ni indexée ; Direct, Films et Séries sont traités chacun avec leurs propres catégories. Synchro plus rapide et
   moins de mémoire.
-- **« Parce que vous avez regardé »** : films classés par ressemblance (genres en commun, réalisateur, acteurs,
-  époque), plus de films hors sujet.
+- **« Parce que vous avez regardé »** : recommandations TMDB du film regardé, gardées si elles sont dans la playlist
+  (après Captain Marvel : The Marvels, Avengers, Les Gardiens de la Galaxie…), complétées par un classement local
+  (genres, réalisateur, acteurs, époque) ; plus de films hors sujet.
+- « À la une » ne montre que des titres avec une image de fond (de la source ou de TMDB), plus d'affiche seule.
+- Films et Séries : Gauche depuis la grille revient sur la catégorie choisie (elle sautait sur la voisine).
 - Affiches demandées à la taille du cadre et décodées en arrière-plan sur les box faibles.
 
 ### Worker
-- Proxy TMDB : fiche personne (`person/{id}`) pour la page acteur.
+- Proxy TMDB : fiche personne (`person/{id}`) pour la page acteur, recommandations et titres similaires
+  (`movie|tv/{id}/recommendations|similar`).
 
 ## [1.2.83] — 2026-11-11 (Android) · Bureau 1.2.39 · Worker
 
