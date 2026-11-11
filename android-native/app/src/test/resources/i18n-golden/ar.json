@@ -219,6 +219,8 @@
   "DesignStrings.getErrPortalRefusedHint()": "ربما يُستخدم عنوان MAC هذا على جهاز آخر.",
   "DesignStrings.getErrRefused()": "رفض المزود الاتصال",
   "DesignStrings.getErrRefusedHint()": "ربما يستخدم جهاز أو بث آخر اتصالك الوحيد.",
+  "DesignStrings.getErrStartTimeout()": "لا يبدأ البث",
+  "DesignStrings.getErrStartTimeoutHint()": "قبل الخادم الاتصال لكنه لا يرسل أي بيانات. حاول مرة أخرى أو اختر قناة أخرى.",
   "DesignStrings.getEtaAbout()": "حوالي %s متبقية",
   "DesignStrings.getEtaLessThanMinute()": "أقل من دقيقة",
   "DesignStrings.getEtaMinutes()": "%d د",

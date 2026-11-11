@@ -219,6 +219,8 @@
   "DesignStrings.getErrPortalRefusedHint()": "This MAC address may be in use on another device.",
   "DesignStrings.getErrRefused()": "The provider refused the connection",
   "DesignStrings.getErrRefusedHint()": "Another device or stream may already be using your single connection.",
+  "DesignStrings.getErrStartTimeout()": "The stream does not start",
+  "DesignStrings.getErrStartTimeoutHint()": "The server accepted the connection but is not sending any data. Try again or pick another channel.",
   "DesignStrings.getEtaAbout()": "about %s left",
   "DesignStrings.getEtaLessThanMinute()": "under a minute",
   "DesignStrings.getEtaMinutes()": "%d min",
