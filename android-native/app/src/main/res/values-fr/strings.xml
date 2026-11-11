@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Ressources Android historiques (manifeste, canaux de notification) : inchangées. -->
     <string name="sync_channel">Synchronisation du catalogue</string>
     <string name="sync_notification">Mise à jour de vos chaînes…</string>
@@ -15,6 +15,7 @@
     <string name="ds_season_label">Saison %1$s</string>
     <plurals name="ds_seasons_count">
         <item quantity="one">%1$s saison</item>
+        <item quantity="many">%1$s saisons</item>
         <item quantity="other">%1$s saisons</item>
     </plurals>
     <string name="ds_episode_tag">S%1$s É%2$s</string>
@@ -48,6 +49,7 @@
     <string name="ds_locked_none">Aucune chaîne verrouillée. Cherchez une chaîne ci-dessus pour la verrouiller.</string>
     <plurals name="ds_locked_count_line">
         <item quantity="one">%1$s chaîne verrouillée</item>
+        <item quantity="many">%1$s chaînes verrouillées</item>
         <item quantity="other">%1$s chaînes verrouillées</item>
     </plurals>
     <string name="ds_search_results_count">RÉSULTATS · %1$s</string>
@@ -121,6 +123,7 @@
     <string name="ds_source_error_body">L’adresse de %1$s ne répond plus. Les fournisseurs changent parfois d’adresse : vérifiez-la auprès du vôtre.</string>
     <plurals name="ds_sync_skipped_categories">
         <item quantity="one">Synchronisation terminée · %1$s catégorie ignorée (le portail n’a pas répondu)</item>
+        <item quantity="many">Synchronisation terminée · %1$s catégories ignorées (le portail n’a pas répondu)</item>
         <item quantity="other">Synchronisation terminée · %1$s catégories ignorées (le portail n’a pas répondu)</item>
     </plurals>
     <string name="ds_dismiss">OK</string>
@@ -275,10 +278,12 @@
     <string name="ds_engine_vlc">VLC</string>
     <plurals name="ds_sections">
         <item quantity="one">%1$s section</item>
+        <item quantity="many">%1$s sections</item>
         <item quantity="other">%1$s sections</item>
     </plurals>
     <plurals name="ds_channels">
         <item quantity="one">%1$s chaîne</item>
+        <item quantity="many">%1$s chaînes</item>
         <item quantity="other">%1$s chaînes</item>
     </plurals>
     <string name="ds_settings_title">Réglages</string>
@@ -295,10 +300,12 @@
     <string name="ds_no_filter_support">Votre source ne permet pas le téléchargement partiel : les catégories désactivées sont masquées.</string>
     <plurals name="ds_movies_of">
         <item quantity="one">%1$s film</item>
+        <item quantity="many">%1$s films</item>
         <item quantity="other">%1$s films</item>
     </plurals>
     <plurals name="ds_series_of">
         <item quantity="one">%1$s série</item>
+        <item quantity="many">%1$s séries</item>
         <item quantity="other">%1$s séries</item>
     </plurals>
     <string name="ds_locked_title">Chaîne verrouillée</string>
@@ -455,8 +462,9 @@
     <string name="dsb1_remind_set">Rappel programmé</string>
     <string name="dsb1_starts_in_one_min">Commence dans 1 min</string>
     <string name="dsb1_watch_word">Regarder</string>
-    <plurals name="dsb1_rec_scheduled">
+    <plurals name="dsb1_rec_scheduled" tools:ignore="ImpliedQuantity">
         <item quantity="one">Enregistrement programmé</item>
+        <item quantity="many">%1$s enregistrements programmés</item>
         <item quantity="other">%1$s enregistrements programmés</item>
     </plurals>
     <string name="dsb1_rec_no_space">Pas assez d’espace libre pour enregistrer</string>
@@ -489,6 +497,7 @@
     <string name="dsb1_long_press_download">Appui long sur un épisode : le télécharger</string>
     <plurals name="dsb1_episodes_count">
         <item quantity="one">%1$s épisode</item>
+        <item quantity="many">%1$s épisodes</item>
         <item quantity="other">%1$s épisodes</item>
     </plurals>
 
@@ -498,6 +507,7 @@
     <string name="dg_now_button">Maintenant</string>
     <plurals name="dg_minutes_remaining">
         <item quantity="one">%1$s min restante</item>
+        <item quantity="many">%1$s min restantes</item>
         <item quantity="other">%1$s min restantes</item>
     </plurals>
     <string name="dg_help_programs">Programmes</string>
@@ -565,18 +575,22 @@
     <string name="home2_home_guide_subtitle">Programmes du jour</string>
     <plurals name="home2_home_channels_count">
         <item quantity="one">%1$s chaîne</item>
+        <item quantity="many">%1$s chaînes</item>
         <item quantity="other">%1$s chaînes</item>
     </plurals>
     <plurals name="home2_home_movies_count">
         <item quantity="one">%1$s film</item>
+        <item quantity="many">%1$s films</item>
         <item quantity="other">%1$s films</item>
     </plurals>
     <plurals name="home2_home_series_count">
         <item quantity="one">%1$s série</item>
+        <item quantity="many">%1$s séries</item>
         <item quantity="other">%1$s séries</item>
     </plurals>
     <plurals name="home2_home_favorites_count">
         <item quantity="one">%1$s favori</item>
+        <item quantity="many">%1$s favoris</item>
         <item quantity="other">%1$s favoris</item>
     </plurals>
 
@@ -623,10 +637,12 @@
     <string name="perso_start_screen_name_last_channel">Dernière chaîne regardée</string>
     <plurals name="perso_channel_count">
         <item quantity="one">%1$s chaîne</item>
+        <item quantity="many">%1$s chaînes</item>
         <item quantity="other">%1$s chaînes</item>
     </plurals>
     <plurals name="perso_section_count">
         <item quantity="one">%1$s section</item>
+        <item quantity="many">%1$s sections</item>
         <item quantity="other">%1$s sections</item>
     </plurals>
 

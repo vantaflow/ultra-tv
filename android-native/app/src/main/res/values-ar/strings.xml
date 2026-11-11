@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Généré par tools/i18n/migrate.py puis maintenu à la main. Source : values/ (anglais, repli). -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
 
     <!-- i18n/DesignStrings.kt -->
     <string name="ds_rail_profile">الملف الشخصي</string>
@@ -9,6 +9,11 @@
     <string name="ds_resume_at">استئناف من %1$s</string>
     <string name="ds_season_label">الموسم %1$s</string>
     <plurals name="ds_seasons_count">
+        <item quantity="zero">%1$s مواسم</item>
+        <item quantity="one">%1$s مواسم</item>
+        <item quantity="two">%1$s مواسم</item>
+        <item quantity="few">%1$s مواسم</item>
+        <item quantity="many">%1$s مواسم</item>
         <item quantity="other">%1$s مواسم</item>
     </plurals>
     <string name="ds_episode_tag">م%1$s ح%2$s</string>
@@ -41,6 +46,11 @@
     <string name="ds_locked_only">القنوات المقفلة</string>
     <string name="ds_locked_none">لا توجد قنوات مقفلة. ابحث عن قناة أعلاه لقفلها.</string>
     <plurals name="ds_locked_count_line">
+        <item quantity="zero">%1$s قناة مقفلة</item>
+        <item quantity="one">%1$s قناة مقفلة</item>
+        <item quantity="two">%1$s قناة مقفلة</item>
+        <item quantity="few">%1$s قناة مقفلة</item>
+        <item quantity="many">%1$s قناة مقفلة</item>
         <item quantity="other">%1$s قناة مقفلة</item>
     </plurals>
     <string name="ds_search_results_count">النتائج · %1$s</string>
@@ -113,6 +123,11 @@
     <string name="ds_offline_banner">لا يوجد اتصال — المحتوى المحفوظ متاح.</string>
     <string name="ds_source_error_body">عنوان %1$s لم يعد يستجيب. يغيّر المزوّدون عناوينهم أحيانًا: تحقق منه لدى مزوّدك.</string>
     <plurals name="ds_sync_skipped_categories">
+        <item quantity="zero">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
+        <item quantity="one">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
+        <item quantity="two">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
+        <item quantity="few">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
+        <item quantity="many">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
         <item quantity="other">اكتملت المزامنة · تم تجاهل %1$s فئة (لم تستجب البوابة)</item>
     </plurals>
     <string name="ds_dismiss">حسنًا</string>
@@ -265,9 +280,19 @@
     <string name="ds_engine_exo">ExoPlayer</string>
     <string name="ds_engine_vlc">VLC</string>
     <plurals name="ds_sections">
+        <item quantity="zero">%1$s أقسام</item>
+        <item quantity="one">%1$s أقسام</item>
+        <item quantity="two">%1$s أقسام</item>
+        <item quantity="few">%1$s أقسام</item>
+        <item quantity="many">%1$s أقسام</item>
         <item quantity="other">%1$s أقسام</item>
     </plurals>
     <plurals name="ds_channels">
+        <item quantity="zero">%1$s قناة</item>
+        <item quantity="one">%1$s قناة</item>
+        <item quantity="two">%1$s قناة</item>
+        <item quantity="few">%1$s قناة</item>
+        <item quantity="many">%1$s قناة</item>
         <item quantity="other">%1$s قناة</item>
     </plurals>
     <string name="ds_settings_title">الإعدادات</string>
@@ -283,9 +308,19 @@
     <string name="ds_move_hint">▲▼ تحريك · OK تأكيد</string>
     <string name="ds_no_filter_support">مصدرك لا يسمح بالتنزيل الجزئي: تُخفى الفئات المعطّلة.</string>
     <plurals name="ds_movies_of">
+        <item quantity="zero">%1$s فيلم</item>
+        <item quantity="one">%1$s فيلم</item>
+        <item quantity="two">%1$s فيلم</item>
+        <item quantity="few">%1$s فيلم</item>
+        <item quantity="many">%1$s فيلم</item>
         <item quantity="other">%1$s فيلم</item>
     </plurals>
     <plurals name="ds_series_of">
+        <item quantity="zero">%1$s مسلسل</item>
+        <item quantity="one">%1$s مسلسل</item>
+        <item quantity="two">%1$s مسلسل</item>
+        <item quantity="few">%1$s مسلسل</item>
+        <item quantity="many">%1$s مسلسل</item>
         <item quantity="other">%1$s مسلسل</item>
     </plurals>
     <string name="ds_locked_title">قناة مقفلة</string>
@@ -442,8 +477,12 @@
     <string name="dsb1_remind_set">تم ضبط التذكير</string>
     <string name="dsb1_starts_in_one_min">يبدأ بعد دقيقة</string>
     <string name="dsb1_watch_word">مشاهدة</string>
-    <plurals name="dsb1_rec_scheduled">
+    <plurals name="dsb1_rec_scheduled" tools:ignore="ImpliedQuantity">
+        <item quantity="zero">تمت جدولة %1$s تسجيلات</item>
         <item quantity="one">تمت جدولة التسجيل</item>
+        <item quantity="two">تمت جدولة %1$s تسجيلات</item>
+        <item quantity="few">تمت جدولة %1$s تسجيلات</item>
+        <item quantity="many">تمت جدولة %1$s تسجيلات</item>
         <item quantity="other">تمت جدولة %1$s تسجيلات</item>
     </plurals>
     <string name="dsb1_rec_no_space">لا توجد مساحة كافية للتسجيل</string>
@@ -475,6 +514,11 @@
     <string name="dsb1_seasons_help">يمين = الموسم التالي · يسار = المواسم</string>
     <string name="dsb1_long_press_download">اضغط مطولًا على حلقة لتنزيلها</string>
     <plurals name="dsb1_episodes_count">
+        <item quantity="zero">%1$s حلقة</item>
+        <item quantity="one">%1$s حلقة</item>
+        <item quantity="two">%1$s حلقة</item>
+        <item quantity="few">%1$s حلقة</item>
+        <item quantity="many">%1$s حلقة</item>
         <item quantity="other">%1$s حلقة</item>
     </plurals>
 
@@ -483,6 +527,11 @@
     <string name="dg_now_badge">الآن</string>
     <string name="dg_now_button">الآن</string>
     <plurals name="dg_minutes_remaining">
+        <item quantity="zero">متبقّي %1$s د</item>
+        <item quantity="one">متبقّي %1$s د</item>
+        <item quantity="two">متبقّي %1$s د</item>
+        <item quantity="few">متبقّي %1$s د</item>
+        <item quantity="many">متبقّي %1$s د</item>
         <item quantity="other">متبقّي %1$s د</item>
     </plurals>
     <string name="dg_help_programs">البرامج</string>
@@ -549,15 +598,35 @@
     <string name="home2_home_shortcuts_row">اختصارات</string>
     <string name="home2_home_guide_subtitle">برامج اليوم</string>
     <plurals name="home2_home_channels_count">
+        <item quantity="zero">%1$s قناة</item>
+        <item quantity="one">%1$s قناة</item>
+        <item quantity="two">%1$s قناة</item>
+        <item quantity="few">%1$s قناة</item>
+        <item quantity="many">%1$s قناة</item>
         <item quantity="other">%1$s قناة</item>
     </plurals>
     <plurals name="home2_home_movies_count">
+        <item quantity="zero">%1$s فيلم</item>
+        <item quantity="one">%1$s فيلم</item>
+        <item quantity="two">%1$s فيلم</item>
+        <item quantity="few">%1$s فيلم</item>
+        <item quantity="many">%1$s فيلم</item>
         <item quantity="other">%1$s فيلم</item>
     </plurals>
     <plurals name="home2_home_series_count">
+        <item quantity="zero">%1$s مسلسل</item>
+        <item quantity="one">%1$s مسلسل</item>
+        <item quantity="two">%1$s مسلسل</item>
+        <item quantity="few">%1$s مسلسل</item>
+        <item quantity="many">%1$s مسلسل</item>
         <item quantity="other">%1$s مسلسل</item>
     </plurals>
     <plurals name="home2_home_favorites_count">
+        <item quantity="zero">%1$s مفضلة</item>
+        <item quantity="one">%1$s مفضلة</item>
+        <item quantity="two">%1$s مفضلة</item>
+        <item quantity="few">%1$s مفضلة</item>
+        <item quantity="many">%1$s مفضلة</item>
         <item quantity="other">%1$s مفضلة</item>
     </plurals>
 
@@ -602,16 +671,20 @@
     <string name="perso_start_screen_name_series">المسلسلات</string>
     <string name="perso_start_screen_name_guide">دليل البرامج</string>
     <string name="perso_start_screen_name_last_channel">آخر قناة تمت مشاهدتها</string>
-    <plurals name="perso_channel_count">
+    <plurals name="perso_channel_count" tools:ignore="ImpliedQuantity">
+        <item quantity="zero">%1$s قناة</item>
         <item quantity="one">قناة واحدة</item>
         <item quantity="two">قناتان</item>
         <item quantity="few">%1$s قنوات</item>
+        <item quantity="many">%1$s قناة</item>
         <item quantity="other">%1$s قناة</item>
     </plurals>
-    <plurals name="perso_section_count">
+    <plurals name="perso_section_count" tools:ignore="ImpliedQuantity">
+        <item quantity="zero">%1$s قسمًا</item>
         <item quantity="one">قسم واحد</item>
         <item quantity="two">قسمان</item>
         <item quantity="few">%1$s أقسام</item>
+        <item quantity="many">%1$s قسمًا</item>
         <item quantity="other">%1$s قسمًا</item>
     </plurals>
 
