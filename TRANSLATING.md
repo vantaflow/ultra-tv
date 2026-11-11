@@ -13,7 +13,9 @@ Never translate the **content of playlists**: channel names, categories, movie a
 | Status | Languages | Requirement |
 |---|---|---|
 | Official | English (source), French, Spanish, Arabic | 100 % of the strings, enforced by tests |
-| Community | any other language | Partial is fine; missing strings fall back to English |
+| Community | Polish (first draft), any other language | Partial is fine; missing strings fall back to English |
+
+**Polish (`pl`)** is a complete first draft that still needs a fluent reviewer. `values-pl/strings.xml` carries a comment saying so; `pl.json` cannot (JSON has no comments), so this note is the marker. Review it on Weblate and fix anything unnatural.
 
 A community language becomes official when it is **100 % translated** and a **reviewer** (a fluent speaker, other than the author) has checked it. Open an issue to ask for the promotion.
 

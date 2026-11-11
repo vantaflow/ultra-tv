@@ -417,6 +417,14 @@ function CategoriesPane() {
 }
 
 // ---------------- Langue ----------------
+const TRANSLATE_URL = "https://hosted.weblate.org/engage/ultra-tv/";
+/** Même mécanisme que les autres liens externes : pont Electron (shell.openExternal), sinon onglet du navigateur. */
+function openTranslate() {
+  const b = bridge();
+  if (b?.openExternal) void b.openExternal(TRANSLATE_URL);
+  else window.open(TRANSLATE_URL, "_blank", "noopener,noreferrer");
+}
+
 function LanguagePane() {
   const t = useT();
   const p = usePrefs();
@@ -430,6 +438,13 @@ function LanguagePane() {
           </button>
         ))}
       </div>
+      {/* Traductions communautaires : ouvre la page Weblate dans le navigateur du système (Electron), ou un nouvel onglet. */}
+      <p style={{ marginTop: 18 }}>
+        <button className="btn" onClick={() => openTranslate()}>
+          <Icon name="link" size={18} />{t("set.translateHelp")}
+        </button>
+        <span className="d" style={{ display: "block", marginTop: 6 }}>{t("set.translateHelpSub")}</span>
+      </p>
     </>
   );
 }

@@ -1449,4 +1449,10 @@
     <string name="mob_from_cloud">Desde la nube</string>
     <string name="mob_open_dashboard">Abrir el panel</string>
     <string name="mob_dashboard_address">Dirección del panel</string>
+
+    <!-- Lien « Aider à traduire » (Réglages › Langue) -->
+    <string name="translate_help">Ayudar a traducir Ultra TV</string>
+    <string name="translate_help_sub">¿Falta tu idioma o contiene un error?</string>
+    <string name="translate_help_scan">Escanea el código QR con tu teléfono para traducir desde el navegador.</string>
+    <string name="translate_help_close">Cerrar</string>
 </resources>

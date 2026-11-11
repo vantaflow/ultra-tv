@@ -494,5 +494,7 @@
   "a11y.volume": "Volumen",
   "key.space": "Espacio",
   "key.esc": "Esc",
-  "key.enter": "Intro"
+  "key.enter": "Intro",
+  "set.translateHelp": "Ayudar a traducir Ultra TV",
+  "set.translateHelpSub": "¿Falta tu idioma o contiene un error?"
 }

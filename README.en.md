@@ -80,7 +80,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
 - **Google TV, Android TV and third-party launchers**: "Continue watching" (movies, episodes and recent live channels, cleaned titles, one tile per movie), **Favorites** home channel (favourites then recent channels) and **New releases** channel (latest movies and series added, no duplicates), voice and global search, `ultratv://` deep links. These rows go through Android's TV provider, so launchers that read it (Kairo…) show them too.
 - **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
-- **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL).
+- **Themes** Dark / Light / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL), plus Polish (community first draft).
 - **Personalisation** (Settings › Display): **accent colour** (6 choices), **text size**, **Home rows** (show, hide, reorder), **start screen** (Home, Live, Movies, Series, Guide or last channel).
 - **Custom DNS** (Android and desktop): Google, Cloudflare, Quad9, DNS-over-HTTPS or your own server; applied to catalogue, guide, images and streams (on Android: ExoPlayer streams, not VLC; Test button), automatic fallback to the system DNS.
 - **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
@@ -285,7 +285,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 ## Help translate
 
-The interface is available in French, English, Spanish and Arabic (official languages). More languages are welcome: they can be partial, and English is shown for missing texts.
+The interface is available in French, English, Spanish and Arabic (official languages), and in Polish (community language, first draft awaiting review). More languages are welcome: they can be partial, and English is shown for missing texts.
 
 - Only the interface is translated, never playlist content (channels, categories, titles, guide).
 - Without Git: Weblate, <https://hosted.weblate.org/projects/ultra-tv/>.

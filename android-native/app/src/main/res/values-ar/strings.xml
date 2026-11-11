@@ -1500,4 +1500,10 @@
     <string name="mob_from_cloud">من السحابة</string>
     <string name="mob_open_dashboard">فتح لوحة التحكم</string>
     <string name="mob_dashboard_address">عنوان لوحة التحكم</string>
+
+    <!-- Lien « Aider à traduire » (Réglages › Langue) -->
+    <string name="translate_help">ساعد في ترجمة Ultra TV</string>
+    <string name="translate_help_sub">لغتك غير متوفرة أو تحتوي على خطأ؟</string>
+    <string name="translate_help_scan">امسح رمز QR بهاتفك للترجمة من المتصفح.</string>
+    <string name="translate_help_close">إغلاق</string>
 </resources>

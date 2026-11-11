@@ -524,5 +524,7 @@
   "a11y.volume": "مستوى الصوت",
   "key.space": "مسافة",
   "key.esc": "خروج",
-  "key.enter": "إدخال"
+  "key.enter": "إدخال",
+  "set.translateHelp": "ساعد في ترجمة Ultra TV",
+  "set.translateHelpSub": "لغتك غير متوفرة أو تحتوي على خطأ؟"
 }

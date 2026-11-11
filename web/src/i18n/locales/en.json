@@ -484,5 +484,7 @@
   "a11y.volume": "Volume",
   "key.space": "Space",
   "key.esc": "Esc",
-  "key.enter": "Enter"
+  "key.enter": "Enter",
+  "set.translateHelp": "Help translate Ultra TV",
+  "set.translateHelpSub": "Your language is missing or has a mistake?"
 }
