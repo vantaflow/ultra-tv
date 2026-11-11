@@ -16,7 +16,7 @@ preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
 [[d1_databases]]
 binding = "DB"
 database_name = "ultratv-telemetry"
-database_id = "REPLACE_ME"
+database_id = "96cdcf98-68e4-4d34-8dda-5a76ae93f459"
 migrations_dir = "migrations"
 
 # Purge quotidienne des lignes de télémétrie expirées (journaux 7 j, plantages 30 j, relevés anonymes 180 j).
