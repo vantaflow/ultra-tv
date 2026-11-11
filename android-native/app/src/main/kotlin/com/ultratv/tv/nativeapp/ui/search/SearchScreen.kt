@@ -70,7 +70,16 @@ class SearchViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val catalog: CatalogRepository,
     private val history: com.ultratv.tv.nativeapp.data.prefs.SearchHistoryStore,
+    private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
 ) : ViewModel() {
+    /** Chaîne trouvée : contexte « LIVE » + file de zapping avant d'ouvrir le lecteur (OSD du direct, OK = liste). */
+    fun playChannel(c: com.ultratv.tv.nativeapp.data.db.ChannelEntity, then: () -> Unit) {
+        viewModelScope.launch {
+            runCatching { liveZap.prepare(c.providerId, c.remoteId, c.title, c.logo, c.streamUrl) }
+            then()
+        }
+    }
+
     private val _q = MutableStateFlow("")
     val query: StateFlow<String> = _q.asStateFlow()
     private val _results = MutableStateFlow(SearchResults())
@@ -238,10 +247,10 @@ fun SearchScreen(
                     when (val row = rows[i]) {
                         is Row_.Header -> Text(row.text, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = androidx.compose.ui.unit.TextUnit(2.2f, androidx.compose.ui.unit.TextUnitType.Sp), modifier = Modifier.padding(top = if (i == 0) 0.design else 20.design))
                         is Row_.Channels -> Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
-                            row.items.forEach { c -> ChannelCard(c, Modifier.weight(1f)) { onOpenChannel(c.streamUrl, c.name) } }
+                            row.items.forEach { c -> ChannelCard(c, Modifier.weight(1f)) { vm.playChannel(c) { onOpenChannel(c.streamUrl, c.name) } } }
                             repeat(3 - row.items.size) { Spacer(Modifier.weight(1f)) }
                         }
-                        is Row_.Program -> ProgramCard(row.hit, D) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) }
+                        is Row_.Program -> ProgramCard(row.hit, D) { vm.playChannel(row.hit.channel) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) } }
                         is Row_.Vod -> Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
                             row.items.forEach { v ->
                                 when (v) {
@@ -357,8 +366,8 @@ private fun SearchTouch(
                 items(rows.size) { i ->
                     when (val row = rows[i]) {
                         is Row_.Header -> Text(row.text, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.4.sp, modifier = Modifier.padding(top = if (i == 0) 0.dp else 10.dp))
-                        is Row_.Channels -> row.items.forEach { c -> TouchChannelHit(c) { onOpenChannel(c.streamUrl, c.name) } }
-                        is Row_.Program -> TouchProgramHit(row.hit, D) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) }
+                        is Row_.Channels -> row.items.forEach { c -> TouchChannelHit(c) { vm.playChannel(c) { onOpenChannel(c.streamUrl, c.name) } } }
+                        is Row_.Program -> TouchProgramHit(row.hit, D) { vm.playChannel(row.hit.channel) { onOpenChannel(row.hit.channel.streamUrl, row.hit.channel.name) } }
                         is Row_.Vod -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             row.items.forEach { v ->
                                 when (v) {

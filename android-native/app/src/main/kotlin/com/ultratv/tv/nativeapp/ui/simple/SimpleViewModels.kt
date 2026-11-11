@@ -44,6 +44,7 @@ class SimpleHomeViewModel @Inject constructor(
     private val queue: LivePlaybackQueue,
     lockedStore: LockedChannelsStore,
     private val profiles: ProfileRepository,
+    private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
 ) : ViewModel() {
     private val pid = provider.activeId()
 
@@ -84,24 +85,7 @@ class SimpleHomeViewModel @Inject constructor(
      * du lecteur passe d'une chaîne favorite à l'autre), sinon SA catégorie dans l'ordre du Direct. Avant, une chaîne hors
      * favoris n'avait aucune file : haut / bas ne changeaient plus de chaîne (retour Reddit).
      */
-    suspend fun prepareLastLive(h: WatchHistoryEntity) {
-        val favs = runCatching { channelDao.favoritesList(h.providerId, profiles.currentIdNow) }.getOrDefault(emptyList())
-        val cur = favs.firstOrNull { it.remoteId == h.remoteId }
-        if (cur != null) queue.set(favs, cur)
-        else {
-            val ch = runCatching { channelDao.byRemoteId(h.providerId, h.remoteId) }.getOrNull()
-            val cat = ch?.categoryId
-            val list = if (ch == null || cat == null) emptyList() else runCatching {
-                // Fenêtre de la catégorie centrée sur la chaîne (une catégorie peut compter des milliers de chaînes).
-                val rank = channelDao.rankCategory(h.providerId, cat, ch.num, ch.id)
-                channelDao.windowCategory(h.providerId, cat, QUEUE_WINDOW, (rank - QUEUE_WINDOW / 2).coerceAtLeast(0))
-            }.getOrDefault(emptyList())
-            if (ch != null && list.any { it.id == ch.id }) queue.set(list, ch) else queue.clear()
-        }
-        playback.set(PlaybackContext.Item(h.providerId, "LIVE", h.remoteId, h.title, h.poster, h.streamUrl))
-    }
-
-    private companion object { const val QUEUE_WINDOW = 300 }
+    suspend fun prepareLastLive(h: WatchHistoryEntity) = liveZap.prepare(h.providerId, h.remoteId, h.title, h.poster, h.streamUrl)
 }
 
 /** Ligne de la liste de chaînes à gros caractères. */
