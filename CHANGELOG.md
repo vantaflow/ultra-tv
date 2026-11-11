@@ -5,6 +5,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
+- Android (mode simple) : « Direct » relance la dernière chaîne avec une file de zapping, même si elle n'est pas dans les favoris (sa catégorie, dans l'ordre du Direct). Avant, haut / bas ne changeaient plus de chaîne.
+
+### Corrigé
 - Android : certaines chaînes (playlists M3U, ex. TVP1, ESKA) chargeaient sans fin alors que d'autres marchaient : sans première image et sans erreur, le lecteur n'avait ni délai, ni repli, ni message. Un délai de démarrage (15 s, 25 s avec le tampon « Stable ») est maintenant armé à chaque lancement de moteur : sans image ni progrès de chargement, le lecteur passe à VLC, puis affiche « Le flux ne démarre pas » (5 langues) au lieu de charger indéfiniment. Un démarrage lent mais qui progresse n'est pas coupé ; flux protégés, Stalker (VLC exclu) et moteur imposé gardent leurs règles
 - Bureau : un flux qui ne démarre jamais (MPEG-TS ou lecture native sans réponse du serveur) laissait le lecteur en chargement sans fin ; après 20 s sans lecture ni progrès, il passe au format suivant puis affiche l'erreur
 - Android (TV) : sur un panneau d'erreur de lecture du direct (« ce format ne peut pas être lu »…), les boutons Réessayer, Chaîne suivante et Fermer sont de nouveau sélectionnables à la télécommande (le direct interceptait les touches : Bas zappait).
