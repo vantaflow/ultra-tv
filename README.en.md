@@ -279,6 +279,24 @@ No anonymous count, crash report, remote log or alerts. Sends: update check (`ap
 
 **Settings › About › *Telemetry and crash reports*** (on by default). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
 
+### Check it in the code
+
+Every point above can be checked in the source code (links pinned to a specific version):
+
+| Claim | Where to see it |
+|---|---|
+| On the device, your sources' passwords are encrypted (AES-256-GCM) with a non-exportable Android Keystore key | [`SecretBox.kt`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/security/SecretBox.kt#L12-L21) |
+| Sending from the phone: the code is valid for 15 minutes | [`index.js` — `ENVOI_TTL_S`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L500) |
+| … the source is encrypted before being handed to the relay | [`index.js` — `encryptJson` then `envoiPut`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L568-L573) |
+| … delivered once to the TV, then deleted (`envoiTake` removes the entry) | [`guard.js` — `envoiInit` / `envoiPut` / `envoiTake`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/guard.js#L122-L153) |
+| Cloud sync: sources stored encrypted (`providersEnc`) | [`store.js` — `loadProviders` / `saveProviders`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/store.js#L41-L48) |
+| Account passwords: only a PBKDF2 hash is kept | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
+| Anonymous count: a random install ID and the version, nothing else | [`AnonPing.kt` — request body](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L28) |
+| … nothing is sent when telemetry is off | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
+| The Worker only keeps the country code provided by Cloudflare, never the IP address | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
+
+Questions or doubts about this code? Open an [issue](https://github.com/vantaflow/ultra-tv/issues) and it will be answered publicly.
+
 ## Automatic tuning
 
 On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, micro-benchmark) and rates it **Low / Medium / High**. From that it derives buffer, parallelism and sync batch size, resolution and bitrate caps (low-memory boxes: 720p / 6 Mb/s) and adjusts the buffer if drop-outs occur. Everything stays adjustable: Settings › Playback (engine, decoding, buffer preset: Low latency, Auto, Balanced, Stable, Custom).
