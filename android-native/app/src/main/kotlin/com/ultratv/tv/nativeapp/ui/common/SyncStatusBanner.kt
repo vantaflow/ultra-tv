@@ -58,9 +58,12 @@ class SyncStatusViewModel @Inject constructor(
     val pill: kotlinx.coroutines.flow.StateFlow<SyncStatusBus.Status?> = bus.status.let { f -> kotlinx.coroutines.flow.flow { f.sample(500).collect { emit(it) } } }
         .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5_000), null)
     val failure = bus.failure
+    val partial = bus.partial
     fun dismissFailure() = bus.clearFailure()
+    fun dismissPartial() = bus.clearPartial()
     fun retry(providerId: Long) {
         bus.clearFailure(providerId)
+        bus.clearPartial(providerId)
         sync.request(providerId, force = true)
     }
 }
@@ -98,6 +101,30 @@ fun SyncStatusBanner(onFixSource: () -> Unit = {}, vm: SyncStatusViewModel = hil
             if (canConvert) com.ultratv.tv.nativeapp.ui.design.PillButton(com.ultratv.tv.nativeapp.i18n.LocalDs.current.switchToXtream, onClick = { vm.convertToXtream(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
             com.ultratv.tv.nativeapp.ui.design.PillButton(S.retry, onClick = { vm.retry(f.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20)
             com.ultratv.tv.nativeapp.ui.design.PillButton(com.ultratv.tv.nativeapp.i18n.LocalDs.current.openSourceSettings, onClick = { vm.dismissFailure(); onFixSource() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
+        }
+        return
+    }
+    // Synchro réussie avec des catégories sautées : information discrète, jamais un échec global.
+    val partial by vm.partial.collectAsState()
+    val pa = partial
+    if (pa != null && !syncing) {
+        val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Ux.SurfaceDeep)
+                .padding(horizontal = 24.design, vertical = 10.design),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            com.ultratv.tv.nativeapp.ui.design.DIcon(com.ultratv.tv.nativeapp.ui.design.StateIcons.Warning, 28.design, Ux.Text2)
+            Text(
+                "${pa.provider} · ${D.syncSkippedCategories(pa.skipped)}",
+                color = Ux.Text, fontSize = 22.spx, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope,
+                modifier = Modifier.weight(1f), maxLines = 2,
+            )
+            com.ultratv.tv.nativeapp.ui.design.PillButton(D.retry, onClick = { vm.retry(pa.providerId) }, heightPx = 52, hPadPx = 26, fontPx = 20)
+            com.ultratv.tv.nativeapp.ui.design.PillButton(D.dismiss, onClick = { vm.dismissPartial() }, heightPx = 52, hPadPx = 26, fontPx = 20, bg = Ux.Cta)
         }
     }
 }

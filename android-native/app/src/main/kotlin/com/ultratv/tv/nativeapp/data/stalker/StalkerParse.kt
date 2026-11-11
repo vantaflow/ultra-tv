@@ -99,7 +99,7 @@ fun JMap.flag(key: String): Boolean = when (val v = this[key]) {
 fun jsOf(root: Any?): Any? = (root as? JMap)?.takeIf { it.containsKey("js") }?.get("js")
 
 /** Page d'une liste `get_ordered_list`. */
-data class StalkerPage(val items: List<JMap>, val total: Int, val perPage: Int) {
+data class StalkerPage(val items: List<JMap>, val total: Int, val perPage: Int, val totalKnown: Boolean = true) {
     val pages: Int get() = if (perPage <= 0 || total <= 0) 1 else (total + perPage - 1) / perPage
 }
 
@@ -110,7 +110,10 @@ object StalkerParse {
         val o = js as? JMap ?: return null
         @Suppress("UNCHECKED_CAST")
         val data = (o["data"] as? List<Any?>).orEmpty().mapNotNull { it as? JMap }
-        return StalkerPage(data, o.s("total_items")?.toIntOrNull() ?: data.size, o.s("max_page_items")?.toIntOrNull() ?: data.size)
+        val total = o.s("total_items")?.toIntOrNull()
+        // `max_page_items` absent : la taille de la page lue en tient lieu (jamais 0, sinon tout tiendrait en une page).
+        val perPage = o.s("max_page_items")?.toIntOrNull()?.takeIf { it > 0 } ?: data.size
+        return StalkerPage(data, total ?: data.size, perPage, totalKnown = total != null)
     }
 
     /** Genres du direct / catégories VOD : `[{"id":"*","title":"All"},{"id":"5","title":"News"}]` (l'entrée « * » est ignorée). */
@@ -159,7 +162,10 @@ object StalkerParse {
     fun vod(providerId: Long, portal: String, o: JMap, fallbackCategory: String?): Vod? {
         val id = o.s("id") ?: return null
         val name = o.s("name") ?: return null
-        val cmd = o.s("cmd") ?: return null
+        @Suppress("UNCHECKED_CAST")
+        val isSeries = o.flag("is_series") || (o["series"] as? List<Any?>).orEmpty().isNotEmpty()
+        // Une série du module `type=series` n'a pas toujours de commande (ses épisodes en ont) ; un film sans commande est illisible.
+        val cmd = o.s("cmd") ?: if (isSeries) "" else return null
         val cleaned = TitleCleaner.clean(name)
         val year = o.s("year")?.take(4)?.toIntOrNull() ?: cleaned.year
         val rating = (o.s("rating_imdb") ?: o.s("rating_kinopoisk"))?.toDoubleOrNull()?.takeIf { it > 0 && it <= 10 }
@@ -190,16 +196,26 @@ object StalkerParse {
         )
     }
 
+    /**
+     * Élément du module `type=series` (Ministra récent) : toujours une série, identifiant et catégorie préfixés par
+     * [StalkerClient.SERIES_PREFIX] pour ne jamais se confondre avec un élément du module VOD.
+     */
+    fun seriesModuleItem(providerId: Long, portal: String, o: JMap, categoryId: String): VodSeries? {
+        val v = vod(providerId, portal, o + ("is_series" to "1"), categoryId) as? VodSeries ?: return null
+        val p = StalkerClient.SERIES_PREFIX
+        return v.copy(series = v.series.copy(remoteId = p + v.series.remoteId, categoryId = v.series.categoryId?.let { if (it.startsWith(p)) it else p + it }))
+    }
+
     /** Date d'ajout « yyyy-MM-dd HH:mm:ss » → secondes (tri « derniers ajoutés ») ; repli sur l'identifiant numérique. */
     fun addedKey(added: String?, id: String): Long =
         StalkerDates.parse(added)?.div(1000)?.takeIf { it > 0 } ?: id.toLongOrNull() ?: 0L
 
     /** Épisodes d'une série « simple » (tableau `series`) : saison 1, un épisode par numéro. */
-    fun simpleEpisodes(providerId: Long, seriesLocalId: Long, seriesRemoteId: String, cmd: String, numbers: List<Int>, season: Int = 1): List<EpisodeEntity> =
+    fun simpleEpisodes(providerId: Long, seriesLocalId: Long, seriesRemoteId: String, cmd: String, numbers: List<Int>, season: Int = 1, linkType: String = "vod"): List<EpisodeEntity> =
         numbers.distinct().sorted().map { n ->
             EpisodeEntity(
                 seriesId = seriesLocalId, remoteId = "$seriesRemoteId:$season:$n", season = season, episode = n,
-                title = "", streamUrl = StalkerLink.build(providerId, "vod", cmd, n), container = null, plot = null,
+                title = "", streamUrl = StalkerLink.build(providerId, linkType, cmd, n), container = null, plot = null,
             )
         }
 
@@ -210,12 +226,12 @@ object StalkerParse {
             ?: (index + 1)
 
     /** Épisode d'une saison (`is_episode`), avec sa propre commande. */
-    fun seasonEpisode(providerId: Long, seriesLocalId: Long, seriesRemoteId: String, season: Int, o: JMap, index: Int): EpisodeEntity? {
+    fun seasonEpisode(providerId: Long, seriesLocalId: Long, seriesRemoteId: String, season: Int, o: JMap, index: Int, linkType: String = "vod"): EpisodeEntity? {
         val cmd = o.s("cmd") ?: return null
         val n = o.s("series_number")?.toIntOrNull() ?: o.s("episode_number")?.toIntOrNull() ?: (index + 1)
         return EpisodeEntity(
             seriesId = seriesLocalId, remoteId = "$seriesRemoteId:$season:$n", season = season, episode = n,
-            title = TitleCleaner.presentable(o.s("name")) ?: "", streamUrl = StalkerLink.build(providerId, "vod", cmd, n),
+            title = TitleCleaner.presentable(o.s("name")) ?: "", streamUrl = StalkerLink.build(providerId, linkType, cmd, n),
             container = null, plot = o.s("description")?.let { TitleCleaner.presentable(it) },
             image = o.s("screenshot_uri")?.takeIf { it.startsWith("http") },
         )
