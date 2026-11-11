@@ -680,10 +680,11 @@ private fun Preview(
         } else {
             Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2)
         }
-        if (upcoming.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(top = 4.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
+        // Hauteur commune (IntrinsicSize.Min + fillMaxHeight) : un titre sur deux lignes n'agrandit plus une seule carte.
+        if (upcoming.isNotEmpty()) Row(Modifier.fillMaxWidth().height(androidx.compose.foundation.layout.IntrinsicSize.Min).padding(top = 4.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
             upcoming.forEachIndexed { i, p ->
                 Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(16.design)).background(Ux.SurfaceDeep).border(1.dp, Ux.Line, RoundedCornerShape(16.design)).padding(horizontal = 20.design, vertical = 14.design),
+                    Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.design)).background(Ux.SurfaceDeep).border(1.dp, Ux.Line, RoundedCornerShape(16.design)).padding(horizontal = 20.design, vertical = 14.design),
                     verticalArrangement = Arrangement.spacedBy(6.design),
                 ) {
                     Text(if (i == 0) "${D.nextWord} · ${EpgClock.hm(p.startMs)}" else EpgClock.hm(p.startMs), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.sp(), maxLines = 1)
