@@ -49,6 +49,8 @@ class StalkerLiveFakePortalTest {
     /** Moteur de test : ouvre l'adresse en HTTP avec config.userAgent + config.headers ; 2xx → image, sinon erreur classée. */
     private inner class HttpEngine(override val kind: EngineKind, override val config: EngineConfig) : PlayerEngine {
         val codes = mutableListOf<Int>()
+        var token: String = ""
+        var cutSent = false
         val bus = MutableSharedFlow<EngineEvent>(replay = 16, extraBufferCapacity = 16)
         override val view: View = View(ctx)
         override val events = bus
@@ -56,7 +58,7 @@ class StalkerLiveFakePortalTest {
         override fun load(url: String, startPositionMs: Long) {
             val req = Request.Builder().url(url).header("User-Agent", config.userAgent).apply { config.headers.forEach { (k, v) -> header(k, v) } }.build()
             val code = http.newCall(req).execute().use { it.code }
-            codes += code
+            codes += code; token = req.url.queryParameter("play_token").orEmpty(); cutSent = false
             bus.tryEmit(if (code in 200..299) EngineEvent.FirstFrame else EngineEvent.Error(PlaybackPlanner.classifyExo(2004, code), code))
         }
         override fun play() {}
@@ -83,7 +85,21 @@ class StalkerLiveFakePortalTest {
         manualEngine = false, manualDecoder = false, manualBuffer = false,
     )
 
-    @Before fun up() { portal.start(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true }
+    /** Temps virtuel (ms) vu par le faux portail : avancé par [advance], jamais attendu pour de vrai. */
+    private val vnow = java.util.concurrent.atomic.AtomicLong()
+
+    /** Avance de [ms] par pas d'une seconde ; à chaque pas, un flux que le portail coupe faute de présence signale l'erreur. */
+    private fun advance(ms: Long) {
+        repeat((ms / 1_000).toInt()) {
+            scope.advanceTimeBy(1_000); vnow.addAndGet(1_000)
+            scope.runCurrent(); Thread.sleep(3); scope.runCurrent()
+            created.lastOrNull()?.let { e ->
+                if (e.token.isNotEmpty() && !e.cutSent && portal.isCut(e.token, vnow.get())) { e.cutSent = true; e.bus.tryEmit(EngineEvent.Error(PlayErrorKind.NETWORK)) }
+            }
+        }
+    }
+
+    @Before fun up() { portal.clock = { vnow.get() }; portal.start(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true }
     @After fun down() { portal.shutdown(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false; scope.cancel() }
 
     private fun provider() = ProviderEntity(id = 5, name = "P", kind = "STALKER", baseUrl = portal.portalUrl().trimEnd('/'), username = portal.mac, password = "")
@@ -91,9 +107,13 @@ class StalkerLiveFakePortalTest {
     private val resolver by lazy { DefaultStreamUrlResolver(PortalDao.of(provider()), client) }
     private val chUrl = StalkerLink.build(5, "itv", "ffmpeg http://localhost/ch/1234_", chId = "1234")
 
-    private fun session(opener: suspend (String) -> StreamOpen = { resolver.open(it) }) = PlaybackSession(
+    private fun session(
+        withPresence: Boolean = false,
+        opener: suspend (String) -> StreamOpen = { resolver.open(it) },
+    ) = PlaybackSession(
         ctx, scope, FrameLayout(ctx), { settings }, InMemoryChannelPlaybackMemory(), NetworkMonitor(ctx),
         isLive = true, autoFrameRate = false, userAgent = "UltraTV/1.0 (Android TV)", opener = opener,
+        presence = if (withPresence) { u -> resolver.presence(u) } else null,
         engineFactory = { k, c -> HttpEngine(k, c).also { created += it } },
     )
 
@@ -183,7 +203,7 @@ class StalkerLiveFakePortalTest {
     // ─── d) refus du portail ───
 
     @Test fun portailRefuse_403_messageDedie_sansBoucle() {
-        val s = session { throw HttpStatusException(403) }
+        val s = session(opener = { throw HttpStatusException(403) })
         s.start(chUrl, "5:1234"); scope.runCurrent()
         scope.advanceTimeBy(2_000); scope.runCurrent()
         assertEquals(Phase.ERROR, s.state.value.phase)
@@ -198,6 +218,61 @@ class StalkerLiveFakePortalTest {
         scope.advanceTimeBy(600); settle("reconnexion") { portal.liveStatuses.size == 2 }
         assertEquals(listOf(200, 200), portal.liveStatuses)
         assertEquals(2, portal.createLinks.get())
+    }
+
+    @Test fun erreurAvantLecture_nouvelleTentative_lienFrais() {
+        portal.forbidNextLive = 1
+        val s = session()
+        s.start(chUrl, "5:1234"); settle("1re ouverture refusée") { portal.liveStatuses.size == 1 }
+        scope.advanceTimeBy(2_000); settle("nouvelle tentative") { portal.liveStatuses.size == 2 }
+        assertEquals(listOf(403, 200), portal.liveStatuses)
+        assertEquals(2, portal.createLinks.get())
+    }
+
+    // ─── présence (watchdog) : le portail coupe le direct d'un boîtier qui ne se manifeste plus ───
+
+    @Test fun avecWatchdog_leDirectTientPlusDe5Minutes_etSurvitAUneCoupureReseau() {
+        val s = session(withPresence = true)
+        s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        advance(180_000)
+        // Coupure réseau : le moteur signale l'erreur, la session se reconnecte avec un lien NEUF (l'ancien est périmé : 458).
+        created.last().bus.tryEmit(EngineEvent.Error(PlayErrorKind.NETWORK)); scope.runCurrent()
+        advance(2_000); settle("reconnexion") { portal.liveStatuses.size == 2 }
+        advance(240_000)   // 6 min 2 s au total
+        assertEquals(listOf(200, 200), portal.liveStatuses)
+        assertEquals(2, portal.createLinks.get())
+        assertEquals(Phase.PLAYING, s.state.value.phase)
+        assertTrue("un signal toutes les ~2 min : ${portal.watchdogs}", portal.watchdogs.size >= 3)
+    }
+
+    @Test fun sansWatchdog_leDirectEstCoupeApres10s_puisErreurReseau() {
+        val s = session(withPresence = false)
+        s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        advance(300_000)
+        assertEquals(Phase.ERROR, s.state.value.phase)
+        assertEquals(PlayErrorKind.NETWORK, s.state.value.error)
+        assertTrue(portal.watchdogs.isEmpty())
+    }
+
+    @Test fun sourceNonStalker_aucunSignalDePresence() {
+        val s = session(withPresence = true)
+        s.start(portal.server.url("/vod/abc.mkv").toString(), "9:1"); advance(300_000)
+        assertTrue(portal.watchdogs.isEmpty())
+        assertEquals(0, portal.handshakes.get())
+    }
+
+    @Test fun presence_arretee_quandLaLectureSeTermine() {
+        val s = session(withPresence = true)
+        s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        s.release(); val n = portal.watchdogs.size
+        advance(300_000)
+        assertEquals(n, portal.watchdogs.size)
+    }
+
+    @Test fun journaux_reconnexion_codeHttpEtDuree() {
+        val l = StalkerPlayLog.reconnect(2, 458, 12_900)
+        assertEquals("stalker live reconnect n=2 http=458 played=12s", l)
+        assertEquals("stalker live reconnect n=1 http=- played=0s", StalkerPlayLog.reconnect(1, null, 0))
     }
 
     @Test fun journaux_codeHttpEtTypeSeulement_sansMacNiHote() {

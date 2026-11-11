@@ -17,6 +17,10 @@ object StalkerPlayLog {
     fun openFailed(t: Throwable): String =
         LogSanitizer.sanitize("stalker live open failed step=create_link http=${httpOf(t) ?: "-"} type=${t::class.java.simpleName}")
 
+    /** Reconnexion du direct : numéro, dernier code HTTP connu et durée de lecture avant la coupure. */
+    fun reconnect(n: Int, http: Int?, playedMs: Long): String =
+        LogSanitizer.sanitize("stalker live reconnect n=$n http=${http ?: "-"} played=${playedMs / 1000}s")
+
     /** Erreur du lecteur sur un flux Stalker déjà ouvert. */
     fun playerError(kind: String, http: Int?, engine: String): String =
         LogSanitizer.sanitize("stalker live play error step=player kind=$kind http=${http ?: "-"} engine=$engine")

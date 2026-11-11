@@ -20,6 +20,9 @@ interface StreamUrlResolver {
 
     /** Comme [resolve], avec les en-têtes que le lecteur doit envoyer (portail Stalker) ; lève en cas d'échec. */
     suspend fun open(url: String): StreamOpen = StreamOpen(resolve(url))
+
+    /** Signal de présence (watchdog) pendant la lecture d'une adresse `stalker://` ; sans effet pour toute autre. */
+    suspend fun presence(url: String) {}
 }
 
 /** Flux prêt à ouvrir : adresse, en-têtes de requête et User-Agent imposés (null = celui du lecteur). */
@@ -35,6 +38,12 @@ class DefaultStreamUrlResolver @Inject constructor(
         val p = providers.byId(link.providerId) ?: return url
         if (p.kind != "STALKER") return url
         return stalker.createLink(p, link.type, link.cmd, link.series, link.chId)
+    }
+
+    override suspend fun presence(url: String) {
+        val link = StalkerLink.parse(url) ?: return
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: return
+        stalker.watchdog(p)
     }
 
     override suspend fun open(url: String): StreamOpen {
@@ -62,6 +71,14 @@ interface StreamUrlEntryPoint {
  * l'adresse d'origine est rendue (le lecteur affiche alors son erreur habituelle et propose « Réessayer »).
  */
 object StreamUrls {
+    /** Présence d'un boîtier MAG (watchdog) ; ne lève jamais (hors annulation). */
+    suspend fun presence(context: android.content.Context, url: String) {
+        if (!StalkerLink.isStalker(url)) return
+        runCatching {
+            EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().presence(url)
+        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }
+    }
+
     /** Ouverture d'un flux pour le lecteur : lien frais + en-têtes (Stalker). Lève en cas d'échec — l'appelant journalise et classe. */
     suspend fun open(context: android.content.Context, url: String): StreamOpen {
         if (!StalkerLink.isStalker(url)) return StreamOpen(url)

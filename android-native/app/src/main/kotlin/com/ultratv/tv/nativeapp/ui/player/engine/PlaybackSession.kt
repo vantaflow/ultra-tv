@@ -62,6 +62,12 @@ class PlaybackSession(
      * tentative, reconnexion, changement de moteur) : le lien create_link d'un portail ne sert qu'une fois.
      */
     private val opener: suspend (String) -> StreamOpen = { StreamOpen(it) },
+    /**
+     * Signal de présence d'un boîtier MAG (watchdog du portail), appelé toutes les [presenceIntervalMs] tant qu'une adresse
+     * `stalker://` est lue : arrêté à la fin de la lecture ou au changement de source ; jamais lancé pour une autre source.
+     */
+    private val presence: (suspend (String) -> Unit)? = null,
+    private val presenceIntervalMs: Long = 120_000L,
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
 ) {
     private val _state = MutableStateFlow(SessionState())
@@ -101,6 +107,10 @@ class PlaybackSession(
     private var openJob: Job? = null
     private var launchedHeaders: Map<String, String> = emptyMap()
     private var launchedUa: String = userAgent
+    private var presenceJob: Job? = null
+    /** Dernier code HTTP vu et début de la lecture en cours : journal des reconnexions Stalker. */
+    private var lastHttp: Int? = null
+    private var playedSinceMs = 0L
 
     /**
      * Reconnexion automatique autorisée pour la lecture en cours : VRAI direct seulement. Un replay (« Depuis le
@@ -146,10 +156,13 @@ class PlaybackSession(
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
+        syncPresence(); lastHttp = null; playedSinceMs = 0L
         reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
-        val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
+        val next0 = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
+        // Stalker : VLC (LibVLC 3.x) ne sait pas envoyer le cookie `mac` (aucune option) → ExoPlayer, sauf VLC imposé par l'utilisateur.
+        val next = if (isStalkerUrl && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
         val e = engine
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
@@ -173,6 +186,20 @@ class PlaybackSession(
     }
 
     private val isStalkerUrl get() = StalkerLink.isStalker(url)
+
+    /** (Re)lance ou arrête la boucle de présence selon l'adresse courante. */
+    private fun syncPresence() {
+        presenceJob?.cancel(); presenceJob = null
+        val p = presence ?: return
+        if (!isStalkerUrl) return
+        val raw = url
+        presenceJob = scope.launch {
+            while (true) {
+                try { p(raw) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (_: Throwable) { /* le prochain passage réessaie */ }
+                delay(presenceIntervalMs)
+            }
+        }
+    }
 
     /**
      * Ouvre l'adresse courante : lien create_link frais pour `stalker://` (échec journalisé sans MAC ni hôte, puis classé
@@ -272,6 +299,7 @@ class PlaybackSession(
                 val again = firstFrame
                 firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel()
                 everPlayed = true
+                if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
                 // 30 s de lecture stable : le compteur de reconnexions repart de zéro.
                 stableJob?.cancel(); stableJob = scope.launch { delay(30_000); reconnects = 0 }
                 // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
@@ -320,6 +348,7 @@ class PlaybackSession(
 
     private fun onError(kind: PlayErrorKind, http: Int? = null, logged: Boolean = false) {
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
+        if (http != null) lastHttp = http
         // Direct Stalker : code HTTP et type d'erreur (sans MAC ni hôte) pour diagnostiquer les retours.
         if (isStalkerUrl && !logged) StalkerPlayLog.playerError(kind.name, http, combo.engine.name).let { android.util.Log.i("UltraPlay", it); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", it) }
         // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
@@ -340,7 +369,8 @@ class PlaybackSession(
                 return@launch
             }
             if (PlaybackPlanner.shouldFallBack(kind)) {
-                val next = PlaybackPlanner.next(settingsNow.engine, tried)
+                val skipVlc = if (isStalkerUrl && settingsNow.engine != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
+                val next = PlaybackPlanner.next(settingsNow.engine, tried + skipVlc)
                 if (next != null) {
                     _notices.tryEmit(if (next.engine == EngineKind.VLC) Notice.USING_VLC else if (next.decoder == DecoderMode.SOFTWARE) Notice.USING_SOFTWARE else Notice.USING_EXO)
                     launch(next)
@@ -349,6 +379,7 @@ class PlaybackSession(
             }
             releaseEngine()
             // Portail Stalker qui refuse la lecture : message dédié (MAC peut-être utilisée sur un autre appareil).
+            presenceJob?.cancel()
             _state.value = _state.value.copy(phase = Phase.ERROR, error = if (isStalkerUrl && kind == PlayErrorKind.REFUSED) PlayErrorKind.PORTAL_REFUSED else kind)
         }
     }
@@ -366,6 +397,11 @@ class PlaybackSession(
             return
         }
         reconnects++
+        if (isStalkerUrl) {
+            val line = StalkerPlayLog.reconnect(reconnects, lastHttp, if (playedSinceMs == 0L) 0L else System.currentTimeMillis() - playedSinceMs)
+            android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", line)
+            lastHttp = null; playedSinceMs = 0L
+        }
         android.util.Log.i("UltraPlay", "live reconnect #$reconnects in ${wait}ms engine=${combo.engine}")
         _notices.tryEmit(Notice.RETRYING)
         reconnectJob = scope.launch {
@@ -389,7 +425,7 @@ class PlaybackSession(
 
     fun release() {
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
     }
 }

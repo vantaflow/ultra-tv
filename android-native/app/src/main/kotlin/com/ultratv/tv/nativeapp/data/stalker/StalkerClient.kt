@@ -367,6 +367,15 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         sessions[a.key]?.token?.takeIf { it.isNotEmpty() }?.let { put("Authorization", "Bearer $it") }
     }
 
+    /**
+     * Signal de présence d'un boîtier MAG qui regarde une chaîne (`watchdog/get_events`, toutes les ~2 min sur un vrai
+     * boîtier) : certains portails coupent le direct d'un boîtier qui ne se manifeste plus. Mêmes en-têtes et même jeton
+     * que les autres appels. Le résultat (événements du portail) est ignoré.
+     */
+    suspend fun watchdog(p: ProviderEntity) {
+        call(accountOf(p), listOf("type" to "watchdog", "action" to "get_events", "cur_play_type" to "1", "event_active_id" to "0"))
+    }
+
     private fun cookie(a: Account) = "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC"
 
     /** Programme court d'une chaîne (`itv/get_short_epg`). */
