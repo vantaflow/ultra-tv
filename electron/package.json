@@ -50,6 +50,7 @@
       "cloudfetch.cjs",
       "dns.cjs",
       "transcode.cjs",
+      "windowfit.cjs",
       "web-dist/**/*",
       "package.json"
     ],
