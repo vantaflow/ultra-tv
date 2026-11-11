@@ -13,7 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
   envoyées depuis le web, comptées par un relevé anonyme quotidien (identifiant aléatoire et version ; rien si la
   télémétrie est coupée).
 - Lecteur : bouton **« Passer l'intro »** pendant le générique de début d'un film ou d'un épisode, **« Passer le résumé »** pendant le « précédemment dans… », et **« Épisode suivant »** pendant le générique de fin d'un épisode (« Passer le générique » quand une scène suit le générique d'un film). Télécommande : OK, commandes masquées ; tactile : un appui. Rien n'est sauté sans action de l'utilisateur.
-- Bureau (Windows, macOS, navigateur) : même bouton en plein écran, au clic ou avec la touche S (ou Entrée).
+- Bureau (Windows, macOS) : même bouton en plein écran, au clic ou avec la touche S (ou Entrée).
 - Les passages viennent de TheIntroDB (base communautaire, sans clé) : seuls l'identifiant TMDB, la saison, l'épisode et la durée sont envoyés, jamais d'identifiant ni d'adresse IPTV. Titre inconnu, TMDB non relié ou réseau absent : aucun bouton.
 - Fiches film et série : notes **IMDb** et **Rotten Tomatoes** (« IMDb 8.8 · RT 87% ») via OMDb ; sans clé OMDb sur le Worker, la note habituelle reste affichée.
 - Accueil : rangées **« Parce que vous avez regardé… »** (films proches du dernier film regardé), **« Films les mieux notés »** et **« Séries les mieux notées »**, calculées en local (sans Trakt), réglables dans Rangées de l'accueil.
