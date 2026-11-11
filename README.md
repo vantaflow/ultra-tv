@@ -5,8 +5,7 @@
 <h1 align="center">Ultra TV</h1>
 
 <p align="center">
-  <strong>Lecteur IPTV natif pour Android TV et Google TV.</strong><br/>
-  Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt
+  <strong>Lecteur IPTV gratuit et open source pour Android TV, téléphone, tablette, Windows et Mac — sans pub, sans compte, pensé pour la télécommande.</strong>
 </p>
 
 <p align="center">
@@ -19,7 +18,7 @@
 <p align="center">
   <a href="README.en.md">🇬🇧 English version</a> ·
   <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
-  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk">Télécharger l'APK</a> ·
+  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk">Télécharger l'APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -153,7 +152,7 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 
 | Appareil | Fichier |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) avec son profil précompilé `.dm`, plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablette) | [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) avec son profil précompilé `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
 | Tableau de bord cloud | <https://ultratv-config.khalilbenaz.workers.dev> (aucune installation) |
@@ -164,7 +163,7 @@ Tout est sur la page [Releases](https://github.com/vantaflow/ultra-tv/releases) 
 
 Android 9 ou plus récent (API 28).
 
-**APK.** Téléchargez [`UltraTV-debug.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-debug.apk) (somme SHA-256 sur la page de la release) et installez-le.
+**APK.** Téléchargez [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) (somme SHA-256 sur la page de la release) et installez-le.
 
 **Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5248504`**, autorisez les sources inconnues, installez.
 
@@ -172,7 +171,7 @@ Android 9 ou plus récent (API 28).
 
 ```bash
 adb connect IP_DE_LA_BOX:5555
-adb install -r UltraTV-debug.apk
+adb install -r UltraTV.apk
 ```
 
 **adb, démarrage plus rapide** (Android 12 ou plus récent) : installez l'APK de votre processeur avec son profil précompilé `.dm` (même nom, publié dans la release). Android compile alors l'application dès l'installation au lieu d'attendre une optimisation en tâche de fond. Mesuré sur une box 2 Go : démarrage 1,1 s → 0,6 s, défilement nettement plus fluide.
@@ -208,7 +207,9 @@ L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiff
 
 À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
 
-## Développement
+## Pour les développeurs
+
+Stack : Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt.
 
 JDK 17 requis.
 
