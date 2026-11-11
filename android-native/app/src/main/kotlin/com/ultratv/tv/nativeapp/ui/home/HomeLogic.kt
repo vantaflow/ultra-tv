@@ -303,6 +303,10 @@ fun pivotScrollDistance(
 
 /** Nombre de titres « à la une » qui défilent. */
 const val HERO_POOL = 6
+/** Films candidats lus pour « À la une » : seuls ceux qui ont (ou obtiennent) une image paysage sont retenus. */
+const val HERO_CANDIDATES = 20
+/** Au plus ce nombre de films sans image paysage voient leur fiche TMDB résolue en arrière-plan pour en trouver une. */
+const val HERO_RESOLVE_MAX = 8
 /** Durée d'affichage de chaque titre « à la une ». */
 const val HERO_ROTATE_MS = 9_000L
 
@@ -317,3 +321,17 @@ fun <T> interleaveHeroes(series: List<T>, movies: List<T>, max: Int): List<T> {
     }
     return out
 }
+
+/**
+ * Sélection « À la une » : uniquement des titres AVEC image paysage ([hasLandscape]), séries et films alternés, au plus [max].
+ * Une affiche portrait seule faisait un bandeau vilain. Sans aucun titre paysage, [fallback] autorise l'ancien affichage
+ * (affiche seule) en dernier recours ; sinon la liste est vide.
+ */
+fun <T> pickHeroes(series: List<T>, movies: List<T>, max: Int, fallback: Boolean, hasLandscape: (T) -> Boolean): List<T> {
+    val picked = interleaveHeroes(series.filter(hasLandscape), movies.filter(hasLandscape), max)
+    return if (picked.isEmpty() && fallback) interleaveHeroes(series, movies, max) else picked
+}
+
+/** Films à résoudre auprès de TMDB : sans image paysage, dans l'ordre, au plus [max] ; aucun si la sélection est déjà complète. */
+fun <T> heroesToResolve(movies: List<T>, selectedCount: Int, wanted: Int, max: Int, hasLandscape: (T) -> Boolean): List<T> =
+    if (selectedCount >= wanted) emptyList() else movies.filterNot(hasLandscape).take(max)

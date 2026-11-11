@@ -27,6 +27,8 @@ interface TmdbApi {
     suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails?
     /** `poster_path` du meilleur résultat de recherche (affiche de repli) ; null si rien. */
     suspend fun searchPoster(kind: TmdbKind, query: TmdbQuery, lang: String): String? = null
+    /** Titres recommandés par TMDB puis « similaires », dans l'ordre, sans doublon. Vide si rien ; IOException si le réseau échoue. */
+    suspend fun related(kind: TmdbKind, id: Int, lang: String): List<PersonCredit> = emptyList()
 }
 
 /** Client du proxy TMDB du Worker (/api/tmdb/…) : jeton d'appareil en Bearer, pas de redirection suivie. */
@@ -67,6 +69,13 @@ class TmdbHttpApi @Inject constructor(
         return TmdbParser.searchBestPoster(body, query.year)
     }
 
+    override suspend fun related(kind: TmdbKind, id: Int, lang: String): List<PersonCredit> {
+        val tv = kind == TmdbKind.TV
+        val rec = get("${kind.path}/$id/recommendations?language=$lang")?.let { TmdbParser.related(it, tv) }.orEmpty()
+        val sim = get("${kind.path}/$id/similar?language=$lang")?.let { TmdbParser.related(it, tv) }.orEmpty()
+        return (rec + sim).distinctBy { "${PersonLogic.key(it.title)}|${it.year ?: ""}" }
+    }
+
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? =
         get("${kind.path}/$id?append_to_response=credits,videos&language=$lang")?.let(TmdbParser::details)
 }
@@ -90,6 +99,8 @@ fun tmdbLang(appLang: AppLang): String = when (appLang) {
  * Désactivé (renvoie null, aucune requête) tant que l'appareil n'est pas appairé au Worker. Une erreur réseau
  * rend la ligne périmée si elle existe : la fiche reste lisible.
  */
+private const val RELATED_TTL_MS = 6L * 3_600_000
+
 @Singleton
 class TmdbRepository @Inject constructor(
     private val api: TmdbApi,
@@ -101,6 +112,13 @@ class TmdbRepository @Inject constructor(
 
     suspend fun forSeries(s: SeriesEntity, sourceTmdbId: String? = null, now: Long = System.currentTimeMillis()): TmdbInfoEntity? =
         load(TmdbKind.TV, s.providerId, s.remoteId, tmdbQueryFor(s.name, s.year), parseSourceTmdbId(sourceTmdbId), now)
+
+    /** Image paysage TMDB déjà en cache (Room) pour ce titre ; ne déclenche aucune requête. */
+    suspend fun cachedBackdrop(kind: TmdbKind, providerId: Long, remoteId: String): String? =
+        dao.get(kind.path, providerId, remoteId)?.backdropUrl
+
+    /** Image paysage TMDB d'un film : cache Room, sinon fiche TMDB résolue (une requête) ; null si inconnue ou sans Worker. */
+    suspend fun backdropFor(m: MovieEntity): String? = forMovie(m)?.backdropUrl
 
     /** Langue d'origine TMDB (« fr », « ja »…) déjà en cache, pour le détecteur de langue ; ne déclenche aucune requête. */
     suspend fun cachedOriginalLanguage(kind: TmdbKind, providerId: Long, remoteId: String): String? =
@@ -120,6 +138,29 @@ class TmdbRepository @Inject constructor(
         photoCache[key]?.let { return it }
         val d = runCatching { api.details(kind, tmdbId, currentLang()) }.getOrNull() ?: return emptyMap()
         return d.photos.mapValues { TmdbImages.profile(it.value) }.also { photoCache[key] = it }
+    }
+
+    private class RelatedEntry(val at: Long, val titles: List<PersonCredit>)
+    private val relatedCache = java.util.Collections.synchronizedMap(object : LinkedHashMap<String, RelatedEntry>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RelatedEntry>?) = size > 40
+    })
+
+    /**
+     * Titres que TMDB recommande (puis « similaires ») pour un film, dans son ordre. Identifiant TMDB : celui de la source
+     * ([sourceTmdbId]), sinon la fiche enrichie (cache Room, ou recherche titre + année). Cache mémoire de 6 h (une
+     * ouverture de l'accueil ne refait pas la requête ; le Worker et OkHttp ont leur propre cache). Vide hors ligne, appareil
+     * non appairé ou film inconnu de TMDB ; une erreur réseau n'est pas mise en cache.
+     */
+    suspend fun relatedMovies(m: MovieEntity, sourceTmdbId: String? = null, now: Long = System.currentTimeMillis()): List<PersonCredit> {
+        if (!api.isEnabled()) return emptyList()
+        val key = "${m.providerId}:${m.remoteId}"
+        relatedCache[key]?.takeIf { now - it.at < RELATED_TTL_MS }?.let { return it.titles }
+        return try {
+            val id = parseSourceTmdbId(sourceTmdbId) ?: forMovie(m, null, now)?.tmdbId ?: return emptyList<PersonCredit>().also { relatedCache[key] = RelatedEntry(now, it) }
+            api.related(TmdbKind.MOVIE, id, currentLang()).also { relatedCache[key] = RelatedEntry(now, it) }
+        } catch (e: java.io.IOException) {
+            emptyList()
+        }
     }
 
     private suspend fun currentLang() = tmdbLang(AppLang.fromCode(prefs.flow.first().language).let { if (it == AppLang.System) systemLang() else it })

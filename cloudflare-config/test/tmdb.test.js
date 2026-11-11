@@ -16,10 +16,14 @@ describe("tmdbTarget : liste blanche", () => {
     ["search/person", "query=Cillian%20Murphy"],
     ["person/2037/combined_credits", "language=fr-FR"],
     ["person/2037", "language=fr-FR"],
+    ["movie/603/recommendations", "language=fr-FR"],
+    ["tv/1396/recommendations", ""],
+    ["movie/603/similar", "language=fr-FR"],
+    ["tv/1396/similar", ""],
   ])("chemin_%s_autorise", (p, q) => expect(tmdbTarget(p, sp(q))).not.toBeNull());
 
   it.each([
-    "account", "authentication/token/new", "movie/popular", "movie/abc", "movie/603/reviews", "movie/603/../account",
+    "account", "authentication/token/new", "movie/popular", "movie/abc", "movie/603/reviews", "movie/603/recommendations/", "movie/abc/similar", "person/2037/similar", "movie/603/similar/x", "movie/603/../account",
     "search/multi", "person/2037/images", "person/abc/combined_credits", "movie/0", "movie/12345678901", "tv/1/season/1", "../3/account", "movie/603/",
   ])("chemin_%s_refuse", (p) => expect(tmdbTarget(p, sp(""))).toBeNull());
 

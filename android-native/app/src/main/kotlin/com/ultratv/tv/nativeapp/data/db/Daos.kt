@@ -460,7 +460,7 @@ interface SeriesDao {
     fun observeCount(pid: Long): Flow<Int>
 
     /** Séries « à la une » (rotation) : les mieux notées qui ont une image paysage. */
-    @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")
+    @Query("SELECT * FROM series WHERE providerId = :pid AND backdrop IS NOT NULL AND backdrop != '' AND rating IS NOT NULL AND rating <= 10 ORDER BY rating DESC LIMIT :limit")
     fun observeHeroes(pid: Long, limit: Int): Flow<List<SeriesEntity>>
 
     /** Série « à la une » : la mieux notée qui a une image paysage (backdrop_path). */

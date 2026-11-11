@@ -177,15 +177,36 @@ class HomeViewModel @Inject constructor(
     val heroes: StateFlow<List<HeroItem>> = pid.flatMapLatest { id ->
         if (id == null) flowOf(emptyList())
         // Pendant la synchro, les tables changent sans arrêt : au plus une relecture par seconde.
-        else combine(catalog.heroSeriesList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing), catalog.heroMovieList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing)) { ss, ms ->
-            interleaveHeroes(
-                ss.map { s -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop, s.poster, plot = s.plot?.trim(), providerId = s.providerId, remoteId = s.remoteId) },
-                ms.map { m -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop, m.poster, plot = m.plot?.trim(), runtimeMin = durationMinutes(m.duration), providerId = m.providerId, remoteId = m.remoteId, streamUrl = m.streamUrl) },
-                HERO_POOL,
-            )
-        }
+        else combine(catalog.heroSeriesList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing), catalog.heroMovieList(id, HERO_CANDIDATES).atMostEvery(1_000).snapshotWhile(syncing)) { ss, ms -> ss to ms }
+            .flatMapLatest { (ss, ms) -> heroFlow(ss, ms) }
     }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Sélection « À la une » : uniquement des titres avec image paysage (celle de la source, sinon le backdrop TMDB déjà
+     * connu). Si besoin, le backdrop TMDB d'un petit lot de films ([HERO_RESOLVE_MAX]) est résolu en arrière-plan, un par un.
+     * Sans aucun titre paysage, l'affiche seule reste affichée en dernier recours.
+     */
+    private fun heroFlow(ss: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>, ms: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>): Flow<List<HeroItem>> = flow {
+        val tmdbBackdrops = HashMap<Long, String>()
+        val seriesItems = ss.map { s -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop?.takeIf { it.isNotBlank() }, s.poster, plot = s.plot?.trim(), providerId = s.providerId, remoteId = s.remoteId) }
+        fun movieItems() = ms.map { m -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop?.takeIf { it.isNotBlank() } ?: tmdbBackdrops[m.id], m.poster, plot = m.plot?.trim(), runtimeMin = durationMinutes(m.duration), providerId = m.providerId, remoteId = m.remoteId, streamUrl = m.streamUrl) }
+        fun pick(fallback: Boolean) = pickHeroes(seriesItems, movieItems(), HERO_POOL, fallback) { !it.backdrop.isNullOrBlank() }
+        for (m in ms) if (m.backdrop.isNullOrBlank()) runCatching { catalog.cachedTmdbBackdrop(m) }.getOrNull()?.let { tmdbBackdrops[m.id] = it }
+        var current = pick(false)
+        if (current.isNotEmpty()) emit(current)
+        val toResolve = heroesToResolve(movieItems(), current.size, HERO_POOL, HERO_RESOLVE_MAX) { !it.backdrop.isNullOrBlank() }
+        if (toResolve.isNotEmpty() && current.isNotEmpty()) delay(1_500) // ne concurrence pas le premier affichage
+        for (h in toResolve) {
+            if (pick(false).size >= HERO_POOL) break
+            val m = ms.firstOrNull { it.id == h.id } ?: continue
+            val b = runCatching { catalog.resolveTmdbBackdrop(m) }.getOrNull() ?: continue
+            tmdbBackdrops[m.id] = b
+            val next = pick(false)
+            if (next != current) { current = next; emit(next) }
+        }
+        if (current.isEmpty()) emit(pick(true))
+    }
 
     /**
      * Notes IMDb / Rotten Tomatoes (OMDb via le Worker) et synopsis TMDB de repli des titres « à la une », résolus UN PAR UN

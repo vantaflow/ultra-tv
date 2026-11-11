@@ -58,6 +58,23 @@ object TmdbParser {
         return first
     }
 
+    /**
+     * Titres d'une réponse `recommendations` / `similar` : dans l'ordre de TMDB, sans doublon (titre normalisé + année).
+     * [tv] : séries (champs `name` / `first_air_date`) plutôt que films.
+     */
+    fun related(json: String, tv: Boolean): List<PersonCredit> {
+        val arr = runCatching { JSONObject(json).optJSONArray("results") }.getOrNull() ?: return emptyList()
+        val out = LinkedHashMap<String, PersonCredit>()
+        for (i in 0 until arr.length()) {
+            val o = arr.optJSONObject(i) ?: continue
+            val title = o.optString(if (tv) "name" else "title").trim().takeIf { it.isNotEmpty() && it != "null" } ?: continue
+            val original = o.optString(if (tv) "original_name" else "original_title").trim().takeIf { it.isNotEmpty() && it != "null" && it != title }
+            val year = o.optString(if (tv) "first_air_date" else "release_date").take(4).toIntOrNull()
+            out.putIfAbsent("${PersonLogic.key(title)}|${year ?: ""}", PersonCredit(tv, title, original, year))
+        }
+        return out.values.toList()
+    }
+
     fun details(json: String): TmdbDetails? {
         val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
         val id = o.optInt("id", 0).takeIf { it > 0 } ?: return null

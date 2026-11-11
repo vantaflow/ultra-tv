@@ -9,6 +9,8 @@ const ALLOWED_PATHS = [
   /^search\/(movie|tv|person)$/,
   new RegExp(`^(movie|tv)/${ID}$`),
   new RegExp(`^(movie|tv)/${ID}/(images|videos|credits)$`),
+  // « Parce que vous avez regardé » : titres recommandés / proches d'un film ou d'une série (première page).
+  new RegExp(`^(movie|tv)/${ID}/(recommendations|similar)$`),
   // Pages acteurs / réalisateurs : filmographie, rapprochée ensuite de la playlist par l'application.
   new RegExp(`^person/${ID}/combined_credits$`),
   // Fiche d'une personne (photo, naissance, biographie) pour l'en-tête de ces pages.

@@ -43,6 +43,7 @@ class CatalogRepository @Inject constructor(
     private val epgDao: EpgDao,
     private val vodInfoDao: VodInfoDao,
     private val genreDao: com.ultratv.tv.nativeapp.data.db.GenreDao,
+    private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val xtream: XtreamClient,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
@@ -56,15 +57,46 @@ class CatalogRepository @Inject constructor(
     fun topRatedMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTopRated(pid, limit)
     fun topRatedSeries(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeTopRated(pid, limit)
 
+    /** Image paysage TMDB déjà connue (cache de l'enrichissement), sans requête réseau. */
+    suspend fun cachedTmdbBackdrop(m: MovieEntity): String? = tmdb.cachedBackdrop(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, m.providerId, m.remoteId)
+
+    /** Image paysage TMDB (résolue au besoin, une requête) ; null sans Worker ou titre inconnu. */
+    suspend fun resolveTmdbBackdrop(m: MovieEntity): String? = tmdb.backdropFor(m)
+
     /**
      * Films proches d'un film regardé, classés par ressemblance ([SimilarMovies.rank]) : genres en commun (tous, pas
      * seulement le premier), même réalisateur, acteurs en commun, époque proche. Plus de repli sur la catégorie du
      * fournisseur (« FR | Films 2024 » n'a aucun rapport de thème) : sans assez de films proches, la rangée se masque.
+     * Les recommandations TMDB présentes au catalogue (titre normalisé + année ±1) passent en premier, dans l'ordre de TMDB ;
+     * le classement local complète, ou répond seul hors ligne / sans TMDB.
      * null si le film n'est plus au catalogue. Titre du film de départ en premier.
      */
     suspend fun similarMovies(pid: Long, remoteId: String, limit: Int): Pair<String, List<MovieEntity>>? {
         val seed = movieDao.byRemoteId(pid, remoteId) ?: return null
         val info = vodInfoDao.get(pid, remoteId)
+        // D'abord les recommandations TMDB présentes au catalogue (les films des sources Xtream n'ont presque jamais de genre
+        // dans la liste), puis le classement local. Hors ligne / appareil non appairé / film inconnu de TMDB : local seul.
+        val fromTmdb = tmdbRelated(pid, seed, info?.tmdbId, limit)
+        if (fromTmdb.size >= limit) return seed.title to fromTmdb
+        val local = localSimilar(pid, seed, info, limit)
+        return seed.title to RelatedMovies.complete(fromTmdb, local, limit) { it.id }
+    }
+
+    /** Films du catalogue recommandés par TMDB pour [seed], dans l'ordre de TMDB ; vide si TMDB ne répond pas. */
+    private suspend fun tmdbRelated(pid: Long, seed: MovieEntity, sourceTmdbId: String?, limit: Int): List<MovieEntity> = try {
+        val credits = tmdb.relatedMovies(seed, sourceTmdbId)
+        if (credits.isEmpty()) emptyList()
+        else RelatedMovies.match(credits, seed.id, seed.title, limit, { it.id }, { it.title }, { it.year }, accept = { !it.poster.isNullOrBlank() }) { q ->
+            FtsQuery.of(q)?.let { movieDao.searchFts(pid, it, 12) }.orEmpty()
+        }
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    private suspend fun localSimilar(pid: Long, seed: MovieEntity, info: VodInfoEntity?, limit: Int): List<MovieEntity> {
+        val remoteId = seed.remoteId
         val seedFacts = SimilarMovies.Facts(
             genres = SimilarMovies.genres(seed.genre ?: info?.genre),
             people = SimilarMovies.people(seed.cast ?: info?.cast, max = 4),
@@ -73,7 +105,7 @@ class CatalogRepository @Inject constructor(
         )
         // Genres automatiques (title_genre) : utilisés quand le film de départ n'a pas de genre texte, ou pour compléter la liste.
         val seedCodes = genreDao.genresOf(pid, "MOVIE", listOf(remoteId)).map { it.genre }.toSet()
-        if (seedFacts.genres.isEmpty() && seedFacts.people.isEmpty() && seedFacts.director == null && seedCodes.isEmpty()) return seed.title to emptyList()
+        if (seedFacts.genres.isEmpty() && seedFacts.people.isEmpty() && seedFacts.director == null && seedCodes.isEmpty()) return emptyList()
         // Candidats : chaque genre du film (pas seulement le premier), puis réalisateur et acteurs principaux.
         val pool = buildList {
             // Requêtes avec le genre tel qu'écrit dans la base (LIKE), la comparaison se fait ensuite sur la forme normalisée.
@@ -83,7 +115,7 @@ class CatalogRepository @Inject constructor(
         val ranked = SimilarMovies.rank(seed.title, seedFacts, pool.map { m ->
             m to SimilarMovies.Facts(SimilarMovies.genres(m.genre), SimilarMovies.people(m.cast, max = 6), null, m.year)
         }, limit) { it.title }
-        if (ranked.size >= limit || seedCodes.isEmpty()) return seed.title to ranked
+        if (ranked.size >= limit || seedCodes.isEmpty()) return ranked
         // Complément par genres automatiques : candidats sans genre texte (ou genre texte différent), comparés par code.
         val codePool = seedCodes.take(3).flatMap { g -> movieDao.byAutoGenre(pid, g, seed.id, SIMILAR_POOL) }
             .distinctBy { it.id }.filter { !it.poster.isNullOrBlank() && ranked.none { r -> r.id == it.id } }
@@ -93,7 +125,7 @@ class CatalogRepository @Inject constructor(
         val extra = SimilarMovies.rank(seed.title, seedByCode, codePool.map { m ->
             m to SimilarMovies.Facts(codesById[m.remoteId].orEmpty().toSet(), SimilarMovies.people(m.cast, max = 6), null, m.year)
         }, limit - ranked.size) { it.title }
-        return seed.title to (ranked + extra)
+        return ranked + extra
     }
     fun firstChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeFirstClean(pid, limit)
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
