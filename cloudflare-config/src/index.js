@@ -41,7 +41,7 @@ import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } f
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie } from "./i18n/envoyer.js";
-import { envoyerPage,loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
+import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
 
 export { Guard };
 
@@ -188,7 +188,8 @@ async function route(req, env, ctx) {
   if (path === "/assets/jsqr.js" && m === "GET") return new Response(JSQR_SOURCE, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 
   // ---- pages publiques ----
-  { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux)$/); if (dm && m === "GET") return downloadRedirect(dm[1]); }
+  { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux)$/); if (dm && (m === "GET" || m === "HEAD")) return downloadRedirect(dm[1]); }
+  if ((path === "/apk" || path === "/download") && (m === "GET" || m === "HEAD")) return apkPage(nonce());
   if (path === "/envoyer" && m === "GET") {
     // Langue : paramètre `l`, puis cookie de préférence, puis Accept-Language, sinon anglais.
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
