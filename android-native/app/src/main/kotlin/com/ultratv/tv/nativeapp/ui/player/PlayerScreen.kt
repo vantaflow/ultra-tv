@@ -772,6 +772,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(Unit) { rootFocus.requestFocus() }
     val pauseFocus = remember { FocusRequester() }
     LaunchedEffect(overlayVisible) { if (overlayVisible && panel == Panel.None) runCatching { pauseFocus.requestFocus() } }
+    // Commandes du direct engagées depuis le bandeau : la barre apparaît à la composition suivante ; on attend qu'elle soit
+    // affichée (quelques images, la demande échoue tant que le bouton n'est pas attaché) avant d'y poser le focus.
+    LaunchedEffect(controlsEngaged) {
+        if (!controlsEngaged || panel != Panel.None) return@LaunchedEffect
+        repeat(10) {
+            androidx.compose.runtime.withFrameNanos { }
+            if (runCatching { pauseFocus.requestFocus() }.isSuccess) return@LaunchedEffect
+        }
+    }
 
     Box(
         Modifier.fillMaxSize().background(Color.Black).focusRequester(rootFocus).androidx_focusable()
@@ -784,6 +793,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 if (ev.key == Key.Back || ev.key == Key.Escape) return@onPreviewKeyEvent false
                 // Fenêtre de code ou fiche programme ouverte : elles gèrent leurs propres touches.
                 if (pinPending != null || infoOpen) return@onPreviewKeyEvent false
+                // Panneau d'erreur affiché : ses boutons (Réessayer, Chaîne suivante, Fermer) reçoivent les touches. Avant, le
+                // direct les interceptait (Bas zappait, Gauche/Droite « engageaient » des commandes masquées, OK ouvrait la liste) :
+                // aucun bouton n'était sélectionnable à la télécommande.
+                if (state.phase == Phase.ERROR && panel == Panel.None && !drawerOpen) return@onPreviewKeyEvent false
                 // Touches média de la télécommande.
                 when (ev.key) {
                     Key.MediaPlayPause, Key.MediaPlay, Key.MediaPause -> {
@@ -843,7 +856,9 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                             }
                             ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight || ev.key == Key.Menu || ev.key == Key.Info -> {
                                 if (tsActive && hidden && (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight)) { tsJump(if (ev.key == Key.DirectionLeft) -30 else 30); touch(); return@onPreviewKeyEvent true }
-                                touch(); controlsEngaged = true; runCatching { pauseFocus.requestFocus() }; return@onPreviewKeyEvent true
+                                // Le focus est posé APRÈS la composition de la barre (voir LaunchedEffect(controlsEngaged)) : demandé ici,
+                                // la barre n'existait pas encore (bandeau seul), la demande échouait et aucune option n'était sélectionnable.
+                                touch(); controlsEngaged = true; return@onPreviewKeyEvent true
                             }
                             else -> { touch(); return@onPreviewKeyEvent true }
                         }
