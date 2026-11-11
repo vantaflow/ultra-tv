@@ -36,8 +36,8 @@ class DefaultStreamUrlResolver @Inject constructor(
 ) : StreamUrlResolver {
     override suspend fun resolve(url: String): String {
         val link = StalkerLink.parse(url) ?: return url
-        val p = providers.byId(link.providerId) ?: return url
-        if (p.kind != "STALKER") return url
+        // Source supprimée ou autre type : jamais l'adresse stalker:// elle-même (le lecteur ne sait pas l'ouvrir).
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
         return stalker.createLink(p, link.type, link.cmd, link.series, link.chId)
     }
 
@@ -49,7 +49,7 @@ class DefaultStreamUrlResolver @Inject constructor(
 
     override suspend fun open(url: String): StreamOpen {
         val link = StalkerLink.parse(url) ?: return StreamOpen(url)
-        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: return StreamOpen(url)
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
         val play = stalker.openLink(p, link.type, link.cmd, link.series, link.chId)
         return StreamOpen(play.url, play.headers, play.userAgent, stalker = true)
     }
@@ -68,8 +68,8 @@ interface StreamUrlEntryPoint {
 }
 
 /**
- * Accès en UN appel depuis un écran Compose (lecteur) sans changer son ViewModel. Ne lève jamais : en cas d'échec
- * l'adresse d'origine est rendue (le lecteur affiche alors son erreur habituelle et propose « Réessayer »).
+ * Accès en UN appel depuis un écran Compose (lecteur) sans changer son ViewModel. [open] LÈVE en cas d'échec : une adresse
+ * `stalker://` n'est JAMAIS rendue telle quelle (le lecteur ne sait pas l'ouvrir et afficherait « problème réseau »).
  */
 object StreamUrls {
     /** Présence d'un boîtier MAG (watchdog) ; ne lève jamais (hors annulation). */
@@ -86,12 +86,6 @@ object StreamUrls {
         return EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().open(url)
     }
 
-    suspend fun resolve(context: android.content.Context, url: String): String {
-        if (!StalkerLink.isStalker(url)) return url
-        return runCatching {
-            EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().resolve(url)
-        }.onFailure { if (it is kotlinx.coroutines.CancellationException) throw it }.getOrDefault(url)
-    }
 }
 
 /** En-têtes et User-Agent d'un flux ouvert, appliqués à une requête OkHttp (téléchargement, enregistrement, relais de différé). */

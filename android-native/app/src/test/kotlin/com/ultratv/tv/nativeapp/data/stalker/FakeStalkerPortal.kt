@@ -35,6 +35,13 @@ class FakeStalkerPortal(val mac: String = "00:1A:79:AB:CD:EF") {
     @Volatile var forbidNextLive = 0
     /** Nombre d'ouvertures de live.php à refuser en 503 (panne passagère du serveur de flux). */
     @Volatile var failLive5xx = 0
+    /** Variantes de réponse create_link (itv) : [onceModes] d'abord (une par demande), puis [itvMode] pour toutes les suivantes. */
+    enum class LinkMode { OK, DISCONNECT, HTTP_500, EMPTY_BODY, JS_EMPTY_ARRAY, JSON_NO_CMD, BLANK_CMD, NOT_URL, PREFIX_FFRT, PREFIX_AUTO, EMPTY_STREAM }
+    @Volatile var itvMode = LinkMode.OK
+    val onceModes = java.util.concurrent.ConcurrentLinkedQueue<LinkMode>()
+    /** Jetons plus anciens que celui-ci : « Authorization failed. » (jeton expiré, nouvelle poignée de main exigée). */
+    @Volatile var minValidToken = 0
+    val createLinkRequests = CopyOnWriteArrayList<RecordedRequest>()
     @Volatile var setPlayedStatus = 200
     val setPlayedIds = CopyOnWriteArrayList<String>()
     val setPlayedRequests = CopyOnWriteArrayList<RecordedRequest>()
@@ -81,16 +88,32 @@ class FakeStalkerPortal(val mac: String = "00:1A:79:AB:CD:EF") {
         }
         if (key == "stb/handshake") return json("""{"js":{"token":"TOKEN${handshakes.incrementAndGet()}","random":"x"}}""")
         if (r.getHeader("Authorization").isNullOrEmpty()) return json("Authorization failed.")
+        val n = r.getHeader("Authorization")!!.removePrefix("Bearer TOKEN").toIntOrNull() ?: 0
+        if (n < minValidToken) return json("Authorization failed.")
         return when (key) {
             "itv/set_played" -> if (setPlayedStatus != 200) MockResponse().setResponseCode(setPlayedStatus) else { setPlayedIds += u.queryParameter("itv_id").orEmpty(); setPlayedRequests += r; json("""{"js":true}""") }
             "stb/get_profile" -> json("""{"js":{"id":"1","status":0}}""")
             "itv/create_link" -> {
-                createLinks.incrementAndGet()
+                createLinks.incrementAndGet(); createLinkRequests += r
                 val id = Regex("""/ch/(\d+)""").find(u.queryParameter("cmd").orEmpty())?.groupValues?.get(1) ?: "0"
-                val empty = emptyStreamResponses > 0
-                if (empty) emptyStreamResponses--
+                var mode = onceModes.poll() ?: itvMode
+                if (emptyStreamResponses > 0 && mode == LinkMode.OK) { emptyStreamResponses--; mode = LinkMode.EMPTY_STREAM }
+                val live = server.url("/play/live.php")
                 val token = "PT${tokenSeq.incrementAndGet()}"
-                json("""{"js":{"id":"$id","cmd":"ffmpeg ${server.url("/play/live.php")}?mac=x&stream=${if (empty) "" else id}&extension=ts&play_token=$token"}}""")
+                fun link(prefix: String, stream: String) = """{"js":{"id":"$id","cmd":"$prefix$live?mac=x&stream=$stream&extension=ts&play_token=$token"}}"""
+                when (mode) {
+                    LinkMode.OK -> json(link("ffmpeg ", id))
+                    LinkMode.EMPTY_STREAM -> json(link("ffmpeg ", ""))
+                    LinkMode.PREFIX_FFRT -> json(link("ffrt ", id))
+                    LinkMode.PREFIX_AUTO -> json(link("auto ", id))
+                    LinkMode.DISCONNECT -> MockResponse().setSocketPolicy(okhttp3.mockwebserver.SocketPolicy.DISCONNECT_AT_START)
+                    LinkMode.HTTP_500 -> MockResponse().setResponseCode(500)
+                    LinkMode.EMPTY_BODY -> json("")
+                    LinkMode.JS_EMPTY_ARRAY -> json("""{"js":[]}""")
+                    LinkMode.JSON_NO_CMD -> json("""{"js":{"id":"$id"}}""")
+                    LinkMode.BLANK_CMD -> json("""{"js":{"id":"$id","cmd":" "}}""")
+                    LinkMode.NOT_URL -> json("""{"js":{"id":"$id","cmd":"Chaine $id"}}""")
+                }
             }
             "vod/create_link" -> { createLinks.incrementAndGet(); json("""{"js":{"cmd":"auto ${server.url("/vod/abc.mkv")}"}}""") }
             else -> json("""{"js":[]}""")

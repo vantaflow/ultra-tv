@@ -1160,6 +1160,7 @@ private fun LoadingVisual(logo: String?, name: String) {
 internal fun ErrorPanel(kind: PlayErrorKind, canNext: Boolean, D: DesignStrings, onRetry: () -> Unit, onNext: () -> Unit, onClose: () -> Unit) {
     val (title, hint) = when (kind) {
         PlayErrorKind.REFUSED -> D.errRefused to D.errRefusedHint
+        PlayErrorKind.NO_LINK -> D.errNoLink to D.errNoLinkHint
         PlayErrorKind.PORTAL_REFUSED -> D.errPortalRefused to D.errPortalRefusedHint
         PlayErrorKind.NETWORK -> D.errNetwork to null
         PlayErrorKind.FORMAT, PlayErrorKind.DECODER, PlayErrorKind.NO_PICTURE -> D.errFormat to null

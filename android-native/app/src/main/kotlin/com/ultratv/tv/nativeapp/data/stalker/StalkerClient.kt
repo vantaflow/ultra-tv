@@ -25,6 +25,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
+ * Le portail n'a pas donné de lien exploitable pour la chaîne. [reason] (jamais de contenu de réponse) :
+ * `empty_response` (corps vide, `js` vide ou faux), `no_cmd` (JSON sans `cmd`), `blank_cmd`, `not_url` (`cmd` qui n'est pas une
+ * adresse), `provider_missing` (source supprimée), `unresolved` (adresse restée `stalker://`).
+ */
+class StalkerLinkException(val reason: String) : java.io.IOException("Stalker: no link ($reason)")
+
+/**
  * Point d'entrée de l'API retenu pour chaque portail (sondé à l'ajout, puis réutilisé) : `…/portal.php` ou
  * `…/server/load.php`. Clé = adresse du portail telle que saisie ; aucune donnée secrète.
  */
@@ -186,11 +193,11 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     }
 
     /** Appel authentifié → racine `js` ; une seule nouvelle poignée de main si le portail refuse le jeton. */
-    internal suspend fun call(a: Account, params: List<Pair<String, String>>): Any? {
+    internal suspend fun call(a: Account, params: List<Pair<String, String>>, blankIsEmpty: Boolean = false): Any? {
         repeat(2) { attempt ->
             val s = session(a)
             val body = try { raw(a, s, params) } catch (e: HttpStatusException) { if (e.isAuth() && attempt == 0) { invalidate(a, s); return@repeat } else throw e }
-            if (refused(body)) { if (attempt == 0) { invalidate(a, s); return@repeat } else throw denied() }
+            if (refused(body)) { if (attempt == 0) { invalidate(a, s); return@repeat } else throw (if (blankIsEmpty && body.isBlank()) StalkerLinkException("empty_response") else denied()) }
             val root = StalkerJson.parse(body)
             if (root is Map<*, *> && root.containsKey("js")) return root["js"]
             if (attempt == 0) invalidate(a, s) else throw denied()
@@ -336,20 +343,25 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
     suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String {
         val params = buildList {
             add("type" to (if (type == "vod") "vod" else "itv")); add("action" to "create_link"); add("cmd" to cmd)
-            add("series" to (series?.toString() ?: "")); add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
+            if (type == "vod") add("series" to (series?.toString() ?: ""))   // pas de `series` pour une chaîne
+            add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
         }
         val a = accountOf(p)
         // Deux demandes au plus : un `stream=` vide sans identifiant de chaîne connu est redemandé une fois.
         repeat(2) { attempt ->
-            val js = runCatching { call(a, params) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
-            val link = (js as? JMap)?.s("cmd")?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() } ?: return StalkerLink.directUrlOf(cmd) ?: throw java.io.IOException("Stalker: empty link")
+            val js = runCatching { call(a, params, blankIsEmpty = true) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
+            val rawCmd = (js as? JMap)?.s("cmd")
+            val link = rawCmd?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() } ?: return StalkerLink.directUrlOf(cmd) ?: throw StalkerLinkException(
+                if (js == null || js == false || (js is List<*> && js.isEmpty()) || (js is Map<*, *> && js.isEmpty())) "empty_response" else if (rawCmd == null) "no_cmd" else "blank_cmd")
+            // Une réponse qui n'est pas une adresse (nom de chaîne, chemin relatif) ne se lit pas : jamais passée au lecteur.
+            if (!link.contains("://")) throw StalkerLinkException("not_url")
             if (type == "vod" || !StalkerLink.hasEmptyStream(link)) return link
             // Réponse incomplète (`stream=` vide, bug courant pour itv) : identifiant de la chaîne mémorisé, de la commande, ou de la réponse.
             val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd) ?: (js as? JMap)?.s("id")?.takeIf { it.isNotBlank() }
             if (id != null) return StalkerLink.fillEmptyStream(link, id)
             if (attempt == 1) return link
         }
-        throw java.io.IOException("Stalker: empty link")
+        throw StalkerLinkException("empty_response")
     }
 
     /** Lien jouable + en-têtes que le lecteur doit envoyer avec (mêmes que le client : un portail refuse le flux sinon). */

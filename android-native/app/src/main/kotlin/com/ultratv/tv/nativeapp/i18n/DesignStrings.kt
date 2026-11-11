@@ -286,6 +286,8 @@ class DesignStrings(val lang: AppLang) {
     val pPlayer get() = t("Player", "Lecteur", "Reproductor", "المشغل")
     val errNoResponse get() = t("This channel is not responding", "Cette chaîne ne répond pas", "Este canal no responde", "هذه القناة لا تستجيب")
     val errRefused get() = t("The provider refused the connection", "Le fournisseur a refusé la connexion", "El proveedor rechazó la conexión", "رفض المزود الاتصال")
+    val errNoLink get() = t("The portal did not provide the channel link", "Le portail n'a pas fourni le lien de la chaîne", "El portal no proporcionó el enlace del canal", "لم توفر البوابة رابط القناة")
+    val errNoLinkHint get() = t("Try another channel, or check the source in Settings.", "Essayez une autre chaîne, ou vérifiez la source dans les Réglages.", "Prueba otro canal o revisa la fuente en Ajustes.", "جرّب قناة أخرى أو تحقق من المصدر في الإعدادات.")
     val errPortalRefused get() = t("The portal refuses playback", "Le portail refuse la lecture", "El portal rechaza la reproducción", "يرفض البوابة التشغيل")
     val errPortalRefusedHint get() = t("This MAC address may be in use on another device.", "La MAC est peut-être utilisée sur un autre appareil.", "Puede que la MAC se esté usando en otro dispositivo.", "ربما يُستخدم عنوان MAC هذا على جهاز آخر.")
     val errRefusedHint get() = t("Another device or stream may already be using your single connection.", "Un autre appareil ou flux utilise peut-être déjà votre connexion unique.", "Otro dispositivo o flujo puede estar usando tu única conexión.", "ربما يستخدم جهاز أو بث آخر اتصالك الوحيد.")

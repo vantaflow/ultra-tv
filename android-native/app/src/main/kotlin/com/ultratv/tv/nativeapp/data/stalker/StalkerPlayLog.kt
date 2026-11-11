@@ -15,7 +15,7 @@ object StalkerPlayLog {
 
     /** Échec de create_link (ou de la session) avant l'ouverture du flux. */
     fun openFailed(t: Throwable): String =
-        LogSanitizer.sanitize("stalker live open failed step=create_link http=${httpOf(t) ?: "-"} type=${t::class.java.simpleName}")
+        LogSanitizer.sanitize("stalker live open failed step=create_link http=${httpOf(t) ?: "-"} type=${t::class.java.simpleName}" + ((t as? StalkerLinkException)?.let { " reason=${it.reason}" } ?: ""))
 
     /** `itv/set_played` en échec (ignoré par la lecture). */
     fun setPlayedFailed(t: Throwable): String =

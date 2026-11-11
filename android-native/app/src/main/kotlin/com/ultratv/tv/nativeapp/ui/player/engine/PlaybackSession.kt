@@ -207,11 +207,20 @@ class PlaybackSession(
      */
     private suspend fun openNow(reconnecting: Boolean = false): StreamOpen? {
         if (!isStalkerUrl) return StreamOpen(url)
-        return try { opener(url) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+        return try {
+            // Jamais d'adresse stalker:// au moteur (il ne sait pas l'ouvrir → « problème réseau ») : un opener qui la rend telle quelle est un échec.
+            opener(url).also { if (StalkerLink.isStalker(it.url)) throw com.ultratv.tv.nativeapp.data.stalker.StalkerLinkException("unresolved") }
+        } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
             android.util.Log.i("UltraPlay", StalkerPlayLog.openFailed(t))
             com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.openFailed(t))
             if (reconnecting) reconnectJob = null   // sinon onError → reconnectLive croit la reconnexion en cours et ne fait rien
-            onError(if (StalkerPlayLog.isPortalRefusal(StalkerPlayLog.httpOf(t))) PlayErrorKind.REFUSED else PlayErrorKind.NETWORK, StalkerPlayLog.httpOf(t), logged = true)
+            onError(
+                when {
+                    t is com.ultratv.tv.nativeapp.data.stalker.StalkerLinkException -> PlayErrorKind.NO_LINK   // pas de nouvel essai : le portail n'a rien donné
+                    StalkerPlayLog.isPortalRefusal(StalkerPlayLog.httpOf(t)) -> PlayErrorKind.REFUSED
+                    else -> PlayErrorKind.NETWORK
+                }, StalkerPlayLog.httpOf(t), logged = true,
+            )
             null
         }
     }

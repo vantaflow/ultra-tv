@@ -50,6 +50,7 @@ class StalkerLiveFakePortalTest {
     /** Moteur de test : ouvre l'adresse en HTTP avec config.userAgent + config.headers ; 2xx → image, sinon erreur classée. */
     private inner class HttpEngine(override val kind: EngineKind, override val config: EngineConfig) : PlayerEngine {
         val codes = mutableListOf<Int>()
+        val urls = mutableListOf<String>()
         var token: String = ""
         var cutSent = false
         val bus = MutableSharedFlow<EngineEvent>(replay = 16, extraBufferCapacity = 16)
@@ -57,6 +58,7 @@ class StalkerLiveFakePortalTest {
         override val events = bus
         override val reusable: Boolean get() = true
         override fun load(url: String, startPositionMs: Long) {
+            urls += url
             val req = Request.Builder().url(url).header("User-Agent", config.userAgent).apply { config.headers.forEach { (k, v) -> header(k, v) } }.build()
             val code = http.newCall(req).execute().use { it.code }
             codes += code; token = req.url.queryParameter("play_token").orEmpty(); cutSent = false
@@ -101,7 +103,10 @@ class StalkerLiveFakePortalTest {
     }
 
     @Before fun up() { portal.clock = { vnow.get() }; portal.start(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true }
-    @After fun down() { portal.shutdown(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false; scope.cancel() }
+    @After fun down() {
+        // Quel que soit le scénario : jamais d'adresse stalker:// donnée à un moteur.
+        assertTrue("adresse stalker:// passée au moteur", created.flatMap { it.urls }.none { it.startsWith("stalker://") })
+         portal.shutdown(); com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false; scope.cancel() }
 
     private fun provider() = ProviderEntity(id = 5, name = "P", kind = "STALKER", baseUrl = portal.portalUrl().trimEnd('/'), username = portal.mac, password = "")
     private val client by lazy { StalkerClient(OkHttpClient(), StalkerEndpointStore.inMemory()) }
@@ -363,6 +368,93 @@ class StalkerLiveFakePortalTest {
         assertTrue(http.withStreamHeaders(StreamOpen("http://h/x.ts")) === http)
     }
 
+    // ─── create_link itv : une variante de réponse par test ───
+
+    private fun errorAfter(s: PlaybackSession, ms: Long = 3_000): PlayErrorKind? {
+        settle("erreur") { scope.advanceTimeBy(250); scope.runCurrent(); s.state.value.phase == Phase.ERROR }
+        return s.state.value.error
+    }
+
+    @Test fun lien_succes_directDemarre() {
+        val s = session(); s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        val q = portal.createLinkRequests.single().requestUrl!!
+        assertEquals("itv", q.queryParameter("type")); assertEquals("create_link", q.queryParameter("action")); assertEquals("1-xml", q.queryParameter("JsHttpRequest"))
+        assertEquals("ffmpeg http://localhost/ch/1234_", q.queryParameter("cmd"))   // cmd tel que reçu
+        assertFalse(q.queryParameterNames.contains("series"))                          // pas de `series` pour une chaîne
+    }
+
+    @Test fun lien_prefixeFfrt_retire() {
+        portal.itvMode = FakeStalkerPortal.LinkMode.PREFIX_FFRT
+        val s = session(); s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        assertEquals(listOf(200), portal.liveStatuses)
+    }
+
+    @Test fun lien_prefixeAuto_retire() {
+        portal.itvMode = FakeStalkerPortal.LinkMode.PREFIX_AUTO
+        val s = session(); s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        assertEquals(listOf(200), portal.liveStatuses)
+    }
+
+    @Test fun lien_streamVide_complete() {
+        portal.itvMode = FakeStalkerPortal.LinkMode.EMPTY_STREAM
+        val s = session(); s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        assertEquals("1234", portal.liveRequests.single().requestUrl!!.queryParameter("stream"))
+    }
+
+    @Test fun lien_jetonExpire_nouvellePoigneeDeMain_puisLecture() {
+        portal.minValidToken = 2   // le jeton de la 1re poignée de main est déjà périmé
+        val s = session(); s.start(chUrl, "5:1234"); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        assertEquals(2, portal.handshakes.get())
+        assertEquals(listOf(200), portal.liveStatuses)
+        assertTrue(portal.liveRequests.single().getHeader("Authorization")!!.endsWith("TOKEN2"))
+    }
+
+    @Test fun lien_coupureReseauPassagere_unNouvelEssaiSuffit() {
+        portal.onceModes += FakeStalkerPortal.LinkMode.DISCONNECT
+        val s = session(); s.start(chUrl, "5:1234"); settle("1re demande") { portal.createLinks.get() == 1 }
+        scope.advanceTimeBy(2_000); settle("lecture") { s.state.value.phase == Phase.PLAYING }
+        assertEquals(2, portal.createLinks.get()); assertEquals(listOf(200), portal.liveStatuses)
+    }
+
+    @Test fun lien_http500_persistant_erreurReseau_moteurJamaisOuvert() {
+        portal.itvMode = FakeStalkerPortal.LinkMode.HTTP_500
+        val s = session(); s.start(chUrl, "5:1234")
+        assertEquals(PlayErrorKind.NETWORK, errorAfter(s))
+        assertTrue(created.isEmpty()); assertEquals(2, portal.createLinks.get())   // un seul nouvel essai, pas de boucle
+    }
+
+    private fun assertNoLink(mode: FakeStalkerPortal.LinkMode) {
+        portal.itvMode = mode
+        val s = session(); s.start(chUrl, "5:1234")
+        assertEquals(PlayErrorKind.NO_LINK, errorAfter(s))
+        assertTrue("le moteur ne doit jamais être créé", created.isEmpty())
+        val n = portal.createLinks.get()
+        assertTrue("au plus 2 demandes (nouvelle poignée de main sur réponse vide), vu $n", n <= 2)
+        scope.advanceTimeBy(30_000); scope.runCurrent()
+        assertEquals("aucun nouvel essai en boucle", n, portal.createLinks.get())
+    }
+
+    @Test fun lien_reponseVide_erreurDediee() = assertNoLink(FakeStalkerPortal.LinkMode.EMPTY_BODY)
+    @Test fun lien_jsVide_erreurDediee() = assertNoLink(FakeStalkerPortal.LinkMode.JS_EMPTY_ARRAY)
+    @Test fun lien_jsonSansCmd_erreurDediee() = assertNoLink(FakeStalkerPortal.LinkMode.JSON_NO_CMD)
+    @Test fun lien_cmdBlanc_erreurDediee() = assertNoLink(FakeStalkerPortal.LinkMode.BLANK_CMD)
+    @Test fun lien_cmdQuiNEstPasUneAdresse_erreurDediee() = assertNoLink(FakeStalkerPortal.LinkMode.NOT_URL)
+
+    @Test fun lien_sourceSupprimee_erreurDediee_etResolveurNeRendJamaisStalker() {
+        val gone = DefaultStreamUrlResolver(PortalDao.empty(), client)
+        try { runBlocking { gone.open(chUrl) }; fail("doit échouer") } catch (e: StalkerLinkException) { assertEquals("provider_missing", e.reason) }
+        try { runBlocking { gone.resolve(chUrl) }; fail("doit échouer") } catch (e: StalkerLinkException) { assertEquals("provider_missing", e.reason) }
+        // Un opener fautif qui rendrait l'adresse telle quelle est lui aussi refusé par la session.
+        val s = session(opener = { StreamOpen(it) }); s.start(chUrl, "5:1234")
+        assertEquals(PlayErrorKind.NO_LINK, errorAfter(s))
+        assertTrue(created.isEmpty())
+    }
+
+    @Test fun journal_causeNettoyee_typeCodeEtRaison() {
+        val l = StalkerPlayLog.openFailed(StalkerLinkException("no_cmd"))
+        assertEquals("stalker live open failed step=create_link http=- type=StalkerLinkException reason=no_cmd", l)
+    }
+
     @Test fun journaux_codeHttpEtTypeSeulement_sansMacNiHote() {
         val line = StalkerPlayLog.openFailed(java.io.IOException("http://203.0.113.9:8080/c/ mac=00:1A:79:AB:CD:EF"))
         assertTrue(line, line.contains("type=IOException"))
@@ -376,6 +468,14 @@ class StalkerLiveFakePortalTest {
 
 /** ProviderDao minimal pour le résolveur (aucune base). */
 private object PortalDao {
+    fun empty(): com.ultratv.tv.nativeapp.data.db.ProviderDao {
+        val raw = java.lang.reflect.Proxy.newProxyInstance(
+            com.ultratv.tv.nativeapp.data.db.ProviderRawDao::class.java.classLoader,
+            arrayOf(com.ultratv.tv.nativeapp.data.db.ProviderRawDao::class.java),
+        ) { _, _, _ -> null } as com.ultratv.tv.nativeapp.data.db.ProviderRawDao
+        return com.ultratv.tv.nativeapp.data.db.ProviderDao(raw)
+    }
+
     fun of(p: ProviderEntity): com.ultratv.tv.nativeapp.data.db.ProviderDao {
         val raw = java.lang.reflect.Proxy.newProxyInstance(
             com.ultratv.tv.nativeapp.data.db.ProviderRawDao::class.java.classLoader,

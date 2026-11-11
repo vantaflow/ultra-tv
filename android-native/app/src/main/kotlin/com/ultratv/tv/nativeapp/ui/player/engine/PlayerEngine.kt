@@ -16,6 +16,7 @@ enum class PlayErrorKind {
     NETWORK,        // réseau coupé, délai dépassé, serveur 5xx
     REFUSED,        // 401 / 403 : identifiants refusés ou connexion unique déjà utilisée
     PORTAL_REFUSED, // portail Stalker : lecture refusée (403 / 458), MAC peut-être utilisée sur un autre appareil
+    NO_LINK,        // portail Stalker : aucun lien de lecture fourni pour la chaîne (create_link vide ou sans cmd)
     NOT_FOUND,      // 404 / 410 : la chaîne n'existe plus
     FORMAT,         // conteneur illisible / non pris en charge
     DECODER,        // décodeur absent ou en échec
