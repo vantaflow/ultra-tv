@@ -31,8 +31,20 @@ jobs:
         target: [win, linux]
     steps:
       - uses: actions/checkout@v7
+      # Le miroir Azure d'Ubuntu ne répond pas toujours (DNS) : 3 essais, puis bascule sur archive.ubuntu.com.
       - name: Toolchain
-        run: sudo apt-get update -q && sudo apt-get install -y -q nasm libssl-dev gcc-mingw-w64-x86-64
+        run: |
+          pkgs="nasm libssl-dev gcc-mingw-w64-x86-64"
+          for i in 1 2 3; do
+            if [ "$i" = 3 ]; then
+              echo "Miroir Azure injoignable : bascule sur archive.ubuntu.com"
+              sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/apt-mirrors.txt 2>/dev/null || true
+              sudo sed -i 's#^URIs: mirror+file:/etc/apt/apt-mirrors.txt#URIs: http://archive.ubuntu.com/ubuntu/#' /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+            fi
+            sudo apt-get update -q -o Acquire::Retries=3 && sudo apt-get install -y -q -o Acquire::Retries=3 $pkgs && exit 0
+            echo "Essai $i échoué"; sleep 20
+          done
+          exit 1
       - name: Build
         working-directory: electron
         run: bash scripts/build-ffmpeg-min.sh ${{ matrix.target }}
