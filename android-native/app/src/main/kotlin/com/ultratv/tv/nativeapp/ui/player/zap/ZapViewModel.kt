@@ -136,7 +136,7 @@ class ZapViewModel @Inject constructor(
             _recent.value = recents.recent.first().mapNotNull { ref ->
                 val c = channelDao.byRemoteId(ref.providerId, ref.remoteId) ?: return@mapNotNull null
                 RecentEntry(c, ZapLogic.numberOf(c), nowTitle(c))
-            }
+            }.distinctBy { it.channel.title.trim().lowercase() }   // même chaîne sous plusieurs identifiants (variantes)
         }
     }
 }

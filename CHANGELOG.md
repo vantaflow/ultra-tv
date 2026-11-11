@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Android TV, OSD du Direct : la rangée « Chaînes récentes » n'affiche plus deux fois la même chaîne (ex. « TF1 1 » en double) ni la chaîne en cours sous une autre variante ; dédoublonnage par identifiant et par nom affiché, plus récente d'abord, 10 au plus.
+
 ### Modifié
 - Worker : la télémétrie (journaux, plantages, relevés anonymes) et la dernière activité des appareils passent de KV à D1 (base `ultratv-telemetry`, binding `DB`), pour rester sous le quota gratuit de 1 000 écritures KV par jour (erreur 10048 qui bloquait l'appairage, l'envoi de sources, la synchro et les annonces). Les comptes, appareils et fournisseurs restent en KV.
 

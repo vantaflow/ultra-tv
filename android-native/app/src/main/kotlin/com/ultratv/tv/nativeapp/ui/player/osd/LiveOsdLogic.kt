@@ -216,7 +216,33 @@ object OsdModel {
         )
     }
 
-    /** Chaînes récentes affichées : sans la chaîne en cours, au plus [LiveOsdLogic.MAX_RECENTS], dans l'ordre de l'historique. */
-    fun recents(all: List<OsdRecent>, currentKey: String?): List<OsdRecent> =
-        all.filter { it.key != currentKey }.take(LiveOsdLogic.MAX_RECENTS)
+    /**
+     * Chaînes récentes affichées : sans la chaîne en cours, au plus [LiveOsdLogic.MAX_RECENTS], la plus récente d'abord.
+     *
+     * Dédoublonnage : par clé (source:identifiant), mais aussi par nom affiché normalisé. Une même chaîne est
+     * souvent servie sous plusieurs identifiants (variantes HD/FHD/backup, autre catégorie, autre source) qui ont
+     * donc des clés différentes mais le même nom nettoyé : sans cela « TF1 1 » apparaissait deux fois, et la chaîne
+     * en cours revenait sous un autre identifiant. On garde la première occurrence (la plus récente).
+     *
+     * @param currentName nom affiché de la chaîne en cours (exclut aussi ses variantes)
+     */
+    fun recents(all: List<OsdRecent>, currentKey: String?, currentName: String? = null): List<OsdRecent> {
+        val seenKeys = HashSet<String>()
+        val seenNames = HashSet<String>()
+        val curName = currentName?.let(::nameKey)?.takeIf { it.isNotEmpty() }
+        val out = ArrayList<OsdRecent>()
+        for (r in all) {
+            if (r.key == currentKey) continue
+            val n = nameKey(r.name)
+            if (curName != null && n == curName) continue
+            if (!seenKeys.add(r.key)) continue
+            // Nom vide : pas d'identité d'affichage fiable, seule la clé compte.
+            if (n.isNotEmpty() && !seenNames.add(n)) continue
+            out += r
+            if (out.size >= LiveOsdLogic.MAX_RECENTS) break
+        }
+        return out
+    }
+
+    private fun nameKey(name: String): String = name.trim().lowercase().replace(Regex("\\s+"), " ")
 }
