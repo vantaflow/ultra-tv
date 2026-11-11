@@ -57,6 +57,11 @@ npm ci
 wrangler kv namespace create CONFIG
 wrangler kv namespace create CONFIG --preview
 
+# 1 bis) Base D1 de télémétrie (journaux, crashs, relevés anonymes, « vu » des appareils : sortis de KV pour rester
+#    sous son quota gratuit de 1 000 écritures/jour). Coller le database_id dans wrangler.toml, puis appliquer la migration.
+wrangler d1 create ultratv-telemetry
+wrangler d1 migrations apply ultratv-telemetry --remote
+
 # 2) Secrets (JAMAIS dans un fichier versionné)
 wrangler secret put SESSION_SECRET     # >= 32 caractères aléatoires : openssl rand -base64 48
 wrangler secret put PROVIDER_ENC_KEY   # clé AES-256 en base64      : openssl rand -base64 32
@@ -98,10 +103,10 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/envoi/send` | code (débit et verrouillage par IP) | Le téléphone envoie la source (Xtream, M3U, Stalker), chiffrée et gardée 15 min au plus |
 | POST | `/api/envoi/poll` | code + secret | La TV récupère la source (une seule fois, puis supprimée) |
 | GET | `/envoyer?c=CODE` | aucune | Page publique d'envoi (sans compte) |
-| POST | `/api/anon/ping` | aucune (débit par IP) | Relevé anonyme d'une installation sans compte (`anon:<empreinte>`, TTL 180 jours) |
+| POST | `/api/anon/ping` | aucune (débit par IP) | Relevé anonyme d'une installation sans compte (table D1 `anon_pings`, conservation 180 jours) |
 | GET | `/api/config` | `Bearer` jeton d'appareil | Fournisseurs déchiffrés pour cet appareil |
 | POST | `/api/device/rotate` | `Bearer` | Nouveau jeton, l'ancien meurt |
-| POST | `/api/event`, `/api/crash` | `Bearer` | Télémétrie nettoyée et bornée |
+| POST | `/api/event`, `/api/crash` | `Bearer` | Télémétrie nettoyée et bornée (table D1 `events` : 7 jours, crashs 30 jours) |
 | GET | `/api/announcements?audience=…&version=…` (tv, mobile ; version de l'appli) | — | Alertes diffusées maintenant (lecture publique, cache 60 s) |
 | POST | `/api/announcements/{id}/stat` `{kind: shown\|dismissed\|action, device}` | — (120/h par IP) | Statistique d'une alerte, comptée une fois par appareil (identifiant d'installation haché) |
 | POST | `/admin/announcements`, `/admin/announcements/{id}/end`, `…/delete` | session admin + CSRF | Programmer, arrêter, supprimer une alerte (ADMIN_LOGINS) |
