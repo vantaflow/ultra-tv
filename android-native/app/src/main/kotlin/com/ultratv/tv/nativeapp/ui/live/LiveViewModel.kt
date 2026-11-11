@@ -278,7 +278,7 @@ class LiveViewModel @Inject constructor(
      * en plein écran sans rechargement. Toute résolution d'adresse ajoutée à [resolveAndPlay] doit aussi passer ici.
      */
     // Portail Stalker : lien de lecture demandé au portail (create_link) au moment de l'aperçu.
-    suspend fun previewStream(c: ChannelEntity): Pair<ChannelEntity, String> { val t = preferredVariant(c); return t to com.ultratv.tv.nativeapp.data.stalker.StreamUrls.resolve(appCtx, t.streamUrl) }
+    suspend fun previewStream(c: ChannelEntity): Pair<ChannelEntity, String> { val t = preferredVariant(c); return t to t.streamUrl }   // stalker:// : résolu par la session à chaque ouverture
 
     fun resolveAndPlay(channel0: ChannelEntity, exact: Boolean = false, onReady: (url: String, title: String) -> Unit) {
         viewModelScope.launch {

@@ -49,7 +49,7 @@ object PlaybackPlanner {
     }
 
     /** 403 / réseau : une seule nouvelle tentative automatique avec la MÊME combinaison, après un court délai. */
-    fun shouldRetrySame(kind: PlayErrorKind) = kind == PlayErrorKind.REFUSED || kind == PlayErrorKind.NETWORK || kind == PlayErrorKind.BEHIND_LIVE
+    fun shouldRetrySame(kind: PlayErrorKind) = kind == PlayErrorKind.REFUSED || kind == PlayErrorKind.PORTAL_REFUSED || kind == PlayErrorKind.NETWORK || kind == PlayErrorKind.BEHIND_LIVE
 
     /**
      * Direct qui JOUAIT puis s'est coupé (serveur Xtream faible qui ferme la session, réseau, flux gelé) : on se
@@ -66,7 +66,7 @@ object PlaybackPlanner {
     fun classifyExo(errorCode: Int, httpStatus: Int?): PlayErrorKind = when {
         errorCode == 1002 -> PlayErrorKind.BEHIND_LIVE                       // ERROR_CODE_BEHIND_LIVE_WINDOW
         errorCode == 2004 -> when (httpStatus) {                             // ERROR_CODE_IO_BAD_HTTP_STATUS
-            401, 403 -> PlayErrorKind.REFUSED
+            401, 403, 458 -> PlayErrorKind.REFUSED
             404, 410 -> PlayErrorKind.NOT_FOUND
             else -> PlayErrorKind.NETWORK
         }

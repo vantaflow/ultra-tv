@@ -67,12 +67,12 @@ object StalkerCreds {
 object StalkerLink {
     const val SCHEME = "stalker://"
 
-    data class Parsed(val providerId: Long, val type: String, val cmd: String, val series: Int?)
+    data class Parsed(val providerId: Long, val type: String, val cmd: String, val series: Int?, val chId: String? = null)
 
     fun isStalker(url: String?): Boolean = url != null && url.startsWith(SCHEME)
 
-    fun build(providerId: Long, type: String, cmd: String, series: Int? = null): String =
-        "$SCHEME$providerId/$type?cmd=${enc(cmd)}" + (series?.let { "&series=$it" } ?: "")
+    fun build(providerId: Long, type: String, cmd: String, series: Int? = null, chId: String? = null): String =
+        "$SCHEME$providerId/$type?cmd=${enc(cmd)}" + (series?.let { "&series=$it" } ?: "") + (chId?.takeIf { it.isNotBlank() }?.let { "&ch=${enc(it)}" } ?: "")
 
     fun parse(url: String): Parsed? {
         if (!isStalker(url)) return null
@@ -87,7 +87,7 @@ object StalkerLink {
             if (i <= 0) null else kv.substring(0, i) to java.net.URLDecoder.decode(kv.substring(i + 1), "UTF-8")
         }.toMap()
         val cmd = params["cmd"] ?: return null
-        return Parsed(pid, type, cmd, params["series"]?.toIntOrNull())
+        return Parsed(pid, type, cmd, params["series"]?.toIntOrNull(), params["ch"]?.takeIf { it.isNotBlank() })
     }
 
     /** Lien renvoyé par le portail (`js.cmd`) : préfixe de lecteur retiré (« ffmpeg http://… », « auto http://… »). */
@@ -98,6 +98,20 @@ object StalkerLink {
         }
         return s
     }
+
+    private val EMPTY_STREAM = Regex("""([?&]stream=)(?=&|#|$)""")
+
+    /** Lien de direct dont le paramètre `stream=` est vide (réponse create_link incomplète, courante pour itv). */
+    fun hasEmptyStream(link: String): Boolean = EMPTY_STREAM.containsMatchIn(link)
+
+    /** Complète un `stream=` vide avec l'identifiant de la chaîne ; lien inchangé s'il est complet ou sans identifiant. */
+    fun fillEmptyStream(link: String, chId: String?): String {
+        val id = chId?.trim()?.takeIf { it.isNotEmpty() } ?: return link
+        return EMPTY_STREAM.replace(link) { it.groupValues[1] + enc(id) }
+    }
+
+    /** Identifiant de chaîne lisible dans une commande (`…/ch/1234_`, `…/ch/1234`) ; null sinon. */
+    fun channelIdOfCmd(cmd: String): String? = Regex("""/ch/(\d+)""").find(cmd)?.groupValues?.get(1)
 
     /** Commande déjà jouable telle quelle (vrai serveur, pas « localhost ») : repli si create_link échoue. */
     fun directUrlOf(cmd: String): String? {

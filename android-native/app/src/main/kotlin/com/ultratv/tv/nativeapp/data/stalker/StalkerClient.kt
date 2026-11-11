@@ -161,7 +161,7 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
         return Request.Builder().url(url)
             .header("User-Agent", StalkerDevice.USER_AGENT)
             .header("X-User-Agent", StalkerDevice.X_USER_AGENT)
-            .header("Cookie", "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC")
+            .header("Cookie", cookie(a))
             .header("Referer", StalkerPortal.referer(a.portal))
             .header("Accept", "*/*")
             .apply { if (token != null) header("Authorization", "Bearer $token") }
@@ -332,15 +332,42 @@ class StalkerClient @Inject constructor(okBase: OkHttpClient, private val endpoi
      * Lien de lecture à durée de vie courte (`create_link`), demandé au moment de jouer. Le préfixe de lecteur
      * (« ffmpeg », « auto ») est retiré. Échec du portail : la commande elle-même si elle est déjà une adresse jouable.
      */
-    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null): String {
+    suspend fun createLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): String {
         val params = buildList {
             add("type" to (if (type == "vod") "vod" else "itv")); add("action" to "create_link"); add("cmd" to cmd)
             add("series" to (series?.toString() ?: "")); add("forced_storage" to "undefined"); add("disable_ad" to "0"); add("download" to "0")
         }
-        val js = runCatching { call(accountOf(p), params) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
-        val link = (js as? JMap)?.s("cmd")?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() }
-        return link ?: StalkerLink.directUrlOf(cmd) ?: throw java.io.IOException("Stalker: empty link")
+        val a = accountOf(p)
+        // Deux demandes au plus : un `stream=` vide sans identifiant de chaîne connu est redemandé une fois.
+        repeat(2) { attempt ->
+            val js = runCatching { call(a, params) }.getOrElse { e -> StalkerLink.directUrlOf(cmd)?.let { return it }; throw e }
+            val link = (js as? JMap)?.s("cmd")?.let(StalkerLink::cleanCmd)?.takeIf { it.isNotBlank() } ?: return StalkerLink.directUrlOf(cmd) ?: throw java.io.IOException("Stalker: empty link")
+            if (type == "vod" || !StalkerLink.hasEmptyStream(link)) return link
+            // Réponse incomplète (`stream=` vide, bug courant pour itv) : identifiant de la chaîne mémorisé, de la commande, ou de la réponse.
+            val id = chId?.takeIf { it.isNotBlank() } ?: StalkerLink.channelIdOfCmd(cmd) ?: (js as? JMap)?.s("id")?.takeIf { it.isNotBlank() }
+            if (id != null) return StalkerLink.fillEmptyStream(link, id)
+            if (attempt == 1) return link
+        }
+        throw java.io.IOException("Stalker: empty link")
     }
+
+    /** Lien jouable + en-têtes que le lecteur doit envoyer avec (mêmes que le client : un portail refuse le flux sinon). */
+    data class Play(val url: String, val headers: Map<String, String>, val userAgent: String)
+
+    /** [createLink], puis les en-têtes de lecture (jeton à jour : la session existe après l'appel). */
+    suspend fun openLink(p: ProviderEntity, type: String, cmd: String, series: Int? = null, chId: String? = null): Play {
+        val url = createLink(p, type, cmd, series, chId)
+        return Play(url, playbackHeaders(accountOf(p)), StalkerDevice.USER_AGENT)
+    }
+
+    /** En-têtes MAG pour un flux : X-User-Agent, Cookie `mac=…`, jeton Bearer s'il y en a un (le User-Agent se règle à part). */
+    fun playbackHeaders(a: Account): Map<String, String> = linkedMapOf<String, String>().apply {
+        put("X-User-Agent", StalkerDevice.X_USER_AGENT)
+        put("Cookie", cookie(a))
+        sessions[a.key]?.token?.takeIf { it.isNotEmpty() }?.let { put("Authorization", "Bearer $it") }
+    }
+
+    private fun cookie(a: Account) = "mac=${enc(a.mac)}; stb_lang=en; timezone=UTC"
 
     /** Programme court d'une chaîne (`itv/get_short_epg`). */
     suspend fun shortEpg(p: ProviderEntity, channelRemoteId: String, channelLocalId: Long): List<EpgEntity> =

@@ -182,7 +182,7 @@ class GuideGridViewModel @Inject constructor(
     val lockedChannels: StateFlow<Set<String>> = lockedStore.locked.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Adresse lisible du flux pour l'aperçu (portail Stalker : lien demandé au portail). */
-    suspend fun previewUrl(c: ChannelEntity): String = com.ultratv.tv.nativeapp.data.stalker.StreamUrls.resolve(appCtx, c.streamUrl)
+    suspend fun previewUrl(c: ChannelEntity): String = c.streamUrl   // stalker:// : résolu par la session à chaque ouverture
 
     fun maxConnections(providerId: Long) = limits.maxConnections(providerId)
     fun replayUrl(channel: ChannelEntity, prog: EpgEntity): String? = replay.urlFor(channel, prog)

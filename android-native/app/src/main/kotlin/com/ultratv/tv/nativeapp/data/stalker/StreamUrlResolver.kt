@@ -17,7 +17,13 @@ import javax.inject.Singleton
  */
 interface StreamUrlResolver {
     suspend fun resolve(url: String): String
+
+    /** Comme [resolve], avec les en-têtes que le lecteur doit envoyer (portail Stalker) ; lève en cas d'échec. */
+    suspend fun open(url: String): StreamOpen = StreamOpen(resolve(url))
 }
+
+/** Flux prêt à ouvrir : adresse, en-têtes de requête et User-Agent imposés (null = celui du lecteur). */
+data class StreamOpen(val url: String, val headers: Map<String, String> = emptyMap(), val userAgent: String? = null, val stalker: Boolean = false)
 
 @Singleton
 class DefaultStreamUrlResolver @Inject constructor(
@@ -28,7 +34,14 @@ class DefaultStreamUrlResolver @Inject constructor(
         val link = StalkerLink.parse(url) ?: return url
         val p = providers.byId(link.providerId) ?: return url
         if (p.kind != "STALKER") return url
-        return stalker.createLink(p, link.type, link.cmd, link.series)
+        return stalker.createLink(p, link.type, link.cmd, link.series, link.chId)
+    }
+
+    override suspend fun open(url: String): StreamOpen {
+        val link = StalkerLink.parse(url) ?: return StreamOpen(url)
+        val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: return StreamOpen(url)
+        val play = stalker.openLink(p, link.type, link.cmd, link.series, link.chId)
+        return StreamOpen(play.url, play.headers, play.userAgent, stalker = true)
     }
 }
 
@@ -49,6 +62,12 @@ interface StreamUrlEntryPoint {
  * l'adresse d'origine est rendue (le lecteur affiche alors son erreur habituelle et propose « Réessayer »).
  */
 object StreamUrls {
+    /** Ouverture d'un flux pour le lecteur : lien frais + en-têtes (Stalker). Lève en cas d'échec — l'appelant journalise et classe. */
+    suspend fun open(context: android.content.Context, url: String): StreamOpen {
+        if (!StalkerLink.isStalker(url)) return StreamOpen(url)
+        return EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().open(url)
+    }
+
     suspend fun resolve(context: android.content.Context, url: String): String {
         if (!StalkerLink.isStalker(url)) return url
         return runCatching {

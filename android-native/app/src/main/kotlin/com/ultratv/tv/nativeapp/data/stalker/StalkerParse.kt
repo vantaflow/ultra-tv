@@ -137,7 +137,7 @@ object StalkerParse {
             name = name,
             logo = StalkerPortal.absolute(portal, o.s("logo")),
             categoryId = o.s("tv_genre_id"),
-            streamUrl = StalkerLink.build(providerId, "itv", cmd),
+            streamUrl = StalkerLink.build(providerId, "itv", cmd, chId = id),
             epgChannelId = o.s("xmltv_id"),
             // Le replay Stalker passe par un autre module (tv_archive) : non proposé plutôt que de mener à une erreur.
             catchupSource = null,

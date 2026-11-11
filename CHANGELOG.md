@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [Non publié]
+
+### Corrigé
+- Source Stalker : les chaînes en direct se lisent comme les films. Le lecteur (ExoPlayer, VLC, aperçu du Direct, aperçu du guide) envoie maintenant le User-Agent MAG, le cookie `mac` et le jeton du portail ; le lien de lecture (à usage unique) est redemandé à chaque ouverture (nouvelle tentative, reconnexion, changement de moteur, aperçu vers plein écran) ; une réponse `create_link` avec `stream=` vide est complétée avec l'identifiant de la chaîne ; un refus du portail (403 / 458) affiche « Le portail refuse la lecture : la MAC est peut-être utilisée sur un autre appareil » (FR/EN/ES/AR) et le code HTTP et le type d'erreur sont journalisés sans MAC ni hôte.
+
 ## [1.2.88] — 2026-11-11 (Android)
 
 ### Corrigé

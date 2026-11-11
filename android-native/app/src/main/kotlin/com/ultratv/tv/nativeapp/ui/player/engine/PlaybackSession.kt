@@ -6,6 +6,9 @@ import androidx.media3.common.util.UnstableApi
 import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
 import com.ultratv.tv.nativeapp.adaptive.PlaybackAdapter
 import com.ultratv.tv.nativeapp.adaptive.ResolvedPlayback
+import com.ultratv.tv.nativeapp.data.stalker.StalkerLink
+import com.ultratv.tv.nativeapp.data.stalker.StalkerPlayLog
+import com.ultratv.tv.nativeapp.data.stalker.StreamOpen
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,6 +57,11 @@ class PlaybackSession(
     private val subtitles: () -> com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings = { com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings() },
     /** Langue de l'interface (ISO 639-1) : langue audio par défaut quand aucune préférence n'est réglée. */
     private val uiLanguage: () -> String = { java.util.Locale.getDefault().language },
+    /**
+     * Adresse stockée → flux prêt à ouvrir. Appelé avant CHAQUE ouverture d'une adresse `stalker://` (démarrage, nouvelle
+     * tentative, reconnexion, changement de moteur) : le lien create_link d'un portail ne sert qu'une fois.
+     */
+    private val opener: suspend (String) -> StreamOpen = { StreamOpen(it) },
     private val engineFactory: (EngineKind, EngineConfig) -> PlayerEngine = { k, c -> if (k == EngineKind.EXO) ExoEngine(ctx, c) else VlcEngine(ctx, c) },
 ) {
     private val _state = MutableStateFlow(SessionState())
@@ -89,6 +97,10 @@ class PlaybackSession(
     private var stableJob: Job? = null
     /** Nouvelle tentative / repli programmés par [onError] : annulés par un zap ou un nouveau moteur (double connexion sinon). */
     private var errorJob: Job? = null
+    /** Demande de lien (adresse `stalker://`) en cours, et en-têtes du flux chargé dans le moteur en place. */
+    private var openJob: Job? = null
+    private var launchedHeaders: Map<String, String> = emptyMap()
+    private var launchedUa: String = userAgent
 
     /**
      * Reconnexion automatique autorisée pour la lecture en cours : VRAI direct seulement. Un replay (« Depuis le
@@ -134,7 +146,7 @@ class PlaybackSession(
     fun start(url: String, channelKey: String?, resumeMs: Long = 0) {
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val next = PlaybackPlanner.initial(s.engine, s.decoder, channelKey?.let { memory.combo(it) })
@@ -142,17 +154,39 @@ class PlaybackSession(
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
         // Réglages de sous-titres changés depuis la création du moteur : on le recrée (ils sont fixés à sa création).
-        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && _state.value.phase != Phase.ERROR) {
+        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && _state.value.phase != Phase.ERROR && (isStalkerUrl || launchedHeaders.isEmpty())) {
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false)
-            e.load(url, resumeMs)
+            if (!isStalkerUrl) e.load(url, resumeMs)
+            else openJob = scope.launch {
+                // Lien frais à chaque ouverture ; en-têtes d'un autre portail (zap entre sources) : moteur recréé.
+                val o = openNow() ?: return@launch
+                if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) e.load(o.url, resumeMs) else launch(combo, o)
+            }
         } else {
             combo = next
             launch(combo)
         }
         adaptJob?.cancel()
         adaptJob = scope.launch { while (true) { delay(5_000); applyQualityLimit(adapter.tick(System.currentTimeMillis())) } }
+    }
+
+    private val isStalkerUrl get() = StalkerLink.isStalker(url)
+
+    /**
+     * Ouvre l'adresse courante : lien create_link frais pour `stalker://` (échec journalisé sans MAC ni hôte, puis classé
+     * comme une erreur de lecture), l'adresse telle quelle sinon. Null = échec déjà traité.
+     */
+    private suspend fun openNow(reconnecting: Boolean = false): StreamOpen? {
+        if (!isStalkerUrl) return StreamOpen(url)
+        return try { opener(url) } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
+            android.util.Log.i("UltraPlay", StalkerPlayLog.openFailed(t))
+            com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.openFailed(t))
+            if (reconnecting) reconnectJob = null   // sinon onError → reconnectLive croit la reconnexion en cours et ne fait rien
+            onError(if (StalkerPlayLog.isPortalRefusal(StalkerPlayLog.httpOf(t))) PlayErrorKind.REFUSED else PlayErrorKind.NETWORK, StalkerPlayLog.httpOf(t), logged = true)
+            null
+        }
     }
 
     /** « Réessayer » / retour sur l'appli : tout repart de zéro (sinon, compteur à 8 = écran d'erreur à la 1re coupure). */
@@ -171,10 +205,10 @@ class PlaybackSession(
 
     fun setBufferPreset(p: BufferPreset) { presetOverride = p; key?.let { memory.remember(it, null, p) }; launch(combo) }
 
-    private fun launch(c: Combo) {
+    private fun launch(c: Combo, pre: StreamOpen? = null) {
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -183,6 +217,13 @@ class PlaybackSession(
         _state.value = SessionState(Phase.LOADING, null, c, presetOverride ?: s.bufferPreset, false)
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil3.SingletonImageLoader.get(ctx).memoryCache?.clear() }
+        // Adresse stalker:// : le lien (à usage unique) est demandé à CHAQUE lancement de moteur, avant sa création.
+        if (pre == null && isStalkerUrl) openJob = scope.launch { openNow()?.let { launchEngine(c, s, buffer, it) } }
+        else launchEngine(c, s, buffer, pre ?: StreamOpen(url))
+    }
+
+    private fun launchEngine(c: Combo, s: ResolvedPlayback, buffer: BufferParams, o: StreamOpen) {
+        launchedHeaders = o.headers; launchedUa = o.userAgent ?: userAgent
         val sub = subtitles()
         launchedSubs = sub
         // Sous-titres : jamais activés d'office ; seulement si l'utilisateur les avait activés la dernière fois.
@@ -191,7 +232,7 @@ class PlaybackSession(
         val tc = com.ultratv.tv.nativeapp.data.subtitles.TrackChoice
         val audioPref = tc.effectivePreferred(sub.languages.audio, key?.let { memory.audioLang(it) }, ui)
         val textPref = if (sub.autoOn) tc.effectivePreferred(sub.languages.text, null, ui) else emptyList()
-        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, userAgent, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureView)
+        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureView, headers = o.headers)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         engine = e
         container.removeAllViews(); container.addView(e.view, FrameLayout.LayoutParams(-1, -1))
@@ -200,7 +241,7 @@ class PlaybackSession(
         container.visibility = android.view.View.VISIBLE
         e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
         eventsJob = scope.launch { e.events.collect { onEvent(it, e) } }
-        e.load(url, resumeMs)
+        e.load(o.url, resumeMs)
     }
 
     /** Tampon effectif du moteur lancé : un zap ne réutilise le moteur que si ce tampon n'a pas changé. */
@@ -245,7 +286,7 @@ class PlaybackSession(
             }
             // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
             EngineEvent.Ended -> if (reconnectAllowed) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
-            is EngineEvent.Error -> onError(ev.kind)
+            is EngineEvent.Error -> onError(ev.kind, ev.httpStatus)
         }
     }
 
@@ -277,8 +318,10 @@ class PlaybackSession(
         }
     }
 
-    private fun onError(kind: PlayErrorKind) {
+    private fun onError(kind: PlayErrorKind, http: Int? = null, logged: Boolean = false) {
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
+        // Direct Stalker : code HTTP et type d'erreur (sans MAC ni hôte) pour diagnostiquer les retours.
+        if (isStalkerUrl && !logged) StalkerPlayLog.playerError(kind.name, http, combo.engine.name).let { android.util.Log.i("UltraPlay", it); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", it) }
         // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
         // VLC ne donne pas de code : après un rechargement, une coupure serveur arrive classée FORMAT ; si le flux a déjà
         // joué, c'est une coupure, pas un format illisible.
@@ -305,7 +348,8 @@ class PlaybackSession(
                 }
             }
             releaseEngine()
-            _state.value = _state.value.copy(phase = Phase.ERROR, error = kind)
+            // Portail Stalker qui refuse la lecture : message dédié (MAC peut-être utilisée sur un autre appareil).
+            _state.value = _state.value.copy(phase = Phase.ERROR, error = if (isStalkerUrl && kind == PlayErrorKind.REFUSED) PlayErrorKind.PORTAL_REFUSED else kind)
         }
     }
 
@@ -328,7 +372,11 @@ class PlaybackSession(
             delay(wait)
             firstFrame = false; launchedAtNs = System.nanoTime(); watchdog?.cancel(); blackJob?.cancel()
             val e = engine
-            if (e != null && e.reusable) e.load(url, 0) else launch(combo)
+            if (e != null && e.reusable) {
+                // Direct Stalker : nouveau lien (l'ancien est à usage unique) ; en-têtes inchangés → même moteur.
+                val o = openNow(reconnecting = true) ?: return@launch
+                if (engine === e && o.headers == launchedHeaders && (o.userAgent ?: userAgent) == launchedUa) e.load(o.url, 0) else launch(combo, o)
+            } else launch(combo)
         }
     }
 
@@ -341,7 +389,7 @@ class PlaybackSession(
 
     fun release() {
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         releaseEngine()
     }
 }

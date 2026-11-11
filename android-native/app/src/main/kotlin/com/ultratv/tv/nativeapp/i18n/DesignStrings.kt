@@ -286,6 +286,8 @@ class DesignStrings(val lang: AppLang) {
     val pPlayer get() = t("Player", "Lecteur", "Reproductor", "المشغل")
     val errNoResponse get() = t("This channel is not responding", "Cette chaîne ne répond pas", "Este canal no responde", "هذه القناة لا تستجيب")
     val errRefused get() = t("The provider refused the connection", "Le fournisseur a refusé la connexion", "El proveedor rechazó la conexión", "رفض المزود الاتصال")
+    val errPortalRefused get() = t("The portal refuses playback", "Le portail refuse la lecture", "El portal rechaza la reproducción", "يرفض البوابة التشغيل")
+    val errPortalRefusedHint get() = t("This MAC address may be in use on another device.", "La MAC est peut-être utilisée sur un autre appareil.", "Puede que la MAC se esté usando en otro dispositivo.", "ربما يُستخدم عنوان MAC هذا على جهاز آخر.")
     val errRefusedHint get() = t("Another device or stream may already be using your single connection.", "Un autre appareil ou flux utilise peut-être déjà votre connexion unique.", "Otro dispositivo o flujo puede estar usando tu única conexión.", "ربما يستخدم جهاز أو بث آخر اتصالك الوحيد.")
     val errNetwork get() = t("Network problem", "Problème de réseau", "Problema de red", "مشكلة في الشبكة")
     val errFormat get() = t("This format cannot be played", "Ce format ne peut pas être lu", "No se puede reproducir este formato", "لا يمكن تشغيل هذا التنسيق")

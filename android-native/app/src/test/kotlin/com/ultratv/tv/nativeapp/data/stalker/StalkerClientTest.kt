@@ -232,6 +232,37 @@ class StalkerClientTest {
         assertEquals("http://real.host/vod/abc.mkv", c.createLink(p, "vod", "eyJ9", 3))
     }
 
+    @Test fun createLink_streamVide_completeAvecLIdentifiantOuRedemande() = runBlocking {
+        val calls = AtomicInteger()
+        routes["itv/create_link"] = { r ->
+            val n = calls.incrementAndGet()
+            val stream = if (r.requestUrl!!.queryParameter("cmd") == "ffmpeg http://localhost/ch/77_" && n <= 2) "" else "9"
+            json("""{"js":{"id":"","cmd":"ffmpeg http://real.host/play/live.php?stream=$stream&play_token=T$n"}}""")
+        }
+        val c = client(); val p = provider()
+        // Identifiant connu (mémorisé dans l'adresse) : complété sans nouvel appel.
+        assertEquals("http://real.host/play/live.php?stream=1234&play_token=T1", c.createLink(p, "itv", "ffmpeg http://localhost/ch/77_", null, "1234"))
+        assertEquals(1, calls.get())
+        // Sinon, identifiant lu dans la commande (…/ch/77_).
+        assertEquals("http://real.host/play/live.php?stream=77&play_token=T2", c.createLink(p, "itv", "ffmpeg http://localhost/ch/77_"))
+        // Aucun identifiant nulle part : la demande est refaite une fois.
+        calls.set(1)
+        routes["itv/create_link"] = { _ ->
+            val n = calls.incrementAndGet()
+            json("""{"js":{"cmd":"ffmpeg http://real.host/play/live.php?stream=${if (n == 2) "" else "5"}&play_token=T$n"}}""")
+        }
+        assertEquals("http://real.host/play/live.php?stream=5&play_token=T3", c.createLink(p, "itv", "ffmpeg http://other.host/x"))
+    }
+
+    @Test fun openLink_enTetesDeLecture_memesQueLeClient() = runBlocking {
+        routes["itv/create_link"] = { json("""{"js":{"cmd":"ffmpeg http://real.host/live.php?stream=1"}}""") }
+        val play = client().openLink(provider(), "itv", "ffmpeg http://localhost/ch/1_")
+        assertEquals(StalkerDevice.USER_AGENT, play.userAgent)
+        assertEquals("Model: MAG250; Link: WiFi", play.headers["X-User-Agent"])
+        assertEquals("mac=00%3A1A%3A79%3AAB%3ACD%3AEF; stb_lang=en; timezone=UTC", play.headers["Cookie"])
+        assertTrue(play.headers["Authorization"]!!.startsWith("Bearer TOKEN"))
+    }
+
     @Test fun createLink_echec_repliSurCommandeDirecte() = runBlocking {
         routes["itv/create_link"] = { MockResponse().setResponseCode(500) }
         assertEquals("http://real.host/x.ts", client().createLink(provider(), "itv", "ffmpeg http://real.host/x.ts"))
