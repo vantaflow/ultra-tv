@@ -30,4 +30,27 @@ class PersonLogicTest {
         assertFalse(PersonLogic.matches(c, "Le Fabuleux Destin d'Amélie Poulain", 2010))
         assertTrue(PersonLogic.matches(PersonCredit(false, "Spirited Away", "千と千尋の神隠し", 2001), "千と千尋の神隠し", 2001))
     }
+
+    @Test fun birthdayFormatting() {
+        assertEquals("30.07.1970", PersonLogic.birthdayLabel("1970-07-30"))
+        assertEquals("07.1970", PersonLogic.birthdayLabel("1970-07"))
+        assertEquals("1970", PersonLogic.birthdayLabel("1970"))
+        org.junit.Assert.assertNull(PersonLogic.birthdayLabel(null))
+        org.junit.Assert.assertNull(PersonLogic.birthdayLabel(""))
+        org.junit.Assert.assertNull(PersonLogic.birthdayLabel("30/07/1970"))
+        assertEquals("1970", PersonLogic.birthdayLabel("1970-13-45"))
+    }
+
+    @Test fun personInfoParsing() {
+        val json = """{"name":"Christopher Nolan","known_for_department":"Directing","birthday":"1970-07-30","place_of_birth":"Westminster, London, England, UK","biography":"  Bio.  ","profile_path":"/x.jpg"}"""
+        val i = PersonLogic.info(json)!!
+        assertEquals("Directing", i.department)
+        assertEquals("Bio.", i.bio)
+        assertEquals("/x.jpg", i.photo)
+        val empty = PersonLogic.info("""{"name":"A","biography":"","birthday":null}""")!!
+        org.junit.Assert.assertNull(empty.bio)
+        org.junit.Assert.assertNull(empty.birthday)
+        org.junit.Assert.assertNull(PersonLogic.info("pas du json"))
+        org.junit.Assert.assertNull(PersonLogic.info("""{"biography":"x"}"""))
+    }
 }
