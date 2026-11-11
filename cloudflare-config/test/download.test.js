@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pickDesktopAsset, downloadRedirect, ANDROID_URL } from "../src/download.js";
+import { pickDesktopAsset, downloadRedirect, ANDROID_URL, ANDROID_URLS } from "../src/download.js";
 
 const releases = [
   { tag_name: "v1.2.86", assets: [{ name: "UltraTV.apk", browser_download_url: "https://x.test/apk" }] },
@@ -19,10 +19,19 @@ describe("liens de téléchargement", () => {
     expect(pickDesktopAsset(releases, "linux")).toBe("https://x.test/linux");
     expect(pickDesktopAsset(releases, "ios")).toBeNull();
   });
-  it("Android : APK universel de la dernière release", async () => {
+  it("Android : /download/android = APK arm64-v8a de la dernière release", async () => {
     const r = await downloadRedirect("android");
     expect(r.status).toBe(302);
     expect(r.headers.get("location")).toBe(ANDROID_URL);
+    expect(ANDROID_URL).toMatch(/\/releases\/latest\/download\/UltraTV-arm64-v8a\.apk$/);
+  });
+  it("Android : routes arm64, armv7 (32 bits) et universel", async () => {
+    const dest = async (p) => (await downloadRedirect(p)).headers.get("location");
+    expect(await dest("android-arm64")).toMatch(/\/latest\/download\/UltraTV-arm64-v8a\.apk$/);
+    expect(await dest("android-32")).toMatch(/\/latest\/download\/UltraTV-armeabi-v7a\.apk$/);
+    expect(await dest("android-armv7")).toMatch(/\/latest\/download\/UltraTV-armeabi-v7a\.apk$/);
+    expect(await dest("android-universal")).toMatch(/\/latest\/download\/UltraTV\.apk$/);
+    expect(Object.keys(ANDROID_URLS)).toHaveLength(5);
   });
   it("bureau : redirection, repli sur la page des releases si GitHub échoue", async () => {
     const ok = await downloadRedirect("windows", async () => new Response(JSON.stringify(releases), { status: 200 }));

@@ -22,6 +22,12 @@ class UpdateAssetsTest {
         assertEquals("UltraTV-1.1.1-arm64-v8a.apk", UpdateAssets.choose(full, "1.1.1", listOf("arm64-v8a", "armeabi-v7a", "armeabi"))!!.apkName)
     }
 
+    @Test fun copiesANomFixe_sansVersion_nePerturbentPasLeChoix() {
+        val avecStables = full + listOf(a("UltraTV-arm64-v8a.apk"), a("UltraTV-arm64-v8a.apk.sha256"), a("UltraTV-armeabi-v7a.apk"), a("UltraTV.apk"))
+        assertEquals("UltraTV-1.1.1-arm64-v8a.apk", UpdateAssets.choose(avecStables, "1.1.1", listOf("arm64-v8a", "armeabi-v7a"))!!.apkName)
+        assertEquals("UltraTV-1.1.1-armeabi-v7a.apk", UpdateAssets.choose(avecStables, "1.1.1", listOf("armeabi-v7a"))!!.apkName)
+    }
+
     @Test fun abiAbsentDeLaRelease_passeAuSuivant() {
         val sansArm64 = full.filterNot { it.name.contains("arm64") }
         assertEquals("UltraTV-1.1.1-armeabi-v7a.apk", UpdateAssets.choose(sansArm64, "1.1.1", listOf("arm64-v8a", "armeabi-v7a"))!!.apkName)

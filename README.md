@@ -18,7 +18,7 @@
 <p align="center">
   <a href="README.en.md">🇬🇧 English version</a> ·
   <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
-  <a href="https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk">Télécharger l'APK</a> ·
+  <a href="https://ultratv-config.khalilbenaz.workers.dev/download/android">Télécharger l'APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -29,7 +29,7 @@
 
 | Appareil | Lien |
 |---|---|
-| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | [UltraTV.apk](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) · sur une box : appli Downloader, code **`5248504`** |
+| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5248504`** |
 | **Windows** (x64) | [Installeur .exe](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
 | **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
@@ -164,7 +164,7 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 
 | Appareil | Fichier |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) universel, ou un APK par processeur `UltraTV-<version>-<abi>.apk` (`arm64-v8a`, `armeabi-v7a`, `x86_64`) avec son profil précompilé `.dm`, plus `SHA256SUMS.txt` |
+| Android (TV, smartphone, tablette) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (par défaut), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32 bits), ou l'universel [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) ; fichiers versionnés `UltraTV-<version>-<abi>.apk` avec leur profil précompilé `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
 | Tableau de bord cloud | <https://ultratv-config.khalilbenaz.workers.dev> (aucune installation) |
@@ -175,7 +175,7 @@ Tout est sur la page [Releases](https://github.com/vantaflow/ultra-tv/releases) 
 
 Android 9 ou plus récent (API 28).
 
-**APK.** Téléchargez [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) (somme SHA-256 sur la page de la release) et installez-le.
+**APK.** Téléchargez [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (somme SHA-256 sur la page de la release) et installez-le. Si l'installation échoue (appareil 32 bits comme le Chromecast avec Google TV HD), prenez [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) ; en dernier recours, l'[APK universel](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk).
 
 **Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5248504`**, autorisez les sources inconnues, installez.
 
@@ -195,6 +195,24 @@ adb install-multiple -r UltraTV-<version>-armeabi-v7a.apk UltraTV-<version>-arme
 Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U, **portail Stalker** ou **Depuis le cloud**), saisissez-la, puis choisissez vos catégories (seules les catégories actives sont téléchargées).
 
 Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
+
+### Quel APK prendre ?
+
+| Votre appareil | APK | Lien court (à taper dans Downloader) |
+|---|---|---|
+| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 67 Mo), recommandé | [`ultratv-config.khalilbenaz.workers.dev/download/android-arm64`](https://ultratv-config.khalilbenaz.workers.dev/download/android-arm64) |
+| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv-config.khalilbenaz.workers.dev/download/android-32`](https://ultratv-config.khalilbenaz.workers.dev/download/android-32) |
+| Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv-config.khalilbenaz.workers.dev/download/android-universal`](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) |
+
+`ultratv-config.khalilbenaz.workers.dev/download/android` renvoie l'APK arm64. Dans Downloader, saisissez le code **`5248504`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+
+### Installation impossible (« problème de package »)
+
+- **Espace libre** : prévoyez au moins 500 Mo ; l'APK universel (227 Mo) en demande davantage que les APK par processeur.
+- **Mauvais APK** : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits (`android-32`) plutôt que l'universel.
+- **Ancienne version signée autrement** : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez. Vos sources restent dans le cloud si vous l'avez activé.
+- **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier `.sha256` (ou `SHA256SUMS.txt`) publié avec lui ; retéléchargez en cas de différence.
+- **Android 9 minimum** : les versions plus anciennes ne sont pas prises en charge.
 
 ## Synchronisation cloud
 
