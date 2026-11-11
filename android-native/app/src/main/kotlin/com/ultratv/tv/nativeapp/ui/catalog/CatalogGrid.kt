@@ -73,6 +73,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import com.ultratv.tv.nativeapp.data.db.GenreDao
 import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.repo.GenreDetector
@@ -488,6 +491,9 @@ private fun SplitBody(
                     label = categoryLabel(c), count = c.count, selected = isSel,
                     modifier = (if (isSel) Modifier.focusRequester(selReq) else Modifier)
                         .focusProperties { right = gridReq }
+                        // Droite : la catégorie focalisée devient tout de suite la catégorie choisie (sans attendre la
+                        // pause de l'aperçu), la grille affichée est donc la sienne et Gauche y revient.
+                        .onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionRight) vm.select(c.remoteId); false }
                         .onFocusChanged { if (it.isFocused) vm.preview(c.remoteId) },
                     onClick = { vm.select(c.remoteId); runCatching { gridReq.requestFocus() } },
                 )
@@ -517,7 +523,11 @@ private fun SplitBody(
                 ) {
                     items(count = items.itemCount, key = safeKey, contentType = { "poster" }) { i ->
                         val it = items[i]
-                        if (it != null) PosterCell(it, if (CatalogLayoutRules.isFirstColumn(i, columns)) Modifier.focusProperties { left = listReq } else Modifier, imageWidth = cellW) { onOpen(it.id) }
+                        if (it != null) PosterCell(it, if (CatalogLayoutRules.isFirstColumn(i, columns)) Modifier.onPreviewKeyEvent { e ->
+                            // Gauche depuis la 1re colonne : retour sur la catégorie CHOISIE (et non la ligne voisine à l'écran).
+                            if (e.key != androidx.compose.ui.input.key.Key.DirectionLeft) false
+                            else { if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && runCatching { selReq.requestFocus() }.isFailure) runCatching { listReq.requestFocus() }; true }
+                        } else Modifier, imageWidth = cellW) { onOpen(it.id) }
                         else androidx.compose.foundation.layout.Spacer(Modifier.height(1.design))
                     }
                 }
