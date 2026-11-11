@@ -9,6 +9,7 @@ import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
+import { guideColPx } from "@/lib/guideCol";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
@@ -47,7 +48,7 @@ function dedupe(rows: ProgramRow[]): ProgramRow[] {
 
 interface Pick { prog: ProgramRow; chan: ChannelRow; x: number; y: number }
 
-function Row({ c, source, from, to, top, now, picked, onPick }: { c: ChannelRow; source: Source; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, e: React.MouseEvent) => void }) {
+function Row({ c, source, from, to, top, now, col, picked, onPick }: { c: ChannelRow; col: number; source: Source; from: number; to: number; top: number; now: number; picked: ProgramRow | null; onPick: (p: ProgramRow, e: React.MouseEvent) => void }) {
   const [progs, setProgs] = useState<ProgramRow[]>([]);
   useEffect(() => {
     let dead = false;
@@ -55,11 +56,11 @@ function Row({ c, source, from, to, top, now, picked, onPick }: { c: ChannelRow;
     return () => { dead = true; };
   }, [c.epg, source.cid, from, to]);
   return (
-    <div className="g-row" style={{ position: "absolute", top, left: 0, width: TOTAL_W + 224 }}>
+    <div className="g-row" style={{ position: "absolute", top, left: 0, width: TOTAL_W + col }}>
       <div className="g-chan">
         <span className="num mono">{c.num}</span>
         <span className="logo"><Img src={c.logo} contain /></span>
-        <b className="ellipsis">{c.display}</b>
+        <b className="clamp-2" title={c.display}>{c.display}</b>
       </div>
       <div className="g-track" style={{ width: TOTAL_W }}>
         {progs.map((p) => {
@@ -93,6 +94,7 @@ function Inner({ source }: { source: Source }) {
   const [pick, setPick] = useState<Pick | null>(null);
   const [loading, setLoading] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const col = guideColPx(prefs.guideCol);
 
   const from = useMemo(() => {
     if (day === 0) return Math.floor((Date.now() - 30 * 60_000) / (30 * 60_000)) * 30 * 60_000;
@@ -136,27 +138,27 @@ function Inner({ source }: { source: Source }) {
   return (
     <div className="guide" onClick={() => setPick(null)}>
       <header className="page-head">
-        <div>
-          <h1>{t("guide.title")}</h1>
+        <div style={{ flex: "none" }}>
+          <h1 style={{ whiteSpace: "nowrap" }}>{t("guide.title")}</h1>
           <div className="sub">{new Date(from).toLocaleDateString(prefs.lang, { weekday: "long", day: "numeric", month: "long" })} · {hhmm(from)} – {hhmm(to)}{chans.length >= GUIDE_MAX_CHANNELS && effCat !== "__fav" ? ` · ${t("guide.capped", { n: GUIDE_MAX_CHANNELS })}` : ""}</div>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
-          <button className="chip" onClick={() => setPop(true)}>{label} ▾</button>
+          <button className="chip ellipsis" style={{ maxWidth: "18rem" }} title={label} onClick={() => setPop(true)}>{label} ▾</button>
           <div className="chips" role="group" aria-label={t("a11y.day")}>{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
         </div>
       </header>
       <div className="guide-grid" ref={scroller}>
-        <div className="g-head" style={{ width: TOTAL_W + 224 }}>
+        <div className="g-head" style={{ width: TOTAL_W + col }}>
           <div className="g-corner" />
           <div style={{ position: "relative", width: TOTAL_W }}>
             {Array.from({ length: HOURS * 2 }, (_, i) => <span key={i} className="g-time mono" style={{ left: i * 30 * PX_MIN, width: 30 * PX_MIN }}>{hhmm(from + i * 30 * 60_000)}</span>)}
           </div>
         </div>
-        <div style={{ position: "relative", height: v.getTotalSize(), width: TOTAL_W + 224 }}>
-          {nowX >= 0 && nowX <= TOTAL_W && <div className="g-now" style={{ insetInlineStart: 224 + nowX }} />}
+        <div style={{ position: "relative", height: v.getTotalSize(), width: TOTAL_W + col }}>
+          {nowX >= 0 && nowX <= TOTAL_W && <div className="g-now" style={{ insetInlineStart: col + nowX }} />}
           {v.getVirtualItems().map((it) => {
             const c = chans[it.index]!;
-            return <Row key={c.id} c={c} source={source} from={from} to={to} top={it.start} now={now} picked={pick?.prog ?? null}
+            return <Row key={c.id} c={c} source={source} from={from} to={to} top={it.start} now={now} col={col} picked={pick?.prog ?? null}
               onPick={(p, e) => { e.stopPropagation(); setPick({ prog: p, chan: c, x: e.clientX, y: e.clientY }); }} />;
           })}
         </div>

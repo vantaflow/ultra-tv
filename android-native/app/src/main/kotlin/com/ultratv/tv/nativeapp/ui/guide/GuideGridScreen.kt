@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -102,6 +103,9 @@ import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.LogoBox
+import com.ultratv.tv.nativeapp.ui.common.ChannelBigMark
+import com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay
+import com.ultratv.tv.nativeapp.ui.common.channelNumber
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
@@ -364,6 +368,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         when (g.id) { com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> D.catFavorites; com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> D.catAll; else -> com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(g.name.orEmpty()) }
     }
     val groupLabel = guideGroupName(groups, group, groupName)
+    val nameColPx = LocalChannelDisplay.current.guideNameWidth.tvPx
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
         channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
@@ -393,16 +398,18 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         verticalArrangement = Arrangement.spacedBy(16.design),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
-                Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1)
+            // Titre mesuré en premier et jamais coupé (softWrap = false) : c'est la pastille du groupe, plafonnée plus bas, qui s'abrège.
+            Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
+                Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
                 val dayLabel = dayName(D, day)
                 Text("$dayLabel · ${EpgClock.range(windowStart, windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
                 if (channels.itemCount > 0) guideProgressLine(D, guideLoad)?.let { Text(it, color = Ux.Accent, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1) }
             }
+            Spacer(Modifier.weight(1f))
             DateTimePill(clock, windowStart, day, D)
             // Groupe de chaînes : un seul bouton dans l'en-tête, la liste (mêmes groupes que le Direct) s'ouvre en boîte de choix.
-            com.ultratv.tv.nativeapp.ui.design.PillButton(D.guideGroupPill(groupLabel.let { if (it.length > 22) it.take(21) + "…" else it }), onClick = { groupOpen = true }, heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
+            com.ultratv.tv.nativeapp.ui.design.PillButton(D.guideGroupPill(groupLabel), onClick = { groupOpen = true }, modifier = Modifier.widthIn(max = 420.design), heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
             com.ultratv.tv.nativeapp.ui.design.PillButton(D.nowButton, onClick = { day = 0; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), 0)) }, heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
             Row(horizontalArrangement = Arrangement.spacedBy(8.design)) {
@@ -419,7 +426,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
 
         // En-tête des créneaux
         Row(Modifier.fillMaxWidth().padding(bottom = 4.design)) {
-            Spacer(Modifier.width(260.design))
+            Spacer(Modifier.width(nameColPx.design))
             Row(Modifier.weight(1f)) {
                 for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, modifier = Modifier.weight(1f), maxLines = 1)
             }
@@ -455,14 +462,14 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
                 }
                 .focusGroup(),
         ) {
-            val gridW = maxWidth - 260.design
+            val gridW = maxWidth - nameColPx.design
             val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
             LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
                 items(count = channels.itemCount, key = safeKey0, contentType = { "row" }) { i ->
                     val c = channels[i]
                     if (c != null) {
                         GuideRow(
-                            c, programmes[c.id].orEmpty(), windowStart, gridW, D, clock,
+                            c, programmes[c.id].orEmpty(), windowStart, gridW, nameColPx, D, clock,
                             firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
                             onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg.value = c to p },
                         )
@@ -473,7 +480,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
             val accent = Ux.Accent
             Box(
-                Modifier.offset { androidx.compose.ui.unit.IntOffset((260.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
+                Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
                     .width(3.design).fillMaxHeight()
                     .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
                     .background(accent),
@@ -606,7 +613,7 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
     }
     Box(modifier.clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
         if (channel != null) {
-            val logo: @Composable () -> Unit = { LogoBox(channel.logo, channel.title, Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
+            val logo: @Composable () -> Unit = { ChannelBigMark(channel, channelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
             if (session != null && shared != null) com.ultratv.tv.nativeapp.ui.live.SharedVideo(session, shared, logo) else logo()
         }
     }
@@ -653,15 +660,22 @@ private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
 /** Ligne de 84 px : colonne chaîne (logo fixe + nom) puis programmes positionnés par l'heure, 8 px d'écart. */
 @Composable
 private fun GuideRow(
-    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
+    c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
 ) {
     val nowMs = System.currentTimeMillis()
     Row(Modifier.fillMaxWidth().height(84.designT)) {
-        Row(Modifier.width(260.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
-            LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
-            Spacer(Modifier.width(14.design))
-            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
+            if (LocalChannelDisplay.current.showLogos) {
+                LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
+                Spacer(Modifier.width(14.design))
+            } else channelNumber(c.seq, c.num)?.let { n ->
+                // Sans logo : le numéro prend la place du logo, le nom garde tout le reste.
+                Text(n.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(56.design))
+            }
+            // Deux lignes au lieu d'un nom coupé.
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+                style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
             // Variantes de qualité (« 13EME RUE » HD / SD) : un badge les distingue.
             val q = remember(c.id) { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(c.name, live = true).quality }
             if (q != null) { Spacer(Modifier.width(8.design)); Text(q, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Ux.Surface2).padding(horizontal = 7.design, vertical = 2.design)) }
@@ -705,7 +719,6 @@ private fun GuideRow(
 // ───────────────────────── Tactile ─────────────────────────
 
 private val TOUCH_SLOT_W = 128.dp
-private val TOUCH_CHAN_W = 116.dp
 private val TOUCH_ROW_H = 64.dp
 
 /**
@@ -723,6 +736,7 @@ private fun GuideTouch(
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val hScroll = androidx.compose.foundation.rememberScrollState()
     val gridW = TOUCH_SLOT_W * 6
+    val chanW = LocalChannelDisplay.current.guideNameWidth.touchDp.dp
     val now = remember(windowStart) { System.currentTimeMillis() }
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -737,9 +751,9 @@ private fun GuideTouch(
         }
         androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
             item {
-                FocusSurface(onClick = onGroup, shape = RoundedCornerShape(20.dp), bg = Ux.Surface2, modifier = Modifier.height(40.dp)) { _ ->
+                FocusSurface(onClick = onGroup, shape = RoundedCornerShape(20.dp), bg = Ux.Surface2, modifier = Modifier.height(40.dp).widthIn(max = 280.dp)) { _ ->
                     Box(Modifier.height(40.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.Center) {
-                        Text(D.guideGroupPill(if (groupLabel.length > 22) groupLabel.take(21) + "…" else groupLabel), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
+                        Text(D.guideGroupPill(groupLabel), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -764,33 +778,33 @@ private fun GuideTouch(
         }
         com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
             Box(Modifier.fillMaxSize().horizontalScroll(hScroll)) {
-                Column(Modifier.width(TOUCH_CHAN_W + gridW)) {
+                Column(Modifier.width(chanW + gridW)) {
                     Row(Modifier.height(28.dp)) {
-                        Spacer(Modifier.width(TOUCH_CHAN_W))
+                        Spacer(Modifier.width(chanW))
                         for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, modifier = Modifier.width(TOUCH_SLOT_W), maxLines = 1)
                     }
                     val safeKey1 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
                     LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp), modifier = Modifier.weight(1f)) {
                         items(count = channels.itemCount, key = safeKey1, contentType = { "row" }) { i ->
                             val c = channels[i]
-                            if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
+                            if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, chanW, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
                             else Spacer(Modifier.height(TOUCH_ROW_H))
                         }
                     }
                 }
                 val nowFrac = (now - windowStart).toFloat() / GUIDE_WINDOW_MS
-                if (nowFrac in 0f..1f) Box(Modifier.offset(x = TOUCH_CHAN_W + gridW * nowFrac).width(2.dp).fillMaxHeight().background(Ux.Accent))
+                if (nowFrac in 0f..1f) Box(Modifier.offset(x = chanW + gridW * nowFrac).width(2.dp).fillMaxHeight().background(Ux.Accent))
             }
         }
     }
 }
 
 @Composable
-private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, scrollPx: Int, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit) {
+private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, scrollPx: Int, chanW: androidx.compose.ui.unit.Dp, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit) {
     val nowMs = System.currentTimeMillis()
     val gridW = TOUCH_SLOT_W * 6
-    Box(Modifier.width(TOUCH_CHAN_W + gridW).height(TOUCH_ROW_H)) {
-        Box(Modifier.offset(x = TOUCH_CHAN_W).width(gridW).fillMaxHeight()) {
+    Box(Modifier.width(chanW + gridW).height(TOUCH_ROW_H)) {
+        Box(Modifier.offset(x = chanW).width(gridW).fillMaxHeight()) {
             progs.forEach { p ->
                 val slot = slotFor(p.startMs, p.endMs, windowStart) ?: return@forEach
                 val isNow = p.startMs <= nowMs && p.endMs > nowMs
@@ -809,10 +823,11 @@ private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart:
         }
         // Colonne chaîne épinglée à gauche (suit le défilement horizontal).
         Row(
-            Modifier.offset { androidx.compose.ui.unit.IntOffset(scrollPx, 0) }.width(TOUCH_CHAN_W).fillMaxHeight().background(Ux.Bg).padding(end = 8.dp),
+            Modifier.offset { androidx.compose.ui.unit.IntOffset(scrollPx, 0) }.width(chanW).fillMaxHeight().background(Ux.Bg).padding(end = 8.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            LogoBox(c.logo, c.title, Modifier.width(40.dp).height(28.dp), radius = 12, pad = 3)
+            if (LocalChannelDisplay.current.showLogos) LogoBox(c.logo, c.title, Modifier.width(40.dp).height(28.dp), radius = 12, pad = 3)
+            else channelNumber(c.seq, c.num)?.let { n -> Text(n.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1, softWrap = false) }
             Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         }
     }

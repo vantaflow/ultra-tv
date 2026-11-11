@@ -4,6 +4,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
+import com.ultratv.tv.nativeapp.i18n.channelLogos
+import com.ultratv.tv.nativeapp.i18n.guideNameWidthLabel
+import com.ultratv.tv.nativeapp.i18n.guideNameWidthName
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.cardPhone
 import com.ultratv.tv.nativeapp.i18n.remoteHint
@@ -534,6 +537,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
+        SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
+        PrefRow(D.guideNameWidthLabel, D.guideNameWidthName(com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(p.guideNameWidth))) { choice = "guidew" }
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
         PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
@@ -554,6 +559,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
+        "guidew" -> ChoiceDialog(D.guideNameWidthLabel, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.entries.map { it to D.guideNameWidthName(it) }, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(p.guideNameWidth), { app.setGuideNameWidth(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })

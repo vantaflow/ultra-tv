@@ -64,3 +64,12 @@ fun DesignStrings.guideGroupPill(name: String) = when (lang) {
     else -> "Group: $name"
 }
 val DesignStrings.guideGroupEmpty get() = t("No channel with a guide in this group for this time.", "Aucune chaîne de ce groupe n'a de guide sur cette période.", "Ningún canal de este grupo tiene guía en este periodo.", "لا توجد قناة في هذه المجموعة لها دليل في هذه الفترة.")
+
+// Lisibilité du Guide : logos des chaînes et largeur de la colonne des noms (Réglages › Affichage).
+val DesignStrings.channelLogos get() = t("Channel logos", "Logos des chaînes", "Logotipos de canales", "شعارات القنوات")
+val DesignStrings.guideNameWidthLabel get() = t("Guide channel column", "Colonne des chaînes du guide", "Columna de canales de la guía", "عمود القنوات في الدليل")
+fun DesignStrings.guideNameWidthName(w: com.ultratv.tv.nativeapp.ui.common.GuideNameWidth) = when (w) {
+    com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.NARROW -> t("Narrow", "Étroite", "Estrecha", "ضيّق")
+    com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.NORMAL -> t("Normal", "Normale", "Normal", "عادي")
+    com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.WIDE -> t("Wide", "Large", "Ancha", "عريض")
+}

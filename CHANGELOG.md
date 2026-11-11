@@ -35,6 +35,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - APK plus léger par défaut : `/download/android`, le README et le site proposent l'APK arm64 (≈ 67 Mo), l'APK 32 bits (armv7) et l'universel en dernier recours ; la release publie `UltraTV-arm64-v8a.apk`, `UltraTV-armeabi-v7a.apk` et `UltraTV-x86_64.apk` (liens stables) avec leur `.sha256`.
 ### Corrigé
 - Direct : les sous-titres codés (CEA-608) des flux MPEG-TS sont déclarés au lecteur ExoPlayer, et une piste CC n'est proposée dans le panneau Sous-titres que si la chaîne en diffuse réellement (plus de « CC1 » vide sur TF1) ; en Direct, le panneau n'affiche plus la recherche en ligne (réservée aux films) mais une indication quand la chaîne n'en diffuse pas.
+- Guide TV et Direct : réglage « Logos des chaînes » (Afficher / Masquer, par profil ; numéro et nom à la place du logo, y compris dans l'aperçu) et colonne des noms du guide plus large par défaut et réglable (Étroite / Normale / Large), noms sur deux lignes ; sur TV, tactile et bureau.
+
+### Corrigé
+- Guide TV : le titre « Guide » n'est plus coupé quand la pastille du groupe est longue (la pastille s'abrège avec une ellipse).
 
 ## [1.2.88] — 2026-11-11 (Android)
 
