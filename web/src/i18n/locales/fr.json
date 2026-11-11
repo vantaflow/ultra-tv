@@ -498,5 +498,11 @@
   "key.esc": "Échap",
   "key.enter": "Entrée",
   "set.translateHelp": "Aider à traduire Ultra TV",
-  "set.translateHelpSub": "Votre langue manque ou contient une erreur ?"
+  "set.translateHelpSub": "Votre langue manque ou contient une erreur ?",
+  "trailer.button": "Bande-annonce",
+  "trailer.loading": "Chargement de la bande-annonce…",
+  "trailer.errNotFound": "Cette bande-annonce n’est plus disponible (supprimée ou privée).",
+  "trailer.errEmbed": "Le propriétaire de cette vidéo n’autorise pas sa lecture en dehors de YouTube.",
+  "trailer.errConfig": "Cette bande-annonce ne peut pas être lue dans l’appli pour le moment.",
+  "trailer.errUnknown": "La bande-annonce n’a pas pu être lue."
 }

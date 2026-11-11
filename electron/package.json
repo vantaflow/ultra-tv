@@ -51,6 +51,7 @@
       "dns.cjs",
       "transcode.cjs",
       "windowfit.cjs",
+      "trailer.cjs",
       "web-dist/**/*",
       "package.json"
     ],

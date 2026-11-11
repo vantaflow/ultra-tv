@@ -499,5 +499,11 @@
   "key.esc": "Esc",
   "key.enter": "Enter",
   "set.translateHelp": "Pomóż w tłumaczeniu Ultra TV",
-  "set.translateHelpSub": "Brakuje Twojego języka lub jest w nim błąd?"
+  "set.translateHelpSub": "Brakuje Twojego języka lub jest w nim błąd?",
+  "trailer.button": "Zwiastun",
+  "trailer.loading": "Wczytywanie zwiastuna…",
+  "trailer.errNotFound": "Ten zwiastun jest już niedostępny (usunięty lub prywatny).",
+  "trailer.errEmbed": "Właściciel tego filmu nie zezwala na jego odtwarzanie poza YouTube.",
+  "trailer.errConfig": "Tego zwiastuna nie można teraz odtworzyć w aplikacji.",
+  "trailer.errUnknown": "Nie udało się odtworzyć zwiastuna."
 }

@@ -488,5 +488,11 @@
   "key.esc": "Esc",
   "key.enter": "Enter",
   "set.translateHelp": "Help translate Ultra TV",
-  "set.translateHelpSub": "Your language is missing or has a mistake?"
+  "set.translateHelpSub": "Your language is missing or has a mistake?",
+  "trailer.button": "Trailer",
+  "trailer.loading": "Loading the trailer…",
+  "trailer.errNotFound": "This trailer is no longer available (removed or private).",
+  "trailer.errEmbed": "The owner of this video does not allow it to be played outside YouTube.",
+  "trailer.errConfig": "This trailer cannot be played in the app right now.",
+  "trailer.errUnknown": "The trailer could not be played."
 }
