@@ -288,7 +288,10 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 The interface is available in French, English, Spanish and Arabic (official languages). More languages are welcome: they can be partial, and English is shown for missing texts.
 
 - Only the interface is translated, never playlist content (channels, categories, titles, guide).
-- Without Git: Weblate, <https://hosted.weblate.org/projects/ultra-tv/> (coming soon).
+- Without Git: Weblate, <https://hosted.weblate.org/projects/ultra-tv/>.
+
+[![Translation status](https://hosted.weblate.org/widget/ultra-tv/svg-badge.svg)](https://hosted.weblate.org/engage/ultra-tv/)
+
 - With GitHub: add the language files and open a pull request.
 - Spotted a mistake? Use the ["Translation" issue template](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
 
