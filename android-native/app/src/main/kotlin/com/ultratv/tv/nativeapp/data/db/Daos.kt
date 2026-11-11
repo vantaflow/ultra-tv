@@ -605,6 +605,10 @@ interface FavoriteDao {
     @Query("SELECT COUNT(*) FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind")
     fun observeCount(profileId: Long, pid: Long, kind: String): Flow<Int>
 
+    /** Tous les favoris du profil pour la source (compteur du raccourci « Favoris » de l'accueil). */
+    @Query("SELECT COUNT(*) FROM favorite WHERE profileId = :profileId AND providerId = :pid")
+    fun observeCountAll(profileId: Long, pid: Long): Flow<Int>
+
     @Query("SELECT EXISTS(SELECT 1 FROM favorite WHERE profileId = :profileId AND providerId = :pid AND kind = :kind AND remoteId = :rid)")
     fun observeIsFavorite(profileId: Long, pid: Long, kind: String, rid: String): Flow<Boolean>
 
