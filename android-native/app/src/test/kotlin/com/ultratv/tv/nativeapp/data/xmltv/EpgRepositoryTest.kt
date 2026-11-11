@@ -91,6 +91,60 @@ class EpgRepositoryTest {
         assertTrue(server.requests.isEmpty())
     }
 
+    // ---- « Guide de cette source » ----
+
+    @Test fun stalker_sansAdressePerso_nAUcunGuide_puisAvecAdressePerso_leGuideEstUtilise() = runBlocking {
+        val r = rig(kind = "STALKER", ids = listOf("a", "b"))
+        assertEquals(0, r.repo.syncXmltv(r.providerId))
+        assertTrue(server.requests.isEmpty())
+        r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide.invalid/perso.xml", GuideMode.REPLACE))
+        server.add("perso.xml", programmes(listOf("a", "b"), 4))
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("a", "b"), epgChannels(r))
+    }
+
+    @Test fun stalker_rattachementParNom_quandLIdentifiantDifferent() = runBlocking {
+        // Chaînes « Chaine 0 » / « Chaine 1 » sans identifiant correspondant : le guide les désigne par leur nom affiché.
+        val r = rig(kind = "STALKER", ids = listOf("x0", "x1"))
+        r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide.invalid/perso.xml", GuideMode.REPLACE))
+        val xml = "<tv><channel id=\"g0\"><display-name>Chaine 0</display-name></channel>" +
+            String(programmes(listOf("g0"), 3)).removePrefix("<tv>")
+        server.add("perso.xml", xml.toByteArray())
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("x0"), epgChannels(r))
+    }
+
+    @Test fun m3u_remplacer_ignoreLeGuideDeLEntete() = runBlocking {
+        val r = rig(kind = "M3U", ids = listOf("a", "b"))
+        r.limitsStore.setEpgUrls(r.providerId, listOf("http://guide1.invalid/g1.xml"))
+        r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide2.invalid/perso.xml", GuideMode.REPLACE))
+        server.add("g1.xml", programmes(listOf("a"), 3))
+        server.add("perso.xml", programmes(listOf("a", "b"), 3))
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("a", "b"), epgChannels(r))
+        assertTrue(server.requests.toString(), server.requests.none { it.contains("g1.xml") })
+    }
+
+    @Test fun m3u_completer_guideDuFournisseurPuisAdressePerso_pourLesChainesSansProgramme() = runBlocking {
+        val r = rig(kind = "M3U", ids = listOf("a", "b"))
+        r.limitsStore.setEpgUrls(r.providerId, listOf("http://guide1.invalid/g1.xml"))
+        r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide2.invalid/perso.xml", GuideMode.COMPLETE))
+        server.add("g1.xml", programmes(listOf("a"), 3))
+        server.add("perso.xml", programmes(listOf("a", "b"), 3))
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("a", "b"), epgChannels(r))
+        assertEquals(1, server.requests.count { it.contains("g1.xml") })
+        assertEquals(1, server.requests.count { it.contains("perso.xml") })
+    }
+
+    @Test fun m3u_sansUrlTvg_avecAdressePerso_aUnGuide() = runBlocking {
+        val r = rig(kind = "M3U", ids = listOf("a"))
+        r.limitsStore.setCustomEpg(r.providerId, CustomGuide("http://guide.invalid/perso.xml", GuideMode.COMPLETE))
+        server.add("perso.xml", programmes(listOf("a"), 3))
+        assertTrue(r.repo.syncXmltv(r.providerId) > 0)
+        assertEquals(setOf("a"), epgChannels(r))
+    }
+
     @Test fun echecTotal_publieGuideIndisponible_avecRaison() = runBlocking {
         val r = rig()
         server.add("xmltv.php", ByteArray(0)).apply { failFirst = 99; failCode = 503 }

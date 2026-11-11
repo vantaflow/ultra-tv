@@ -2,6 +2,9 @@ import { useState } from "react";
 import { useT } from "@/i18n";
 import type { Source } from "@/db/types";
 import { Icon } from "@/ui/Icon";
+import { Seg } from "@/ui/common";
+import { checkGuideAddress } from "@/lib/guideAddress";
+import { currentTransport } from "@/net/transport";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
 import { formatMacTyping, packCreds, unpackCreds } from "@/net/stalker";
 
@@ -12,6 +15,8 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
 }) {
   const t = useT();
   const [adv, setAdv] = useState(false);
+  const [epgBusy, setEpgBusy] = useState(false);
+  const [epgMsg, setEpgMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const set = (p: Partial<Source>) => onChange({ ...value, ...p });
   return (
     <div className="form-card">
@@ -83,7 +88,22 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
         <>
           <div className="field full">
             <label htmlFor="f-epg">{t("src.epg")}</label>
-            <input id="f-epg" className="input" value={value.epgUrl} spellCheck={false} onChange={(e) => set({ epgUrl: e.target.value })} />
+            <input id="f-epg" className="input" value={value.epgUrl} spellCheck={false} autoCapitalize="off" placeholder="https://…/guide.xml.gz" onChange={(e) => { set({ epgUrl: e.target.value }); setEpgMsg(null); }} />
+            <span className="muted">{t("src.epgHint")}</span>
+            {value.epgUrl.trim() && (
+              <>
+                <Seg<"replace" | "complete"> label={t("src.epgMode")} value={value.epgMode ?? "replace"} onChange={(epgMode) => set({ epgMode })}
+                  options={[{ v: "replace", label: t("src.epgReplace") }, { v: "complete", label: t("src.epgComplete") }]} />
+                <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                  <button type="button" className="btn sm" disabled={epgBusy} onClick={async () => {
+                    setEpgBusy(true); setEpgMsg(null);
+                    try { const r = await checkGuideAddress(await currentTransport(), value.epgUrl); setEpgMsg(r.key ? { ok: false, text: t(r.key) + (r.status ? ` (HTTP ${r.status})` : "") } : { ok: true, text: t("src.epgValid") }); }
+                    finally { setEpgBusy(false); }
+                  }}>{epgBusy ? t("src.epgChecking") : t("src.epgVerify")}</button>
+                  {epgMsg && <span role="status" className={epgMsg.ok ? "muted" : "err"}>{epgMsg.text}</span>}
+                </div>
+              </>
+            )}
           </div>
           <div className="field">
             <label htmlFor="f-ua">{t("src.userAgent")}</label>

@@ -18,7 +18,10 @@ export interface Source {
   m3uUrl: string;
   /** Portail Stalker : point d'entrée de l'API qui a répondu (…/portal.php ou …/server/load.php), sondé à l'ajout. */
   stalkerApi?: string;
+  /** « Guide de cette source » : adresse d'un guide XMLTV (http/https, .xml ou .xml.gz). Vide = guide du fournisseur seulement. */
   epgUrl: string;
+  /** Rôle de [epgUrl] : « replace » (défaut) remplace le guide du fournisseur, « complete » ne comble que les chaînes sans programme. */
+  epgMode?: "replace" | "complete";
   userAgent: string;
   referer: string;
   /**

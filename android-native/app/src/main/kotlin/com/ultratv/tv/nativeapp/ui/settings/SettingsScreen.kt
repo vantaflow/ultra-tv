@@ -8,6 +8,12 @@ import com.ultratv.tv.nativeapp.i18n.channelLogos
 import com.ultratv.tv.nativeapp.i18n.guideNameWidthLabel
 import com.ultratv.tv.nativeapp.i18n.guideNameWidthName
 import com.ultratv.tv.nativeapp.i18n.kindStalker
+import com.ultratv.tv.nativeapp.i18n.guideCheckMessage
+import com.ultratv.tv.nativeapp.i18n.guideCustomLabel
+import com.ultratv.tv.nativeapp.i18n.guideCustomOption
+import com.ultratv.tv.nativeapp.i18n.guideRemoved
+import com.ultratv.tv.nativeapp.i18n.guideSaved
+import com.ultratv.tv.nativeapp.i18n.sourceGuide
 import com.ultratv.tv.nativeapp.i18n.cardPhone
 import com.ultratv.tv.nativeapp.i18n.remoteHint
 import com.ultratv.tv.nativeapp.i18n.remoteTitle
@@ -98,7 +104,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -126,7 +132,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     val pane: @Composable () -> Unit = {
             when (Rub.entries[rub]) {
                 Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
-                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(panes, onNavigate) }
+                Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(vm, panes, onNavigate) }
                 Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
                 Rub.DISPLAY -> DisplayPane(vm, panes, app)
                 Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
@@ -225,6 +231,8 @@ internal fun hostOnly(baseUrl: String): String = runCatching { java.net.URI(base
 
 /** Types de source pris en charge ; un type hérité inconnu reste affichable et supprimable. */
 internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL", "STALKER")
+
+private const val CUSTOM_GUIDE_KEY = "__custom__"
 
 private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; else -> null }
 
@@ -392,13 +400,23 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             val linked = vm.cloudIdOf(p.id) != null
             val supported = p.kind in SUPPORTED_KINDS
             val opts = buildList {
-                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow) }
+                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow); add("guide" to D.sourceGuide) }
                 if (supported && shareable && !linked) add("share" to C.shareSource)
                 if (supported && shareable && linked) { add("share" to C.editSharing); add("stop" to C.stopSharing) }
                 add("delete" to D.deleteSource)
             }
             ChoiceDialog(p.name, opts, if (supported) null else D.unsupportedSourceHint,
-                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = if (k == "share") OpenDialog.SHARE else OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+                onPick = { k -> when (k) { "default" -> vm.setDefault(p.id); "sync" -> vm.resync(p.id); "delete" -> vm.delete(p.id); "stop" -> vm.stopSharing(p.id) }; dialog = when (k) { "share" -> OpenDialog.SHARE; "guide" -> OpenDialog.SOURCE_GUIDE; else -> OpenDialog.NONE } }, onDismiss = { dialog = OpenDialog.NONE })
+        }
+        // « Guide de cette source » : adresse XMLTV propre à la source (remplace ou complète celui du fournisseur), vérifiée avant l'enregistrement.
+        OpenDialog.SOURCE_GUIDE -> selected?.let { p ->
+            val cur = vm.customGuide(p.id)
+            GuideAddressDialog(
+                initialUrl = cur?.url.orEmpty(), perSource = true, initialMode = cur?.mode ?: com.ultratv.tv.nativeapp.data.xmltv.GuideMode.COMPLETE,
+                onVerify = { vm.verifyGuide(it) },
+                onSave = { url, mode -> vm.setCustomGuide(p.id, url, mode); com.ultratv.tv.nativeapp.ui.common.Toaster.ok(if (url.isBlank()) D.guideRemoved else D.guideSaved); dialog = OpenDialog.NONE },
+                onDismiss = { dialog = OpenDialog.NONE },
+            )
         }
         OpenDialog.SHARE -> selected?.let { p ->
             ShareDevicesDialog(cloud.devices, cloud.selfId, null, onConfirm = { sel -> vm.share(p.id, sel); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
@@ -422,7 +440,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
 // ───────────────────────── Synchronisation ─────────────────────────
 
 @Composable
-private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit) {
+private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNavigate: (String) -> Unit) {
     val D = LocalDs.current
     val p by panes.state.collectAsState()
     val provider by panes.provider.collectAsState()
@@ -430,6 +448,14 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
     val totals by panes.categoryTotals.collectAsState()
     var purgeFor by remember { mutableStateOf<String?>(null) }
     var extraOpen by remember { mutableStateOf(false) }
+    var customOpen by remember { mutableStateOf(false) }
+    val webSendUi by vm.webSendUi.collectAsState()
+    val phoneReceived = D.phoneReceived
+    val stalkerFailed = D.stalkerFailed
+    val guideSaved = D.guideSaved
+    val isCustom = p.extraEpg.isNotBlank() && com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.labelOf(p.extraEpg) == null
+    val extraLabel = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.labelOf(p.extraEpg)
+        ?: if (isCustom) D.guideCustomLabel(com.ultratv.tv.nativeapp.data.xmltv.GuideAddress.hostOf(p.extraEpg).ifBlank { "…" }) else D.extraGuideOff
     val last = provider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
     val subtitle = if (last <= 0L) D.neverSynced else D.lastUpdate.format(ago(D, System.currentTimeMillis() - last), nextText(p.syncMode, p.syncHour, p.syncIntervalHours, last))
 
@@ -461,7 +487,7 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
         val live = "${D.channels(counts.live)} · ${D.everyHours((ttl.liveMs / 3_600_000L).toInt())}"
         ContentRow(Icons.Live, D.liveTv, live, p.syncLive) { if (!it) purgeFor = "live" else panes.setPart("live", true, false) }
         ContentRow(Icons.Guide, D.stepGuide, D.guideWindow(2, 24) + " · " + D.everyNight, p.syncEpg) { panes.setPart("epg", it, false) }
-        if (p.syncEpg) PrefRow(D.extraGuide, com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.labelOf(p.extraEpg) ?: D.extraGuideOff, hint = D.extraGuideHint) { extraOpen = true }
+        if (p.syncEpg) PrefRow(D.extraGuide, extraLabel, hint = D.extraGuideHint) { extraOpen = true }
         ContentRow(Icons.Movies, D.stepMovies, D.moviesOf(counts.movies) + " · " + D.everyDay, p.syncVod) { if (!it) purgeFor = "vod" else panes.setPart("vod", true, false) }
         ContentRow(Icons.Series, D.stepSeries, D.seriesOf(counts.series) + " · " + D.everyDay, p.syncSeries) { if (!it) purgeFor = "series" else panes.setPart("series", true, false) }
     }
@@ -471,11 +497,20 @@ private fun SyncPane(panes: SettingsPanesViewModel, onNavigate: (String) -> Unit
     }
     if (extraOpen) ChoiceDialog(
         D.extraGuide,
-        listOf("" to D.extraGuideOff) + com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.OPTIONS,
-        p.extraEpg,
-        onPick = { panes.setExtraEpg(it); extraOpen = false },
+        listOf("" to D.extraGuideOff) + com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.OPTIONS + (CUSTOM_GUIDE_KEY to D.guideCustomOption),
+        if (isCustom) CUSTOM_GUIDE_KEY else p.extraEpg,
+        onPick = { if (it == CUSTOM_GUIDE_KEY) customOpen = true else panes.setExtraEpg(it); extraOpen = false },
         onDismiss = { extraOpen = false },
     )
+    // Adresse personnalisée : saisie à la télécommande ou envoyée depuis le téléphone, vérifiée avant l'enregistrement.
+    if (customOpen) GuideAddressDialog(
+        initialUrl = if (isCustom) p.extraEpg else "", perSource = false,
+        onVerify = { panes.verifyGuide(it) },
+        onSave = { url, _ -> panes.setExtraEpg(url); com.ultratv.tv.nativeapp.ui.common.Toaster.ok(guideSaved); customOpen = false },
+        onDismiss = { customOpen = false },
+        onPhone = if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) null else ({ customOpen = false; vm.startWebSend(phoneReceived, stalkerFailed) { c -> D.guideCheckMessage(c) ?: guideSaved } }),
+    )
+    PhoneSendDialog(webSendUi, onCancel = { vm.cancelWebSend() }, onRetry = { vm.startWebSend(phoneReceived, stalkerFailed) { c -> D.guideCheckMessage(c) ?: guideSaved } })
     purgeFor?.let { part ->
         ChoiceDialog(D.purgeTitle, listOf(false to D.keepData, true to D.purgeData), null, onPick = { purge -> panes.setPart(part, false, purge); purgeFor = null }, onDismiss = { purgeFor = null })
     }
