@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Android (TV) : l'OSD complet du direct reste affiché 8 s sans touche (5 s pour le simple bandeau), le temps de lire le programme et de choisir.
+
 ### Corrigé
 - Android (mode simple) : « Direct » relance la dernière chaîne avec une file de zapping, même si elle n'est pas dans les favoris (sa catégorie, dans l'ordre du Direct). Avant, haut / bas ne changeaient plus de chaîne.
 

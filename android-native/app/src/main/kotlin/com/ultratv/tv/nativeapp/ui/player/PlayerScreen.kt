@@ -796,6 +796,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(item?.remoteId) { epNav = if (item?.kind == "EPISODE") vm.episodeNeighbors() else (false to false) }
     var playing by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
+    // Délai de masquage de la surcouche : 5 s pour le bandeau, 8 s pour l'OSD complet du direct (trois étages à lire).
+    var hideAfterMs by remember { mutableStateOf(OSD_HIDE_BANNER_MS) }
     LaunchedEffect(Unit) {
         var lastSave = System.currentTimeMillis()
         while (true) {
@@ -806,7 +808,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())
             if (tsActive) tsSnap = ts.snapshot()
-            if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > 5_000) overlayVisible = false
+            if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > hideAfterMs) overlayVisible = false
             delay(500)
         }
     }
@@ -851,6 +853,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // (plus de zapping, OK = pause).
     var controlsEngaged by remember { mutableStateOf(false) }
     LaunchedEffect(overlayVisible) { if (!overlayVisible) controlsEngaged = false }
+    LaunchedEffect(controlsEngaged, isLive) { hideAfterMs = if (isLive && controlsEngaged) OSD_HIDE_FULL_MS else OSD_HIDE_BANNER_MS }
     // OSD complet à la télécommande ; étage qui porte le focus (Retour : récents → barre → fermeture).
     val osdOpen = isLive && overlayVisible && controlsEngaged
     var osdStage by remember { mutableStateOf(OsdStage.CONTROLS) }
@@ -1486,3 +1489,7 @@ private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
         }
     }
 }
+
+/** Masquage de la surcouche sans touche : bandeau (et VOD) / OSD complet du direct. */
+private const val OSD_HIDE_BANNER_MS = 5_000L
+private const val OSD_HIDE_FULL_MS = 8_000L
