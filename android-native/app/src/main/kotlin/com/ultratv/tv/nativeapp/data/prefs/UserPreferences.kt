@@ -132,6 +132,15 @@ data class UserPrefs(
     val startScreen: String = "",
     /** Mode simple : grandes tuiles à la place de l'accueil (surchargé PAR PROFIL, voir ProfilePrefs.simpleMode). */
     val simpleMode: Boolean = false,
+    // ── Écrans Films / Séries ──
+    /** Source des catégories : "genres" (genres automatiques) | "provider" (catégories du fournisseur). */
+    val catalogSource: String = "genres",
+    /** Affichage : "split" (liste de catégories + grille) | "rows" (rangées par catégorie). */
+    val catalogLayout: String = "split",
+    /** Colonnes de la grille : 0 = auto, sinon 4 / 5 / 6. */
+    val catalogColumns: Int = 0,
+    /** Tri : code de CatalogFilter.Sort (0 fournisseur, 1 ajouts récents, 2 mieux notés). */
+    val catalogSort: Int = 0,
 )
 
 @Singleton
@@ -191,6 +200,10 @@ class UserPreferencesStore @Inject constructor(
         val homeOrder = stringPreferencesKey("home_order")
         val homeHidden = stringPreferencesKey("home_hidden")
         val startScreen = stringPreferencesKey("start_screen")
+        val catalogSource = stringPreferencesKey("catalog_source")
+        val catalogLayout = stringPreferencesKey("catalog_layout")
+        val catalogColumns = intPreferencesKey("catalog_columns")
+        val catalogSort = intPreferencesKey("catalog_sort")
     }
 
     /** Préférences EFFECTIVES : globales, surchargées par celles du profil courant (voir ProfilePrefs). */
@@ -237,6 +250,8 @@ class UserPreferencesStore @Inject constructor(
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
             accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
             homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "",
+            catalogSource = p[Keys.catalogSource] ?: "genres", catalogLayout = p[Keys.catalogLayout] ?: "split",
+            catalogColumns = p[Keys.catalogColumns] ?: 0, catalogSort = p[Keys.catalogSort] ?: 0,
         )
     }
 
@@ -285,6 +300,10 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setStartScreen(key: String) = update { it[Keys.startScreen] = key }
     /** Mode simple du profil COURANT. */
     suspend fun setSimpleMode(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SIMPLE_MODE, v.toString())
+    suspend fun setCatalogSource(v: String) = update { it[Keys.catalogSource] = v }
+    suspend fun setCatalogLayout(v: String) = update { it[Keys.catalogLayout] = v }
+    suspend fun setCatalogColumns(v: Int) = update { it[Keys.catalogColumns] = v }
+    suspend fun setCatalogSort(v: Int) = update { it[Keys.catalogSort] = v }
     suspend fun setPlayerEngine(v: String) = update { it[Keys.playerEngine] = v }
     suspend fun setDecoderMode(v: String) = update { it[Keys.decoderMode] = v }
     suspend fun setBufferPreset(v: String) = update { it[Keys.bufferPreset] = v }

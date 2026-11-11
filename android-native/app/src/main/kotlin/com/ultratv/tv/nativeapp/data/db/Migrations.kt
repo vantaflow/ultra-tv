@@ -199,7 +199,24 @@ val MIGRATION_18_19 = object : Migration(18, 19) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+/**
+ * 19 → 20 (genres automatiques) : colonne `tmdb_info.genreIds` (identifiants de genres TMDB, nulle pour les fiches déjà en
+ * cache) et table de jointure `title_genre` (titre ↔ genre) avec son index de comptage / de lecture. SCHÉMA SEULEMENT :
+ * la table démarre vide et se remplit en tâche de fond, par lots (GenreDetector), jamais dans la migration — une
+ * réécriture de 180 000 lignes ici figerait le premier lancement d'une box.
+ */
+val MIGRATION_19_20 = object : Migration(19, 20) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `tmdb_info` ADD COLUMN `genreIds` TEXT")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `title_genre` (`providerId` INTEGER NOT NULL, `kind` TEXT NOT NULL, `remoteId` TEXT NOT NULL, " +
+                "`genre` TEXT NOT NULL, `lvl` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`providerId`, `kind`, `remoteId`, `genre`))",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_title_genre_providerId_kind_genre_remoteId` ON `title_genre` (`providerId`, `kind`, `genre`, `remoteId`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

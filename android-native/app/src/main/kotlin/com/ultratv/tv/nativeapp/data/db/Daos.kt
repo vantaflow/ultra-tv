@@ -396,6 +396,24 @@ interface MovieDao {
     @Query("SELECT * FROM movie WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, MovieEntity>
 
+
+    /*
+     * Titres d'un genre automatique (table title_genre) : la sous-requête EXISTS filtre les lignes dans l'ORDRE de l'index de
+     * tri (rowid / (providerId, addedKey) / (providerId, rating)) — pas de tri complet, et une page s'arrête dès qu'elle est pleine.
+     */
+    @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY id")
+    fun pagedGenreByProvider(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY addedKey DESC, id DESC")
+    fun pagedGenreByRecent(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY rating DESC, id DESC")
+    fun pagedGenreByRating(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, MovieEntity>
+
+    /** Rangée d'un genre automatique (vue « Rangées ») : les plus récents d'abord. */
+    @Query("SELECT * FROM movie m WHERE m.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = m.providerId AND g.kind = 'MOVIE' AND g.remoteId = m.remoteId AND g.genre = :genre) ORDER BY addedKey DESC LIMIT :limit")
+    fun observeGenreRow(pid: Long, genre: String, limit: Int): Flow<List<MovieEntity>>
+
     @Query("UPDATE movie SET plot = :plot, cast = :cast, genre = :genre, duration = :duration, backdrop = :backdrop WHERE id = :id")
     suspend fun updateDetails(id: Long, plot: String?, cast: String?, genre: String?, duration: String?, backdrop: String?)
 
@@ -503,6 +521,24 @@ interface SeriesDao {
 
     @Query("SELECT * FROM series WHERE providerId = :pid AND categoryId = :cat AND (:useLang = 0 OR lang IN (:langs)) ORDER BY id")
     fun pagedForCategory(pid: Long, cat: String, useLang: Int, langs: List<String>): androidx.paging.PagingSource<Int, SeriesEntity>
+
+
+    /*
+     * Titres d'un genre automatique (table title_genre) : la sous-requête EXISTS filtre les lignes dans l'ORDRE de l'index de
+     * tri (rowid / (providerId, addedKey) / (providerId, rating)) — pas de tri complet, et une page s'arrête dès qu'elle est pleine.
+     */
+    @Query("SELECT * FROM series s WHERE s.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = s.providerId AND g.kind = 'SERIES' AND g.remoteId = s.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY id")
+    fun pagedGenreByProvider(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series s WHERE s.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = s.providerId AND g.kind = 'SERIES' AND g.remoteId = s.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY addedKey DESC, id DESC")
+    fun pagedGenreByRecent(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    @Query("SELECT * FROM series s WHERE s.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = s.providerId AND g.kind = 'SERIES' AND g.remoteId = s.remoteId AND g.genre = :genre) AND (:useLang = 0 OR lang IN (:langs)) AND (:minRating <= 0 OR (rating >= :minRating AND rating <= 10)) AND (:yearFrom = 0 OR year >= :yearFrom) AND (:yearTo = 0 OR year <= :yearTo) ORDER BY rating DESC, id DESC")
+    fun pagedGenreByRating(pid: Long, genre: String, useLang: Int, langs: List<String>, minRating: Int, yearFrom: Int, yearTo: Int): androidx.paging.PagingSource<Int, SeriesEntity>
+
+    /** Rangée d'un genre automatique (vue « Rangées ») : les plus récents d'abord. */
+    @Query("SELECT * FROM series s WHERE s.providerId = :pid AND EXISTS (SELECT 1 FROM title_genre g WHERE g.providerId = s.providerId AND g.kind = 'SERIES' AND g.remoteId = s.remoteId AND g.genre = :genre) ORDER BY addedKey DESC LIMIT :limit")
+    fun observeGenreRow(pid: Long, genre: String, limit: Int): Flow<List<SeriesEntity>>
 
     @Query("SELECT lang AS lang, COUNT(*) AS n FROM series WHERE providerId = :pid GROUP BY lang")
     fun observeLangCounts(pid: Long): Flow<List<LangCount>>

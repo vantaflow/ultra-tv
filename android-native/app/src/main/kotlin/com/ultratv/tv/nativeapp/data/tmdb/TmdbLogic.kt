@@ -87,6 +87,7 @@ object TmdbParser {
             tmdbId = id, overview = str("overview"), posterPath = str("poster_path"), backdropPath = str("backdrop_path"),
             rating = o.optDouble("vote_average", 0.0).takeIf { it > 0.0 }, cast = cast, trailerKey = trailer,
             originalLanguage = str("original_language"), photos = photos,
+            genreIds = o.optJSONArray("genres")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optInt("id", 0)?.takeIf { g -> g > 0 } } }.orEmpty(),
         )
     }
 }
