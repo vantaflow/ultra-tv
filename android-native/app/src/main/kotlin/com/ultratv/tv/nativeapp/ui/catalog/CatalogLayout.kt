@@ -4,7 +4,7 @@ package com.ultratv.tv.nativeapp.ui.catalog
 enum class CategorySource(val key: String) {
     GENRES("genres"), PROVIDER("provider");
 
-    companion object { fun parse(raw: String?) = entries.firstOrNull { it.key == raw } ?: GENRES }
+    companion object { fun parse(raw: String?) = entries.firstOrNull { it.key == raw } ?: PROVIDER }
 }
 
 /** Affichage : liste de catégories + grille (TV) ou rangées par catégorie (affichage d'origine, toujours utilisé en tactile). */

@@ -11,8 +11,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - **Nouvelle fiche film / série** : image de fond plein écran, ligne d'infos, Reprendre S1É3, distribution cliquable ;
   séries avec saisons à gauche et grandes cartes d'épisodes, « Aller à l'épisode » ; films avec distribution et titres
   similaires.
-- **Films et Séries par catégories** : liste des catégories avec leur nombre de titres et grille d'affiches ; **genres
-  automatiques** (Action, Comédie, Science-fiction, Anime…) détectés en arrière-plan ; tri, note, période, colonnes.
+- **Films et Séries par catégories** : liste des catégories du fournisseur avec leur nombre de titres et grille
+  d'affiches ; au choix, **genres automatiques** (Action, Comédie, Science-fiction, Anime…) détectés en arrière-plan ;
+  tri, note, période, colonnes.
 - **Direct et Guide TV** : programme en cours avec barre de progression et programme suivant sur chaque chaîne,
   panneau « En direct » et cartes « Ensuite » ; guide avec le programme sélectionné et l'aperçu vidéo en haut,
   bouton « Maintenant », ligne de l'heure courante.

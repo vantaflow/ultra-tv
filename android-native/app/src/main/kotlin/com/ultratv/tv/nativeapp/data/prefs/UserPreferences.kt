@@ -134,7 +134,8 @@ data class UserPrefs(
     val simpleMode: Boolean = false,
     // ── Écrans Films / Séries ──
     /** Source des catégories : "genres" (genres automatiques) | "provider" (catégories du fournisseur). */
-    val catalogSource: String = "genres",
+    // Films et Séries s'ouvrent sur les catégories du fournisseur ; les genres automatiques restent au choix.
+    val catalogSource: String = "provider",
     /** Affichage : "split" (liste de catégories + grille) | "rows" (rangées par catégorie). */
     val catalogLayout: String = "split",
     /** Colonnes de la grille : 0 = auto, sinon 4 / 5 / 6. */
@@ -250,7 +251,7 @@ class UserPreferencesStore @Inject constructor(
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
             accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
             homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "",
-            catalogSource = p[Keys.catalogSource] ?: "genres", catalogLayout = p[Keys.catalogLayout] ?: "split",
+            catalogSource = p[Keys.catalogSource] ?: "provider", catalogLayout = p[Keys.catalogLayout] ?: "split",
             catalogColumns = p[Keys.catalogColumns] ?: 0, catalogSort = p[Keys.catalogSort] ?: 0,
         )
     }

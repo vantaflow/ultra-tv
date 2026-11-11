@@ -31,7 +31,7 @@ class CatalogLayoutRulesTest {
     }
 
     @Test fun preferences_valeursInconnuesRetombentSurLesDefauts() {
-        assertEquals(CategorySource.GENRES, CategorySource.parse(null))
+        assertEquals(CategorySource.PROVIDER, CategorySource.parse(null))
         assertEquals(CategorySource.PROVIDER, CategorySource.parse("provider"))
         assertEquals(CatalogLayout.SPLIT, CatalogLayout.parse("zzz"))
         assertEquals(CatalogLayout.ROWS, CatalogLayout.parse("rows"))
