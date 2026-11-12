@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Linux : paquets **.deb** (Debian, Ubuntu) et **.rpm** (Fedora, openSUSE) en plus de l'AppImage, avec le ffmpeg minimal inclus ; liens stables `/download/linux-deb` et `/download/linux-rpm` (`/download/linux` reste l'AppImage). Installée par paquet, l'appli ne tente pas de se mettre à jour seule : elle affiche « Nouvelle version disponible » avec un lien vers le nouveau paquet ; l'AppImage garde la mise à jour automatique.
+- Lecteur film / épisode (Android et bureau) : **avance et retour rapides** avec Gauche / Droite (flèches du clavier sur le bureau, touches Avance / Retour rapide de la télécommande). Un appui déplace une position visée de ±10 s ; en maintenant la touche, le pas grandit (30 s, 60 s puis 120 s, plafonné à 2 % de la durée). Un curseur cible montre l'heure visée et l'écart (« +2:30 », « −0:40 ») ; le saut a lieu au relâchement ou sur OK / Entrée, Retour / Échap annule. Sur TV, commandes masquées, Gauche / Droite les affiche avec le focus sur la barre de progression (Haut / Bas pour aller aux boutons) ; avant, elles déplaçaient le focus entre les boutons au lieu de la lecture. Sens inversé en arabe ; le Direct n'est pas modifié.
 
 ## [1.3.0] — 2026-11-12 (Android) et bureau 1.2.49
 

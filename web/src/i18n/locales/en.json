@@ -159,6 +159,7 @@
   "player.live": "Live",
   "player.pause": "Pause",
   "player.back10": "Back 10 seconds",
+  "player.seekTarget": "Target position",
   "player.fwd10": "Forward 10 seconds",
   "player.tracks": "Tracks",
   "player.display": "Display",

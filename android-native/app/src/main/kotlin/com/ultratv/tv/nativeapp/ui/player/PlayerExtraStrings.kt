@@ -28,6 +28,7 @@ class PlayerExtraStrings(val lang: AppLang) {
 
     // Replay
     val fromStart get() = tx(R.string.pex_from_start)
+    val seekBar get() = tx(R.string.pex_seek_bar)
     val backToLive get() = tx(R.string.pex_back_to_live)
 
     // Sous-titres

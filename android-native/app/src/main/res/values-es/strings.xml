@@ -783,6 +783,7 @@
     <string name="pex_skip_credits">Saltar créditos</string>
     <string name="pex_next_episode">Siguiente episodio</string>
     <string name="pex_from_start">Desde el principio</string>
+    <string name="pex_seek_bar">Barra de progreso</string>
     <string name="pex_back_to_live">Volver al directo</string>
     <string name="pex_subs_pill">Subtítulos</string>
     <string name="pex_subtitles_title">Subtítulos</string>

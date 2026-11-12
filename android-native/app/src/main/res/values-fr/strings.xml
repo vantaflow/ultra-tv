@@ -791,6 +791,7 @@
     <string name="pex_skip_credits">Passer le générique</string>
     <string name="pex_next_episode">Épisode suivant</string>
     <string name="pex_from_start">Depuis le début</string>
+    <string name="pex_seek_bar">Barre de progression</string>
     <string name="pex_back_to_live">Revenir au direct</string>
     <string name="pex_subs_pill">Sous-titres</string>
     <string name="pex_subtitles_title">Sous-titres</string>

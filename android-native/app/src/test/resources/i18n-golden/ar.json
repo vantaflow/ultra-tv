@@ -1178,6 +1178,7 @@
   "PlayerExtraStrings.getSearchNeedsProxy()": "اربط الجهاز بالـ Worker لتفعيله",
   "PlayerExtraStrings.getSearchOnline()": "البحث عن ترجمات",
   "PlayerExtraStrings.getSearching()": "جارٍ البحث\u2026",
+  "PlayerExtraStrings.getSeekBar()": "شريط التقدم",
   "PlayerExtraStrings.getSettingsPill()": "الإعدادات",
   "PlayerExtraStrings.getSize()": "الحجم",
   "PlayerExtraStrings.getSkipCredits()": "تخطي الشارة",

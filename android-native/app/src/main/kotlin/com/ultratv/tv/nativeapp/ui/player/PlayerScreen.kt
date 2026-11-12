@@ -910,6 +910,41 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
 
     fun touch() { lastInteraction = System.currentTimeMillis(); overlayVisible = true }
+    // Défilement de la position à la télécommande (film / épisode) : voir SeekScrubLogic. La lecture continue ; seule la cible bouge,
+    // le saut réel a lieu 700 ms après la dernière touche (ou sur OK). Commandes ensuite encore ~3 s puis masquage habituel.
+    var scrub by remember { mutableStateOf<SeekScrubLogic.State?>(null) }
+    var barFocused by remember { mutableStateOf(false) }
+    var focusBarOnShow by remember { mutableStateOf(false) }
+    var scrubKeyDown by remember { mutableStateOf(false) }
+    val barFocus = remember { FocusRequester() }
+    val rtlLayout = androidx.compose.ui.platform.LocalLayoutDirection.current == androidx.compose.ui.unit.LayoutDirection.Rtl
+    fun commitScrub() {
+        val st = scrub ?: return
+        scrub = null
+        val ms = (st.target * 1000).toLong()
+        session.engine?.seekTo(ms)
+        pos = ms / 1_000 * 1_000
+        lastInteraction = System.currentTimeMillis() - (hideAfterMs - SeekScrubLogic.HIDE_AFTER_JUMP_MS).coerceAtLeast(0)
+        overlayVisible = true
+    }
+    LaunchedEffect(scrub != null) {
+        while (scrub != null) {
+            delay(100)
+            scrub?.let { if (SeekScrubLogic.shouldCommit(it, System.currentTimeMillis(), scrubKeyDown)) commitScrub() }
+        }
+    }
+    // Changement de média, passage au direct ou panneau ouvert : un défilement en cours est abandonné.
+    LaunchedEffect(currentUrl, isLive, panel) { scrub = null }
+    LaunchedEffect(overlayVisible, panel) { if (!overlayVisible || panel != Panel.None) barFocused = false }
+    fun vodScrubPress(forward: Boolean, repeat: Boolean) {
+        val e = session.engine ?: return
+        val now = System.currentTimeMillis()
+        // Durée inconnue : repli sur un saut direct de 10 s.
+        if (e.durationMs <= 0) { e.seekTo((e.positionMs + if (forward) 10_000 else -10_000).coerceAtLeast(0)); lastInteraction = now; overlayVisible = true; return }
+        scrubKeyDown = true
+        scrub = SeekScrubLogic.press(scrub, e.positionMs / 1000.0, if (e.durationMs > 0) e.durationMs / 1000.0 else 0.0, forward, repeat, now)
+        lastInteraction = now; overlayVisible = true
+    }
     // Télécommande sur le téléphone : pause, sauts et zapping demandés par la page web locale (voir data/remote).
     val onRemote by androidx.compose.runtime.rememberUpdatedState<(com.ultratv.tv.nativeapp.data.remote.RemoteAction) -> Unit> { a ->
         when (a) {
@@ -951,6 +986,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     BackHandler {
         when {
             zap.isEntering -> zap.cancelEntry()
+            // Défilement en cours : Retour l'annule (position d'avant, aucun saut) sans quitter ni masquer.
+            scrub != null -> { scrub = null; touch() }
             pinPending != null -> vm.guard.cancel()
             infoOpen -> infoOpen = false
             // Retour ferme ce qui est ouvert puis QUITTE le lecteur (retour au menu). Il ne ramène plus à la chaîne
@@ -973,7 +1010,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // Focus de la barre de l'OSD : posé par LiveOsd lui-même, APRÈS sa composition (réessayé quelques images, la demande échoue
     // tant que le bouton n'est pas attaché), y compris à l'ouverture par OK / Bas depuis le bandeau.
     val pauseFocus = remember { FocusRequester() }
-    LaunchedEffect(overlayVisible) { if (overlayVisible && panel == Panel.None) runCatching { pauseFocus.requestFocus() } }
+    LaunchedEffect(overlayVisible) {
+        if (overlayVisible && panel == Panel.None) {
+            // Film / épisode ouvert par Gauche / Droite : le focus va sur la barre de progression, pas sur Pause.
+            if (focusBarOnShow && !isLive) {
+                focusBarOnShow = false
+                repeat(8) { if (runCatching { barFocus.requestFocus() }.isSuccess) return@LaunchedEffect; delay(32) }
+            }
+            runCatching { pauseFocus.requestFocus() }
+        } else focusBarOnShow = false
+    }
 
     // ── OSD du Direct (ui/player/osd) : boutons de la barre, récents, favori ; partagés par la TV et le tactile paysage.
     val togglePlay: () -> Unit = {
@@ -1093,6 +1139,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     Box(
         Modifier.fillMaxSize().background(Color.Black).focusRequester(rootFocus).androidx_focusable()
             .onPreviewKeyEvent { ev ->
+                if (ev.type == KeyEventType.KeyUp && scrub != null && (ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight || ev.key == Key.MediaFastForward || ev.key == Key.MediaRewind))
+                    { scrubKeyDown = false; scrub = scrub?.let { SeekScrubLogic.release(it, System.currentTimeMillis()) } }
                 if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                 // Retour n'est JAMAIS consommé ici : c'est le BackHandler qui ferme ce qui est ouvert puis quitte le lecteur.
                 // Avant, commandes masquées (film / épisode), Retour servait à les afficher : l'appui « Down » consommé, Android 11
@@ -1120,7 +1168,12 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         touch()
                         val fwd = ev.key == Key.MediaFastForward
                         if (tsActive) tsJump(if (fwd) 30 else -30)
-                        else if (!isLive) session.engine?.let { it.seekTo(com.ultratv.tv.nativeapp.ui.mobile.seekTarget(it.positionMs, if (fwd) 10_000L else -10_000L, it.durationMs)) }
+                        else if (!isLive) {
+                            // Film / épisode : même défilement accéléré que Droite / Gauche (touches média : sans changer le focus).
+                            val hiddenNow = !overlayVisible && panel == Panel.None && !drawerOpen
+                            if (hiddenNow) focusBarOnShow = true
+                            vodScrubPress(fwd, ev.nativeKeyEvent.repeatCount > 0)
+                        }
                         return@onPreviewKeyEvent true
                     }
                     Key.MediaNext, Key.MediaPrevious -> {
@@ -1177,6 +1230,24 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         OsdDecision.OpenOsd -> { touch(); controlsEngaged = true; return@onPreviewKeyEvent true }
                         OsdDecision.Consume -> { touch(); return@onPreviewKeyEvent true }
                         OsdDecision.Pass -> Unit
+                    }
+                }
+                // Film / épisode (jamais le direct ni le timeshift) : défilement accéléré de la position (SeekScrubLogic).
+                if (!isLive && !tsActive && panel == Panel.None && !drawerOpen) {
+                    val scrubKey = when {
+                        ev.key == Key.DirectionLeft -> if (rtlLayout) SeekScrubLogic.Key.FORWARD else SeekScrubLogic.Key.BACK
+                        ev.key == Key.DirectionRight -> if (rtlLayout) SeekScrubLogic.Key.BACK else SeekScrubLogic.Key.FORWARD
+                        okKey -> SeekScrubLogic.Key.OK
+                        else -> SeekScrubLogic.Key.OTHER
+                    }
+                    when (val a = SeekScrubLogic.decide(scrubKey, mediaKey = false, hidden = hidden, barFocused = barFocused, scrubbing = scrub != null)) {
+                        is SeekScrubLogic.Action.Scrub -> {
+                            if (a.focusBar) { focusBarOnShow = true; if (!hidden) runCatching { barFocus.requestFocus() } }
+                            vodScrubPress(a.forward, ev.nativeKeyEvent.repeatCount > 0)
+                            return@onPreviewKeyEvent true
+                        }
+                        SeekScrubLogic.Action.CommitNow -> { commitScrub(); return@onPreviewKeyEvent true }
+                        SeekScrubLogic.Action.Pass -> Unit
                     }
                 }
                 touch()
@@ -1310,7 +1381,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onRestart = { session.engine?.seekTo(0L); touch() }, onDisplay = { panel = Panel.Display },
                 labels = remember(X, S, D) { vodLabels(X, S, D) },
                 playing = playing, loading = state.phase == Phase.LOADING, hasPrev = epNav.first, hasNext = epNav.second, sleepActive = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE,
-                pauseFocus = pauseFocus,
+                pauseFocus = pauseFocus, barFocus = barFocus, onBarFocus = { barFocused = it },
+                scrubTarget = { scrub?.let { (it.target * 1000).toLong() } ?: -1L }, scrubDelta = { scrub?.let { SeekScrubLogic.fmtDelta(it.deltaSec) }.orEmpty() },
                 onPrev = { stepEpisode(-1) }, onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onNext = { stepEpisode(1) },

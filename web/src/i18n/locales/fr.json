@@ -163,6 +163,7 @@
   "player.live": "En direct",
   "player.pause": "Pause",
   "player.back10": "Reculer de 10 secondes",
+  "player.seekTarget": "Position visée",
   "player.fwd10": "Avancer de 10 secondes",
   "player.tracks": "Pistes",
   "player.display": "Affichage",

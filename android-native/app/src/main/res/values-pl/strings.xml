@@ -765,6 +765,7 @@
     <string name="pex_skip_credits">Pomiń napisy końcowe</string>
     <string name="pex_next_episode">Następny odcinek</string>
     <string name="pex_from_start">Od początku</string>
+    <string name="pex_seek_bar">Pasek postępu</string>
     <string name="pex_back_to_live">Wróć na żywo</string>
     <string name="pex_subs_pill">Napisy</string>
     <string name="pex_subtitles_title">Napisy</string>

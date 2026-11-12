@@ -779,6 +779,7 @@
     <string name="pex_skip_credits">Skip credits</string>
     <string name="pex_next_episode">Next episode</string>
     <string name="pex_from_start">From the start</string>
+    <string name="pex_seek_bar">Progress bar</string>
     <string name="pex_back_to_live">Back to live</string>
     <string name="pex_subs_pill">Subtitles</string>
     <string name="pex_subtitles_title">Subtitles</string>

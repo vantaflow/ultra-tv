@@ -16,6 +16,7 @@ import { useNowNext } from "@/hooks/epg";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useT } from "@/i18n";
 import { fmtClock, fmtDuration } from "@/lib/text";
+import { COMMIT_MS, fmtDelta, press as scrubPressState, release as scrubRelease, type ScrubState } from "@/lib/seekScrub";
 import { bridge, currentTransport, requestHeaders, transportSync, wrapUrl } from "@/net/transport";
 import { handshake } from "@/net/xtream";
 import { credsOf } from "@/sync/core";
@@ -238,6 +239,7 @@ export function PlayerHost() {
     setTracks(NO_TRACKS);
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
+    window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
     setDrmBlocked(!!target.protectedStream);
     if (target.protectedStream) {
       engineRef.current?.stop();
@@ -393,9 +395,14 @@ export function PlayerHost() {
   }, [target?.refId, target?.kind, target?.replay?.start, source?.id, durKnown]);
   const skipOffer = state === "playing" && skips.length > 0 && target?.kind !== "live"
     ? skipOfferAt(skips, cur.t, cur.d, target?.kind === "episode", !!skipNext) : null;
+  // Défilement aux flèches (film / épisode) : position visée sur la barre, saut au relâchement.
+  const scrubRef = useRef<ScrubState | null>(null);
+  const scrubTimer = useRef(0);
+  const [scrub, setScrub] = useState<{ target: number; origin: number } | null>(null);
   const skipRef = useRef<() => boolean>(() => false);
   skipRef.current = () => {
     if (!skipOffer) return false;
+    window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
     if (skipOffer.next && skipNext) { usePlayer.getState().open(skipNext, "full"); return true; }
     const v = videoRef.current;
     if (v && skipOffer.to != null) { v.currentTime = skipOffer.to; return true; }
@@ -538,6 +545,39 @@ export function PlayerHost() {
     const v = videoRef.current!;
     seekTo(txClock(txRef.current, v.currentTime, v.duration).t + s);
   }, [seekTo]);
+  /** Fin du défilement : saut à la cible (valider) ou retour sans saut (annuler). Faux s'il n'y en avait pas. */
+  const scrubEnd = useCallback((commit: boolean) => {
+    window.clearTimeout(scrubTimer.current);
+    const s = scrubRef.current;
+    scrubRef.current = null;
+    setScrub(null);
+    if (!s) return false;
+    if (commit) seekTo(s.target);
+    kbOsdRef.current = false;
+    poke();
+    return true;
+  }, [seekTo, poke]);
+  const armScrub = useCallback((ms: number) => {
+    window.clearTimeout(scrubTimer.current);
+    scrubTimer.current = window.setTimeout(() => scrubEnd(true), ms);
+  }, [scrubEnd]);
+  /** Flèche / touche média en VOD : fait avancer la cible (le saut réel vient après COMMIT_MS sans appui). */
+  const scrubPress = useCallback((dir: 1 | -1, repeat: boolean) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const c = txClock(txRef.current, v.currentTime, v.duration);
+    if (!(c.d > 0)) { seekBy(dir * 10); return; }
+    const st = scrubPressState(scrubRef.current, dir, performance.now(), c.t, c.d, repeat);
+    scrubRef.current = st;
+    setScrub({ target: st.target, origin: st.origin });
+    // Touche encore enfoncée : filet de sécurité large (le délai de répétition du clavier peut dépasser 700 ms) ; le relâchement réarme à COMMIT_MS.
+    armScrub(Math.max(COMMIT_MS, 1500));
+  }, [seekBy, armScrub]);
+  const scrubKeyUp = useCallback(() => {
+    if (!scrubRef.current) return;
+    scrubRef.current = scrubRelease(scrubRef.current, performance.now());
+    armScrub(COMMIT_MS);
+  }, [armScrub]);
   const setVol = useCallback((d: number) => {
     const v = videoRef.current!;
     v.volume = Math.max(0, Math.min(1, v.volume + d));
@@ -711,6 +751,12 @@ export function PlayerHost() {
         return;
       }
 
+      // Défilement en cours : Échap annule (sans fermer le lecteur), Entrée valide tout de suite.
+      if (full && scrubRef.current && (e.key === "Escape" || e.key === "Enter")) {
+        e.preventDefault(); e.stopPropagation();
+        scrubEnd(e.key === "Enter");
+        return;
+      }
       switch (e.key) {
         case "Escape":
           if (full) { e.preventDefault(); e.stopPropagation(); if (panelRef.current) setPanel(null); else void leaveFull(); }
@@ -724,17 +770,30 @@ export function PlayerHost() {
         case "p": case "P": if (full) void pip(); break;
         case "i": case "I": if (full) setPanel((p) => (p === "stats" ? null : "stats")); break;
         case " ": if (full) { e.preventDefault(); togglePlay(); poke(); } break;
-        case "ArrowLeft": if (full && !isLive) { e.preventDefault(); seekBy(-10); poke(); } break;
-        case "ArrowRight": if (full && !isLive) { e.preventDefault(); seekBy(10); poke(); } break;
+        // VOD : défilement accéléré (sens inversé en RTL) ; différé : saut fixe de 10 s.
+        case "ArrowLeft": case "ArrowRight": case "MediaRewind": case "MediaFastForward":
+          if (full && !isLive) {
+            e.preventDefault();
+            if (tg.kind === "live") { seekBy(e.key === "ArrowRight" || e.key === "MediaFastForward" ? 10 : -10); poke(); }
+            else {
+              const fwd = e.key === "MediaFastForward" || (e.key === "ArrowRight") !== (document.dir === "rtl");
+              scrubPress(fwd ? 1 : -1, e.repeat); poke();
+            }
+          }
+          break;
         case "ArrowUp": if (full) { e.preventDefault(); if (isLive) void zap(-1); else setVol(0.05); poke(); } break;
         case "ArrowDown": if (full) { e.preventDefault(); if (isLive) void zap(1); else setVol(-0.05); poke(); } break;
         case "PageUp": if (full && isLive) void zap(-1); break;
         case "PageDown": if (full && isLive) void zap(1); break;
       }
     };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "MediaRewind" || e.key === "MediaFastForward") scrubKeyUp();
+    };
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
-  }, [leaveFull, toggleOsFull, toggleMute, pip, togglePlay, seekBy, setVol, zap, poke, closeOsd, clearNum, commitNum, tune]);
+    window.addEventListener("keyup", onKeyUp, true);
+    return () => { window.removeEventListener("keydown", onKey, true); window.removeEventListener("keyup", onKeyUp, true); };
+  }, [scrubEnd, scrubPress, scrubKeyUp, leaveFull, toggleOsFull, toggleMute, pip, togglePlay, seekBy, setVol, zap, poke, closeOsd, clearNum, commitNum, tune]);
   const panelRef = useRef(panel);
   panelRef.current = panel;
 
@@ -964,7 +1023,13 @@ export function PlayerHost() {
                   <div className="buf" style={{ width: `${(cur.buf / cur.d) * 100}%` }} />
                   <div className="fill" style={{ width: `${vodRatio * 100}%` }} />
                   <div className="knob" style={{ insetInlineStart: `${vodRatio * 100}%` }} />
-                  {hoverT && <span className="bubble" style={{ insetInlineStart: `${hoverT.f * 100}%` }}>{fmtClock(hoverT.f * cur.d)}</span>}
+                  {scrub && (
+                    <>
+                      <div className="scrub-mark" aria-label={t("player.seekTarget")} style={{ insetInlineStart: `${(scrub.target / cur.d) * 100}%` }} />
+                      <span className="bubble scrub" style={{ insetInlineStart: `${(scrub.target / cur.d) * 100}%` }}>{fmtClock(scrub.target)} <i>{fmtDelta(scrub.target - scrub.origin)}</i></span>
+                    </>
+                  )}
+                  {hoverT && !scrub && <span className="bubble" style={{ insetInlineStart: `${hoverT.f * 100}%` }}>{fmtClock(hoverT.f * cur.d)}</span>}
                 </div>
               </div>
               <div className="seek-meta mono">

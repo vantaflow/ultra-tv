@@ -2,7 +2,9 @@ package com.ultratv.tv.nativeapp.ui.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,6 +33,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
@@ -81,19 +85,19 @@ private val BOTTOM_SCRIM = Brush.verticalGradient(0f to Color.Transparent, 0.2f 
 
 private fun letter(px: Float) = (px / 2f).sp
 
-/** Libellés des boutons de la surcouche (tirés des chaînes existantes : aucune chaîne nouvelle à traduire). */
+/** Libellés des boutons de la surcouche (tirés des chaînes existantes, plus le nom de la barre de progression). */
 internal class VodLabels(
     val pause: String, val play: String, val back10: String, val fwd10: String, val restart: String,
     val nextEpisode: String, val previousEpisode: String,
     val tracks: String, val subtitles: String, val speed: String, val format: String, val sleep: String,
-    val loading: String, val endsAt: (String) -> String,
+    val loading: String, val endsAt: (String) -> String, val seekBar: String = "",
 )
 
 internal fun vodLabels(X: PlayerExtraStrings, S: Strings, D: DesignStrings) = VodLabels(
     pause = X.statusPaused, play = X.statusPlaying, back10 = "−10 s", fwd10 = "+10 s", restart = X.fromStart,
     nextEpisode = X.nextEpisode, previousEpisode = X.previousEpisode,
     tracks = S.playerTracks, subtitles = X.subsPill, speed = D.speed, format = S.playerAspect, sleep = X.sleepPill,
-    loading = X.statusLoading, endsAt = { t -> X.endsAt(t) },
+    loading = X.statusLoading, endsAt = { t -> X.endsAt(t) }, seekBar = X.seekBar,
 )
 
 @Composable
@@ -105,6 +109,9 @@ internal fun VodOverlay(
     onSubs: () -> Unit, onSleep: () -> Unit, onOptions: () -> Unit, onAudio: () -> Unit,
     kicker: String = "", episode: Boolean = false, buffered: () -> Long = { -1L },
     marks: List<Pair<Float, Float>> = emptyList(), onRestart: () -> Unit = {}, onDisplay: () -> Unit = onOptions,
+    // Défilement à la télécommande (SeekScrubLogic) : focus de la barre, position visée (ms, < 0 = aucune) et écart affiché.
+    barFocus: FocusRequester = remember { FocusRequester() }, onBarFocus: (Boolean) -> Unit = {},
+    scrubTarget: () -> Long = { -1L }, scrubDelta: () -> String = { "" },
 ) {
     // Bulle de temps : visible un court instant après un saut, à l'endroit où l'on arrive.
     var preview by remember { mutableStateOf<Long?>(null) }
@@ -148,7 +155,8 @@ internal fun VodOverlay(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
                 Box(Modifier.fillMaxWidth()) {
-                    SeekBar(pos, dur, buffered, marks)
+                    SeekBar(pos, dur, buffered, marks, scrubTarget, barFocus, onBarFocus, labels.seekBar)
+                    ScrubBubble(dur, scrubTarget, scrubDelta)
                     preview?.let { t ->
                         val d = dur()
                         val f = if (d > 0) (t.toFloat() / d).coerceIn(0f, 1f) else 0f
@@ -232,25 +240,63 @@ private fun CenterInfo(pos: () -> Long, dur: () -> Long, speed: Float, loading: 
 
 /** Barre tracée en phase de DESSIN : la position n'est lue que là, aucune recomposition. */
 @Composable
-private fun SeekBar(pos: () -> Long, dur: () -> Long, buffered: () -> Long, marks: List<Pair<Float, Float>>) {
+private fun SeekBar(
+    pos: () -> Long, dur: () -> Long, buffered: () -> Long, marks: List<Pair<Float, Float>>,
+    scrubTarget: () -> Long, barFocus: FocusRequester, onBarFocus: (Boolean) -> Unit, description: String,
+) {
     val fill = Ux.Accent
+    var focused by remember { mutableStateOf(false) }
     Box(
-        Modifier.fillMaxWidth().height(26.design).drawBehind {
+        // Focalisable : Gauche / Droite y font défiler la position (touches lues par le lecteur) ; Haut / Bas vont aux boutons.
+        Modifier.fillMaxWidth().height(34.design).focusRequester(barFocus)
+            .onFocusChanged { focused = it.isFocused; onBarFocus(it.isFocused) }.semantics { contentDescription = description }.focusable().drawBehind {
             val d = dur()
+            // En lecture de droite à gauche (arabe) la barre est miroir : le début est à droite.
+            val rtl = layoutDirection == LayoutDirection.Rtl
+            fun x(frac: Float) = if (rtl) size.width * (1f - frac) else size.width * frac
+            fun seg(a: Float, b: Float): Pair<Float, Float> = if (rtl) x(b) to size.width * (b - a) else x(a) to size.width * (b - a)
             val f = if (d > 0) (pos().toFloat() / d).coerceIn(0f, 1f) else 0f
             val b = if (d > 0) (buffered().toFloat() / d).coerceIn(0f, 1f) else 0f
-            val h = 10.design.toPx(); val y = (size.height - h) / 2; val r = CornerRadius(h / 2)
+            val h = (if (focused) 14.design else 10.design).toPx(); val y = (size.height - h) / 2; val r = CornerRadius(h / 2)
             drawRoundRect(TRACK, Offset(0f, y), Size(size.width, h), r)
-            if (b > f) drawRoundRect(BUFFERED, Offset(0f, y), Size(size.width * b, h), r)
+            if (b > f) seg(0f, b).let { (ox, w) -> drawRoundRect(BUFFERED, Offset(ox, y), Size(w, h), r) }
             for ((s, e) in marks) {
                 val w = (e - s).coerceAtLeast(0f)
-                if (w > 0f) drawRect(MARK, Offset(size.width * s, y), Size(size.width * w, h))
+                if (w > 0f) seg(s, e).let { (ox, sw) -> drawRect(MARK, Offset(ox, y), Size(sw, h)) }
             }
-            if (f > 0f) drawRoundRect(fill, Offset(0f, y), Size(size.width * f, h), r)
-            val rad = 13.design.toPx()
-            drawCircle(Color.White, radius = rad, center = Offset((size.width * f).coerceIn(rad, size.width - rad), size.height / 2))
+            if (f > 0f) seg(0f, f).let { (ox, w) -> drawRoundRect(fill, Offset(ox, y), Size(w, h), r) }
+            val rad = (if (focused) 15.design else 13.design).toPx()
+            drawCircle(Color.White, radius = rad, center = Offset(x(f).coerceIn(rad, size.width - rad), size.height / 2))
+            // Curseur « cible » du défilement : anneau accent, et trait entre la position actuelle et la cible.
+            val t = scrubTarget()
+            if (t >= 0 && d > 0) {
+                val tf = (t.toFloat() / d).coerceIn(0f, 1f)
+                seg(minOf(f, tf), maxOf(f, tf)).let { (ox, w) -> drawRect(fill.copy(alpha = 0.55f), Offset(ox, y), Size(w, h)) }
+                val tr = 17.design.toPx(); val cx = x(tf).coerceIn(tr, size.width - tr)
+                drawCircle(Color.White, radius = tr, center = Offset(cx, size.height / 2))
+                drawCircle(fill, radius = tr - 4.design.toPx(), center = Offset(cx, size.height / 2))
+            }
         },
     )
+}
+
+/** Bulle au-dessus de la barre pendant un défilement : heure visée et écart (« 1:34:12  +2:30 »). */
+@Composable
+private fun BoxScope.ScrubBubble(dur: () -> Long, scrubTarget: () -> Long, scrubDelta: () -> String) {
+    val t = scrubTarget()
+    if (t < 0) return
+    val d = dur()
+    val f = if (d > 0) (t.toFloat() / d).coerceIn(0f, 1f) else 0f
+    val shape = RoundedCornerShape(14.design)
+    Box(
+        Modifier.align(BiasAlignment(2f * f - 1f, -1f)).offset(y = (-76).design).clip(shape).background(P.tile)
+            .border(2.design, Ux.Accent, shape).padding(horizontal = 22.design, vertical = 12.design),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
+            Text(VodOverlayLogic.clock(t), color = P.text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1)
+            Text(scrubDelta(), color = P.accentText, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1)
+        }
+    }
 }
 
 /** Bouton rond ; seul celui qui a le focus montre son libellé (fond accent). */

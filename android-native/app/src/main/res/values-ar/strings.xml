@@ -833,6 +833,7 @@
     <string name="pex_skip_credits">تخطي الشارة</string>
     <string name="pex_next_episode">الحلقة التالية</string>
     <string name="pex_from_start">من البداية</string>
+    <string name="pex_seek_bar">شريط التقدم</string>
     <string name="pex_back_to_live">العودة إلى البث المباشر</string>
     <string name="pex_subs_pill">الترجمة</string>
     <string name="pex_subtitles_title">الترجمة</string>

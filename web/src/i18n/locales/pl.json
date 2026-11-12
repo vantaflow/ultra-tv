@@ -165,6 +165,7 @@
   "player.live": "Na żywo",
   "player.pause": "Wstrzymaj",
   "player.back10": "Wstecz o 10 sekund",
+  "player.seekTarget": "Pozycja docelowa",
   "player.fwd10": "Do przodu o 10 sekund",
   "player.tracks": "Ścieżki",
   "player.display": "Wyświetlanie",
