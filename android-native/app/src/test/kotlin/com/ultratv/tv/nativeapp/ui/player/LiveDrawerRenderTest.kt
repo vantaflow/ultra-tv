@@ -123,4 +123,7 @@ class LiveDrawerRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "live-drawer-tv-fr.png").length() > 10_000)
     }
+
+    @Test @Config(qualifiers = "w800dp-h360dp-xxhdpi")
+    fun capture_tactile_en_paysage() { render(AppLang.English, true, false, "live-drawer-touch-en.png") }
 }

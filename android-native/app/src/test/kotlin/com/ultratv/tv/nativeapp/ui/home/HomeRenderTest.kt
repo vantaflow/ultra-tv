@@ -99,6 +99,7 @@ class HomeRenderTest {
         rule.setContent {
             CompositionLocalProvider(
                 LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
+                androidx.compose.ui.platform.LocalLayoutDirection provides if (lang.rtl) androidx.compose.ui.unit.LayoutDirection.Rtl else androidx.compose.ui.unit.LayoutDirection.Ltr,
             ) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
@@ -141,4 +142,5 @@ class HomeRenderTest {
     }
 
     @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "home-tv-en.png", sport = true) }
+    @Test fun capture_tv_ar_sombre() { lang = AppLang.Arabic; render(light = false, file = "home-tv-ar.png", sport = true) }
 }

@@ -160,4 +160,7 @@ class LiveOsdRenderTest {
         assertEquals(2400, bmp.width); assertEquals(1080, bmp.height)
     }
 
+
+    @Test @Config(qualifiers = "w800dp-h360dp-xxhdpi")
+    fun capture_tactile_en_paysage() { render(AppLang.English, true, OsdStage.CONTROLS, "live-osd-touch-en.png") }
 }
