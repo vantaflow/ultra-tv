@@ -1513,4 +1513,22 @@
     <string name="sport_no_guide_title">Se necesita una guía</string>
     <string name="sport_no_guide_body">La sección de deportes se basa en la guía de programas de tus canales. Activa la guía en Ajustes › Sincronización y sincroniza tu fuente.</string>
     <string name="sport_open_sync">Abrir ajustes de sincronización</string>
+    <!-- Réglages v2 : descriptions de rubrique et résumés d'état de la liste -->
+    <string name="set2_desc_display">Tema, inicio, secciones y personalización.</string>
+    <string name="set2_desc_playback">Motor, decodificación, calidad y comportamiento del directo.</string>
+    <string name="set2_desc_parental">Código PIN y canales bloqueados.</string>
+    <string name="set2_desc_languages">Idioma de la aplicación y de los contenidos.</string>
+    <string name="set2_desc_messages">Anuncios recibidos del equipo.</string>
+    <string name="set2_desc_about">Versión, actualizaciones y diagnóstico.</string>
+    <string name="set2_sub_playback">Motor, calidad, directo</string>
+    <string name="set2_sub_parental">PIN y canales bloqueados</string>
+    <string name="set2_sources_none">Ninguna fuente</string>
+    <plurals name="set2_sources_count">
+        <item quantity="one">%1$d fuente</item>
+        <item quantity="many">%1$d fuentes</item>
+        <item quantity="other">%1$d fuentes</item>
+    </plurals>
+    <string name="set2_ago">Hace %1$s</string>
+    <string name="set2_sport_summary">Deporte: %1$s</string>
+    <string name="set2_version_summary">Versión %1$s</string>
 </resources>

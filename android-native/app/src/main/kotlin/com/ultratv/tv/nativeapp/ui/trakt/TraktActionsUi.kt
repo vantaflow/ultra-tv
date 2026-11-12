@@ -295,10 +295,14 @@ fun TraktSettingsSection(vm: TraktSettingsViewModel = hiltViewModel()) {
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(D.traktSettings)
         // Le texte décrit l'état ACTUEL : activé, il affichait « Désactivé : la fin est enregistrée comme une pause ».
-        SwitchPrefRow(D.traktAutoWatched, st.prefs.autoWatched, hint = if (st.prefs.autoWatched) D.traktAutoWatchedHintOn else D.traktAutoWatchedHint) { vm.setAutoWatched(it) }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            SwitchPrefRow(D.traktAutoWatched, st.prefs.autoWatched, hint = if (st.prefs.autoWatched) D.traktAutoWatchedHintOn else D.traktAutoWatchedHint) { vm.setAutoWatched(it) }
+        }
         if (st.lists.isNotEmpty()) {
             Text(D.traktListsHome + " · " + D.traktListsHomeHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.design))
-            for (l in st.lists) SwitchPrefRow(l.name, l.id !in st.prefs.hiddenLists) { vm.setListVisible(l.id, it) }
+            com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+                for (l in st.lists) SwitchPrefRow(l.name, l.id !in st.prefs.hiddenLists) { vm.setListVisible(l.id, it) }
+            }
         }
     }
 }

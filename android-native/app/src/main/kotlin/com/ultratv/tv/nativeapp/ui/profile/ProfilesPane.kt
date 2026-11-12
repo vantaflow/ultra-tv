@@ -49,15 +49,17 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
 
     PaneTitle(S.settingsTitle, S.settingsSub)
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-        profiles.forEach { p ->
-            PrefRow(
-                label = p.name,
-                value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.id in simpleIds) SM.settingName else null, if (p.pinHash != null) S.protectedHint else null).joinToString(" · "),
-            ) { menuFor = p }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            profiles.forEach { p ->
+                PrefRow(
+                    label = p.name,
+                    value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.id in simpleIds) SM.settingName else null, if (p.pinHash != null) S.protectedHint else null).joinToString(" · "),
+                ) { menuFor = p }
+            }
         }
         if (ProfileRules.canAdd(profiles.size)) PillButton(S.newProfile, { creating = true }, heightPx = 64, hPadPx = 32, fontPx = 22, bg = Ux.Surface2, iconPath = "M12 5v14M5 12h14")
     }
-    PrefRow(S.startup, if (startup == StartupMode.ALWAYS_ASK) S.alwaysAsk else S.lastProfile) { startupDialog = true }
+    com.ultratv.tv.nativeapp.ui.design.SettingsCard { PrefRow(S.startup, if (startup == StartupMode.ALWAYS_ASK) S.alwaysAsk else S.lastProfile) { startupDialog = true } }
 
     if (startupDialog) ChoiceDialog(S.startup, listOf(StartupMode.ALWAYS_ASK to S.alwaysAsk, StartupMode.LAST_PROFILE to S.lastProfile), startup, { vm.setStartupMode(it); startupDialog = false }, { startupDialog = false })
     if (creating) ProfileEditDialog(null, vm, onDismiss = { creating = false })

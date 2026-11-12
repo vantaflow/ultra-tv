@@ -1522,4 +1522,22 @@
     <string name="sport_no_guide_title">Un guide est nécessaire</string>
     <string name="sport_no_guide_body">La rubrique Sport s\'appuie sur le guide des programmes de vos chaînes. Activez le guide dans Réglages › Synchronisation, puis synchronisez votre source.</string>
     <string name="sport_open_sync">Ouvrir les réglages de synchronisation</string>
+    <!-- Réglages v2 : descriptions de rubrique et résumés d'état de la liste -->
+    <string name="set2_desc_display">Thème, accueil, rubriques et personnalisation.</string>
+    <string name="set2_desc_playback">Moteur, décodage, qualité et comportement du direct.</string>
+    <string name="set2_desc_parental">Code secret et chaînes verrouillées.</string>
+    <string name="set2_desc_languages">Langue de l\'application et des contenus.</string>
+    <string name="set2_desc_messages">Annonces reçues de l\'équipe.</string>
+    <string name="set2_desc_about">Version, mises à jour et diagnostic.</string>
+    <string name="set2_sub_playback">Moteur, qualité, direct</string>
+    <string name="set2_sub_parental">Code et chaînes verrouillées</string>
+    <string name="set2_sources_none">Aucune source</string>
+    <plurals name="set2_sources_count">
+        <item quantity="one">%1$d source</item>
+        <item quantity="many">%1$d sources</item>
+        <item quantity="other">%1$d sources</item>
+    </plurals>
+    <string name="set2_ago">Il y a %1$s</string>
+    <string name="set2_sport_summary">Sport : %1$s</string>
+    <string name="set2_version_summary">Version %1$s</string>
 </resources>

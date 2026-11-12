@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -47,35 +48,63 @@ fun Switch(on: Boolean, inverted: Boolean = false) {
 
 private const val CHEVRON = "M9 6l6 6-6 6"
 
-/** Ligne de réglage « valeur + chevron » (maquette Réglages) : 84 px, fond #141418, blanche + anneau au focus. */
+/** Vrai dans une [SettingsCard] : les lignes y sont à plat (sans coins ni anneau), séparées par un filet, le focus remplit la ligne. */
+val LocalSettingsCard = androidx.compose.runtime.compositionLocalOf { false }
+
+/**
+ * Carte arrondie des Réglages (maquettes Reglages) : un empilement de lignes (libellé + aide à gauche, valeur ou interrupteur
+ * à droite). Le fond de la carte est la couleur du filet : 1 dp d'écart entre les lignes le laisse voir comme séparateur.
+ */
+@Composable
+fun SettingsCard(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    val divider = Ux.Line.copy(alpha = if (Ux.palette.light) 0.8f else 0.5f)
+    Column(
+        modifier.fillMaxWidth().clip(RoundedCornerShape(26.design)).background(divider),
+        verticalArrangement = Arrangement.spacedBy(1.dp),
+    ) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalSettingsCard provides true) { content() }
+    }
+}
+
+/** Forme d'une ligne de réglage : à plat dans une carte, arrondie sinon. */
+@Composable
+fun settingsRowShape(): androidx.compose.ui.graphics.Shape =
+    if (LocalSettingsCard.current) androidx.compose.ui.graphics.RectangleShape else RoundedCornerShape(18.design)
+
+/** Anneau de focus d'une ligne : aucun dans une carte (le fond suffit), 5 px sinon. */
+@Composable
+fun settingsRowRing(): androidx.compose.ui.unit.Dp =
+    if (LocalSettingsCard.current) androidx.compose.ui.unit.Dp(0f) else 5.design
+
+/** Ligne de réglage « valeur + chevron » (maquette Réglages) : libellé + aide à gauche, valeur et chevron à droite ; focus = couleurs de focus. */
 @Composable
 fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: String? = null, onClick: () -> Unit) {
     // La fenêtre de choix qu'ouvre la ligne lui rend le focus en se fermant (FocusSurface se signale comme ouvreur).
     FocusSurface(
         onClick = onClick,
-        shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+        shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f,
         modifier = modifier.fillMaxWidth().height(84.designT),
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(16.design))
-            Text(value, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.design))
+            Text(value, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.design))
             Spacer(Modifier.width(12.design))
             DIcon(CHEVRON, 20.design, if (f) Ux.OnFocus2 else Ux.Text3, strokeWidth = 2.5f)
         }
     }
 }
 
-/** Ligne de réglage avec interrupteur. */
+/** Ligne de réglage avec interrupteur (accent quand activé). */
 @Composable
 fun SwitchPrefRow(label: String, on: Boolean, modifier: Modifier = Modifier, hint: String? = null, onChange: (Boolean) -> Unit) {
-    FocusSurface(onClick = { onChange(!on) }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = modifier.fillMaxWidth().height(84.designT)) { f ->
+    FocusSurface(onClick = { onChange(!on) }, shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f, modifier = modifier.fillMaxWidth().height(84.designT)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Switch(on, inverted = f)
@@ -83,12 +112,12 @@ fun SwitchPrefRow(label: String, on: Boolean, modifier: Modifier = Modifier, hin
     }
 }
 
-/** Titre de rubrique (Sora 40) avec sous-titre facultatif. */
+/** Titre de rubrique (Sora 36) avec description d'une ligne facultative. */
 @Composable
 fun PaneTitle(title: String, subtitle: String? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
-        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (subtitle != null) Text(subtitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (subtitle != null) Text(subtitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 

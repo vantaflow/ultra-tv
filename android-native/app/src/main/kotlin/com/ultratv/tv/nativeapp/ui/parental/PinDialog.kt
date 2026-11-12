@@ -79,7 +79,7 @@ fun ParentalSection(
     val set by vm.pinSet.collectAsState()
     var dialog by remember { mutableStateOf(false) }
     val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    com.ultratv.tv.nativeapp.ui.design.SettingsCard {
         com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalChangePin.takeIf { set } ?: S.parentalSetPin, if (set) S.parentalPinEnabled else S.parentalPinNotSet) { dialog = true }
         val forced by vm.parentalForced.collectAsState()
         if (set && !forced) com.ultratv.tv.nativeapp.ui.design.PrefRow(S.parentalClearPin, "") { vm.setPin("") {} }

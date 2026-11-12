@@ -137,41 +137,49 @@ fun MemoryPane(vm: MemoryViewModel = hiltViewModel()) {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(S.groupUsed)
-        PrefRow(S.database, sz { it.database }, hint = S.databaseHint) { }
-        PrefRow(S.images, sz { it.images }) { }
-        PrefRow(S.downloads, sz { it.downloads }) { }
-        PrefRow(S.timeshift, sz { it.timeshift }) { }
-        PrefRow(S.temp, sz { it.temp }, hint = S.tempHint) { }
-        PrefRow(S.logs, sz { it.logs }) { }
-        PrefRow(S.totalUsed, sz { it.total }) { }
-        PrefRow(S.freeSpace, sz { it.free }) { }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            PrefRow(S.database, sz { it.database }, hint = S.databaseHint) { }
+            PrefRow(S.images, sz { it.images }) { }
+            PrefRow(S.downloads, sz { it.downloads }) { }
+            PrefRow(S.timeshift, sz { it.timeshift }) { }
+            PrefRow(S.temp, sz { it.temp }, hint = S.tempHint) { }
+            PrefRow(S.logs, sz { it.logs }) { }
+            PrefRow(S.totalUsed, sz { it.total }) { }
+            PrefRow(S.freeSpace, sz { it.free }) { }
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(S.groupRam)
         val ram = ui.ram
-        PrefRow(S.ramAvailable, if (ram == null) S.calculating else S.ramValue(ram.available, ram.total)) { }
-        PrefRow(S.device, if (ui.limited) S.deviceLimited else S.deviceComfortable) { }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            PrefRow(S.ramAvailable, if (ram == null) S.calculating else S.ramValue(ram.available, ram.total)) { }
+            PrefRow(S.device, if (ui.limited) S.deviceLimited else S.deviceComfortable) { }
+        }
         if (ui.limited) Text(S.limitedNote, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(top = 4.design))
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(S.groupActions)
-        ActionRow(S.clearImages, S.clearImagesHint, ui.busy == MemoryAction.IMAGES, S) { confirm = Pending(MemoryAction.IMAGES) }
-        ActionRow(S.clearTemp, S.clearTempHint, ui.busy == MemoryAction.TEMP, S) { confirm = Pending(MemoryAction.TEMP) }
-        ActionRow(S.compact, S.compactHint, ui.busy == MemoryAction.COMPACT, S) { confirm = Pending(MemoryAction.COMPACT) }
-        ActionRow(S.clearHistory, S.clearHistoryHint, ui.busy == MemoryAction.HISTORY, S) { scopeFor = MemoryAction.HISTORY }
-        ActionRow(S.clearResume, S.clearResumeHint, ui.busy == MemoryAction.RESUME, S) { scopeFor = MemoryAction.RESUME }
-        ActionRow(S.clearTimeshift, S.clearTimeshiftHint, ui.busy == MemoryAction.TIMESHIFT, S) { confirm = Pending(MemoryAction.TIMESHIFT) }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            ActionRow(S.clearImages, S.clearImagesHint, ui.busy == MemoryAction.IMAGES, S) { confirm = Pending(MemoryAction.IMAGES) }
+            ActionRow(S.clearTemp, S.clearTempHint, ui.busy == MemoryAction.TEMP, S) { confirm = Pending(MemoryAction.TEMP) }
+            ActionRow(S.compact, S.compactHint, ui.busy == MemoryAction.COMPACT, S) { confirm = Pending(MemoryAction.COMPACT) }
+            ActionRow(S.clearHistory, S.clearHistoryHint, ui.busy == MemoryAction.HISTORY, S) { scopeFor = MemoryAction.HISTORY }
+            ActionRow(S.clearResume, S.clearResumeHint, ui.busy == MemoryAction.RESUME, S) { scopeFor = MemoryAction.RESUME }
+            ActionRow(S.clearTimeshift, S.clearTimeshiftHint, ui.busy == MemoryAction.TIMESHIFT, S) { confirm = Pending(MemoryAction.TIMESHIFT) }
+        }
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(S.groupSettings)
         val imageLabel = if (v.imageCache == ImageCacheLimit.AUTO) S.autoLimit(ui.autoCacheBytes) else S.size(v.imageCache.toLong() * ImageCacheLimit.MB)
-        PrefRow(S.imageLimit, imageLabel, hint = S.imageLimitHint) { imageDialog = true }
-        SwitchPrefRow(S.autoClean, v.autoClean, hint = S.autoCleanHint) { vm.setAutoClean(it) }
         val economyLabel = when (v.economy) { EconomyMode.ON -> S.on; EconomyMode.OFF -> S.off; else -> S.economyAuto(ui.limited) }
-        PrefRow(S.economy, economyLabel, hint = S.economyHint) { economyDialog = true }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            PrefRow(S.imageLimit, imageLabel, hint = S.imageLimitHint) { imageDialog = true }
+            SwitchPrefRow(S.autoClean, v.autoClean, hint = S.autoCleanHint) { vm.setAutoClean(it) }
+            PrefRow(S.economy, economyLabel, hint = S.economyHint) { economyDialog = true }
+        }
     }
 
     if (imageDialog) ChoiceDialog(

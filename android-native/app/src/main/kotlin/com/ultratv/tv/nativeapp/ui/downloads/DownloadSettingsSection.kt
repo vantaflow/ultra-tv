@@ -43,8 +43,10 @@ fun DownloadSettingsSection(vm: DownloadSettingsViewModel = hiltViewModel()) {
     val locationLabel = if (p.location == DownloadPrefs.LOCATION_INTERNAL || !external) s.locationInternal else s.locationExternal
     Column(Modifier.padding(top = 18.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(s.navTitle)
-        SwitchPrefRow(s.wifiOnly, p.wifiOnly, hint = s.wifiOnlyHint) { vm.setWifiOnly(it) }
-        PrefRow(s.location, locationLabel, hint = s.locationHint) { if (external) choosing = true }
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            SwitchPrefRow(s.wifiOnly, p.wifiOnly, hint = s.wifiOnlyHint) { vm.setWifiOnly(it) }
+            PrefRow(s.location, locationLabel, hint = s.locationHint) { if (external) choosing = true }
+        }
     }
     if (choosing) ChoiceDialog(
         s.location,

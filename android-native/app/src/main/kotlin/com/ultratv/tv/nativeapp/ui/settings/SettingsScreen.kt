@@ -98,6 +98,22 @@ import com.ultratv.tv.nativeapp.ui.design.PrefRow
 import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Switch
 import com.ultratv.tv.nativeapp.ui.design.SwitchPrefRow
+import com.ultratv.tv.nativeapp.ui.design.SettingsCard
+import com.ultratv.tv.nativeapp.ui.design.settingsRowRing
+import com.ultratv.tv.nativeapp.ui.design.settingsRowShape
+import com.ultratv.tv.nativeapp.i18n.setAgo
+import com.ultratv.tv.nativeapp.i18n.setDescAbout
+import com.ultratv.tv.nativeapp.i18n.setDescDisplay
+import com.ultratv.tv.nativeapp.i18n.setDescLanguages
+import com.ultratv.tv.nativeapp.i18n.setDescMessages
+import com.ultratv.tv.nativeapp.i18n.setDescParental
+import com.ultratv.tv.nativeapp.i18n.setDescPlayback
+import com.ultratv.tv.nativeapp.i18n.setSourcesCount
+import com.ultratv.tv.nativeapp.i18n.setSourcesNone
+import com.ultratv.tv.nativeapp.i18n.setSportSummary
+import com.ultratv.tv.nativeapp.i18n.setSubParental
+import com.ultratv.tv.nativeapp.i18n.setSubPlayback
+import com.ultratv.tv.nativeapp.i18n.setVersionSummary
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 import kotlinx.coroutines.Dispatchers
@@ -131,6 +147,27 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         dbg?.let { kotlinx.coroutines.delay(1500); val i = it.coerceIn(0, Rub.entries.lastIndex); rub = i; showPane = true; runCatching { rubFocus[i].requestFocus() }; com.ultratv.tv.nativeapp.StartupNav.debugRub.value = null }
     }
     val labels = listOf(D.rubSources, D.rubSync, D.rubCategories, D.rubDisplay, D.rubPlayback, D.rubParental, D.rubLanguages, com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsTitle, com.ultratv.tv.nativeapp.ui.memory.MemoryStrings(D.lang).title, D.rubMessages, D.rubAbout)
+    // Résumé d'état sous chaque rubrique de la liste (une ligne).
+    val S = LocalStrings.current
+    val providers by vm.providers.collectAsState()
+    val pp by panes.state.collectAsState()
+    val syncProvider by panes.provider.collectAsState()
+    val catTotals by panes.categoryTotals.collectAsState()
+    val kindNames = providers.mapNotNull { kindName(S.wiz, it.kind) ?: (if (it.kind == "STALKER") D.kindStalker else null) }.distinct()
+    val lastSync = syncProvider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
+    val subs = listOf(
+        if (providers.isEmpty()) D.setSourcesNone else D.setSourcesCount(providers.size) + (if (kindNames.isEmpty()) "" else " · " + kindNames.joinToString(", ")),
+        if (lastSync <= 0L) D.neverSynced else D.setAgo(ago(D, System.currentTimeMillis() - lastSync)),
+        D.activeDisabled.format(catTotals.enabled, catTotals.disabled),
+        themeLabel(D, pp.theme) + " · " + D.setSportSummary(if (pp.sportSection) D.on else D.offState),
+        D.setSubPlayback,
+        D.setSubParental,
+        D.langName(AppLang.fromCode(pp.language)),
+        com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(D.lang).settingsSub,
+        com.ultratv.tv.nativeapp.ui.memory.MemoryStrings(D.lang).subtitle,
+        D.setDescMessages,
+        D.setVersionSummary(com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME),
+    )
     val pane: @Composable () -> Unit = {
             when (Rub.entries[rub]) {
                 Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
@@ -138,7 +175,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
                 Rub.DISPLAY -> DisplayPane(vm, panes, app)
                 Rub.PLAYBACK -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { PlaybackPane(panes, app) }
-                Rub.PARENTAL -> { PaneTitle(D.rubParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
+                Rub.PARENTAL -> { PaneTitle(D.rubParental, D.setDescParental); com.ultratv.tv.nativeapp.ui.parental.ParentalSection(onManageLockedChannels = { onNavigate("locked-channels") }) }
                 Rub.LANGUAGES -> LanguagesPane(panes, app)
                 Rub.PROFILES -> com.ultratv.tv.nativeapp.ui.profile.ProfilesPane()
                 Rub.MEMORY -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { com.ultratv.tv.nativeapp.ui.memory.MemoryPane() }
@@ -157,10 +194,13 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                 com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             }
             Rub.entries.forEachIndexed { i, r ->
-                FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(16.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(56.dp)) { _ ->
+                FocusSurface(onClick = { rub = i; showPane = true }, shape = RoundedCornerShape(20.dp), bg = Ux.SurfaceDeep, modifier = Modifier.fillMaxWidth().height(68.dp)) { _ ->
                     Row(Modifier.fillMaxSize().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         DIcon(r.icon, 22.dp, Ux.Text2)
-                        Text(labels[i], color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(labels[i], color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(subs[i], color = Ux.Text3, fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                         DIcon("M9 6l6 6-6 6", 18.dp, Ux.Text3, strokeWidth = 2.5f)
                     }
                 }
@@ -174,43 +214,70 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
         }
         return
     }
+    SettingsTvLayout(
+        title = D.settingsTitle, rubs = Rub.entries.mapIndexed { i, r -> SettingsRubUi(r.icon, labels[i], subs[i]) },
+        selected = rub, onSelect = { rub = it }, rubFocus = rubFocus, modalOpen = overlays?.hasModal == true, pane = pane,
+    )
+}
+
+/** Une rubrique de la liste de gauche : icône (chemin SVG), libellé et résumé d'état d'une ligne. */
+internal class SettingsRubUi(val icon: String, val label: String, val sub: String)
+
+/**
+ * Disposition TV / tablette des Réglages (maquette Reglages) : colonne de gauche (fond « rail », grand titre, rubriques avec
+ * résumé d'état ; la rubrique ouverte porte les couleurs de focus) et volet de droite ([pane]).
+ * Sans ViewModel : le rendu de test l'alimente avec des données fictives.
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+internal fun SettingsTvLayout(
+    title: String,
+    rubs: List<SettingsRubUi>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    rubFocus: List<androidx.compose.ui.focus.FocusRequester>,
+    modalOpen: Boolean,
+    pane: @Composable () -> Unit,
+) {
     Row(Modifier.fillMaxSize()) {
         // ← depuis le volet : le focus revient sur la rubrique OUVERTE, pas sur celle qui se trouve en face de la ligne
         // focalisée (« À propos » depuis le bas d'Affichage) — et comme la rubrique suit le focus, le volet changeait.
         Column(
-            Modifier.width(460.design).fillMaxHeight()
-                .focusProperties { enter = { rubFocus[rub] } }.focusGroup()
-                .padding(start = 72.design, end = 32.design, top = 54.design, bottom = 54.design),
-            verticalArrangement = Arrangement.spacedBy(10.design),
+            Modifier.width(520.design).fillMaxHeight().background(Ux.Rail)
+                .focusProperties { enter = { rubFocus[selected] } }.focusGroup()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 72.design, end = 32.design, top = 48.design, bottom = 32.design),
+            verticalArrangement = Arrangement.spacedBy(6.design),
         ) {
-            Text(D.settingsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
-            Rub.entries.forEachIndexed { i, r ->
-                val sel = rub == i
+            Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
+            rubs.forEachIndexed { i, r ->
+                val sel = selected == i
                 FocusSurface(
-                    onClick = { rub = i }, shape = RoundedCornerShape(18.design), bg = if (sel) Ux.Surface2 else Color.Transparent, ringWidth = 5.design, focusedScale = 1.0f,
-                    modifier = Modifier.fillMaxWidth().height(72.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused && rubFollowsFocus(overlays?.hasModal == true)) rub = i },
+                    onClick = { onSelect(i) }, shape = RoundedCornerShape(20.design), bg = if (sel) Ux.Cta else Color.Transparent, ringWidth = 0.design, focusedScale = 1.0f,
+                    modifier = Modifier.fillMaxWidth().height(76.designT).focusRequester(rubFocus[i]).onFocusChanged { if (it.isFocused && rubFollowsFocus(modalOpen)) onSelect(i) },
                 ) { f ->
-                    Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                        if (sel && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
+                    val on = f || sel
+                    Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically) {
+                        DIcon(r.icon, 28.design, if (on) Ux.TextOnLight else Ux.Text3)
                         Spacer(Modifier.width(18.design))
-                        DIcon(r.icon, 28.design, if (f) Ux.TextOnLight else if (sel) Ux.Text else Ux.Text3)
-                        Spacer(Modifier.width(18.design))
-                        Text(labels[i], color = if (f) Ux.TextOnLight else if (sel) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                            Text(r.label, color = if (on) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(r.sub, color = if (on) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
                     }
                 }
             }
         }
-        Box(Modifier.width(0.5f.dp1()).fillMaxHeight().background(Ux.Surface))
         // → depuis une rubrique : le focus entre sur la PREMIÈRE ligne du volet (et le volet revient en haut), pas sur la
         // ligne en face de la rubrique (« Numéros de chaînes » depuis « Affichage », titre du volet sorti de l'écran).
-        val firstSlot = remember(rub) { com.ultratv.tv.nativeapp.ui.common.FirstFocusSlot() }
+        val firstSlot = remember(selected) { com.ultratv.tv.nativeapp.ui.common.FirstFocusSlot() }
         val paneScroll = rememberScrollState()
-        val paneScope = androidx.compose.runtime.rememberCoroutineScope()
+        val paneScope = rememberCoroutineScope()
         Column(
             Modifier.weight(1f).fillMaxHeight()
                 .focusProperties { enter = { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } }.focusGroup()
-                .verticalScroll(paneScroll).padding(start = 56.design, end = 96.design, top = 54.design, bottom = 54.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
+                .verticalScroll(paneScroll).padding(start = 72.design, end = 88.design, top = 54.design, bottom = 54.design),
+            verticalArrangement = Arrangement.spacedBy(24.design),
         ) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalFirstFocusSlot provides firstSlot) { pane() }
         }
@@ -225,8 +292,6 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
  */
 internal fun rubFollowsFocus(modalOpen: Boolean): Boolean =
     com.ultratv.tv.nativeapp.ui.common.InputClock.recentNavKey() || (!modalOpen && !com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey())
-
-private fun Float.dp1() = androidx.compose.ui.unit.Dp(this)
 
 /** « scheme://hôte » seulement : jamais le chemin (qui peut contenir des identifiants). */
 internal fun hostOnly(baseUrl: String): String = runCatching { java.net.URI(baseUrl).let { "${it.scheme}://${it.host}" } }.getOrDefault("")
@@ -296,7 +361,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     PaneTitle(D.rubSources, D.sourcesSubtitle)
     Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
         providers.forEach { p ->
-            FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(22.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->
+            FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(26.design), bg = Ux.SurfaceDeep, ringWidth = 0.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->
                 Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(60.design).clip(RoundedCornerShape(16.design)).background(if (p.active) Ux.Accent else Ux.Surface2), contentAlignment = Alignment.Center) {
                         DIcon(when (p.kind) { "XTREAM", "STALKER" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, if (p.active) Ux.OnAccent else Ux.White)
@@ -327,7 +392,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         }
     }
     GroupLabel(D.cloudSync)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    SettingsCard {
         if (paired) PrefRow(D.paired, D.unpair, hint = hostOnly(workerBase)) { vm.unpair() }
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
         if (paired) {
@@ -342,12 +407,14 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             val up by panes.state.collectAsState()
             SwitchPrefRow(C.syncDisplayPrefs, up.syncDisplayPrefs, hint = C.syncDisplayPrefsHint) { panes.setSyncDisplayPrefs(it) }
             if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
-            if (connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
         } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
         if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(workerBase).substringAfter("://")) { ctx.openInBrowser(workerBase) }
-        else // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
+    }
+    if (paired && connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
+    // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
+    if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
             com.ultratv.tv.nativeapp.ui.design.QrCode(workerBase.trimEnd('/'), 132.design)
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(D.dashboardTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1)
@@ -358,12 +425,12 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
     // Recherche et télécommande depuis le téléphone (réseau local) : pour TV et box seulement.
     if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
-        Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        SettingsCard {
             PrefRow(D.remoteTitle, "", hint = D.remoteHint) { dialog = OpenDialog.REMOTE }
         }
     }
     GroupLabel(D.backup)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    SettingsCard {
         PrefRow(D.exportBackup, "") { vm.prepareBackup(S.toastBackupReady, password = backupPwd.takeIf { it.isNotEmpty() }); saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json") }
         PrefRow(D.importBackup, "") { loadBackup.launch(arrayOf("application/json", "*/*")) }
     }
@@ -470,7 +537,7 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
         val modes = listOf("auto" to (D.modeAuto to D.modeAutoDesc), "launch" to (D.modeLaunch to D.modeLaunchDesc), "scheduled" to (D.modeScheduled to D.modeScheduledDesc(p.syncHour)), "manual" to (D.modeManual to D.modeManualDesc))
         modes.forEach { (id, pair) ->
             val sel = p.syncMode == id
-            FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(22.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 5.design, modifier = Modifier.weight(1f).height(132.designT)) { f ->
+            FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 0.design, modifier = Modifier.weight(1f).height(132.designT)) { f ->
                 // Mode actif : coche + titre accent (comme ChoiceRow), visible que la carte soit focalisée ou non.
                 Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically)) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
@@ -482,9 +549,9 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
             }
         }
     }
-    if (p.syncMode == "scheduled") PrefRow(D.modeScheduled, "%02d:00".format(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) }
+    if (p.syncMode == "scheduled") SettingsCard { PrefRow(D.modeScheduled, "%02d:00".format(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) } }
     GroupLabel(D.contentToSync)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    SettingsCard {
         val ttl = com.ultratv.tv.nativeapp.data.sync.SyncPolicy.ttl(p.syncIntervalHours)
         val live = "${D.channels(counts.live)} · ${D.everyHours((ttl.liveMs / 3_600_000L).toInt())}"
         ContentRow(Icons.Live, D.liveTv, live, p.syncLive) { if (!it) purgeFor = "live" else panes.setPart("live", true, false) }
@@ -493,9 +560,9 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
         ContentRow(Icons.Movies, D.stepMovies, D.moviesOf(counts.movies) + " · " + D.everyDay, p.syncVod) { if (!it) purgeFor = "vod" else panes.setPart("vod", true, false) }
         ContentRow(Icons.Series, D.stepSeries, D.seriesOf(counts.series) + " · " + D.everyDay, p.syncSeries) { if (!it) purgeFor = "series" else panes.setPart("series", true, false) }
     }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.design)) {
-        SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly, Modifier.weight(1f)) { panes.setUnmetered(it) }
-        PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled), Modifier.weight(1f)) { onNavigate("categories") }
+    SettingsCard {
+        SwitchPrefRow(D.wifiOnly, p.syncUnmeteredOnly) { panes.setUnmetered(it) }
+        PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled)) { onNavigate("categories") }
     }
     if (extraOpen) ChoiceDialog(
         D.extraGuide,
@@ -520,12 +587,12 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
 
 @Composable
 private fun ContentRow(icon: String, label: String, meta: String, on: Boolean, onChange: (Boolean) -> Unit) {
-    FocusSurface(onClick = { onChange(!on) }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(84.designT)) { f ->
+    FocusSurface(onClick = { onChange(!on) }, shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(84.designT)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
             DIcon(icon, 28.design, if (f) Ux.TextOnLight else Ux.Text)
             Spacer(Modifier.width(20.design))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1)
                 Text(meta, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Switch(on, inverted = f)
@@ -551,7 +618,7 @@ private fun CategoriesPane(panes: SettingsPanesViewModel, onNavigate: (String) -
     val D = LocalDs.current
     val totals by panes.categoryTotals.collectAsState()
     PaneTitle(D.rubCategories, D.categoriesFooter)
-    PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled)) { onNavigate("categories") }
+    SettingsCard { PrefRow(D.manageCategories, D.activeDisabled.format(totals.enabled, totals.disabled)) { onNavigate("categories") } }
 }
 
 // ───────────────────────── Affichage ─────────────────────────
@@ -566,8 +633,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         if (tree != null) { runCatching { ctx.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) }; vm.setLocalLogosFolderUri(tree.toString()) }
     }
     val logosUri by vm.localLogosFolderUri.collectAsState()
-    PaneTitle(D.rubDisplay)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    PaneTitle(D.rubDisplay, D.setDescDisplay)
+    SettingsCard {
         // Mode simple : grandes tuiles à la place de l'accueil (profil courant) ; la sortie demande le code parental s'il existe.
         com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
@@ -585,7 +652,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     }
     // Personnalisation : accent, taille du texte, rangées de l'accueil.
     GroupLabel(D.personalization)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    SettingsCard {
         PrefRow(D.accentColor, D.accentName(AccentChoice.parse(p.accent))) { choice = "accent" }
         PrefRow(D.textSizeLabel, D.textSizeName(TextSize.parse(p.textSize))) { choice = "text" }
         PrefRow(D.animations, D.animationName(com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations))) { choice = "anim" }
@@ -633,10 +700,10 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     val decLabel = when (p.decoderMode) { "hw" -> D.hardware; "sw" -> D.software; else -> "${D.auto} · ${D.hardware}" }
     val bufLabel = when (p.bufferPreset) { "low_latency" -> D.bufLow; "balanced" -> D.bufBalanced; "stable" -> D.bufStable; "custom" -> D.bufCustom; else -> "${D.auto} · ${ad.auto.bufferPreset.name.lowercase().replace('_', ' ')}" }
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
-        Box(Modifier.weight(1f)) { PaneTitle(D.rubPlayback) }
+        Box(Modifier.weight(1f)) { PaneTitle(D.rubPlayback, D.setDescPlayback) }
         if (p.playerEngine != "auto" || p.decoderMode != "auto" || p.bufferPreset != "auto") PillButton(D.backToAuto, { panes.backToAuto() }, bg = Ux.Surface2)
     }
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    SettingsCard {
         PrefRow(D.playerRow, engineLabel) { choice = "engine" }
         PrefRow(D.decodingRow, decLabel) { choice = "dec" }
         PrefRow(D.bufferRow, bufLabel) { choice = "buf" }
@@ -681,16 +748,16 @@ private fun LanguagesPane(panes: SettingsPanesViewModel, app: AppViewModel) {
             com.ultratv.tv.nativeapp.ui.common.Toaster.show(if (o.resync.isNotEmpty()) D.langNoticeResync else D.langNoticePurged)
         }
     }
-    PaneTitle(D.rubLanguages)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    PaneTitle(D.rubLanguages, D.setDescLanguages)
+    SettingsCard {
         PrefRow(D.appLanguage, D.langName(AppLang.fromCode(p.language))) { uiLang = true }
         PrefRow(D.contentLanguages, if (selected.isEmpty()) D.allLanguages else selected.joinToString(" · ") { it.uppercase() }) { picker = true }
         SwitchPrefRow(D.includeMulti, p.includeMulti) { panes.setIncludeMulti(it) }
         SwitchPrefRow(D.includeUnknown, p.includeUnknownLang) { panes.setIncludeUnknown(it) }
         TranslateHelpRow(D)
-        // Les langues masquées ne sont pas chargées : plus rapide, moins de mémoire.
-        androidx.tv.material3.Text(D.langHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 4, modifier = Modifier.padding(top = 14.design))
     }
+    // Les langues masquées ne sont pas chargées : plus rapide, moins de mémoire.
+    androidx.tv.material3.Text(D.langHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 4)
     if (uiLang) ChoiceDialog(D.appLanguage, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); uiLang = false }, { uiLang = false })
     if (picker) LanguagePickerDialog(counts.filter { it.lang.isNotEmpty() && it.lang != "MULTI" }.sortedByDescending { it.n }.map { it.lang to it.n }, selected.toSet(), { panes.setLanguages(it.sorted().joinToString(",")) }, { picker = false })
 }
@@ -738,8 +805,8 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
     val p by panes.state.collectAsState()
     val scope = rememberCoroutineScope()
     var msg by remember { mutableStateOf<String?>(null) }
-    PaneTitle(D.rubAbout)
-    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+    PaneTitle(D.rubAbout, D.setDescAbout)
+    SettingsCard {
         PrefRow(D.version, com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME) { }
         PrefRow(D.checkUpdates, msg.orEmpty()) {
             scope.launch {
@@ -749,8 +816,8 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         }
         PrefRow(D.diagnostic, "", hint = D.diagnosticHint) { onNavigate("diagnostic") }
         SwitchPrefRow(D.telemetry, p.telemetryEnabled, hint = D.telemetryHint) { app.setTelemetry(it) }
-        // Attribution exigée par les conditions d'utilisation de l'API TMDB.
-        androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, modifier = Modifier.padding(top = 14.design))
     }
+    // Attribution exigée par les conditions d'utilisation de l'API TMDB.
+    androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3)
     com.ultratv.tv.nativeapp.update.UpdateDialog()
 }

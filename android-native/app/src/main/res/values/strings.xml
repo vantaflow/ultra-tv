@@ -1510,4 +1510,21 @@
     <string name="sport_no_guide_title">A guide is needed</string>
     <string name="sport_no_guide_body">The Sport section is built from your channels\' programme guide. Turn the guide on in Settings › Sync, then sync your source.</string>
     <string name="sport_open_sync">Open Sync settings</string>
+    <!-- Réglages v2 : descriptions de rubrique et résumés d'état de la liste -->
+    <string name="set2_desc_display">Theme, home, sections and personalization.</string>
+    <string name="set2_desc_playback">Engine, decoding, quality and live behavior.</string>
+    <string name="set2_desc_parental">PIN code and locked channels.</string>
+    <string name="set2_desc_languages">Language of the app and of the content.</string>
+    <string name="set2_desc_messages">Announcements received from the team.</string>
+    <string name="set2_desc_about">Version, updates and diagnostics.</string>
+    <string name="set2_sub_playback">Engine, quality, live</string>
+    <string name="set2_sub_parental">PIN and locked channels</string>
+    <string name="set2_sources_none">No source</string>
+    <plurals name="set2_sources_count">
+        <item quantity="one">%1$d source</item>
+        <item quantity="other">%1$d sources</item>
+    </plurals>
+    <string name="set2_ago">%1$s ago</string>
+    <string name="set2_sport_summary">Sport: %1$s</string>
+    <string name="set2_version_summary">Version %1$s</string>
 </resources>

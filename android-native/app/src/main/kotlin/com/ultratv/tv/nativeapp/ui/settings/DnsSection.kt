@@ -29,6 +29,7 @@ import com.ultratv.tv.nativeapp.ui.design.GroupLabel
 import com.ultratv.tv.nativeapp.ui.design.Icons
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.PrefRow
+import com.ultratv.tv.nativeapp.ui.design.SettingsCard
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -111,6 +112,7 @@ internal fun DnsSection(vm: DnsSettingsViewModel = hiltViewModel()) {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
         GroupLabel(L.group)
+        SettingsCard {
         PrefRow(L.server, dnsModeLabel(L, s), hint = L.vlcNote) { choice = "mode" }
         if (s.mode == DnsMode.DOH) {
             PrefRow(L.dohProvider, dohPresetLabel(L, s.dohPreset)) { choice = "doh" }
@@ -134,6 +136,7 @@ internal fun DnsSection(vm: DnsSettingsViewModel = hiltViewModel()) {
         }
         val testHint = (test as? DnsSettingsViewModel.TestState.Done)?.probe?.host ?: L.testHint
         PrefRow(L.test, testValue, hint = testHint) { vm.runTest() }
+        }
         Text(L.scopeNote, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, modifier = Modifier.padding(horizontal = 8.design))
     }
 

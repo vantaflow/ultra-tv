@@ -1564,4 +1564,25 @@
     <string name="sport_no_guide_title">الدليل مطلوب</string>
     <string name="sport_no_guide_body">يعتمد قسم الرياضة على دليل برامج قنواتك. فعّل الدليل من الإعدادات ‹ المزامنة ثم زامن مصدرك.</string>
     <string name="sport_open_sync">فتح إعدادات المزامنة</string>
+    <!-- Réglages v2 : descriptions de rubrique et résumés d'état de la liste -->
+    <string name="set2_desc_display">السمة والرئيسية والأقسام والتخصيص.</string>
+    <string name="set2_desc_playback">المشغّل وفك الترميز والجودة وسلوك البث المباشر.</string>
+    <string name="set2_desc_parental">رمز PIN والقنوات المقفلة.</string>
+    <string name="set2_desc_languages">لغة التطبيق ولغة المحتوى.</string>
+    <string name="set2_desc_messages">الإعلانات الواردة من الفريق.</string>
+    <string name="set2_desc_about">الإصدار والتحديثات والتشخيص.</string>
+    <string name="set2_sub_playback">المشغّل، الجودة، المباشر</string>
+    <string name="set2_sub_parental">PIN والقنوات المقفلة</string>
+    <string name="set2_sources_none">لا يوجد مصدر</string>
+    <plurals name="set2_sources_count">
+        <item quantity="zero">%1$d مصدر</item>
+        <item quantity="one">%1$d مصدر</item>
+        <item quantity="two">%1$d مصدران</item>
+        <item quantity="few">%1$d مصادر</item>
+        <item quantity="many">%1$d مصدرًا</item>
+        <item quantity="other">%1$d مصدر</item>
+    </plurals>
+    <string name="set2_ago">منذ %1$s</string>
+    <string name="set2_sport_summary">الرياضة: %1$s</string>
+    <string name="set2_version_summary">الإصدار %1$s</string>
 </resources>
