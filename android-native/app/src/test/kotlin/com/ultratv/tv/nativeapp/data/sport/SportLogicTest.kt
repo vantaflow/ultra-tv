@@ -117,6 +117,7 @@ class SportLogicTest {
 
     @Test fun discipline_titreAvantResume() {
         assertEquals(null, SportKind.ofProgramme("Ski alpin", "Avant le football de ce soir"))
+        assertEquals(null, SportKind.ofProgramme("Ski alpin : Coupe du monde à Kitzbühel", null))
         assertEquals(SportKind.FOOTBALL, SportKind.ofProgramme("Ligue 1 · Nova - Stade", null))
     }
 

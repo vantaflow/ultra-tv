@@ -28,7 +28,8 @@ enum class SportKind(private val words: Set<String>, private val phrases: List<S
 
         /** Discipline d'un programme : le TITRE d'abord (un résumé qui cite « football » ne fait pas du ski un match). */
         fun ofProgramme(title: String?, description: String?): SportKind? =
-            of(title) ?: if (isOtherSport(title)) null else of(description)
+            // Autre sport nommé dans le titre d'abord : « Ski alpin : Coupe du monde » n'est pas du football.
+            if (isOtherSport(title)) null else of(title) ?: of(description)
 
         /** Sports sans onglet (ski, golf, cyclisme…) : un tel titre ne prend jamais la discipline citée dans le résumé. */
         private val OTHER_SPORTS = setOf(
