@@ -88,6 +88,15 @@ jobs:
             ./gradlew assembleRelease --console=plain --stacktrace
           fi
 
+      # Fichier de correspondance R8 : décode les traces des plantages (noms de classes réduits). Gardé 90 jours.
+      - name: Upload R8 mapping
+        uses: actions/upload-artifact@v4
+        with:
+          name: r8-mapping-${{ github.ref_name }}
+          path: android-native/app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
+          retention-days: 90
+
       # Garde-fou : avec les secrets présents, AUCUN APK ne doit partir signé
       # par la clé de debug du runner (différente à chaque build). Sinon la mise
       # à jour échoue chez l'utilisateur : « conflit avec un package existant ».
