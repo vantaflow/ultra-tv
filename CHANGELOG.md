@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Android : un rapport de plantage envoyé au démarrage suivant porte la version qui a planté, et non plus la version installée au moment de l'envoi.
+
 ## [1.2.92] — 2026-11-12 (Android) · Bureau 1.2.45 · Worker
 
 ### Ajouté

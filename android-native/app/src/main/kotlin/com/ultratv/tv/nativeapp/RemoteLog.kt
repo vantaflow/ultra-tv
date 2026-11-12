@@ -117,13 +117,16 @@ object RemoteLog {
         if (!telemetryEnabled) return
         val file = pendingCrashFile() ?: return
         if (!file.exists() || file.length() == 0L) return
-        val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
-        if (stack.isBlank()) return
+        val raw = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
+        if (raw.isBlank()) return
+        // Version qui a réellement planté (écrite au moment du plantage), pas celle qui envoie le rapport :
+        // sinon un plantage d'une ancienne version remonte sous le numéro de la nouvelle.
+        val (crashedVersion, crashedCode, stack) = CrashFile.parse(raw, ctx.versionName, ctx.versionCode)
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)
-                put("version", ctx.versionName)
-                put("versionCode", ctx.versionCode)
+                put("version", crashedVersion)
+                put("versionCode", crashedCode)
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
                 put("stack", sanitize(stack).take(60_000))
@@ -198,4 +201,29 @@ object RemoteLog {
     }
 
     private val JSON = "application/json".toMediaType()
+}
+
+
+/** Format du fichier de plantage en attente : chaque entrée commence par la version qui a planté. Pur, testé. */
+internal object CrashFile {
+    private const val PREFIX = "@@ultratv-version "
+
+    fun entry(versionName: String, versionCode: Int, payload: String): String = "$PREFIX$versionName $versionCode
+$payload
+
+"
+
+    /**
+     * Version et code de la PREMIÈRE entrée du fichier (sinon ceux d'aujourd'hui : fichier d'une version qui n'écrivait
+     * pas l'en-tête), et la trace sans les lignes d'en-tête.
+     */
+    fun parse(raw: String, currentName: String, currentCode: Int): Triple<String, Int, String> {
+        val header = raw.lineSequence().firstOrNull { it.startsWith(PREFIX) }
+        val parts = header?.removePrefix(PREFIX)?.trim()?.split(' ')
+        val name = parts?.getOrNull(0)?.takeIf { it.isNotBlank() } ?: currentName
+        val code = parts?.getOrNull(1)?.toIntOrNull() ?: currentCode
+        val stack = raw.lineSequence().filterNot { it.startsWith(PREFIX) }.joinToString("
+")
+        return Triple(name, code, stack)
+    }
 }
