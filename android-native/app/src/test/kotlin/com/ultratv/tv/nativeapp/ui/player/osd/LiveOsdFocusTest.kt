@@ -79,11 +79,11 @@ class LiveOsdFocusTest {
         rule.onNodeWithText("Pause").assertIsFocused()
         rule.onRoot().performKeyInput { pressKey(Key.DirectionUp) }
         rule.waitForIdle()
-        rule.onNodeWithText("TF1").assertIsFocused()
+        rule.onNodeWithText("Nova 1").assertIsFocused()
         // Haut depuis les récents : le focus reste (l'étage du haut n'est pas focalisable).
         rule.onRoot().performKeyInput { pressKey(Key.DirectionUp) }
         rule.waitForIdle()
-        rule.onNodeWithText("TF1").assertIsFocused()
+        rule.onNodeWithText("Nova 1").assertIsFocused()
         // Bas : retour à la barre.
         rule.onRoot().performKeyInput { pressKey(Key.DirectionDown) }
         rule.waitForIdle()
