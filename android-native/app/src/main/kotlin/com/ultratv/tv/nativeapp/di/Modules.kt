@@ -29,6 +29,11 @@ object DatabaseModule {
             // app/schemas let Room auto-generate / verify those migrations.
             .addMigrations(*com.ultratv.tv.nativeapp.data.db.ALL_MIGRATIONS)
             .fallbackToDestructiveMigrationFrom(1, 2, 3, 4, 5, 6, 7, 8, 9)
+            // Version plus ANCIENNE installée par-dessus une plus récente (APK d'un vieux lien, pré-version puis
+            // version publiée…) : sans repli, Room lève « A migration from 22 to 21 was required » à chaque lancement
+            // et l'appli ne démarre plus du tout. On reconstruit la base (le catalogue se resynchronise) plutôt que de
+            // bloquer l'utilisateur.
+            .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
             .addCallback(com.ultratv.tv.nativeapp.data.db.DefaultProfileCallback())
             // WAL imposé : Room le désactive sur les appareils « low RAM » (beaucoup de box), et alors la synchro du
             // catalogue bloque toute lecture (écrans figés). synchronous=NORMAL est sûr en WAL et évite un fsync

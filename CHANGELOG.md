@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Android (TV), guide : l'aperçu vidéo attend 1,5 s sans bouger avant de lire la chaîne survolée ; faire défiler le guide ne « zappe » plus à chaque ligne.
+- Android : l'appli ne restait plus bloquée au lancement après l'installation d'une version plus ancienne par-dessus une plus récente (« A migration from 22 to 21 was required ») ; la base locale est reconstruite et le catalogue se resynchronise.
 - Android : un rapport de plantage envoyé au démarrage suivant porte la version qui a planté, et non plus la version installée au moment de l'envoi.
 
 ## [1.2.92] — 2026-11-12 (Android) · Bureau 1.2.45 · Worker
