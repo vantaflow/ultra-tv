@@ -631,5 +631,15 @@
   "player.epPlaying": "Odtwarzane",
   "player.epWatched": "Obejrzane",
   "player.sk.episodes": "Odcinki",
-  "nav.recordingsRail": "Nagrania"
+  "nav.recordingsRail": "Nagrania",
+  "cor.move": "Przenieś",
+  "cor.reset": "Przywróć kolejność",
+  "cor.title": "Przenieś kanał",
+  "cor.hint": "Góra / Dół: przesuń kanał · Enter: zatwierdź · Esc: anuluj",
+  "cor.up": "Przesuń w górę",
+  "cor.down": "Przesuń w dół",
+  "cor.done": "Gotowe",
+  "cor.cancel": "Anuluj",
+  "cor.resetDone": "Przywrócono kolejność źródła",
+  "cor.favHint": "Prawy przycisk myszy lub M: przenieś kanał · lub przeciągnij i upuść"
 }

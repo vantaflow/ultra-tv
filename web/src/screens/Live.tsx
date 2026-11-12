@@ -2,12 +2,15 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
+import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
 import { channelsCol, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
+import { useReorderDnd } from "@/hooks/reorder";
+import { FAVORITES_SCOPE, commitMove, mergeOrder, startMove, stepMove, type MoveSession } from "@/lib/channelOrder";
 import { useT } from "@/i18n";
 import { normText } from "@/lib/text";
 import { usePlayer } from "@/player/store";
@@ -32,11 +35,11 @@ export function Live() {
   return <LiveInner source={source} />;
 }
 
-function ChanRow({ c, source, sel, playing, onPick }: { c: ChannelRow; source: Source; sel: boolean; playing: boolean; onPick: () => void }) {
+function ChanRow({ c, source, sel, playing, onPick, extra, extraCls = "", onMenu }: { c: ChannelRow; source: Source; sel: boolean; playing: boolean; onPick: () => void; extra?: object; extraCls?: string; onMenu?: () => void }) {
   const nn = useNowNext(source, c.epg, c.streamId, false);
   if (c.sep) return <div className="sep-row" role="presentation"><span className="bar" /><span className="ellipsis">{c.display}</span><span className="rule" /></div>;
   return (
-    <button className={`chan-row${sel ? " sel" : ""}${playing ? " playing" : ""}`} onClick={onPick} onDoubleClick={() => usePlayer.getState().setMode("full")} role="option" aria-selected={sel}>
+    <button className={`chan-row${sel ? " sel" : ""}${playing ? " playing" : ""}${extraCls}`} onClick={onPick} onDoubleClick={() => usePlayer.getState().setMode("full")} onContextMenu={onMenu ? (e) => { e.preventDefault(); onMenu(); } : undefined} role="option" aria-selected={sel} {...extra}>
       <span className="num mono">{c.num}</span>
       <span className="logo"><Img src={c.logo} contain /></span>
       <span className="grow" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -65,22 +68,36 @@ function LiveInner({ source }: { source: Source }) {
   const list = useRef<VListHandle>(null);
   const playing = usePlayer((s) => (s.target?.kind === "live" ? s.target.refId : null));
 
-  // Mode tableau (favoris, filtre texte) ou mode paginé (catalogue entier / catégorie).
-  const arrayMode = cat === FAV || dq.trim().length > 0;
+  // Ordre personnel (déplacement manuel) : une catégorie du fournisseur ou les favoris ; pas la liste « Tout ».
+  const profile = prefs.profileId;
+  const sid = source.id!;
+  const scope = cat === FAV ? FAVORITES_SCOPE : cat !== "" ? cat : null;
+  const order = useLiveQuery(async () => (scope ? await getOrder(profile, sid, scope) : null), [scope, profile, sid]);
+  const [mv, setMv] = useState<(MoveSession & { rows: Map<number, ChannelRow>; natural: number[] }) | null>(null);
+  const filtering = dq.trim().length > 0;
+
+  /** Chaînes de la liste dans l'ordre de la source (sans séparateurs de section). */
+  const loadNatural = useCallback(async (): Promise<ChannelRow[]> => {
+    if (scope === FAVORITES_SCOPE) return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r);
+    return channelsCol(source.cid, cat || null).filter((c) => !c.sep).limit(20000).toArray();
+  }, [scope, favs, source.cid, cat]);
+
+  // Mode tableau (favoris, filtre texte, liste réordonnée) ou mode paginé (catalogue entier / catégorie).
+  const arrayMode = cat === FAV || filtering || (!!scope && !!order) || !!mv;
   const arr = useLiveQuery(async () => {
     if (!arrayMode) return [] as ChannelRow[];
-    if (cat === FAV) {
-      const rows = await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()));
-      const nq = normText(dq);
-      return rows.filter((r): r is ChannelRow => !!r && (!nq || r.norm.includes(nq)));
-    }
     const nq = normText(dq);
+    if (scope && (cat === FAV || order)) {
+      const merged = mergeOrder(await loadNatural(), order, (c) => c.streamId);
+      return nq ? merged.filter((r) => r.norm.includes(nq)) : merged;
+    }
     // Toutes les chaînes : index par mot (au plus 3000, remis dans l'ordre du fournisseur) ; une catégorie : balayage borné par l'index.
     if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep)).sort((a, b) => a.ord - b.ord);
     return channelsCol(source.cid, cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
-  }, [arrayMode, cat, dq, source.cid, favs]);
+  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural]);
+  const view = useMemo(() => (mv ? mv.ids.map((i) => mv.rows.get(i)).filter((r): r is ChannelRow => !!r) : arr ?? []), [mv, arr]);
   const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : channelsCol(source.cid, cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode], 120);
-  const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
+  const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(view) : paged), [arrayMode, view, paged]);
   const count = rows.count;
 
   const selected = useLiveQuery(() => (selId != null ? db.channels.get(selId) : undefined), [selId]);
@@ -90,7 +107,7 @@ function LiveInner({ source }: { source: Source }) {
   const play = useCallback((c: ChannelRow, full = false) => {
     if (c.sep) return;
     setSelId(c.id!);
-    usePlayer.getState().open(channelTarget(source, c), full ? "full" : "inline", cat === FAV ? null : cat || null);
+    usePlayer.getState().open(channelTarget(source, c), full ? "full" : "inline", cat === FAV ? FAVORITES_SCOPE : cat || null);
   }, [source, cat]);
   const pick = (c: ChannelRow) => {
     if (c.sep) return;
@@ -108,7 +125,44 @@ function LiveInner({ source }: { source: Source }) {
     };
     if (!find()) { const iv = setInterval(() => { if (find()) clearInterval(iv); }, 150); return () => clearInterval(iv); }
   }, [count, rows, selId]);
-  useEffect(() => { setSelId(null); }, [cat, arrayMode]);
+  useEffect(() => { setSelId(null); }, [cat, filtering]);
+  useEffect(() => { setMv(null); }, [cat, sid, profile]);
+
+  // Déplacer : une chaîne à la fois, flèches Haut/Bas, Entrée valide, Échap annule (rien n'est écrit avant la validation).
+  const canReorder = !!scope && !!selected && !selected.sep;
+  const beginMove = async (ch: ChannelRow | undefined = selected) => {
+    if (!scope || !ch || mv) return;
+    const nat = await loadNatural();
+    const rowsById = new Map(nat.map((r) => [r.streamId, r] as const));
+    if (!rowsById.has(ch.streamId)) return;
+    const ids = mergeOrder(nat, order, (r) => r.streamId).map((r) => r.streamId);
+    setFilter(""); setSelId(ch.id!);
+    setMv({ ...startMove(scope, ch.streamId, ids, order ?? null), rows: rowsById, natural: nat.map((r) => r.streamId) });
+    list.current?.el?.focus();
+    requestAnimationFrame(() => list.current?.scrollTo(ids.indexOf(ch.streamId), "center"));
+  };
+  const stepTo = (delta: number) => {
+    if (!mv) return;
+    const next = stepMove(mv, delta);
+    if (next === mv) return;
+    setMv({ ...mv, ids: next.ids });
+    list.current?.scrollTo(next.ids.indexOf(next.id));
+  };
+  const endMove = async (ok: boolean) => {
+    if (!mv) return;
+    const m = mv;
+    setMv(null);
+    if (!ok) return;
+    const out = commitMove(m, m.natural);
+    if (out) await saveOrder(profile, sid, m.scope, out);
+  };
+  const dnd = useReorderDnd({
+    enabled: !!scope && !filtering && !mv,
+    axis: "y",
+    getIds: async () => mergeOrder(await loadNatural(), order, (r) => r.streamId).map((r) => r.streamId),
+    onReorder: (ids) => { if (scope) void saveOrder(profile, sid, scope, ids); },
+  });
+  const resetNow = async () => { if (scope) { await resetOrder(profile, sid, scope); useUi.getState().toast(t("cor.resetDone")); } };
 
   const move = (dir: number) => {
     if (!count) return;
@@ -123,6 +177,16 @@ function LiveInner({ source }: { source: Source }) {
     }
   };
   const onKey = (e: React.KeyboardEvent) => {
+    if (mv) {
+      const step: Record<string, number> = { ArrowUp: -1, ArrowDown: 1, PageUp: -8, PageDown: 8, Home: -mv.ids.length, End: mv.ids.length };
+      if (e.key in step) stepTo(step[e.key]!);
+      else if (e.key === "Enter") void endMove(true);
+      else if (e.key === "Escape") void endMove(false);
+      else return;
+      e.preventDefault(); e.stopPropagation();
+      return;
+    }
+    if ((e.key === "m" || e.key === "M") && !e.ctrlKey && !e.metaKey && !e.altKey && canReorder) { e.preventDefault(); e.stopPropagation(); void beginMove(); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
     else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
     else if (e.key === "PageDown") { e.preventDefault(); for (let i = 0; i < 8; i++) move(1); }
@@ -161,16 +225,25 @@ function LiveInner({ source }: { source: Source }) {
           )}
           <div className="search-box">
             <Icon name="search" size={16} />
-            <input className="input" placeholder={t("live.filterChannels")} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t("live.filterChannels")} />
+            <input className="input" disabled={!!mv} placeholder={t("live.filterChannels")} value={filter} onChange={(e) => setFilter(e.target.value)} aria-label={t("live.filterChannels")} />
           </div>
           <div className="muted" style={{ fontSize: "0.8125rem", fontWeight: 600 }}>
             {count == null ? t("common.loading") : `${catLabel || t("common.all")} · ${t("common.channelsCount", { count: count - sections })}${sections ? " · " + t("common.sections", { count: sections }) : ""}`}
           </div>
         </div>
+        {mv && (
+          <div className="move-bar" role="group" aria-label={t("cor.title")}>
+            <span className="ellipsis">{t("cor.hint")}</span>
+            <button className="btn" onClick={() => stepTo(-1)} aria-label={t("cor.up")}>↑</button>
+            <button className="btn" onClick={() => stepTo(1)} aria-label={t("cor.down")}>↓</button>
+            <button className="btn primary" onClick={() => void endMove(true)}>{t("cor.done")}</button>
+            <button className="btn" onClick={() => void endMove(false)}>{t("cor.cancel")}</button>
+          </div>
+        )}
         {count === 0 ? <div className="state-card"><p>{t("live.noChannels")}</p></div> : (
           <VList
             ref={list} rows={rows} rowH={66} label={t("nav.live")} onKeyDown={onKey}
-            render={(c) => c ? <ChanRow c={c} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} /> : <div className="skeleton" style={{ height: 58 }} />}
+            render={(c) => c ? <ChanRow c={c} source={source} sel={c.id === selId} playing={c.streamId === playing} onPick={() => pick(c)} extra={c.sep ? undefined : dnd.props(c.streamId)} extraCls={dnd.cls(c.streamId)} onMenu={scope && !c.sep && !mv ? () => { setSelId(c.id!); void beginMove(c); } : undefined} /> : <div className="skeleton" style={{ height: 58 }} />}
           />
         )}
       </section>
@@ -199,6 +272,8 @@ function LiveInner({ source }: { source: Source }) {
                 const on = await toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: selected.streamId, name: selected.display, image: selected.logo });
                 useUi.getState().toast(t(on ? "toast.favAdded" : "toast.favRemoved"));
               }} aria-pressed={isFav}><Icon name="heart" size={18} fill={isFav} />{t(isFav ? "common.removeFav" : "common.addFav")}</button>
+              {canReorder && !mv && <button className="btn" onClick={() => void beginMove()} title="M"><Icon name="list" size={18} />{t("cor.move")}</button>}
+              {scope && !mv && order && <button className="btn" onClick={() => void resetNow()}>{t("cor.reset")}</button>}
             </div>
             <div className="muted" style={{ fontSize: "0.8125rem" }}>{t("live.previewHint")}</div>
           </>

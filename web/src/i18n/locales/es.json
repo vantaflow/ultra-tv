@@ -630,5 +630,15 @@
   "player.epPlaying": "Reproduciendo",
   "player.epWatched": "Visto",
   "player.sk.episodes": "Episodios",
-  "nav.recordingsRail": "Grabaciones"
+  "nav.recordingsRail": "Grabaciones",
+  "cor.move": "Mover",
+  "cor.reset": "Restablecer el orden",
+  "cor.title": "Mover canal",
+  "cor.hint": "Arriba / Abajo: mover el canal · Intro: confirmar · Esc: cancelar",
+  "cor.up": "Subir",
+  "cor.down": "Bajar",
+  "cor.done": "Aceptar",
+  "cor.cancel": "Cancelar",
+  "cor.resetDone": "Orden de la fuente restablecido",
+  "cor.favHint": "Clic derecho o M: mover un canal · o arrastrar y soltar"
 }

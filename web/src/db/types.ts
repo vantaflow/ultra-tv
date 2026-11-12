@@ -154,6 +154,19 @@ export interface FavoriteRow {
   addedAt: number;
 }
 
+/** Ordre personnel des chaînes d'une liste (catégorie du fournisseur ou favoris) pour un profil ; local à cet appareil. */
+export interface ChannelOrderRow {
+  key: string;
+  profile: string;
+  /** Identifiant réel de la source (et non la génération de catalogue : une resynchronisation ne perd pas l'ordre). */
+  sourceId: number;
+  /** Identifiant de catégorie du fournisseur, ou « __fav__ » (favoris). */
+  scope: string;
+  /** Identifiants de flux, dans l'ordre choisi. */
+  ids: number[];
+  updatedAt: number;
+}
+
 export interface HistoryRow {
   key: string;
   profile: string;

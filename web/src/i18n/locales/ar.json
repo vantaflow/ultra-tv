@@ -660,5 +660,15 @@
   "player.epPlaying": "قيد التشغيل",
   "player.epWatched": "تمت المشاهدة",
   "player.sk.episodes": "الحلقات",
-  "nav.recordingsRail": "التسجيلات"
+  "nav.recordingsRail": "التسجيلات",
+  "cor.move": "نقل",
+  "cor.reset": "إعادة ضبط الترتيب",
+  "cor.title": "نقل القناة",
+  "cor.hint": "أعلى / أسفل: نقل القناة · Enter: تأكيد · Esc: إلغاء",
+  "cor.up": "تحريك لأعلى",
+  "cor.down": "تحريك لأسفل",
+  "cor.done": "تم",
+  "cor.cancel": "إلغاء",
+  "cor.resetDone": "تمت استعادة ترتيب المصدر",
+  "cor.favHint": "النقر بزر الماوس الأيمن أو M: نقل قناة · أو السحب والإفلات"
 }

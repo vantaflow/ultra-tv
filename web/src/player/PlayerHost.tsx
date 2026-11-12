@@ -4,6 +4,8 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
+import { orderedList } from "@/db/channelOrder";
+import { FAVORITES_SCOPE } from "@/lib/channelOrder";
 import { channelsCol, favKey, nowNext, programsFor, toggleFavorite } from "@/db/queries";
 import { qualityLabel } from "@/lib/channelName";
 import { ribbonSegments, type RibbonSeg } from "./ribbon";
@@ -992,7 +994,7 @@ export function PlayerHost() {
             {source?.id != null && target.channel && (
               <button
                 className={`dbtn${isFav ? " fav" : ""}`} aria-pressed={isFav} aria-label={t(isFav ? "common.removeFav" : "common.addFav")}
-                onClick={() => void toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: target.refId, name: target.title, image: target.image ?? null })}
+                onClick={() => void toggleFavorite({ profile: prefs.profileId, sourceId: (source?.id ?? 0), kind: "live", refId: target.refId, name: target.title, image: target.image ?? null })}
               ><Icon name="heart" size={22} fill={isFav} /><span className="lbl">{t(isFav ? "common.removeFav" : "common.addFav")}</span></button>
             )}
             <button className={`dbtn${panel === "player" || panel === "stats" ? " on" : ""}`} aria-label={t("player.player")} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={22} /><span className="lbl">{t("player.player")}</span></button>
@@ -1214,21 +1216,24 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const list = useRef<VListHandle>(null);
   const curId = cur?.refId;
   // Onglets : « Chaînes » (catégorie choisie) ou « Favoris » (filtre favoris existant).
-  const [tab, setTab] = useState<"all" | "fav">("all");
+  const [tab, setTab] = useState<"all" | "fav">(cat === FAVORITES_SCOPE ? "fav" : "all");
   const favs = useFavorites(source, "live");
   // Catégorie de la chaîne en cours si aucune n'a été choisie (lancée depuis l'accueil, la recherche…).
   const [catSel, setCatSel] = useState<string | null | undefined>(undefined);
-  const effCat = catSel !== undefined ? catSel : cat ?? cur?.channel?.catExt ?? null;
+  const effCat = catSel !== undefined ? catSel : (cat === FAVORITES_SCOPE ? null : cat) ?? cur?.channel?.catExt ?? null;
+  const profile = usePrefs((s) => s.profileId);
   const cats = useCategories(source, "live");
   useEffect(() => {
     if (tab === "fav") {
-      void Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([cid, f.refId]).first()))
-        .then((r) => setRows(r.filter((x): x is ChannelRow => !!x && !x.sep)));
+      void orderedList(profile, (source?.id ?? 0), cid, FAVORITES_SCOPE).then((r) => setRows(r ?? []));
       return;
     }
-    // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
-    void channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray().then(setRows);
-  }, [cid, effCat, tab, favs]);
+    // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965). Ordre personnel appliqué s'il existe.
+    void (async () => {
+      const own = effCat ? await orderedList(profile, (source?.id ?? 0), cid, effCat) : null;
+      setRows(own ?? (await channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray()));
+    })();
+  }, [cid, effCat, tab, favs, profile, source?.id]);
   // Liste virtualisée : seules les lignes visibles existent dans le DOM (jusqu'à 5000 chaînes).
   const arr = useMemo(() => arrayRows(rows), [rows]);
   const pick = useCallback((c: ChannelRow) => {

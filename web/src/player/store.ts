@@ -1,5 +1,8 @@
 import { create } from "zustand";
+import { orderedList } from "@/db/channelOrder";
 import { channelsFrom } from "@/db/queries";
+import { FAVORITES_SCOPE, neighborOf } from "@/lib/channelOrder";
+import { usePrefs } from "@/state/prefs";
 import type { PlayTarget } from "./resolve";
 import type { RecentChannel } from "./liveOsd";
 
@@ -13,7 +16,7 @@ interface PlayerStore {
   target: PlayTarget | null;
   mode: PlayerMode;
   slot: Rect | null;
-  /** Contexte de zapping : catégorie courante (null = toutes). */
+  /** Contexte de zapping : catégorie courante (null = toutes, FAVORITES_SCOPE = favoris). */
   zapCat: string | null;
   /** Incrémenté pour relancer la lecture de la même cible. */
   nonce: number;
@@ -46,11 +49,16 @@ export const usePlayer = create<PlayerStore>((set, get) => ({
     if (!target || target.kind !== "live" || !target.channel) return;
     const ord = target.channel.ord;
     // Zapping dans la catégorie de la chaîne en cours (même lancée depuis l'accueil ou la recherche).
-    const cat = zapCat ?? target.channel.catExt ?? null;
+    const cat = zapCat === FAVORITES_SCOPE ? target.channel.catExt ?? null : zapCat ?? target.channel.catExt ?? null;
+    // Liste réordonnée par l'utilisateur (favoris, ou catégorie avec un ordre personnel) : la file suit l'ordre affiché.
+    const queue = zapCat ? await orderedList(usePrefs.getState().profileId, target.sourceId, target.cid, zapCat) : null;
+    const inQueue = !!queue && queue.some((c) => c.streamId === target.refId);
     // Bornes d'index à partir de la chaîne courante : avant, chaque zap lisait toutes les chaînes situées avant elle.
-    const next = dir > 0
-      ? await channelsFrom(target.cid, cat, ord + 1, Infinity).filter((c) => !c.sep).first()
-      : await channelsFrom(target.cid, cat, -1, ord - 1).reverse().filter((c) => !c.sep).first();
+    const next = inQueue
+      ? neighborOf(queue!, target.refId, dir, (c) => c.streamId)
+      : dir > 0
+        ? await channelsFrom(target.cid, cat, ord + 1, Infinity).filter((c) => !c.sep).first()
+        : await channelsFrom(target.cid, cat, -1, ord - 1).reverse().filter((c) => !c.sep).first();
     if (!next) return;
     set((s) => ({
       nonce: s.nonce + 1,

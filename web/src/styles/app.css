@@ -158,6 +158,16 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .chan-row .logo { width: 3.25rem; height: 2.125rem; border-radius: 6px; background: var(--surface-3); flex: 0 0 auto; overflow: hidden; }
 .chan-row.sel .logo { background: var(--sel-logo); }
 .chan-row .logo img { object-fit: contain; width: 100%; height: 100%; padding: 2px; background: transparent; }
+.chan-row.drop-before { box-shadow: inset 0 3px 0 0 var(--accent); }
+.chan-row.drop-after { box-shadow: inset 0 -3px 0 0 var(--accent); }
+.chan-row.dragging { opacity: 0.45; }
+.chan-row.moving { outline: 2px solid var(--accent); outline-offset: -2px; }
+.grid-x .chan-row.drop-before { box-shadow: inset 4px 0 0 0 var(--accent); }
+.grid-x .chan-row.drop-after { box-shadow: inset -4px 0 0 0 var(--accent); }
+[dir="rtl"] .grid-x .chan-row.drop-before { box-shadow: inset -4px 0 0 0 var(--accent); }
+[dir="rtl"] .grid-x .chan-row.drop-after { box-shadow: inset 4px 0 0 0 var(--accent); }
+.move-bar { display: flex; align-items: center; gap: 8px; margin: 0 0.75rem 8px; padding: 8px 12px; border-radius: 0.875rem; background: var(--surface-2); font-size: 0.8125rem; font-weight: 600; }
+.move-bar > span { flex: 1 1 auto; min-width: 0; }
 .chan-row .nm { font-size: 0.9375rem; font-weight: 700; }
 .chan-row .sub { font-size: 0.75rem; color: var(--text-3); }
 .chan-row .tags { display: flex; gap: 0.3rem; align-items: center; }

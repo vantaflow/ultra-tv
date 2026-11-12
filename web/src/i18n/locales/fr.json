@@ -630,5 +630,15 @@
   "player.epPlaying": "En lecture",
   "player.epWatched": "Vu",
   "player.sk.episodes": "Épisodes",
-  "nav.recordingsRail": "Enregistrés"
+  "nav.recordingsRail": "Enregistrés",
+  "cor.move": "Déplacer",
+  "cor.reset": "Rétablir l’ordre",
+  "cor.title": "Déplacer la chaîne",
+  "cor.hint": "Haut / Bas : déplacer la chaîne · Entrée : valider · Échap : annuler",
+  "cor.up": "Monter",
+  "cor.down": "Descendre",
+  "cor.done": "Valider",
+  "cor.cancel": "Annuler",
+  "cor.resetDone": "Ordre de la source rétabli",
+  "cor.favHint": "Clic droit ou M : déplacer une chaîne · ou glisser-déposer"
 }

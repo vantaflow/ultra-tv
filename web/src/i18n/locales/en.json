@@ -620,5 +620,15 @@
   "player.epPlaying": "Playing",
   "player.epWatched": "Watched",
   "player.sk.episodes": "Episodes",
-  "nav.recordingsRail": "Recordings"
+  "nav.recordingsRail": "Recordings",
+  "cor.move": "Move",
+  "cor.reset": "Restore order",
+  "cor.title": "Move channel",
+  "cor.hint": "Up / Down: move the channel · Enter: confirm · Esc: cancel",
+  "cor.up": "Move up",
+  "cor.down": "Move down",
+  "cor.done": "Done",
+  "cor.cancel": "Cancel",
+  "cor.resetDone": "Source order restored",
+  "cor.favHint": "Right-click or M: move a channel · or drag and drop"
 }
