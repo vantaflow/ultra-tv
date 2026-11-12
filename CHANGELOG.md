@@ -18,6 +18,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Android (accueil TV) : en revenant sur « À la une » ou sur les raccourcis, la page remonte tout en haut ; la salutation et l'heure ne restaient plus affichées (le défilement automatique vers le bouton s'arrêtait avant l'en-tête).
 - Android (accueil TV) : plus de va-et-vient de la page quand on passe d'un bouton à l'autre dans « À la une » et les raccourcis (le défilement automatique ne déplace plus la page tant que le focus est dans le bloc du haut).
 
+### Modifié
+- Performances sur les box Android TV de classe 2 Go (mesurées sur une box 4 cœurs / 1,9 Go, jusque-là classée « moyenne ») : elles reçoivent maintenant l'interface allégée — plus d'animation d'ouverture, de fondu ni de zoom de focus, plus de fond flou, et aperçu vidéo du Direct désactivé en « Auto » (Réglages › Lecture › Aperçu vidéo : « Activé » le rétablit ; Réglages › Affichage › Animations rétablit les animations). La lecture vidéo n'est pas bridée.
+- Accueil (Android) : « À la une » ne défile que lorsque les animations sont au niveau complet (sinon un seul titre est préparé, au lieu de six) ; notes, logos et calendrier des épisodes ne se chargent que lorsque la télécommande est au repos, deux séries à la fois. Profil de précompilation complété avec les fiches, le lecteur et la rubrique Sport (non régénéré). Scripts de mesure dans `android-native/tools/perf/`.
+
 ## [1.3.0] — 2026-11-12 (Android) et bureau 1.2.49
 
 ### Corrigé

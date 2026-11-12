@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -182,14 +183,21 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /**
+     * Le bandeau « À la une » défile-t-il (niveau d'animation complet) ? Posé par l'écran dès sa première composition ; nul
+     * tant qu'inconnu (rien n'est préparé avant). Faux : un seul titre est préparé (fond, notes, logo), voir [heroPoolSize].
+     */
+    private val heroRotating = kotlinx.coroutines.flow.MutableStateFlow<Boolean?>(null)
+    fun setHeroRotating(rotating: Boolean) { heroRotating.value = rotating }
+
+    /**
      * « À la une » (rotation) : séries les mieux notées avec image paysage, alternées avec les films les mieux notés.
      * Le premier élément est celui d'avant (série la mieux notée, à défaut le film le mieux noté).
      */
-    val heroes: StateFlow<List<HeroItem>> = pid.flatMapLatest { id ->
+    val heroes: StateFlow<List<HeroItem>> = combine(pid, heroRotating.filterNotNull().distinctUntilChanged()) { id, rot -> id to heroPoolSize(rot) }.flatMapLatest { (id, pool) ->
         if (id == null) flowOf(emptyList())
         // Pendant la synchro, les tables changent sans arrêt : au plus une relecture par seconde.
         else combine(catalog.heroSeriesList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing), catalog.heroMovieList(id, HERO_CANDIDATES).atMostEvery(1_000).snapshotWhile(syncing)) { ss, ms -> ss to ms }
-            .flatMapLatest { (ss, ms) -> heroFlow(ss, ms) }
+            .flatMapLatest { (ss, ms) -> heroFlow(ss, ms, pool) }
     }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -198,18 +206,18 @@ class HomeViewModel @Inject constructor(
      * connu). Si besoin, le backdrop TMDB d'un petit lot de films ([HERO_RESOLVE_MAX]) est résolu en arrière-plan, un par un.
      * Sans aucun titre paysage, l'affiche seule reste affichée en dernier recours.
      */
-    private fun heroFlow(ss: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>, ms: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>): Flow<List<HeroItem>> = flow {
+    private fun heroFlow(ss: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>, ms: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>, pool: Int): Flow<List<HeroItem>> = flow {
         val tmdbBackdrops = HashMap<Long, String>()
         val seriesItems = ss.map { s -> HeroItem(HeroItem.Kind.SERIES, s.id, s.title, s.year, s.genre?.substringBefore(','), s.rating, s.backdrop?.takeIf { it.isNotBlank() }, s.poster, plot = s.plot?.trim(), providerId = s.providerId, remoteId = s.remoteId) }
         fun movieItems() = ms.map { m -> HeroItem(HeroItem.Kind.MOVIE, m.id, m.title, m.year, m.genre?.substringBefore(','), m.rating, m.backdrop?.takeIf { it.isNotBlank() } ?: tmdbBackdrops[m.id], m.poster, plot = m.plot?.trim(), runtimeMin = durationMinutes(m.duration), providerId = m.providerId, remoteId = m.remoteId, streamUrl = m.streamUrl) }
-        fun pick(fallback: Boolean) = pickHeroes(seriesItems, movieItems(), HERO_POOL, fallback) { !it.backdrop.isNullOrBlank() }
+        fun pick(fallback: Boolean) = pickHeroes(seriesItems, movieItems(), pool, fallback) { !it.backdrop.isNullOrBlank() }
         for (m in ms) if (m.backdrop.isNullOrBlank()) runCatching { catalog.cachedTmdbBackdrop(m) }.getOrNull()?.let { tmdbBackdrops[m.id] = it }
         var current = pick(false)
         if (current.isNotEmpty()) emit(current)
-        val toResolve = heroesToResolve(movieItems(), current.size, HERO_POOL, HERO_RESOLVE_MAX) { !it.backdrop.isNullOrBlank() }
+        val toResolve = heroesToResolve(movieItems(), current.size, pool, HERO_RESOLVE_MAX) { !it.backdrop.isNullOrBlank() }
         if (toResolve.isNotEmpty() && current.isNotEmpty()) delay(1_500) // ne concurrence pas le premier affichage
         for (h in toResolve) {
-            if (pick(false).size >= HERO_POOL) break
+            if (pick(false).size >= pool) break
             val m = ms.firstOrNull { it.id == h.id } ?: continue
             val b = runCatching { catalog.resolveTmdbBackdrop(m) }.getOrNull() ?: continue
             tmdbBackdrops[m.id] = b
@@ -230,6 +238,8 @@ class HomeViewModel @Inject constructor(
             delay(1_500)
             val acc = HashMap<String, HeroExtras>()
             for (h in list) {
+                // Pas pendant que l'utilisateur parcourt l'accueil : quatre requêtes (TMDB, notes, identifiants, Fanart.tv) par titre.
+                com.ultratv.tv.nativeapp.ui.common.InputClock.awaitQuiet(BACKGROUND_QUIET_MS, BACKGROUND_QUIET_MAX_MS)
                 val e = runCatching { resolveExtras(h) }.getOrNull() ?: continue
                 acc[h.key] = e
                 emit(acc.toMap())
@@ -254,7 +264,7 @@ class HomeViewModel @Inject constructor(
     /**
      * « Nouveaux épisodes » : séries en cours de visionnage (« Reprendre ») puis favorites, au plus 20, dont l'épisode
      * précédent est sorti dans les 7 derniers jours ou dont le prochain sort dans les 7 jours (TVmaze via le Worker, par
-     * identifiant IMDb sinon TheTVDB). 4 séries interrogées à la fois, cache de 6 h ; appareil non appairé : rangée vide.
+     * identifiant IMDb sinon TheTVDB). 2 séries interrogées à la fois (chacune attend un silence de la télécommande), cache de 6 h ; appareil non appairé : rangée vide.
      * Seuls des identifiants de titres partent vers le Worker.
      */
     val newEpisodes: StateFlow<List<NewEpisodeCardUi>> = pid.flatMapLatest { id ->
@@ -264,18 +274,19 @@ class HomeViewModel @Inject constructor(
             continueWatching.map { l -> l.filter { it.kind == "EPISODE" }.mapNotNull { it.parentRemoteId } }.distinctUntilChanged(),
         ) { fav, prog -> com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.candidates(prog, fav) }
             .distinctUntilChanged()
-            .flatMapLatest { rids -> flow { delay(2_500); emit(resolveNewEpisodes(id, rids)) } }
+            .flatMapLatest { rids -> flow { delay(2_500); com.ultratv.tv.nativeapp.ui.common.InputClock.awaitQuiet(BACKGROUND_QUIET_MS, BACKGROUND_QUIET_MAX_MS); emit(resolveNewEpisodes(id, rids)) } }
     }.flowOn(kotlinx.coroutines.Dispatchers.IO)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private suspend fun resolveNewEpisodes(pid: Long, rids: List<String>): List<NewEpisodeCardUi> {
         if (rids.isEmpty()) return emptyList()
         val now = System.currentTimeMillis()
-        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        val gate = kotlinx.coroutines.sync.Semaphore(2)
         val shows = kotlinx.coroutines.coroutineScope {
             rids.map { rid ->
                 async {
                     gate.withPermit {
+                        com.ultratv.tv.nativeapp.ui.common.InputClock.awaitQuiet(BACKGROUND_QUIET_MS, BACKGROUND_QUIET_MAX_MS)
                         runCatching {
                             val s = catalog.seriesByRemote(pid, rid) ?: return@runCatching null
                             val tmdbId = tmdb.forSeries(s)?.tmdbId ?: return@runCatching null

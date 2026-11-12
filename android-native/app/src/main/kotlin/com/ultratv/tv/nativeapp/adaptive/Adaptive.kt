@@ -46,6 +46,16 @@ object DeviceClassifier {
      */
     fun weakUi(i: DeviceInfo): Boolean = !i.is64Bit && i.cores <= 4 && i.ramMb < 2600
 
+    /** Seuil (Mo de RAM totale rapportée) sous lequel un appareil est de la classe « 2 Go » (une box 2 Go rapporte ≈ 1,7 à 2,0 Go ; une 3 Go ≈ 2,7 Go). */
+    const val SMALL_RAM_MB = 2300
+
+    /**
+     * Box de la classe « 2 Go » : le score de [tier] la classe MID dès qu'elle a quatre cœurs et une classe mémoire de 256 Mo
+     * (donc ni [AutoSettings.lowRam] ni interface allégée), alors que le bureau (animations, fonds flous, aperçu vidéo du
+     * Direct) y coûte autant que sur une box LOW. Ne change PAS le niveau : la vidéo n'est pas plafonnée pour autant.
+     */
+    fun smallRam(i: DeviceInfo): Boolean = i.ramMb < SMALL_RAM_MB
+
     /**
      * LOW : drapeau low-RAM, moins de ~1,8 Go (Chromecast HD, box à 1 Go), classe mémoire < 160 Mo, ou machine très lente.
      * Sinon un score (RAM, cœurs, 64 bits, classe mémoire, benchmark) départage MID / HIGH.
@@ -112,6 +122,11 @@ data class AutoSettings(
     val readTimeoutMs: Int,
     /** Box faible (voir [DeviceClassifier.weakUi]) : décodage d'images en tâche de fond, un seul à la fois. */
     val weakUi: Boolean = false,
+    /**
+     * Interface allégée : box LOW ou de la classe « 2 Go » ([DeviceClassifier.smallRam]). Pilote ce qui est purement visuel
+     * ou facultatif (fonds flous, fondus, animation d'ouverture, aperçu vidéo du Direct en « Auto »), jamais la lecture.
+     */
+    val lightUi: Boolean = false,
 )
 
 object AutoTuner {
@@ -138,7 +153,9 @@ object AutoTuner {
         if (tier == Tier.LOW) maxBitrate = minOf(maxBitrate ?: LOW_TIER_MAX_BITRATE, LOW_TIER_MAX_BITRATE)
         return AutoSettings(
             lowRam = tier == Tier.LOW,
-            uiEffects = when (tier) { Tier.HIGH -> UiEffects.FULL; Tier.MID -> UiEffects.REDUCED; Tier.LOW -> UiEffects.NONE },
+            // Classe « 2 Go » : aucune animation (zoom de focus, fondus, défilement de « À la une ») — chaque touche de la
+            // télécommande lançait une dizaine d'images animées à 40-60 ms sur ces box ; le réglage Animations les rétablit.
+            uiEffects = when (tier) { Tier.HIGH -> UiEffects.FULL; Tier.MID -> if (DeviceClassifier.smallRam(i)) UiEffects.NONE else UiEffects.REDUCED; Tier.LOW -> UiEffects.NONE },
             imageRgb565 = tier == Tier.LOW,
             railPrefetch = when (tier) { Tier.HIGH -> 3; Tier.MID -> 2; Tier.LOW -> 1 },
             bufferPreset = bufferPreset,
@@ -155,6 +172,7 @@ object AutoTuner {
             connectTimeoutMs = ((ttfbMs ?: 1_500) * 4).coerceIn(5_000, 20_000),
             readTimeoutMs = if (quality <= NetQuality.FAIR) 30_000 else 20_000,
             weakUi = weak,
+            lightUi = tier == Tier.LOW || DeviceClassifier.smallRam(i),
         )
     }
 }

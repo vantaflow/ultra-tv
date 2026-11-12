@@ -23,7 +23,12 @@ enum class AnimationLevel(val key: String) {
 @Immutable
 data class Animations(val level: AnimationLevel) {
     val off get() = level == AnimationLevel.OFF
-    val rotateHero get() = level != AnimationLevel.OFF
+    /**
+     * « À la une » défile (toutes les 9 s) et se fond entre deux titres seulement au niveau complet : en « réduites » ou
+     * « désactivées » le premier titre reste affiché (chaque rotation décodait un nouveau fond plein cadre et lançait un
+     * fondu sur une box modeste). Quatre autres titres ne sont alors plus préparés en arrière-plan non plus.
+     */
+    val rotateHero get() = level == AnimationLevel.NORMAL
 
     /** Zoom d'un élément focalisé selon le niveau (1 = pas de zoom). */
     fun focusScale(full: Float): Float = when (level) {

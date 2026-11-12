@@ -64,10 +64,33 @@ class AdaptiveTest {
         val d = dev(ram = 2000, cls = 256, cores = 4, is64 = false)
         assertTrue(DeviceClassifier.weakUi(d))
         val a = AutoTuner.settings(profile(d), NetQuality.EXCELLENT, false, 80)
-        assertEquals(UiEffects.REDUCED, a.uiEffects); assertTrue(a.weakUi)
+        assertEquals(UiEffects.NONE, a.uiEffects); assertTrue(a.weakUi)
         assertNotEquals(720, a.maxVideoHeight)
     }
     @Test fun auto_box64Bits_pasBoxFaible() = assertFalse(DeviceClassifier.weakUi(dev()))
+
+    // ── Interface allégée (classe « 2 Go ») ──
+    @Test fun lightUi_box2Go32Bits_niveauMoyenMaisInterfaceAllegee() {
+        val d = dev(ram = 1900, cls = 256, cores = 4, is64 = false)
+        assertEquals(Tier.MID, DeviceClassifier.tier(d))
+        val a = AutoTuner.settings(profile(d), NetQuality.EXCELLENT, false, 80)
+        assertFalse(a.lowRam); assertTrue(a.lightUi); assertNotEquals(720, a.maxVideoHeight)
+    }
+    @Test fun lightUi_box2Go64Bits_aussi() {
+        val a = AutoTuner.settings(profile(dev(ram = 2000, cls = 256, cores = 4, is64 = true)), NetQuality.EXCELLENT, false, 80)
+        assertTrue(a.lightUi); assertFalse(a.lowRam)
+    }
+    @Test fun lightUi_boxBasse_toujours() = assertTrue(AutoTuner.settings(profile(dev(ram = 1000, cls = 128, cores = 2, is64 = false)), NetQuality.GOOD, false, 80).lightUi)
+    @Test fun lightUi_boxTroisGoEtGrosseBox_nonAllegee() {
+        assertFalse(AutoTuner.settings(profile(dev(ram = 2800, cls = 256, cores = 4)), NetQuality.GOOD, false, 80).lightUi)
+        assertFalse(AutoTuner.settings(profile(dev()), NetQuality.EXCELLENT, false, 50).lightUi)
+    }
+    @Test fun boxMoyenne3Go_gardeLesEffetsReduits() =
+        assertEquals(UiEffects.REDUCED, AutoTuner.settings(profile(dev(ram = 2800, cls = 192, cores = 4, bench = 200)), NetQuality.GOOD, false, 80).uiEffects)
+    @Test fun smallRam_seuil() {
+        assertTrue(DeviceClassifier.smallRam(dev(ram = 2299)))
+        assertFalse(DeviceClassifier.smallRam(dev(ram = 2300)))
+    }
     @Test fun auto_grosseBox_reseauRapide_toutEnPleinEtFaibleLatence() {
         val a = AutoTuner.settings(profile(dev()), NetQuality.EXCELLENT, false, 50)
         assertEquals(UiEffects.FULL, a.uiEffects); assertEquals(BufferPreset.LOW_LATENCY, a.bufferPreset)

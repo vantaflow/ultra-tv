@@ -136,9 +136,10 @@ class LivePreviewViewModel @Inject constructor(
     /** Mémoire limitée au sens du mode « économie de mémoire » (Réglages › Mémoire et stockage) : Auto = l'appareil. */
     val lowRam: Boolean get() = com.ultratv.tv.nativeapp.data.memory.EconomyMode.effective(
         memoryPrefs.state.value.economy,
-        // Auto : seulement le profil « mémoire faible » d'avant. La règle « moins de 2 Go » de la rubrique Mémoire classait
-        // les box 2 Go en appareil limité et coupait l'aperçu vidéo du Direct, qui y tournait très bien.
-        adaptive.state.value.auto.lowRam,
+        // Auto : interface allégée du profil adaptatif (box LOW ou classe « 2 Go »). Un décodeur vidéo de plus pendant le
+        // défilement de la liste pèse sur une box 2 Go (2 à 3,3 s entre la touche et l'image mesurées) ; le réglage
+        // « Aperçu vidéo : Activé » le rétablit. N'agit pas sur la rubrique Mémoire (règle « moins de 2 Go » à part).
+        adaptive.state.value.auto.lightUi,
     )
 
     fun env(): LiveEnv = LiveEnv(

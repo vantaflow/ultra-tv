@@ -330,6 +330,17 @@ const val HERO_RESOLVE_MAX = 8
 /** Durée d'affichage de chaque titre « à la une ». */
 const val HERO_ROTATE_MS = 9_000L
 
+/**
+ * Nombre de titres « à la une » à préparer : [HERO_POOL] quand le bandeau défile, UN SEUL sinon (animations réduites ou
+ * désactivées : les autres ne seraient jamais affichés, mais leurs fonds, notes et logos seraient quand même chargés).
+ */
+fun heroPoolSize(rotating: Boolean): Int = if (rotating) HERO_POOL else 1
+
+/** Silence de la télécommande exigé avant de lancer un chargement réseau de confort (notes, logos, calendrier TVmaze). */
+const val BACKGROUND_QUIET_MS = 1_200L
+/** Attente maximale de ce silence : un utilisateur qui navigue sans arrêt ne bloque pas indéfiniment les compléments. */
+const val BACKGROUND_QUIET_MAX_MS = 20_000L
+
 /** Alterne séries et films (série d'abord), sans doublon, au plus [max]. */
 fun <T> interleaveHeroes(series: List<T>, movies: List<T>, max: Int): List<T> {
     val out = ArrayList<T>(max)

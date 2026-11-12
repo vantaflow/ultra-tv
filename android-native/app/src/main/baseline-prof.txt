@@ -23,6 +23,17 @@ HSPLcom/ultratv/tv/nativeapp/ui/search/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/favorites/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/profile/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/ui/sync/**;->**(**)**
+# Écrans de la nouvelle interface (1.2.98 et suivantes), absents du profil jusqu'ici : fiches film et série (DetailV2),
+# bande-annonce, rubrique Sport, lecteur et sa surcouche (OSD). Sans eux, la première ouverture d'une fiche ou du lecteur
+# tournait interprétée puis en JIT, sur le fil principal.
+HSPLcom/ultratv/tv/nativeapp/ui/detail/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/trailer/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/sport/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/ui/player/**;->**(**)**
+# Métadonnées de l'accueil et des fiches (TMDB, Fanart.tv, TVmaze) et rubrique Sport : analyse JSON et dépôts à chaud.
+HSPLcom/ultratv/tv/nativeapp/data/extmeta/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/tmdb/**;->**(**)**
+HSPLcom/ultratv/tv/nativeapp/data/sport/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/nav/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/i18n/**;->**(**)**
 HSPLcom/ultratv/tv/nativeapp/data/db/**;->**(**)**

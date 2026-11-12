@@ -390,7 +390,8 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         androidx.compose.ui.unit.LayoutDirection.Ltr
     val adaptiveVm: com.ultratv.tv.nativeapp.adaptive.AdaptiveViewModel = hiltViewModel()
     val adaptive by adaptiveVm.state.collectAsState()
-    val lowRam = adaptive.auto.lowRam
+    // Interface allégée (box LOW ou classe « 2 Go ») : fonds flous, fondus et animation d'ouverture réduits.
+    val lowRam = adaptive.auto.lightUi
     androidx.compose.runtime.CompositionLocalProvider(
         com.ultratv.tv.nativeapp.ui.common.LocalLowRam provides lowRam,
         com.ultratv.tv.nativeapp.adaptive.LocalAdaptive provides adaptive,

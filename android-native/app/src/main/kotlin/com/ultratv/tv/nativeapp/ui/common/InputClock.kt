@@ -18,6 +18,24 @@ object InputClock {
      */
     fun recentNavKey(windowMs: Long = 600): Boolean = recentKey(windowMs) && lastKeyCode in NAV_KEYS
 
+    /** Millisecondes à attendre encore pour que [quietMs] se soient écoulées depuis la dernière touche (0 = silence déjà établi). */
+    fun quietRemaining(nowMs: Long, lastKeyMs: Long, quietMs: Long): Long = (quietMs - (nowMs - lastKeyMs)).coerceAtLeast(0L)
+
+    /**
+     * Suspend jusqu'à ce que la télécommande soit restée silencieuse [quietMs] (au plus [maxWaitMs] au total). Sert aux
+     * chargements réseau de confort : décoder du JSON et négocier du TLS pendant que l'utilisateur fait défiler les
+     * rangées prend du temps de processeur au fil principal et au rendu sur une box à quatre cœurs.
+     */
+    suspend fun awaitQuiet(quietMs: Long, maxWaitMs: Long) {
+        val start = android.os.SystemClock.uptimeMillis()
+        while (true) {
+            val now = android.os.SystemClock.uptimeMillis()
+            val wait = quietRemaining(now, lastKeyMs, quietMs)
+            if (wait == 0L || now - start >= maxWaitMs) return
+            kotlinx.coroutines.delay(wait.coerceAtMost(maxWaitMs - (now - start)).coerceAtLeast(1L))
+        }
+    }
+
     private val NAV_KEYS = setOf(
         android.view.KeyEvent.KEYCODE_DPAD_LEFT, android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
         android.view.KeyEvent.KEYCODE_DPAD_UP, android.view.KeyEvent.KEYCODE_DPAD_DOWN, android.view.KeyEvent.KEYCODE_MENU,

@@ -11,6 +11,19 @@ class HeroRotationTest {
     }
 }
 
+class HeroPoolTest {
+    @Test fun `un seul titre prepare quand le bandeau ne defile pas`() {
+        assertEquals(HERO_POOL, heroPoolSize(true))
+        assertEquals(1, heroPoolSize(false))
+    }
+
+    @Test fun `une selection d'un titre ne resout aucun film TMDB si elle est complete`() {
+        val ms = (1..10).toList()
+        assertEquals(emptyList<Int>(), heroesToResolve(ms, 1, heroPoolSize(false), HERO_RESOLVE_MAX) { false })
+        assertEquals(HERO_RESOLVE_MAX, heroesToResolve(ms, 0, heroPoolSize(false), HERO_RESOLVE_MAX) { false }.size)
+    }
+}
+
 class HeroPickTest {
     private data class H(val name: String, val landscape: Boolean)
     private val has = { h: H -> h.landscape }

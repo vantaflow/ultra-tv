@@ -138,11 +138,13 @@ fun HomeScreen(
     val D = LocalDs.current
     val providers by vm.providers.collectAsStateWithLifecycle()
     val loaded by vm.providersLoaded.collectAsStateWithLifecycle()
+    val heroAnim = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current
+    // Défilement de « À la une » seulement au niveau d'animation complet : le ViewModel ne prépare alors qu'un titre sinon.
+    vm.setHeroRotating(heroAnim.rotateHero)
     val heroes by vm.heroes.collectAsStateWithLifecycle()
     // « À la une » qui défile toutes les 9 s (sans focus volé : seul le contenu change, OK ouvre le titre affiché).
     var heroIdx by rememberSaveable { mutableStateOf(0) }
-    val heroAnim = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current
-    LaunchedEffect(heroes.size, heroAnim) {
+    LaunchedEffect(heroes.size, heroAnim.rotateHero) {
         if (heroes.size < 2 || !heroAnim.rotateHero) return@LaunchedEffect
         while (true) { kotlinx.coroutines.delay(HERO_ROTATE_MS); heroIdx = (heroIdx + 1) % heroes.size }
     }
@@ -575,7 +577,7 @@ private fun Hero(
     // Carte arrondie : image à droite, panneau de texte de 640 px à gauche sur un voile simple (aucun flou).
     Box(modifier.clip(RoundedCornerShape(32.design)).background(Ux.Tone)) {
         // UNE seule image de fond. Fondu léger entre deux titres (coupé net si les animations sont désactivées).
-        androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.tween(500), label = "hero") { cur ->
+        androidx.compose.animation.Crossfade(targetState = h, animationSpec = com.ultratv.tv.nativeapp.ui.design.LocalAnimations.current.let { if (it.rotateHero) it.tween<Float>(500) else androidx.compose.animation.core.snap<Float>() }, label = "hero") { cur ->
             Box(Modifier.fillMaxSize()) {
                 if (cur.backdrop != null) {
                     BackdropImage(cur.backdrop, Modifier.fillMaxSize(), decodeSize = DpSize(1232.design, 420.design))
