@@ -1564,4 +1564,5 @@
     <string name="sport_no_guide_title">الدليل مطلوب</string>
     <string name="sport_no_guide_body">يعتمد قسم الرياضة على دليل برامج قنواتك. فعّل الدليل من الإعدادات ‹ المزامنة ثم زامن مصدرك.</string>
     <string name="sport_open_sync">فتح إعدادات المزامنة</string>
+    <string name="v2_duration_label">المدة</string>
 </resources>

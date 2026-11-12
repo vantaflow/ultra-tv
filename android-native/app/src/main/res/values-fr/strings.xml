@@ -1522,4 +1522,5 @@
     <string name="sport_no_guide_title">Un guide est nécessaire</string>
     <string name="sport_no_guide_body">La rubrique Sport s\'appuie sur le guide des programmes de vos chaînes. Activez le guide dans Réglages › Synchronisation, puis synchronisez votre source.</string>
     <string name="sport_open_sync">Ouvrir les réglages de synchronisation</string>
+    <string name="v2_duration_label">Durée</string>
 </resources>

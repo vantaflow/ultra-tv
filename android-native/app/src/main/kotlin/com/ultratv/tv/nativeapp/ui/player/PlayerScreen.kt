@@ -91,6 +91,7 @@ import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.Toaster
 import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.i18n.typeMovie
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.mobile.lockOrientation
 import com.ultratv.tv.nativeapp.ui.mobile.MobileControls
@@ -526,6 +527,18 @@ class PlayerViewModel @Inject constructor(
         return i >= 0 && i + 1 < all.size
     }
 
+    /** Épisode qui suit l'épisode en cours (carte « Épisode suivant dans N s »), sans changer l'élément courant ; null en fin de série. */
+    suspend fun peekNextEpisode(): NextEpisodeInfo? {
+        val c = playback.current.value ?: return null
+        if (c.kind != "EPISODE") return null
+        val cur = episodeDao.byRemoteId(c.providerId, c.remoteId) ?: return null
+        val all = episodeDao.observeForSeries(cur.seriesId).first()
+        val i = all.indexOfFirst { it.id == cur.id }
+        val nx = all.getOrNull(i + 1)?.takeIf { i >= 0 } ?: return null
+        val series = c.title.substringBefore(" · ")
+        return NextEpisodeInfo(nx.episode, com.ultratv.tv.nativeapp.ui.series.cleanEpisodeTitle(nx.title, series, series), nx.plot?.takeIf { it.isNotBlank() }, nx.image ?: c.poster)
+    }
+
     suspend fun prepareResume(): Long {
         val c = playback.current.value ?: return 0L
         if (c.kind == "LIVE") return 0L
@@ -556,7 +569,7 @@ class PlayerViewModel @Inject constructor(
     fun setDecoder(v: String) { viewModelScope.launch { prefs.setDecoderMode(v) } }
 }
 
-private enum class Panel { None, Options, Tracks, Subtitles }
+private enum class Panel { None, Options, Tracks, Subtitles, Display }
 
 /** Onglets du panneau de réglages (maquette LecteurReglages). */
 private enum class SideTab { TRACKS, DISPLAY, PLAYER, STATS }
@@ -849,6 +862,22 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     }
     var epNav by remember { mutableStateOf(false to false) }
     LaunchedEffect(item?.remoteId) { epNav = if (item?.kind == "EPISODE") vm.episodeNeighbors() else (false to false) }
+    // Carte « Épisode suivant dans N s » : informative, affichée pendant les NEXT_CARD_SECONDS dernières secondes d'un épisode qui
+    // a une suite. Le passage à la suite reste celui de la fin de lecture (Réglages › Lecture) ou du bouton « Épisode suivant ».
+    var nextInfo by remember { mutableStateOf<NextEpisodeInfo?>(null) }
+    LaunchedEffect(item?.remoteId, epNav.second) { nextInfo = if (epNav.second) vm.peekNextEpisode() else null }
+    val nextSecsState = remember {
+        androidx.compose.runtime.derivedStateOf {
+            val left = dur - pos
+            if (item?.kind != "EPISODE" || dur <= 0 || left <= 0 || left > NEXT_CARD_SECONDS * 1_000L || state.phase != Phase.PLAYING) 0
+            else ((left + 999) / 1_000).toInt()
+        }
+    }
+    val nextSecs = if (nextInfo != null) nextSecsState.value else 0
+    // Marques d'intro / de générique sur la barre (fractions de la durée), seulement quand on les connaît.
+    val vodMarks = remember(skipSegs, dur) {
+        if (dur <= 0) emptyList() else skipSegs.map { sg -> (sg.startMs.toFloat() / dur).coerceIn(0f, 1f) to ((sg.endMs ?: dur).toFloat() / dur).coerceIn(0f, 1f) }
+    }
     var playing by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     // Délai de masquage de la surcouche : 5 s pour le bandeau, 8 s pour l'OSD complet du direct (trois étages à lire).
@@ -1266,11 +1295,20 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             onClose = leave,
         )
 
+        // Titre et sur-titre : « Série · S02E04 · Titre » → sur-titre « SÉRIE · S02E04 », titre de l'épisode ; film → sur-titre « FILM ».
+        val rawTitle = item?.title ?: title
+        val titleParts = rawTitle.split(" · ")
+        val isEpisode = item?.kind == "EPISODE" && titleParts.size >= 3
+        val vodTitle = if (isEpisode) titleParts.drop(2).joinToString(" · ") else rawTitle
+        val vodKicker = if (isEpisode) "${titleParts[0]} · ${titleParts[1]}".uppercase() else if (item?.kind == "MOVIE") D.typeMovie.uppercase() else ""
         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) {
             if (!isLive) VodOverlay(
-                title = item?.title ?: title, badges = badges, pos = { pos }, dur = { dur }, speed = speed,
+                title = vodTitle, kicker = vodKicker, episode = item?.kind == "EPISODE", badges = badges, pos = { pos }, dur = { dur }, speed = speed,
+                buffered = { session.engine?.loadProgress() ?: -1L }, marks = vodMarks,
+                onRestart = { session.engine?.seekTo(0L); touch() }, onDisplay = { panel = Panel.Display },
+                labels = remember(X, S, D) { vodLabels(X, S, D) },
                 playing = playing, loading = state.phase == Phase.LOADING, hasPrev = epNav.first, hasNext = epNav.second, sleepActive = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE,
-                pauseFocus = pauseFocus, X = X,
+                pauseFocus = pauseFocus,
                 onPrev = { stepEpisode(-1) }, onSeek = { d -> session.engine?.let { it.seekTo((it.positionMs + d).coerceAtLeast(0)) }; touch() },
                 onToggle = { session.engine?.let { if (it.isPlaying) it.pause() else it.play() }; touch() },
                 onNext = { stepEpisode(1) },
@@ -1282,6 +1320,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
         }
         // TV : visible seulement commandes masquées (non focalisable, OK l'exécute). Tactile : toujours, au doigt.
+        // Carte « Épisode suivant dans N s » (bas à droite, au-dessus de la barre quand elle est affichée).
+        val nextShown = nextSecs > 0 && !drawerOpen && panel == Panel.None && !sleepMenu && !touch
+        if (nextShown) nextInfo?.let { ni ->
+            NextEpisodeCard(
+                tag = D.episodeShort(ni.number), label = "${X.nextEpisode.uppercase()} · $nextSecs s", title = "${ni.number}. ${ni.title}".trimEnd('.', ' '),
+                summary = ni.summary, image = ni.image, fraction = 1f - nextSecs.toFloat() / NEXT_CARD_SECONDS,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 72.design, bottom = if (overlayVisible) 330.design else 72.design),
+            )
+        }
+        // TV : visible seulement commandes masquées (non focalisable, OK l'exécute). Tactile : toujours, au doigt.
         if (skipOffer != null && !drawerOpen && panel == Panel.None && !sleepMenu && (touch || !overlayVisible || !isLive)) SkipChip(
             label = when {
                 skipOffer.toNextEpisode -> X.nextEpisode
@@ -1290,7 +1338,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 else -> X.skipIntro
             },
             okHint = !touch, onClick = doSkip,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 96.design, bottom = if (touch) 150.design else if (overlayVisible && !isLive) 340.design else 96.design),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(
+                end = if (touch) 96.design else 72.design,
+                bottom = (if (touch) 150.design else if (overlayVisible && !isLive) 330.design else 96.design) + (if (nextShown) 168.design else 0.design),
+            ),
         )
         zapPreview?.let { pv ->
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
@@ -1328,8 +1379,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onClose = closeSubs,
             )
         }
-        if (panel == Panel.Options || panel == Panel.Tracks) PlayerSidePanel(
-            initial = if (panel == Panel.Tracks) SideTab.TRACKS else SideTab.PLAYER,
+        if (panel == Panel.Options || panel == Panel.Tracks || panel == Panel.Display) PlayerSidePanel(
+            initial = when (panel) { Panel.Tracks -> SideTab.TRACKS; Panel.Display -> SideTab.DISPLAY; else -> SideTab.PLAYER },
             title = item?.title ?: title, p = p, vm = vm, session = session, state = state, aspect = aspect, speed = speed, isLive = isLive, statsOpen = statsOpen, sleepActive = sleepDeadline > 0, D = D,
             onAspect = { aspect = it }, onSpeed = { speed = it }, onStats = { statsOpen = !statsOpen },
             onSleep = { min -> sleepDeadline = if (min > 0) System.currentTimeMillis() + min * 60_000L else 0L },
@@ -1344,21 +1395,24 @@ private fun Modifier.androidx_focusable() = this.focusable()
 /** Boutons de la barre du Direct absents de la barre de pilules du mode portrait (déjà couverts par la vidéo et la liste). */
 private val PORTRAIT_HIDDEN = setOf(OsdActionId.CHANNELS, OsdActionId.HISTORY, OsdActionId.PLAY_PAUSE, OsdActionId.JUMP_BACK, OsdActionId.JUMP_FORWARD)
 
-/** Bouton « Passer l'intro » (maquette : pastille claire en bas à droite, au-dessus de la vidéo). */
+/** Bouton « Passer l'intro » (maquette : pastille claire de 64 px en bas à droite, au-dessus de la vidéo). */
 @Composable
 private fun SkipChip(label: String, okHint: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        modifier.clip(RoundedCornerShape(40.design)).background(Color(0xF2F5F5F7)).clickable(onClick = onClick)
-            .padding(horizontal = 30.design, vertical = 16.design),
+        modifier.height(64.design).clip(CircleShape).background(Color(0xFFF4F5F7)).clickable(onClick = onClick)
+            .padding(horizontal = 28.design),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DIcon("M5 4l10 8-10 8zM19 5v14", 26.design, Color(0xFF0A0A0C), strokeWidth = 2.4f)
-        Text(label, color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1,
+        DIcon("M5 5l7 7-7 7M13 5l7 7-7 7", 22.design, Color(0xFF0A0C10), strokeWidth = 2.2f)
+        Text(label, color = Color(0xFF0A0C10), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1,
             modifier = Modifier.padding(start = 12.design))
-        if (okHint) Text("OK", color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx,
-            modifier = Modifier.padding(start = 16.design).clip(RoundedCornerShape(6.design)).background(Color(0x1F0A0A0C)).padding(horizontal = 8.design, vertical = 2.design))
+        if (okHint) Text("OK", color = Color(0xFF0A0C10), fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx,
+            modifier = Modifier.padding(start = 16.design).clip(RoundedCornerShape(6.design)).background(Color(0x1F0A0C10)).padding(horizontal = 8.design, vertical = 2.design))
     }
 }
+
+/** Durée (s) pendant laquelle la carte « Épisode suivant dans N s » est affichée, avant la fin de l'épisode. */
+private const val NEXT_CARD_SECONDS = 15
 
 // ───────────────────────── Surcouche ─────────────────────────
 

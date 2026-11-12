@@ -111,7 +111,7 @@ enum class CatalogKind { MOVIES, SERIES }
 
 /** Carte de la grille : seulement des champs RÉELS de la source. Immuable : une cellule inchangée est sautée à la recomposition. */
 @androidx.compose.runtime.Immutable
-data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "", val watched: Boolean = false)
+data class PosterItem(val id: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?, val lang: String = "", val watched: Boolean = false, val progress: Float = 0f)
 
 /** Catégorie affichée : [count] titres ; [isGenre] = genre automatique (le nom est alors localisé à l'affichage, [remoteId] est le code du genre). */
 data class CategoryChip(val remoteId: String, val name: String, val count: Int = 0, val isGenre: Boolean = false)
@@ -343,8 +343,10 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
 
     val widthDp = com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current
     val listReq = remember { FocusRequester() }
+    // TV, rangées, vue « Tous » sans filtre : onglets + hero + rangées (pleine largeur, voir CatalogV2).
+    val heroMode = !touch && !split && chipsOrNull != null && lp != null && chips.isNotEmpty() && selected == null && !filter.narrows
     com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh {
-    Column(
+    if (heroMode) CatalogHeroHost(vm, kind, chips, filter, detecting, progress, onOpen) else Column(
         Modifier.fillMaxSize().then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)),
         verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else if (split) 20.design else 32.design),
     ) {
@@ -415,6 +417,43 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
         }
     }
     }
+}
+
+/** Vue « Tous » TV : câble le ViewModel (rangées en cache, focus initial, filtres) à la mise en page sans état [CatalogRowsTv]. */
+@Composable
+private fun CatalogHeroHost(
+    vm: CatalogGridViewModel, kind: CatalogKind, chips: List<CategoryChip>, filter: CatalogFilter, detecting: Boolean, progress: GenreDetector.Progress?, onOpen: (Long) -> Unit,
+) {
+    val D = LocalDs.current
+    val first = remember { FocusRequester() }
+    var firstFocused by remember { mutableStateOf(false) }
+    RequestInitialFocus(first, hasFocus = { firstFocused }, key = chips.firstOrNull()?.remoteId)
+    // Hero : premier titre de la première rangée (déjà en cache pour la rangée elle-même).
+    val firstRow by remember(chips.first().remoteId) { vm.rowItems(chips.first().remoteId) }.collectAsState()
+    val hero = remember(firstRow) { firstRow?.firstOrNull()?.let(::heroOf) }
+    val tabs = buildList {
+        add(CatalogTabUi(null, D.allChip))
+        chips.forEach { add(CatalogTabUi(it.remoteId, if (it.isGenre) D.genreName(it.remoteId) else it.name)) }
+    }
+    CatalogRowsTv(
+        tabs = tabs, selectedKey = null, onTab = { vm.select(it) },
+        filters = {
+            // Tri · note minimale · période (mêmes pastilles qu'avant) et, pendant la détection, son avancement.
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
+                items(CatalogFilter.Sort.entries, key = { "s-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.catalogSortName(o), filter.sort == o) { vm.setFilter(filter.copy(sort = o)) } }
+                items(CatalogFilter.RATINGS, key = { "r-$it" }, contentType = { "chip" }) { r -> Chip(if (r == 0) D.anyRating else "★ $r+", filter.minRating == r) { vm.setFilter(filter.copy(minRating = r)) } }
+                items(CatalogFilter.Period.entries, key = { "p-${it.name}" }, contentType = { "chip" }) { o -> Chip(D.periodName(o), filter.period == o) { vm.setFilter(filter.copy(period = o)) } }
+                if (detecting && progress != null) item(key = "detect") { GenreProgressBanner(progress, false) }
+            }
+        },
+        hero = hero, featuredLabel = D.featured, watchLabel = D.watch, onWatch = onOpen, heroExtra = {},
+        chips = chips,
+        labelOf = { c -> categoryLabel(c) },
+        rowItems = { id -> vm.rowItems(id).collectAsState().value },
+        seeAllLabel = D.seeAll, onOpen = onOpen, onSeeAll = { vm.select(it) },
+        firstPoster = first, onFirstPosterFocus = { firstFocused = it },
+        kind = com.ultratv.tv.nativeapp.ui.design.LocalPosterKind.current,
+    )
 }
 
 /** Petit bandeau « Détection des genres 10 021 / 17 451 · 57 % ». */
@@ -541,7 +580,7 @@ private fun SplitBody(
 private fun CategoryRow(label: String, count: Int, selected: Boolean, modifier: Modifier, onClick: () -> Unit) {
     FocusSurface(
         onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) Ux.Surface2 else androidx.compose.ui.graphics.Color.Transparent,
-        focusedScale = 1.02f, ringWidth = 4.design, focusedBg = Color0xE4E4E7,
+        focusedScale = 1.02f, ringWidth = 0.dp, focusedBg = Ux.Cta,
         modifier = modifier.fillMaxWidth().height(68.design),
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
@@ -592,7 +631,7 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
 
 /** Rangée d'affiches vides, à la taille exacte d'une vraie rangée (affiche 2:3 + titre + méta). */
 @Composable
-private fun SkeletonRow(touch: Boolean) {
+internal fun SkeletonRow(touch: Boolean) {
     val w = if (touch) 120.dp else 200.design
     Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design)) {
         repeat(if (touch) 3 else 7) {
@@ -619,11 +658,12 @@ private fun RowsSkeleton(touch: Boolean) {
 }
 
 @Composable
-private fun Chip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+internal fun Chip(label: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(if (touch) 20.dp else 28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = modifier.height(if (touch) 40.dp else 56.design)) { f ->
-        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = if (touch) 16.dp else 28.design).height(if (touch) 40.dp else 56.design), contentAlignment = Alignment.Center) {
-            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (touch) 13.sp else 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    // TV (maquette v2) : onglet 48 px, rond ; sélectionné = couleur de focus de la palette, les autres sur la carte.
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(if (touch) 20.dp else 24.design), bg = if (selected) Ux.Cta else Ux.Surface, focusedScale = if (touch) 1.06f else 1f, ringWidth = if (touch) 6.design else 0.dp, focusedBg = if (touch || !selected) Ux.Cta else Ux.Accent, modifier = modifier.height(if (touch) 40.dp else 48.design)) { f ->
+        androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = if (touch) 16.dp else 22.design).height(if (touch) 40.dp else 48.design), contentAlignment = Alignment.Center) {
+            Text(label, color = if (!touch && selected && f) Ux.OnAccent else if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = if (touch) 13.sp else 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -643,6 +683,8 @@ internal fun PosterCell(
     onClick: () -> Unit,
 ) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    // TV : affiche v2 (contour + titre au focus) ; tactile : cellule d'origine.
+    if (!touch) { PosterCellTv(item, modifier, kind, imageWidth, onClick); return }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design)) {
         FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.Surface, ringWidth = 5.design, focusedBg = Color0xE4E4E7, modifier = Modifier.fillMaxWidth().aspectRatio23()) {
             Box(Modifier.fillMaxSize()) {

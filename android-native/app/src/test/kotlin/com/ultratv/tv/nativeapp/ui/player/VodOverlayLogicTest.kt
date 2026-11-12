@@ -69,4 +69,14 @@ class VodOverlayLogicTest {
         assertEquals(noon + 30 * 60_000L, VodOverlayLogic.endsAtMs(noon, 0, 60 * 60_000L, 2f))
         assertNull(VodOverlayLogic.endsAtMs(noon, 0, -1))
     }
+
+    @Test fun pastilleHdrDepuisLesStatistiques() {
+        assertEquals("HDR10", VodOverlayLogic.hdrLabel("hdr10"))
+        assertEquals("Dolby Vision", VodOverlayLogic.hdrLabel("dv"))
+        assertNull(VodOverlayLogic.hdrLabel(null))
+        val b = VodOverlayLogic.badges(EngineStats(resolution = "3840×2160", hdrKind = "hlg"))
+        assertEquals(TechBadges("4K", null, null, "HLG"), b)
+        assertEquals(false, b.isEmpty)
+        assertEquals(false, TechBadges(hdr = "HDR10").isEmpty)
+    }
 }

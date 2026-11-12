@@ -1510,4 +1510,5 @@
     <string name="sport_no_guide_title">A guide is needed</string>
     <string name="sport_no_guide_body">The Sport section is built from your channels\' programme guide. Turn the guide on in Settings › Sync, then sync your source.</string>
     <string name="sport_open_sync">Open Sync settings</string>
+    <string name="v2_duration_label">Duration</string>
 </resources>

@@ -1460,4 +1460,5 @@
     <string name="sport_no_guide_title">Potrzebny jest przewodnik</string>
     <string name="sport_no_guide_body">Sekcja Sport korzysta z przewodnika programów Twoich kanałów. Włącz przewodnik w Ustawieniach › Synchronizacja, a potem zsynchronizuj źródło.</string>
     <string name="sport_open_sync">Otwórz ustawienia synchronizacji</string>
+    <string name="v2_duration_label">Czas trwania</string>
 </resources>
