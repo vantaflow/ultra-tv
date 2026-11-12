@@ -120,3 +120,6 @@
 .pane > :not(.pref) + .pref { border-start-start-radius: 1.6rem; border-start-end-radius: 1.6rem; }
 .pane > .pref:not(:has(+ .pref)) { border-end-start-radius: 1.6rem; border-end-end-radius: 1.6rem; }
 .pane .pref .d { font-size: 0.9rem; }
+/* La ligne « maintenant » reste sous le texte des programmes en cours (cellules au-dessus) ; la pastille d heure reste dans l en-tête. */
+.g-now { z-index: 1; }
+.g-prog.now { z-index: 2; }
