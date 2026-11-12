@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Worker : les liens `/download/windows`, `/mac` et `/linux*` renvoyaient à la page des versions au lieu du fichier quand plus de 20 versions Android ou pré-versions avaient été publiées après la dernière version bureau ; les 100 dernières versions sont maintenant lues.
+- Appui long sur OK (menu d'actions d'une chaîne, d'un film, d'un épisode) : le menu reste ouvert au relâchement de la touche. Auparavant, le relâchement validait la première ligne (« Ajouter aux favoris ») et refermait le menu.
 
 ## [1.3.1] — 2026-11-12 (Android) et bureau 1.2.50
 

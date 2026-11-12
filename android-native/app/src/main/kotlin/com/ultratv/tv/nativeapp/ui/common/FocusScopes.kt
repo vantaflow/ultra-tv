@@ -290,9 +290,16 @@ private fun ModalBody(
         }
     }
     if (onBack != null) BackHandler(onBack = onBack)
+    // OK encore enfoncé à l'ouverture (appui long) : ignoré jusqu'à un nouvel appui (voir HeldKeyGuard).
+    val held = remember { HeldKeyGuard() }
     Box(
         modifier
             .fillMaxSize()
+            .onPreviewKeyEvent { ev ->
+                val k = ev.key
+                val ok = k == Key.DirectionCenter || k == Key.Enter || k == Key.NumPadEnter || k == Key.ButtonSelect || k == Key.ButtonA
+                !held.allow(ok, ev.type == KeyEventType.KeyDown, ev.nativeKeyEvent.repeatCount)
+            }
             .onFocusChanged { state.hasFocus = it.hasFocus; if (it.hasFocus) state.hadFocus = true }
             .focusRestorer()
             .focusRequester(requester)
