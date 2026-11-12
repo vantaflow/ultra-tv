@@ -125,7 +125,8 @@ internal fun CatalogRowsTv(
                     modifier = Modifier.padding(start = 72.design, end = 96.design),
                 )
                 if (list == null) { SkeletonRow(false); return@Column }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(start = 72.design, end = 96.design)) {
+                // Marge verticale : l'affiche focalisée (x1,15 + contour) déborde de ~34 px en haut et en bas ; la LazyRow rogne à ses bords.
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(start = 72.design, end = 96.design, top = 40.design, bottom = 24.design)) {
                     items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
                         val it = list[i]
                         val m = Modifier.width(200.design)
