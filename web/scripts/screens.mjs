@@ -95,7 +95,7 @@ try {
   for (const theme of ["dark", "light"]) {
     await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: theme }] });
     for (const [name, p] of pages) {
-      await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/index.html#${p.route}` });
+      await send("Page.navigate", { url: `http://127.0.0.1:${PORT}/index.html?lang=${LANG}#${p.route}` });
       await sleep(first ? 4500 : 1500);
       first = false;
       await send("Page.reload", {}); // repart d'une page propre (lecteur fermé) ; le catalogue est déjà semé
