@@ -253,4 +253,30 @@ class LiveOsdLogicTest {
         assertTrue(r.none { it.key == "p:1" })
         assertEquals(3, OsdModel.recents(all.take(3), null).size)
     }
+
+    @Test fun recents_memeChaineSousDeuxIdentifiants_apparaitUneSeuleFois() {
+        val all = listOf(
+            OsdRecent("p:10", null, 1, "TF1", null),
+            OsdRecent("p:253", null, 253, "RMC MECANIC", null),
+            OsdRecent("p:11", null, 1, " tf1 ", null),
+            OsdRecent("q:10", null, 5, "TF1", null),
+            OsdRecent("p:253", null, 253, "RMC MECANIC", null),
+        )
+        assertEquals(listOf("p:10", "p:253"), OsdModel.recents(all, null).map { it.key })
+    }
+
+    @Test fun recents_exclutLesVariantesDeLaChaineCourante() {
+        val all = listOf(
+            OsdRecent("p:11", null, 1, "TF1", null),
+            OsdRecent("p:98", null, 98, "SERIE CLUB", null),
+        )
+        assertEquals(listOf("p:98"), OsdModel.recents(all, "p:10", "TF1").map { it.key })
+    }
+
+    @Test fun recents_gardeLOrdreEtLePlafondApresDedoublonnage() {
+        val all = (1..30).map { OsdRecent("p:$it", null, it, "Ch ${it % 15}", null) }
+        val r = OsdModel.recents(all, null)
+        assertEquals(10, r.size)
+        assertEquals((1..10).map { "p:$it" }, r.map { it.key })
+    }
 }

@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Android TV, OSD du Direct : la rangée « Chaînes récentes » n'affiche plus deux fois la même chaîne (ex. « TF1 1 » en double) ni la chaîne en cours sous une autre variante ; dédoublonnage par identifiant et par nom affiché, plus récente d'abord, 10 au plus.
+
 ### Modifié
 - Bande-annonce (Android et bureau) : plus de sous-titres automatiques de YouTube par-dessus la vidéo.
 
