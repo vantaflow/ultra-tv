@@ -472,7 +472,7 @@ private fun NowPill(clock: androidx.compose.runtime.State<Long>, windowStart: Lo
     Text(
         EpgClock.wall(clock.value), color = Ux.OnAccent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 14.spx, maxLines = 1, softWrap = false,
         modifier = Modifier
-            .offset { androidx.compose.ui.unit.IntOffset((nameCol + gridW * frac - 30.design).roundToPx(), -(34.design).roundToPx()) }
+            .offset { androidx.compose.ui.unit.IntOffset((nameCol + gridW * frac - 30.design).roundToPx(), -(66.design).roundToPx()) }
             .clip(RoundedCornerShape(50)).background(Ux.Accent).padding(horizontal = 10.design, vertical = 4.design),
     )
 }
@@ -748,6 +748,15 @@ internal fun GuideTvContent(
                     .focusGroup(),
             ) {
                 val gridW = maxWidth - nameColPx.design
+                // Ligne « maintenant » (accent, 3 px), dessinée SOUS les cellules (visible entre elles) : seulement si l'instant courant est dans la fenêtre.
+                // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
+                val accent = Ux.Accent
+                Box(
+                    Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
+                        .width(3.design).fillMaxHeight()
+                        .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
+                        .background(accent),
+                )
                 LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
                     items(count = channelCount, key = itemKey, contentType = { "row" }) { i ->
                         val c = channelAt(i)
@@ -761,15 +770,6 @@ internal fun GuideTvContent(
                         } else Spacer(Modifier.height(84.designT))
                     }
                 }
-                // Ligne « maintenant » (accent, 3 px) : seulement si l'instant courant est dans la fenêtre.
-                // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
-                val accent = Ux.Accent
-                Box(
-                    Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
-                        .width(3.design).fillMaxHeight()
-                        .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
-                        .background(accent),
-                )
                 NowPill(clock, windowStart, nameColPx.design, gridW)
             }
         }

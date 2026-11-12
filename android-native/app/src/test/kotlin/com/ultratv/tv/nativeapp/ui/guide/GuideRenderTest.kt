@@ -18,7 +18,9 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
 import androidx.test.core.app.ApplicationProvider
@@ -139,6 +141,11 @@ class GuideRenderTest {
         // Le focus initial (première case de la première ligne) alimente le panneau du programme ; une touche active le mode clavier.
         rule.onRoot().performKeyInput { pressKey(Key.ShiftLeft) }
         rule.waitForIdle()
+        // Focus sur « L'idiot » (comme la maquette) : le panneau du haut affiche ce programme. Sans effet bloquant si le nœud n'accepte pas le focus.
+        runCatching {
+            rule.onNodeWithText("L'idiot").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.RequestFocus)
+            rule.waitForIdle()
+        }
         val bmp = rule.onRoot().captureToImage().asAndroidBitmap()
         File(outDir, file).outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
         println("Guide capture : ${File(outDir, file).absolutePath} (${bmp.width}x${bmp.height})")
