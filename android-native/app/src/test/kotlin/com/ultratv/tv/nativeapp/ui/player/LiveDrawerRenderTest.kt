@@ -27,7 +27,6 @@ import com.ultratv.tv.nativeapp.i18n.stringsFor
 import com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL
 import com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES
 import com.ultratv.tv.nativeapp.ui.mobile.LocalTouch
-import com.ultratv.tv.nativeapp.ui.player.osd.LiveOsdStrings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -74,12 +73,12 @@ class LiveDrawerRenderTest {
 
     private fun render(lang: AppLang, touch: Boolean, favorites: Boolean, file: String) {
         I18n.init(ApplicationProvider.getApplicationContext())
-        val D = designStringsFor(lang)
-        val O = LiveOsdStrings(lang)
         val catFocus = FocusRequester()
         val shownRows = if (favorites) rows.take(3) else rows
         val highlight = if (favorites) CATEGORY_FAVORITES else "news"
         rule.setContent {
+            // designStringsFor est composable : à appeler dans la composition.
+            val D = designStringsFor(lang)
             CompositionLocalProvider(LocalDs provides D, LocalStrings provides stringsFor(lang), LocalTouch provides touch) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
