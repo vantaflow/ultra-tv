@@ -359,6 +359,8 @@
     <string name="ds_launch_at_boot">Uruchamiaj po włączeniu dekodera</string>
     <string name="ds_open_on">Otwieraj na</string>
     <string name="ds_time_zone">Strefa czasowa</string>
+    <string name="ds_zap_vertical">Zmiana kanału klawiszami Góra / Dół</string>
+    <string name="ds_zap_vertical_hint">Na żywo na pełnym ekranie: Góra / Dół zmieniają kanał, Lewo / Prawo pokazują informacje. Wyłączone: odwrotnie.</string>
     <string name="ds_time_format">Format godziny</string>
     <string name="ds_time_format_12">12-godzinny</string>
     <string name="ds_time_format_24">24-godzinny</string>

@@ -592,6 +592,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val item by vm.current.collectAsState()
     val isLive = item?.kind == "LIVE"
     val prefs by vm.prefsFlow.collectAsState(initial = null)
+    // Lu dans le gestionnaire de touches : toujours la valeur courante du réglage.
+    val zapVertical by androidx.compose.runtime.rememberUpdatedState(prefs?.zapVertical == true)
     val p = prefs ?: run { Box(Modifier.fillMaxSize().background(Color.Black)); return }
 
     var currentUrl by remember { mutableStateOf(url) }
@@ -1213,7 +1215,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         else -> OsdKey.OTHER
                     }
                     // Décision pure (LiveOsdLogic) : OSD fermé, OK / Bas l'ouvrent, Haut zappe ; OSD ouvert, le focus de Compose circule.
-                    when (val d = LiveOsdLogic.decide(osdKey, osdOpen = controlsEngaged, controlsHidden = hidden, tsActive = tsActive, errorShown = state.phase == Phase.ERROR)) {
+                    when (val d = LiveOsdLogic.decide(osdKey, osdOpen = controlsEngaged, controlsHidden = hidden, tsActive = tsActive, errorShown = state.phase == Phase.ERROR, zapVertical = zapVertical)) {
                         // Touche « chaîne précédente » : rappel de la dernière chaîne regardée (Retour, lui, quitte le lecteur).
                         OsdDecision.RecallPrevious -> {
                             if (zap.hasPrevious()) { touch(); zap.recallPrevious { currentUrl = it } }   // chaîne verrouillée : code demandé (ParentalGuard)

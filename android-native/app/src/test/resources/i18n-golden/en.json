@@ -454,6 +454,8 @@
   "DesignStrings.getTierLow()": "Low",
   "DesignStrings.getTierMid()": "Mid",
   "DesignStrings.getTimeFormat()": "Time format",
+  "DesignStrings.getZapVertical()": "Change channel with Up / Down",
+  "DesignStrings.getZapVerticalHint()": "In full-screen live TV: Up / Down change channel, Left / Right show the info. Off: the reverse.",
   "DesignStrings.getTimeFormat12()": "12-hour",
   "DesignStrings.getTimeFormat24()": "24-hour",
   "DesignStrings.getTimeZone()": "Time zone",

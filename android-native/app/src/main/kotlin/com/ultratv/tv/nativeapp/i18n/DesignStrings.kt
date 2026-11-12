@@ -395,6 +395,8 @@ class DesignStrings(val lang: AppLang) {
     val launchAtBoot get() = tx(R.string.ds_launch_at_boot)
     val openOn get() = tx(R.string.ds_open_on)
     val timeZone get() = tx(R.string.ds_time_zone)
+    val zapVertical get() = tx(R.string.ds_zap_vertical)
+    val zapVerticalHint get() = tx(R.string.ds_zap_vertical_hint)
     val timeFormat get() = tx(R.string.ds_time_format)
     val timeFormat12 get() = tx(R.string.ds_time_format_12)
     val timeFormat24 get() = tx(R.string.ds_time_format_24)

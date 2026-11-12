@@ -454,6 +454,8 @@
   "DesignStrings.getTierLow()": "Bajo",
   "DesignStrings.getTierMid()": "Medio",
   "DesignStrings.getTimeFormat()": "Formato de hora",
+  "DesignStrings.getZapVertical()": "Cambiar de canal con Arriba / Abajo",
+  "DesignStrings.getZapVerticalHint()": "En directo a pantalla completa: Arriba / Abajo cambian de canal, Izquierda / Derecha muestran la información. Desactivado: al revés.",
   "DesignStrings.getTimeFormat12()": "12 horas",
   "DesignStrings.getTimeFormat24()": "24 horas",
   "DesignStrings.getTimeZone()": "Zona horaria",

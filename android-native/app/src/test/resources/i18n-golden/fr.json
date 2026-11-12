@@ -454,6 +454,8 @@
   "DesignStrings.getTierLow()": "Bas",
   "DesignStrings.getTierMid()": "Moyen",
   "DesignStrings.getTimeFormat()": "Format de l\u2019heure",
+  "DesignStrings.getZapVertical()": "Zapper avec Haut / Bas",
+  "DesignStrings.getZapVerticalHint()": "En Direct plein écran : Haut / Bas changent de chaîne, Gauche / Droite affichent les infos. Désactivé : l'inverse.",
   "DesignStrings.getTimeFormat12()": "12 heures",
   "DesignStrings.getTimeFormat24()": "24 heures",
   "DesignStrings.getTimeZone()": "Fuseau horaire",

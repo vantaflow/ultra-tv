@@ -45,7 +45,7 @@ object LiveOsdLogic {
      * @param tsActive pause du direct (différé) active
      * @param errorShown panneau d'erreur affiché : prioritaire sur toute touche du Direct
      */
-    fun decide(key: OsdKey, osdOpen: Boolean, controlsHidden: Boolean, tsActive: Boolean, errorShown: Boolean = false): OsdDecision {
+    fun decide(key: OsdKey, osdOpen: Boolean, controlsHidden: Boolean, tsActive: Boolean, errorShown: Boolean = false, zapVertical: Boolean = false): OsdDecision {
         // Panneau d'erreur affiché (échec, « Le flux ne démarre pas »…) : ses boutons reçoivent TOUTES les touches.
         if (errorShown) return OsdDecision.Pass
         // Valables dans tous les états.
@@ -59,6 +59,17 @@ object LiveOsdLogic {
         // OSD ouvert : le focus de Compose se déplace entre les étages et les boutons.
         if (osdOpen) return OsdDecision.Pass
         // OSD fermé (masqué ou simple bandeau après un zap).
+        // Réglage « Zapper avec Haut / Bas » : Haut = chaîne précédente, Bas = suivante (sens de la liste) ; Gauche / Droite
+        // affichent alors l'OSD (en différé masqué : ±30 s, inchangé). En différé, Haut / Bas ouvrent l'OSD comme avant.
+        if (zapVertical) return when (key) {
+            OsdKey.OK -> OsdDecision.OpenChannels
+            OsdKey.UP, OsdKey.DOWN -> if (tsActive) OsdDecision.OpenOsd else OsdDecision.Zap(forward = key == OsdKey.DOWN, closeOsd = false)
+            OsdKey.LEFT, OsdKey.RIGHT ->
+                if (tsActive && controlsHidden) OsdDecision.TimeshiftJump(if (key == OsdKey.LEFT) -TIMESHIFT_JUMP_SEC else TIMESHIFT_JUMP_SEC)
+                else OsdDecision.OpenOsd
+            OsdKey.MENU, OsdKey.INFO -> OsdDecision.OpenOsd
+            else -> OsdDecision.Consume
+        }
         return when (key) {
             // OK : liste des chaînes ; Haut et Bas : OSD complet ; Gauche / Droite : chaîne précédente / suivante
             // (en différé masqué : ±30 s). Demandé par les utilisateurs.

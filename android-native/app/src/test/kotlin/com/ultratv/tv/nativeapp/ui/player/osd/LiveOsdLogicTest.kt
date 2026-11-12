@@ -279,4 +279,21 @@ class LiveOsdLogicTest {
         assertEquals(10, r.size)
         assertEquals((1..10).map { "p:$it" }, r.map { it.key })
     }
+
+    // ── Réglage « Zapper avec Haut / Bas » ──
+
+    @Test fun zapVertical_hautBasZappent_gaucheDroiteOuvrentLOsd() {
+        fun d(k: OsdKey, ts: Boolean = false, hidden: Boolean = false) =
+            LiveOsdLogic.decide(k, osdOpen = false, controlsHidden = hidden, tsActive = ts, zapVertical = true)
+        assertEquals(OsdDecision.Zap(forward = false, closeOsd = false), d(OsdKey.UP))
+        assertEquals(OsdDecision.Zap(forward = true, closeOsd = false), d(OsdKey.DOWN))
+        assertEquals(OsdDecision.OpenOsd, d(OsdKey.LEFT))
+        assertEquals(OsdDecision.OpenOsd, d(OsdKey.RIGHT))
+        assertEquals(OsdDecision.OpenChannels, d(OsdKey.OK))
+        // Différé : Haut / Bas ouvrent l'OSD, Gauche / Droite gardent le saut de 30 s quand tout est masqué.
+        assertEquals(OsdDecision.OpenOsd, d(OsdKey.UP, ts = true))
+        assertEquals(OsdDecision.TimeshiftJump(LiveOsdLogic.TIMESHIFT_JUMP_SEC), d(OsdKey.RIGHT, ts = true, hidden = true))
+        // OSD ouvert : le focus circule comme avant, quel que soit le réglage.
+        assertEquals(OsdDecision.Pass, LiveOsdLogic.decide(OsdKey.UP, osdOpen = true, controlsHidden = false, tsActive = false, zapVertical = true))
+    }
 }
