@@ -1460,4 +1460,23 @@
     <string name="sport_no_guide_title">Potrzebny jest przewodnik</string>
     <string name="sport_no_guide_body">Sekcja Sport korzysta z przewodnika programów Twoich kanałów. Włącz przewodnik w Ustawieniach › Synchronizacja, a potem zsynchronizuj źródło.</string>
     <string name="sport_open_sync">Otwórz ustawienia synchronizacji</string>
+    <!-- Réglages v2 : descriptions de rubrique et résumés d'état de la liste -->
+    <string name="set2_desc_display">Motyw, ekran główny, sekcje i personalizacja.</string>
+    <string name="set2_desc_playback">Silnik, dekodowanie, jakość i zachowanie TV na żywo.</string>
+    <string name="set2_desc_parental">Kod PIN i zablokowane kanały.</string>
+    <string name="set2_desc_languages">Język aplikacji i treści.</string>
+    <string name="set2_desc_messages">Ogłoszenia otrzymane od zespołu.</string>
+    <string name="set2_desc_about">Wersja, aktualizacje i diagnostyka.</string>
+    <string name="set2_sub_playback">Silnik, jakość, na żywo</string>
+    <string name="set2_sub_parental">PIN i zablokowane kanały</string>
+    <string name="set2_sources_none">Brak źródeł</string>
+    <plurals name="set2_sources_count">
+        <item quantity="one">%1$d źródło</item>
+        <item quantity="few">%1$d źródła</item>
+        <item quantity="many">%1$d źródeł</item>
+        <item quantity="other">%1$d źródła</item>
+    </plurals>
+    <string name="set2_ago">%1$s temu</string>
+    <string name="set2_sport_summary">Sport: %1$s</string>
+    <string name="set2_version_summary">Wersja %1$s</string>
 </resources>
