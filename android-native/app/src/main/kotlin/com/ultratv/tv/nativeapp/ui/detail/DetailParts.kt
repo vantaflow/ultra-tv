@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -83,6 +85,27 @@ fun DetailBackdrop(backdrop: String?, poster: String?, title: String) {
             val art = poster ?: backdrop
             PosterImage(art, title, Modifier.align(Alignment.CenterEnd).padding(end = 150.design).height(660.design).aspectRatio(2f / 3f), radius = 22, decodeSize = DpSize(220.dp, 330.dp))
         }
+    }
+}
+
+/**
+ * Logo officiel d'un titre (Fanart.tv) à la place du grand titre texte. Tant que l'image n'est pas chargée (ou si elle
+ * manque, échoue ou n'existe pas), [fallback] (le titre texte) reste affiché ; le titre sert de description d'accessibilité.
+ * Décodage borné à 800 × 310 px (taille d'un « clearlogo »), sans animation.
+ */
+@Composable
+fun TitleLogo(logo: String?, title: String, maxWidth: androidx.compose.ui.unit.Dp, maxHeight: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier, fallback: @Composable () -> Unit) {
+    if (logo.isNullOrBlank()) { fallback(); return }
+    val ctx = LocalContext.current
+    var loaded by remember(logo) { mutableStateOf(false) }
+    val request = remember(logo) { ImageRequest.Builder(ctx).data(logo).size(800, 310).crossfade(false).build() }
+    Box(modifier) {
+        if (!loaded) fallback()
+        AsyncImage(
+            model = request, contentDescription = if (loaded) title else null, contentScale = ContentScale.Fit, alignment = Alignment.CenterStart,
+            modifier = if (loaded) Modifier.widthIn(max = maxWidth).heightIn(max = maxHeight) else Modifier.size(1.dp),
+            onSuccess = { loaded = true }, onError = { loaded = false },
+        )
     }
 }
 

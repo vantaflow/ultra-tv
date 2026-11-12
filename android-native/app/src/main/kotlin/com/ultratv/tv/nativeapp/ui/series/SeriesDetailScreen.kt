@@ -77,6 +77,8 @@ fun SeriesDetailScreen(
     val traktSeen by vm.traktWatchedEpisodes.collectAsState()
     val extRatings by vm.ratings.collectAsState()
     val trailerUrl by vm.trailer.collectAsState()
+    val logo by vm.logo.collectAsState()
+    val epLine by vm.episodeLine.collectAsState()
     // Bande-annonce : lue dans l'appli (lecteur intégré), jamais dans l'appli ou le site YouTube.
     val trailerKey = remember(trailerUrl) { trailerUrl?.let(com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer::keyOf) }
     var trailerOpen by remember { mutableStateOf(false) }
@@ -184,6 +186,8 @@ fun SeriesDetailScreen(
         data = com.ultratv.tv.nativeapp.ui.detail.SeriesDetailData(
             series = series, episodes = eps, seasons = seasons, activeSeason = activeSeason, target = target, resuming = resuming,
             progress = progress, traktSeen = traktSeen, ratings = extRatings, trailerUrl = trailerUrl, downloads = downloads, loading = loading,
+            logo = logo,
+            episodeLine = remember(epLine, D.lang) { com.ultratv.tv.nativeapp.ui.detail.episodeLineText(D, epLine, System.currentTimeMillis()) },
         ),
         onSeason = { season = it },
         onPlayTarget = { target?.let { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) } },

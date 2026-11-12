@@ -39,7 +39,17 @@ class SeriesDetailViewModel @Inject constructor(
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
+    private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
+    private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
 ) : ViewModel() {
+
+    /** Logo officiel (Fanart.tv, par identifiant TheTVDB) ; null tant qu'inconnu ou absent. */
+    private val _logo = MutableStateFlow<String?>(null)
+    val logo: StateFlow<String?> = _logo
+
+    /** Épisode précédent / prochain (TVmaze) ; null tant qu'inconnu, hors appairage ou série inconnue. */
+    private val _episodeLine = MutableStateFlow<com.ultratv.tv.nativeapp.data.extmeta.EpisodeLine?>(null)
+    val episodeLine: StateFlow<com.ultratv.tv.nativeapp.data.extmeta.EpisodeLine?> = _episodeLine
 
     /** Notes IMDb / Rotten Tomatoes (Worker → OMDb) ; null tant qu'inconnues. */
     private val _ratings = kotlinx.coroutines.flow.MutableStateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?>(null)
@@ -107,10 +117,23 @@ class SeriesDetailViewModel @Inject constructor(
                 _series.value = com.ultratv.tv.nativeapp.data.tmdb.mergeSeries(s, it)
                 it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
                 it.tmdbId?.let { id -> _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id) }.getOrNull() }
+                it.tmdbId?.let { id -> loadExtras(id) }
             }
         }
         viewModelScope.launch {
             catalog.episodes(id).collect { _episodes.value = it }
+        }
+    }
+
+    /**
+     * Compléments de la fiche (appareil appairé) : identifiants IMDb / TheTVDB (TMDB external_ids), puis épisode
+     * précédent / prochain (TVmaze, IMDb d'abord) et logo (Fanart.tv, TheTVDB). Tout échec laisse la fiche telle quelle.
+     */
+    private fun loadExtras(tmdbId: Int) {
+        viewModelScope.launch {
+            val ids = runCatching { tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tmdbId) }.getOrNull() ?: return@launch
+            launch { _episodeLine.value = com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.lineOf(runCatching { tvMaze.show(ids) }.getOrNull()) }
+            ids.tvdbId?.let { tvdb -> _logo.value = runCatching { fanart.tv(tvdb, tmdb.langCode()) }.getOrNull()?.logo }
         }
     }
 }

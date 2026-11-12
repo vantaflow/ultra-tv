@@ -601,6 +601,11 @@
     <string name="home2_home_top10">الأفضل 10 اليوم</string>
     <string name="home2_home_shortcuts_row">اختصارات</string>
     <string name="home2_home_guide_subtitle">برامج اليوم</string>
+    <string name="extm_next_episode">الحلقة القادمة: %1$s</string>
+    <string name="extm_last_episode">آخر حلقة عُرضت: %1$s</string>
+    <string name="extm_series_ended">انتهى المسلسل</string>
+    <string name="extm_new_episodes">حلقات جديدة</string>
+    <string name="extm_yesterday">أمس</string>
     <plurals name="home2_home_channels_count">
         <item quantity="zero">%1$s قناة</item>
         <item quantity="one">%1$s قناة</item>

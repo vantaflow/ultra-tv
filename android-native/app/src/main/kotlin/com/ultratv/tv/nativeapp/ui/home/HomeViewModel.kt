@@ -32,6 +32,9 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.sync.withPermit
 import javax.inject.Inject
 
 /** Élément « À la une » : uniquement des métadonnées RÉELLES de la source (jamais inventées). */
@@ -64,7 +67,12 @@ data class HeroItem(
 
 /** Compléments d'un titre « à la une » résolus en arrière-plan (TMDB / OMDb, appareil appairé) : notes externes et synopsis de repli. */
 @androidx.compose.runtime.Immutable
-data class HeroExtras(val ratings: com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings? = null, val overview: String? = null)
+data class HeroExtras(
+    val ratings: com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings? = null,
+    val overview: String? = null,
+    /** Logo officiel du titre (Fanart.tv) : remplace le titre texte du bandeau une fois chargé. */
+    val logo: String? = null,
+)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -82,6 +90,8 @@ class HomeViewModel @Inject constructor(
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
     private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
+    private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
+    private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
 ) : ViewModel() {
 
     val providers: StateFlow<List<ProviderEntity>> = provider.observeProviders()
@@ -232,7 +242,56 @@ class HomeViewModel @Inject constructor(
         val info = if (isShow) catalog.seriesById(h.id)?.let { tmdb.forSeries(it) } else catalog.movieById(h.id)?.let { tmdb.forMovie(it) }
         val id = info?.tmdbId ?: return null
         val r = ratingsClient.forTmdb(if (isShow) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, id)
-        return HeroExtras(r, info.overview?.trim()?.takeIf { it.isNotEmpty() }).takeIf { it.ratings != null || it.overview != null }
+        // Logo Fanart.tv : films par identifiant TMDB, séries par identifiant TheTVDB (external_ids). Échec : pas de logo.
+        val logo = runCatching {
+            val lang = tmdb.langCode()
+            if (isShow) tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id)?.tvdbId?.let { fanart.tv(it, lang) }?.logo
+            else fanart.movie(id, lang)?.logo
+        }.getOrNull()
+        return HeroExtras(r, info.overview?.trim()?.takeIf { it.isNotEmpty() }, logo).takeIf { it.ratings != null || it.overview != null || it.logo != null }
+    }
+
+    /**
+     * « Nouveaux épisodes » : séries en cours de visionnage (« Reprendre ») puis favorites, au plus 20, dont l'épisode
+     * précédent est sorti dans les 7 derniers jours ou dont le prochain sort dans les 7 jours (TVmaze via le Worker, par
+     * identifiant IMDb sinon TheTVDB). 4 séries interrogées à la fois, cache de 6 h ; appareil non appairé : rangée vide.
+     * Seuls des identifiants de titres partent vers le Worker.
+     */
+    val newEpisodes: StateFlow<List<NewEpisodeCardUi>> = pid.flatMapLatest { id ->
+        if (id == null) flowOf(emptyList())
+        else combine(
+            catalog.favoritesByKind(id, "SERIES").map { l -> l.map { it.remoteId } }.distinctUntilChanged(),
+            continueWatching.map { l -> l.filter { it.kind == "EPISODE" }.mapNotNull { it.parentRemoteId } }.distinctUntilChanged(),
+        ) { fav, prog -> com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.candidates(prog, fav) }
+            .distinctUntilChanged()
+            .flatMapLatest { rids -> flow { delay(2_500); emit(resolveNewEpisodes(id, rids)) } }
+    }.flowOn(kotlinx.coroutines.Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private suspend fun resolveNewEpisodes(pid: Long, rids: List<String>): List<NewEpisodeCardUi> {
+        if (rids.isEmpty()) return emptyList()
+        val now = System.currentTimeMillis()
+        val gate = kotlinx.coroutines.sync.Semaphore(4)
+        val shows = kotlinx.coroutines.coroutineScope {
+            rids.map { rid ->
+                async {
+                    gate.withPermit {
+                        runCatching {
+                            val s = catalog.seriesByRemote(pid, rid) ?: return@runCatching null
+                            val tmdbId = tmdb.forSeries(s)?.tmdbId ?: return@runCatching null
+                            val ids = tmdb.externalIds(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, tmdbId) ?: return@runCatching null
+                            s to tvMaze.show(ids, now)
+                        }.getOrNull()
+                    }
+                }
+            }.awaitAll().filterNotNull()
+        }
+        return com.ultratv.tv.nativeapp.data.extmeta.TvMazeLogic.select(shows, now).map { (s, pick) ->
+            NewEpisodeCardUi(
+                seriesId = s.id, title = s.title, poster = s.poster ?: s.backdrop, year = s.year, rating = s.rating,
+                season = pick.ep.season, number = pick.ep.number, airAt = pick.ep.airAt ?: now, aired = pick.aired,
+            )
+        }
     }
 
     /** « Regarder » sur un film « à la une » : contexte de lecture comme la fiche film, puis l'appelant lance le lecteur. */
@@ -288,7 +347,7 @@ class HomeViewModel @Inject constructor(
     private val homeLayout = prefsStore.flow.map { HomeLayout.parse(it.homeOrder, it.homeHidden) }.distinctUntilChanged()
 
     val rows: StateFlow<HomeRows> = combine(
-        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because, counts),
+        listOf(continueWatching, trakt, recentChannels, latestMovies, latestSeries, channels, showingFavorites, nowPlaying, homeLayout, topMovies, topSeries, because, counts, newEpisodes),
     ) { a ->
         @Suppress("UNCHECKED_CAST") val resume = a[0] as List<WatchHistoryEntity>
         val t = a[1] as com.ultratv.tv.nativeapp.data.trakt.TraktRows
@@ -299,6 +358,7 @@ class HomeViewModel @Inject constructor(
         val fav = a[6] as Boolean
         @Suppress("UNCHECKED_CAST") val now = a[7] as Map<Long, EpgEntity>
         val homeCounts = a[12] as HomeCounts
+        @Suppress("UNCHECKED_CAST") val fresh = a[13] as List<NewEpisodeCardUi>
         val clean: (String) -> String = { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.historyTitle(it) }
         HomeRows(
             resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key }.oneCardPerTitle(),
@@ -307,6 +367,7 @@ class HomeViewModel @Inject constructor(
             trending = t.trending.map(::traktPosterOf).distinctKeys { it.key },
             popular = t.popular.map(::traktPosterOf).distinctKeys { it.key },
             upNext = t.upNext.map(::traktUpNextPosterOf).distinctKeys { it.key },
+            newEpisodes = fresh.distinctBy { it.seriesId },
             traktLists = t.lists.map { l -> TraktListUi(l.id, l.name, l.cards.map(::traktPosterOf).distinctKeys { it.key }) },
             recentChannels = recent.map { resumeCardOf(it, "rc-", clean) }.distinctKeys { it.key },
             latestMovies = movies.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },

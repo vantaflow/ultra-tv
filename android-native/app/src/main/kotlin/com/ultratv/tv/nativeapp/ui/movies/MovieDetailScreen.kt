@@ -90,7 +90,12 @@ class MovieDetailViewModel @Inject constructor(
     private val tmdb: com.ultratv.tv.nativeapp.data.tmdb.TmdbRepository,
     private val trakt: com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository,
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
+    private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
 ) : ViewModel() {
+
+    /** Logo et fond Fanart.tv (par identifiant TMDB) ; null tant qu'inconnus, hors appairage ou sans clé côté Worker. */
+    private val _fanart = MutableStateFlow<com.ultratv.tv.nativeapp.data.extmeta.FanartArt?>(null)
+    val fanartArt: StateFlow<com.ultratv.tv.nativeapp.data.extmeta.FanartArt?> = _fanart.asStateFlow()
 
     /** Notes IMDb / Rotten Tomatoes (Worker → OMDb) ; null tant qu'inconnues. */
     private val _ratings = MutableStateFlow<com.ultratv.tv.nativeapp.data.tmdb.ExternalRatings?>(null)
@@ -150,6 +155,7 @@ class MovieDetailViewModel @Inject constructor(
                     _m.value = com.ultratv.tv.nativeapp.data.tmdb.mergeMovie(m, t)
                     _photos.value = runCatching { tmdb.castPhotos(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrDefault(emptyMap())
                     _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, t.tmdbId) }.getOrNull()
+                    _fanart.value = runCatching { fanart.movie(t.tmdbId, tmdb.langCode()) }.getOrNull()
                 }
             }
         }
@@ -203,7 +209,9 @@ fun MovieDetailScreen(
     val genre = T.presentable(info?.genre) ?: T.presentable(movie.genre)
     val plot = T.presentable(info?.plot) ?: T.presentable(movie.plot)
     val rating = (info?.rating ?: movie.rating)?.takeIf { it > 0.0 && it <= 10.0 }
-    val backdrop = T.presentable(info?.backdrop) ?: T.presentable(movie.backdrop)
+    val art by vm.fanartArt.collectAsState()
+    // Fond Fanart.tv seulement si la fiche n'en a aucun (source ou TMDB).
+    val backdrop = T.presentable(info?.backdrop) ?: T.presentable(movie.backdrop) ?: art?.background
     val quality = remember(movie.id) { T.clean(movie.name).quality }
     val langBadge = movie.lang.takeIf { it.isNotBlank() }?.uppercase()
     val seenBadge = if (traktSeen) "✓ " + D.traktWatched else null
@@ -283,7 +291,7 @@ fun MovieDetailScreen(
         fromStartLabel = if (resume > 0) MS.fromStart else null,
         trailerLabel = D.trailerLabel, progress = progress, progressLine = progressLine,
         cast = people.map { n -> com.ultratv.tv.nativeapp.ui.detail.CastUi(n, if (n in directors) D.directorLabel else null, photos[n.lowercase()]) },
-        castTitle = D.castTitle, backDescription = MS.a11yBack,
+        castTitle = D.castTitle, backDescription = MS.a11yBack, logo = art?.logo,
     )
     val similarSlot: @Composable () -> Unit = {
         Column(verticalArrangement = Arrangement.spacedBy(16.design)) {

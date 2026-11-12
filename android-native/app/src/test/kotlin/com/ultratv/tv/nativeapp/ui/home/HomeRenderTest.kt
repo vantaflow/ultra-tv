@@ -83,6 +83,11 @@ class HomeRenderTest {
                 resume(4, "Le Dernier Train", 0.45f, 60), resume(5, "Le Phare", 0.70f, 25),
             ),
             shortcuts = shortcutsOf(HomeCounts(channels = 1240, movies = 30435, series = 4028, favorites = 12), emptyList(), null, null),
+            // « Nouveaux épisodes » (TVmaze) : séries fictives, un épisode sorti hier, un autre demain.
+            newEpisodes = listOf(
+                NewEpisodeCardUi(21, "Les Gardiens du phare", null, 2023, 8.1, 2, 7, System.currentTimeMillis() - 86_400_000L, aired = true),
+                NewEpisodeCardUi(22, "Marée haute", null, 2024, 7.4, 1, 3, System.currentTimeMillis() + 86_400_000L, aired = false),
+            ),
         )
     }
 

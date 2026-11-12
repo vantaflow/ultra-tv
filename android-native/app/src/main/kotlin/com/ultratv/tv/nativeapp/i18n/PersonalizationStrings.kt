@@ -77,6 +77,7 @@ fun DesignStrings.startScreenName(s: StartScreen): String = when (s) {
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.RESUME -> continueWatching
     HomeBlock.TRAKT_UP_NEXT -> traktUpNext
+    HomeBlock.NEW_EPISODES -> extNewEpisodes
     HomeBlock.TRAKT_WATCHLIST -> traktWatchlist
     HomeBlock.TRAKT_RECOMMENDED -> traktRecommended
     HomeBlock.TRAKT_TRENDING -> traktTrending

@@ -11,6 +11,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
@@ -117,6 +118,8 @@ class DetailRenderTest {
         return SeriesDetailData(
             series = series, episodes = eps, seasons = listOf(1, 2, 3), activeSeason = 2, target = eps.first { it.remoteId == "e4" }, resuming = true,
             progress = progress, traktSeen = emptySet(), ratings = null, trailerUrl = "dQw4w9WgXcQ", downloads = emptyMap(), loading = false,
+            // Ligne TVmaze (fictive) ; logo Fanart absent : le titre texte reste affiché.
+            episodeLine = tr("Prochain épisode : S2 É7 · La relève · Demain", "Next episode: S2 E7 · The relief · Tomorrow"),
         )
     }
 
@@ -140,6 +143,23 @@ class DetailRenderTest {
     @Test fun capture_serie_tv_sombre() {
         assertEquals(1920, renderSeries("series-detail-tv-dark.png", light = false))
         assertTrue(File(outDir, "series-detail-tv-dark.png").length() > 10_000)
+    }
+
+    @Test fun logoIntrouvable_titreTexteConserve() {
+        // Logo Fanart illisible (fichier absent) : le titre texte reste affiché, sans plantage.
+        capture("movie-detail-tv-logo-fallback.png", light = false) {
+            val req = remember { FocusRequester() }
+            MovieDetailTv(
+                m = MovieDetailTvModel(
+                    title = "Orbite basse", backdrop = null, poster = null, chips = emptyList(), ratings = emptyList(), synopsis = null,
+                    skeleton = false, primaryLabel = "Lecture", fromStartLabel = null, trailerLabel = "Bande-annonce", progress = 0f, progressLine = null,
+                    cast = emptyList(), castTitle = "Distribution", backDescription = "Retour", logo = "file:///introuvable/logo.png",
+                ),
+                onPrimary = {}, onFromStart = {}, onTrailer = null, onBack = {}, onOpenPerson = {},
+                playRequester = req, onPlayFocusChanged = {}, favorite = {},
+            )
+        }
+        assertTrue(rule.onAllNodesWithText("Orbite basse").fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test fun capture_film_tv_en() { lang = AppLang.English; renderMovie("movie-detail-tv-en.png", light = false) }

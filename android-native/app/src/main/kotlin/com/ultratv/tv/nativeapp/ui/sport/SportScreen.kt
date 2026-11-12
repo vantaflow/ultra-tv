@@ -126,6 +126,7 @@ fun SportScreen(
     val D = LocalDs.current
     val st by vm.state.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
+    val badges by vm.badges.collectAsStateWithLifecycle()
     val clock = rememberEpgClock()
     val touch = LocalTouch.current
     var pinFor by remember { mutableStateOf<ChannelEntity?>(null) }
@@ -160,8 +161,10 @@ fun SportScreen(
         }
     }
 
-    if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
-    else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
+    androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) {
+        if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
+        else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
+    }
 
     pinFor?.let { c -> PinPromptDialog(title = c.title, onUnlocked = { pinFor = null; vm.play(c) { onPlay(c.streamUrl, c.title) } }, onCancel = { pinFor = null }) }
 }
@@ -317,6 +320,7 @@ private fun UpcomingRowTv(
         Row(Modifier.fillMaxWidth().padding(horizontal = 22.design, vertical = 14.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
             Text(shortDay(D, u.dayStartMs, nowMs, locale), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(100.design))
             Text(EpgClock.hm(e.prog.startMs), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.width(80.design))
+            TeamBadgePair(line.home, line.away, 30.design)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                 Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(sub, color = Ux.Text3, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -376,8 +380,8 @@ internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, onClick
             Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
                 val teamColor = if (f) Ux.TextOnLight else Ux.Text
                 if (line.home != null) {
-                    Text(line.home, color = teamColor, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(line.away.orEmpty(), color = teamColor, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    TeamLine(line.home, teamColor)
+                    TeamLine(line.away.orEmpty(), teamColor)
                 } else Text(line.title, color = teamColor, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
@@ -390,6 +394,45 @@ internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, onClick
             EpgProgressBar(e.prog.startMs, e.prog.endMs, clock, heightDp = 4f, track = if (f) Ux.TextOnLight.copy(alpha = 0.12f) else Ux.Text.copy(alpha = 0.10f))
         }
     }
+}
+
+/** Nom d'équipe d'une carte « direct », précédé de son écusson s'il est connu. */
+@Composable
+private fun TeamLine(name: String, color: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+        TeamBadge(name, 32.design)
+        Text(name, color = color, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** Les deux écussons d'une rencontre (liste « À venir ») ; rien si aucun n'est connu. */
+@Composable
+private fun TeamBadgePair(home: String?, away: String?, size: Dp) {
+    val badges = LocalTeamBadges.current
+    val known = listOf(home, away).any { n -> com.ultratv.tv.nativeapp.data.sport.TeamBadgeLogic.keyOf(n)?.let { it in badges } == true }
+    if (!known) return
+    Row(horizontalArrangement = Arrangement.spacedBy(6.design), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(size)) { TeamBadge(home, size) }
+        Box(Modifier.size(size)) { TeamBadge(away, size) }
+    }
+}
+
+/**
+ * Écusson d'une équipe (TheSportsDB via le Worker), décodé petit et sans animation. Inconnu, pas encore résolu ou image en
+ * échec : rien n'est affiché.
+ */
+@Composable
+internal fun TeamBadge(teamName: String?, size: Dp) {
+    val key = com.ultratv.tv.nativeapp.data.sport.TeamBadgeLogic.keyOf(teamName) ?: return
+    val url = LocalTeamBadges.current[key] ?: return
+    var failed by remember(url) { mutableStateOf(false) }
+    if (failed) return
+    val ctx = LocalContext.current
+    val request = remember(url) { coil3.request.ImageRequest.Builder(ctx).data(url).size(96, 96).build() }
+    coil3.compose.AsyncImage(
+        model = request, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Fit,
+        modifier = Modifier.size(size), onError = { failed = true },
+    )
 }
 
 /** Carte d'une chaîne de sport : logo, nom, programme en cours si on le connaît. */
@@ -513,10 +556,11 @@ private fun UpcomingRowTouch(e: SportEntry, D: DesignStrings, reminded: Boolean,
 @Composable
 fun SportHomeSection(rowModifier: Modifier, contentPadding: PaddingValues, onPlayChannel: (ChannelEntity) -> Unit, onSeeAll: () -> Unit, vm: SportViewModel = hiltViewModel()) {
     val st by vm.state.collectAsStateWithLifecycle()
+    val badges by vm.badges.collectAsStateWithLifecycle()
     if (st.live.isEmpty()) return
     val D = LocalDs.current
     val clock = rememberEpgClock()
-    Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) { Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
         Text(D.sportHomeRow, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         LazyRow(rowModifier, horizontalArrangement = Arrangement.spacedBy(18.design), contentPadding = contentPadding) {
             items(st.live.take(HOME_MAX), key = { "h${it.channel.id}" }, contentType = { "sport" }) { e -> SportLiveCard(e, clock, 408.design) { onPlayChannel(e.channel) } }
@@ -530,7 +574,7 @@ fun SportHomeSection(rowModifier: Modifier, contentPadding: PaddingValues, onPla
                 }
             }
         }
-    }
+    } }
 }
 
 private const val HOME_MAX = 12

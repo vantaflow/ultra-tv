@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performKeyInput
 import androidx.compose.ui.test.pressKey
@@ -103,6 +104,8 @@ class SportRenderTest {
         )
     }
 
+    private var badges: Map<String, String> = emptyMap()
+
     private fun render(light: Boolean, file: String, reminded: Set<String>) {
         I18n.init(ApplicationProvider.getApplicationContext())
         Ux.themeLight = light
@@ -110,6 +113,7 @@ class SportRenderTest {
         rule.setContent {
             CompositionLocalProvider(
                 LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
+                LocalTeamBadges provides badges,
             ) {
                 val D = LocalDs.current
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
@@ -170,6 +174,15 @@ class SportRenderTest {
         assertEquals(SportKind.MOTOR, SportKind.of("Formule 1 : Qualifications"))
         // Une série n'est pas un match de « Serie A ».
         assertNull(SportKind.of("Série policière : épisode 4"))
+    }
+
+    @Test fun capture_tv_fr_ecussons_imageIllisible_nomsConserves() {
+        // Écussons fictifs (fichiers absents, aucun réseau) : l'image échoue sans rien casser, les noms restent.
+        badges = listOf("PSG", "Marseille", "Inter", "Milan").associate {
+            com.ultratv.tv.nativeapp.data.sport.TeamBadgeLogic.keyOf(it)!! to "file:///introuvable/$it.png"
+        }
+        render(light = false, file = "sport-tv-fr-badges.png", reminded = emptySet())
+        rule.onAllNodesWithText("PSG").fetchSemanticsNodes().let { assertTrue(it.isNotEmpty()) }
     }
 
     @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "sport-tv-en.png", reminded = emptySet()) }

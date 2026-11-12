@@ -16,6 +16,7 @@ class HomeLogicTest {
     private fun hist(id: String, kind: String = "MOVIE", pos: Long = 0, dur: Long = 0, title: String = "T$id") =
         WatchHistoryEntity(providerId = 1, kind = kind, remoteId = id, title = title, poster = null, streamUrl = "http://x/$id", positionMs = pos, durationMs = dur, watchedAt = 0)
     private fun poster(id: Long, show: Boolean = false) = catalogPosterOf(PosterItem(id, "P$id", null, null, null), show)
+    private fun newEp(id: Long, airAt: Long = 0, aired: Boolean = true) = NewEpisodeCardUi(id, "S$id", null, null, null, 2, 5, airAt, aired)
     private fun channel(id: Long) = ChannelCardUi(ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = "C$id", logo = null, categoryId = null, streamUrl = "u"), null)
 
     // ── Ordre et visibilité des rangées ──
@@ -28,7 +29,7 @@ class HomeLogicTest {
         val r = HomeRows(
             resume = listOf(resumeCardOf(hist("1"), "", { it })),
             watchlist = listOf(poster(1)), recommended = listOf(poster(2)), trending = listOf(poster(3)), popular = listOf(poster(4)),
-            upNext = listOf(poster(7, true)), traktLists = (1..5).map { TraktListUi("$it", "L$it", listOf(poster(10L + it))) },
+            upNext = listOf(poster(7, true)), newEpisodes = listOf(newEp(8)), traktLists = (1..5).map { TraktListUi("$it", "L$it", listOf(poster(10L + it))) },
             recentChannels = listOf(resumeCardOf(hist("2", "LIVE"), "rc-", { it })),
             latestMovies = listOf(poster(5)), latestSeries = listOf(poster(6, true)), channels = listOf(channel(1)),
             // Rangées calculées en local : présentes à partir de MIN_LOCAL_ROW titres.
@@ -234,5 +235,24 @@ class HomeLogicTest {
         assertEquals(HeroRatingBadges(null, "★ 7.8", null), heroRatingBadges(null, 7.84))
         assertTrue(heroRatingBadges(null, null).isEmpty)
         assertTrue(heroRatingBadges(null, 0.0).isEmpty)
+    }
+
+    // ── Nouveaux épisodes ──
+
+    @Test fun nouveauxEpisodes_rangeeApresASuivre_masqueeSiVide() {
+        assertTrue(HomeSectionId.NEW_EPISODES !in HomeRows(upNext = listOf(poster(1, true))).order)
+        val r = HomeRows(upNext = listOf(poster(1, true)), newEpisodes = listOf(newEp(2)), resume = listOf(resumeCardOf(hist("1"), "", { it })))
+        assertEquals(listOf(HomeSectionId.RESUME, HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.NEW_EPISODES), r.order)
+    }
+
+    @Test fun nouveauxEpisodes_absentsDeLAccueilTactile() {
+        assertTrue(HomeSectionId.NEW_EPISODES !in mobileSectionOrder(HomeSectionId.entries.toList()))
+    }
+
+    @Test fun newEpisodePosterOf_titreEpisodeEtJour_ouvreLaSerie() {
+        val p = newEpisodePosterOf(newEp(9), "S2 É5", "Demain")
+        assertEquals("S9 · S2 É5 · Demain", p.item.title)
+        assertTrue(p.isShow); assertEquals(9L, p.item.id); assertEquals(TmdbKind.TV, p.kind)
+        assertEquals("S9", newEpisodePosterOf(newEp(9), null, null).item.title)
     }
 }

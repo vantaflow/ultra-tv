@@ -77,9 +77,9 @@ class TmdbHttpApi @Inject constructor(
     }
 
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? =
-        // Vidéos dans la langue de l'appli PUIS en anglais : beaucoup de séries n'ont aucune bande-annonce traduite,
+        // external_ids : identifiants IMDb / TheTVDB (TVmaze, Fanart.tv). Vidéos dans la langue de l'appli PUIS en anglais : beaucoup de séries n'ont aucune bande-annonce traduite,
         // et sans ce repli la fiche n'en proposait aucune.
-        get("${kind.path}/$id?append_to_response=credits,videos&include_video_language=${lang.take(2)},en,null&language=$lang")?.let(TmdbParser::details)
+        get("${kind.path}/$id?append_to_response=credits,videos,external_ids&include_video_language=${lang.take(2)},en,null&language=$lang")?.let(TmdbParser::details)
 }
 
 @Module
@@ -109,6 +109,7 @@ class TmdbRepository @Inject constructor(
     private val api: TmdbApi,
     private val dao: TmdbDao,
     private val prefs: UserPreferencesStore,
+    private val externalIdsStore: TmdbExternalIdsStore,
 ) {
     suspend fun forMovie(m: MovieEntity, sourceTmdbId: String? = null, now: Long = System.currentTimeMillis()): TmdbInfoEntity? =
         load(TmdbKind.MOVIE, m.providerId, m.remoteId, tmdbQueryFor(m.name, m.year), parseSourceTmdbId(sourceTmdbId), now)
@@ -166,6 +167,23 @@ class TmdbRepository @Inject constructor(
         }
     }
 
+    /**
+     * Identifiants IMDb / TheTVDB d'un titre TMDB (TVmaze, Fanart.tv) : magasin local (30 jours, réponse vide comprise),
+     * sinon UNE requête « détails » (mise en cache par le Worker). Null hors appairage ou si le réseau échoue (non mémorisé).
+     */
+    suspend fun externalIds(kind: TmdbKind, tmdbId: Int, now: Long = System.currentTimeMillis()): ExternalIds? {
+        externalIdsStore.get(kind, tmdbId, now)?.let { return it }
+        if (!api.isEnabled()) return null
+        val d = try { api.details(kind, tmdbId, currentLang()) } catch (e: java.io.IOException) { return null }
+        val ids = ExternalIds(d?.imdbId, d?.tvdbId)
+        externalIdsStore.put(kind, tmdbId, ids, now)
+        if (d != null) photoCache["${kind.path}:${d.tmdbId}"] = d.photos.mapValues { TmdbImages.profile(it.value) }
+        return ids
+    }
+
+    /** Code de langue sur deux lettres (« fr », « en »…) aligné sur la langue de l'application. */
+    suspend fun langCode(): String = currentLang().take(2)
+
     private suspend fun currentLang() = tmdbLang(AppLang.fromCode(prefs.flow.first().language).let { if (it == AppLang.System) systemLang() else it })
 
     internal suspend fun load(kind: TmdbKind, pid: Long, rid: String, q: TmdbQuery, sourceId: Int?, now: Long): TmdbInfoEntity? {
@@ -184,6 +202,7 @@ class TmdbRepository @Inject constructor(
                 genreIds = d?.genreIds?.takeIf { it.isNotEmpty() }?.joinToString(","), fetchedAt = now,
             )
             dao.upsert(row)
+            if (d != null) externalIdsStore.put(kind, d.tmdbId, ExternalIds(d.imdbId, d.tvdbId), now)
             if (d != null) photoCache["${kind.path}:${d.tmdbId}"] = d.photos.mapValues { TmdbImages.profile(it.value) }
             row
         } catch (e: java.io.IOException) {

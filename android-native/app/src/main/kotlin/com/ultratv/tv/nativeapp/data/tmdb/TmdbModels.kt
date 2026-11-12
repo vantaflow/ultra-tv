@@ -23,6 +23,10 @@ data class TmdbDetails(
     val photos: Map<String, String> = emptyMap(),
     /** Identifiants de genres TMDB (« 28,12 ») : alimentent les genres automatiques des écrans Films / Séries. */
     val genreIds: List<Int> = emptyList(),
+    /** Identifiant IMDb (« tt0944947 ») des `external_ids` ; null si inconnu. */
+    val imdbId: String? = null,
+    /** Identifiant TheTVDB (séries surtout) des `external_ids` ; null si inconnu. */
+    val tvdbId: Int? = null,
 )
 
 /**

@@ -69,6 +69,7 @@ import com.ultratv.tv.nativeapp.i18n.homeMoreInfo
 import com.ultratv.tv.nativeapp.i18n.homeMoviesCount
 import com.ultratv.tv.nativeapp.i18n.homeSeriesCount
 import com.ultratv.tv.nativeapp.i18n.homeTop10
+import com.ultratv.tv.nativeapp.i18n.extNewEpisodes
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.traktPopular
@@ -372,6 +373,7 @@ private fun HomeSection(
         HomeSectionId.TRAKT_TRENDING -> Section(D.traktTrending) { PosterRow(rows.trending, openPoster) }
         HomeSectionId.TRAKT_POPULAR -> Section(D.traktPopular) { PosterRow(rows.popular, openPoster) }
         HomeSectionId.TRAKT_UP_NEXT -> Section(D.traktUpNext) { PosterRow(rows.upNext, openPoster) }
+        HomeSectionId.NEW_EPISODES -> Section(D.extNewEpisodes) { NewEpisodesRow(rows.newEpisodes, openPoster) }
         HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5 ->
             rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> Section(D.traktListRow(l.name)) { PosterRow(l.cards, openPoster) } }
         HomeSectionId.RECENT_CHANNELS -> Section(D.recentlyWatched) { ResumeRow(rows.recentChannels, playHistory) }
@@ -392,6 +394,20 @@ private fun ResumeRow(cards: List<ResumeCardUi>, onPlay: (WatchHistoryEntity) ->
     LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
         items(cards, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c) { onPlay(c.entry) } }
     }
+}
+
+/** « Nouveaux épisodes » : affiches des séries, « Série · S2 É5 · Demain » (libellés localisés ici, une fois par langue). */
+@Composable
+private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi) -> Unit) {
+    val D = LocalDs.current
+    val posters = remember(cards, D.lang) {
+        val now = System.currentTimeMillis()
+        cards.map { c ->
+            val tag = if (c.season != null && c.number != null) D.episodeTag(c.season, c.number) else null
+            newEpisodePosterOf(c, tag, com.ultratv.tv.nativeapp.ui.detail.airDayLabel(D, c.airAt, now))
+        }
+    }
+    PosterRow(posters, onOpen)
 }
 
 /** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
@@ -561,10 +577,7 @@ private fun Hero(
                 )
                 HeroInfoRow(h, extras)
             }
-            Text(
-                h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx, lineHeight = 62.spx,
-                letterSpacing = (-0.75).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
-            )
+            HeroTitle(h, extras)
             HeroPlot(h, extras)
             Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 PillButton(
@@ -598,6 +611,17 @@ private fun HeroInfoRow(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
         badges.imdb?.let { Text(it, color = Color(0xFF0A0A0C), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 15.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(Color(0xFFF5C518)).padding(horizontal = 8.design, vertical = 2.design)) }
         badges.fallback?.let { Text(it, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
         badges.rt?.let { Text("\uD83C\uDF45 $it", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1) }
+    }
+}
+
+/** Titre du bandeau : logo officiel (Fanart.tv) s'il existe et une fois chargé, sinon le titre texte (State lu ICI seulement). */
+@Composable
+private fun HeroTitle(h: HeroItem, extras: State<Map<String, HeroExtras>>) {
+    com.ultratv.tv.nativeapp.ui.detail.TitleLogo(extras.value[h.key]?.logo, h.title, maxWidth = 540.design, maxHeight = 150.design) {
+        Text(
+            h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx, lineHeight = 62.spx,
+            letterSpacing = (-0.75).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

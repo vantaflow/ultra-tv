@@ -30,12 +30,16 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
+
+/** Écussons d'équipes connus (clé repliée du nom → URL), fournis par l'écran Sport et la rangée de l'accueil. */
+val LocalTeamBadges = androidx.compose.runtime.compositionLocalOf<Map<String, String>> { emptyMap() }
 
 /** Rubrique Sport activée (Réglages › Affichage) : lue par les menus (rail TV, onglet « Plus » et rail tactiles). Faux par défaut. */
 val LocalSportEnabled = staticCompositionLocalOf { false }
@@ -66,6 +70,7 @@ class SportViewModel @Inject constructor(
     private val reminders: RemindersScheduler,
     private val recScheduler: RecordingScheduler,
     lockedStore: LockedChannelsStore,
+    private val teamBadges: com.ultratv.tv.nativeapp.data.sport.TeamBadgeRepository,
 ) : ViewModel() {
     /** Source active (la première active, sinon la première) : même règle que l'accueil. */
     private val pid = provider.observeProviders().map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }.distinctUntilChanged()
@@ -99,6 +104,27 @@ class SportViewModel @Inject constructor(
             }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SportState())
+
+    /**
+     * Écussons des équipes des directs et de « À venir » (TheSportsDB via le Worker) : d'abord ceux déjà connus (mémoire,
+     * préférences 30 jours), puis les autres, 4 à la fois, au plus 40 noms. Seuls des noms d'équipes partent vers le Worker.
+     */
+    val badges: StateFlow<Map<String, String>> = state
+        .map { st -> com.ultratv.tv.nativeapp.data.sport.TeamBadgeLogic.namesOf(st.live + st.upcoming.flatMap { it.entries }) }
+        .distinctUntilChanged()
+        .flatMapLatest { names ->
+            flow {
+                val now = System.currentTimeMillis()
+                val known = names.mapNotNull { n ->
+                    val k = com.ultratv.tv.nativeapp.data.sport.TeamBadgeLogic.keyOf(n) ?: return@mapNotNull null
+                    teamBadges.cached(n, now)?.badge?.let { k to it }
+                }.toMap()
+                emit(known)
+                if (names.isNotEmpty()) emit(known + runCatching { teamBadges.badges(names, now) }.getOrDefault(emptyMap()))
+            }
+        }
+        .flowOn(Dispatchers.IO)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val locked: StateFlow<Set<String>> = lockedStore.locked.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 

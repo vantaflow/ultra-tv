@@ -100,6 +100,10 @@ class SeriesDetailData(
     val trailerUrl: String?,
     val downloads: Map<String, DownloadEntity>,
     val loading: Boolean,
+    /** Logo officiel de la série (Fanart.tv) : remplace le titre texte une fois chargé ; null = titre texte. */
+    val logo: String? = null,
+    /** « Prochain épisode : S2 É5 · titre · date » / « Dernier épisode diffusé… » / « Série terminée » (TVmaze) ; null = rien. */
+    val episodeLine: String? = null,
 )
 
 /**
@@ -200,7 +204,9 @@ fun SeriesDetailTvContent(
         ) {
             V2BackButton(M.a11yBack, onBack)
             Spacer(Modifier.height(18.design))
-            Text(T.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 64.spx, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            TitleLogo(data.logo, T.tidy(series.title), maxWidth = 620.design, maxHeight = 170.design) {
+                Text(T.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 64.spx, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
             val line = remember(series.id, series.year, series.genre, data.seasons.size, data.episodes.size, data.ratings, series.rating, D.lang) {
                 buildInfoLine(
                     series.year?.toString(), T.presentable(series.genre),
@@ -210,6 +216,7 @@ fun SeriesDetailTvContent(
             }
             val meta = (line.texts + listOfNotNull(line.imdb, line.rt?.let { "🍅 $it" }, series.lang.takeIf { it.isNotBlank() }?.uppercase())).joinToString(" · ")
             if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            data.episodeLine?.let { Text(it, color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             T.presentable(series.plot)?.let {
                 Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 21.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }

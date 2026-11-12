@@ -63,7 +63,8 @@ class HomeLayoutTest {
     }
 
     @Test fun apply_listesTrakt_ordreInterneConserve() {
-        val l = HomeLayout.DEFAULT.move(HomeBlock.TRAKT_LISTS, -6)
+        // Listes Trakt remontées juste avant « Reprendre ».
+        val l = HomeLayout.DEFAULT.move(HomeBlock.TRAKT_LISTS, HomeBlock.RESUME.ordinal - HomeBlock.TRAKT_LISTS.ordinal)
         assertEquals(listOf(HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_3, HomeSectionId.RESUME), l.apply(listOf(HomeSectionId.RESUME, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_1)))
     }
 

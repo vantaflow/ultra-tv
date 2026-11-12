@@ -20,3 +20,10 @@ fun DesignStrings.homeMoviesCount(n: Int, count: String) = tp(R.plurals.home2_ho
 fun DesignStrings.homeSeriesCount(n: Int, count: String) = tp(R.plurals.home2_home_series_count, n, count)
 
 fun DesignStrings.homeFavoritesCount(n: Int, count: String) = tp(R.plurals.home2_home_favorites_count, n, count)
+
+// Métadonnées complémentaires (TVmaze) : ligne « épisode » des fiches série et rangée « Nouveaux épisodes » de l'accueil.
+fun DesignStrings.extNextEpisode(detail: String) = tx(R.string.extm_next_episode, detail)
+fun DesignStrings.extLastEpisode(detail: String) = tx(R.string.extm_last_episode, detail)
+val DesignStrings.extSeriesEnded get() = tx(R.string.extm_series_ended)
+val DesignStrings.extNewEpisodes get() = tx(R.string.extm_new_episodes)
+val DesignStrings.extYesterday get() = tx(R.string.extm_yesterday)

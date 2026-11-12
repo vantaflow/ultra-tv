@@ -23,6 +23,8 @@ enum class HomeSectionId(val contentType: String) {
     TOP10("top10"),
     RESUME("resume"),
     TRAKT_UP_NEXT("posters"),
+    /** Séries favorites ou en cours dont un épisode vient de sortir ou sort dans la semaine (TVmaze, appareil appairé). */
+    NEW_EPISODES("posters"),
     // Rangées calculées en local (sans Trakt), montées juste sous « Reprendre » pour qu'on les remarque.
     BECAUSE_WATCHED("posters"),
     TOP_MOVIES("posters"),
@@ -136,6 +138,8 @@ data class HomeRows(
     val recentChannels: List<ResumeCardUi> = emptyList(),
     val latestMovies: List<PosterCardUi> = emptyList(),
     val latestSeries: List<PosterCardUi> = emptyList(),
+    /** « Nouveaux épisodes » : déjà triés (sortis récemment, puis à venir) ; libellés localisés à l'affichage. */
+    val newEpisodes: List<NewEpisodeCardUi> = emptyList(),
     /** « Parce que vous avez regardé [becauseTitle] » : films proches du dernier film regardé. */
     val becauseTitle: String = "",
     val because: List<PosterCardUi> = emptyList(),
@@ -169,6 +173,7 @@ private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.top10.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP10)
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
+    if (rows.newEpisodes.isNotEmpty()) add(HomeSectionId.NEW_EPISODES)
     if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
     if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)
     if (rows.topSeries.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_SERIES)
@@ -259,6 +264,20 @@ fun traktUpNextPosterOf(u: com.ultratv.tv.nativeapp.data.trakt.TraktUpNextCard):
     val tag = "S${"%02d".format(u.season)}E${"%02d".format(u.episode)}"
     return PosterCardUi("u-${c.id}", PosterItem(c.id, "${c.title} · $tag", c.poster, c.year, c.rating), true, TmdbKind.TV)
 }
+
+/**
+ * Carte « Nouveaux épisodes » : série du catalogue, épisode retenu (saison / numéro / date de diffusion) ; [aired] = déjà
+ * diffusé (dans les 7 derniers jours), sinon à venir (dans les 7 jours).
+ */
+@Immutable
+data class NewEpisodeCardUi(
+    val seriesId: Long, val title: String, val poster: String?, val year: Int?, val rating: Double?,
+    val season: Int?, val number: Int?, val airAt: Long, val aired: Boolean,
+)
+
+/** Affiche de la rangée « Nouveaux épisodes » : « Série · S2 É5 · Demain » ([tag] et [day] déjà localisés), ouvre la fiche série. */
+fun newEpisodePosterOf(c: NewEpisodeCardUi, tag: String?, day: String?): PosterCardUi =
+    PosterCardUi("n-${c.seriesId}", PosterItem(c.seriesId, listOfNotNull(c.title, tag, day).joinToString(" · "), c.poster, c.year, c.rating), true, TmdbKind.TV)
 
 /** Affiche du catalogue (derniers films / séries). */
 fun catalogPosterOf(p: PosterItem, isShow: Boolean): PosterCardUi =

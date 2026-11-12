@@ -571,6 +571,11 @@
     <string name="home2_home_top10">Top 10 today</string>
     <string name="home2_home_shortcuts_row">Shortcuts</string>
     <string name="home2_home_guide_subtitle">Today\'s programmes</string>
+    <string name="extm_next_episode">Next episode: %1$s</string>
+    <string name="extm_last_episode">Last episode aired: %1$s</string>
+    <string name="extm_series_ended">Series ended</string>
+    <string name="extm_new_episodes">New episodes</string>
+    <string name="extm_yesterday">Yesterday</string>
     <plurals name="home2_home_channels_count">
         <item quantity="one">%1$s channel</item>
         <item quantity="other">%1$s channels</item>

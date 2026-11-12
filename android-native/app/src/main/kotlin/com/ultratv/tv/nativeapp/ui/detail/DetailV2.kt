@@ -99,6 +99,8 @@ class MovieDetailTvModel(
     val cast: List<CastUi>,
     val castTitle: String,
     val backDescription: String,
+    /** Logo officiel du film (Fanart.tv) : remplace le grand titre texte une fois chargé ; null = titre texte. */
+    val logo: String? = null,
 )
 
 private val HMS_RE = Regex("""\d{1,2}:\d{2}(:\d{2})?""")
@@ -263,7 +265,9 @@ fun MovieDetailTv(
                     Spacer(Modifier.height(26.design))
                     if (m.skeleton) Skeleton(Modifier.width(420.design).height(34.design))
                     else if (m.chips.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.design)) { m.chips.forEach { V2Chip(it) } }
-                    Text(m.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 84.spx, lineHeight = 82.spx, letterSpacing = (-1.25).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    TitleLogo(m.logo, m.title, maxWidth = 760.design, maxHeight = 200.design) {
+                        Text(m.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 84.spx, lineHeight = 82.spx, letterSpacing = (-1.25).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    }
                     if (!m.skeleton && m.ratings.isNotEmpty()) V2RatingsRow(m.ratings)
                     if (m.skeleton) Column(verticalArrangement = Arrangement.spacedBy(12.design)) {
                         Skeleton(Modifier.fillMaxWidth(0.9f).height(24.design)); Skeleton(Modifier.fillMaxWidth(0.9f).height(24.design)); Skeleton(Modifier.width(520.design).height(24.design))

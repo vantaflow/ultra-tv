@@ -43,6 +43,16 @@ class TmdbParserTest {
         assertEquals("enOnly", seulAnglais.trailerKey)
     }
     @Test fun details_sansId_null() = assertNull(TmdbParser.details("""{"overview":"x"}"""))
+    @Test fun details_externalIds_imdbEtTvdb() {
+        val d = TmdbParser.details("""{"id":1399,"external_ids":{"imdb_id":"tt0944947","tvdb_id":121361}}""")!!
+        assertEquals("tt0944947", d.imdbId); assertEquals(121361, d.tvdbId)
+    }
+    @Test fun details_externalIds_absentsOuInvalides_nuls() {
+        val d = TmdbParser.details("""{"id":3,"external_ids":{"imdb_id":"pas-un-id","tvdb_id":null}}""")!!
+        assertNull(d.imdbId); assertNull(d.tvdbId)
+        // Film : imdb_id aussi à la racine de la réponse.
+        assertEquals("tt1375666", TmdbParser.details("""{"id":27205,"imdb_id":"tt1375666"}""")!!.imdbId)
+    }
     @Test fun details_photosDistributionEtRealisateur() {
         val d = TmdbParser.details("""{"id":7,"credits":{
             "cast":[{"name":"Jacob Elordi","profile_path":"/je.jpg"},{"name":"Sans Photo","profile_path":null}],
@@ -121,7 +131,7 @@ private class FakeApi(var enabled: Boolean = true, var fail: Boolean = false) : 
     override suspend fun searchId(kind: TmdbKind, query: TmdbQuery, lang: String): Int? { searches++; if (fail) throw java.io.IOException("x"); return 22 }
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? {
         detailCalls++; lastId = id; if (fail) throw java.io.IOException("x")
-        return TmdbDetails(id, "Synopsis", "/p.jpg", "/b.jpg", 8.0, listOf("A"), "trailer0000", "ja")
+        return TmdbDetails(id, "Synopsis", "/p.jpg", "/b.jpg", 8.0, listOf("A"), "trailer0000", "ja", imdbId = "tt0000022", tvdbId = 4242)
     }
 }
 
@@ -134,7 +144,7 @@ class TmdbRepositoryTest {
         val db = androidx.room.Room.inMemoryDatabaseBuilder(app, com.ultratv.tv.nativeapp.data.db.UltraDb::class.java).allowMainThreadQueries().build()
         kotlinx.coroutines.runBlocking { db.profileDao().insert(com.ultratv.tv.nativeapp.data.profile.ProfileEntity(name = "Principal", color = 1, initial = "P")) }
         val profiles = com.ultratv.tv.nativeapp.data.profile.ProfileRepository(db.profileDao(), com.ultratv.tv.nativeapp.data.profile.InMemoryProfileStateStore(), kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default))
-        return TmdbRepository(api, dao, UserPreferencesStore(app, profiles))
+        return TmdbRepository(api, dao, UserPreferencesStore(app, profiles), TmdbExternalIdsStore(app))
     }
 
     @Test fun nonAppaire_desactive_aucuneRequete_etRienEnCache() = runBlocking {
@@ -164,5 +174,24 @@ class TmdbRepositoryTest {
     }
     @Test fun erreurReseauSansCache_null() = runBlocking {
         assertNull(repo(FakeApi(fail = true), FakeDao()).forMovie(movie))
+    }
+    @Test fun externalIds_memorisesApresLaFiche_sansNouvelleRequete() = runBlocking {
+        val api = FakeApi(); val rp = repo(api, FakeDao())
+        rp.forMovie(movie, now = 1_000)
+        val calls = api.detailCalls
+        assertEquals(ExternalIds("tt0000022", 4242), rp.externalIds(TmdbKind.MOVIE, 22, now = 2_000))
+        assertEquals(calls, api.detailCalls)
+    }
+    @Test fun externalIds_inconnus_uneSeuleRequete_puisCache() = runBlocking {
+        val api = FakeApi(); val rp = repo(api, FakeDao())
+        assertEquals(ExternalIds("tt0000022", 4242), rp.externalIds(TmdbKind.TV, 77, now = 0))
+        rp.externalIds(TmdbKind.TV, 77, now = DAY)
+        assertEquals(1, api.detailCalls)
+    }
+    @Test fun externalIds_erreurReseau_nullEtNonMemorise() = runBlocking {
+        val api = FakeApi(fail = true); val rp = repo(api, FakeDao())
+        assertNull(rp.externalIds(TmdbKind.TV, 77, now = 0))
+        api.fail = false
+        assertEquals(4242, rp.externalIds(TmdbKind.TV, 77, now = 1)!!.tvdbId)
     }
 }

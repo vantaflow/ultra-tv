@@ -73,6 +73,11 @@ object TmdbParser {
         return out.values.toList()
     }
 
+    private val IMDB_ID = Regex("^tt[0-9]{5,10}$")
+
+    /** Identifiant IMDb valide (« tt » + chiffres) ; null sinon. */
+    fun imdbIdOf(raw: String?): String? = raw?.trim()?.takeIf { IMDB_ID.matches(it) }
+
     fun details(json: String): TmdbDetails? {
         val o = runCatching { JSONObject(json) }.getOrNull() ?: return null
         val id = o.optInt("id", 0).takeIf { it > 0 } ?: return null
@@ -105,6 +110,8 @@ object TmdbParser {
             rating = o.optDouble("vote_average", 0.0).takeIf { it > 0.0 }, cast = cast, trailerKey = trailer,
             originalLanguage = str("original_language"), photos = photos,
             genreIds = o.optJSONArray("genres")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.optInt("id", 0)?.takeIf { g -> g > 0 } } }.orEmpty(),
+            imdbId = imdbIdOf(o.optJSONObject("external_ids")?.optString("imdb_id")) ?: imdbIdOf(o.optString("imdb_id")),
+            tvdbId = o.optJSONObject("external_ids")?.optInt("tvdb_id", 0)?.takeIf { it > 0 },
         )
     }
 }

@@ -569,6 +569,11 @@
     <string name="home2_home_top10">Top 10 de hoy</string>
     <string name="home2_home_shortcuts_row">Accesos directos</string>
     <string name="home2_home_guide_subtitle">Programas de hoy</string>
+    <string name="extm_next_episode">Próximo episodio: %1$s</string>
+    <string name="extm_last_episode">Último episodio emitido: %1$s</string>
+    <string name="extm_series_ended">Serie finalizada</string>
+    <string name="extm_new_episodes">Nuevos episodios</string>
+    <string name="extm_yesterday">Ayer</string>
     <plurals name="home2_home_channels_count">
         <item quantity="one">%1$s canal</item>
         <item quantity="many">%1$s canales</item>
