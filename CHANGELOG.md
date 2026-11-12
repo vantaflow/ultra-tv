@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.100] — 2026-11-12 (Android) et bureau 1.2.49
+
+### Corrigé
+- Titres des épisodes (Android et bureau) : quand TMDB n'a pas de titres dans la langue de l'appli (il renvoie lui-même « Épisode 3 »), les titres anglais sont repris, sinon ceux de la langue d'origine de la série ; résumés et vignettes restent dans la langue de l'appli quand ils existent.
+
 ## [1.2.99] — 2026-11-12 (Android) et bureau 1.2.48
 
 ### Ajouté
