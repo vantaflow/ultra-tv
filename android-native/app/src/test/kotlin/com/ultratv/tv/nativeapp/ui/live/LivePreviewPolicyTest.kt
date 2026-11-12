@@ -43,4 +43,11 @@ class LivePreviewPolicyTest {
         assertEquals(Action.STOP, LivePreviewPolicy.decide(LiveOwner.PREVIEW, "1:a", "1:b", locked = true, holdAfterReturn = false))
         assertEquals(Action.KEEP, LivePreviewPolicy.decide(LiveOwner.NONE, null, "1:b", locked = true, holdAfterReturn = false))
     }
+
+    @Test fun guide_attendUneVraiePause_avantLApercu() {
+        assertEquals(1_500L, LivePreviewPolicy.guideDelayMs(LivePreviewPolicy.DEFAULT_DELAY_MS))
+        assertEquals(1_500L, LivePreviewPolicy.guideDelayMs(0))
+        val max = LivePreviewPolicy.DELAY_CHOICES.max()
+        assertEquals(maxOf(max.toLong(), 1_500L), LivePreviewPolicy.guideDelayMs(max))
+    }
 }

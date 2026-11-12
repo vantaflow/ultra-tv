@@ -583,7 +583,7 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
         LaunchedEffect(pv.sound) { shared.applyPreviewMuted(!pv.sound) }
         LaunchedEffect(shared, pv.delayMs) {
             // Chaîne du programme focalisé, lue après le délai du réglage ; collectLatest : jamais deux flux.
-            snapshotFlow { sel.value?.first }.distinctUntilChanged().debounce(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.delayMs(pv.delayMs)).collectLatest { c ->
+            snapshotFlow { sel.value?.first }.distinctUntilChanged().debounce(com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.guideDelayMs(pv.delayMs)).collectLatest { c ->
                 if (c == null) return@collectLatest
                 val row = com.ultratv.tv.nativeapp.ui.live.channelKey(c)
                 when (com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.decide(shared.owner, shared.rowKey, row, row in lockedNow, false)) {
