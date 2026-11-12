@@ -127,6 +127,7 @@
   "DesignStrings.getAnimOff()": "Désactivées",
   "DesignStrings.getAnimations()": "Animations",
   "DesignStrings.getAnnouncementOk()": "J\u2019ai compris",
+  "DesignStrings.getAnnouncementCloseHint()": "Retour : fermer",
   "DesignStrings.getAnnouncementTitle()": "Information",
   "DesignStrings.getAnnouncementUpdate()": "Mettre à jour",
   "DesignStrings.getAnyRating()": "Toutes notes",

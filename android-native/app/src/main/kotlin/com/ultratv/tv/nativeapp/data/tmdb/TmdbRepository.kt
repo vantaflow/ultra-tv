@@ -77,7 +77,9 @@ class TmdbHttpApi @Inject constructor(
     }
 
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? =
-        get("${kind.path}/$id?append_to_response=credits,videos&language=$lang")?.let(TmdbParser::details)
+        // Vidéos dans la langue de l'appli PUIS en anglais : beaucoup de séries n'ont aucune bande-annonce traduite,
+        // et sans ce repli la fiche n'en proposait aucune.
+        get("${kind.path}/$id?append_to_response=credits,videos&include_video_language=${lang.take(2)},en,null&language=$lang")?.let(TmdbParser::details)
 }
 
 @Module

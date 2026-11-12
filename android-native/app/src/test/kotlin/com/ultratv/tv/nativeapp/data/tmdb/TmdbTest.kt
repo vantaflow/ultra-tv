@@ -34,6 +34,14 @@ class TmdbParserTest {
         assertEquals(listOf("Actrice A", "Acteur B"), d.cast); assertEquals(8.4, d.rating!!, 0.001)
         assertEquals("/p.jpg", d.posterPath)
     }
+    @Test fun details_bandeAnnonce_langueDeLAppliAvantLAnglais() {
+        val d = TmdbParser.details("""{"id":9,"videos":{"results":[
+            {"site":"YouTube","key":"enTrailer","type":"Trailer","official":true,"iso_639_1":"en"},
+            {"site":"YouTube","key":"frTrailer","type":"Trailer","official":true,"iso_639_1":"fr"}]}}""")!!
+        assertEquals("frTrailer", d.trailerKey)
+        val seulAnglais = TmdbParser.details("""{"id":9,"videos":{"results":[{"site":"YouTube","key":"enOnly","type":"Trailer","iso_639_1":"en"}]}}""")!!
+        assertEquals("enOnly", seulAnglais.trailerKey)
+    }
     @Test fun details_sansId_null() = assertNull(TmdbParser.details("""{"overview":"x"}"""))
     @Test fun details_photosDistributionEtRealisateur() {
         val d = TmdbParser.details("""{"id":7,"credits":{

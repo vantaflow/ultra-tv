@@ -11,6 +11,7 @@ describe("tmdbTarget : liste blanche", () => {
     ["movie/603", "append_to_response=videos,credits&language=fr-FR"],
     ["tv/1396", ""],
     ["movie/603/images", "include_image_language=fr,en,null"],
+    ["tv/1399", "append_to_response=credits,videos&include_video_language=fr,en,null&language=fr"],
     ["tv/1396/videos", ""],
     ["movie/603/credits", ""],
     ["search/person", "query=Cillian%20Murphy"],

@@ -94,8 +94,10 @@ object TmdbParser {
         addPhotos(o.optJSONObject("credits")?.optJSONArray("cast")) { true }
         addPhotos(o.optJSONObject("credits")?.optJSONArray("crew")) { it.optString("job") == "Director" }
         val vids = o.optJSONObject("videos")?.optJSONArray("results")
+        // Langue demandée d'abord (seules elle, l'anglais et « sans langue » sont renvoyées), l'anglais ensuite.
         val yt = (0 until (vids?.length() ?: 0)).mapNotNull { vids!!.optJSONObject(it) }
             .filter { it.optString("site") == "YouTube" && it.optString("key").isNotBlank() }
+            .sortedBy { when (it.optString("iso_639_1")) { "en" -> 1; "", "null" -> 2; else -> 0 } }
         val trailer = (yt.firstOrNull { it.optString("type") == "Trailer" && it.optBoolean("official", false) }
             ?: yt.firstOrNull { it.optString("type") == "Trailer" } ?: yt.firstOrNull())?.optString("key")
         return TmdbDetails(

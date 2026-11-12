@@ -127,6 +127,7 @@
   "DesignStrings.getAnimOff()": "Off",
   "DesignStrings.getAnimations()": "Animations",
   "DesignStrings.getAnnouncementOk()": "OK",
+  "DesignStrings.getAnnouncementCloseHint()": "Back: close",
   "DesignStrings.getAnnouncementTitle()": "Notice",
   "DesignStrings.getAnnouncementUpdate()": "Update",
   "DesignStrings.getAnyRating()": "Any rating",

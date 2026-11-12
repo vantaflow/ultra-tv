@@ -127,6 +127,7 @@
   "DesignStrings.getAnimOff()": "متوقفة",
   "DesignStrings.getAnimations()": "الحركات",
   "DesignStrings.getAnnouncementOk()": "حسنًا",
+  "DesignStrings.getAnnouncementCloseHint()": "رجوع: إغلاق",
   "DesignStrings.getAnnouncementTitle()": "إشعار",
   "DesignStrings.getAnnouncementUpdate()": "تحديث",
   "DesignStrings.getAnyRating()": "كل التقييمات",

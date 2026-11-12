@@ -33,7 +33,7 @@ export function tmdbTarget(rest, searchParams) {
     if (!path.startsWith("search/") || q.trim() === "" || q.length > 120) return null;
     params.set("query", q.trim());
   } else if (path.startsWith("search/")) return null;
-  for (const [k, re] of [["year", YEAR], ["first_air_date_year", YEAR], ["language", LANG], ["include_image_language", IMG_LANG]]) {
+  for (const [k, re] of [["year", YEAR], ["first_air_date_year", YEAR], ["language", LANG], ["include_image_language", IMG_LANG], ["include_video_language", IMG_LANG]]) {
     const v = searchParams.get(k);
     if (v === null) continue;
     if (!re.test(v)) return null;
