@@ -313,6 +313,8 @@
   "set.about.update": "Buscar actualizaciones",
   "set.about.autoUpdate": "Buscar actualizaciones automáticamente",
   "set.about.autoUpdateD": "Al iniciar y después cada 6 horas. Desactivado: solo la búsqueda manual contacta con GitHub.",
+  "set.about.telemetry": "Telemetría anónima",
+  "set.about.telemetryD": "Como máximo una vez al día y solo mientras este equipo no esté vinculado: un identificador de instalación aleatorio, la versión de la app y el sistema (Windows, macOS o Linux). El país lo deduce el servidor; no se guarda ninguna dirección IP. Desactivado: no se envía nada.",
   "set.about.updateNone": "Tienes la última versión.",
   "set.about.updateAvail": "Actualización {v} disponible.",
   "set.about.updateFail": "No se pudo buscar actualizaciones. Inténtalo más tarde o descarga la última versión desde el sitio.",

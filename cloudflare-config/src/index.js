@@ -17,7 +17,7 @@ import { JSQR_SOURCE } from "./jsqr-bundle.js";
 import { Guard } from "./guard.js";
 import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual, keysFromEnv, encryptJson, decryptJson } from "./crypto.js";
 import {
-  ConfigError, json, redirect, tooMany, nonce, readJson, readForm, readLimited, sameOrigin, clientIp,
+  ConfigError, escapeHtml, json, redirect, tooMany, nonce, readJson, readForm, readLimited, sameOrigin, clientIp,
   withSecurityHeaders, readCookie, sessionCookieHeader, clearCookieHeader, COOKIE, signSession, verifySession,
   csrfToken, parseBearer, parseOpsSecret, assertSessionSecret, hmac,
 } from "./http.js";
@@ -32,7 +32,10 @@ import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
-import { recordEvent, listEvents, anonTouch as anonTouchD1, listAnon, purgeTelemetry } from "./telemetry.js";
+import { recordEvent, anonTouch as anonTouchD1, purgeTelemetry, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
+import { anonQuery, eventsQuery, parseListParams, paginate, sortRows, filterAccounts, filterDevices, flattenDevices, countBy, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS } from "./admin.js";
+import { queryAnon, anonFacets, anonOverview, countEvents, queryEvents, eventFacets } from "./telemetryq.js";
+import { overviewPage, accountsPage, anonPage, devicesPage, eventsAdminPage, alertsPage } from "./adminui.js";
 import {
   TRAKT_STATE_TTL_S, pkcePair, authorizeUrl, exchangeCode, refreshTokens, traktUsername, revokeToken,
   parseScrobble, resolveTmdb, traktScrobbleBody, sendScrobble,
@@ -42,7 +45,7 @@ import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } f
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
-import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, eventsPage, crashesPage } from "./pages.js";
+import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage } from "./pages.js";
 
 export { Guard };
 
@@ -180,7 +183,8 @@ async function route(req, env, ctx) {
   }
 
   // ---- exploitation ----
-  if ((path === "/crashes" || path === "/logs") && m === "GET") return opsPage(req, env, path === "/crashes" ? "crash" : "event");
+  // Journaux et plantages : session administrateur, ou secret d'exploitation (Basic). `/logs` = ancien nom de `/events`.
+  if ((path === "/crashes" || path === "/logs" || path === "/events") && m === "GET") return opsPage(req, env, url, path === "/crashes" ? "crash" : "event");
   if (path === "/api/admin/migrate" && m === "POST") return adminMigrate(req, env, url);
 
   // ---- polices auto-hébergées (publiques, immuables) ----
@@ -210,7 +214,7 @@ async function route(req, env, ctx) {
   // ---- tableau de bord (session) ----
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
-  const adminRoute = (path === "/admin" || path === "/admin/comptes.csv") && m === "GET";
+  const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
   const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
@@ -230,8 +234,7 @@ async function route(req, env, ctx) {
   if (adminRoute) {
     // Réservé aux identifiants listés dans ADMIN_LOGINS ; tout autre compte reçoit un 404 (l'existence n'est pas révélée).
     if (!isAdmin(env, sess.acct)) return new Response("Not found", { status: 404 });
-    // Ancienne page séparée : l'administration est désormais une section du tableau de bord.
-    if (!path.endsWith(".csv")) return redirect("/#administration");
+    if (!path.endsWith(".csv")) return adminView(env, url, path, sess);
     return new Response(adminCsv(await adminAccounts(env)), { headers: {
       "content-type": "text/csv; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff",
       "content-disposition": `attachment; filename="ultratv-comptes-${new Date().toISOString().slice(0, 10)}.csv"`,
@@ -242,11 +245,7 @@ async function route(req, env, ctx) {
     const n = nonce();
     const providers = await loadProviders(env, sess.acct);
     const admin = isAdmin(env, sess.acct);
-    const adminRows = admin ? await adminAccounts(env) : null;
-    const anonRows = admin ? await adminAnon(env) : [];
-    const announcements = admin ? await loadAnnouncements(env) : null;
-    const annStats = announcements ? await announcementStats(env, announcements) : null;
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, adminRows, anonRows, announcements, annStats });
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.
@@ -598,13 +597,13 @@ async function envoiPoll(req, env) {
 }
 
 // ---- appareils sans compte : relevé anonyme -------------------------------------------------
-// Table D1 `anon_pings` (empreinte, premier / dernier relevé, version, pays, sources envoyées par le web), 180 jours.
+// Table D1 `anon_pings` (empreinte, premier / dernier relevé, version, pays, plateforme, modèle, sources envoyées par le web), 180 jours.
 // Plus aucune écriture KV ici : voir telemetry.js.
 
 /** Met à jour (ou crée) l'installation [key] ; `web` : sources envoyées en plus. Ne lève jamais d'erreur. */
-async function anonTouch(env, key, req, { version = null, web = 0 } = {}) {
+async function anonTouch(env, key, req, { version = null, web = 0, platform = null, model = null } = {}) {
   await anonTouchD1(env, key, {
-    version, web, country: countryOf(req),
+    version, web, platform, model, country: countryOf(req),
     // Transition : reprend premier relevé / version / pays / compteur de l'ancienne ligne KV (lecture seule).
     legacy: async () => (await env.CONFIG.getWithMetadata(key, "json")).metadata,
   });
@@ -617,12 +616,13 @@ async function anonPing(req, env) {
   if (body.error) return body.error;
   const install = validInstall(body.value.install);
   if (!install) return json({ error: "install" }, 400);
-  await anonTouch(env, await anonKey(install), req, { version: appVersionOf(body.value.version) });
+  // Plateforme : liste blanche (une valeur inconnue est refusée) ; modèle : texte court nettoyé. Jamais d'IP.
+  const rawPlatform = body.value.platform;
+  const platform = platformOf(rawPlatform);
+  if (rawPlatform != null && rawPlatform !== "" && !platform) return json({ error: "platform" }, 400);
+  await anonTouch(env, await anonKey(install), req, { version: appVersionOf(body.value.version), platform, model: modelOf(body.value.model) });
   return json({ ok: true });
 }
-
-/** Installations sans compte (jamais d'identifiant) : [{first, last, version, country, web}]. */
-const adminAnon = (env) => listAnon(env);
 
 async function confirmPairing(env, acct, form) {
   const lock = await lockedOut(env, `lock:pair:${acct.login}`);
@@ -691,19 +691,19 @@ async function adminAnnouncement(env, acct, path, form) {
   const m = path.match(/^\/admin\/announcements\/([0-9a-f]+)\/(end|delete)$/);
   if (m) {
     const i = list.findIndex((a) => a.id === m[1]);
-    if (i < 0) return redirect("/?e=ann_missing#administration");
+    if (i < 0) return redirect("/admin/alerts?e=ann_missing");
     if (m[2] === "delete") {
       list.splice(i, 1);
       await annStatsStub(env, m[1]).annReset().catch(() => {});
     }
     else list[i] = { ...list[i], endAt: now, startAt: Math.min(list[i].startAt || now, now) };
     await saveAnnouncements(env, list, now);
-    return redirect(`/?m=${m[2] === "delete" ? "ann_deleted" : "ann_ended"}#administration`);
+    return redirect(`/admin/alerts?m=${m[2] === "delete" ? "ann_deleted" : "ann_ended"}`);
   }
   const parsed = parseAnnouncementForm(form, now);
-  if (parsed.error) return redirect(`/?e=${parsed.error}#administration`);
+  if (parsed.error) return redirect(`/admin/alerts?e=${parsed.error}`);
   await saveAnnouncements(env, [...list, { ...parsed.value, by: acct.login }], now);
-  return redirect("/?m=ann_added#administration");
+  return redirect("/admin/alerts?m=ann_added");
 }
 
 /** Instance du Durable Object qui compte les statistiques d'une alerte. */
@@ -1388,13 +1388,83 @@ async function checkSecret(req, env, secret, lockName) {
   return { res: new Response("Unauthorized", { status: 401, headers: { "www-authenticate": 'Basic realm="ultratv-ops", charset="UTF-8"' } }) };
 }
 
-async function opsPage(req, env, kind) {
-  const c = await checkSecret(req, env, env.OPS_TOKEN, "ops");
-  if (c.res) return c.res;
-  const limit = Math.max(10, Math.min(500, parseInt(new URL(req.url).searchParams.get("limit") || "100", 10) || 100));
-  const items = await listEvents(env, kind, limit);
+async function opsPage(req, env, url, kind) {
+  const sess = await currentSession(req, env);
+  const admin = Boolean(sess && isAdmin(env, sess.acct));
+  // Session ordinaire sans secret : 404 (l'existence n'est pas révélée) ; sinon secret d'exploitation comme avant.
+  if (sess && !admin && !req.headers.get("authorization")) return new Response("Not found", { status: 404 });
+  if (!admin) {
+    const c = await checkSecret(req, env, env.OPS_TOKEN, "ops");
+    if (c.res) return c.res;
+  }
+  const params = parseListParams(url.searchParams, { sorts: EVENT_SORTS, sort: "ts", dir: "desc", filters: kind === "crash" ? ["version", "country"] : ["version", "country", "level"] });
+  const now = Date.now();
+  const [{ pg, rows }, facets] = await Promise.all([
+    queryEvents(env, kind, eventsQuery(kind, params, now), params.page, params.size),
+    eventFacets(env, kind),
+  ]);
+  const csrfInput = admin ? csrfField(sess.csrf) : "";
+  return eventsAdminPage(nonce(), kind, { rows, pg, params, facets, now, me: admin ? sess.acct.login : "", csrfInput, nav: admin });
+}
+
+const csrfField = (csrf) => `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}"/>`;
+
+// ---- vues d'administration (un onglet = une URL) --------------------------------------------
+
+const ACCT_CACHE_MS = 120_000;
+let acctCache = { at: 0, rows: null };
+
+/**
+ * Comptes (KV) en cache 2 minutes par isolat : un parcours de l'administration ne relit pas tous les comptes à
+ * chaque page (KV gratuit : 1 000 listes par jour). `?refresh=1` force la relecture.
+ */
+async function cachedAccounts(env, refresh) {
+  if (!refresh && acctCache.rows && Date.now() - acctCache.at < ACCT_CACHE_MS) return acctCache;
+  acctCache = { at: Date.now(), rows: await adminAccounts(env) };
+  return acctCache;
+}
+
+async function adminView(env, url, path, sess) {
   const n = nonce();
-  return kind === "crash" ? crashesPage(n, items) : eventsPage(n, items);
+  const now = Date.now();
+  const sp = url.searchParams;
+  const me = sess.acct.login;
+  const csrfInput = csrfField(sess.csrf);
+  const refresh = sp.get("refresh") === "1";
+  if (path === "/admin") {
+    const [acc, anon, crashes24] = await Promise.all([cachedAccounts(env, refresh), anonOverview(env, now), countEvents(env, "crash", now - DAY_MS)]);
+    return overviewPage(n, { accounts: acc.rows, anon, crashes24, asOf: acc.at, now, me, csrfInput });
+  }
+  if (path === "/admin/accounts") {
+    const params = parseListParams(sp, { sorts: ACCOUNT_SORTS, sort: "created", dir: "desc", filters: ["country", "version"] });
+    const acc = await cachedAccounts(env, refresh);
+    const all = acc.rows.filter((r) => !r.legacy);
+    const filtered = sortRows(filterAccounts(all, params, now), params.sort, params.dir, ACCOUNT_SORTS);
+    const pg = paginate(filtered.length, params.page, params.size);
+    const facets = {
+      countries: countBy(all.flatMap((r) => [r.country, ...r.devices.map((d) => d.country)])).map(([k]) => k),
+      versions: countBy(all.flatMap((r) => r.devices.map((d) => d.version))).map(([k]) => k),
+    };
+    return accountsPage(n, { rows: filtered.slice(pg.offset, pg.offset + pg.size), pg, params, facets, asOf: acc.at, now, me, csrfInput });
+  }
+  if (path === "/admin/devices") {
+    const params = parseListParams(sp, { sorts: DEVICE_SORTS, sort: "seen", dir: "desc", filters: ["country", "version"] });
+    const acc = await cachedAccounts(env, refresh);
+    const all = flattenDevices(acc.rows);
+    const filtered = sortRows(filterDevices(all, params, now), params.sort, params.dir, DEVICE_SORTS);
+    const pg = paginate(filtered.length, params.page, params.size);
+    const facets = { countries: countBy(all.map((d) => d.country)).map(([k]) => k), versions: countBy(all.map((d) => d.version)).map(([k]) => k) };
+    return devicesPage(n, { rows: filtered.slice(pg.offset, pg.offset + pg.size), pg, params, facets, asOf: acc.at, now, me, csrfInput });
+  }
+  if (path === "/admin/anon") {
+    const params = parseListParams(sp, { sorts: ANON_SORTS, sort: "last", dir: "desc", filters: ["platform", "version", "country"] });
+    const [{ pg, rows }, facets] = await Promise.all([queryAnon(env, anonQuery(params, now), params.page, params.size), anonFacets(env)]);
+    return anonPage(n, { rows, pg, params, facets, platforms: ANON_PLATFORMS, now, me, csrfInput });
+  }
+  // /admin/alerts
+  const announcements = await loadAnnouncements(env);
+  const annStats = await announcementStats(env, announcements);
+  return alertsPage(n, { announcements, annStats, ok: sp.get("m"), err: sp.get("e"), now, me, csrfInput });
 }
 
 // ---- migration depuis l'ancien format ------------------------------------------

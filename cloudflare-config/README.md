@@ -111,7 +111,8 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/announcements/{id}/stat` `{kind: shown\|dismissed\|action, device}` | — (120/h par IP) | Statistique d'une alerte, comptée une fois par appareil (identifiant d'installation haché) |
 | POST | `/admin/announcements`, `/admin/announcements/{id}/end`, `…/delete` | session admin + CSRF | Programmer, arrêter, supprimer une alerte (ADMIN_LOGINS) |
 | GET | `/api/config/:mac` | — | **410 Gone** (ancienne lecture anonyme supprimée) |
-| GET | `/crashes`, `/logs` | Basic/Bearer `OPS_TOKEN` | Tableaux de bord d'exploitation |
+| GET | `/admin`, `/admin/accounts`, `/admin/anon`, `/admin/devices`, `/admin/alerts` | session admin (ADMIN_LOGINS, sinon 404) | Administration : vue d'ensemble, comptes, installations sans compte (application, version, pays), appareils, alertes ; tableaux paginés, triables, filtrables |
+| GET | `/events` (alias `/logs`), `/crashes` | session admin, ou Basic/Bearer `OPS_TOKEN` | Journaux et plantages (pagination, tri, filtres) |
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |

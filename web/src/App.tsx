@@ -27,6 +27,7 @@ import { Settings } from "@/screens/Settings";
 import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
 import { loadCloud, startCloudSchedule } from "@/cloud/service";
+import { startAnonPing } from "@/cloud/anon";
 import { cloudAvailable } from "@/cloud/client";
 import { guideColRem } from "@/lib/guideCol";
 import { useTraktPrewarm, useTraktResumeImport, useTraktSync } from "@/trakt/hooks";
@@ -64,7 +65,8 @@ function Effects() {
     document.documentElement.classList.toggle("mac", bridge()?.platform === "darwin");
     startSourcesWatcher();
     let stopCloud: (() => void) | undefined;
-    void loadCloud().then(() => { if (cloudAvailable()) stopCloud = startCloudSchedule(); });
+    let stopAnon: (() => void) | undefined;
+    void loadCloud().then(() => { if (cloudAvailable()) { stopCloud = startCloudSchedule(); stopAnon = startAnonPing(); } });
     void initTransport();
     // DNS personnalisé : le réglage local fait foi, le processus principal est réaligné au démarrage.
     if (isElectron()) void pushDns(normalizeDns(usePrefs.getState().dns));
@@ -78,6 +80,7 @@ function Effects() {
       window.removeEventListener("offline", off);
       if (typeof unsub === "function") unsub();
       stopCloud?.();
+      stopAnon?.();
     };
   }, []);
 

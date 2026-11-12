@@ -25,6 +25,7 @@ import { errorKey } from "./Onboarding";
 import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
 import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
+import { readAnonTelemetry, writeAnonTelemetry } from "@/cloud/anon";
 import { SourceForm, type SourceKind } from "./SourceForm";
 import { TraktSettings } from "@/trakt/TraktUi";
 import { DnsSettings } from "./DnsSettings";
@@ -482,6 +483,8 @@ function AboutPane() {
   const [msg, setMsg] = useState<string | null>(null);
   const [autoUpd, setAutoUpd] = useState<boolean | null>(null);
   useEffect(() => { void readAutoUpdate().then(setAutoUpd); }, []);
+  const [anonOn, setAnonOn] = useState<boolean | null>(null);
+  useEffect(() => { if (cloudAvailable()) void readAnonTelemetry().then(setAnonOn); }, []);
   return (
     <>
       <h2>{t("set.about")}</h2>
@@ -500,6 +503,11 @@ function AboutPane() {
       {autoUpd !== null && (
         <Pref label={t("set.about.autoUpdate")} desc={t("set.about.autoUpdateD")}>
           <Switch on={autoUpd} onChange={(v) => { setAutoUpd(v); void writeAutoUpdate(v).then(setAutoUpd); }} label={t("set.about.autoUpdate")} />
+        </Pref>
+      )}
+      {anonOn !== null && (
+        <Pref label={t("set.about.telemetry")} desc={t("set.about.telemetryD")}>
+          <Switch on={anonOn} onChange={(v) => { setAnonOn(v); void writeAnonTelemetry(v); }} label={t("set.about.telemetry")} />
         </Pref>
       )}
       {(msg || update?.state === "downloading") && <div className="alert">{update?.state === "downloading" ? t("state.downloading", { p: Math.round(update.percent ?? 0) }) : msg}</div>}

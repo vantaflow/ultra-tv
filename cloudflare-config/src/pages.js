@@ -210,6 +210,27 @@ textarea{min-height:88px;resize:vertical;line-height:1.45}
 .listbar .lsearch{flex:1 1 240px;min-height:44px}
 .pager{display:inline-flex;align-items:center;gap:8px}.pager button{min-height:44px;min-width:44px;padding:0 12px}
 .pinfo{color:var(--mut);font-size:13px;font-weight:600;white-space:nowrap}
+/* Administration : onglets, filtres, tableaux triables, pagination */
+.adm{max-width:1280px;margin:0 auto}
+.adm-top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 20px;padding:16px 0 8px}
+.adm-top .spacer{flex:1}.adm-top form{margin:0}.adm-top .who{color:var(--mut);font-size:13px;font-weight:600}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--bd);margin-bottom:20px;scrollbar-width:thin}
+.tabs a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;color:var(--fg2);font-weight:600;font-size:14px;border-bottom:3px solid transparent;text-decoration:none;white-space:nowrap}
+.tabs a:hover{color:var(--fg);text-decoration:none}.tabs a[aria-current=page]{color:var(--fg);border-bottom-color:var(--acc)}
+.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 14px}
+.filters .fl{display:flex;flex-direction:column;gap:4px;min-width:130px}.filters .fl.grow{flex:1 1 220px}
+.filters label{margin:0;font-size:12px;font-weight:600;color:var(--mut)}
+.filters select,.filters input{min-height:44px;margin:0}
+.filters .reset{align-self:center;font-size:13px}
+.atable th a{color:inherit;text-decoration:none;white-space:nowrap}.atable th a:hover{color:var(--fg);text-decoration:none}
+.atable th[aria-sort] a{color:var(--fg)}
+.atable td time{border-bottom:1px dotted var(--mut);cursor:help}
+.atable td.num,.atable th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pgr{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:12px}
+.pgr .pages{display:flex;gap:6px;flex-wrap:wrap}
+.pgr a,.pgr .cur{min-width:44px;min-height:44px;padding:0 12px;display:inline-grid;place-items:center;border:1px solid var(--bd);border-radius:12px;background:var(--s1);color:var(--fg2);font-size:14px;text-decoration:none}
+.pgr .cur{color:var(--fg);border-color:var(--acc)}.pgr a[aria-disabled=true]{opacity:.4;pointer-events:none}
+.adm .tiles{margin-top:0}
 [hidden]{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 `;
@@ -228,9 +249,9 @@ const ICONS = {
   home: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/>',
 };
-const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
+export const ico = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
 
-const LOGO = `<svg class="logo" viewBox="0 0 512 512" role="img" aria-label="Ultra TV"><rect class="lg-bg" width="512" height="512" rx="116"/><rect class="lg-fr" x="96" y="120" width="320" height="216" rx="40" fill="none" stroke-width="28"/><path d="M224 188v80l70-40z" fill="#D91E2B"/><path class="lg-fr" d="M196 392h120" stroke-width="28" stroke-linecap="round"/></svg>`;
+export const LOGO = `<svg class="logo" viewBox="0 0 512 512" role="img" aria-label="Ultra TV"><rect class="lg-bg" width="512" height="512" rx="116"/><rect class="lg-fr" x="96" y="120" width="320" height="216" rx="40" fill="none" stroke-width="28"/><path d="M224 188v80l70-40z" fill="#D91E2B"/><path class="lg-fr" d="M196 392h120" stroke-width="28" stroke-linecap="round"/></svg>`;
 const FAVICON = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='116' fill='%230A0A0C'/%3E%3Crect x='96' y='120' width='320' height='216' rx='40' fill='none' stroke='%23F5F5F7' stroke-width='28'/%3E%3Cpath d='M224 188v80l70-40z' fill='%23D91E2B'/%3E%3Cpath d='M196 392h120' stroke='%23F5F5F7' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E";
 
 // Thème choisi (Automatique / Clair / Sombre), gardé dans le navigateur ; appliqué AVANT le premier rendu (pas de flash).
@@ -245,7 +266,7 @@ b.addEventListener('click',function(){var t=O[(O.indexOf(cur())+1)%3];try{if(t==
 if(t==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',t);show(t);});show(cur());})();`;
 
 // `loc` : langue, sens d'écriture et libellés du gabarit (français par défaut ; seule la page /envoyer est traduite).
-function layout(title, body, n, extra = "", camera = false, loc = {}) {
+export function layout(title, body, n, extra = "", camera = false, loc = {}) {
   const { lang = "fr", dir = "ltr", skip = "Aller au contenu", themeBtn = "Thème", themeLabels, themeChange } = loc;
   return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body><a class="skip" href="#main">${e(skip)}</a>${body}<button type="button" class="theme-toggle" id="theme-toggle">${e(themeBtn)}</button><script nonce="${n}">${themeToggle(themeLabels, themeChange)}</script>${extra}</body></html>`, n, 200, { camera });
 }
@@ -322,7 +343,7 @@ const DASH_MSG = {
 };
 
 /** « il y a 3 jours » : durée relative lisible, calculée côté serveur. */
-function ago(t, now = Date.now()) {
+export function ago(t, now = Date.now()) {
   if (!t) return "";
   const s = Math.max(0, Math.round((now - t) / 1000));
   if (s < 60) return "à l'instant";
@@ -576,9 +597,8 @@ function licenseLine(lic, now = Date.now()) {
   return `<div class="acct card-meta mt10${cls}">Licence Pro : ${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, adminRows = null, anonRows = [], announcements = null, annStats = null }) {
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false }) {
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
-  const adminBlock = admin && adminRows ? adminSection({ rows: adminRows, anon: anonRows || [], me: acct.login, announcements: announcements || [], annStats: annStats || {}, csrfInput }) : null;
   const devices = acct.devices || [];
   const when = (t) => (t ? new Date(t).toISOString().slice(0, 10) : "");
   const provRows = providers.map((p) => {
@@ -730,7 +750,7 @@ ${SCAN_JS}
 <a href="#fournisseurs">${ico("list")}Fournisseurs</a>
 <a href="#appareils">${ico("tv")}Appareils</a>
 <a href="#compte">${ico("gear")}Compte</a>
-${admin ? `<a href="#administration">${ico("user")}Administration</a>` : ""}
+${admin ? `<a href="/admin">${ico("user")}Administration</a>` : ""}
 </nav>
 <div class="me"><div class="login" title="Compte connecté">${ico("user")}<span>${e(acct.login)}</span></div>
 <form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form></div>
@@ -795,8 +815,7 @@ ${osPanel(acct.os, csrfInput)}
 <label for="dpw">Mot de passe</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
 <div class="row"><button class="danger" type="submit">Supprimer mon compte</button></div></form></section>
 </div>
-${adminBlock ? adminBlock.html : ""}
-</main></div>`, n, script + (adminBlock ? `<script nonce="${n}">${adminBlock.script}</script>` : ""), true);
+</main></div>`, n, script, true);
 }
 
 /** Trakt (facultatif) : connexion OAuth depuis l'espace client ; les appareils n'ont rien à configurer. */
@@ -829,10 +848,10 @@ ${os ? `<p class="mt6">Relié au compte <strong>${e(os.user)}</strong>${quota(os
 <p class="secure">${ico("lock")}<span>Chiffré au repos, jamais réaffiché ni envoyé aux appareils.</span></p>`}</section>`;
 }
 
-const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
+export const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
 
 /** Drapeau + nom du pays (code ISO à 2 lettres), ou « — ». */
-function countryLabel(code) {
+export function countryLabel(code) {
   if (!code || !/^[A-Z]{2}$/.test(code)) return "—";
   const flag = String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
   let name = code;
@@ -841,15 +860,13 @@ function countryLabel(code) {
 }
 
 /** « 3 (2 Xtream · 1 M3U) » : nombre et types des sources, jamais leur adresse ni leurs identifiants. */
-function sourcesLabel(r) {
+export function sourcesLabel(r) {
   if (r.sourcesN == null) return r.sources ? "oui" : "—";
   if (!r.sourcesN) return "—";
   const parts = [r.sourcesXtream ? `${r.sourcesXtream} Xtream` : "", r.sourcesM3u ? `${r.sourcesM3u} M3U` : ""].filter(Boolean).join(" · ");
   return `${r.sourcesN}${parts ? ` <span class="muted">(${e(parts)})</span>` : ""}`;
 }
 
-/** Administration : comptes, appareils, pays (aucun secret). Réservée aux identifiants de ADMIN_LOGINS. */
-/** Section « Administration » du tableau de bord (comptes ADMIN_LOGINS) : { html, script }. */
 /** Panneau « Alertes » : programmer un message affiché par les applications, voir et arrêter les alertes existantes. */
 export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
@@ -892,101 +909,8 @@ ${rows || `<p class="muted small">Aucune alerte.</p>`}</section>`;
 }
 
 /** Heures locales du formulaire d'alerte → millisecondes (le serveur ne connaît pas le fuseau du navigateur). */
-const ANN_SCRIPT = `document.querySelectorAll('.ann-form').forEach(function(f){f.addEventListener('submit',function(){
+export const ANN_SCRIPT = `document.querySelectorAll('.ann-form').forEach(function(f){f.addEventListener('submit',function(){
 [['start','startMs'],['end','endMs']].forEach(function(p){var v=f.querySelector('[name='+p[0]+']').value;f.querySelector('[name='+p[1]+']').value=v?String(new Date(v).getTime()):'';});});});`;
-
-export function adminSection({ rows: all, anon = [], me, now = Date.now(), announcements = [], annStats = {}, csrfInput = "" }) {
-  const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") : "—");
-  const DAY = 86400_000;
-  // Anciens comptes « adresse MAC » : supprimés le 20/10/2026 ; ignorés s'il en reste.
-  const rows = all.filter((r) => !r.legacy);
-  const pct = (k, n) => (n ? Math.round((100 * k) / n) : 0);
-  const devices = rows.flatMap((r) => r.devices.map((x) => ({ ...x, login: r.login })));
-  const activeSince = (ms) => rows.filter((r) => r.lastSeen && now - r.lastSeen < ms).length;
-  const newSince = (ms) => rows.filter((r) => r.createdAt && now - r.createdAt < ms).length;
-  const withDev = rows.filter((r) => r.devices.length).length;
-  const srcN = rows.reduce((t, r) => t + (r.sourcesN || 0), 0);
-  const srcX = rows.reduce((t, r) => t + (r.sourcesXtream || 0), 0);
-  const srcM = rows.reduce((t, r) => t + (r.sourcesM3u || 0), 0);
-  const withSrc = rows.filter((r) => r.sourcesN > 0).length;
-  const tile = (v, l, cls = "") => `<div class="tile${cls ? " " + cls : ""}"><b>${e(String(v))}</b><span>${e(l)}</span></div>`;
-  const count = (arr) => { const m = new Map(); for (const k of arr) if (k) m.set(k, (m.get(k) || 0) + 1); return [...m].sort((x, y) => y[1] - x[1]); };
-  // Barres horizontales (largeur posée par le CSSOM : la CSP refuse les attributs style).
-  // total donné : barres en part de ce total (« 12 · 40 % ») ; sinon relatives à la plus grande valeur.
-  const bars = (pairs, label = (k) => k, total = 0) => {
-    if (!pairs.length) return `<p class="muted small">Aucune donnée.</p>`;
-    const max = total || Math.max(1, ...pairs.map((p) => p[1]));
-    return `<div class="bars">${pairs.map(([k, v]) => `<div class="bar"><span class="bl">${e(label(k))}</span><span class="bt"><i data-w="${Math.round((100 * v) / max)}"></i></span><span class="bv">${v}${total ? ` <small>${pct(v, total)} %</small>` : ""}</span></div>`).join("")}</div>`;
-  };
-  const kv = (pairs) => `<dl class="kv">${pairs.map(([k, v]) => `<dt>${e(k)}</dt><dd>${e(String(v))}</dd>`).join("")}</dl>`;
-  // Installations sans compte (relevé anonyme) : comptées à part, ET intégrées aux répartitions versions / pays.
-  const anonActive7 = anon.filter((x) => x.last && now - x.last < 7 * DAY).length;
-  const anonNew7 = anon.filter((x) => x.first && now - x.first < 7 * DAY).length;
-  const anonWeb = anon.reduce((t, x) => t + (x.web || 0), 0);
-  const anonCountries = count(anon.map((x) => x.country));
-  const anonVersions = count(anon.map((x) => x.version || "inconnue"));
-  const countries = count([...rows.flatMap((r) => [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))]), ...anon.map((x) => x.country)]);
-  const models = count(devices.map((x) => x.model || "inconnu")).slice(0, 10);
-  const versions = count([...devices.map((x) => x.version || "inconnue"), ...anon.map((x) => x.version || "inconnue")]).slice(0, 10);
-  // « 12 » avec, quand il y en a, la part venue des installations sans compte.
-  const withAnon = (list) => (k) => { const n = (list.find((p) => p[0] === k) || [0, 0])[1]; return n ? ` (dont ${n} sans compte)` : ""; };
-  const verNote = withAnon(anonVersions), cntNote = withAnon(anonCountries);
-  // Inscriptions par semaine (8 dernières semaines, la plus récente en bas).
-  const weeks = [];
-  for (let w = 7; w >= 0; w--) {
-    const end = now - w * 7 * DAY, start = end - 7 * DAY;
-    const k = rows.filter((r) => r.createdAt >= start && r.createdAt < end).length;
-    weeks.push([w === 0 ? "7 derniers jours" : `il y a ${w} sem.`, k]);
-  }
-  const row = (r) => {
-    const cs = [...new Set([r.country, ...r.devices.map((x) => x.country)].filter(Boolean))];
-    const devs = r.devices.map((x) => `${e(x.name)} <span class="muted">(${e(x.model)}${x.version ? `, v${e(x.version)}` : ""}${x.lastSeen ? `, vu ${e(d(x.lastSeen))}` : ""})</span>`).join("<br>");
-    return `<tr><td><strong>${e(r.login)}</strong>${r.login === me ? ` <span class="kind pro">ADMIN</span>` : ""}</td>
-<td>${e(d(r.createdAt))}</td><td>${e(d(r.lastLoginAt))}</td><td>${e(d(r.lastSeen))}</td>
-<td>${cs.length ? cs.map((c) => e(countryLabel(c))).join("<br>") : "—"}</td><td>${devs || "—"}</td><td>${sourcesLabel(r)}</td><td>${e(r.trakt || "—")}</td><td>${e(r.opensubtitles || "—")}</td></tr>`;
-  };
-  const script = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});` + ANN_SCRIPT;
-  return { script, html: `<div class="section-h" id="administration"><h2>Administration</h2><span class="muted small">Statistiques et comptes de tous les utilisateurs.</span></div>
-<div class="tiles">${tile(rows.length, "comptes")}${tile(activeSince(7 * DAY), "comptes actifs ces 7 jours")}${tile(devices.length, "appareils appairés")}${tile(srcN, "sources configurées")}${tile(anon.length, "installations sans compte")}</div>
-<div class="agrid">
-<section class="panel"><h2>Croissance</h2>
-${kv([["Nouveaux comptes ces 7 jours", newSince(7 * DAY)], ["Nouveaux comptes ces 30 jours", newSince(30 * DAY)]])}
-<h3>Inscriptions par semaine</h3>${bars(weeks)}</section>
-<section class="panel"><h2>Activité</h2>
-<p class="muted small">Part des ${rows.length} comptes.</p>
-${bars([["Avec un appareil appairé", withDev], ["Actifs ces 30 jours", activeSince(30 * DAY)], ["Actifs ces 7 jours", activeSince(7 * DAY)], ["Actifs ces 24 h", activeSince(DAY)], ["Connectés au site ces 7 jours", rows.filter((r) => r.lastLoginAt && now - r.lastLoginAt < 7 * DAY).length]], (k) => k, rows.length)}</section>
-<section class="panel"><h2>Appareils</h2>
-${kv([["Appairés", devices.length], ["Actifs ces 7 jours", devices.filter((x) => x.lastSeen && now - x.lastSeen < 7 * DAY).length]])}
-<h3>Modèles</h3>${bars(models)}
-<h3>Versions de l'appli <span class="muted small">(appareils appairés + installations sans compte)</span></h3>${bars(versions, (k) => (k === "inconnue" ? "inconnue (pas encore relevée)" : `v${k}`) + verNote(k))}</section>
-<section class="panel"><h2>Installations sans compte</h2>
-<p class="muted small">Appareils qui n'ont pas de compte : relevé anonyme au démarrage (identifiant aléatoire, version, pays), si la télémétrie de l'appli est activée.</p>
-${kv([["Installations (total)", anon.length], ["Actives ces 7 jours", anonActive7], ["Nouvelles ces 7 jours", anonNew7], ["Sources envoyées depuis le web", anonWeb]])}</section>
-<section class="panel"><h2>Sources et services</h2>
-${kv([["Sources configurées", srcN], ["dont Xtream", srcX], ["dont M3U", srcM], ["Comptes avec au moins une source", withSrc], ["Sources par compte (qui en a)", withSrc ? (srcN / withSrc).toFixed(1) : "—"], ["Comptes reliés à Trakt", rows.filter((r) => r.trakt).length], ["Comptes OpenSubtitles reliés", rows.filter((r) => r.opensubtitles).length]])}</section>
-${announcementsPanel(announcements, csrfInput, now, annStats)}
-<section class="panel wide"><h2>Pays</h2>${countries.length ? bars(countries, (k) => countryLabel(k) + cntNote(k)) : `<p class="muted small">Aucun encore : relevé depuis le 9 octobre 2026, à l'inscription, à la connexion et à l'activité des appareils.</p>`}</section>
-</div>
-<div class="section-h mt16"><h3>Comptes <span class="count">${rows.length}</span></h3><a class="button" href="/admin/comptes.csv">Exporter en CSV</a></div>
-<p class="muted small mt16">Aucun mot de passe, aucune source IPTV ni jeton n'apparaît ici. Le pays vient de Cloudflare ; l'adresse IP n'est jamais gardée.</p>
-<div class="tablewrap mt16"><table class="atable"><thead><tr><th>Compte</th><th>Créé le</th><th>Dernière connexion</th><th>Dernière activité</th><th>Pays</th><th>Appareils</th><th>Sources</th><th>Trakt</th><th>OpenSubtitles</th></tr></thead>
-<tbody>${rows.map(row).join("")}</tbody></table></div>` };
-}
-
-export function eventsPage(n, items) {
-  const rows = items.map((it) => {
-    const lvl = String(it.level || "info").toLowerCase();
-    return `<tr class="lvl-${e(lvl)}"><td>${e(fmtTime(it.ts))}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td>${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${e(it.deviceId || "")}</td><td>${e(it.acct || "")}</td></tr>`;
-  }).join("");
-  return layout("Ultra TV — journaux", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Journaux — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 7 jours. Messages nettoyés côté serveur.</p>
-<div class="tablewrap"><table><thead><tr><th>Date</th><th>Niveau</th><th>Tag</th><th>Message</th><th>Appareil</th><th>Version</th><th>ID</th><th>Compte (empreinte)</th></tr></thead><tbody>${rows}</tbody></table></div>
-${rows ? "" : `<div class="empty mt16"><strong>Aucun événement</strong></div>`}</main>`, n);
-}
-
-export function crashesPage(n, items) {
-  const rows = items.map((it) => `<div class="panel"><div><strong>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</strong> · ${e(it.device || "")} · SDK ${e(it.androidSdk ?? "?")} · ${e(fmtTime(it.ts))} · ${e(it.deviceId || "")}${it.acct ? ` · compte ${e(it.acct)}` : ""}</div><pre>${e(it.stack || "")}</pre></div>`).join("");
-  return layout("Ultra TV — crashs", `<main id="main" class="layout"><header class="topbar"><div class="brand">${LOGO}<span>Crashs — ${items.length}</span></div></header><p class="sub mb16">Fenêtre glissante de 30 jours.</p>${rows || `<div class="empty"><strong>Aucun crash</strong></div>`}</main>`, n);
-}
 
 // Page de choix de l'APK Android (/apk), pensée pour l'appli Downloader : liens par processeur au lieu du seul
 // APK universel (≈ 220 Mo). Pas de détection automatique : navigator.platform est figé par Chromium sur Android.

@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Administration du Worker refondue : onglets *Vue d'ensemble*, *Comptes*, *Sans compte*, *Appareils*, *Journaux*, *Plantages* et *Alertes* (une URL chacun), chiffres clés, répartitions par application, version et pays, tableaux paginés (50 par page) avec tri, recherche et filtres (application, version, pays, période), dates relatives avec date exacte en info-bulle, pays en drapeau + code. Les anciennes adresses `/logs` et `/crashes` restent valables.
+- Installations sans compte : l'application utilisée (Android TV, Android mobile, Windows, macOS, Linux) et le modèle de l'appareil sont relevés et visibles dans l'administration, avec version, pays, premier et dernier relevé (migration D1 `0002_anon_app.sql`).
+- Bureau (Windows, macOS, Linux) : comptage anonyme d'installation (identifiant aléatoire local, version, système ; au plus une fois par 20 h, appareil non appairé), désactivable dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut ; en, fr, es, ar, pl).
+- Android : le relevé anonyme indique l'application (TV ou mobile) et le modèle de l'appareil.
+
 ### Corrigé
 - Bureau : limite de connexions simultanées du fournisseur (comptes à 1 connexion). Toute ouverture de flux du lecteur passe par un « emplacement de connexion » unique : l'ancien flux est entièrement libéré (hls.js / mpegts.js détruits, source du `<video>` détachée) avant d'ouvrir le suivant, avec un délai de grâce configurable (0 par défaut). Une erreur de limite (HTTP 403/429/458/509 ou message « max connections » / « too many connections ») stoppe la chaîne de repli de format, retente une seule fois après 1,5 s, puis affiche « Limite de connexions atteinte (x/y) : fermez l'autre lecteur ou appareil, puis réessayez » (compteurs lus via `player_api.php`) avec le bouton Réessayer, dans les 5 langues du bureau. L'ancien message générique reste pour les autres échecs. Android : déjà une seule session partagée (aperçu + plein écran), inchangé.
 - Android TV, OSD du Direct : la rangée « Chaînes récentes » n'affiche plus deux fois la même chaîne (ex. « TF1 1 » en double) ni la chaîne en cours sous une autre variante ; dédoublonnage par identifiant et par nom affiché, plus récente d'abord, 10 au plus.

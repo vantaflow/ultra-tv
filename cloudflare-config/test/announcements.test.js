@@ -64,21 +64,21 @@ describe("alertes : routes", () => {
   it("admin : programmer, diffuser, arrêter, supprimer", async () => {
     const admin = await adminAccount();
     const add = await call("/admin/announcements", { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf, title: "Maintenance", message: "Coupure à 2 h", level: "warning" } });
-    expect(add.headers.get("location")).toBe("/?m=ann_added#administration");
+    expect(add.headers.get("location")).toBe("/admin/alerts?m=ann_added");
     const api = await call("/api/announcements");
     expect(api.headers.get("cache-control")).toContain("max-age=60");
     const { items } = await api.json();
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({ title: "Maintenance", message: "Coupure à 2 h", level: "warning" });
-    const page = await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text();
+    const page = await (await call("/admin/alerts", { cookie: admin.cookie, ip: admin.ip })).text();
     expect(page).toContain('id="alertes"');
     expect(page).toContain("Coupure à 2 h");
     const end = await call(`/admin/announcements/${items[0].id}/end`, { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf } });
-    expect(end.headers.get("location")).toBe("/?m=ann_ended#administration");
+    expect(end.headers.get("location")).toBe("/admin/alerts?m=ann_ended");
     expect((await (await call("/api/announcements")).json()).items).toHaveLength(0);
     const del = await call(`/admin/announcements/${items[0].id}/delete`, { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf } });
-    expect(del.headers.get("location")).toBe("/?m=ann_deleted#administration");
-    expect(await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text()).not.toContain("Coupure à 2 h");
+    expect(del.headers.get("location")).toBe("/admin/alerts?m=ann_deleted");
+    expect(await (await call("/admin/alerts", { cookie: admin.cookie, ip: admin.ip })).text()).not.toContain("Coupure à 2 h");
   });
   it("compte ordinaire : 404 et rien d'enregistré ; sans jeton CSRF : refusé", async () => {
     const a = await newAccount();
@@ -103,7 +103,7 @@ describe("alertes : routes", () => {
     expect((await stat("vu", "appareil-un")).status).toBe(400);
     expect((await stat("shown", "court")).status).toBe(400);
     expect((await call("/api/announcements/0123456789abcdef/stat", { method: "POST", json: { kind: "shown", device: "appareil-un" } })).status).toBe(404);
-    const page = await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text();
+    const page = await (await call("/admin/alerts", { cookie: admin.cookie, ip: admin.ip })).text();
     expect(page).toContain("affichée sur 2 appareils · fermée sur 0 · bouton utilisé sur 1");
     expect(page).toContain("versions antérieures à 1.2.79");
     await call(`/admin/announcements/${id}/delete`, { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf } });
@@ -111,7 +111,7 @@ describe("alertes : routes", () => {
   it("le texte est échappé dans le tableau de bord", async () => {
     const admin = await adminAccount();
     await call("/admin/announcements", { method: "POST", ip: admin.ip, cookie: admin.cookie, form: { csrf: admin.csrf, message: "<script>alert(1)</script>" } });
-    const page = await (await call("/", { cookie: admin.cookie, ip: admin.ip })).text();
+    const page = await (await call("/admin/alerts", { cookie: admin.cookie, ip: admin.ip })).text();
     expect(page).not.toContain("<script>alert(1)</script>");
     expect(page).toContain("&lt;script&gt;");
   });

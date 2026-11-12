@@ -175,10 +175,31 @@ class AnonPingPlanTest {
     @Test fun `du apres 20 heures`() = assertTrue(AnonPingPlan.due(1_000_000L, 1_000_000L + 20 * H))
     @Test fun `du si l'horloge est revenue en arriere`() = assertTrue(AnonPingPlan.due(2_000_000L, 1_000_000L))
 
-    @Test fun `le corps ne contient que l'identifiant et la version`() {
-        val o = JSONObject(AnonPingPlan.body("abc-123", "1.2.83"))
-        assertEquals(setOf("install", "version"), o.keys().asSequence().toSet())
+    @Test fun `le corps ne contient que l'identifiant, la version, l'application et le modele`() {
+        val o = JSONObject(AnonPingPlan.body("abc-123", "1.2.83", "android-tv", "SKYWORTH 4K"))
+        assertEquals(setOf("install", "version", "platform", "model"), o.keys().asSequence().toSet())
         assertEquals("abc-123", o.getString("install")); assertEquals("1.2.83", o.getString("version"))
+        assertEquals("android-tv", o.getString("platform")); assertEquals("SKYWORTH 4K", o.getString("model"))
+    }
+
+    @Test fun `modele vide, champ omis`() {
+        val o = JSONObject(AnonPingPlan.body("abc-123", "1.2.83", "android-mobile", " "))
+        assertEquals(setOf("install", "version", "platform"), o.keys().asSequence().toSet())
+    }
+
+    @Test fun `application TV ou mobile`() {
+        assertEquals("android-tv", AnonPingPlan.platform(true))
+        assertEquals("android-mobile", AnonPingPlan.platform(false))
+    }
+
+    @Test fun `modele, fabricant et modele sans doublon, nettoye, 64 caracteres au plus`() {
+        assertEquals("SKYWORTH 4K", AnonPingPlan.modelLabel("SKYWORTH", "4K"))
+        assertEquals("Google Pixel 7", AnonPingPlan.modelLabel("Google", "Google Pixel 7"))
+        assertEquals("samsung SM-S911B", AnonPingPlan.modelLabel("samsung", "SM-S911B"))
+        assertEquals("Pixel", AnonPingPlan.modelLabel("", "Pixel"))
+        assertEquals("A B", AnonPingPlan.modelLabel("A", "\n B\t"))
+        assertEquals("", AnonPingPlan.modelLabel(null, null))
+        assertEquals(64, AnonPingPlan.modelLabel("X", "y".repeat(200)).length)
     }
 
     @Test fun `post renvoie vrai sur 200, faux sur erreur ou reseau absent`() = runBlocking {
@@ -186,10 +207,10 @@ class AnonPingPlanTest {
         val base = server.url("/").toString().trimEnd('/')
         server.enqueue(MockResponse().setBody("""{"ok":true}"""))
         server.enqueue(MockResponse().setResponseCode(429))
-        assertTrue(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83"))
+        assertTrue(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83", "android-tv", "SKYWORTH 4K"))
         assertEquals("/api/anon/ping", server.takeRequest().path)
-        assertFalse(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83"))
+        assertFalse(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83", "android-tv", "SKYWORTH 4K"))
         server.shutdown()
-        assertFalse(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83"))
+        assertFalse(AnonPingPlan.post(OkHttpClient(), base, "abc-123", "1.2.83", "android-tv", "SKYWORTH 4K"))
     }
 }

@@ -313,6 +313,8 @@
   "set.about.update": "Sprawdź aktualizacje",
   "set.about.autoUpdate": "Sprawdzaj aktualizacje automatycznie",
   "set.about.autoUpdateD": "Przy uruchomieniu, potem co 6 godzin. Wył.: z GitHubem łączy się tylko ręczne sprawdzanie.",
+  "set.about.telemetry": "Anonimowa telemetria",
+  "set.about.telemetryD": "Najwyżej raz dziennie i tylko dopóki to urządzenie nie jest sparowane: losowy identyfikator instalacji, wersja aplikacji i system (Windows, macOS lub Linux). Kraj ustala serwer; adres IP nie jest zachowywany. Wył.: nic nie jest wysyłane.",
   "set.about.updateNone": "Masz najnowszą wersję.",
   "set.about.updateAvail": "Dostępna aktualizacja {v}.",
   "set.about.updateFail": "Nie udało się sprawdzić aktualizacji. Spróbuj ponownie później lub pobierz najnowszą wersję ze strony internetowej.",

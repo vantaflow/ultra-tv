@@ -133,6 +133,16 @@ export async function fetchConfig(base: string, token: string, etag?: string | n
   };
 }
 
+export interface AnonPingBody { install: string; version: string; platform: "windows" | "macos" | "linux" }
+
+/** POST /api/anon/ping : relevé anonyme d'installation (sans jeton). Vrai si le Worker l'a accepté ; jamais d'exception. */
+export async function sendAnonPing(base: string, body: AnonPingBody): Promise<boolean> {
+  try {
+    const r = await http({ url: `${base}/api/anon/ping`, method: "POST", headers: HJSON, body: json(body) });
+    return r.status >= 200 && r.status < 300;
+  } catch { return false; }
+}
+
 export async function rotateToken(base: string, token: string): Promise<{ token: string; deviceId: string }> {
   const r = await http({ url: `${base}/api/device/rotate`, method: "POST", headers: auth(token), body: "" });
   if (r.status === 401) throw new TokenRejectedError();
