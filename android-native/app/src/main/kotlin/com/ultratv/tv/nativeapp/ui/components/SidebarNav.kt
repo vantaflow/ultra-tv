@@ -66,9 +66,10 @@ import com.ultratv.tv.nativeapp.ui.design.spx
 internal data class RailItem(
     val route: String,
     val icon: String,
-    val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String,
     /** Libellé pris dans [com.ultratv.tv.nativeapp.i18n.DesignStrings] (prioritaire sur [label] quand il est fourni). */
     val labelD: ((com.ultratv.tv.nativeapp.i18n.DesignStrings) -> String)? = null,
+    // Dernier paramètre : les items existants gardent leur construction RailItem(route, icon) { it.navX }.
+    val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String,
 )
 
 // Ordre et icônes de Sidebar.dc.html : Accueil, Direct, Guide, Films, Séries, Favoris, Enregistrements,
@@ -88,7 +89,7 @@ internal val railItems = listOf(
 )
 
 /** Entrée facultative « Sport » (Réglages › Affichage), juste après le Guide. */
-private val sportRailItem = RailItem("sport", com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy, { "" }, { it.sportNav })
+private val sportRailItem = RailItem("sport", com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy, labelD = { it.sportNav }) { "" }
 
 /** Rail avec (ou sans) la rubrique Sport. */
 internal fun railItemsFor(sport: Boolean): List<RailItem> =
