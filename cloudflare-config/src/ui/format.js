@@ -17,13 +17,12 @@ export const frDate = (ms) => { const d = new Date(ms); return `${d.getUTCDate()
 
 export const fmtTime = (ts) => (ts ? new Date(ts).toISOString().replace("T", " ").slice(0, 19) : "");
 
-/** Drapeau + nom du pays (code ISO à 2 lettres), ou « — ». */
+/** Nom du pays (code ISO à 2 lettres), ou « — ». Pas d'emoji de drapeau : Windows les affiche en lettres. */
 export function countryLabel(code) {
   if (!code || !/^[A-Z]{2}$/.test(code)) return "—";
-  const flag = String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
   let name = code;
   try { name = new Intl.DisplayNames(["fr"], { type: "region" }).of(code) || code; } catch { /* ICU absent */ }
-  return `${flag} ${name}`;
+  return name;
 }
 
 /** « 3 (2 Xtream · 1 M3U) » : nombre et types des sources, jamais leur adresse ni leurs identifiants. */

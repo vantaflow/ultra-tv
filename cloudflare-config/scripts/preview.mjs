@@ -67,7 +67,7 @@ const accounts = Array.from({ length: 30 }, (_, i) => ({
 const params = (qs, sorts, sort) => parseListParams(new URLSearchParams(qs), { sorts, sort, filters: ["country", "version", "platform", "level"] });
 const facets = { countries: country, versions: ["1.2.90", "1.2.88", "1.2.80"] };
 const anon = { total: 412, a24: 96, a7: 240, a30: 351, new1: 7, new7: 41, web: 18,
-  byPlatform: [["android_tv", 210], ["android_mobile", 120], ["windows", 60], ["macos", 15], ["linux", 7]],
+  byPlatform: [["android-tv", 210], ["android_mobile", 120], ["windows", 60], ["macos", 15], ["linux", 7]],
   byVersion: [["1.2.90", 260], ["1.2.88", 100], ["1.2.80", 52]], byCountry: [["MA", 180], ["FR", 120], ["DZ", 60], ["TN", 30]] };
 await save("admin", "Admin : vue d'ensemble", overviewPage(N, { accounts, anon, crashes24: 3, asOf: now - 90_000, now, me: "khalil", csrfInput }));
 {
@@ -75,9 +75,9 @@ await save("admin", "Admin : vue d'ensemble", overviewPage(N, { accounts, anon, 
   await save("admin-comptes", "Admin : comptes", accountsPage(N, { rows: accounts.slice(0, 15), pg: paginate(30, 1, 15), params: p, facets, asOf: now - 60_000, now, me: "khalil", csrfInput }));
 }
 {
-  const rows = Array.from({ length: 10 }, (_, i) => ({ platform: ["android_tv", "windows", "macos"][i % 3], model: i % 3 ? "" : "Shield TV", version: "1.2.90", country: country[i % 6], first: now - i * D, last: now - i * H, web: i % 2 }));
+  const rows = Array.from({ length: 10 }, (_, i) => ({ platform: ["android-tv", "windows", "macos"][i % 3], model: i % 3 ? "" : "Shield TV", version: "1.2.90", country: country[i % 6], first: now - i * D, last: now - i * H, web: i % 2 }));
   const p = params("", { platform: 1, model: 1, version: 1, country: 1, first: 1, last: 1, web: 1 }, "last");
-  await save("admin-anon", "Admin : sans compte", anonPage(N, { rows, pg: paginate(10, 1), params: p, facets, platforms: ["android_tv", "windows", "macos"], now, me: "khalil", csrfInput }));
+  await save("admin-anon", "Admin : sans compte", anonPage(N, { rows, pg: paginate(10, 1), params: p, facets, platforms: ["android-tv", "windows", "macos"], now, me: "khalil", csrfInput }));
 }
 {
   const rows = Array.from({ length: 10 }, (_, i) => ({ name: "Salon", login: `utilisateur${i}`, model: "Fire TV", edition: i % 3 ? "standard" : "pro", version: "1.2.90", country: country[i % 6], lastSeen: now - i * H, createdAt: now - i * D }));

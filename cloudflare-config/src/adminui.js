@@ -27,10 +27,12 @@ export function dateCell(t, now = Date.now()) {
   return t ? `<time datetime="${e(new Date(t).toISOString())}" title="${e(absTime(t))}">${e(ago(t, now))}</time>` : "—";
 }
 
-/** Drapeau + code pays (« 🇲🇦 MA »), ou « — ». */
+/** Nom + code pays (« Maroc · MA »), ou « — ». Pas d'emoji de drapeau : Windows les affiche en lettres. */
 export function flagCode(code) {
   if (!code || !/^[A-Z]{2}$/.test(code)) return "—";
-  return `${String.fromCodePoint(...[...code].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))} ${code}`;
+  let name = code;
+  try { name = new Intl.DisplayNames(["fr"], { type: "region" }).of(code) || code; } catch { /* ICU absent */ }
+  return name === code ? code : `${name} · ${code}`;
 }
 
 /** Libellé d'un pays pour une barre : drapeau + code, ou « autres ». */

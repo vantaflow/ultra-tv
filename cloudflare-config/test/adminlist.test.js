@@ -133,7 +133,7 @@ describe("liens et affichage", () => {
     expect(html).toContain("il y a 3 h");
     expect(html).toContain('title="2026-11-01 08:30 UTC"');
     expect(dateCell(0)).toBe("—");
-    expect(flagCode("MA")).toBe("🇲🇦 MA");
+    expect(flagCode("MA")).toBe("Maroc · MA");
     expect(flagCode("x")).toBe("—");
   });
 });
