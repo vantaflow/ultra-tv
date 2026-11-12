@@ -128,6 +128,7 @@
   "DesignStrings.getAnimations()": "Animations",
   "DesignStrings.getAnnouncementOk()": "OK",
   "DesignStrings.getAnnouncementCloseHint()": "Back: close",
+  "DesignStrings.getCloudRevoked()": "This device was removed from your account: sources received from the cloud have been deleted from it.",
   "DesignStrings.getAnnouncementTitle()": "Notice",
   "DesignStrings.getAnnouncementUpdate()": "Update",
   "DesignStrings.getAnyRating()": "Any rating",

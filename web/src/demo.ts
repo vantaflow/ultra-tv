@@ -6,7 +6,7 @@ import type { CategoryRow, ChannelRow, MovieRow, ProgramRow, SeriesRow, Source }
 import { usePrefs } from "@/state/prefs";
 
 const CATS = ["Actualités", "Sport", "Cinéma", "Jeunesse", "Documentaires", "Musique"];
-const CHANNELS = ["France Info", "Chaîne Info", "Info 24", "Actu Plus", "Monde TV", "Journal TV", "Eco News", "Ciné Classic", "Sport Max", "Kids Zone", "Nature HD", "Radio Vision"];
+const CHANNELS = ["Le Fil Info", "Chaîne Info", "Info 24", "Actu Plus", "Monde TV", "Journal TV", "Eco News", "Ciné Classic", "Sport Max", "Kids Zone", "Nature HD", "Radio Vision"];
 const SHOWS = ["Journal de 20h", "Le grand débat", "Édition spéciale", "Reportage", "Magazine", "Les titres", "Bourse", "L'idiot", "Ligue 1 · Direct", "Dessins animés", "Planète bleue", "Concert"];
 const MOVIES = ["Orbite basse", "Les Cerfs-volants", "Marée haute", "Le Dernier Train", "Cuisine de nuit", "Le Phare", "Sable rouge", "Nuit blanche", "Le Verger", "Terre brûlée", "Au bord du monde", "Lueur"];
 const SERIES = ["Les Gardiens du phare", "Brume", "Capitale", "Les Héritiers", "Station 9", "Vagues"];

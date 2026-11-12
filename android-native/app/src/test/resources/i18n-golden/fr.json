@@ -128,6 +128,7 @@
   "DesignStrings.getAnimations()": "Animations",
   "DesignStrings.getAnnouncementOk()": "J\u2019ai compris",
   "DesignStrings.getAnnouncementCloseHint()": "Retour : fermer",
+  "DesignStrings.getCloudRevoked()": "Cet appareil a été retiré de votre compte : les sources reçues du cloud y ont été supprimées.",
   "DesignStrings.getAnnouncementTitle()": "Information",
   "DesignStrings.getAnnouncementUpdate()": "Mettre à jour",
   "DesignStrings.getAnyRating()": "Toutes notes",

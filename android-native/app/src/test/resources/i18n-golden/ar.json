@@ -128,6 +128,7 @@
   "DesignStrings.getAnimations()": "الحركات",
   "DesignStrings.getAnnouncementOk()": "حسنًا",
   "DesignStrings.getAnnouncementCloseHint()": "رجوع: إغلاق",
+  "DesignStrings.getCloudRevoked()": "تمت إزالة هذا الجهاز من حسابك: حُذفت منه المصادر المستلمة من السحابة.",
   "DesignStrings.getAnnouncementTitle()": "إشعار",
   "DesignStrings.getAnnouncementUpdate()": "تحديث",
   "DesignStrings.getAnyRating()": "كل التقييمات",

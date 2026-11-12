@@ -220,6 +220,7 @@
     <string name="ds_announcement_title">إشعار</string>
     <string name="ds_announcement_ok">حسنًا</string>
     <string name="ds_announcement_close_hint">رجوع: إغلاق</string>
+    <string name="ds_cloud_revoked">تمت إزالة هذا الجهاز من حسابك: حُذفت منه المصادر المستلمة من السحابة.</string>
     <string name="ds_announcement_update">تحديث</string>
     <string name="ds_rub_messages">الرسائل</string>
     <string name="ds_no_messages">لا توجد رسائل بعد. ستظهر هنا إشعارات الخدمة.</string>

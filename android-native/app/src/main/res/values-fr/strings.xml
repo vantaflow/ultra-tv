@@ -217,6 +217,7 @@
     <string name="ds_announcement_title">Information</string>
     <string name="ds_announcement_ok">J’ai compris</string>
     <string name="ds_announcement_close_hint">Retour : fermer</string>
+    <string name="ds_cloud_revoked">Cet appareil a été retiré de votre compte : les sources reçues du cloud y ont été supprimées.</string>
     <string name="ds_announcement_update">Mettre à jour</string>
     <string name="ds_rub_messages">Messages</string>
     <string name="ds_no_messages">Aucun message pour l’instant. Les annonces du service apparaîtront ici.</string>

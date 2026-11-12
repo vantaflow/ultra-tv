@@ -29,6 +29,8 @@ data class CloudSyncState(
     val selfId: String? = null,
     val pending: List<PendingRemoval> = emptyList(),
     val failed: Boolean = false,
+    /** Appareil révoqué depuis le tableau de bord : appairage oublié, sources reçues du cloud retirées. */
+    val revoked: Boolean = false,
     /** Résumé du dernier passage. */
     val added: Int = 0, val updated: Int = 0, val removed: Int = 0,
 ) {
@@ -107,7 +109,10 @@ class CloudSyncManager @Inject constructor(
             )
             Result.Done
         } catch (e: TokenRejectedException) {
-            _state.value = _state.value.copy(syncing = false, failed = true)
+            // Le serveur ne connaît plus ce jeton : l'appareil a été révoqué (perdu, prêté, vendu). Les sources reçues du
+            // compte cloud (adresses et identifiants de l'abonnement) ne doivent pas rester dessus ; les sources ajoutées
+            // à la main sur l'appareil (jamais partagées) sont gardées.
+            onRevoked()
             Result.NotPaired
         } catch (e: RateLimitedException) {
             _state.value = _state.value.copy(syncing = false, failed = true); Result.Failed
@@ -204,7 +209,7 @@ class CloudSyncManager @Inject constructor(
         }
         // Changements venus des autres appareils : toutes les 10 min, seulement quand l'appli est affichée (box en veille :
         // plus de requête réseau toutes les 10 min ; le travail périodique de 6 h et le retour sur l'appli suffisent).
-        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) syncSharedState() } }
+        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) { syncSharedState(); runCatching { syncOnForeground() } } } }
     }
 
     private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
@@ -429,6 +434,24 @@ class CloudSyncManager @Inject constructor(
             source.withToken(base) { t -> client.renameSelf(base, t, name.trim()) }
             links.resetVersion(); true
         } catch (t: Throwable) { false }
+    }
+
+    private suspend fun onRevoked() {
+        val linked = repo.observeProviders().first().filter { links.cloudIdOf(it.id) != null }.map { it.id }
+        linked.forEach { runCatching { removeLocal(it) } }
+        tokens.clear()
+        links.clearAll()
+        _state.value = CloudSyncState(revoked = true, removed = linked.size)
+        com.ultratv.tv.nativeapp.RemoteLog.warn("cloud", "device revoked: ${linked.size} cloud source(s) removed")
+    }
+
+    /** Vérification au retour au premier plan : au plus une toutes les 2 min (révocation vue sans attendre 6 h). */
+    @Volatile private var lastForegroundCheck = 0L
+    suspend fun syncOnForeground() {
+        val now = System.currentTimeMillis()
+        if (!tokens.isPaired || now - lastForegroundCheck < 2 * 60_000L) return
+        lastForegroundCheck = now
+        sync()
     }
 
     /** À appeler après un dé-appairage ou un changement de Worker : les liens ne valent plus rien. */

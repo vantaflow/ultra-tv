@@ -209,6 +209,7 @@
     <string name="ds_announcement_title">Aviso</string>
     <string name="ds_announcement_ok">Entendido</string>
     <string name="ds_announcement_close_hint">Atrás: cerrar</string>
+    <string name="ds_cloud_revoked">Este dispositivo se ha retirado de tu cuenta: se han eliminado las fuentes recibidas de la nube.</string>
     <string name="ds_announcement_update">Actualizar</string>
     <string name="ds_rub_messages">Mensajes</string>
     <string name="ds_no_messages">Aún no hay mensajes. Los avisos del servicio aparecerán aquí.</string>

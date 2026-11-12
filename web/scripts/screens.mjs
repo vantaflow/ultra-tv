@@ -2,6 +2,7 @@
 // la sert en local et prend des captures 1920×1080 avec Chrome headless (protocole DevTools, sans dépendance).
 // Usage : node scripts/screens.mjs            (sombre + clair, toutes les pages)
 //         node scripts/screens.mjs home guide  (seulement certaines pages)
+// Langue : SCREENS_LANG=en (défaut fr) ; hors français, sortie dans web/.screens/<langue>/.
 // Sortie : web/.screens/<thème>-<page>.png. Chrome : variable CHROME_PATH, sinon chemins usuels.
 import { spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
@@ -11,8 +12,10 @@ import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
-const out = join(root, ".screens");
-const dist = join(out, "dist");
+const LANG = process.env.SCREENS_LANG || "fr";
+const base = join(root, ".screens");
+const out = LANG === "fr" ? base : join(base, LANG);
+const dist = join(base, "dist");
 const PORT = 4179;
 const DEBUG = 9339;
 
@@ -47,6 +50,7 @@ const pages = Object.entries(PAGES).filter(([k]) => !wanted.length || wanted.inc
 // 1. Build avec données fictives.
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
+mkdirSync(base, { recursive: true });
 const b = spawnSync("npx", ["vite", "build", "--outDir", dist, "--emptyOutDir"], { cwd: root, stdio: "inherit", shell: true, env: { ...process.env, VITE_DEMO: "1" } });
 if (b.status !== 0) process.exit(b.status ?? 1);
 
@@ -61,7 +65,7 @@ const server = createServer((req, res) => {
 
 // 3. Chrome headless piloté par DevTools.
 const profile = join(tmpdir(), `utv-screens-${Date.now()}`);
-const proc = spawn(chrome, [`--remote-debugging-port=${DEBUG}`, "--headless=new", `--user-data-dir=${profile}`, "--window-size=1920,1080", "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", "about:blank"], { stdio: "ignore" });
+const proc = spawn(chrome, [`--remote-debugging-port=${DEBUG}`, "--headless=new", `--user-data-dir=${profile}`, "--window-size=1920,1080", "--hide-scrollbars", "--force-device-scale-factor=1", "--no-first-run", `--lang=${LANG}`, "about:blank"], { stdio: "ignore" });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function pageWs() {
   for (let i = 0; i < 50; i++) {
@@ -83,6 +87,9 @@ const send = (method, params = {}) => new Promise((resolve, reject) => { const i
 
 try {
   await send("Page.enable");
+  await send("Emulation.setLocaleOverride", { locale: LANG }).catch(() => {});
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: `Object.defineProperty(navigator, "language", { get: () => "${LANG}" }); Object.defineProperty(navigator, "languages", { get: () => ["${LANG}"] });` });
+  await send("Network.setUserAgentOverride", { userAgent: "Mozilla/5.0", acceptLanguage: LANG, platform: "Win32" }).catch(() => {});
   await send("Emulation.setDeviceMetricsOverride", { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
   let first = true;
   for (const theme of ["dark", "light"]) {

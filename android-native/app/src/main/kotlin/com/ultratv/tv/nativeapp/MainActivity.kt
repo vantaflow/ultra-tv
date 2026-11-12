@@ -131,6 +131,8 @@ class MainActivity : ComponentActivity() {
         // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire
         // des jours sur une box et le guide ne couvre que les 24 h suivant sa synchro.
         if (::providerRepo.isInitialized) lifecycleScope.launch(Dispatchers.IO) { providerRepo.get().refreshEpgIfStale() }
+        // Appareil révoqué depuis le tableau de bord : vu au retour sur l'appli (sources du cloud retirées aussitôt).
+        if (::cloudSync.isInitialized) lifecycleScope.launch(Dispatchers.IO) { runCatching { cloudSync.get().syncOnForeground() } }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -558,6 +560,11 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
         }
         com.ultratv.tv.nativeapp.ui.common.OverlayLayer(overlays)
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
+        run {
+            val cloudState by cloudSync.get().state.collectAsState()
+            val Dr = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+            LaunchedEffect(cloudState.revoked) { if (cloudState.revoked) com.ultratv.tv.nativeapp.ui.common.Toaster.err(Dr.cloudRevoked) }
+        }
         com.ultratv.tv.nativeapp.ui.common.ReminderBannerHost()
         // Alertes de l’administrateur (tableau de bord) : pendant la lecture plein écran, seules les urgentes (en bandeau).
         com.ultratv.tv.nativeapp.ui.common.AnnouncementHost(suppressed = onPlayer)
