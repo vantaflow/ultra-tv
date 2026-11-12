@@ -5,17 +5,20 @@
 export const PRIMARY_HOST = "tv.weedy.dpdns.org";
 export const LEGACY_HOST = "ultratv-config.khalilbenaz.workers.dev";
 
-/** Adresse de redirection pour [req], ou null (requête servie telle quelle). Pur, testé. */
-export function legacyRedirectTarget(method, urlString, accept) {
+/**
+ * Traitement d'une requête arrivée sur l'ancienne adresse. Pur, testé.
+ *  - { kind: "serve" } : API des applis installées (/api/*), servie normalement ;
+ *  - { kind: "redirect", to } : retour Trakt (adresse déclarée chez Trakt) et pages ouvertes par le QR code des
+ *    applis installées (/pair, /envoyer), poursuivis sur la nouvelle adresse ;
+ *  - { kind: "gone" } : tout le reste (site, tableau de bord, administration, téléchargements) n'est plus servi ici.
+ */
+export function legacyDecision(method, urlString) {
   const url = new URL(urlString);
-  if (url.hostname !== LEGACY_HOST) return null;
-  if (method !== "GET" && method !== "HEAD") return null;
+  if (url.hostname !== LEGACY_HOST) return { kind: "serve" };
   const p = url.pathname;
-  // API des applis, et retour OAuth Trakt (adresse de retour déclarée chez Trakt) : jamais redirigés.
-  if (p.startsWith("/api/") || p === "/trakt/callback") return null;
-  const page = /\btext\/html\b/i.test(accept || "");
-  // Liens de téléchargement et page de choix de l'APK (appli Downloader, liens publiés) : redirigés eux aussi.
-  const download = p === "/apk" || p === "/download" || p.startsWith("/download/");
-  if (!page && !download) return null;
-  return `https://${PRIMARY_HOST}${p}${url.search}`;
+  if (p.startsWith("/api/")) return { kind: "serve" };
+  if ((method === "GET" || method === "HEAD") && (p === "/trakt/callback" || p === "/pair" || p === "/envoyer")) {
+    return { kind: "redirect", to: `https://${PRIMARY_HOST}${p}${url.search}` };
+  }
+  return { kind: "gone" };
 }

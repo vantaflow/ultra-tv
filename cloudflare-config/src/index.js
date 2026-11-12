@@ -47,7 +47,7 @@ import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnounc
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage } from "./pages.js";
 import { pwaResponse } from "./pwa.js";
-import { legacyRedirectTarget } from "./legacyhost.js";
+import { legacyDecision, PRIMARY_HOST, LEGACY_HOST } from "./legacyhost.js";
 
 export { Guard };
 
@@ -140,7 +140,10 @@ async function route(req, env, ctx) {
   const m = req.method;
 
   // Ancienne adresse : les pages ouvertes dans un navigateur partent vers la nouvelle (l'API reste servie ici).
-  { const to = legacyRedirectTarget(m, req.url, req.headers.get("accept")); if (to) return Response.redirect(to, 301); }
+  { const d = legacyDecision(m, req.url);
+    if (d.kind === "redirect") return Response.redirect(d.to, 302);
+    if (d.kind === "gone") return new Response(`Ultra TV a changé d'adresse : https://${PRIMARY_HOST}
+`, { status: 410, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } }); }
 
   // Aucune origine tierce n'a besoin d'appeler ce Worker depuis un navigateur : pas de CORS.
   if (m === "OPTIONS") return new Response(null, { status: 204 });
@@ -810,7 +813,13 @@ function adminCsv(rows) {
 // Connexion depuis l'espace client : OAuth 2 + PKCE (client public, sans secret). Jetons chiffrés dans le compte,
 // renouvelés par le Worker ; les appareils n'envoient que « ce que je lis » (POST /api/device/trakt/scrobble).
 
-const traktRedirect = (url) => `${url.origin}/trakt/callback`;
+// Adresse de retour déclarée chez Trakt : l'ancienne adresse workers.dev (l'application Trakt n'autorise qu'elle).
+// Sur le domaine public comme sur l'ancien, Trakt revient donc sur l'ancienne adresse, qui renvoie aussitôt vers le
+// domaine public (voir la route /trakt/callback) où vit le cookie de liaison au navigateur. Ailleurs (tests, dev) :
+// l'origine de la requête.
+const traktRedirect = (url) => (url.hostname === PRIMARY_HOST || url.hostname === LEGACY_HOST)
+  ? `https://${LEGACY_HOST}/trakt/callback`
+  : `${url.origin}/trakt/callback`;
 const traktStateKey = (state) => `traktst:${state}`;
 
 async function traktStart(env, acct, url) {

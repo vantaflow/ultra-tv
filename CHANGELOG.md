@@ -5,6 +5,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Modifié
+- Worker : l'ancienne adresse workers.dev ne sert plus le site (réponse 410 avec la nouvelle adresse) ; seules l'API des applis installées, les pages ouvertes par leur QR code (/pair, /envoyer, redirigées) et le retour Trakt restent servis. Trakt revient toujours par l'adresse déclarée chez Trakt puis poursuit sur tv.weedy.dpdns.org : aucune modification de l'application Trakt nécessaire.
+
+### Modifié
 - Bureau : nouvelle interface (design v2). Thèmes sombre et clair redessinés (Réglages › Affichage › Thème : Automatique, Sombre ou Clair), survol à la souris et focus clavier au même rendu, animation d'ouverture de 700 ms qui ne retarde jamais le chargement.
   - Surcouche du Direct : identité de la chaîne en haut (grand numéro, logo, nom, pastilles En direct, qualité, HDR si annoncé, Favori) et horloge ; en bas, cinq chaînes récentes, le programme en cours avec le temps restant, une carte « Ensuite », le ruban de la soirée (précédent, en cours, suivants) et une rangée de boutons ronds dont seul celui qui a le focus ou le survol affiche son libellé. Mêmes touches et mêmes étages qu'avant.
   - Liste des chaînes du lecteur : feuille à droite avec onglets Chaînes / Favoris, catégories et lignes (numéro, logo, nom, programme en cours, progression, « En cours »).
