@@ -6,6 +6,7 @@
 import { escapeHtml as e, html } from "../http.js";
 import { CSS } from "./css.js";
 import { FAVICON, LOGO, ico, jsonForScript } from "./components.js";
+import { PWA_HEAD, PWA_REGISTER } from "../pwa.js";
 
 export const REPO_URL = "https://github.com/vantaflow/ultra-tv";
 export const PRIVACY_URL = `${REPO_URL}#confidentialit%C3%A9`;
@@ -43,7 +44,7 @@ window.addEventListener('scroll',onScroll,{passive:true});window.addEventListene
 /** Document complet (sans gabarit) : sert de base à `shell`. `loc` : langue, sens d'écriture et libellés du thème. */
 export function layout(title, body, n, extra = "", camera = false, loc = {}) {
   const { lang = "fr", dir = "ltr", themeLabels, themeChange, bodyClass = "" } = loc;
-  return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/><title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body${bodyClass ? ` class="${e(bodyClass)}"` : ""}>${body}<script nonce="${n}">${themeScript(themeLabels, themeChange)}${MENU_JS}</script>${extra}</body></html>`, n, 200, { camera });
+  return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/>${PWA_HEAD}<title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body${bodyClass ? ` class="${e(bodyClass)}"` : ""}>${body}<script nonce="${n}">${themeScript(themeLabels, themeChange)}${MENU_JS}${PWA_REGISTER}</script>${extra}</body></html>`, n, 200, { camera });
 }
 
 // Navigation de l'espace utilisateur : ancres du tableau de bord.

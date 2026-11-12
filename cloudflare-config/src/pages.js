@@ -4,7 +4,7 @@
 export { ico, LOGO } from "./ui/components.js";
 export { layout, shell } from "./ui/layout.js";
 export { ago, fmtTime, countryLabel, sourcesLabel } from "./ui/format.js";
-export { loginPage, signupPage, envoyerPage, apkPage } from "./pages/public.js";
+export { loginPage, signupPage, envoyerPage, apkPage, offlinePage } from "./pages/public.js";
 export { pairPage } from "./pages/pair.js";
 export { dashboardPage } from "./pages/dashboard.js";
 export { announcementsPanel, ANN_SCRIPT } from "./pages/alerts.js";

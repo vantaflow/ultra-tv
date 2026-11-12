@@ -152,3 +152,12 @@ ${opt("/download/android-universal", "Universal", "≈ 220 MB", "Last resort: wo
 <p class="alt"><a href="https://github.com/vantaflow/ultra-tv/releases/latest">All files on GitHub</a></p>`,
     loc: { lang: "en", skip: "Skip to content", themeBtn: "Theme", themeLabels: { auto: "Theme: auto", light: "Theme: light", dark: "Theme: dark" }, themeChange: "change", foot: { github: "Source code (GitHub)", privacy: "Privacy" } } });
 }
+
+/** Page hors ligne (PWA) : seule page mise en cache par le service worker, sans aucune donnée du compte. */
+export function offlinePage(n) {
+  return shell(n, { title: "Ultra TV — hors ligne", ctx: "public", width: "narrow", body: `
+<div class="panel"><h1>Pas de connexion</h1><p class="sub">Ultra TV n'arrive pas à joindre le serveur. Vérifiez le Wi-Fi ou les données mobiles, puis réessayez.</p>
+<div class="row"><a class="button block" href="/">Réessayer</a></div>
+<div class="note">${ico("info")}<span>Vos sources et vos réglages ne sont jamais gardés hors ligne sur ce téléphone : ils restent sur votre compte.</span></div>
+</div>` });
+}

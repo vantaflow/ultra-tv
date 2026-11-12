@@ -19,6 +19,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [1.2.92] — 2026-11-12 (Android) · Bureau 1.2.45 · Worker
 
 ### Ajouté
+- Site : application web installable (PWA) sur téléphone et ordinateur — manifeste, icônes Android et iPhone, raccourcis « Envoyer une source » et « Associer un appareil », page hors ligne. Le service worker ne garde jamais une page du compte en cache.
+
+### Ajouté
 - Administration du Worker refondue : onglets *Vue d'ensemble*, *Comptes*, *Sans compte*, *Appareils*, *Journaux*, *Plantages* et *Alertes* (une URL chacun), chiffres clés, répartitions par application, version et pays, tableaux paginés (50 par page) avec tri, recherche et filtres (application, version, pays, période), dates relatives avec date exacte en info-bulle, pays en drapeau + code. Les anciennes adresses `/logs` et `/crashes` restent valables.
 - Installations sans compte : l'application utilisée (Android TV, Android mobile, Windows, macOS, Linux) et le modèle de l'appareil sont relevés et visibles dans l'administration, avec version, pays, premier et dernier relevé (migration D1 `0002_anon_app.sql`).
 - Bureau (Windows, macOS, Linux) : comptage anonyme d'installation (identifiant aléatoire local, version, système ; au plus une fois par 20 h, appareil non appairé), désactivable dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut ; en, fr, es, ar, pl).
