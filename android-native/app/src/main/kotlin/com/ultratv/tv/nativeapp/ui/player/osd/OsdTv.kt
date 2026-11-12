@@ -35,7 +35,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -103,6 +105,9 @@ internal fun TvOsd(
                 if (state.programme != null || state.next != null) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(40.design)) {
                     Box(Modifier.weight(1f)) { state.programme?.let { TvProgramme(state, it) } }
                     state.next?.let { NextCard(state, it, onNextAction, onStage) }
+                }
+                state.hint?.let {
+                    Text(it, color = P.text3, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 if (state.ribbon.isNotEmpty()) TvRibbon(state.ribbon)
                 TvDock(state, focus, onAction, onStage)
@@ -316,25 +321,26 @@ private fun RibbonCell(s: OsdRibbonSlot, modifier: Modifier) {
 
 @Composable
 private fun TvDock(state: LiveOsdState, focus: LiveOsdFocus, onAction: (OsdActionId) -> Unit, onStage: (OsdStage) -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        LazyRow(
-            Modifier.weight(1f).onFocusChanged { if (it.hasFocus) onStage(OsdStage.CONTROLS) },
-            horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically,
-        ) {
-            items(state.actions.size, key = { state.actions[it].id.name }) { i ->
-                val a = state.actions[i]
-                val mod = if (i == 0) Modifier.focusRequester(focus.bar) else Modifier
-                if (a.separatorBefore) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.padding(end = 12.design).width(2.design).height(32.design).background(P.line))
-                    DockButton(a, mod) { onAction(a.id) }
-                } else DockButton(a, mod) { onAction(a.id) }
-            }
-        }
-        state.hint?.let {
-            Text(
-                it, color = P.text3, fontFamily = Manrope, fontSize = 18.spx, maxLines = 2, textAlign = TextAlign.End,
-                modifier = Modifier.padding(start = 24.design).widthIn(max = 560.design),
-            )
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Lu dans un dérivé : seule la présence / l'absence du fondu recompose, pas chaque défilement.
+    val more by androidx.compose.runtime.remember { androidx.compose.runtime.derivedStateOf { listState.canScrollForward } }
+    val fade = com.ultratv.tv.nativeapp.ui.design.startToEndBrush(0f to Color.Black, 0.93f to Color.Black, 1f to Color.Transparent)
+    // Pleine largeur ; défile quand il y a plus de boutons que de place (le bouton focalisé est ramené à l'écran par le LazyRow).
+    LazyRow(
+        Modifier.fillMaxWidth().onFocusChanged { if (it.hasFocus) onStage(OsdStage.CONTROLS) }
+            // Fondu léger sur le bord de fin, seulement s'il reste des boutons hors écran.
+            .then(if (more) Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                .drawWithContent { drawContent(); drawRect(fade, blendMode = androidx.compose.ui.graphics.BlendMode.DstIn) } else Modifier),
+        state = listState,
+        horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items(state.actions.size, key = { state.actions[it].id.name }) { i ->
+            val a = state.actions[i]
+            val mod = if (i == 0) Modifier.focusRequester(focus.bar) else Modifier
+            if (a.separatorBefore) Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.padding(end = 12.design).width(2.design).height(32.design).background(P.line))
+                DockButton(a, mod) { onAction(a.id) }
+            } else DockButton(a, mod) { onAction(a.id) }
         }
     }
 }
