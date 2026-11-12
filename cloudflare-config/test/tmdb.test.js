@@ -26,6 +26,7 @@ describe("tmdbTarget : liste blanche", () => {
 
   it.each([
     "account", "authentication/token/new", "movie/popular", "movie/abc", "movie/603/reviews", "movie/603/recommendations/", "movie/abc/similar", "person/2037/similar", "movie/603/similar/x", "movie/603/../account",
+    "search/multi", "person/2037/images", "person/abc/combined_credits", "movie/0", "movie/12345678901", "../3/account", "movie/603/",
   ])("chemin_%s_refuse", (p) => expect(tmdbTarget(p, sp(""))).toBeNull());
 
   it("recherche_sansQuery_ouVide_refusee", () => {
