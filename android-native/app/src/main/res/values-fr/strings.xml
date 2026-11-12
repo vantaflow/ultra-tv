@@ -364,7 +364,7 @@
     <string name="ds_open_on">Ouvrir sur</string>
     <string name="ds_time_zone">Fuseau horaire</string>
     <string name="ds_zap_vertical">Zapper avec Haut / Bas</string>
-    <string name="ds_zap_vertical_hint">En Direct plein écran : Haut / Bas changent de chaîne, Gauche / Droite affichent les infos. Désactivé : l\'inverse.</string>
+    <string name="ds_zap_vertical_hint">Haut / Bas changent de chaîne, Gauche / Droite affichent les infos.</string>
     <string name="ds_time_format">Format de l’heure</string>
     <string name="ds_time_format_12">12 heures</string>
     <string name="ds_time_format_24">24 heures</string>

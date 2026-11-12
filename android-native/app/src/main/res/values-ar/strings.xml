@@ -379,7 +379,7 @@
     <string name="ds_open_on">فتح على</string>
     <string name="ds_time_zone">المنطقة الزمنية</string>
     <string name="ds_zap_vertical">تغيير القناة بالأعلى / الأسفل</string>
-    <string name="ds_zap_vertical_hint">في البث المباشر بملء الشاشة: الأعلى / الأسفل يغيّران القناة، واليسار / اليمين يعرضان المعلومات. عند التعطيل: العكس.</string>
+    <string name="ds_zap_vertical_hint">الأعلى / الأسفل يغيّران القناة، واليسار / اليمين يعرضان المعلومات.</string>
     <string name="ds_time_format">تنسيق الوقت</string>
     <string name="ds_time_format_12">12 ساعة</string>
     <string name="ds_time_format_24">24 ساعة</string>

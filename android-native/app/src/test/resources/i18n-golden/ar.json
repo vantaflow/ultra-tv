@@ -455,7 +455,7 @@
   "DesignStrings.getTierMid()": "متوسط",
   "DesignStrings.getTimeFormat()": "تنسيق الوقت",
   "DesignStrings.getZapVertical()": "تغيير القناة بالأعلى / الأسفل",
-  "DesignStrings.getZapVerticalHint()": "في البث المباشر بملء الشاشة: الأعلى / الأسفل يغيّران القناة، واليسار / اليمين يعرضان المعلومات. عند التعطيل: العكس.",
+  "DesignStrings.getZapVerticalHint()": "الأعلى / الأسفل يغيّران القناة، واليسار / اليمين يعرضان المعلومات.",
   "DesignStrings.getTimeFormat12()": "12 ساعة",
   "DesignStrings.getTimeFormat24()": "24 ساعة",
   "DesignStrings.getTimeZone()": "المنطقة الزمنية",

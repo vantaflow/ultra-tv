@@ -361,7 +361,7 @@
     <string name="ds_open_on">Open on</string>
     <string name="ds_time_zone">Time zone</string>
     <string name="ds_zap_vertical">Change channel with Up / Down</string>
-    <string name="ds_zap_vertical_hint">In full-screen live TV: Up / Down change channel, Left / Right show the info. Off: the reverse.</string>
+    <string name="ds_zap_vertical_hint">Up / Down change channel, Left / Right show the info.</string>
     <string name="ds_time_format">Time format</string>
     <string name="ds_time_format_12">12-hour</string>
     <string name="ds_time_format_24">24-hour</string>

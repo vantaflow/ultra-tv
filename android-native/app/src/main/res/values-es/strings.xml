@@ -356,7 +356,7 @@
     <string name="ds_open_on">Abrir en</string>
     <string name="ds_time_zone">Zona horaria</string>
     <string name="ds_zap_vertical">Cambiar de canal con Arriba / Abajo</string>
-    <string name="ds_zap_vertical_hint">En directo a pantalla completa: Arriba / Abajo cambian de canal, Izquierda / Derecha muestran la información. Desactivado: al revés.</string>
+    <string name="ds_zap_vertical_hint">Arriba / Abajo cambian de canal, Izquierda / Derecha muestran la información.</string>
     <string name="ds_time_format">Formato de hora</string>
     <string name="ds_time_format_12">12 horas</string>
     <string name="ds_time_format_24">24 horas</string>
