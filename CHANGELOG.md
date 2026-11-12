@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Android (TV), Direct : après « Déplacer » (Valider ou Annuler), le focus reste sur la chaîne déplacée au lieu de revenir sur la catégorie « Favoris ».
+
 ## [1.2.93] — 2026-11-12 (Android)
 
 ### Corrigé

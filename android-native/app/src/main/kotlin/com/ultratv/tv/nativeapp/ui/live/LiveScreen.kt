@@ -107,6 +107,19 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val orderStrings = remember(D.lang) { ChannelOrderStrings(D.lang) }
     val customScopes by vm.customScopes.collectAsState()
     val moving by vm.moveState.collectAsState()
+    // Fin d'un déplacement (Valider ou Annuler) : le focus revient sur la chaîne déplacée, pas sur la première catégorie.
+    var refocusKey by remember { mutableStateOf<String?>(null) }
+    var lastMove by remember { mutableStateOf<LiveViewModel.MoveState?>(null) }
+    LaunchedEffect(moving) {
+        val prev = lastMove
+        lastMove = moving
+        if (moving == null && prev != null) {
+            refocusKey = "${prev.providerId}:${prev.key}"
+            // Une seule fois : ensuite le retour du plein écran reprend la main (chaîne regardée).
+            kotlinx.coroutines.delay(3_000)
+            refocusKey = null
+        }
+    }
     // Chaîne focalisée : flux HORS composition — un état lu ici recomposait tout l'écran (catégories, liste, aperçu)
     // à chaque déplacement du D-pad ; seul l'aperçu change, une fois le focus posé depuis 300 ms.
     val focusedChannel = remember { kotlinx.coroutines.flow.MutableStateFlow<ChannelEntity?>(null) }
@@ -254,7 +267,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 onPlay = { c -> if ("${c.providerId}:${c.remoteId}" in locked) pinPrompt = c else play(c) },
                 onActions = { actionsFor = it },
                 emptyText = if (selected == CATEGORY_FAVORITES) D.noFavorites else D.noChannels, categoryName = name, first = firstChannel,
-                returnToKey = if (holdAfterReturn) playingKey else null)
+                returnToKey = refocusKey ?: if (holdAfterReturn) playingKey else null)
         }
 
         // ── Aperçu ──
