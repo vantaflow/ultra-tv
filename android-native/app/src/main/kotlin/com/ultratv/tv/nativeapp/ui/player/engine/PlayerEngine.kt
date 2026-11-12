@@ -34,6 +34,8 @@ sealed interface EngineEvent {
     data object Ready : EngineEvent
     data object FirstFrame : EngineEvent
     data object Ended : EngineEvent
+    /** Contenu HDR détecté (format vidéo connu) : [kind] = « hdr10 », « hlg » ou « dv ». */
+    data class HdrDetected(val kind: String) : EngineEvent
     data class Error(val kind: PlayErrorKind, val httpStatus: Int? = null) : EngineEvent
 }
 
@@ -50,6 +52,8 @@ data class EngineStats(
     val bufferedSeconds: Int? = null,
     val droppedFrames: Int? = null,
     val hardwareDecoding: Boolean? = null,
+    /** « hdr10 », « hlg » ou « dv » si le flux est HDR ; null sinon / inconnu. */
+    val hdrKind: String? = null,
 )
 
 /** Paramètres communs à tous les moteurs. */

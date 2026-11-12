@@ -140,7 +140,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     val ctx = androidx.compose.ui.platform.LocalContext.current
     // Même rendu (SurfaceView / TextureView) que le lecteur plein écran : la vue vidéo passe de l'un à l'autre.
     val textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(userPrefs?.videoSurface ?: "auto", touchUi)
-    val createShared: () -> com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession = { pvm.createSession(ctx, shared!!.scope, shared, textureView) }
+    val createShared: () -> com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession = { pvm.createSession(ctx, shared!!.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
     // Retour du plein écran : la chaîne du dernier zap reste en aperçu jusqu'au premier déplacement dans la liste.
     var holdAfterReturn by remember { mutableStateOf(shared?.owner == com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.PREVIEW) }
     val playingKey by (shared?.channelKey ?: kotlinx.coroutines.flow.MutableStateFlow<String?>(null)).collectAsState()

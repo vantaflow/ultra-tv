@@ -64,6 +64,8 @@ class PlaybackSession(
     private val autoFrameRate: Boolean,
     private val userAgent: String,
     private val textureView: Boolean = false,
+    /** Réglage utilisateur « Surface vidéo » (auto / texture / surface) : « auto » seulement autorise la bascule en SurfaceView pour le HDR. */
+    private val videoSurfacePref: () -> String = { "auto" },
     /** Style des sous-titres et langues préférées au moment du lancement du moteur. */
     private val subtitles: () -> com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings = { com.ultratv.tv.nativeapp.data.prefs.SubtitleSettings() },
     /** Langue de l'interface (ISO 639-1) : langue audio par défaut quand aucune préférence n'est réglée. */
@@ -131,6 +133,12 @@ class PlaybackSession(
     /** Dernier code HTTP vu et début de la lecture en cours : journal des reconnexions Stalker. */
     private var lastHttp: Int? = null
     private var playedSinceMs = 0L
+    /** Surface effective du prochain moteur : [textureView], ou SurfaceView imposée pour un contenu HDR (cet élément seulement). */
+    private var textureNow = textureView
+    /** Type de HDR de l'élément en cours (null = SDR / inconnu) ; bascule SurfaceView déjà tentée ; essai de SurfaceView en cours. */
+    private var hdrKind: String? = null
+    private var hdrSwitched = false
+    private var hdrSurfaceTrial = false
 
     /**
      * Reconnexion automatique autorisée pour la lecture en cours : VRAI direct seulement. Un replay (« Depuis le
@@ -186,6 +194,7 @@ class PlaybackSession(
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         this.props = found?.takeIf { it.isProtected }
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
+        hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false
         syncPresence(); lastHttp = null; playedSinceMs = 0L
         reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
@@ -205,7 +214,7 @@ class PlaybackSession(
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
         // Réglages de sous-titres changés depuis la création du moteur : on le recrée (ils sont fixés à sa création).
-        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && _state.value.phase != Phase.ERROR && (isStalkerUrl || launchedHeaders.isEmpty())) {
+        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && textureNow == textureView && _state.value.phase != Phase.ERROR && (isStalkerUrl || launchedHeaders.isEmpty())) {
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false, protectedNow)
@@ -217,6 +226,7 @@ class PlaybackSession(
             }
         } else {
             combo = next
+            textureNow = textureView   // un élément précédent en SurfaceView (HDR) ne dicte pas la surface du suivant
             launch(combo)
         }
         adaptJob?.cancel()
@@ -316,7 +326,7 @@ class PlaybackSession(
         val tc = com.ultratv.tv.nativeapp.data.subtitles.TrackChoice
         val audioPref = tc.effectivePreferred(sub.languages.audio, key?.let { memory.audioLang(it) }, ui)
         val textPref = if (sub.autoOn) tc.effectivePreferred(sub.languages.text, null, ui) else emptyList()
-        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureView, headers = o.headers)
+        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureNow, headers = o.headers)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         if (isProtected && !e.supportsProtected) {
             runCatching { e.release() }
@@ -376,9 +386,34 @@ class PlaybackSession(
                 sameRetries = 0
             }
             // Direct : une « fin » est une session fermée par le serveur, pas la fin du programme → on se reconnecte.
+            is EngineEvent.HdrDetected -> onHdr(ev.kind, e)
             EngineEvent.Ended -> if (reconnectAllowed) reconnectLive() else _state.value = _state.value.copy(phase = Phase.ENDED)
             is EngineEvent.Error -> onError(ev.kind, ev.httpStatus)
         }
+    }
+
+    /**
+     * Contenu HDR : une TextureView le rend en SDR (image terne). Sur un écran HDR, avec le réglage « auto », on relance
+     * UNE fois cet élément en SurfaceView (VOD : à la position courante ; direct : simple reconnexion). Si la SurfaceView ne
+     * montre aucune image (Shield, issue #7), [onError] revient à la TextureView et le mémorise pour l'appareil.
+     */
+    private fun onHdr(kind: String, e: PlayerEngine) {
+        if (engine !== e) return
+        hdrKind = kind
+        val displayHdr = HdrOutput.displayHdrCapable(ctx)
+        val texture = e.config.textureView
+        val line = HdrOutput.describe(kind, displayHdr, texture, e.kind)
+        android.util.Log.i("UltraPlay", line)
+        com.ultratv.tv.nativeapp.RemoteLog.info("play", line)
+        val switch = HdrOutput.shouldSwitchToSurface(
+            contentHdr = true, displayHdr = displayHdr, currentlyTexture = texture, userPref = videoSurfacePref(),
+            alreadySwitched = hdrSwitched, surfaceKnownBad = HdrOutput.surfaceKnownBad(ctx),
+        )
+        if (!switch) return
+        hdrSwitched = true; hdrSurfaceTrial = true; textureNow = false
+        if (!isLive && e.positionMs > 0) resumeMs = e.positionMs
+        android.util.Log.i("UltraPlay", "hdr -> surface relaunch engine=${combo.engine}")
+        launch(combo)
     }
 
     /** Le son passe mais aucune image au bout de 8 s alors que le flux a une piste vidéo : on change de décodeur/moteur. */
@@ -427,7 +462,7 @@ class PlaybackSession(
         val choice = settings().engine
         val skipVlc = if (isStalkerUrl && choice != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
         val skipSame = if (kind == PlayErrorKind.START_TIMEOUT) setOf(Combo(EngineKind.EXO, DecoderMode.SOFTWARE), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
-        return PlaybackPlanner.next(choice, tried + skipVlc + skipSame, isProtected)
+        return PlaybackPlanner.next(choice, tried + skipVlc + skipSame, isProtected, hdr = hdrKind != null)
     }
 
     /**
@@ -454,6 +489,15 @@ class PlaybackSession(
         // Flux protégé : décodeur sécurisé absent ou image noire = niveau de sécurité de l'appareil insuffisant.
         val kind = if (isProtected && (kind0 == PlayErrorKind.DECODER || kind0 == PlayErrorKind.NO_PICTURE)) PlayErrorKind.DRM_UNSUPPORTED else kind0
         android.util.Log.i("UltraPlay", "error kind=$kind engine=${combo.engine} decoder=${combo.decoder}")
+        // SurfaceView essayée pour le HDR mais sans image : retour à la TextureView pour cet élément, mémorisé pour l'appareil.
+        if (hdrSurfaceTrial && kind == PlayErrorKind.NO_PICTURE) {
+            hdrSurfaceTrial = false; textureNow = true
+            HdrOutput.rememberSurfaceBad(ctx)
+            com.ultratv.tv.nativeapp.RemoteLog.warn("play", "hdr surface without picture -> texture engine=${combo.engine.name}")
+            startupJob?.cancel(); errorJob?.cancel()
+            errorJob = scope.launch { launch(combo) }
+            return
+        }
         if (http != null) lastHttp = http
         // Direct Stalker : code HTTP et type d'erreur (sans MAC ni hôte) pour diagnostiquer les retours.
         if (isStalkerUrl && !logged) StalkerPlayLog.playerError(kind.name, http, combo.engine.name).let { android.util.Log.i("UltraPlay", it); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", it) }

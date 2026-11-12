@@ -148,7 +148,7 @@ class LivePreviewViewModel @Inject constructor(
     )
 
     /** Session du Direct : réglages lus via [SharedLiveSession.env] (rebranchés par le lecteur plein écran). */
-    fun createSession(ctx: Context, scope: CoroutineScope, shared: SharedLiveSession, textureView: Boolean): PlaybackSession {
+    fun createSession(ctx: Context, scope: CoroutineScope, shared: SharedLiveSession, textureView: Boolean, videoSurfacePref: String = "auto"): PlaybackSession {
         val p = userPrefs.value ?: UserPrefs()
         val fallback = env()
         return PlaybackSession(
@@ -157,7 +157,7 @@ class LivePreviewViewModel @Inject constructor(
             isLive = true, autoFrameRate = p.autoFrameRate, userAgent = "UltraTV/1.0 (Android TV)",
             opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(ctx, u) },
             presence = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.presence(ctx, u) },   // stalker:// : lien + en-têtes MAG à chaque ouverture
-            textureView = textureView,
+            textureView = textureView, videoSurfacePref = { videoSurfacePref },
             subtitles = { (shared.env ?: fallback).subtitles() },
             uiLanguage = { (shared.env ?: fallback).uiLanguage() },
             propsLookup = { k -> channelDao.streamProps(k) },
