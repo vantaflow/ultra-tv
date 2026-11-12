@@ -1539,4 +1539,24 @@
     <string name="cor_down">تحريك لأسفل</string>
     <string name="cor_done">تم</string>
     <string name="cor_cancel">إلغاء</string>
+
+    <!-- Rubrique Sport -->
+    <string name="sport_nav">الرياضة</string>
+    <string name="sport_setting_label">قسم الرياضة</string>
+    <string name="sport_setting_hint">يضيف قسم الرياضة إلى القائمة اعتماداً على دليل البرامج الخاص بك. معطّل افتراضياً.</string>
+    <string name="sport_live_now">مباشر الآن</string>
+    <string name="sport_upcoming">قريباً (48 ساعة)</string>
+    <string name="sport_channels">القنوات الرياضية</string>
+    <string name="sport_home_row">رياضة مباشرة</string>
+    <string name="sport_remind">ذكّرني</string>
+    <string name="sport_record">تسجيل</string>
+    <string name="sport_today">اليوم</string>
+    <string name="sport_tomorrow">غداً</string>
+    <string name="sport_empty_live">لا توجد برامج رياضية مباشرة الآن.</string>
+    <string name="sport_empty_upcoming">لا توجد برامج رياضية معلنة خلال 48 ساعة القادمة.</string>
+    <string name="sport_no_channels">لم يتم العثور على قناة رياضية في مصدرك.</string>
+    <string name="sport_no_source">أضف مصدراً لعرض الرياضة.</string>
+    <string name="sport_no_guide_title">الدليل مطلوب</string>
+    <string name="sport_no_guide_body">يعتمد قسم الرياضة على دليل برامج قنواتك. فعّل الدليل من الإعدادات ‹ المزامنة ثم زامن مصدرك.</string>
+    <string name="sport_open_sync">فتح إعدادات المزامنة</string>
 </resources>

@@ -116,6 +116,7 @@ fun HomeScreen(
     onGoCloud: () -> Unit = {},
     onGoPhone: () -> Unit = {},
     onGoGuide: () -> Unit = {},
+    onGoSport: () -> Unit = {},
     onGoSearch: () -> Unit = {},
     onGoFavorites: () -> Unit = {},
     onPlay: (url: String, title: String) -> Unit = { _, _ -> },
@@ -200,6 +201,8 @@ fun HomeScreen(
             }
         }
     }
+    val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+    val sportAnchor = if (HomeSectionId.CHANNELS in rows.order) HomeSectionId.CHANNELS else rows.order.lastOrNull()
     CompositionLocalProvider(LocalBringIntoViewSpec provides HomePivotSpec) {
         LazyColumn(
             Modifier.fillMaxSize(),
@@ -231,7 +234,13 @@ fun HomeScreen(
             }
             items(rows.order, key = { it.name }, contentType = { it.contentType }) { id ->
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Box(Modifier.padding(start = 72.design)) { HomeSection(id, rows, playHistory, openPoster, playChannel, onShortcut) }
+                    Box(Modifier.padding(start = 72.design)) {
+                        // Rubrique Sport activée : « Sport en direct » juste sous la rangée « Direct » (à défaut, en dernier).
+                        if (sportOn && id == sportAnchor) Column(verticalArrangement = Arrangement.spacedBy(44.design)) {
+                            HomeSection(id, rows, playHistory, openPoster, playChannel, onShortcut)
+                            com.ultratv.tv.nativeapp.ui.sport.SportHomeSection(Modifier.homeRow(), PaddingValues(start = RowBleed, end = 96.design), playChannel, onGoSport)
+                        } else HomeSection(id, rows, playHistory, openPoster, playChannel, onShortcut)
+                    }
                 }
             }
         }

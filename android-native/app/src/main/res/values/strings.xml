@@ -1485,4 +1485,24 @@
     <string name="cor_down">Move down</string>
     <string name="cor_done">Done</string>
     <string name="cor_cancel">Cancel</string>
+
+    <!-- Rubrique Sport -->
+    <string name="sport_nav">Sport</string>
+    <string name="sport_setting_label">Sports section</string>
+    <string name="sport_setting_hint">Adds a Sport entry to the menu, built from your own guide. Off by default.</string>
+    <string name="sport_live_now">Live now</string>
+    <string name="sport_upcoming">Coming up (48 h)</string>
+    <string name="sport_channels">Sports channels</string>
+    <string name="sport_home_row">Sport live</string>
+    <string name="sport_remind">Remind me</string>
+    <string name="sport_record">Record</string>
+    <string name="sport_today">Today</string>
+    <string name="sport_tomorrow">Tomorrow</string>
+    <string name="sport_empty_live">No sport on air right now.</string>
+    <string name="sport_empty_upcoming">No sport announced in the next 48 hours.</string>
+    <string name="sport_no_channels">No sports channel found in your source.</string>
+    <string name="sport_no_source">Add a source to see sport.</string>
+    <string name="sport_no_guide_title">A guide is needed</string>
+    <string name="sport_no_guide_body">The Sport section is built from your channels\' programme guide. Turn the guide on in Settings › Sync, then sync your source.</string>
+    <string name="sport_open_sync">Open Sync settings</string>
 </resources>

@@ -10,6 +10,8 @@ object Routes {
     const val SEARCH = "search"
     const val GUIDE = "guide"
     const val FAVORITES = "favorites"
+    /** Rubrique Sport (facultative, Réglages › Affichage) : direct, à venir et chaînes de sport tirés du guide de la source. */
+    const val SPORT = "sport"
     const val SETTINGS = "settings"
     const val DOWNLOADS = "downloads"
     const val RECORDINGS = "recordings"

@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
+- Android (TV et tactile) : rubrique **Sport** facultative, désactivée par défaut (Réglages › Affichage › Rubrique Sport). Une fois activée, une entrée « Sport » apparaît dans le menu (rail TV, rail et feuille « Plus » tactiles) et l'accueil TV affiche une rangée « Sport en direct ». L'écran regroupe « En direct maintenant » (programmes de sport en cours, chaînes de sport d'abord ; OK lance la chaîne avec le zapping habituel), « À venir (48 h) » par jour avec « Me rappeler » et « Enregistrer », et « Chaînes sport ». Tout vient du guide et des catégories de votre propre source (aucun service externe) ; la détection est insensible à la casse et aux accents (français, anglais, espagnol, arabe, polonais). Sans guide, l'écran l'explique et renvoie vers les réglages de synchronisation.
 - Android : les anomalies de lecture (bascule de moteur ou de décodeur, échec final) sont remontées dans les journaux du serveur, avec le type d'erreur, le moteur, la résolution et le codec (jamais d'adresse), pour repérer les problèmes que personne ne signale. Appareils appairés avec la télémétrie active seulement.
 
 ## [1.2.96] — 2026-11-12 (Android) · Bureau 1.2.46 · Worker

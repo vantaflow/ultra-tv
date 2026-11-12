@@ -1435,4 +1435,24 @@
     <string name="cor_down">Przesuń w dół</string>
     <string name="cor_done">Gotowe</string>
     <string name="cor_cancel">Anuluj</string>
+
+    <!-- Rubrique Sport -->
+    <string name="sport_nav">Sport</string>
+    <string name="sport_setting_label">Sekcja Sport</string>
+    <string name="sport_setting_hint">Dodaje pozycję Sport do menu na podstawie Twojego przewodnika. Domyślnie wyłączone.</string>
+    <string name="sport_live_now">Teraz na żywo</string>
+    <string name="sport_upcoming">Wkrótce (48 godz.)</string>
+    <string name="sport_channels">Kanały sportowe</string>
+    <string name="sport_home_row">Sport na żywo</string>
+    <string name="sport_remind">Przypomnij</string>
+    <string name="sport_record">Nagraj</string>
+    <string name="sport_today">Dzisiaj</string>
+    <string name="sport_tomorrow">Jutro</string>
+    <string name="sport_empty_live">Teraz nie ma transmisji sportowych.</string>
+    <string name="sport_empty_upcoming">Brak zapowiedzi sportowych w ciągu najbliższych 48 godzin.</string>
+    <string name="sport_no_channels">Nie znaleziono kanału sportowego w Twoim źródle.</string>
+    <string name="sport_no_source">Dodaj źródło, aby zobaczyć sport.</string>
+    <string name="sport_no_guide_title">Potrzebny jest przewodnik</string>
+    <string name="sport_no_guide_body">Sekcja Sport korzysta z przewodnika programów Twoich kanałów. Włącz przewodnik w Ustawieniach › Synchronizacja, a potem zsynchronizuj źródło.</string>
+    <string name="sport_open_sync">Otwórz ustawienia synchronizacji</string>
 </resources>

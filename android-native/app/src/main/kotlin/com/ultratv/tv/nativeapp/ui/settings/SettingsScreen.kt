@@ -5,6 +5,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.focusGroup
 import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.channelLogos
+import com.ultratv.tv.nativeapp.i18n.sportSectionHint
+import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
 import com.ultratv.tv.nativeapp.i18n.guideNameWidthLabel
 import com.ultratv.tv.nativeapp.i18n.guideNameWidthName
 import com.ultratv.tv.nativeapp.i18n.kindStalker
@@ -573,6 +575,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
+        SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
         PrefRow(D.guideNameWidthLabel, D.guideNameWidthName(com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(p.guideNameWidth))) { choice = "guidew" }
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
