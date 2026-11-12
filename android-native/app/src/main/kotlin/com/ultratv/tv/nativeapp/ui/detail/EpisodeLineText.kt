@@ -15,14 +15,14 @@ import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 
-/** Jour de diffusion : « Aujourd'hui », « Demain », « Hier », « sam. 14 » dans la semaine, sinon la date (langue de l'appli). */
+/** Jour de diffusion : « Aujourd'hui », « Demain », « Hier », « sam. 14 nov. » dans la semaine (mois toujours écrit : « Mar. 17 » se lisait « mars »), sinon la date (langue de l'appli). */
 fun airDayLabel(D: DesignStrings, airAt: Long, nowMs: Long): String {
     val loc = D.locale
     return when (val off = SportLogic.dayOffset(SportLogic.dayStart(airAt), nowMs)) {
         0 -> D.sportToday
         1 -> D.sportTomorrow
         -1 -> D.extYesterday
-        else -> if (off in -7..7) SimpleDateFormat("EEE d", loc).format(Date(airAt)).replaceFirstChar { it.titlecase(loc) }
+        else -> if (off in -7..7) SimpleDateFormat("EEE d MMM", loc).format(Date(airAt)).replaceFirstChar { it.titlecase(loc) }
         else DateFormat.getDateInstance(DateFormat.MEDIUM, loc).format(Date(airAt))
     }
 }

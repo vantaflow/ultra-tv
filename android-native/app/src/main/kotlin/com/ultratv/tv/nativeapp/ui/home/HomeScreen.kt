@@ -711,7 +711,8 @@ private fun ChannelCard(card: ChannelCardUi, onClick: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 LogoBox(c.logo, c.title, Modifier.width(48.design).height(48.design), radius = 13, pad = 4, bg = if (f) Color(0xFFE4E4E7) else Ux.Tile, decodeSize = DpSize(48.design, 48.design))
                 Column(Modifier.weight(1f)) {
-                    Text((if (c.num > 0) "${c.num} · " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Sans numéro : celui de la source est souvent propre à une catégorie (« 2 » partout sur une rangée mélangée).
+                    Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     if (card.timeRange != null) Text(card.timeRange, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 14.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
