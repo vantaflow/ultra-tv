@@ -4,6 +4,15 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Worker : relais pour les appareils appairés (clés côté serveur, réponses réduites, cache, débit limité) vers **Fanart.tv** (logo officiel du titre, fond HD ; secret `FANART_API_KEY`), **TVmaze** (épisodes précédent et prochain d'une série, sans clé) et **TheSportsDB** (écusson et compétition d'une équipe ; clé publique gratuite, ou secret `SPORTSDB_API_KEY`). Le proxy TMDB accepte `external_ids` (identifiants IMDb et TheTVDB).
+
+### Corrigé
+- Android : un appareil révoqué depuis le tableau de bord retire les sources reçues du cloud (adresses et identifiants de l'abonnement), oublie l'appairage et l'indique ; les sources ajoutées à la main restent. La révocation est vue au retour sur l'appli et au plus toutes les 10 minutes (avant : au lancement suivant ou toutes les 6 h, et les sources restaient).
+
+### Modifié
+- README et site : captures de la nouvelle interface réalisées avec un catalogue entièrement fictif (FR, EN, AR, bureau), bannière refaite, textes mis à jour (Sport, Fanart.tv, TVmaze, révocation).
+
 ## [1.2.98] — 2026-11-12 (Android) et bureau 1.2.47
 
 ### Corrigé
