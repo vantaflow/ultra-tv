@@ -233,6 +233,8 @@
   "set.confirmDelete": "Delete “{n}” and its local catalog?",
   "set.theme": "Theme",
   "set.channelLogos": "Channel logos",
+  "set.optimizeImages": "Optimize images",
+  "set.optimizeImagesD": "Fanart.tv and TVmaze images go through wsrv.nl (lighter WebP). Turn off to load them directly.",
   "set.guideCol": "Guide channel column",
   "set.colNarrow": "Narrow",
   "set.colNormal": "Normal",

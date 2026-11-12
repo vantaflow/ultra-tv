@@ -975,6 +975,8 @@
     <string name="mem_auto_clean_hint">عند التشغيل ويوميًا: الملفات المؤقتة وذاكرة الصور فوق الحد</string>
     <string name="mem_economy">وضع توفير الذاكرة</string>
     <string name="mem_economy_hint">صور أقل في الذاكرة، بلا تلاشٍ، وبلا معاينة فيديو في البث المباشر عند التلقائي</string>
+    <string name="mem_optimize_images">تحسين الصور</string>
+    <string name="mem_optimize_images_hint">تمر صور Fanart.tv وTVmaze عبر wsrv.nl (WebP أخف). عند الإيقاف تُحمَّل مباشرة.</string>
 
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">التنزيلات</string>

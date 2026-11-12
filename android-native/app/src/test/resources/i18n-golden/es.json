@@ -1054,6 +1054,8 @@
   "MemoryStrings.getDownloads()": "Descargas",
   "MemoryStrings.getEconomy()": "Modo de ahorro de memoria",
   "MemoryStrings.getEconomyHint()": "Menos imágenes en memoria, sin fundidos, sin vista previa de vídeo del Directo en Auto",
+  "MemoryStrings.getOptimizeImages()": "Optimizar imágenes",
+  "MemoryStrings.getOptimizeImagesHint()": "Las imágenes de Fanart.tv y TVmaze pasan por wsrv.nl (WebP más ligero). Desactivado: carga directa.",
   "MemoryStrings.getFailed()": "La acción ha fallado",
   "MemoryStrings.getFreeSpace()": "Espacio libre del dispositivo",
   "MemoryStrings.getGroupActions()": "Liberar espacio",

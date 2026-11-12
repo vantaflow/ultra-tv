@@ -237,6 +237,8 @@
   "set.confirmDelete": "¿Eliminar «{n}» y su catálogo local?",
   "set.theme": "Tema",
   "set.channelLogos": "Logotipos de canales",
+  "set.optimizeImages": "Optimizar imágenes",
+  "set.optimizeImagesD": "Las imágenes de Fanart.tv y TVmaze pasan por wsrv.nl (WebP más ligero). Desactivado: carga directa.",
   "set.guideCol": "Columna de canales de la guía",
   "set.colNarrow": "Estrecha",
   "set.colNormal": "Normal",

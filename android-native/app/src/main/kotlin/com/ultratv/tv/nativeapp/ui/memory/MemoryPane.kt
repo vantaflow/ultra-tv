@@ -113,6 +113,7 @@ class MemoryViewModel @Inject constructor(
     }
 
     fun setAutoClean(v: Boolean) { prefs.setAutoClean(v); manager.applySchedule() }
+    fun setOptimizeImages(v: Boolean) = prefs.setOptimizeImages(v)
     fun setEconomy(v: String) = prefs.setEconomy(v)
 }
 
@@ -179,6 +180,7 @@ fun MemoryPane(vm: MemoryViewModel = hiltViewModel()) {
             PrefRow(S.imageLimit, imageLabel, hint = S.imageLimitHint) { imageDialog = true }
             SwitchPrefRow(S.autoClean, v.autoClean, hint = S.autoCleanHint) { vm.setAutoClean(it) }
             PrefRow(S.economy, economyLabel, hint = S.economyHint) { economyDialog = true }
+            SwitchPrefRow(S.optimizeImages, v.optimizeImages, hint = S.optimizeImagesHint) { vm.setOptimizeImages(it) }
         }
     }
 

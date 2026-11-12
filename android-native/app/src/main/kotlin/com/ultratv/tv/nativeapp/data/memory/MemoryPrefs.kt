@@ -24,6 +24,8 @@ class MemoryPrefs @Inject constructor(@ApplicationContext ctx: Context) {
         val imageCache: String = ImageCacheLimit.AUTO,
         val autoClean: Boolean = true,
         val economy: String = EconomyMode.AUTO,
+        /** Fanart.tv / TVmaze via wsrv.nl (images plus légères). */
+        val optimizeImages: Boolean = true,
     )
 
     private val sp = ctx.getSharedPreferences("memory_prefs", Context.MODE_PRIVATE)
@@ -34,16 +36,20 @@ class MemoryPrefs @Inject constructor(@ApplicationContext ctx: Context) {
         imageCache = sp.getString(KEY_CACHE, ImageCacheLimit.AUTO).let { v -> if (v?.toIntOrNull() in ImageCacheLimit.CHOICES_MB) v!! else ImageCacheLimit.AUTO },
         autoClean = sp.getBoolean(KEY_AUTO_CLEAN, true),
         economy = EconomyMode.normalize(sp.getString(KEY_ECONOMY, EconomyMode.AUTO)),
+        optimizeImages = sp.getBoolean(KEY_OPTIMIZE, true),
     )
 
     fun setImageCache(v: String) { sp.edit().putString(KEY_CACHE, v).apply(); _state.value = read() }
     fun setAutoClean(v: Boolean) { sp.edit().putBoolean(KEY_AUTO_CLEAN, v).apply(); _state.value = read() }
     fun setEconomy(v: String) { sp.edit().putString(KEY_ECONOMY, EconomyMode.normalize(v)).apply(); _state.value = read() }
 
+    fun setOptimizeImages(v: Boolean) { sp.edit().putBoolean(KEY_OPTIMIZE, v).apply(); _state.value = read() }
+
     private companion object {
         const val KEY_CACHE = "image_cache"
         const val KEY_AUTO_CLEAN = "auto_clean"
         const val KEY_ECONOMY = "economy"
+        const val KEY_OPTIMIZE = "optimize_images"
     }
 }
 

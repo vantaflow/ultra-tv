@@ -249,6 +249,8 @@
   "set.confirmDelete": "حذف «{n}» وكتالوجه المحلي؟",
   "set.theme": "السمة",
   "set.channelLogos": "شعارات القنوات",
+  "set.optimizeImages": "تحسين الصور",
+  "set.optimizeImagesD": "تمر صور Fanart.tv وTVmaze عبر wsrv.nl (WebP أخف). عند الإيقاف تُحمَّل مباشرة.",
   "set.guideCol": "عمود القنوات في الدليل",
   "set.colNarrow": "ضيّق",
   "set.colNormal": "عادي",

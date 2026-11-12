@@ -101,6 +101,11 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
             // Coil 3 : le réseau passe par le module coil-network-okhttp ; le client est toujours construit paresseusement.
             .components {
                 add(com.ultratv.tv.nativeapp.ui.design.TmdbSizeInterceptor)
+                // Fanart.tv / TVmaze via wsrv.nl (WebP redimensionné) ; réglage « Optimiser les images » lu à chaque requête.
+                add(com.ultratv.tv.nativeapp.ui.design.ImageProxyInterceptor(
+                    enabled = { memoryPrefs.get().state.value.optimizeImages },
+                    lowMem = { low || economy },
+                ))
                 add(OkHttpNetworkFetcherFactory(callFactory = {
                     okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build()
                 }))

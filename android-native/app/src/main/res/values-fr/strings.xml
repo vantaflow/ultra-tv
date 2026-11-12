@@ -933,6 +933,8 @@
     <string name="mem_auto_clean_hint">Au démarrage et chaque jour : fichiers temporaires et cache au-delà de la limite</string>
     <string name="mem_economy">Mode économie de mémoire</string>
     <string name="mem_economy_hint">Moins d’images en mémoire, pas de fondus, pas d’aperçu vidéo du Direct en Auto</string>
+    <string name="mem_optimize_images">Optimiser les images</string>
+    <string name="mem_optimize_images_hint">Les images Fanart.tv et TVmaze passent par wsrv.nl (WebP plus léger). Désactivé : chargement direct.</string>
 
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Téléchargements</string>

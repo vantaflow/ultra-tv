@@ -33,6 +33,8 @@ export interface Prefs {
   dns: DnsSettings;
   /** Rubrique Sport (entrée du menu + rangée de l'accueil), tirée du guide de la source. Désactivée par défaut. */
   sportSection: boolean;
+  /** Fanart.tv / TVmaze via wsrv.nl (images plus légères). Activé par défaut. */
+  optimizeImages: boolean;
 }
 
 // Le 1er accent est celui du design v2 : il laisse les jetons (rouge sombre / clair) décider.
@@ -46,7 +48,7 @@ const defaults = (): Prefs => ({
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
-  sportSection: false,
+  sportSection: false, optimizeImages: true,
 });
 
 function load(): Prefs {

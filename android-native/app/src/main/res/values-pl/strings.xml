@@ -902,6 +902,8 @@
     <string name="mem_auto_clean_hint">Przy uruchomieniu i codziennie: pliki tymczasowe i pamięć podręczna obrazów ponad limit</string>
     <string name="mem_economy">Tryb oszczędzania pamięci</string>
     <string name="mem_economy_hint">Mniejsza pamięć obrazów, bez zanikania, bez podglądu wideo na żywo w trybie Auto</string>
+    <string name="mem_optimize_images">Optymalizuj obrazy</string>
+    <string name="mem_optimize_images_hint">Obrazy z Fanart.tv i TVmaze przechodzą przez wsrv.nl (lżejszy WebP). Po wyłączeniu ładują się bezpośrednio.</string>
     <string name="dl_nav_title">Pobrane</string>
     <string name="dl_download">Pobierz</string>
     <string name="dl_download_season">Pobierz sezon</string>

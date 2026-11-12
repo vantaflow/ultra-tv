@@ -921,6 +921,8 @@
     <string name="mem_auto_clean_hint">At launch and daily: temporary files and image cache over the limit</string>
     <string name="mem_economy">Memory saving mode</string>
     <string name="mem_economy_hint">Smaller image memory, no fades, no Live video preview in Auto</string>
+    <string name="mem_optimize_images">Optimize images</string>
+    <string name="mem_optimize_images_hint">Fanart.tv and TVmaze images go through wsrv.nl (lighter WebP). Turn off to load them directly.</string>
 
     <!-- ui/downloads/DownloadStrings.kt -->
     <string name="dl_nav_title">Downloads</string>

@@ -45,6 +45,9 @@ macOS : pas de ffmpeg embarqué ; celui du système est utilisé s'il est instal
   propriété de leurs auteurs et ayants droit.
 - **TVmaze** : épisodes précédent et prochain des séries (calendrier de diffusion), sans clé. Données de
   [TVmaze](https://www.tvmaze.com), sous licence [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **wsrv.nl** : service open source de redimensionnement d'images ([wsrv.nl](https://wsrv.nl), code :
+  [github.com/weserv/images](https://github.com/weserv/images), licence BSD-3-Clause). Les images Fanart.tv et TVmaze
+  (uniquement) y transitent pour être servies en WebP à la bonne taille ; réglage « Optimiser les images », activé par défaut.
 - **TheSportsDB** : écussons d'équipes et compétitions de la rubrique Sport (clé publique gratuite, ou clé du Worker).
   Données et images de [TheSportsDB](https://www.thesportsdb.com).
 - **OMDb** : notes IMDb / Rotten Tomatoes / Metacritic (clé du Worker, facultative).

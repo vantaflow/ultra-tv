@@ -1054,6 +1054,8 @@
   "MemoryStrings.getDownloads()": "التنزيلات",
   "MemoryStrings.getEconomy()": "وضع توفير الذاكرة",
   "MemoryStrings.getEconomyHint()": "صور أقل في الذاكرة، بلا تلاشٍ، وبلا معاينة فيديو في البث المباشر عند التلقائي",
+  "MemoryStrings.getOptimizeImages()": "تحسين الصور",
+  "MemoryStrings.getOptimizeImagesHint()": "تمر صور Fanart.tv وTVmaze عبر wsrv.nl (WebP أخف). عند الإيقاف تُحمَّل مباشرة.",
   "MemoryStrings.getFailed()": "فشل الإجراء",
   "MemoryStrings.getFreeSpace()": "المساحة الحرة في الجهاز",
   "MemoryStrings.getGroupActions()": "تحرير المساحة",

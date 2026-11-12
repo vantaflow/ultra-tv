@@ -74,7 +74,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **Send from your phone, no account**: the TV shows a QR code and a code; type the playlist (Xtream, M3U or Stalker) on your phone or computer (the Worker's `/envoyer` page) and the TV adds and syncs it. No more typing with the remote.
 - **Phone remote and search** (Settings › Sources): the box serves a page on the local network (QR code) to search movies, series and channels and control playback; off by default, protected by a key.
 - **Simple mode**: six large tiles (Live TV, Resume, Movies, Series, Favorites, Search), per profile.
-- **Memory & storage**: detailed storage use, RAM, cache and database clean-up, memory-saving mode for modest boxes.
+- **Memory & storage**: detailed storage use, RAM, cache and database clean-up, memory-saving mode for modest boxes, **Optimise images** (Fanart.tv / TVmaze logos and backdrops served as right-sized WebP by wsrv.nl; can be turned off).
 - **Hidden categories are never loaded**: a disabled category (by its language or by hand, separately for Live, Movies and Series) is neither stored nor indexed: faster sync, less memory.
 - **Movies and series by automatic genres**: category or detected-genre list (Action, Comedy, Anime…) with title counts, poster grid, sorting and filters.
 - **Downloads** (Android): movies, episodes or a whole season; queue with pause, resume, cancel and retry, resume after a dropout, optional Wi-Fi only; a « Downloads » screen that works offline.

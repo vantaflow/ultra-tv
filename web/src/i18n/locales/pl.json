@@ -237,6 +237,8 @@
   "set.confirmDelete": "Usunąć „{n}” i jego lokalny katalog?",
   "set.theme": "Motyw",
   "set.channelLogos": "Logo kanałów",
+  "set.optimizeImages": "Optymalizuj obrazy",
+  "set.optimizeImagesD": "Obrazy z Fanart.tv i TVmaze przechodzą przez wsrv.nl (lżejszy WebP). Po wyłączeniu ładują się bezpośrednio.",
   "set.guideCol": "Kolumna kanałów w przewodniku",
   "set.colNarrow": "Wąska",
   "set.colNormal": "Normalna",

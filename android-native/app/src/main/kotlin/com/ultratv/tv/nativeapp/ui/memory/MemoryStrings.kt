@@ -103,6 +103,8 @@ class MemoryStrings(val lang: AppLang) {
     val autoCleanHint get() = tx(R.string.mem_auto_clean_hint)
     val economy get() = tx(R.string.mem_economy)
     val economyHint get() = tx(R.string.mem_economy_hint)
+    val optimizeImages get() = tx(R.string.mem_optimize_images)
+    val optimizeImagesHint get() = tx(R.string.mem_optimize_images_hint)
     fun economyAuto(limited: Boolean) = "$auto · " + if (limited) on else off
 }
 

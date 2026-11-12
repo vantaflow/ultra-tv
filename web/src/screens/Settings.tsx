@@ -274,6 +274,7 @@ function DisplayPane() {
         <Seg<"auto" | "off" | "subtle" | "normal"> label={t("set.animations")} value={p.animations} onChange={(animations) => p.set({ animations })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "off", label: t("set.animOff") }, { v: "subtle", label: t("set.animSubtle") }, { v: "normal", label: t("set.animNormal") }]} />
       </Pref>
       <Pref label={t("set.channelLogos")}><Switch on={p.channelLogos} onChange={(channelLogos) => p.set({ channelLogos })} label={t("set.channelLogos")} /></Pref>
+      <Pref label={t("set.optimizeImages")} desc={t("set.optimizeImagesD")}><Switch on={p.optimizeImages} onChange={(optimizeImages) => p.set({ optimizeImages })} label={t("set.optimizeImages")} /></Pref>
       <Pref label={t("sport.setting")} desc={t("sport.settingD")}><Switch on={p.sportSection} onChange={(sportSection) => p.set({ sportSection })} label={t("sport.setting")} /></Pref>
       <Pref label={t("set.guideCol")}>
         <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
