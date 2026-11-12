@@ -41,7 +41,15 @@ fun <T : Any> rememberSafeItemKey(items: androidx.paging.compose.LazyPagingItems
         val seen = HashSet<Any>()
         buildSet { snap.forEachIndexed { i, it -> if (it != null && !seen.add(id(it))) add(i) } }
     }
-    return { i -> if (i in dups) "dup:$i" else items.peek(i)?.let(id) ?: "placeholder:$i" }
+    // La liste peut rétrécir entre deux passes (synchro, filtre) alors que Compose demande encore la clé de l'ancien
+    // dernier élément : peek() hors limites plantait (« index 3 in ItemSnapshotList of size 3 », 1.2.98-rc1).
+    return { i ->
+        when {
+            i in dups -> "dup:$i"
+            i < 0 || i >= items.itemCount -> "gone:$i"
+            else -> runCatching { items.peek(i) }.getOrNull()?.let(id) ?: "placeholder:$i"
+        }
+    }
 }
 
 /** Signal « la navigation vient de la barre latérale / du bandeau du haut ». */
