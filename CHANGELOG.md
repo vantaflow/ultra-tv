@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.93] — 2026-11-12 (Android)
+
 ### Corrigé
 - Android (TV), guide : l'aperçu vidéo attend 1,5 s sans bouger avant de lire la chaîne survolée ; faire défiler le guide ne « zappe » plus à chaque ligne.
 - Android : l'appli ne restait plus bloquée au lancement après l'installation d'une version plus ancienne par-dessus une plus récente (« A migration from 22 to 21 was required ») ; la base locale est reconstruite et le catalogue se resynchronise.
