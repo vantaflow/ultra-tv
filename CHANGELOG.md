@@ -5,6 +5,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
+- Android (TV) : **logo officiel du titre** (Fanart.tv) à la place du titre texte sur les fiches film et série et dans « À la une » de l'accueil, **fond HD** sur une fiche film qui n'en a pas ; le texte reste affiché tant que l'image manque.
+- Android (TV) : fiche série, ligne **« Prochain épisode : S2 É5 · titre · date »** (sinon « Série terminée » ou « Dernier épisode diffusé ») d'après TVmaze ; accueil, rangée **« Nouveaux épisodes »** (séries en cours ou favorites dont un épisode est sorti ces 7 derniers jours ou sort dans les 7 jours), réglable dans Réglages › Affichage.
+- Android (TV) : rubrique Sport, **écussons des équipes** (football, basket, rugby) à côté des noms sur les cartes « En direct » et dans « À venir » (TheSportsDB, mémorisés 30 jours).
+- Bureau : logo du titre et fond HD (Fanart.tv) sur les fiches et « À la une », prochain épisode des séries et rangée « Nouveaux épisodes » (TVmaze).
 - Worker : relais pour les appareils appairés (clés côté serveur, réponses réduites, cache, débit limité) vers **Fanart.tv** (logo officiel du titre, fond HD ; secret `FANART_API_KEY`), **TVmaze** (épisodes précédent et prochain d'une série, sans clé) et **TheSportsDB** (écusson et compétition d'une équipe ; clé publique gratuite, ou secret `SPORTSDB_API_KEY`). Le proxy TMDB accepte `external_ids` (identifiants IMDb et TheTVDB).
 
 ### Corrigé
