@@ -108,8 +108,8 @@
     <string name="ds_update_default_body">Hay una versión nueva. La descarga se verifica antes de instalar.</string>
     <string name="ds_update_whats_new">Novedades</string>
     <string name="ds_update_failed">No se pudo instalar la actualización. Inténtalo más tarde.</string>
-    <string name="ds_update_signature_mismatch">Esta versión está firmada con una clave nueva: Android la rechazará como actualización. Desinstala Ultra TV una vez e instala la última versión (github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk ; Downloader: código 2268699). Las siguientes actualizaciones se instalarán con normalidad.</string>
-    <string name="ds_update_launched">Se abrió el instalador de Android. Si indica un conflicto, desinstala Ultra TV e instala la última versión (github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk ; Downloader: código 2268699).</string>
+    <string name="ds_update_signature_mismatch">Esta versión está firmada con una clave nueva: Android la rechazará como actualización. Desinstala Ultra TV una vez e instala la última versión (ultratv-config.khalilbenaz.workers.dev/apk ; Downloader: código 5447141). Las siguientes actualizaciones se instalarán con normalidad.</string>
+    <string name="ds_update_launched">Se abrió el instalador de Android. Si indica un conflicto, desinstala Ultra TV e instala la última versión (ultratv-config.khalilbenaz.workers.dev/apk ; Downloader: código 5447141).</string>
     <string name="ds_offline_title">Sin conexión a internet</string>
     <string name="ds_offline_body">Tus favoritos, la guía ya cargada y las grabaciones siguen disponibles. El directo se reanudará al volver la red.</string>
     <string name="ds_offline_banner">Sin conexión — el contenido guardado sigue disponible.</string>

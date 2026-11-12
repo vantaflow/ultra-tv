@@ -29,7 +29,7 @@
 
 | Appareil | Lien |
 |---|---|
-| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`2268699`** |
+| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5447141`** |
 | **Windows** (x64) | [Installeur .exe](https://ultratv-config.khalilbenaz.workers.dev/download/windows) |
 | **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv-config.khalilbenaz.workers.dev/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv-config.khalilbenaz.workers.dev/download/linux) |
@@ -178,7 +178,7 @@ Android 9 ou plus récent (API 28).
 
 **APK.** Téléchargez [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (somme SHA-256 sur la page de la release) et installez-le. Si l'installation échoue (appareil 32 bits comme le Chromecast avec Google TV HD), prenez [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) ; en dernier recours, l'[APK universel](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk).
 
-**Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`2268699`**, autorisez les sources inconnues, installez.
+**Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5447141`**, autorisez les sources inconnues, installez.
 
 **adb** :
 
@@ -205,7 +205,7 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 | **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv-config.khalilbenaz.workers.dev/download/android-32`](https://ultratv-config.khalilbenaz.workers.dev/download/android-32) |
 | Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv-config.khalilbenaz.workers.dev/download/android-universal`](https://ultratv-config.khalilbenaz.workers.dev/download/android-universal) |
 
-`ultratv-config.khalilbenaz.workers.dev/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`2268699`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+`ultratv-config.khalilbenaz.workers.dev/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5447141`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 
 ### Installation impossible (« problème de package »)
 
