@@ -4,6 +4,8 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.RawQuery
+import androidx.sqlite.db.SupportSQLiteQuery
 import androidx.room.Update
 import com.ultratv.tv.nativeapp.data.security.SecretBox
 import kotlinx.coroutines.flow.Flow
@@ -159,6 +161,18 @@ interface ChannelDao {
      *  the channel after a navigation that only carried the persisted identifiers. */
     @Query("SELECT * FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
     suspend fun byRemoteId(pid: Long, rid: String): ChannelEntity?
+
+    /** Rubrique Sport : chaînes de ces identifiants (non séparateurs, non masquées). À appeler par paquets de 400 au plus. */
+    @Query("SELECT * FROM channel WHERE id IN (:ids) AND junk = 0 AND isSeparator = 0")
+    suspend fun byIds(ids: List<Long>): List<ChannelEntity>
+
+    /** Rubrique Sport : chaînes des catégories (identifiants fournisseur), index (providerId, categoryId, num). Paquets de 400 au plus. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId IN (:cats) AND junk = 0 AND isSeparator = 0")
+    suspend fun byCategories(pid: Long, cats: List<String>): List<ChannelEntity>
+
+    /** Rubrique Sport : pré-filtre des noms de chaînes (LIKE construit par [com.ultratv.tv.nativeapp.data.sport.SportRepository]). */
+    @RawQuery
+    suspend fun channelsRaw(query: SupportSQLiteQuery): List<ChannelEntity>
 
     /** Propriétés de flux protégé (JSON, secret de lecture) d'une chaîne ; null = flux ordinaire. */
     @Query("SELECT props FROM channel WHERE providerId = :pid AND remoteId = :rid LIMIT 1")
@@ -925,6 +939,17 @@ interface EpgDao {
 
     @Query("SELECT * FROM epg WHERE channelId IN (:channelIds) AND endMs >= :nowMs AND startMs <= :windowEndMs ORDER BY startMs")
     suspend fun rangeForChannels(channelIds: List<Long>, nowMs: Long, windowEndMs: Long): List<EpgEntity>
+
+    /**
+     * Rubrique Sport : comme [rangeForChannels] mais SANS la description (souvent longue : des milliers de lignes en
+     * mémoire sur une box modeste). Index (channelId, startMs). Paquets de 400 chaînes au plus.
+     */
+    @Query("SELECT id, channelId, title, NULL AS description, startMs, endMs FROM epg WHERE channelId IN (:channelIds) AND endMs > :nowMs AND startMs <= :toMs ORDER BY startMs")
+    suspend fun sportRange(channelIds: List<Long>, nowMs: Long, toMs: Long): List<EpgEntity>
+
+    /** Rubrique Sport : pré-filtre des titres (LIKE construit par SportRepository), sans description. */
+    @RawQuery
+    suspend fun epgRaw(query: SupportSQLiteQuery): List<EpgEntity>
 
     /** Full programme list for one channel within a time window — used by the
      *  "tonight's schedule" column on the Live screen. */

@@ -1488,4 +1488,24 @@
     <string name="cor_down">Bajar</string>
     <string name="cor_done">Aceptar</string>
     <string name="cor_cancel">Cancelar</string>
+
+    <!-- Rubrique Sport -->
+    <string name="sport_nav">Deportes</string>
+    <string name="sport_setting_label">Sección de deportes</string>
+    <string name="sport_setting_hint">Añade una entrada Deportes al menú, creada a partir de tu propia guía. Desactivada por defecto.</string>
+    <string name="sport_live_now">En directo ahora</string>
+    <string name="sport_upcoming">Próximamente (48 h)</string>
+    <string name="sport_channels">Canales deportivos</string>
+    <string name="sport_home_row">Deporte en directo</string>
+    <string name="sport_remind">Recordarme</string>
+    <string name="sport_record">Grabar</string>
+    <string name="sport_today">Hoy</string>
+    <string name="sport_tomorrow">Mañana</string>
+    <string name="sport_empty_live">No hay deporte en emisión ahora.</string>
+    <string name="sport_empty_upcoming">No hay deporte anunciado en las próximas 48 horas.</string>
+    <string name="sport_no_channels">No se encontró ningún canal deportivo en tu fuente.</string>
+    <string name="sport_no_source">Añade una fuente para ver deportes.</string>
+    <string name="sport_no_guide_title">Se necesita una guía</string>
+    <string name="sport_no_guide_body">La sección de deportes se basa en la guía de programas de tus canales. Activa la guía en Ajustes › Sincronización y sincroniza tu fuente.</string>
+    <string name="sport_open_sync">Abrir ajustes de sincronización</string>
 </resources>

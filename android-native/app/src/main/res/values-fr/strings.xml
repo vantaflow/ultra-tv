@@ -1497,4 +1497,24 @@
     <string name="cor_down">Descendre</string>
     <string name="cor_done">Valider</string>
     <string name="cor_cancel">Annuler</string>
+
+    <!-- Rubrique Sport -->
+    <string name="sport_nav">Sport</string>
+    <string name="sport_setting_label">Rubrique Sport</string>
+    <string name="sport_setting_hint">Ajoute une entrée Sport au menu, tirée de votre propre guide. Désactivée par défaut.</string>
+    <string name="sport_live_now">En direct maintenant</string>
+    <string name="sport_upcoming">À venir (48 h)</string>
+    <string name="sport_channels">Chaînes sport</string>
+    <string name="sport_home_row">Sport en direct</string>
+    <string name="sport_remind">Me rappeler</string>
+    <string name="sport_record">Enregistrer</string>
+    <string name="sport_today">Aujourd\'hui</string>
+    <string name="sport_tomorrow">Demain</string>
+    <string name="sport_empty_live">Aucun programme de sport en cours.</string>
+    <string name="sport_empty_upcoming">Aucun sport annoncé dans les 48 prochaines heures.</string>
+    <string name="sport_no_channels">Aucune chaîne de sport trouvée dans votre source.</string>
+    <string name="sport_no_source">Ajoutez une source pour voir le sport.</string>
+    <string name="sport_no_guide_title">Un guide est nécessaire</string>
+    <string name="sport_no_guide_body">La rubrique Sport s\'appuie sur le guide des programmes de vos chaînes. Activez le guide dans Réglages › Synchronisation, puis synchronisez votre source.</string>
+    <string name="sport_open_sync">Ouvrir les réglages de synchronisation</string>
 </resources>

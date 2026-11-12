@@ -32,6 +32,7 @@ class AppViewModel @Inject constructor(
     fun setDefaultPlayer(p: DefaultPlayer) = viewModelScope.launch { store.setDefaultPlayer(p) }
     fun setAutoSync(v: Boolean) = viewModelScope.launch { store.setAutoSync(v) }
     fun setShowChannelNumbers(v: Boolean) = viewModelScope.launch { store.setShowChannelNumbers(v) }
+    fun setSportSection(v: Boolean) = viewModelScope.launch { store.setSportSection(v) }
     fun setShowChannelLogos(v: Boolean) = viewModelScope.launch { store.setShowChannelLogos(v) }
     fun setGuideNameWidth(key: String) = viewModelScope.launch { store.setGuideNameWidth(key) }
     fun setHideAdult(v: Boolean) = viewModelScope.launch { store.setHideAdult(v) }

@@ -41,6 +41,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.sportNav
 import com.ultratv.tv.nativeapp.ui.common.LocalLowRam
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import androidx.compose.ui.Alignment
@@ -62,7 +63,14 @@ import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 
-internal data class RailItem(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String)
+internal data class RailItem(
+    val route: String,
+    val icon: String,
+    /** Libellé pris dans [com.ultratv.tv.nativeapp.i18n.DesignStrings] (prioritaire sur [label] quand il est fourni). */
+    val labelD: ((com.ultratv.tv.nativeapp.i18n.DesignStrings) -> String)? = null,
+    // Dernier paramètre : les items existants gardent leur construction RailItem(route, icon) { it.navX }.
+    val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String,
+)
 
 // Ordre et icônes de Sidebar.dc.html : Accueil, Direct, Guide, Films, Séries, Favoris, Enregistrements,
 // Réglages. La Recherche n'est PAS une destination : c'est le bouton du haut (sous le logo), ouvert aussi
@@ -79,6 +87,13 @@ internal val railItems = listOf(
     RailItem("account", Icons.Account) { it.navAccount },
     RailItem("settings", Icons.Settings) { it.navSettings },
 )
+
+/** Entrée facultative « Sport » (Réglages › Affichage), juste après le Guide. */
+private val sportRailItem = RailItem("sport", com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy, labelD = { it.sportNav }) { "" }
+
+/** Rail avec (ou sans) la rubrique Sport. */
+internal fun railItemsFor(sport: Boolean): List<RailItem> =
+    if (!sport) railItems else railItems.flatMap { if (it.route == "guide") listOf(it, sportRailItem) else listOf(it) }
 
 /** Largeur repliée / dépliée du rail, en px de maquette 1920×1080 (112 = 5,8 % de la largeur). */
 const val RAIL_COLLAPSED_PX = 112
@@ -101,6 +116,8 @@ fun SidebarNav(navController: NavController) {
     val S = LocalStrings.current
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val syncVm: com.ultratv.tv.nativeapp.ui.common.SyncStatusViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+    val items = remember(sportOn) { railItemsFor(sportOn) }
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
@@ -131,7 +148,7 @@ fun SidebarNav(navController: NavController) {
     val showLabels by remember { androidx.compose.runtime.derivedStateOf { expanded || labelAlphaState.value > 0f } }
 
     val activeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val hasActive = route == "search" || railItems.any { isSelected(route, it.route) }
+    val hasActive = route == "search" || items.any { isSelected(route, it.route) }
 
     Box(Modifier.fillMaxSize()) {
         // Voile de la maquette MenuOuvert (rgba(10,10,12,.72)) : dessiné, jamais mesuré par le contenu.
@@ -216,7 +233,7 @@ fun SidebarNav(navController: NavController) {
                 val density = androidx.compose.ui.platform.LocalDensity.current
                 var areaPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                 Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { if (it.height != areaPx) areaPx = it.height }) {
-                val n = railItems.size
+                val n = items.size
                 val maxHeight = if (areaPx > 0) with(density) { areaPx.toDp() } else (64 * n + 10 * (n - 1)).design
                 val gapPx = if (maxHeight >= (64 * n + 10 * (n - 1)).design) 10 else 4
                 val itemDp = ((maxHeight - (gapPx * (n - 1)).design) / n).coerceIn(40.design, 64.design)
@@ -225,7 +242,7 @@ fun SidebarNav(navController: NavController) {
                     verticalArrangement = Arrangement.spacedBy(gapPx.design, Alignment.CenterVertically),
                     horizontalAlignment = Alignment.Start,
                 ) {
-                    railItems.forEach { item ->
+                    items.forEach { item ->
                         val active = isSelected(route, item.route)
                         FocusSurface(
                             onClick = {
@@ -254,7 +271,7 @@ fun SidebarNav(navController: NavController) {
                                 if (showLabels) {
                                     Spacer(Modifier.width(16.design))
                                     Text(
-                                        item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
+                                        item.labelD?.invoke(D) ?: item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Ux.Text2 },
                                         maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                         modifier = Modifier.padding(end = 12.design).graphicsLayer { alpha = labelAlphaState.value },

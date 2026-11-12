@@ -48,6 +48,7 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
+import com.ultratv.tv.nativeapp.i18n.sportNav
 import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.Icons
@@ -158,6 +159,9 @@ private fun Spacer4() = androidx.compose.foundation.layout.Spacer(Modifier.heigh
 
 private data class MoreDef(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings, com.ultratv.tv.nativeapp.i18n.DesignStrings, MobileStrings) -> String)
 
+private val sportMoreItem = MoreDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d, _ -> d.sportNav }
+private val sportRailDef get() = RailDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d -> d.sportNav }
+
 private val moreItems = listOf(
     MoreDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
     MoreDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
@@ -190,7 +194,9 @@ fun MoreSheet(navController: NavController, onDismiss: () -> Unit, onProfiles: (
         ) {
             Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ux.Line))
             Text(M.moreTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
-            moreItems.forEach { item ->
+            val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+            val shownMore = if (sportOn) listOf(sportMoreItem) + moreItems else moreItems
+            shownMore.forEach { item ->
                 val label = item.label(S, D, M)
                 Row(
                     Modifier
@@ -250,7 +256,9 @@ fun TouchRail(navController: NavController, profile: ProfileChip?, onProfile: ()
             verticalArrangement = Arrangement.spacedBy(6.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            railDefs.forEach { r ->
+            val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+            val shownRail = if (sportOn) railDefs.flatMap { if (it.route == Routes.GUIDE) listOf(it, sportRailDef) else listOf(it) } else railDefs
+            shownRail.forEach { r ->
                 val selected = r.route == active
                 val label = r.label(S, D)
                 Column(

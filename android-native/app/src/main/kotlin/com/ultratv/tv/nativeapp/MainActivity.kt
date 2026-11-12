@@ -393,6 +393,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalStrings provides strings,
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
+        com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled provides prefs.sportSection,
         com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(prefs.guideNameWidth)),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
         com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides com.ultratv.tv.nativeapp.ui.design.Animations.resolve(
@@ -598,6 +599,7 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onGoCloud = { StartupNav.cloudPairRequest.value = true; nav.navigate(Routes.SETTINGS) },
                 onGoPhone = { StartupNav.phoneSendRequest.value = true; nav.navigate(Routes.SETTINGS) },
                 onGoGuide = { nav.navigate(Routes.GUIDE) },
+                onGoSport = { nav.navigate(Routes.SPORT) },
                 onGoSearch = { nav.navigate(Routes.SEARCH) },
                 onGoFavorites = { nav.navigate(Routes.FAVORITES) },
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
@@ -661,6 +663,13 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onOpenChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
+            )
+        }
+        // Rubrique Sport (facultative) : l'entrée de menu n'existe que si le réglage est activé.
+        screen(Routes.SPORT) {
+            com.ultratv.tv.nativeapp.ui.sport.SportScreen(
+                onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onGoSettings = { nav.navigate(Routes.SETTINGS) },
             )
         }
         screen(Routes.GUIDE) {

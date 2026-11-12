@@ -128,3 +128,4 @@ ar|wiz_bullet_xtream
 ar|wiz_card_xtream
 ar|wiz_kind_xtream
 ar|wiz_hint_ok
+fr|sport_nav
