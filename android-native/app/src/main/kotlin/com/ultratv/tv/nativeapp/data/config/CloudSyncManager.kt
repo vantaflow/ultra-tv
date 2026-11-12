@@ -442,6 +442,7 @@ class CloudSyncManager @Inject constructor(
         tokens.clear()
         links.clearAll()
         _state.value = CloudSyncState(revoked = true, removed = linked.size)
+        CloudRevoked.flag.value = true
         com.ultratv.tv.nativeapp.RemoteLog.warn("cloud", "device revoked: ${linked.size} cloud source(s) removed")
     }
 
@@ -457,6 +458,9 @@ class CloudSyncManager @Inject constructor(
     /** À appeler après un dé-appairage ou un changement de Worker : les liens ne valent plus rien. */
     fun forget() { links.clearAll(); _state.value = CloudSyncState() }
 }
+
+/** Révocation constatée pendant ce lancement : l'interface affiche le message une fois. */
+object CloudRevoked { val flag = kotlinx.coroutines.flow.MutableStateFlow(false) }
 
 /** Drapeau posé par l'assistant de première source pendant l'appairage cloud. */
 object CloudOnboarding {

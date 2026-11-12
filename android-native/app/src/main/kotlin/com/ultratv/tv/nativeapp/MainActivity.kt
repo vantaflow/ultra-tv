@@ -561,9 +561,9 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
         com.ultratv.tv.nativeapp.ui.common.OverlayLayer(overlays)
         com.ultratv.tv.nativeapp.ui.common.ToasterHost()
         run {
-            val cloudState by cloudSync.get().state.collectAsState()
+            val revoked by com.ultratv.tv.nativeapp.data.config.CloudRevoked.flag.collectAsState()
             val Dr = com.ultratv.tv.nativeapp.i18n.LocalDs.current
-            LaunchedEffect(cloudState.revoked) { if (cloudState.revoked) com.ultratv.tv.nativeapp.ui.common.Toaster.err(Dr.cloudRevoked) }
+            LaunchedEffect(revoked) { if (revoked) com.ultratv.tv.nativeapp.ui.common.Toaster.err(Dr.cloudRevoked) }
         }
         com.ultratv.tv.nativeapp.ui.common.ReminderBannerHost()
         // Alertes de l’administrateur (tableau de bord) : pendant la lecture plein écran, seules les urgentes (en bandeau).
