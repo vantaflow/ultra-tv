@@ -34,8 +34,8 @@ export const MANIFEST = {
     { src: "/pwa/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
   ],
   shortcuts: [
-    { name: "Envoyer une source à ma TV", url: "/envoyer", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
     { name: "Associer un appareil", url: "/pair", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
+    { name: "Envoyer une source à ma TV", url: "/envoyer", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
   ],
 };
 

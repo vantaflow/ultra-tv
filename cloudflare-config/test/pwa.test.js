@@ -54,6 +54,6 @@ describe("application web installable (PWA)", () => {
   });
 
   it("raccourcis du manifeste vers des pages existantes", () => {
-    expect(MANIFEST.shortcuts.map((s) => s.url)).toEqual(["/envoyer", "/pair"]);
+    expect(MANIFEST.shortcuts.map((s) => s.url)).toEqual(["/pair", "/envoyer"]);
   });
 });
