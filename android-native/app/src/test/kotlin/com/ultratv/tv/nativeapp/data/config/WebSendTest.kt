@@ -182,17 +182,17 @@ class AnonPingPlanTest {
         assertEquals("android-tv", o.getString("platform")); assertEquals("SKYWORTH 4K", o.getString("model"))
     }
 
-    @Test fun `modele vide : champ omis`() {
+    @Test fun `modele vide, champ omis`() {
         val o = JSONObject(AnonPingPlan.body("abc-123", "1.2.83", "android-mobile", " "))
         assertEquals(setOf("install", "version", "platform"), o.keys().asSequence().toSet())
     }
 
-    @Test fun `application : TV ou mobile`() {
+    @Test fun `application TV ou mobile`() {
         assertEquals("android-tv", AnonPingPlan.platform(true))
         assertEquals("android-mobile", AnonPingPlan.platform(false))
     }
 
-    @Test fun `modele : fabricant et modele sans doublon, nettoye, 64 caracteres au plus`() {
+    @Test fun `modele, fabricant et modele sans doublon, nettoye, 64 caracteres au plus`() {
         assertEquals("SKYWORTH 4K", AnonPingPlan.modelLabel("SKYWORTH", "4K"))
         assertEquals("Google Pixel 7", AnonPingPlan.modelLabel("Google", "Google Pixel 7"))
         assertEquals("samsung SM-S911B", AnonPingPlan.modelLabel("samsung", "SM-S911B"))
