@@ -4,8 +4,17 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.98] — 2026-11-12 (Android) et bureau 1.2.47
+
+### Corrigé
+- Android : plantage du lecteur (« Key was already used ») quand une même chaîne apparaissait deux fois dans la liste des chaînes ; la chaîne n'y figure plus qu'une fois, et le zapping ne boucle plus sur elle (liste du lecteur, file de zapping, rangées de chaînes de l'accueil).
+- Android : plantage quand une liste paginée (chaînes, films, séries) rétrécissait pendant son affichage, par exemple pendant la synchronisation qui suit l'appairage.
+- Android : fiche série, le bouton « Bande-annonce » apparaît aussi quand la série n'a pas de bande-annonce dans la langue de l'appli (repli sur l'anglais).
+- Android : le bandeau d'une alerte se ferme avec Retour (ou d'un toucher sur mobile), indique « Retour : fermer » et montre le temps restant avant de disparaître.
+
 ### Modifié
-- Worker : l'ancienne adresse workers.dev ne sert plus le site (réponse 410 avec la nouvelle adresse) ; seules l'API des applis installées, les pages ouvertes par leur QR code (/pair, /envoyer, redirigées) et le retour Trakt restent servis. Trakt revient toujours par l'adresse déclarée chez Trakt puis poursuit sur tv.weedy.dpdns.org : aucune modification de l'application Trakt nécessaire.
+- Worker : l'ancienne adresse workers.dev ne sert plus le site : toute page (accueil, connexion, tableau de bord, administration, téléchargements, QR des applis installées, retour Trakt) redirige vers la même page de tv.weedy.dpdns.org ; l'API des applis installées y reste servie. Trakt revient toujours par l'adresse déclarée chez Trakt puis poursuit sur la nouvelle : aucune modification de l'application Trakt nécessaire.
+- Worker : le proxy TMDB accepte `include_video_language` (bandes-annonces dans une autre langue).
 
 ### Modifié
 - Bureau : nouvelle interface (design v2). Thèmes sombre et clair redessinés (Réglages › Affichage › Thème : Automatique, Sombre ou Clair), survol à la souris et focus clavier au même rendu, animation d'ouverture de 700 ms qui ne retarde jamais le chargement.
