@@ -107,4 +107,23 @@ class SportLogicTest {
         assertEquals(listOf(3L, 2L, 4L, 1L), SportLogic.sportChannels(list).map { it.id })
         assertEquals(2, SportLogic.sportChannels(list, limit = 2).size)
     }
+
+    @Test fun matchLine_competitionAvantLaBarre_equipesSepareesParUnSlash() {
+        val m = matchLineOf("Football : Qualifications de la CAN | RD Congo / Sierra Leone")
+        assertEquals("Qualifications de la CAN", m.competition)
+        assertEquals("RD Congo", m.home)
+        assertEquals("Sierra Leone", m.away)
+    }
+
+    @Test fun discipline_titreAvantResume() {
+        assertEquals(null, SportKind.ofProgramme("Ski alpin", "Avant le football de ce soir"))
+        assertEquals(SportKind.FOOTBALL, SportKind.ofProgramme("Ligue 1 · Nova - Stade", null))
+    }
+
+    @Test fun memeProgrammeSurPlusieursChaines_uneSeuleCarte() {
+        val a = ch(1, "Stade 1"); val b = ch(2, "Stade 1 HD")
+        val list = listOf(e(a, "Club du soir", 100, 200, sportChannel = true), e(b, "Club du soir", 100, 200, sportChannel = true))
+        assertEquals(1, SportLogic.liveNow(list, 150).size)
+        assertEquals(1, SportLogic.upcoming(list, 50, TimeZone.getTimeZone("UTC")).flatMap { it.entries }.size)
+    }
 }

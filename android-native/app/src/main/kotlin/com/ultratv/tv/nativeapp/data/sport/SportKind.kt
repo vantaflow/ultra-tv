@@ -26,10 +26,13 @@ enum class SportKind(private val words: Set<String>, private val phrases: List<S
             return SportKind.entries.firstOrNull { k -> k.words.any { it in tokens } || k.phrases.any { padded.contains(" " + SportDetector.fold(it) + " ") } }
         }
 
+        /** Discipline d'un programme : le TITRE d'abord (un résumé qui cite « football » ne fait pas du ski un match). */
+        fun ofProgramme(title: String?, description: String?): SportKind? = of(title) ?: of(description)
+
         /** Disciplines présentes dans [entries], dans l'ordre de déclaration (onglets proposés). */
         fun present(list: List<SportEntry>): List<SportKind> {
             val found = HashSet<SportKind>()
-            for (e in list) of(e.prog.title, e.prog.description)?.let { found += it }
+            for (e in list) ofProgramme(e.prog.title, e.prog.description)?.let { found += it }
             return SportKind.entries.filter { it in found }
         }
     }
@@ -38,13 +41,24 @@ enum class SportKind(private val words: Set<String>, private val phrases: List<S
 /** Titre de programme décomposé pour une carte : compétition éventuelle (« Ligue 1 : PSG - OM »), puis deux côtés ou le titre entier. */
 data class MatchLine(val competition: String?, val home: String?, val away: String?, val title: String)
 
-private val MATCH_SEPARATOR = Regex("\\s+(?:vs\\.?|v|contre|[-–—])\\s+", RegexOption.IGNORE_CASE)
+private val MATCH_SEPARATOR = Regex("\\s+(?:vs\\.?|v|contre|[-–—/])\\s+", RegexOption.IGNORE_CASE)
 
 /** Décompose le titre d'un programme de sport ; sans séparateur reconnu, [MatchLine.home] et [MatchLine.away] sont nuls. */
 fun matchLineOf(rawTitle: String): MatchLine {
     val title = rawTitle.trim()
     var competition: String? = null
     var rest = title
+    // « Football : Qualifications de la CAN | RD Congo / Sierra Leone » : la compétition est avant la barre.
+    val bar = title.lastIndexOf('|')
+    if (bar in 3 until title.length - 3) {
+        val tail = title.substring(bar + 1).trim()
+        val sep = MATCH_SEPARATOR.find(tail)
+        if (sep != null) {
+            val home = tail.substring(0, sep.range.first).trim(); val away = tail.substring(sep.range.last + 1).trim()
+            val comp = title.substring(0, bar).trim().let { c -> c.substringAfter(':', c).trim() }.ifEmpty { null }
+            if (home.isNotEmpty() && away.isNotEmpty()) return MatchLine(comp, home, away, title)
+        }
+    }
     val colon = title.indexOf(':')
     if (colon in 3..30) {
         val tail = title.substring(colon + 1).trim()

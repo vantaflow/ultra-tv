@@ -50,7 +50,7 @@ object TeamBadgeLogic {
     fun namesOf(entries: List<SportEntry>, max: Int = MAX_NAMES): List<String> {
         val out = LinkedHashMap<String, String>()
         for (e in entries) {
-            if (!teamSport(SportKind.of(e.prog.title, e.prog.description))) continue
+            if (!teamSport(SportKind.ofProgramme(e.prog.title, e.prog.description))) continue
             val line = matchLineOf(e.prog.title)
             for (side in listOf(line.home, line.away)) {
                 val q = queryName(side) ?: continue

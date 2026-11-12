@@ -32,6 +32,8 @@ object SportLogic {
             .values
             .map { g -> g.maxBy { it.prog.startMs } }
             .sortedWith(compareByDescending<SportEntry> { it.sportChannel }.thenBy { it.prog.startMs }.thenBy { it.channel.title }.thenBy { it.channel.id })
+            // Même programme diffusé sur plusieurs chaînes (versions HD / FHD…) : une seule carte, la première chaîne.
+            .distinctBy { SportDetector.fold(it.prog.title) to it.prog.startMs }
             .take(limit)
 
     /**
@@ -44,6 +46,7 @@ object SportLogic {
             .filter { it.strict && it.prog.startMs > nowMs && it.prog.startMs <= to }
             .distinctBy { it.channel.id to it.prog.startMs }
             .sortedWith(compareBy<SportEntry> { it.prog.startMs }.thenByDescending { it.sportChannel }.thenBy { it.channel.title }.thenBy { it.channel.id })
+            .distinctBy { SportDetector.fold(it.prog.title) to it.prog.startMs }
             .take(limit)
             .toList()
         return picked.groupBy { dayStart(it.prog.startMs, zone) }

@@ -180,7 +180,7 @@ private fun kindLabel(D: DesignStrings, k: SportKind): String = when (k) {
     SportKind.RUGBY -> D.sportKindRugby
 }
 
-private fun kindOf(e: SportEntry): SportKind? = SportKind.of(e.prog.title, e.prog.description)
+private fun kindOf(e: SportEntry): SportKind? = SportKind.ofProgramme(e.prog.title, e.prog.description)
 
 /** Un programme à venir avec son jour (liste à plat de « À venir »). */
 private data class UpcomingItem(val dayStartMs: Long, val entry: SportEntry)
@@ -350,8 +350,9 @@ private fun SportPill(label: String, onClick: () -> Unit, active: Boolean = fals
 
 /** Texte de la pastille d'une carte « direct » : minute de jeu pour les sports à minutes, sinon « En direct ». */
 private fun liveBadgeText(D: DesignStrings, e: SportEntry, kind: SportKind?, nowMs: Long): String {
-    val minutes = ((nowMs - e.prog.startMs) / 60_000L).toInt()
-    return if ((kind == SportKind.FOOTBALL || kind == SportKind.RUGBY) && minutes in 1..150) "$minutes'" else D.homeLiveNow
+    // Pas de minute de jeu : le début d'un programme du guide n'est pas le coup d'envoi (avant-match, plateau),
+    // la minute calculée était fausse (« 109' » pour un match en cours). La progression du programme reste sur la carte.
+    return D.homeLiveNow
 }
 
 /** Carte d'un direct (maquette) : compétition + minute, équipes, logo · numéro · nom de la chaîne, progression. */
