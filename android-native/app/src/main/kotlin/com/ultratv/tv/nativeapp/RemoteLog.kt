@@ -33,7 +33,7 @@ object RemoteLog {
     @Volatile var workerUrlOverride: String = ""
 
     private fun workerBase(): String? =
-        WorkerUrl.normalize(workerUrlOverride.ifBlank { BuildConfig.WORKER_URL }, allowCleartext = BuildConfig.DEBUG)
+        WorkerUrl.normalize(WorkerUrl.resolve(workerUrlOverride), allowCleartext = BuildConfig.DEBUG)
 
     @Volatile private var tokenStore: DeviceTokenStore? = null
 
@@ -55,6 +55,7 @@ object RemoteLog {
     private val eventClient by lazy {
         OkHttpClient.Builder()
             .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)   // DNS des Réglages (client hors graphe Hilt)
+            .addInterceptor(com.ultratv.tv.nativeapp.data.config.WorkerFallbackInterceptor())
             .connectTimeout(8, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
@@ -62,6 +63,7 @@ object RemoteLog {
     private val crashClient by lazy {
         OkHttpClient.Builder()
             .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns)   // DNS des Réglages (client hors graphe Hilt)
+            .addInterceptor(com.ultratv.tv.nativeapp.data.config.WorkerFallbackInterceptor())
             .connectTimeout(3, TimeUnit.SECONDS)
             .readTimeout(3, TimeUnit.SECONDS)
             .writeTimeout(3, TimeUnit.SECONDS)

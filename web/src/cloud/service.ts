@@ -12,7 +12,7 @@ import { decryptSecret, encryptSecret } from "@/net/secrets";
 import { detectSourceLanguages } from "@/sync/client";
 import { OTHER_LANG } from "@/sync/core";
 import {
-  DEFAULT_WORKER, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
+  DEFAULT_WORKER, resolveWorker, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
   deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken, tmdbPosterPath,
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
@@ -57,7 +57,7 @@ export function defaultDeviceName(): string {
 
 export async function loadCloud(): Promise<void> {
   const [worker, deviceId, lastSyncAt, deviceName, push, devices, token, prefsSync] = await Promise.all([
-    getSetting<string>(K.worker, DEFAULT_WORKER), getSetting<string>(K.deviceId, ""), getSetting<number>(K.lastSync, 0),
+    getSetting<string>(K.worker, DEFAULT_WORKER).then(resolveWorker), getSetting<string>(K.deviceId, ""), getSetting<number>(K.lastSync, 0),
     getSetting<string>(K.deviceName, ""), getSetting<boolean | null>(K.push, null), getSetting<CloudDevice[] | number>(K.devices, 0),
     getSetting<string>(K.token, ""), getSetting<boolean>(K.prefsSync, true),
   ]);
@@ -74,7 +74,7 @@ export async function getToken(): Promise<string> {
 }
 
 export async function saveWorker(raw: string, allowLoopback = false): Promise<boolean> {
-  const n = normalizeWorkerUrl(raw || DEFAULT_WORKER, allowLoopback);
+  const n = normalizeWorkerUrl(resolveWorker(raw), allowLoopback);
   if (!n) return false;
   await setSetting(K.worker, n);
   patch({ worker: n });

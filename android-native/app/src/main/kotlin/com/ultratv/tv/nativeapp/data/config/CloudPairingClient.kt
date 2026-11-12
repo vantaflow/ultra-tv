@@ -29,6 +29,22 @@ object WorkerUrl {
         if (u.host.isNullOrBlank() || u.userInfo != null || u.rawQuery != null || u.rawFragment != null) return null
         return s
     }
+
+    /** Ancienne adresse par défaut (workers.dev) : enregistrée dans les préférences, elle équivaut à « défaut ». */
+    const val LEGACY_DEFAULT = "https://ultratv-config.khalilbenaz.workers.dev"
+
+    /**
+     * Adresse effective du Worker (fonction pure) : vide ou égale à l'ancien défaut -> [default] (nouveau domaine) ;
+     * toute autre valeur choisie par l'utilisateur est conservée telle quelle.
+     */
+    fun resolve(saved: String, default: String, legacyDefault: String = LEGACY_DEFAULT): String {
+        val s = saved.trim().trimEnd('/')
+        if (s.isEmpty() || s.equals(legacyDefault.trimEnd('/'), ignoreCase = true)) return default
+        return s
+    }
+
+    /** [resolve] avec le défaut du build (BuildConfig.WORKER_URL). */
+    fun resolve(saved: String): String = resolve(saved, com.ultratv.tv.nativeapp.BuildConfig.WORKER_URL)
 }
 
 data class PairingSession(val code: String, val pollSecret: String, val expiresInSec: Int, val intervalSec: Int)

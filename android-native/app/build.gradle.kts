@@ -51,7 +51,7 @@ fun resolveBuildConfigValue(name: String, default: String): String =
 
 val ultraWorkerUrl = resolveBuildConfigValue(
     "ULTRA_WORKER_URL",
-    resolveBuildConfigValue("ULTRA_LOG_URL", "https://ultratv-config.khalilbenaz.workers.dev"),
+    resolveBuildConfigValue("ULTRA_LOG_URL", "https://tv.weedy.dpdns.org"),
 )
 
 // Édition : « standard » (app publique) ou « pro » (variante revendeur : -PULTRA_EDITION=pro).
@@ -74,6 +74,8 @@ android {
 
         // URL par défaut du Worker — voir resolveBuildConfigValue() ci-dessus.
         buildConfigField("String", "WORKER_URL", "\"$ultraWorkerUrl\"")
+        // Adresse de repli (ancienne, workers.dev) : utilisée automatiquement si le domaine principal est injoignable.
+        buildConfigField("String", "WORKER_FALLBACK_URL", "\"https://ultratv-config.khalilbenaz.workers.dev\"")
         // Édition déclarée au tableau de bord du compte (en-tête X-Ultra-Edition) ; « pro » dans la variante revendeur.
         buildConfigField("String", "EDITION", "\"$ultraEdition\"")
     }

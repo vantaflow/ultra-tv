@@ -116,8 +116,8 @@
     <string name="ds_update_default_body">يتوفر إصدار جديد. يتم التحقق من التنزيل قبل التثبيت.</string>
     <string name="ds_update_whats_new">الجديد</string>
     <string name="ds_update_failed">تعذّر تثبيت التحديث. حاول لاحقًا.</string>
-    <string name="ds_update_signature_mismatch">هذا الإصدار موقّع بمفتاح جديد: سيرفضه أندرويد كتحديث. ألغِ تثبيت Ultra TV مرة واحدة ثم ثبّت أحدث إصدار (ultratv-config.khalilbenaz.workers.dev/apk ; Downloader: الرمز 5447141). ستُثبَّت التحديثات اللاحقة بشكل عادي.</string>
-    <string name="ds_update_launched">فُتح مثبّت أندرويد. إذا أشار إلى تعارض، ألغِ تثبيت Ultra TV ثم ثبّت أحدث إصدار (ultratv-config.khalilbenaz.workers.dev/apk ; Downloader: الرمز 5447141).</string>
+    <string name="ds_update_signature_mismatch">هذا الإصدار موقّع بمفتاح جديد: سيرفضه أندرويد كتحديث. ألغِ تثبيت Ultra TV مرة واحدة ثم ثبّت أحدث إصدار (tv.weedy.dpdns.org/apk ; Downloader: الرمز 5189921). ستُثبَّت التحديثات اللاحقة بشكل عادي.</string>
+    <string name="ds_update_launched">فُتح مثبّت أندرويد. إذا أشار إلى تعارض، ألغِ تثبيت Ultra TV ثم ثبّت أحدث إصدار (tv.weedy.dpdns.org/apk ; Downloader: الرمز 5189921).</string>
     <string name="ds_offline_title">لا يوجد اتصال بالإنترنت</string>
     <string name="ds_offline_body">تبقى المفضلة والدليل المحمّل والتسجيلات متاحة. سيعود البث المباشر فور عودة الشبكة.</string>
     <string name="ds_offline_banner">لا يوجد اتصال — المحتوى المحفوظ متاح.</string>

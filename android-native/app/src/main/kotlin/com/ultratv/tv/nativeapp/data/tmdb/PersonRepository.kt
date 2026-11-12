@@ -81,7 +81,7 @@ class PersonRepository @Inject constructor(
     private suspend fun tmdbGet(path: String): String? = withContext(Dispatchers.IO) {
         if (!tokens.isPaired) return@withContext null
         val token = tokens.token() ?: return@withContext null
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext null
         http.newCall(Request.Builder().url("$base/api/tmdb/$path").header("Authorization", "Bearer $token").get().build())
             .execute().use { r -> if (r.isSuccessful) r.body?.string() else null }
     }

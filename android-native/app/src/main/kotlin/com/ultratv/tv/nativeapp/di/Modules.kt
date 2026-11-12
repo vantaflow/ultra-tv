@@ -80,6 +80,8 @@ object NetworkModule {
         .dns(com.ultratv.tv.nativeapp.data.net.dns.AppDns.also { it.attach(ctx) })
         // Mesure continue du débit et de la latence réels (alimente le profil adaptatif).
         .addNetworkInterceptor(monitor.interceptor)
+        // Repli automatique tv.weedy.dpdns.org <-> workers.dev sur panne réseau (sans effet pour les autres hôtes).
+        .addInterceptor(com.ultratv.tv.nativeapp.data.config.WorkerFallbackInterceptor())
         .connectTimeout(15, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(60, TimeUnit.SECONDS)

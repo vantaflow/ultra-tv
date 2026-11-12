@@ -93,7 +93,7 @@ class AnnouncementRepository @Inject constructor(
     /** null : réseau ou Worker indisponible (on garde l'état, on réessaiera). */
     suspend fun fetch(audience: String): List<Announcement>? = withContext(Dispatchers.IO) {
         val p = prefs.flow.first()
-        val base = WorkerUrl.normalize(p.workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(p.workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext null
         runCatching {
             val version = AnnouncementPlan.versionParam(BuildConfig.VERSION_NAME)
             // Langue effective de l'appli : le Worker renvoie l'alerte traduite quand elle existe.
@@ -111,7 +111,7 @@ class AnnouncementRepository @Inject constructor(
     suspend fun stat(id: String, kind: String) = withContext(Dispatchers.IO) {
         val p = prefs.flow.first()
         val json = AnnouncementPlan.statBody(kind, { installId() }, p.telemetryEnabled) ?: return@withContext
-        val base = WorkerUrl.normalize(p.workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(p.workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext
         val body = json.toRequestBody("application/json".toMediaType())
         runCatching { http.newCall(Request.Builder().url("$base/api/announcements/$id/stat").post(body).build()).execute().close() }
     }

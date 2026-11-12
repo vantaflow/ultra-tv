@@ -80,7 +80,7 @@ class AnonPingReporter @Inject constructor(
         if (!p.telemetryEnabled || tokens.isPaired) return
         val sp = ctx.getSharedPreferences("anon_ping", Context.MODE_PRIVATE)
         if (!AnonPingPlan.due(sp.getLong("last", 0L), nowMs)) return
-        val base = WorkerUrl.normalize(p.workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(p.workerBaseUrl), BuildConfig.DEBUG) ?: return
         val version = AnnouncementPlan.versionParam(BuildConfig.VERSION_NAME)
         val platform = AnonPingPlan.platform(isTelevision(ctx))
         val model = AnonPingPlan.modelLabel(Build.MANUFACTURER, Build.MODEL)

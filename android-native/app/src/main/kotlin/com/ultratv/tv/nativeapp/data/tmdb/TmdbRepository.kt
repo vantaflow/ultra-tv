@@ -44,7 +44,7 @@ class TmdbHttpApi @Inject constructor(
 
     private suspend fun get(pathAndQuery: String): String? = withContext(Dispatchers.IO) {
         val token = tokens.token() ?: return@withContext null
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@withContext null
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext null
         val req = Request.Builder().url("$base/api/tmdb/$pathAndQuery").header("Authorization", "Bearer $token").get().build()
         http.newCall(req).execute().use { r ->
             when {

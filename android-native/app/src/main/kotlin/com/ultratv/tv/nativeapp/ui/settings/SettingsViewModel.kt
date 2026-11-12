@@ -147,7 +147,7 @@ class SettingsViewModel @Inject constructor(
      * -PULTRA_WORKER_URL). Each user can self-host their own Worker.
      */
     val workerBaseUrl: StateFlow<String> = prefs.flow
-        .map { it.workerBaseUrl.ifBlank { DEFAULT_WORKER_URL } }
+        .map { com.ultratv.tv.nativeapp.data.config.WorkerUrl.resolve(it.workerBaseUrl) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DEFAULT_WORKER_URL)
 
     companion object {

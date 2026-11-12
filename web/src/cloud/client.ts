@@ -14,7 +14,55 @@
 
 import { bridge } from "@/net/transport";
 
-export const DEFAULT_WORKER = "https://ultratv-config.khalilbenaz.workers.dev";
+export const PRIMARY_HOST = "tv.weedy.dpdns.org";
+export const LEGACY_HOST = "ultratv-config.khalilbenaz.workers.dev";
+export const DEFAULT_WORKER = `https://${PRIMARY_HOST}`;
+const LEGACY_WORKER = `https://${LEGACY_HOST}`;
+
+/** Adresse effective : vide ou ancien défaut (workers.dev) = nouveau défaut ; une adresse choisie par l'utilisateur est conservée. */
+export function resolveWorker(saved: string | null | undefined): string {
+  const s = (saved ?? "").trim().replace(/\/+$/, "");
+  return !s || s.toLowerCase() === LEGACY_WORKER ? DEFAULT_WORKER : s;
+}
+
+/** Hôte de repli d'un hôte du Worker (domaine <-> workers.dev), sinon null. */
+export function alternateHost(host: string): string | null {
+  const h = host.toLowerCase();
+  return h === PRIMARY_HOST ? LEGACY_HOST : h === LEGACY_HOST ? PRIMARY_HOST : null;
+}
+
+/** Dernier hôte qui a répondu (mémoire du processus). */
+let lastWorkingHost: string | null = null;
+export function resetFallbackMemory() { lastWorkingHost = null; }
+
+function withHost(url: string, host: string): string {
+  try { const u = new URL(url); u.host = host; return u.toString(); } catch { return url; }
+}
+
+/**
+ * Repli automatique : sur panne réseau uniquement (exception, pas un code HTTP), la requête est rejouée une fois
+ * sur l'autre hôte du Worker ; l'hôte qui répond est retenu pour les appels suivants.
+ */
+export function withFallback(inner: (req: HttpRequest) => Promise<HttpResult>): (req: HttpRequest) => Promise<HttpResult> {
+  return async (req) => {
+    let host: string;
+    try { host = new URL(req.url).host; } catch { return inner(req); }
+    if (!alternateHost(host)) return inner(req);
+    const first = lastWorkingHost && alternateHost(lastWorkingHost) ? lastWorkingHost : host;
+    const r1 = first === host ? req : { ...req, url: withHost(req.url, first) };
+    try {
+      const res = await inner(r1);
+      lastWorkingHost = first;
+      return res;
+    } catch (e) {
+      const other = alternateHost(first)!;
+      let res: HttpResult;
+      try { res = await inner({ ...req, url: withHost(req.url, other) }); } catch { throw e; }
+      lastWorkingHost = other;
+      return res;
+    }
+  };
+}
 
 export class TokenRejectedError extends Error { constructor() { super("token-rejected"); this.name = "TokenRejectedError"; } }
 export class RateLimitedError extends Error { constructor(public retryAfterSec: number) { super("rate-limited"); this.name = "RateLimitedError"; } }
@@ -44,9 +92,9 @@ const defaultHttp: CloudHttp = async (req) => {
   return { status: res.status, text: await res.text(), retryAfter: res.headers.get("retry-after") ?? "", etag: res.headers.get("etag") ?? "" };
 };
 
-let http: CloudHttp = defaultHttp;
-/** Remplace le transport (tests). */
-export function setCloudHttp(h: CloudHttp | null) { http = h ?? defaultHttp; }
+let http: CloudHttp = withFallback(defaultHttp);
+/** Remplace le transport (tests) ; le repli d'hôte reste appliqué par-dessus. */
+export function setCloudHttp(h: CloudHttp | null) { http = withFallback(h ?? defaultHttp); }
 
 /** Le cloud n'est proposé que dans l'application de bureau (le Worker n'émet pas d'en-têtes CORS). */
 export const cloudAvailable = () => !!(bridge() as { cloudRequest?: unknown } | undefined)?.cloudRequest;

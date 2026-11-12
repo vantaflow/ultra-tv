@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
-  InvalidFieldError, NotFoundError, renameDevice, TokenRejectedError, fetchConfig, groupPairingCode, normalizeWorkerUrl,
+  InvalidFieldError, NotFoundError, DEFAULT_WORKER, alternateHost, resetFallbackMemory, resolveWorker, withFallback, renameDevice, TokenRejectedError, fetchConfig, groupPairingCode, normalizeWorkerUrl,
   pollPairing, putProvider, rotateToken, runPairing, setCloudHttp, startPairing, type PairingEvent,
 } from "./client";
 import { startFakeWorker, type FakeWorker } from "./fakeWorker";
@@ -113,5 +113,46 @@ describe("envoi d'un fournisseur", () => {
     w.state.hasPushEndpoint = true;
     w.state.shareWithSupported = false;
     await expect(putProvider(w.base, w.token, { kind: "M3U", name: "x", url: "http://a", shareWith: "all" })).rejects.toBeInstanceOf(InvalidFieldError);
+  });
+});
+
+describe("adresse du Worker : défaut et repli", () => {
+  const P = "https://tv.weedy.dpdns.org", L = "https://ultratv-config.khalilbenaz.workers.dev";
+  const ok = { status: 200, text: "{}", retryAfter: "", etag: "" };
+
+  it("resolveWorker : vide ou ancien défaut = nouveau défaut ; valeur perso conservée", () => {
+    expect(resolveWorker("")).toBe(P);
+    expect(resolveWorker(undefined)).toBe(P);
+    expect(resolveWorker(`${L}/`)).toBe(P);
+    expect(resolveWorker("https://mon.worker.exemple.dev")).toBe("https://mon.worker.exemple.dev");
+    expect(DEFAULT_WORKER).toBe(P);
+  });
+
+  it("alternateHost : seulement les deux hôtes du Worker", () => {
+    expect(alternateHost("tv.weedy.dpdns.org")).toBe("ultratv-config.khalilbenaz.workers.dev");
+    expect(alternateHost("ultratv-config.khalilbenaz.workers.dev")).toBe("tv.weedy.dpdns.org");
+    expect(alternateHost("example.com")).toBeNull();
+  });
+
+  it("panne réseau : rejoue une fois sur l'autre hôte et retient celui qui répond", async () => {
+    resetFallbackMemory();
+    const seen: string[] = [];
+    const h = withFallback(async (r) => { seen.push(new URL(r.url).host); if (r.url.includes("tv.weedy")) throw new TypeError("fetch failed"); return ok; });
+    await h({ url: `${P}/api/config?x=1`, method: "POST", body: "b" });
+    await h({ url: `${P}/api/config` });
+    expect(seen).toEqual(["tv.weedy.dpdns.org", "ultratv-config.khalilbenaz.workers.dev", "ultratv-config.khalilbenaz.workers.dev"]);
+    resetFallbackMemory();
+  });
+
+  it("pas de repli sur un code HTTP d'erreur ni pour un autre hôte", async () => {
+    resetFallbackMemory();
+    let n = 0;
+    const h = withFallback(async () => { n++; return { ...ok, status: 500 }; });
+    expect((await h({ url: `${P}/x` })).status).toBe(500);
+    expect(n).toBe(1);
+    const h2 = withFallback(async () => { throw new Error("down"); });
+    await expect(h2({ url: "https://example.com/x" })).rejects.toThrow("down");
+    await expect(h2({ url: `${P}/x` })).rejects.toThrow("down");
+    resetFallbackMemory();
   });
 });
