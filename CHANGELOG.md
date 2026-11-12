@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.97] — 2026-11-12 (Android)
+
 ### Corrigé
 - Android : les vidéos HDR (HDR10, HLG, Dolby Vision) ne paraissent plus ternes sur NVIDIA Shield, téléphones et tablettes, ni après un repli sur VLC. La TextureView, utilisée par défaut sur ces appareils, ne sait pas sortir de HDR : sur un écran HDR, avec le réglage Surface vidéo sur « Auto », la lecture HDR est relancée automatiquement en SurfaceView (position conservée en VOD). Si la SurfaceView n'affiche aucune image, l'appli revient à la TextureView et s'en souvient pour l'appareil. Pour un contenu HDR, le repli privilégie le décodage matériel avant le décodage logiciel.
 
