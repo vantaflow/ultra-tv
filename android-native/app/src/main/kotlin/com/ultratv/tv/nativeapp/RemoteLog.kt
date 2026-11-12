@@ -208,10 +208,7 @@ object RemoteLog {
 internal object CrashFile {
     private const val PREFIX = "@@ultratv-version "
 
-    fun entry(versionName: String, versionCode: Int, payload: String): String = "$PREFIX$versionName $versionCode
-$payload
-
-"
+    fun entry(versionName: String, versionCode: Int, payload: String): String = "$PREFIX$versionName $versionCode\n$payload\n\n"
 
     /**
      * Version et code de la PREMIÈRE entrée du fichier (sinon ceux d'aujourd'hui : fichier d'une version qui n'écrivait
@@ -222,8 +219,7 @@ $payload
         val parts = header?.removePrefix(PREFIX)?.trim()?.split(' ')
         val name = parts?.getOrNull(0)?.takeIf { it.isNotBlank() } ?: currentName
         val code = parts?.getOrNull(1)?.toIntOrNull() ?: currentCode
-        val stack = raw.lineSequence().filterNot { it.startsWith(PREFIX) }.joinToString("
-")
+        val stack = raw.lineSequence().filterNot { it.startsWith(PREFIX) }.joinToString("\n")
         return Triple(name, code, stack)
     }
 }
