@@ -346,7 +346,9 @@ class PlayerViewModel @Inject constructor(
         val now: EpgEntity?, val next: EpgEntity?, val isCurrent: Boolean,
     )
 
-    private suspend fun entriesFor(channels: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>, currentId: Long?): List<DrawerEntry> {
+    private suspend fun entriesFor(all: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>, currentId: Long?): List<DrawerEntry> {
+        // Une chaîne une seule fois : son identifiant sert de clé à la liste du tiroir (doublon = plantage).
+        val channels = all.distinctBy { it.id }
         val now = System.currentTimeMillis()
         val rows = channels.map { it.id }.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 4 * 60 * 60_000) }.groupBy { it.channelId }
         return channels.map { c ->

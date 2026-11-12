@@ -407,7 +407,7 @@ private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit)
 @Composable
 private fun ChannelRow(cards: List<ChannelCardUi>, onPlay: (ChannelEntity) -> Unit, seeAll: String, onSeeAll: () -> Unit) {
     LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(16.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
-        items(cards, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c) { onPlay(c.channel) } }
+        items(cards.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> ChannelCard(c) { onPlay(c.channel) } }
         // « Tout voir » : dernière carte de la rangée (un lien en haut à droite du titre capterait le focus en descendant).
         item(key = "see-all", contentType = "see-all") { SeeAllCard(seeAll, onSeeAll) }
     }

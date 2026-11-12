@@ -72,7 +72,7 @@ fun SimpleChannelsScreen(
                 contentPadding = PaddingValues(bottom = 40.design),
                 verticalArrangement = Arrangement.spacedBy(14.design),
             ) {
-                items(list, key = { it.channel.id }) { r ->
+                items(list.distinctBy { it.channel.id }, key = { it.channel.id }) { r ->
                     ChannelBigRow(r, onClick = { if (r.locked) pinFor = r else play(r) })
                 }
             }

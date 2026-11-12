@@ -197,7 +197,7 @@ fun MobileHomeScreen(
                     HomeSectionId.CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(if (rows.showingFavorites) D.favoriteChannels else D.directTitle, M.seeAll, if (rows.showingFavorites) onGoFavorites else onGoLive)
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
-                            items(rows.channels, key = { it.channel.id }, contentType = { "channel" }) { c -> FavChannelCard(c) { playChannel(c.channel) } }
+                            items(rows.channels.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> FavChannelCard(c) { playChannel(c.channel) } }
                         }
                     }
                     // Rangées propres à la TV (filtrées par mobileSectionOrder).

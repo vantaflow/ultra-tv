@@ -23,8 +23,11 @@ class LivePlaybackQueue @Inject constructor() {
     val state: StateFlow<State?> = _state
 
     fun set(channels: List<ChannelEntity>, current: ChannelEntity) {
-        val idx = channels.indexOfFirst { it.id == current.id }.coerceAtLeast(0)
-        _state.value = State(channels, idx)
+        // Une même chaîne deux fois dans la liste (jointures, listes fusionnées) : clés en double dans le tiroir
+        // (plantage « Key was already used ») et zapping qui boucle. Gardée une seule fois, à sa première place.
+        val list = channels.distinctBy { it.id }
+        val idx = list.indexOfFirst { it.id == current.id }.coerceAtLeast(0)
+        _state.value = State(list, idx)
     }
 
     /** Chaîne suivante / précédente de la catégorie en cours, en SAUTANT les séparateurs. */
