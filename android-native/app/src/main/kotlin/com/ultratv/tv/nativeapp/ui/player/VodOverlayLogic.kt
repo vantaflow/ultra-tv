@@ -81,12 +81,9 @@ object VodOverlayLogic {
         return nowMs + ((durMs - posMs).coerceAtLeast(0) / sp).toLong()
     }
 
-    /** Heure de fin affichée : « 13:06 » (24 h) ou « 1:06 PM » (12 h). */
+    /** Heure de fin affichée : « 13:06 » (24 h) ou « 1:06 PM » (12 h). Mise en forme centrale : [com.ultratv.tv.nativeapp.ui.common.ClockFormat]. */
     fun endClock(endMs: Long, is24h: Boolean, zone: TimeZone = TimeZone.getDefault()): String {
         val cal = Calendar.getInstance(zone).apply { timeInMillis = endMs }
-        val h = cal.get(Calendar.HOUR_OF_DAY); val m = cal.get(Calendar.MINUTE).toLong()
-        if (is24h) return "${two(h.toLong())}:${two(m)}"
-        val h12 = if (h % 12 == 0) 12 else h % 12
-        return "$h12:${two(m)} ${if (h < 12) "AM" else "PM"}"
+        return com.ultratv.tv.nativeapp.ui.common.ClockFormat.format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), is24h)
     }
 }

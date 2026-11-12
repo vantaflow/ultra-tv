@@ -377,6 +377,9 @@
     <string name="ds_launch_at_boot">التشغيل عند إقلاع الجهاز</string>
     <string name="ds_open_on">فتح على</string>
     <string name="ds_time_zone">المنطقة الزمنية</string>
+    <string name="ds_time_format">تنسيق الوقت</string>
+    <string name="ds_time_format_12">12 ساعة</string>
+    <string name="ds_time_format_24">24 ساعة</string>
     <string name="ds_tz_system">الخاص بالجهاز</string>
     <string name="ds_last_channel">آخر قناة</string>
     <string name="ds_home_screen">الرئيسية</string>

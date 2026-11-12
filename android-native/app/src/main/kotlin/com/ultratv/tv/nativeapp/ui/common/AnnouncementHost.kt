@@ -225,7 +225,7 @@ private fun AnnouncementDialog(shown: Announcement, vm: AnnouncementViewModel) {
 fun AnnouncementHistoryPane(vm: AnnouncementViewModel = hiltViewModel()) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val list = remember { vm.history() }
-    val fmt = remember(D.lang) { java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT) }
+    val fmt = remember(D.lang) { java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM) }
     com.ultratv.tv.nativeapp.ui.design.PaneTitle(D.rubMessages)
     if (list.isEmpty()) {
         Text(D.noMessages, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx)
@@ -239,7 +239,7 @@ fun AnnouncementHistoryPane(vm: AnnouncementViewModel = hiltViewModel()) {
                     Row(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
                         DIcon(Icons.Info, 28.design, if (f) Ux.TextOnLight else accentOf(m.level), strokeWidth = 2.2f)
                         Text(m.title.ifBlank { D.announcementTitle }, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        Text(fmt.format(java.util.Date(m.at)), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                        Text(fmt.format(java.util.Date(m.at)) + ", " + com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(m.at), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
                     }
                     Text(m.message, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx)
                 }

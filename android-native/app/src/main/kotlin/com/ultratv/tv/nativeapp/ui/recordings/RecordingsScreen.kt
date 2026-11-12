@@ -200,9 +200,8 @@ private fun rank(status: String) = when (status) { "running" -> 0; "queued" -> 1
 private fun scheduledMeta(r: RecordingEntity, loc: java.util.Locale): String {
     val start = Date(r.scheduledStartMs)
     val sameDay = DateFormat.getDateInstance(DateFormat.SHORT, loc).format(start) == DateFormat.getDateInstance(DateFormat.SHORT, loc).format(Date())
-    val tf = DateFormat.getTimeInstance(DateFormat.SHORT, loc)
     val day = if (sameDay) "" else DateFormat.getDateInstance(DateFormat.MEDIUM, loc).format(start) + " "
-    return day + tf.format(start) + " – " + tf.format(Date(r.scheduledEndMs)) + (r.channelName?.let { " · $it" } ?: "")
+    return day + com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(r.scheduledStartMs) + " – " + com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(r.scheduledEndMs) + (r.channelName?.let { " · $it" } ?: "")
 }
 
 /** Taille lisible (Ko / Mo / Go) sans dépendre de la locale pour l'unité. */

@@ -10,6 +10,7 @@ import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
 import { guideColPx } from "@/lib/guideCol";
+import { use24 } from "@/lib/clock";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { type GuideLoadState, useGuideLoad } from "@/hooks/guideLoad";
@@ -106,7 +107,7 @@ const Row = memo(function Row({ c, progs, from, to, top, now, col, picked, onPic
           return (
             <button key={p.id} className={`g-prog${isNow ? " now" : ""}${picked?.id === p.id ? " sel" : ""}`} style={{ left, width: Math.max(w, 6) }} onClick={(ev) => onPick(p, c, ev)} title={p.title}>
               <b className="ellipsis">{p.title}</b>
-              {w > 90 && <span className="mono">{hhmm(p.start)} – {hhmm(p.end)}</span>}
+              {w > (use24(usePrefs.getState().timeFormat, usePrefs.getState().lang) ? 90 : 130) && <span className="mono">{hhmm(p.start)} – {hhmm(p.end)}</span>}
             </button>
           );
         })}

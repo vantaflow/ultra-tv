@@ -126,6 +126,8 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = true
+        // Réglage « 24 heures » du système changé pendant que l'appli était en arrière-plan.
+        com.ultratv.tv.nativeapp.ui.common.EpgClock.system24 = android.text.format.DateFormat.is24HourFormat(this)
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.setTracking(true)
         lifecycleScope.launch(Dispatchers.IO) { runCatching { phoneRemote.get().onForeground(true) } }
         // Retour sur l'appli (sortie de veille comprise) : guide rechargé s'il est périmé — l'appli reste en mémoire

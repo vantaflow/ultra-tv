@@ -210,9 +210,8 @@ private fun OutlinePill(text: String) {
 private fun WallClock() {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(15_000) } }
-    val is24 = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
     Text(
-        VodOverlayLogic.endClock(now, is24), color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 1,
+        com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(now), color = P.text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 1,
         modifier = Modifier.padding(start = 14.design),
     )
 }
@@ -228,12 +227,11 @@ private fun ClockText(text: () -> String, color: Color, weight: FontWeight) {
 private fun CenterInfo(pos: () -> Long, dur: () -> Long, speed: Float, loading: Boolean, playing: Boolean, labels: VodLabels) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     LaunchedEffect(playing) { while (true) { now = System.currentTimeMillis(); delay(15_000) } }
-    val is24 = android.text.format.DateFormat.is24HourFormat(LocalContext.current)
     ClockText({
         if (loading) labels.loading
         else listOf(
             VodOverlayLogic.remaining(pos(), dur()),
-            VodOverlayLogic.endsAtMs(now, pos(), dur(), speed)?.let { labels.endsAt(VodOverlayLogic.endClock(it, is24)) }.orEmpty(),
+            VodOverlayLogic.endsAtMs(now, pos(), dur(), speed)?.let { labels.endsAt(com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(it)) }.orEmpty(),
         ).filter { it.isNotEmpty() }.joinToString(" · ")
     }, P.text3, FontWeight.Bold)
 }

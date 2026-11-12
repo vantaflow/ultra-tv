@@ -14,12 +14,12 @@ import { bridge, type RecEvent } from "@/net/transport";
 import { candidates, stalkerCandidate } from "@/player/resolve";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
-import { usePrefs } from "./prefs";
+import { timeLabel, usePrefs } from "./prefs";
 import { useSources } from "./sources";
 import { useUi } from "./ui";
 
 const tr = (k: Key, vars?: Record<string, string | number>) => translate(usePrefs.getState().lang, k, vars);
-const hm = (ms: number) => new Date(ms).toLocaleTimeString(usePrefs.getState().lang, { hour: "2-digit", minute: "2-digit" });
+const hm = (ms: number) => timeLabel(ms);
 
 interface ScheduleStore {
   /** Rappels notifiés dans l'appli (aucune notification système possible). */

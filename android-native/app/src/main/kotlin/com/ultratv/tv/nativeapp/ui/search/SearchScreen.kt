@@ -133,7 +133,7 @@ private sealed interface Row_ {
 
 /** « En cours » ou « Mar. 21:30 » (jour abrégé + heure, langue de l'application). */
 private fun programWhen(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.DesignStrings): String =
-    if (h.live) D.programNow else java.text.SimpleDateFormat("EEE HH:mm", D.locale).format(java.util.Date(h.startMs)).replaceFirstChar { it.uppercase() }
+    if (h.live) D.programNow else java.text.SimpleDateFormat("EEE", D.locale).apply { timeZone = com.ultratv.tv.nativeapp.ui.common.EpgClock.timeZone() }.format(java.util.Date(h.startMs)).replaceFirstChar { it.uppercase() } + " " + com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(h.startMs)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

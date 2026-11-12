@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { qualityLabel } from "@/lib/channelName";
 import { useT } from "@/i18n";
 import { useUi } from "@/state/ui";
+import { timeLabel } from "@/state/prefs";
 import { Icon, type IconName } from "./Icon";
 
 export function Toasts() {
@@ -60,4 +61,4 @@ export function Seg<T extends string>({ value, options, onChange, label }: { val
   );
 }
 
-export const hhmm = (ms: number, locale?: string) => new Date(ms).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
+export const hhmm = timeLabel;

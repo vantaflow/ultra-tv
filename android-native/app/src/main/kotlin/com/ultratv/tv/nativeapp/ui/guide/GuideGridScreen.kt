@@ -876,7 +876,8 @@ private fun TouchGuideRow(c: ChannelEntity, progs: List<EpgEntity>, windowStart:
                 ) { _ ->
                     if (w >= 56.dp) Column(Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
                         Text(p.title, color = if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        if (w >= 110.dp) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Clip)
+                        // En 12 h les horaires sont plus longs (« 4:30 PM – 5:00 PM ») : seuil relevé pour ne jamais déborder de la case.
+                        if (w >= (if (EpgClock.use24()) 110.dp else 142.dp)) Text("${EpgClock.hm(p.startMs)} – ${EpgClock.hm(p.endMs)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                 }
             }

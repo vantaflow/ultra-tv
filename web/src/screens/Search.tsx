@@ -9,7 +9,7 @@ import { normText } from "@/lib/text";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
 import { useActiveSource } from "@/state/sources";
-import { QBadge } from "@/ui/common";
+import { QBadge, hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
@@ -105,7 +105,7 @@ function Inner({ source }: { source: Source }) {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(20rem, 1fr))", gap: 12 }}>
             {res.programs.map(({ p, c }) => {
               const live = p.start <= Date.now();
-              const at = new Date(p.start).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+              const at = `${new Date(p.start).toLocaleDateString(undefined, { weekday: "short" })} ${hhmm(p.start)}`;
               return (
                 <button key={`p${c.id}`} className="chan-row" style={{ height: 80, background: "var(--surface)", borderRadius: "1.125rem", padding: "0 1.25rem" }} onClick={() => usePlayer.getState().open(channelTarget(source, c), "full", null)}>
                   <span className="logo" style={{ width: "3.5rem", height: "2.5rem" }}><Img src={c.logo} contain /></span>

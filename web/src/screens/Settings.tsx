@@ -10,7 +10,8 @@ import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
 import { guideErrorForSave } from "@/lib/guideAddress";
 import { EXTRA_EPG_KEY } from "@/sync/epg";
-import { ACCENTS, PROFILE_COLORS, usePrefs, type Theme } from "@/state/prefs";
+import type { TimeFormat } from "@/lib/clock";
+import { ACCENTS, PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
@@ -209,7 +210,7 @@ function CloudPane() {
           <Pref label={t("cloud.prefsSync")} desc={t("cloud.prefsSyncDesc")}>
             <Switch on={c.prefsSync} label={t("cloud.prefsSync")} onChange={(v) => void setPrefsSync(v)} />
           </Pref>
-          <Pref label={t("cloud.lastSync", { t: c.lastSyncAt ? new Date(c.lastSyncAt).toLocaleString(lang) : t("set.never") })}>
+          <Pref label={t("cloud.lastSync", { t: c.lastSyncAt ? dateTimeLabel(c.lastSyncAt, lang) : t("set.never") })}>
             <button className="btn primary" disabled={c.syncing} onClick={async () => {
               setMsg(null);
               try {
@@ -222,7 +223,7 @@ function CloudPane() {
           <div className="eyebrow">{Array.isArray(c.devices) ? t("cloud.devices") : t("cloud.devicesCount", { count: c.devices })}</div>
           {Array.isArray(c.devices) && c.devices.map((d) => (
             <div key={d.id} className="pref">
-              <span><span>{d.name}</span>{(d.model || d.lastSeen !== undefined) && <span className="d" style={{ display: "block" }}>{[d.model, new Date(d.lastSeen || 0).getTime() > 0 ? new Date(d.lastSeen!).toLocaleString(lang) : "—"].filter(Boolean).join(" · ")}</span>}</span>
+              <span><span>{d.name}</span>{(d.model || d.lastSeen !== undefined) && <span className="d" style={{ display: "block" }}>{[d.model, new Date(d.lastSeen || 0).getTime() > 0 ? dateTimeLabel(d.lastSeen!, lang) : "—"].filter(Boolean).join(" · ")}</span>}</span>
               {(d.isCurrent || d.id === c.deviceId) && <span className="cbadge">{t("cloud.thisDevice")}</span>}
             </div>
           ))}
@@ -282,6 +283,9 @@ function DisplayPane() {
       <Pref label={t("set.theme")}>
         <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }]} />
       </Pref>
+      <Pref label={t("set.timeFormat")}>
+        <Seg<TimeFormat> label={t("set.timeFormat")} value={p.timeFormat} onChange={(timeFormat) => p.set({ timeFormat })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "12", label: t("set.time12") }, { v: "24", label: t("set.time24") }]} />
+      </Pref>
       <Pref label={t("set.accent")}>
         <div style={{ display: "flex", gap: 10 }} role="radiogroup" aria-label={t("set.accent")}>
           {ACCENTS.map((c) => <button key={c} className="swatch" role="radio" aria-checked={p.accent === c} aria-label={c} style={{ background: c }} onClick={() => p.set({ accent: c })} />)}
@@ -334,7 +338,7 @@ function SyncPane() {
   return (
     <>
       <h2>{t("set.sync")}</h2>
-      <p className="lead">{t("set.lastSync", { t: source.lastSyncAt ? new Date(source.lastSyncAt).toLocaleString(p.lang) : t("set.never") })}</p>
+      <p className="lead">{t("set.lastSync", { t: source.lastSyncAt ? dateTimeLabel(source.lastSyncAt, p.lang) : t("set.never") })}</p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         <button className="btn primary" disabled={sync.running} onClick={() => void sync.start(source, { preserveFlags: true })}><Icon name="refresh" size={18} />{sync.running ? t("set.syncing") : t("set.syncNow")}</button>
         <button className="btn" disabled={busyEpg || sync.running} onClick={async () => { setBusyEpg(true); try { await syncSourceEpg(source); useUi.getState().toast(t("toast.synced")); } catch { /* ignoré */ } setBusyEpg(false); }}>{t("set.epgNow")}</button>

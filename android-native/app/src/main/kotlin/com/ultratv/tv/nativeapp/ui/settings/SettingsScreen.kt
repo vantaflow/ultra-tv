@@ -550,7 +550,7 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
             }
         }
     }
-    if (p.syncMode == "scheduled") SettingsCard { PrefRow(D.modeScheduled, "%02d:00".format(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) } }
+    if (p.syncMode == "scheduled") SettingsCard { PrefRow(D.modeScheduled, com.ultratv.tv.nativeapp.ui.common.EpgClock.hourLabel(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) } }
     GroupLabel(D.contentToSync)
     SettingsCard {
         val ttl = com.ultratv.tv.nativeapp.data.sync.SyncPolicy.ttl(p.syncIntervalHours)
@@ -607,9 +607,9 @@ private fun ago(D: DesignStrings, ms: Long): String {
 }
 
 private fun nextText(mode: String, hour: Int, intervalH: Int, last: Long): String = when (mode) {
-    "scheduled" -> "%02d:00".format(hour)
+    "scheduled" -> com.ultratv.tv.nativeapp.ui.common.EpgClock.hourLabel(hour)
     "manual" -> "—"
-    else -> java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(last + (if (intervalH > 0) intervalH else 6) * 3_600_000L))
+    else -> com.ultratv.tv.nativeapp.ui.common.EpgClock.wall(last + (if (intervalH > 0) intervalH else 6) * 3_600_000L)
 }
 
 // ───────────────────────── Catégories (résumé) ─────────────────────────
@@ -649,6 +649,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
         PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
         PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
+        PrefRow(D.timeFormat, timeFormatLabel(D, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat))) { choice = "tf" }
         PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) { pickLogos.launch(null) }
     }
     // Personnalisation : accent, taille du texte, rangées de l'accueil.
@@ -670,6 +671,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
+        "tf" -> ChoiceDialog(D.timeFormat, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.entries.map { it to timeFormatLabel(D, it) }, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat), { app.setTimeFormat(it.key); choice = "" }, { choice = "" })
         "tz" -> ChoiceDialog(D.timeZone, TIME_ZONES.map { it to timeZoneLabel(D, it) }, p.timeZone, { app.setTimeZone(it); choice = "" }, { choice = "" })
     }
 }
@@ -686,6 +688,11 @@ internal fun timeZoneLabel(D: DesignStrings, id: String): String {
     return "$name ($gmt)"
 }
 
+private fun timeFormatLabel(D: DesignStrings, f: com.ultratv.tv.nativeapp.ui.common.TimeFormatPref) = when (f) {
+    com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.AUTO -> D.themeAuto
+    com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.H12 -> D.timeFormat12
+    com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.H24 -> D.timeFormat24
+}
 private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }
 private fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) { AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark }
 

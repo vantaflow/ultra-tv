@@ -48,6 +48,7 @@ class AppViewModel @Inject constructor(
     fun setWorkerBase(url: String) = viewModelScope.launch { store.setWorkerBase(url) }
     fun setLanguage(code: String) = viewModelScope.launch { store.setLanguage(code) }
     fun setTimeZone(id: String) = viewModelScope.launch { store.setTimeZone(id) }
+    fun setTimeFormat(key: String) = viewModelScope.launch { store.setTimeFormat(key) }
     fun setTelemetry(on: Boolean) = viewModelScope.launch { store.setTelemetry(on) }
     fun setBufferSeconds(v: Int) = viewModelScope.launch { store.setBufferSeconds(v) }
     fun setAutoFrameRate(v: Boolean) = viewModelScope.launch { store.setAutoFrameRate(v) }

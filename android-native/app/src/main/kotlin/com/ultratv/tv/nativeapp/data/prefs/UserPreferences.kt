@@ -62,6 +62,8 @@ data class UserPrefs(
     val language: String = "system",
     /** Fuseau horaire de l'horloge et du guide : "" = celui du système, sinon un identifiant (« GMT », « Africa/Casablanca »…). */
     val timeZone: String = "",
+    /** Format de l'heure : "auto" (système / langue) | "12" | "24" (voir TimeFormatPref). Local à l'appareil, non synchronisé. */
+    val timeFormat: String = "auto",
     /** Guide complémentaire (XMLTV) pour les chaînes que la source ne couvre pas : URL, "" = désactivé. */
     val extraEpg: String = com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
     /** Le guide complémentaire a été choisi par l'utilisateur (clé enregistrée) : faux = valeur par défaut jamais touchée. */
@@ -176,6 +178,7 @@ class UserPreferencesStore @Inject constructor(
         val seenOnboarding = booleanPreferencesKey("has_seen_onboarding")
         val language = stringPreferencesKey("language")
         val timeZone = stringPreferencesKey("time_zone")
+        val timeFormat = stringPreferencesKey("time_format")
         val extraEpg = stringPreferencesKey("extra_epg")
         val configPassword = stringPreferencesKey("config_password")
         val telemetry = booleanPreferencesKey("telemetry_enabled")
@@ -243,6 +246,7 @@ class UserPreferencesStore @Inject constructor(
             hasSeenOnboarding = p[Keys.seenOnboarding] ?: false,
             language = p[Keys.language] ?: "system",
             timeZone = p[Keys.timeZone] ?: "",
+            timeFormat = com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p[Keys.timeFormat]).key,
             extraEpg = p[Keys.extraEpg] ?: com.ultratv.tv.nativeapp.data.xmltv.ExtraEpg.DEFAULT,
             extraEpgChosen = p[Keys.extraEpg] != null,
             configPassword = p[Keys.configPassword] ?: "",
@@ -289,6 +293,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
     suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
     suspend fun setTimeZone(id: String) = update { it[Keys.timeZone] = id }
+    suspend fun setTimeFormat(key: String) = update { it[Keys.timeFormat] = com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(key).key }
     suspend fun setExtraEpg(url: String) = update { it[Keys.extraEpg] = url }
     suspend fun setConfigPassword(pwd: String) = update { it[Keys.configPassword] = pwd }
     suspend fun setTelemetry(on: Boolean) = update { it[Keys.telemetry] = on }

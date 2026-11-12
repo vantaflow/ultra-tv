@@ -358,6 +358,9 @@
     <string name="ds_launch_at_boot">Uruchamiaj po włączeniu dekodera</string>
     <string name="ds_open_on">Otwieraj na</string>
     <string name="ds_time_zone">Strefa czasowa</string>
+    <string name="ds_time_format">Format godziny</string>
+    <string name="ds_time_format_12">12-godzinny</string>
+    <string name="ds_time_format_24">24-godzinny</string>
     <string name="ds_tz_system">Urządzenie</string>
     <string name="ds_last_channel">Ostatni kanał</string>
     <string name="ds_home_screen">Start</string>
