@@ -1,0 +1,90 @@
+/* =====================================================================
+   Design v2 (maquettes TV adaptées au bureau), chargé après app.css.
+   Le survol à la souris et le focus clavier partagent le même rendu :
+   fond « focus » plein (--sel-bg) + texte inversé (--sel-ink).
+   Aucun flou d'arrière-plan, transitions courtes (coupées par prefers-reduced-motion).
+   ===================================================================== */
+:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 2px; }
+.rail { border-inline-end: 0; }
+.rail-item .pill { border-radius: 1.125rem; }
+.rail-item:hover .pill, .rail-item:focus-visible .pill { background: var(--sel-bg); color: var(--sel-ink); }
+.rail-item.active .pill { background: var(--sel-bg); color: var(--sel-ink); }
+.rail-item:focus-visible, .rail .rail-search:focus-visible { outline-offset: 0; }
+.rail .rail-search, .rail .rail-search.active { background: var(--surface-2); color: var(--text); }
+.rail .rail-search:hover, .rail .rail-search:focus-visible, .rail .rail-search.active { background: var(--sel-bg); color: var(--sel-ink); }
+.rail .logo { border-radius: 1rem; }
+
+/* Boutons et pastilles : forme pilule, survol = focus. */
+.btn:hover, .btn:focus-visible, .chip:hover, .chip:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.btn.primary:hover, .btn.primary:focus-visible { filter: none; background: var(--text-2); color: var(--bg); }
+.btn.accent:hover, .btn.accent:focus-visible { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 3px var(--sel-bg); }
+.btn.danger:hover { color: var(--sel-ink); }
+.chip[aria-selected="true"], .chip.on { background: var(--accent); color: var(--on-accent); }
+.chip[aria-selected="true"]:hover { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 2px var(--sel-bg); }
+.badge-live { border-radius: 999px; padding: 0.25rem 0.75rem; }
+.seg button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+.seg button:hover:not([aria-checked="true"]), .seg button:focus-visible:not([aria-checked="true"]) { background: var(--sel-bg); color: var(--sel-ink); }
+.input, .search-box .input { background: var(--surface-2); }
+
+/* Cartes et panneaux : grands rayons. */
+.hero { border-radius: 2rem; background: var(--surface); }
+.chan-card, .pref, .src-card, .acc-card, .lang-tile, .step-item { border-radius: 1.375rem; }
+.choice, .form-card { border-radius: 1.75rem; }
+.thumb-card .t, .poster .p, .preview-slot { border-radius: 1.25rem; }
+.chan-card { background: var(--surface); }
+.chan-card:hover, .chan-card:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.chan-card:hover span, .chan-card:focus-visible span { color: var(--sel-sub); }
+.thumb-card:focus-visible { outline: none; }
+.thumb-card:hover .t, .thumb-card:focus-visible .t { transform: scale(1.02); box-shadow: 0 0 0 3px var(--sel-bg); }
+.poster:hover .p, .poster:focus-visible .p { box-shadow: 0 0 0 3px var(--sel-bg), var(--shadow); }
+.episode { border-radius: 1.25rem; }
+.episode:hover, .episode:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.episode:hover .m, .episode:hover .p, .episode:focus-visible .m, .episode:focus-visible .p { color: var(--sel-sub); }
+.popover { border-radius: 1.375rem; background: var(--surface); }
+
+/* Liste de chaînes : survol = focus, en cours = teinte « maintenant ». */
+.chan-row { border-radius: 1.125rem; background: transparent; }
+.chan-row:hover, .chan-row:focus-visible, .chan-row.sel { background: var(--sel-bg); color: var(--sel-ink); }
+.chan-row:hover .num, .chan-row:hover .sub, .chan-row:focus-visible .num, .chan-row:focus-visible .sub { color: var(--sel-sub); }
+.chan-row:hover .logo, .chan-row:focus-visible .logo { background: var(--sel-logo); }
+.chan-row:hover .qbadge, .chan-row:focus-visible .qbadge { color: var(--sel-ink); }
+.chan-row.playing:not(.sel) { background: var(--now-tint); }
+.chan-row.playing:not(.sel):hover, .chan-row.playing:not(.sel):focus-visible { background: var(--sel-bg); }
+.chan-row .logo { border-radius: 0.5rem; }
+.cat-item, .nav-item { border-radius: 1rem; }
+.cat-item:hover, .cat-item:focus-visible, .nav-item:hover, .nav-item:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.cat-item:hover .n, .cat-item:focus-visible .n { color: var(--sel-sub); }
+.cat-item.on, .nav-item.on { background: var(--sel-bg); color: var(--sel-ink); box-shadow: none; }
+.cat-item.on .n { color: var(--sel-sub); }
+[dir="rtl"] .cat-item.on, [dir="rtl"] .nav-item.on { box-shadow: none; }
+
+/* Guide : programme en cours teinté, sélection = focus. */
+.g-prog { border-radius: 1rem; }
+.g-prog.now { background: var(--now-tint); color: var(--text); }
+.g-prog:hover, .g-prog:focus-visible, .g-prog.sel { background: var(--sel-bg); color: var(--sel-ink); }
+.g-prog.sel { box-shadow: 0 0 0 3px var(--accent); }
+.guide-grid { border-top: 0; }
+
+/* Réglages et onboarding. */
+.src-card.active .ico, .choice.first .ico, .lang-tile[aria-checked="true"] .code, .step-item.active .ic, .steps li.on .dot { background: var(--accent); color: var(--on-accent); }
+.choice:hover, .choice:focus-visible, .lang-tile:hover, .lang-tile:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.choice:hover span.s, .lang-tile:hover .n, .choice:focus-visible span.s, .lang-tile:focus-visible .n { color: var(--sel-sub); }
+.profile:hover .av, .profile:focus-visible .av { box-shadow: 0 0 0 4px var(--bg), 0 0 0 7px var(--sel-bg); }
+.brand span span { color: var(--accent-text); }
+.cast button.c:hover, .cast button.c:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+
+/* Lecteurs : toujours sombres, quel que soit le thème. */
+.player { color-scheme: dark; }
+.player .pbtn:hover, .player .pbtn:focus-visible, .player .popt:hover, .player .popt:focus-visible { background: #F4F5F7; color: #0A0C10; }
+.player .pside .tabs button:hover, .player .pside .opt:hover, .player .precent-ch:hover { background: #2A3140; }
+.pside .opt[aria-checked="true"] { box-shadow: inset 0 0 0 2px #FF3B47; }
+
+/* Démarrage : logo en fondu avec léger zoom, éclat du « play », sortie vers l'accueil (700 ms, ne retarde jamais le chargement). */
+.splash { position: fixed; inset: 0; z-index: 200; background: #0A0C10; display: flex; align-items: center; justify-content: center; pointer-events: none; animation: splash-out 0.7s linear forwards; }
+.splash .sq { width: 9.5rem; height: 9.5rem; border-radius: 2.75rem; background: #1A1E27; display: flex; align-items: center; justify-content: center; animation: splash-sq 0.7s ease-out forwards; }
+.splash svg { width: 5.5rem; height: 5.5rem; animation: splash-tri 0.7s ease-out forwards; }
+@keyframes splash-sq { 0% { opacity: 0; transform: scale(0.92); box-shadow: 0 0 0 0 rgba(255, 59, 71, 0); } 35% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 59, 71, 0.18); } 70% { opacity: 1; box-shadow: 0 0 0 1.1rem rgba(255, 59, 71, 0.18); } 100% { opacity: 0.3; box-shadow: 0 0 0 1.4rem rgba(255, 59, 71, 0); } }
+@keyframes splash-tri { 0%, 30% { fill: #7A2026; } 36%, 100% { fill: #FF3B47; } }
+@keyframes splash-out { 0%, 70% { opacity: 1; } 100% { opacity: 0; visibility: hidden; } }
+@keyframes splash-fade { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .splash, .splash .sq, .splash svg { animation-duration: 0.2s !important; } .splash .sq { animation-name: splash-fade; } }

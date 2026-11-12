@@ -10,7 +10,7 @@ import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
 import { SyncPill } from "@/ui/SyncPill";
-import { resolveTheme, usePrefs } from "@/state/prefs";
+import { ACCENTS, resolveTheme, usePrefs } from "@/state/prefs";
 import { startSourcesWatcher, useActiveSource, useSources } from "@/state/sources";
 import { isStaleSyncing, needsFirstSync } from "@/lib/syncPolicy";
 import { useSync } from "@/state/sync";
@@ -46,7 +46,9 @@ function Effects() {
     const apply = () => {
       const r = document.documentElement;
       r.dataset.theme = resolveTheme(theme);
-      r.style.setProperty("--accent", accent);
+      // Accent par défaut : on laisse le jeton du thème (rouge adapté clair/sombre) ; sinon valeur choisie.
+      if (accent === ACCENTS[0]) { r.style.removeProperty("--accent"); r.style.removeProperty("--accent-text"); }
+      else { r.style.setProperty("--accent", accent); r.style.setProperty("--accent-text", accent); }
       r.lang = lang;
       r.dir = dirOf(lang);
       // Animations : « off » coupe transitions et défilement de « À la une », « subtle » les raccourcit.

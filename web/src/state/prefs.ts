@@ -33,7 +33,8 @@ export interface Prefs {
   dns: DnsSettings;
 }
 
-export const ACCENTS = ["#D91E2B", "#7C3AED", "#0EA5E9", "#F59E0B"];
+// Le 1er accent est celui du design v2 : il laisse les jetons (rouge sombre / clair) décider.
+export const ACCENTS = ["#FF3B47", "#7C3AED", "#0EA5E9", "#F59E0B"];
 export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B981"];
 const KEY = "ultratv.prefs.v1";
 
@@ -48,7 +49,12 @@ const defaults = (): Prefs => ({
 function load(): Prefs {
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) return { ...defaults(), ...JSON.parse(raw) };
+    if (raw) {
+      const v = { ...defaults(), ...JSON.parse(raw) } as Prefs;
+      // Ancien rouge par défaut : migré vers l'accent du design v2.
+      if (typeof v.accent === "string" && v.accent.toUpperCase() === "#D91E2B") v.accent = ACCENTS[0]!;
+      return v;
+    }
   } catch { /* stockage indisponible */ }
   return defaults();
 }

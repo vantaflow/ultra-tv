@@ -7,60 +7,65 @@
 @import "@fontsource/manrope/700.css";
 @import "@fontsource/manrope/800.css";
 
-/* Jetons du design Ultra TV (maquettes Android TV). Sombre par défaut ; clair = AccueilClair. */
+/* Jetons du design Ultra TV v2 (maquettes TV adaptées au bureau). Sombre par défaut ; « Automatique » suit le système. */
 :root,
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0a0a0c;
-  --rail: #0f0f12;
-  --surface: #141418;
-  --surface-2: #1c1c21;
-  --surface-3: #26262d;
-  --tone: #1f1f25;
-  --line: #1c1c21;
-  --text: #f5f5f7;
-  --text-2: #c4c4cc;
-  --text-3: #a1a1aa;
-  --text-4: #71717a;
-  --text-5: #52525b;
-  --sel-bg: #ffffff;
-  --sel-ink: #0a0a0c;
-  --sel-sub: #3f3f46;
-  --sel-logo: #e4e4e7;
+  --bg: #0a0c10;
+  --rail: #0e1117;
+  --surface: #161a22;
+  --surface-2: #1c2029;
+  --surface-3: #2a3140;
+  --tone: #12151c;
+  --line: #1c2029;
+  --text: #f4f5f7;
+  --text-2: #c9cdd6;
+  --text-3: #a9afbc;
+  --text-4: #7b8291;
+  --text-5: #5a6172;
+  --sel-bg: #f4f5f7;
+  --sel-ink: #0a0c10;
+  --sel-sub: #3a4252;
+  --sel-logo: #dce1ea;
+  --accent: #ff3b47;
+  --accent-text: #ff8088;
+  --now-tint: #2a1418;
   --on-accent: #ffffff;
-  --scrim: rgba(10, 10, 12, 0.86);
+  --scrim: rgba(10, 12, 16, 0.86);
   --shadow: 0 20px 48px rgba(0, 0, 0, 0.6);
-  --track: #3f3f46;
+  --track: #3a4252;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f3ef;
-  --rail: #ecebe6;
+  --bg: #f5f6f8;
+  --rail: #ffffff;
   --surface: #ffffff;
-  --surface-2: #ecebe6;
-  --surface-3: #d9d6cf;
-  --tone: #e3e1db;
-  --line: #d9d6cf;
-  --text: #16151a;
-  --text-2: #3c3b42;
-  --text-3: #5e5d66;
-  --text-4: #84838b;
-  --text-5: #9a99a0;
-  --sel-bg: #16151a;
-  --sel-ink: #f4f3ef;
-  --sel-sub: #c4c4cc;
-  --sel-logo: #3c3b42;
-  --scrim: rgba(244, 243, 239, 0.9);
-  --shadow: 0 20px 48px rgba(22, 21, 26, 0.18);
-  --track: #c9c6be;
+  --surface-2: #e8ebf0;
+  --surface-3: #dce1ea;
+  --tone: #e8ebf0;
+  --line: #e3e6ec;
+  --text: #12141a;
+  --text-2: #3a4252;
+  --text-3: #5b6375;
+  --text-4: #6b7385;
+  --text-5: #9099ab;
+  --sel-bg: #12141a;
+  --sel-ink: #f5f6f8;
+  --sel-sub: #c9cdd6;
+  --sel-logo: #3a4252;
+  --accent: #e0202c;
+  --accent-text: #c4161f;
+  --now-tint: #fbe3e5;
+  --scrim: rgba(245, 246, 248, 0.9);
+  --shadow: 0 20px 48px rgba(18, 20, 26, 0.16);
+  --track: #c4cad6;
 }
 
 :root {
-  --accent: #d91e2b;
   --font-title: "Sora", system-ui, sans-serif;
   --font-text: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --radius: 0.875rem;
+  --radius: 1.375rem;
   --rail-w: 88px;
   /* 1 rem = 16 px vers 1280 px de large ; la fenêtre de 1024 à 2560 px se met à l'échelle. */
   font-size: clamp(14px, calc(0.45vw + 10.2px), 19px);
