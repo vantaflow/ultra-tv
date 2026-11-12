@@ -1,0 +1,107 @@
+/* Design v2 : rubrique Sport, Enregistrements et rappels, bandeaux de rappel, panneau « Épisodes » du lecteur. */
+
+/* ---------- Sport (rubrique facultative) ---------- */
+.page.sport { gap: 1.6rem; }
+.sp-head { display: flex; align-items: center; gap: 1.25rem; min-width: 0; flex-wrap: wrap; }
+.sp-head h1 { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.03em; }
+.sp-kinds { flex: 0 1 auto; min-width: 0; padding: 0.3rem; border-radius: 999px; background: var(--surface); }
+.sp-kinds .chip { background: transparent; }
+.sp-kinds .chip[aria-selected="true"] { background: var(--sel-bg); color: var(--sel-ink); }
+.sp-from { margin-inline-start: auto; color: var(--text-3); font-size: 0.95rem; font-weight: 600; }
+.sp-dot { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); margin-inline-end: 0.6rem; vertical-align: 0.15em; }
+.sp-count { color: var(--text-3); font-weight: 600; font-size: 1rem; }
+.sp-empty { color: var(--text-2); font-size: 1.05rem; }
+.sp-live { flex: 0 0 22rem; display: flex; flex-direction: column; gap: 0.85rem; padding: 1.1rem 1.25rem 1rem; border-radius: 1.5rem; background: var(--surface); text-align: start; min-width: 0; transition: background 0.12s, box-shadow 0.12s; }
+.sp-live:hover, .sp-live:focus-visible { box-shadow: 0 0 0 3px var(--sel-bg); outline: none; }
+.sp-live-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-width: 0; }
+.sp-comp { font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.sp-pill { flex: none; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.15rem 0.6rem; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 800; font-size: 0.75rem; letter-spacing: 0.06em; }
+.sp-pill i { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: currentColor; }
+.sp-teams { display: flex; flex-direction: column; gap: 0.5rem; }
+.sp-team { display: flex; align-items: center; gap: 0.7rem; min-width: 0; }
+.sp-team b { font-weight: 800; font-size: 1.15rem; }
+.sp-title { font-family: var(--font-title); font-weight: 700; font-size: 1.3rem; line-height: 1.2; min-height: 4.3rem; }
+.crest { position: relative; flex: none; width: 2.1rem; height: 2.1rem; border-radius: 50%; background: var(--surface-3); display: grid; place-items: center; overflow: hidden; font-family: var(--font-title); font-weight: 800; font-size: 0.7rem; color: var(--text-2); }
+.crest:has(.img) { background: transparent; border-radius: 0.3rem; }
+.crest .img { position: absolute; inset: 0; width: 100%; height: 100%; background: transparent; object-fit: contain; }
+.sp-chan { display: flex; align-items: center; gap: 0.6rem; min-width: 0; color: var(--text-3); font-weight: 700; font-size: 0.875rem; }
+.sp-chan-logo { position: relative; flex: none; width: 2.2rem; height: 1.7rem; border-radius: 0.45rem; background: var(--surface-3); display: grid; place-items: center; overflow: hidden; font-family: var(--font-title); font-weight: 800; font-size: 0.65rem; color: var(--text-2); }
+.sp-chan-logo .img { position: absolute; inset: 0.15rem; width: calc(100% - 0.3rem); height: calc(100% - 0.3rem); background: transparent; }
+.sp-cols { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+.sp-list { border-radius: 1.5rem; background: var(--surface); overflow: hidden; }
+.sp-row { display: grid; grid-template-columns: 6.5rem 4rem minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: 0.8rem 1.25rem; min-width: 0; }
+.sp-row + .sp-row { border-top: 1px solid var(--line); }
+.sp-day { color: var(--text-3); font-weight: 700; font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-time { font-family: var(--font-title); font-weight: 700; font-size: 1.2rem; }
+.sp-what { display: flex; flex-direction: column; min-width: 0; gap: 0.1rem; }
+.sp-what b { font-weight: 800; font-size: 1.02rem; }
+.sp-what > span { color: var(--text-3); font-size: 0.85rem; }
+.sp-acts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.75rem; }
+.sp-ch { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border-radius: 1.2rem; background: var(--surface); text-align: start; min-width: 0; transition: background 0.12s; }
+.sp-ch .tx { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.sp-ch .tx b { font-weight: 800; font-size: 0.95rem; }
+.sp-ch .tx > span { color: var(--text-3); font-size: 0.8rem; min-height: 1.1em; }
+.sp-ch .go { flex: none; opacity: 0; transition: opacity 0.12s; }
+.sp-ch:hover, .sp-ch:focus-visible { background: var(--sel-bg); color: var(--sel-ink); outline: none; }
+.sp-ch:hover .tx > span, .sp-ch:focus-visible .tx > span { color: var(--sel-sub); }
+.sp-ch:hover .go, .sp-ch:focus-visible .go { opacity: 1; }
+.sp-ch:hover .sp-chan-logo, .sp-ch:focus-visible .sp-chan-logo { background: var(--sel-logo); }
+.home .sp-live { flex-basis: 20rem; }
+@media (max-width: 1100px) { .sp-cols { grid-template-columns: minmax(0, 1fr); } }
+
+/* Bouton d'action « posé » (rappel actif, enregistrement programmé). */
+.btn.on { background: var(--now-tint); color: var(--accent-text); }
+.btn.on[disabled] { opacity: 1; }
+
+/* ---------- Enregistrements et rappels ---------- */
+.page.recordings { gap: 1.4rem; }
+.rec-folder { border-radius: 1.4rem; }
+.rec-dir { word-break: break-all; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.rec-list { border-radius: 1.5rem; background: var(--surface); overflow: hidden; }
+.rec-row { display: flex; align-items: center; gap: 1rem; padding: 0.85rem 1.25rem; min-width: 0; }
+.rec-row + .rec-row { border-top: 1px solid var(--line); }
+.rec-ico { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 0.85rem; display: grid; place-items: center; background: var(--surface-2); color: var(--text-2); }
+.rec-row.recording .rec-ico { background: var(--accent); color: var(--on-accent); }
+.rec-row.failed .rec-ico { color: var(--accent-text); }
+.rec-tx { flex: 1 1 auto; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.rec-tx b { font-weight: 800; font-size: 1.02rem; }
+.rec-tx > span { color: var(--text-3); font-size: 0.85rem; }
+.rec-tx .lc-trk { margin-top: 0.3rem; max-width: 24rem; }
+.rec-acts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; flex: none; }
+.modal .pref { background: var(--surface-2); }
+.rec-when { font-weight: 700; color: var(--text-2); }
+.rec-note { font-size: 0.85rem; }
+.page.recordings section > p.muted { margin-bottom: 0.9rem; }
+
+/* Rappels montrés dans l'appli (sans notification système). */
+.rem-banners { position: fixed; top: 1.25rem; inset-inline-end: 1.25rem; z-index: 120; display: flex; flex-direction: column; gap: 0.6rem; width: min(30rem, calc(100vw - 2rem)); }
+.rem-banner { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 0.9rem; border-radius: 1.2rem; background: var(--surface); color: var(--text); box-shadow: var(--shadow); border: 1px solid var(--line); animation: toast-in 0.2s ease-out; }
+.rem-banner .ico { flex: none; width: 2.4rem; height: 2.4rem; border-radius: 0.8rem; display: grid; place-items: center; background: var(--accent); color: var(--on-accent); }
+.rem-banner .tx { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; }
+.rem-banner .sub { font-size: 0.8125rem; color: var(--text-3); }
+
+/* ---------- Panneau « Épisodes » (séries) : toujours sombre, comme le lecteur ---------- */
+.player .pside.pep { top: 1rem; bottom: 1rem; inset-inline-end: 1rem; width: min(34rem, calc(100% - 2rem)); border-radius: 2rem; background: #0E1117; padding: 1.5rem 1.25rem 1.25rem; gap: 1rem; overflow: hidden; }
+.player .pep-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-width: 0; }
+.player .pep-head h3 { font-size: 1.6rem; font-weight: 700; min-width: 0; }
+.player .pep-series { color: #A9AFBC; font-weight: 600; font-size: 1.1rem; }
+.player .pep-seasons { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: none; }
+.player .pep-seasons button { flex: none; }
+.player .pep-seasons button:focus-visible { outline: 2px solid #F4F5F7; outline-offset: 2px; }
+.player .pep-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 0.5rem; padding: 0.15rem; }
+.player .pep-ep { display: flex; align-items: center; gap: 0.9rem; padding: 0.55rem; border-radius: 1.1rem; background: #161A22; color: #F4F5F7; text-align: start; width: 100%; flex: none; transition: background 0.12s; }
+.player .pep-ep:hover, .player .pep-ep:focus-visible { background: #F4F5F7; color: #0A0C10; outline: none; }
+.player .pep-ep.cur { box-shadow: inset 0 0 0 2px #FF3B47; }
+.player .pep-ep .th { position: relative; flex: none; width: 8.5rem; aspect-ratio: 16 / 9; border-radius: 0.75rem; background: #1C2029; overflow: hidden; }
+.player .pep-ep .th .img { position: absolute; inset: 0; }
+.player .pep-ep .th .n { position: absolute; top: 0.35rem; inset-inline-start: 0.35rem; padding: 0.05rem 0.45rem; border-radius: 0.5rem; background: rgba(10, 12, 16, 0.8); color: #F4F5F7; font-weight: 800; font-size: 0.75rem; }
+.player .pep-ep .th .progress { position: absolute; inset-inline: 0; bottom: 0; height: 4px; border-radius: 0; background: rgba(244, 245, 247, 0.2); }
+.player .pep-ep .th .progress i { display: block; height: 100%; background: #FF3B47; }
+.player .pep-ep .tx { display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+.player .pep-ep .tx b { font-weight: 800; font-size: 1rem; }
+.player .pep-ep .m { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; color: #A9AFBC; font-size: 0.8rem; font-weight: 600; }
+.player .pep-ep:hover .m, .player .pep-ep:focus-visible .m { color: #3A4252; }
+.player .pep-ep .tag { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.05rem 0.5rem; border-radius: 999px; background: rgba(244, 245, 247, 0.12); color: #F4F5F7; font-weight: 700; }
+.player .pep-ep .tag.cur { background: #FF3B47; color: #fff; }
+.player .pep-ep:hover .tag:not(.cur), .player .pep-ep:focus-visible .tag:not(.cur) { background: #DCE1EA; color: #0A0C10; }

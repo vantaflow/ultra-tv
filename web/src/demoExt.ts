@@ -39,3 +39,17 @@ export function demoTvShow(ref: TitleRef, now = Date.now()): TvShow | null {
     default: return null;
   }
 }
+
+/** Écusson d'équipe fictif (SVG : blason aux initiales, couleur tirée du nom) : aucun vrai club, aucun appel réseau. */
+export function demoTeamBadge(name: string): string {
+  const colors = ["#2563eb", "#16a34a", "#dc2626", "#9333ea", "#ea580c", "#0891b2", "#ca8a04"];
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const c = colors[h % colors.length]!;
+  const ini = esc((name.match(/[\p{L}\p{N}]/gu) ?? []).filter((_, i, a) => i === 0 || i === a.length - 1).join("").toUpperCase().slice(0, 2));
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 72" width="64" height="72">`
+    + `<path d="M32 2 60 12v22c0 18-12 30-28 36C16 64 4 52 4 34V12z" fill="${c}" stroke="#fff" stroke-width="3"/>`
+    + `<path d="M4 30h56" stroke="#fff" stroke-opacity=".35" stroke-width="6"/>`
+    + `<text x="32" y="46" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="22" fill="#fff">${ini}</text></svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}

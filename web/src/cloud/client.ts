@@ -499,3 +499,18 @@ export async function tvmazeGet(base: string, token: string, q: { imdb?: string 
   if (r.status < 200 || r.status >= 300) throw new CloudError("tvmaze", r.status);
   return parse<unknown>(r);
 }
+
+/**
+ * Écusson d'une équipe (TheSportsDB via le Worker) : seul le nom d'équipe tiré du titre du programme est envoyé.
+ * Corps brut `{team:{name,short,badge,league,sport}|null}` ; nom refusé par le Worker (404) = `{team:null}` (équipe
+ * inconnue, à mémoriser) ; null : Worker sans service (503). Lève sur 401 / 429 / réseau (rien n'est alors mémorisé).
+ */
+export async function sportsTeamGet(base: string, token: string, name: string): Promise<unknown | null> {
+  const r = await http({ url: `${base}/api/sports/team?name=${encodeURIComponent(name)}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) return { team: null };
+  if (r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("sports", r.status);
+  return parse<unknown>(r);
+}

@@ -43,6 +43,8 @@ import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
 import type { PlayTarget } from "./resolve";
+import { EpisodesPanel } from "./EpisodesPanel";
+import { stepIndex } from "@/lib/episodePanel";
 
 /** HDR annoncé dans le nom de la chaîne (aucune autre source d'information côté Direct). */
 const HDR_RE = /\b(HDR10\+?|HDR|HLG|DOLBY ?VISION)\b/i;
@@ -96,7 +98,7 @@ export function PlayerHost() {
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
-  const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels">(null);
+  const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
   const [cur, setCur] = useState({ t: 0, d: 0, buf: 0 });
   const [clock, setClock] = useState(() => new Date());
   const [osFull, setOsFull] = useState(false);
@@ -691,10 +693,29 @@ export function PlayerHost() {
         }
       }
 
+      // Panneau « Épisodes » : ↑ ↓ (Début, Fin) parcourent les épisodes, ← → changent de saison ; Entrée lit (clic natif).
+      if (full && panelRef.current === "episodes" && ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) {
+        e.preventDefault();
+        const root = wrapRef.current?.querySelector<HTMLElement>(".pep");
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          const tabs = [...(root?.querySelectorAll<HTMLButtonElement>(".pep-seasons button") ?? [])];
+          const cur = tabs.findIndex((b) => b.getAttribute("aria-selected") === "true");
+          const fwd = (e.key === "ArrowRight") !== (document.dir === "rtl");
+          tabs[Math.max(0, Math.min(tabs.length - 1, cur + (fwd ? 1 : -1)))]?.click();
+          return;
+        }
+        const bs = [...(root?.querySelectorAll<HTMLButtonElement>(".pep-list button") ?? [])];
+        const i = stepIndex(bs.indexOf(document.activeElement as HTMLButtonElement), bs.length, e.key);
+        bs[i]?.focus();
+        bs[i]?.scrollIntoView({ block: "nearest" });
+        return;
+      }
+
       switch (e.key) {
         case "Escape":
           if (full) { e.preventDefault(); e.stopPropagation(); if (panelRef.current) setPanel(null); else void leaveFull(); }
           break;
+        case "e": case "E": if (full && tg.kind === "episode") { e.preventDefault(); setPanel((p) => (p === "episodes" ? null : "episodes")); poke(); } break;
         // Passer l'intro : S, ou Entrée hors bouton focalisé (le bouton reste cliquable à la souris).
         case "s": case "S": if (full && skipRef.current()) e.preventDefault(); break;
         case "Enter": if (full && !(el && el.tagName === "BUTTON") && skipRef.current()) e.preventDefault(); break;
@@ -968,6 +989,9 @@ export function PlayerHost() {
             <div className="grp">
               {full ? (
                 <>
+                  {target.kind === "episode" && target.seriesId != null && (
+                    <button className={`popt${panel === "episodes" ? " on" : ""}`} aria-expanded={panel === "episodes"} onClick={() => setPanel(panel === "episodes" ? null : "episodes")}><Icon name="series" size={18} />{t("player.episodes")}</button>
+                  )}
                   <button className={`popt${panel === "tracks" ? " on" : ""}`} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={18} />{t("player.tracks")}</button>
                   <button className={`popt${panel === "display" ? " on" : ""}`} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={18} />{t("player.display")}</button>
                   <button className={`popt${panel === "player" || panel === "stats" ? " on" : ""}`} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={18} />{t("player.player")}</button>
@@ -983,7 +1007,7 @@ export function PlayerHost() {
         </div>
       )}
 
-      {full && panel && panel !== "channels" && (
+      {full && panel && panel !== "channels" && panel !== "episodes" && (
         <aside className="pside" aria-label={t("player.player")}>
           <div className="tabs" role="tablist">
             {(["tracks", "display", "player", "stats"] as const).map((p) => (
@@ -1045,6 +1069,7 @@ export function PlayerHost() {
                 <span><span className="kbd">P</span></span><span>{t("player.sk.pip")}</span>
                 <span><span className="kbd">M</span></span><span>{t("player.sk.mute")}</span>
                 <span><span className="kbd">I</span></span><span>{t("player.stats")}</span>
+                {target.kind === "episode" && <><span><span className="kbd">E</span></span><span>{t("player.sk.episodes")}</span></>}
                 <span><span className="kbd">{t("key.esc")}</span></span><span>{t("player.sk.esc")}</span>
               </div>
               <div className="grp-t">{t("player.stats")}</div>
@@ -1065,6 +1090,7 @@ export function PlayerHost() {
         </aside>
       )}
       {full && panel === "channels" && live && <ChannelsPanel onZap={() => setPanel(null)} cid={target.cid} cat={zapCat} />}
+      {full && panel === "episodes" && target.kind === "episode" && <EpisodesPanel target={target} onClose={() => setPanel(null)} />}
     </div>
   );
 }

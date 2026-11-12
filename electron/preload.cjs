@@ -42,6 +42,21 @@ contextBridge.exposeInMainWorld("ultratv", {
   getDns: () => ipcRenderer.invoke("ut:dns:get"),
   setDns: (settings) => ipcRenderer.invoke("ut:dns:set", settings && typeof settings === "object" ? { ...settings } : {}),
   testDns: (host) => ipcRenderer.invoke("ut:dns:test", String(host)),
+  // Rappels : notification systeme ; le clic renvoie l'identifiant du rappel.
+  notify: (n) => ipcRenderer.invoke("ut:notify", n && typeof n === "object" ? { id: String(n.id), title: String(n.title), body: String(n.body || "") } : null),
+  onNotifyClick: (cb) => subscribe("ut:notify:click", cb),
+  // Enregistrements (recorder.cjs) : le main valide chaque demande ; seuls les fichiers de ses dossiers sont accessibles.
+  recStart: (job) => ipcRenderer.invoke("ut:rec:start", job && typeof job === "object" ? { ...job } : null),
+  recStop: (id) => ipcRenderer.invoke("ut:rec:stop", String(id)),
+  recList: () => ipcRenderer.invoke("ut:rec:list"),
+  recDir: () => ipcRenderer.invoke("ut:rec:dir"),
+  recChooseDir: () => ipcRenderer.invoke("ut:rec:choose-dir"),
+  recOpenDir: () => ipcRenderer.invoke("ut:rec:open-dir"),
+  recReveal: (p) => ipcRenderer.invoke("ut:rec:reveal", String(p)),
+  recOpen: (p) => ipcRenderer.invoke("ut:rec:open", String(p)),
+  recDelete: (p) => ipcRenderer.invoke("ut:rec:delete", String(p)),
+  recSetLabels: (l) => ipcRenderer.invoke("ut:rec:labels", l && typeof l === "object" ? { ...l } : null),
+  onRecEvent: (cb) => subscribe("ut:rec:event", cb),
 });
 
 // Classe de plateforme posee DES le chargement (avant le premier rendu React) : le CSS reserve

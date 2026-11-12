@@ -5,6 +5,7 @@ import "./styles/app.css";
 import "./styles/v2.css";
 import "./styles/v2-player.css";
 import "./styles/v2-screens.css";
+import "./styles/v2-sport.css";
 
 function mount() {
   ReactDOM.createRoot(document.getElementById("root")!).render(

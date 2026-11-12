@@ -36,7 +36,29 @@ export interface UltraTvBridge {
   /** DNS personnalisé (voir net/dns.ts). */
   setDns?(settings: import("./dns").DnsSettings): Promise<{ appliesToChromium: boolean }>;
   testDns?(host: string): Promise<import("./dns").DnsTestResult>;
+  /** Rappels : notification système (vrai si montrée) ; le clic renvoie l'identifiant. */
+  notify?(n: { id: string; title: string; body: string }): Promise<boolean>;
+  onNotifyClick?(cb: (id: string) => void): (() => void) | void;
+  /** Enregistrements (processus principal, electron/recorder.cjs). L'URL ne fait que transiter, elle n'est jamais renvoyée. */
+  recStart?(job: RecJob): Promise<{ ok: boolean; path?: string; error?: string }>;
+  recStop?(id: string): Promise<boolean>;
+  recList?(): Promise<{ active: Array<{ id: string; bytes: number; path: string }>; finished: RecEvent[] }>;
+  recDir?(): Promise<string>;
+  recChooseDir?(): Promise<string | null>;
+  recOpenDir?(): Promise<boolean>;
+  recReveal?(path: string): Promise<boolean>;
+  recOpen?(path: string): Promise<boolean>;
+  recDelete?(path: string): Promise<boolean>;
+  recSetLabels?(l: { title: string; message: string; quit: string; cancel: string }): Promise<boolean>;
+  onRecEvent?(cb: (e: RecEvent) => void): (() => void) | void;
 }
+
+/** Demande d'enregistrement : flux de la chaîne jusqu'à `endAt`, fichier `name`.ts dans le dossier choisi. */
+export interface RecJob { id: string; url: string; endAt: number; name: string; userAgent: string | null; referer: string | null }
+export type RecEvent =
+  | { type: "progress"; id: string; bytes: number }
+  | { type: "done"; id: string; bytes: number; path?: string; reason?: "end" | "stopped" }
+  | { type: "error"; id: string; bytes: number; path?: string; code: string };
 
 declare global {
   interface Window { ultratv?: UltraTvBridge }

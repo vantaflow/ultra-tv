@@ -1,5 +1,6 @@
 import Dexie, { type Table } from "dexie";
 import { wordKeys } from "@/lib/text";
+import type { Recording, Reminder } from "@/lib/schedule";
 import type {
   CategoryRow, ChannelRow, DetailRow, FavoriteRow, HistoryRow, MovieRow,
   ProgramRow, SeriesRow, SettingRow, Source,
@@ -16,6 +17,8 @@ export class UltraTvDb extends Dexie {
   history!: Table<HistoryRow, string>;
   details!: Table<DetailRow, string>;
   settings!: Table<SettingRow, string>;
+  reminders!: Table<Reminder, string>;
+  recordings!: Table<Recording, string>;
 
   constructor(name = "ultratv-desktop") {
     super(name);
@@ -43,6 +46,11 @@ export class UltraTvDb extends Dexie {
           r.words = r.sep ? [] : wordKeys(r.sourceId, r.norm ?? "");
         });
       }
+    });
+    // v3 : rappels et enregistrements programmés (tables neuves, aucune donnée à convertir).
+    this.version(3).stores({
+      reminders: "&id, start",
+      recordings: "&id, recStart, state",
     });
   }
 }

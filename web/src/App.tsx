@@ -24,6 +24,10 @@ import { Person } from "@/screens/Person";
 import { Search } from "@/screens/Search";
 import { Favorites } from "@/screens/Favorites";
 import { Settings } from "@/screens/Settings";
+import { Sport } from "@/screens/Sport";
+import { Recordings } from "@/screens/Recordings";
+import { ReminderBanners } from "@/ui/ReminderBanners";
+import { pushCloseLabels, startScheduler } from "@/state/schedule";
 import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
 import { loadCloud, startCloudSchedule } from "@/cloud/service";
@@ -70,6 +74,8 @@ function Effects() {
     let stopAnon: (() => void) | undefined;
     void loadCloud().then(() => { if (cloudAvailable()) { stopCloud = startCloudSchedule(); stopAnon = startAnonPing(); } });
     void initTransport();
+    // Rappels et enregistrements : reprogrammés au lancement (persistés dans Dexie).
+    const stopSchedule = startScheduler();
     // DNS personnalisé : le réglage local fait foi, le processus principal est réaligné au démarrage.
     if (isElectron()) void pushDns(normalizeDns(usePrefs.getState().dns));
     const on = () => useUi.getState().setOnline(true);
@@ -83,8 +89,12 @@ function Effects() {
       if (typeof unsub === "function") unsub();
       stopCloud?.();
       stopAnon?.();
+      stopSchedule();
     };
   }, []);
+
+  // Confirmation de fermeture pendant un enregistrement : textes dans la langue de l'interface.
+  useEffect(() => { pushCloseLabels(); }, [lang]);
 
   // Raccourcis globaux : « / » ou Ctrl/⌘ + K ouvre la recherche.
   useEffect(() => {
@@ -174,6 +184,8 @@ function Shell() {
           <Route path="/" element={<Home />} />
           <Route path="/live" element={<Live />} />
           <Route path="/guide" element={<Guide />} />
+          <Route path="/sport" element={<Sport />} />
+          <Route path="/recordings" element={<Recordings />} />
           <Route path="/movies" element={<VodScreen kind="movie" />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/series" element={<VodScreen kind="series" />} />
@@ -190,6 +202,7 @@ function Shell() {
       </main>
       {!bare && <SyncPill />}
       <Toasts />
+      <ReminderBanners />
       <UpdateReady />
     </div>
   );

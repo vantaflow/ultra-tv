@@ -40,6 +40,9 @@ const P = {
   tv: "M3 5h18v12H3zM8 21h8",
   rec: "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z",
   up: "M8 10l4-4 4 4M8 14l4 4 4-4",
+  trophy: "M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M10 17h4v4h-4z",
+  bell: "M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4",
+  folder: "M3 6h6l2 2h10v11H3z",
 } as const;
 export type IconName = keyof typeof P;
 

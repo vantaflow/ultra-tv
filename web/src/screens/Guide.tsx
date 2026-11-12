@@ -18,6 +18,9 @@ import { HScroll } from "@/ui/HScroll";
 import { hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
+import { ProgActions, useRecordingIds, useReminderIds } from "@/ui/ProgActions";
+import { progId } from "@/lib/schedule";
+import { progRef } from "@/state/schedule";
 import { NoSource } from "./states";
 
 const PX_MIN = 5;
@@ -184,6 +187,9 @@ function Inner({ source }: { source: Source }) {
   const firstProg = firstChan?.epg ? (progs.get(`${from}|${firstChan.epg}`) ?? EMPTY_PROGS).find((p) => p.start <= now && p.end > now) : undefined;
   const shown: { prog: ProgramRow; chan: ChannelRow } | null = pick ? { prog: pick.prog, chan: pick.chan } : firstChan && firstProg ? { prog: firstProg, chan: firstChan } : null;
   const shownLive = !!shown && shown.prog.start <= now && shown.prog.end > now;
+  const reminded = useReminderIds();
+  const recorded = useRecordingIds();
+  const shownRef = shown ? progRef(source, shown.chan, shown.prog) : null;
 
   return (
     <div className="guide" onClick={() => setPick(null)}>
@@ -200,6 +206,7 @@ function Inner({ source }: { source: Source }) {
               <div className="g-actions">
                 {shown.prog.end > now && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, false)}><Icon name="play" size={16} fill />{t("guide.watchLive")}</button>}
                 {shown.prog.end <= now && !!shown.chan.archive && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, true)}><Icon name="play" size={16} fill />{t("guide.replay")}</button>}
+                {shownRef && <ProgActions source={source} prog={shownRef} now={now} size="lg" reminded={reminded.has(progId(shownRef))} recorded={recorded.has(progId(shownRef))} />}
               </div>
             </>
           ) : (

@@ -38,11 +38,14 @@ const PAGES = {
   "live-osd": { route: "/live", run: click(".preview .actions .btn", 0), wait: 2500 },
   "live-channels": { route: "/live", run: `${click(".preview .actions .btn", 0)}; setTimeout(() => ${click('.pdock .dbtn[aria-label]', 4)}, 1500)`, wait: 3500 },
   guide: { route: "/guide" },
+  sport: { route: "/sport" },
   movies: { route: "/movies" },
   movie: { route: "/movie/1001" },
   serie: { route: "/serie/2000" },
   settings: { route: "/settings/display" },
   "vod-player": { route: "/movie/1001", run: click(".detail .actions .btn.primary", 0), wait: 2500 },
+  "series-episodes": { route: "/serie/2000", run: `${click(".detail .actions .btn.primary", 0)}; setTimeout(() => ${click(".player .pbot.vod .popt", 0)}, 1500)`, wait: 3000 },
+  recordings: { route: "/recordings", run: click(".page.recordings .chips .chip", 1), wait: 800 },
 };
 const wanted = process.argv.slice(2);
 const pages = Object.entries(PAGES).filter(([k]) => !wanted.length || wanted.includes(k));

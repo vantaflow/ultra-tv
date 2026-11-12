@@ -24,6 +24,7 @@ import { useFanart, useNewEpisodes, type NewEpSeries } from "@/hooks/extmeta";
 import { fmtEpisodeLine, type NewEpisode } from "@/lib/extmeta";
 import { localeOf } from "@/i18n/lang";
 import { TitleLogo } from "@/ui/TitleLogo";
+import { SportHomeRow } from "./Sport";
 
 export function Home() {
   const source = useActiveSource();
@@ -154,7 +155,7 @@ function PosterSection({ title, items }: { title: string; items: PosterItem[] })
 function HomeInner({ source }: { source: Source }) {
   const t = useT();
   const nav = useNavigate();
-  const { profileId, lang } = usePrefs();
+  const { profileId, lang, sportSection } = usePrefs();
   const favs = useFavorites(source, "live");
   const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id]) ?? [];
   const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c), [favs, source.cid]) ?? [];
@@ -273,6 +274,8 @@ function HomeInner({ source }: { source: Source }) {
           <div className="live-row">{liveRow.map((c) => <LiveNowCard key={c.id} source={source} ch={c} />)}</div>
         </section>
       )}
+
+      {sportSection && <SportHomeRow source={source} />}
 
       {hist.length > 0 && (
         <section>

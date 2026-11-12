@@ -9,7 +9,7 @@
 //    jeton (proxy.cjs) ; la tolerance TLS n'existe que sur ce chemin.
 //  - aucune URL de source ni identifiant n'est journalise.
 
-const { app, BrowserWindow, Menu, protocol, session, shell, ipcMain, nativeTheme, safeStorage, net, screen } = require("electron");
+const { app, BrowserWindow, Menu, Notification, dialog, protocol, session, shell, ipcMain, nativeTheme, safeStorage, net, screen } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
@@ -22,6 +22,7 @@ const { cloudRequest } = require("./cloudfetch.cjs");
 const { computeWindowFit } = require("./windowfit.cjs");
 const dnsMod = require("./dns.cjs");
 const trailer = require("./trailer.cjs");
+const recorderMod = require("./recorder.cjs");
 
 const APP_SCHEME = "app";
 const APP_HOST = "ultratv";
@@ -133,6 +134,45 @@ async function testDns(host) {
     return { ok: false, reason: (e && e.code) || "error", ms: Date.now() - t0 };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Enregistrements (recorder.cjs) : dossier choisi par l'utilisateur (par defaut Videos/Ultra TV), memorise dans
+// userData/recorder.json avec les dossiers deja utilises (seuls fichiers que le renderer peut lire, reveler ou supprimer).
+// ---------------------------------------------------------------------------
+
+let recorder = null;
+let recConf = { dir: "", dirs: [] };
+/** Textes de la confirmation de fermeture, fournis par le renderer dans la langue de l'interface. */
+let recLabels = null;
+const recConfFile = () => path.join(app.getPath("userData"), "recorder.json");
+const defaultRecDir = () => path.join(app.getPath("videos"), "Ultra TV");
+
+function loadRecConf() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(recConfFile(), "utf8"));
+    const dirs = Array.isArray(raw.dirs) ? raw.dirs.filter((d) => typeof d === "string" && path.isAbsolute(d)).slice(-10) : [];
+    recConf = { dir: typeof raw.dir === "string" && path.isAbsolute(raw.dir) ? raw.dir : "", dirs };
+  } catch {
+    recConf = { dir: "", dirs: [] };
+  }
+}
+function recDir() {
+  return recConf.dir || defaultRecDir();
+}
+function knownRecDirs() {
+  return [...new Set([recDir(), defaultRecDir(), ...recConf.dirs])];
+}
+function setRecDir(dir) {
+  recConf = { dir, dirs: [...recConf.dirs.filter((d) => d !== dir), dir].slice(-10) };
+  try {
+    fs.writeFileSync(recConfFile(), JSON.stringify(recConf));
+  } catch {
+    console.warn("[ultra-tv] recorder: save failed");
+  }
+}
+
+/** Notifications systeme gardees en memoire jusqu'au clic ou a la fermeture (sinon le ramasse-miettes les retire). */
+const liveNotifications = new Set();
 
 // ---------------------------------------------------------------------------
 // Utilitaires d'origine
@@ -357,6 +397,72 @@ function registerIpc() {
   handle("ut:dns:get", () => ({ settings: dnsSettings, appliesToChromium: dnsMod.chromiumResolverConfig(dnsSettings).appliesToChromium }));
   handle("ut:dns:set", (raw) => setDnsSettings(raw));
   handle("ut:dns:test", (host) => testDns(host));
+  // Notification systeme (rappels) : le clic ramene la fenetre et renvoie l'identifiant au renderer.
+  handle("ut:notify", (n) => {
+    if (!Notification.isSupported() || !n || typeof n !== "object") return false;
+    const id = typeof n.id === "string" ? n.id.slice(0, 200) : "";
+    const title = typeof n.title === "string" ? n.title.slice(0, 200) : "";
+    const body = typeof n.body === "string" ? n.body.slice(0, 400) : "";
+    if (!id || !title) return false;
+    const notif = new Notification({ title, body });
+    liveNotifications.add(notif);
+    const forget = () => liveNotifications.delete(notif);
+    notif.on("click", () => {
+      forget();
+      const w = win();
+      if (!w) return;
+      if (w.isMinimized()) w.restore();
+      w.show();
+      w.focus();
+      w.webContents.send("ut:notify:click", id);
+    });
+    notif.on("close", forget);
+    notif.show();
+    return true;
+  });
+  // Enregistrements : l'URL du flux ne fait que transiter vers recorder.cjs (jamais journalisee ni renvoyee).
+  handle("ut:rec:start", (job) => (recorder ? recorder.start(job) : { ok: false, error: "unavailable" }));
+  handle("ut:rec:stop", (id) => (recorder && typeof id === "string" ? recorder.stop(id) : false));
+  handle("ut:rec:list", () => (recorder ? recorder.list() : { active: [], finished: [] }));
+  handle("ut:rec:dir", () => recDir());
+  handle("ut:rec:choose-dir", async () => {
+    const w = win();
+    const r = await (w ? dialog.showOpenDialog(w, { defaultPath: recDir(), properties: ["openDirectory", "createDirectory"] }) : dialog.showOpenDialog({ defaultPath: recDir(), properties: ["openDirectory", "createDirectory"] }));
+    if (r.canceled || !r.filePaths[0]) return null;
+    setRecDir(r.filePaths[0]);
+    return recDir();
+  });
+  handle("ut:rec:open-dir", async () => {
+    try {
+      fs.mkdirSync(recDir(), { recursive: true });
+    } catch {
+      return false;
+    }
+    return (await shell.openPath(recDir())) === "";
+  });
+  handle("ut:rec:reveal", (p) => {
+    if (!recorderMod.isRecordingFile(knownRecDirs(), p) || !fs.existsSync(p)) return false;
+    shell.showItemInFolder(p);
+    return true;
+  });
+  handle("ut:rec:open", async (p) => {
+    if (!recorderMod.isRecordingFile(knownRecDirs(), p) || !fs.existsSync(p)) return false;
+    return (await shell.openPath(p)) === "";
+  });
+  handle("ut:rec:delete", async (p) => {
+    if (!recorderMod.isRecordingFile(knownRecDirs(), p)) return false;
+    try {
+      await fs.promises.unlink(p);
+    } catch (e) {
+      return !!(e && e.code === "ENOENT");
+    }
+    return true;
+  });
+  handle("ut:rec:labels", (l) => {
+    const ok = (v) => typeof v === "string" && v.length > 0 && v.length <= 300;
+    if (l && ok(l.title) && ok(l.message) && ok(l.quit) && ok(l.cancel)) recLabels = { title: l.title, message: l.message, quit: l.quit, cancel: l.cancel };
+    return true;
+  });
   handle("ut:titlebar-theme", (isDark) => {
     nativeTheme.themeSource = isDark ? "dark" : "light";
     return true;
@@ -476,6 +582,21 @@ function createWindow() {
   mainWindow.loadURL(appEntryUrl()).catch(() => {});
   if (IS_DEV) wc.openDevTools({ mode: "detach" });
 
+  // Enregistrement en cours : la fermeture de la fenetre l'arreterait (sauf macOS, ou l'application reste ouverte).
+  mainWindow.on("close", (e) => {
+    if (process.platform === "darwin" || !recorder || recorder.active() === 0 || !recLabels) return;
+    const choice = dialog.showMessageBoxSync(mainWindow, {
+      type: "warning",
+      title: recLabels.title,
+      message: recLabels.message,
+      buttons: [recLabels.cancel, recLabels.quit],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (choice === 0) e.preventDefault();
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -515,6 +636,18 @@ if (!app.requestSingleInstanceLock()) {
       proxy = null;
     }
 
+    // Windows : identite des notifications (meme identifiant que l'installateur NSIS).
+    if (process.platform === "win32") app.setAppUserModelId("com.ultratv.desktop");
+    loadRecConf();
+    recorder = recorderMod.createRecorder({
+      getDir: recDir,
+      lookup: resolver.lookup,
+      onEvent: (ev) => {
+        if (ev.type === "error") console.warn(`[ultra-tv] recorder error ${ev.code}`);
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("ut:rec:event", ev);
+      },
+    });
+
     updater = createUpdater({
       app,
       send: (status) => {
@@ -543,6 +676,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on("will-quit", () => {
+    if (recorder) recorder.stopAll();
     if (proxy) void proxy.stop();
   });
 }
