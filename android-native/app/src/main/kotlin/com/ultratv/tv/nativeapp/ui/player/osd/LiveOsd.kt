@@ -56,7 +56,7 @@ import com.ultratv.tv.nativeapp.ui.mobile.PlayerPill
 import com.ultratv.tv.nativeapp.ui.mobile.PlayerRoundButton
 
 /** Chaîne regardée : logo (sinon son numéro en pastille), numéro et nom. */
-data class OsdChannelInfo(val logo: String?, val number: Int?, val name: String, val badge: String? = null)
+data class OsdChannelInfo(val logo: String?, val number: Int?, val name: String, val badge: String? = null, val quality: String? = null, val hdr: String? = null)
 
 /** Barre de progression de l'étage haut : heures de début / fin, avancement 0..1, « reste 34 min ». */
 data class OsdProgress(
@@ -88,6 +88,17 @@ data class LiveOsdState(
     /** OSD complet (récents + barre) ; faux = simple bandeau d'information (étage haut seul + [hint]). */
     val expanded: Boolean = true,
     val hint: String? = null,
+    /** Interface v2 (TV) : ruban de la soirée (vide = masqué), pastille Favori, mots traduits (« MAINTENANT », « RÉCENTES »). */
+    val ribbon: List<OsdRibbonSlot> = emptyList(),
+    val favorite: Boolean = false,
+    val nowWord: String = "",
+    val favoriteWord: String = "",
+    val recentsShort: String = "",
+    /** Carte « ENSUITE » (null = masquée) et ses mots traduits. */
+    val next: OsdNextInfo? = null,
+    val nextWord: String = "",
+    val remindWord: String = "",
+    val recordWord: String = "",
 )
 
 /** Cibles de focus de l'OSD : premier bouton de la barre, première carte des récents. */
@@ -130,6 +141,7 @@ fun LiveOsd(
     backDescription: String = "",
     onBack: (() -> Unit)? = null,
     topEnd: (@Composable () -> Unit)? = null,
+    onNextAction: (OsdNextAction) -> Unit = {},
 ) {
     val touch = LocalTouch.current
     val sz = Sz(touch)
@@ -140,6 +152,13 @@ fun LiveOsd(
             if (runCatching { target.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
             withFrameNanos { }
         }
+    }
+    // TV : nouvelle disposition (OsdTv.kt), toujours sur la palette sombre (la surcouche est posée sur la vidéo).
+    if (!touch) {
+        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalUxPalette provides com.ultratv.tv.nativeapp.ui.design.DarkPalette) {
+            Box(modifier.fillMaxSize()) { TvOsd(state, focus, onAction, onRecent, onStage, onNextAction) }
+        }
+        return
     }
     Box(modifier.fillMaxSize()) {
         TopStage(state, sz, backDescription, onBack, topEnd, Modifier.align(Alignment.TopStart))

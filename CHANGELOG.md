@@ -4,6 +4,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Android : nouvelle interface, première partie (thèmes, lecteur du Direct, animation d'ouverture). Les autres écrans suivront.
+  - Thèmes sombre et clair redessinés (nouvelles couleurs, focus en fond clair sur thème sombre et inversement). Réglages › Affichage › Thème : Automatique (suit le système ; sur une TV, Sombre), Sombre ou Clair. Le lecteur reste toujours sombre, posé sur la vidéo.
+  - Surcouche du Direct : identité de la chaîne en haut à gauche (numéro, logo, nom, pastilles En direct, qualité, HDR10 / HLG / Dolby Vision, Favori) et horloge à droite ; en bas, la rangée « Récentes » (Gauche / Droite pour parcourir, Haut depuis la barre, Bas ou Retour pour revenir), le programme en cours, une carte « Ensuite » avec « Me rappeler » et « Enregistrer », le ruban de la soirée (précédent, en cours avec sa progression, suivants) et une barre de boutons ronds dont seul celui qui a le focus affiche son libellé. Le ruban est masqué sans guide. Mêmes touches et mêmes comportements qu'avant.
+  - Liste des chaînes du lecteur : feuille flottante à droite avec onglets Chaînes / Favoris, colonne des catégories et lignes de chaînes (numéro, logo, nom, programme en cours, progression, « En cours »). Le bloc « Sélection » disparaît : la ligne de la chaîne affiche déjà son programme.
+  - Animation d'ouverture de 700 ms (le logo apparaît, le « play » s'illumine, puis s'efface vers l'accueil). Elle ne retarde jamais le chargement ; simple fondu de 200 ms sur les box à faible mémoire ; aucune animation si l'appareil les désactive.
+
 ## [1.2.97] — 2026-11-12 (Android)
 
 ### Corrigé

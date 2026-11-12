@@ -1476,6 +1476,11 @@
     <string name="osd_drawer_all">All channels</string>
     <string name="osd_no_previous">No previous channel</string>
     <string name="osd_drawer_hint">OK zap · ▲▼ browse · ◀ categories · ▶ channels · ‹ close</string>
+    <string name="osd_recents_short">RECENT</string>
+    <string name="osd_now">NOW</string>
+    <string name="osd_on_air">ON NOW</string>
+    <string name="osd_fav_pill">Favorite</string>
+    <string name="osd_selection">Selection</string>
     <!-- ui/live/ChannelOrderStrings.kt -->
     <string name="cor_move">Move</string>
     <string name="cor_reset">Reset order</string>

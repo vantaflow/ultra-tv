@@ -71,33 +71,44 @@ object Ux {
     var playerActive by mutableStateOf(false)
     private val light: Boolean get() = com.ultratv.tv.nativeapp.ui.theme.isLightEffective(themeLight, playerActive)
 
-    // Surfaces (sombre → clair : maquettes Accueil / AccueilClair / SidebarClair)
-    val Bg: Color get() = if (light) Color(0xFFF4F3EF) else Color(0xFF0A0A0C)
-    val Rail: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF0F0F12)
-    val Surface: Color get() = if (light) Color(0xFFECEAE5) else Color(0xFF1C1C21)
-    val Surface2: Color get() = if (light) Color(0xFFD9D6CF) else Color(0xFF26262D)
-    val SurfaceDeep: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF141418)
-    /** Fond des visuels de remplacement (affiches, logos sans image). */
-    val Tone: Color get() = if (light) Color(0xFFE3E1DB) else Color(0xFF1F1F25)
+    /** Palette effective (claire seulement hors lecteur). Lue dans une composition : s'abonne à [themeLight] / [playerActive]. */
+    val palette: UxPalette get() = paletteFor(light)
+
+    // Surfaces (palette v2 : voir Palette.kt)
+    val Bg: Color get() = palette.bg
+    val Rail: Color get() = palette.rail
+    /** Carte / ligne au repos. */
+    val Surface: Color get() = palette.card
+    /** Bouton / pastille au repos. */
+    val Surface2: Color get() = palette.button
+    val SurfaceDeep: Color get() = palette.card2
+    /** Fond des visuels de remplacement (affiches, tuiles de logo sans image). */
+    val Tone: Color get() = palette.tile
+    val Card: Color get() = palette.card
+    val Card2: Color get() = palette.card2
+    val Button: Color get() = palette.button
+    val Tile: Color get() = palette.tile
+    /** Teinte de l'élément « en cours » (catégorie choisie, programme en cours). */
+    val NowTint: Color get() = palette.nowTint
 
     // Texte
-    val Text: Color get() = if (light) Color(0xFF16151A) else Color(0xFFF5F5F7)
-    val Text2: Color get() = if (light) Color(0xFF3C3B42) else Color(0xFFC4C4CC)
-    val Text3: Color get() = if (light) Color(0xFF54535B) else Color(0xFFA1A1AA)
+    val Text: Color get() = palette.text
+    val Text2: Color get() = palette.text2
+    val Text3: Color get() = palette.text3
     /** Texte très atténué (compteurs, entrées désactivées). */
-    val Muted: Color get() = if (light) Color(0xFF5A5961) else Color(0xFF8E8E98)
-    val Muted2: Color get() = if (light) Color(0xFFB0AEB5) else Color(0xFF52525B)
-    val Err: Color get() = if (light) Color(0xFFB3261E) else Color(0xFFFF8A8A)
+    val Muted: Color get() = palette.muted
+    val Muted2: Color get() = palette.muted2
+    val Err: Color get() = palette.err
 
-    val Line: Color get() = if (light) Color(0xFFD9D6CF) else Color(0xFF3F3F46)
-    val LineKey: Color get() = if (light) Color(0xFFB0AEB5) else Color(0xFF52525B)
-    val Scrim: Color get() = if (light) Color(0xCCF4F3EF) else Color(0xB80A0A0C)
+    val Line: Color get() = palette.line
+    val LineKey: Color get() = palette.lineKey
+    val Scrim: Color get() = palette.scrim
 
-    // Focus : sombre = fond blanc / texte noir ; clair = fond encre / texte blanc ; l'anneau reste accent.
-    val Cta: Color get() = if (light) Color(0xFF16151A) else Color(0xFFFFFFFF)
-    val TextOnLight: Color get() = if (light) Color(0xFFFFFFFF) else Color(0xFF0A0A0C)
+    // Focus : sombre = fond clair / texte foncé ; clair = fond encre / texte clair ; l'anneau reste accent.
+    val Cta: Color get() = palette.focusFill
+    val TextOnLight: Color get() = palette.focusText
     /** Texte secondaire sur une ligne focalisée. */
-    val OnFocus2: Color get() = if (light) Color(0xFFC9C7CF) else Color(0xFF3F3F46)
+    val OnFocus2: Color get() = palette.focusText2
 
     /**
      * Couleur d'accent choisie (Réglages › Affichage) : anneau de focus, progression, pastilles, interrupteurs.
@@ -107,11 +118,13 @@ object Ux {
     /** Facteur de taille du texte (Réglages › Affichage) ; appliqué à la densité de police par ProvideUiScale. */
     var textScale by androidx.compose.runtime.mutableFloatStateOf(1f)
 
-    val Accent: Color get() = Color(accentChoice.argb)
+    val Accent: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accent else Color(accentChoice.argb)
     /** Texte / icône posé SUR l'accent (blanc ou encre selon la couleur, toujours ≥ 4,5:1). */
-    val OnAccent: Color get() = Color(accentChoice.onAccent)
+    val OnAccent: Color get() = if (accentChoice == AccentChoice.DEFAULT) Color.White else Color(accentChoice.onAccent)
     /** Accent utilisé comme couleur de TEXTE sur les surfaces du thème (éclairci ou assombri pour rester AA). */
-    val AccentInk: Color get() = Color(if (light) accentChoice.inkOnLight else accentChoice.inkOnDark)
+    val AccentInk: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accentText else Color(if (light) accentChoice.inkOnLight else accentChoice.inkOnDark)
+    /** Accent en texte (sur la teinte [NowTint] ou une carte). */
+    val AccentText: Color get() = AccentInk
     val White = Color(0xFFFFFFFF)
 }
 
@@ -190,7 +203,8 @@ fun FocusSurface(
                 val s = if (focused) anim.focusScale(focusedScale) else 1f
                 scaleX = s; scaleY = s
             }
-            .then(if (focused) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
+            // Anneau seulement si sa largeur est positive (0 = focus par le seul fond, interface v2 : 0 dp tracerait un filet).
+            .then(if (focused && ringWidth.value > 0f) Modifier.border(ringWidth, Ux.Accent, shape) else Modifier)
             .clip(shape)
             .background(if (focused) focusedBg else bg)
             .combinedClickable(

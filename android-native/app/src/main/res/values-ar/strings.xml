@@ -1530,6 +1530,11 @@
     <string name="osd_drawer_all">كل القنوات</string>
     <string name="osd_no_previous">لا توجد قناة سابقة</string>
     <string name="osd_drawer_hint">OK للتبديل · ▲▼ تصفح · ◀ الفئات · ▶ القنوات · ‹ إغلاق</string>
+    <string name="osd_recents_short">الأخيرة</string>
+    <string name="osd_now">الآن</string>
+    <string name="osd_on_air">جارٍ الآن</string>
+    <string name="osd_fav_pill">مفضلة</string>
+    <string name="osd_selection">التحديد</string>
     <!-- ui/live/ChannelOrderStrings.kt -->
     <string name="cor_move">نقل</string>
     <string name="cor_reset">إعادة ضبط الترتيب</string>

@@ -64,7 +64,20 @@ class LiveOsdRenderTest {
         OsdRecent("p:6", null, 15, "BFMTV", "Édition spéciale"),
     )
 
-    fun state(lang: AppLang, expanded: Boolean = true): LiveOsdState {
+    /** Ruban de la soirée de la maquette (précédent / en cours à 40 % / trois suivants). */
+    private fun ribbon(onAir: String) = listOf(
+        OsdRibbonSlot(RibbonKind.PAST, "Le 18h30", "18:30", 2f, 0f),
+        OsdRibbonSlot(RibbonKind.NOW, "Journal de 20h", "20:00 · $onAir", 3f, 0.4f),
+        OsdRibbonSlot(RibbonKind.NEXT, "Grand débat", "21:30", 2.4f, 0f),
+        OsdRibbonSlot(RibbonKind.NEXT, "Le Club", "22:30", 2f, 0f),
+        OsdRibbonSlot(RibbonKind.NEXT, "Nuit info", "23:30", 1.6f, 0f),
+    )
+
+    /**
+     * [full] ajoute la carte « Ensuite » (ses boutons « Enregistrer » / « Me rappeler » doublonnent des libellés de la barre :
+     * les parcours de focus, qui cherchent un libellé unique, n'en ont pas besoin).
+     */
+    fun state(lang: AppLang, expanded: Boolean = true, full: Boolean = false): LiveOsdState {
         val D = DesignStrings(lang); val X = PlayerExtraStrings(lang); val S = stringsOf(lang); val O = LiveOsdStrings(lang)
         val actions = OsdActions.build(
             OsdActionInputs(
@@ -74,7 +87,7 @@ class LiveOsdRenderTest {
             O.labels(D, X, S),
         )
         return LiveOsdState(
-            channel = OsdChannelInfo(logo = null, number = 101, name = "France Info"),
+            channel = OsdChannelInfo(logo = null, number = 101, name = "France Info", quality = "FHD", hdr = "hdr10"),
             programme = OsdProgrammeInfo(
                 title = "Journal de 20h",
                 description = "Les titres de l'actualité nationale et internationale, suivis d'un grand reportage en direct depuis la capitale et des invités du jour.",
@@ -84,6 +97,9 @@ class LiveOsdRenderTest {
             ),
             badge = OsdBadge(D.live, false), clock = "20:36", actions = actions, recents = recents(), recentsTitle = O.recentChannels,
             expanded = expanded, hint = O.bannerHint,
+            ribbon = ribbon(O.onAir), favorite = true, nowWord = O.now, favoriteWord = O.favoritePill, recentsShort = O.recentsShort,
+            next = if (full) OsdNextInfo("21:30 – 22:30", "Grand débat", "Quatre invités confrontent leurs points de vue sur les sujets du jour.") else null,
+            nextWord = X.thenWord, remindWord = D.remind, recordWord = D.pRecord,
         )
     }
     }
@@ -111,7 +127,7 @@ class LiveOsdRenderTest {
                 androidx.compose.runtime.SideEffect { inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard) }
                 // Faux plan vidéo : dégradé neutre, pour juger la lisibilité de la surcouche.
                 Box(Modifier.fillMaxSize().background(Brush.linearGradient(listOf(Color(0xFF2B5876), Color(0xFF4E4376), Color(0xFF1B2735))))) {
-                    LiveOsd(state(lang, expanded), focus, onAction = {}, onRecent = {}, initialStage = stage, onBack = if (touch) ({}) else null, backDescription = "Retour")
+                    LiveOsd(state(lang, expanded, full = true), focus, onAction = {}, onRecent = {}, initialStage = stage, onBack = if (touch) ({}) else null, backDescription = "Retour")
                 }
             }
         }

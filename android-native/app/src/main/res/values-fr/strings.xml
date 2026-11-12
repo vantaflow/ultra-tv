@@ -1488,6 +1488,11 @@
     <string name="osd_drawer_all">Toutes les chaînes</string>
     <string name="osd_no_previous">Pas de chaîne précédente</string>
     <string name="osd_drawer_hint">OK zapper · ▲▼ parcourir · ◀ catégories · ▶ chaînes · ‹ fermer</string>
+    <string name="osd_recents_short">RÉCENTES</string>
+    <string name="osd_now">MAINTENANT</string>
+    <string name="osd_on_air">EN COURS</string>
+    <string name="osd_fav_pill">Favori</string>
+    <string name="osd_selection">Sélection</string>
     <!-- ui/live/ChannelOrderStrings.kt -->
     <string name="cor_move">Déplacer</string>
     <string name="cor_reset">Réinitialiser l’ordre</string>

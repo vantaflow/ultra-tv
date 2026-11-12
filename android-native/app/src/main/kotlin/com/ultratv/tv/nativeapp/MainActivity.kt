@@ -456,6 +456,8 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                 }
             }
         }
+        // Animation d'ouverture (700 ms) : posée AU-DESSUS de l'application, déjà en cours de chargement derrière.
+        com.ultratv.tv.nativeapp.ui.design.StartupAnimation()
         }
     }
 }

@@ -79,6 +79,14 @@ import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.recNoSpace
+import com.ultratv.tv.nativeapp.i18n.recNothing
+import com.ultratv.tv.nativeapp.i18n.recScheduled
+import com.ultratv.tv.nativeapp.i18n.remindSet
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdNextAction
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdNextInfo
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdRibbon
+import com.ultratv.tv.nativeapp.ui.player.osd.OsdText
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.Toaster
@@ -171,7 +179,37 @@ class PlayerViewModel @Inject constructor(
     val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
     private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
     private val vodInfoDao: com.ultratv.tv.nativeapp.data.db.VodInfoDao,
+    private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
+    private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
 ) : ViewModel() {
+
+    /** Chaîne regardée (base), pour les actions sur le programme suivant de l'OSD. */
+    private suspend fun currentChannel(): com.ultratv.tv.nativeapp.data.db.ChannelEntity? {
+        val item = playback.current.value?.takeIf { it.kind == "LIVE" } ?: return null
+        return channelDao.byRemoteId(item.providerId, item.remoteId)
+    }
+
+    /** « Me rappeler » du programme suivant (même rappel que le Guide). [onDone] : vrai si le rappel est posé. */
+    fun remindProgramme(prog: EpgEntity, onDone: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ch = currentChannel()
+            if (ch != null) reminders.add(
+                com.ultratv.tv.nativeapp.data.reminders.ReminderEntity(
+                    providerId = ch.providerId, channelRemoteId = ch.remoteId, channelName = ch.name,
+                    programmeTitle = prog.title, startMs = prog.startMs, endMs = prog.endMs,
+                ),
+            )
+            onDone(ch != null)
+        }
+    }
+
+    /** « Enregistrer » le programme suivant (même programmation que le Guide, sans la série entière). */
+    fun recordProgramme(prog: EpgEntity, onResult: (com.ultratv.tv.nativeapp.data.recording.ScheduleResult) -> Unit) {
+        viewModelScope.launch {
+            val ch = currentChannel() ?: return@launch
+            onResult(recScheduler.schedule(ch, prog, false))
+        }
+    }
 
     val prefsFlow: Flow<UserPrefs> = prefs.flow
     suspend fun playbackPrefs(): UserPrefs = prefs.flow.first()
@@ -260,6 +298,21 @@ class PlayerViewModel @Inject constructor(
                 emit(ch?.let { upcomingFor(it.id, 1, now).firstOrNull() })
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Programmes autour de maintenant (3 h avant, 6 h après) de la chaîne regardée : alimente le ruban de la soirée de l'OSD.
+     * Relu avec le programme en cours (un changement de programme redessine le ruban) ; vide sans guide.
+     */
+    val schedule: StateFlow<List<EpgEntity>> = kotlinx.coroutines.flow.combine(playback.current, nowProgramme) { i, n -> i to n }
+        .distinctUntilChanged()
+        .flatMapLatest { (item, _) ->
+            flow<List<EpgEntity>> {
+                if (item == null || item.kind != "LIVE") { emit(emptyList()); return@flow }
+                val ch = channelDao.byRemoteId(item.providerId, item.remoteId)
+                val t = System.currentTimeMillis()
+                emit(if (ch == null) emptyList() else epgDao.rangeForChannels(listOf(ch.id), t - 3 * 60 * 60_000L, t + 6 * 60 * 60_000L))
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private suspend fun upcomingFor(channelId: Long, count: Int, now: EpgEntity?): List<EpgEntity> {
         val t = System.currentTimeMillis()
@@ -952,12 +1005,49 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     }
     // Étage haut : programme du guide (ou nom de la chaîne), fenêtre du différé, horloge.
     val osdNext by vm.nextProgramme.collectAsState()
-    val osdChannelNumber = if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { it > 0 } else null
+    // Carte « Ensuite » de l'OSD : mêmes rappel et enregistrement que le Guide.
+    val onOsdNext: (OsdNextAction) -> Unit = { act ->
+        osdNext?.let { n ->
+            touch()
+            when (act) {
+                OsdNextAction.REMIND -> vm.remindProgramme(n) { ok -> if (ok) Toaster.ok(D.remindSet) }
+                OsdNextAction.RECORD -> vm.recordProgramme(n) { r ->
+                    when (r) {
+                        is com.ultratv.tv.nativeapp.data.recording.ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
+                        com.ultratv.tv.nativeapp.data.recording.ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
+                        com.ultratv.tv.nativeapp.data.recording.ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
+                    }
+                }
+            }
+        }
+    }
+    val osdCurrentChannel =if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel else null
+    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { it > 0 }
+    val osdSchedule by vm.schedule.collectAsState()
+    // Pastille HDR : type du flux lu dans les statistiques du moteur (quelques relectures après le début de la lecture, pas en continu).
+    var liveHdr by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(currentUrl) { liveHdr = null }
+    LaunchedEffect(currentUrl, overlayVisible, state.phase) {
+        if (!isLive || !overlayVisible || state.phase != Phase.PLAYING || touch) return@LaunchedEffect
+        repeat(3) {
+            val k = session.engine?.stats()?.hdrKind
+            if (k != null && k != liveHdr) liveHdr = k
+            if (k != null) return@LaunchedEffect
+            delay(1_500)
+        }
+    }
     val osdState = if (!isLive) null else {
         val snap = tsSnap?.takeIf { tsActive }
         val nowMs = System.currentTimeMillis()
         LiveOsdState(
-            channel = OsdChannelInfo(item?.poster, osdChannelNumber, item?.title ?: title, item?.badge),
+            channel = OsdChannelInfo(
+                item?.poster, osdChannelNumber, item?.title ?: title, item?.badge,
+                quality = osdCurrentChannel?.let { OsdText.qualityLabel(it.quality) }, hdr = liveHdr,
+            ),
+            ribbon = if (osdSchedule.isEmpty()) emptyList() else OsdRibbon.slots(osdSchedule, nowMs, EpgClock::hm, O.onAir),
+            favorite = isFavNow, nowWord = O.now, favoriteWord = O.favoritePill, recentsShort = O.recentsShort,
+            next = osdNext?.let { n -> OsdNextInfo(EpgClock.range(n.startMs, n.endMs), n.title, n.description?.trim()) },
+            nextWord = X.thenWord, remindWord = D.remind, recordWord = D.pRecord,
             programme = OsdModel.programme(
                 nowProg, osdNext, nowMs, X.thenWord,
                 tsWindow = snap?.let { OsdProgress(EpgClock.wall(nowMs - it.windowSec * 1000L), EpgClock.wall(nowMs), it.fraction, directMark = X.directMark) },
@@ -1135,7 +1225,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         if (overlayVisible && state.phase != Phase.ERROR && !drawerOpen && panel == Panel.None) run {
                             // Direct paysage : l'OSD (étage haut, récents, pilules défilantes) remplace les commandes habituelles.
                             if (osdState != null && !portrait) LiveOsd(
-                                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent,
+                                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent, onNextAction = onOsdNext,
                                 backDescription = M.a11yBack, onBack = leave,
                                 topEnd = if (lockedLandscape) ({ com.ultratv.tv.nativeapp.ui.mobile.PlayerRoundButton(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Fullscreen, M.rotateHint) { context.lockOrientation(false) } }) else null,
                             ) else MobileControls(
@@ -1186,7 +1276,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 onNext = { stepEpisode(1) },
                 onSubs = { panel = Panel.Subtitles }, onSleep = { sleepMenu = true }, onOptions = { panel = Panel.Options }, onAudio = { panel = Panel.Tracks },
             ) else if (osdState != null) LiveOsd(
-                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent,
+                state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent, onNextAction = onOsdNext,
                 initialStage = OsdStage.CONTROLS, onStage = { osdStage = it },
             )
         }

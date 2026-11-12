@@ -31,6 +31,12 @@ class LiveOsdStrings(val lang: AppLang) {
     val drawerAll get() = tx(R.string.osd_drawer_all)
     val drawerHint get() = tx(R.string.osd_drawer_hint)
     val noPreviousChannel get() = tx(R.string.osd_no_previous)
+    /** Interface v2 : rangée « RÉCENTES », « MAINTENANT », « EN COURS » (ruban), pastille « Favori », « Sélection » (liste des chaînes). */
+    val recentsShort get() = tx(R.string.osd_recents_short)
+    val now get() = tx(R.string.osd_now)
+    val onAir get() = tx(R.string.osd_on_air)
+    val favoritePill get() = tx(R.string.osd_fav_pill)
+    val selection get() = tx(R.string.osd_selection)
 
     // Réutilisés tels quels (une seule source de vérité par texte).
     val pip get() = tx(R.string.mob_pip)

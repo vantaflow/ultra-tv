@@ -1426,6 +1426,11 @@
     <string name="osd_drawer_all">Wszystkie kanały</string>
     <string name="osd_no_previous">Brak poprzedniego kanału</string>
     <string name="osd_drawer_hint">OK przełącz · ▲▼ przeglądaj · ◀ kategorie · ▶ kanały · ‹ zamknij</string>
+    <string name="osd_recents_short">OSTATNIE</string>
+    <string name="osd_now">TERAZ</string>
+    <string name="osd_on_air">TRWA</string>
+    <string name="osd_fav_pill">Ulubiony</string>
+    <string name="osd_selection">Wybór</string>
     <!-- ui/live/ChannelOrderStrings.kt -->
     <string name="cor_move">Przenieś</string>
     <string name="cor_reset">Zresetuj kolejność</string>
