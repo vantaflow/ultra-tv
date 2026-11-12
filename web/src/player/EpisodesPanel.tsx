@@ -5,7 +5,9 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { useT } from "@/i18n";
+import { useTmdbSeason } from "@/hooks/extmeta";
 import { episodePanel } from "@/lib/episodePanel";
+import { mergeEpisodes } from "@/lib/episodeTitles";
 import { fmtDuration } from "@/lib/text";
 import type { SeriesInfo } from "@/net/xtream";
 import { parseEpisodes } from "@/screens/Detail";
@@ -15,6 +17,7 @@ import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
 import type { PlayTarget } from "./resolve";
 import { usePlayer } from "./store";
+import { tmdbOf } from "./trakt";
 
 export function EpisodesPanel({ target, onClose }: { target: PlayTarget; onClose: () => void }) {
   const t = useT();
@@ -26,7 +29,14 @@ export function EpisodesPanel({ target, onClose }: { target: PlayTarget; onClose
   const data = useMemo(() => episodePanel(parseEpisodes(info ?? null).seasons, { currentId: target.refId, history: hist, seen }), [info, hist, seen, target.refId]);
   const [season, setSeason] = useState<number | null>(null);
   const cur = season ?? data.currentSeason;
-  const items = data.seasons.find((s) => s.n === cur)?.items ?? [];
+  // Titres / résumés / vignettes TMDB de la saison affichée (titres génériques de la source seulement).
+  const tmdbRef = sid == null ? null : { kind: "tv" as const, tmdb: tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), title: target.title, detailKey: `series:${target.sourceId}:${sid}` };
+  const tmdbEps = useTmdbSeason(info ? tmdbRef : null, cur);
+  const items = useMemo(() => {
+    const raw = data.seasons.find((s) => s.n === cur)?.items ?? [];
+    const eps = mergeEpisodes(raw.map((it) => it.ep), tmdbEps, target.title);
+    return raw.map((it, k) => (eps[k] === it.ep ? it : { ...it, ep: eps[k]! }));
+  }, [data, cur, tmdbEps, target.title]);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Ouverture : focus sur l'épisode joué (sinon le premier) ; changement de saison : premier épisode.

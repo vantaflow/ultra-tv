@@ -11,6 +11,7 @@ import {
   DAY_MS, NO_ART, firstSearchId, parseExternalIds, parseFanart, parseTvShow, pickCandidates, pickNewEpisodes,
   type ExternalIds, type FanartArt, type NewEpCandidate, type NewEpisode, type TvShow,
 } from "@/lib/extmeta";
+import { parseTmdbSeason, type TmdbEpisode } from "@/lib/episodeTitles";
 import { normText } from "@/lib/text";
 import { tmdbOf } from "@/player/trakt";
 import { usePrefs } from "@/state/prefs";
@@ -22,7 +23,7 @@ const DEMO = import.meta.env.VITE_DEMO === "1";
 export interface TitleRef { kind: "movie" | "tv"; tmdb?: number; title?: string; year?: number | null; detailKey?: string }
 
 const H = 3600_000;
-const TTL = { ids: 30 * DAY_MS, find: 30 * DAY_MS, fanart: 7 * DAY_MS, tvmaze: 6 * H };
+const TTL = { ids: 30 * DAY_MS, find: 30 * DAY_MS, fanart: 7 * DAY_MS, tvmaze: 6 * H, season: 7 * DAY_MS };
 
 const mem = new Map<string, { v: unknown; at: number }>();
 const inflight = new Map<string, Promise<unknown>>();
@@ -127,6 +128,29 @@ function useLoaded<T>(ref: TitleRef | null, empty: T, load: (r: TitleRef, lang: 
 export const useFanart = (ref: TitleRef | null): FanartArt => useLoaded(ref, NO_ART, loadFanart, "fanart");
 /** Calendrier TVmaze d'une série (null tant que rien n'est connu). */
 export const useTvShow = (ref: TitleRef | null): TvShow | null => useLoaded<TvShow | null>(ref, null, loadTvShow, "tvmaze");
+
+/**
+ * Épisodes TMDB d'une saison (titres, résumés, vignettes) dans la langue de l'appli ; liste vide si rien.
+ * Cache `tmdbseason:{id}:{n}:{lang}` (mémoire + table `details`, 7 jours). Lève sur erreur réseau (non mémorisée).
+ */
+export async function loadTmdbSeason(ref: TitleRef, season: number, lang: string): Promise<TmdbEpisode[]> {
+  if (DEMO) return []; // démo : aucun appel réseau (les épisodes fictifs ont déjà leurs titres)
+  if (!Number.isInteger(season) || season < 0) return [];
+  const c = await cloudCtx();
+  if (!c) return [];
+  const tmdb = await resolveTmdbId(c, { ...ref, kind: "tv" }, lang);
+  if (!tmdb) return [];
+  const tl = TMDB_LANG[lang as keyof typeof TMDB_LANG] ?? "en-US";
+  return cachedValue(`tmdbseason:${tmdb}:${season}:${lang}`, TTL.season, async () =>
+    parseTmdbSeason(await tmdbGet(c.worker, c.token, `tv/${tmdb}/season/${season}?language=${encodeURIComponent(tl)}`)));
+}
+
+/** Épisodes TMDB de la saison affichée (vide tant que rien n'est connu, hors appairage ou en cas d'échec). */
+export function useTmdbSeason(ref: TitleRef | null, season: number | null | undefined): TmdbEpisode[] {
+  const s = season ?? null;
+  return useLoaded<TmdbEpisode[]>(s != null ? ref : null, EMPTY_EPS, (x, lang) => loadTmdbSeason(x, s ?? 0, lang), `season${s ?? ""}`);
+}
+const EMPTY_EPS: TmdbEpisode[] = [];
 
 export interface NewEpSeries extends NewEpCandidate { year: number | null; poster: string | null }
 

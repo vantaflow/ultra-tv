@@ -29,7 +29,8 @@ import { NoSource } from "./states";
 import { ratingLabels, useRatings } from "@/hooks/ratings";
 import { useTrailerKey } from "@/hooks/trailer";
 import { TrailerPlayer } from "@/player/TrailerPlayer";
-import { useFanart, useTvShow } from "@/hooks/extmeta";
+import { useFanart, useTmdbSeason, useTvShow } from "@/hooks/extmeta";
+import { mergeEpisodes } from "@/lib/episodeTitles";
 import { airState, fmtEpisodeLine, type TvShow } from "@/lib/extmeta";
 import { localeOf } from "@/i18n/lang";
 import { TitleLogo } from "@/ui/TitleLogo";
@@ -222,11 +223,16 @@ function SeriesInner({ source }: { source: Source }) {
   const histBy = useMemo(() => new Map(hist.map((h) => [h.epId ?? -1, h] as [number, HistoryRow])), [hist]);
   const last = useMemo(() => [...hist].sort((a, b) => b.updatedAt - a.updatedAt)[0], [hist]);
   useEffect(() => { if (season == null && parsed.seasons.length) setSeason(last?.season ?? parsed.seasons[0]!.n); }, [parsed, last, season]);
+  // Titres / résumés / vignettes TMDB de la saison affichée (titres génériques de la source seulement).
+  const tmdbEps = useTmdbSeason(seriesRef, season);
+  const curEps = useMemo(() => mergeEpisodes(parsed.seasons.find((x) => x.n === season)?.eps ?? [], tmdbEps, row?.title), [parsed, season, tmdbEps, row?.title]);
   if (row === undefined) return <div className="detail" />;
   if (!row) return <StateCard icon="alert" title={t("vod.empty")} actions={<button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button>} />;
   const s: SeriesRow = row;
   const i = info?.info;
   const cur = parsed.seasons.find((x) => x.n === season);
+  const curById = new Map(curEps.map((e) => [e.id, e]));
+  const withTmdb = (e: Ep) => curById.get(e.id) ?? e;
   const isFav = favs.some((f) => f.refId === sid);
   const plot = presentable(i?.plot) ?? presentable(s.plot);
   const playEp = (e: Ep, startAt?: number) => usePlayer.getState().open({
@@ -237,7 +243,8 @@ function SeriesInner({ source }: { source: Source }) {
   const resumeEp = last?.epId != null ? allEps.find((e) => e.id === last.epId) : undefined;
   // Sans historique local : l'épisode qui suit le dernier vu sur Trakt (s'il existe dans la playlist).
   const traktNext = !last && seenEps ? nextEpisode(seenEps, allEps.map((e) => ({ season: e.season, episode: e.num }))) : null;
-  const main = resumeEp ?? (traktNext ? allEps.find((e) => e.season === traktNext.season && e.num === traktNext.episode) : undefined) ?? allEps[0];
+  const mainRaw = resumeEp ?? (traktNext ? allEps.find((e) => e.season === traktNext.season && e.num === traktNext.episode) : undefined) ?? allEps[0];
+  const main = mainRaw && withTmdb(mainRaw);
   return (
     <div className="detail series">
       <div className="backdrop" aria-hidden="true"><Img src={firstString(i?.backdrop_path) ?? s.backdrop ?? art.background} /></div>
@@ -272,7 +279,7 @@ function SeriesInner({ source }: { source: Source }) {
           </div>
           {!info && !error && <div className="skeleton" style={{ height: 120 }} />}
           {info && !cur && <div className="muted">{t("vod.noEpisodes")}</div>}
-          {cur?.eps.map((e) => {
+          {cur && curEps.map((e) => {
             const h = histBy.get(e.id);
             const ratio = h && h.dur ? h.pos / h.dur : 0;
             return (
