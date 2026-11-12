@@ -524,5 +524,10 @@
   "set.sub.playback": "Player, quality, live",
   "set.sub.sync": "Catalogue and guide",
   "set.sub.categories": "Shown categories",
-  "set.sub.profiles": "Profiles and history"
+  "set.sub.profiles": "Profiles and history",
+  "home.newEpisodes": "New episodes",
+  "ext.epCode": "S{s} E{e}",
+  "ext.nextEp": "Next episode: {ep}",
+  "ext.lastEp": "Last aired: {ep}",
+  "ext.ended": "Series ended"
 }

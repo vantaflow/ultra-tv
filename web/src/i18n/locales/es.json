@@ -534,5 +534,10 @@
   "set.sub.playback": "Reproductor, calidad, directo",
   "set.sub.sync": "Catálogo y guía",
   "set.sub.categories": "Categorías mostradas",
-  "set.sub.profiles": "Perfiles e historial"
+  "set.sub.profiles": "Perfiles e historial",
+  "home.newEpisodes": "Nuevos episodios",
+  "ext.epCode": "T{s} E{e}",
+  "ext.nextEp": "Próximo episodio: {ep}",
+  "ext.lastEp": "Último episodio emitido: {ep}",
+  "ext.ended": "Serie finalizada"
 }

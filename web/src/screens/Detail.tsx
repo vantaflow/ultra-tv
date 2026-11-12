@@ -29,6 +29,10 @@ import { NoSource } from "./states";
 import { ratingLabels, useRatings } from "@/hooks/ratings";
 import { useTrailerKey } from "@/hooks/trailer";
 import { TrailerPlayer } from "@/player/TrailerPlayer";
+import { useFanart, useTvShow } from "@/hooks/extmeta";
+import { airState, fmtEpisodeLine, type TvShow } from "@/lib/extmeta";
+import { localeOf } from "@/i18n/lang";
+import { TitleLogo } from "@/ui/TitleLogo";
 
 const WEEK = 7 * 86400_000;
 
@@ -116,6 +120,8 @@ function MovieInner({ source }: { source: Source }) {
   const ext = useRatings("movie", tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id), movie?.title, movie?.year);
   const trailerKey = useTrailerKey("movie", info?.info?.youtube_trailer, tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id), movie?.title, movie?.year);
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const movieTmdb = tmdbOf((info?.info as { tmdb_id?: unknown } | undefined)?.tmdb_id);
+  const art = useFanart(movie ? { kind: "movie", tmdb: movieTmdb, title: movie.title, year: movie.year } : null);
   if (movie === undefined) return <div className="detail" />;
   if (!movie) return <StateCard icon="alert" title={t("vod.empty")} actions={<button className="btn" onClick={() => nav(-1)}>{t("common.back")}</button>} />;
   const i = info?.info;
@@ -125,14 +131,15 @@ function MovieInner({ source }: { source: Source }) {
   const resume = hist && hist.pos > 20 ? hist.pos : 0;
   const m: MovieRow = movie;
   const play = (startAt?: number) => usePlayer.getState().open(movieTarget(source, { streamId: m.streamId, title: m.title, poster: m.poster, ext: m.ext, url: m.url }, startAt), "full");
-  const back = firstString(i?.backdrop_path) ?? i?.movie_image ?? m.poster;
+  // Fond : celui de la fiche, sinon le fond Fanart, sinon l'image du fournisseur.
+  const back = firstString(i?.backdrop_path) ?? art.background ?? i?.movie_image ?? m.poster;
   return (
     <div className="detail">
       <div className="backdrop" aria-hidden="true"><Img src={back} /></div>
       <div className="body">
         <button className="back" onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.movies")}</button>
         <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <h1>{m.title}{seenMovie(m.title, m.year) && <span className="seen-badge" title={t("trakt.watched")}><Icon name="check" size={16} stroke={3} />{t("trakt.watched")}</span>}</h1>
+          <h1 className={art.logo ? "has-logo" : undefined}><TitleLogo logo={art.logo} title={m.title}>{seenMovie(m.title, m.year) && <span className="seen-badge" title={t("trakt.watched")}><Icon name="check" size={16} stroke={3} />{t("trakt.watched")}</span>}</TitleLogo></h1>
           <Facts items={[m.year ?? presentable(i?.releasedate ?? i?.release_date)?.slice(0, 4), dur, presentable(i?.genre), ...ratingLabels(ext, m.rating), m.ext.toUpperCase()]} />
           <p className="plot clamp-4">{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}
@@ -175,6 +182,18 @@ export function parseEpisodes(info: SeriesInfo | null): { seasons: { n: number; 
   return { seasons };
 }
 
+/** Calendrier TVmaze sous le titre : prochain épisode, dernier épisode diffusé, ou série terminée. */
+function AirLine({ show }: { show: TvShow | null }) {
+  const t = useT();
+  const lang = usePrefs((p) => p.lang);
+  const st = airState(show, Date.now());
+  if (!st) return null;
+  const code = (s: number, e: number) => t("ext.epCode", { s, e });
+  const line = st.ep ? fmtEpisodeLine(st.ep, Date.now(), localeOf(lang), code) : "";
+  const text = st.kind === "next" ? t("ext.nextEp", { ep: line }) : st.kind === "last" ? t("ext.lastEp", { ep: line }) : t("ext.ended");
+  return <div className={`air-line ${st.kind}`}><Icon name={st.kind === "ended" ? "check" : "guide"} size={16} />{text}</div>;
+}
+
 export function SeriesDetail() {
   const source = useActiveSource();
   if (!source) return <NoSource />;
@@ -196,6 +215,9 @@ function SeriesInner({ source }: { source: Source }) {
   const ext = useRatings("tv", tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), row?.title, row?.year);
   const trailerKey = useTrailerKey("tv", info?.info?.youtube_trailer, tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), row?.title, row?.year);
   const [trailerOpen, setTrailerOpen] = useState(false);
+  const seriesRef = useMemo(() => (row ? { kind: "tv" as const, tmdb: tmdbOf((info?.info as { tmdb?: unknown } | undefined)?.tmdb), title: row.title, year: row.year } : null), [row, info]);
+  const art = useFanart(seriesRef);
+  const tvShow = useTvShow(seriesRef);
   const [season, setSeason] = useState<number | null>(null);
   const histBy = useMemo(() => new Map(hist.map((h) => [h.epId ?? -1, h] as [number, HistoryRow])), [hist]);
   const last = useMemo(() => [...hist].sort((a, b) => b.updatedAt - a.updatedAt)[0], [hist]);
@@ -218,12 +240,13 @@ function SeriesInner({ source }: { source: Source }) {
   const main = resumeEp ?? (traktNext ? allEps.find((e) => e.season === traktNext.season && e.num === traktNext.episode) : undefined) ?? allEps[0];
   return (
     <div className="detail series">
-      <div className="backdrop" aria-hidden="true"><Img src={firstString(i?.backdrop_path) ?? s.backdrop} /></div>
+      <div className="backdrop" aria-hidden="true"><Img src={firstString(i?.backdrop_path) ?? s.backdrop ?? art.background} /></div>
       <div className="serie-layout" style={{ position: "relative" }}>
         <section style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
           <button className="back" style={{ position: "static" }} onClick={() => nav(-1)}><Icon name="back" size={20} stroke={2.5} />{t("nav.series")}</button>
           <div className="poster-big"><Img src={i?.cover || s.poster} /></div>
-          <h1 style={{ fontSize: "2.25rem" }}>{s.title}</h1>
+          <h1 className={art.logo ? "has-logo" : undefined} style={{ fontSize: "2.25rem" }}><TitleLogo logo={art.logo} title={s.title} /></h1>
+          <AirLine show={tvShow} />
           <Facts items={[s.year, parsed.seasons.length ? t("common.seasons", { count: parsed.seasons.length }) : null, presentable(i?.genre), ...ratingLabels(ext, s.rating)]} />
           <p className="plot clamp-4" style={{ fontSize: "0.9375rem" }}>{plot ?? (info || error ? t("vod.noPlot") : t("vod.loadingInfo"))}</p>
           {error && <div className="muted">{t("vod.infoError")}</div>}

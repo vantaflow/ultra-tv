@@ -4,7 +4,7 @@ import { HScroll } from "@/ui/HScroll";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { channelsCol, historyOf } from "@/db/queries";
-import type { ChannelRow, HistoryRow, Source } from "@/db/types";
+import type { ChannelRow, HistoryRow, SeriesRow, Source } from "@/db/types";
 import { useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useNow } from "@/hooks/misc";
@@ -20,6 +20,10 @@ import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
 import { useIsWatchedMovie, useTraktRows, type TraktRow, type UpNextRow } from "@/trakt/hooks";
 import { EmptyCatalog, NoSource } from "./states";
+import { useFanart, useNewEpisodes, type NewEpSeries } from "@/hooks/extmeta";
+import { fmtEpisodeLine, type NewEpisode } from "@/lib/extmeta";
+import { localeOf } from "@/i18n/lang";
+import { TitleLogo } from "@/ui/TitleLogo";
 
 export function Home() {
   const source = useActiveSource();
@@ -103,6 +107,34 @@ function UpNextSection({ title, rows, onOpen }: { title: string; rows: UpNextRow
   );
 }
 
+/** Titre d'une série « À la une » : logo Fanart si disponible, sinon le texte. */
+function HeroSeriesTitle({ source, s }: { source: Source; s: SeriesRow }) {
+  const art = useFanart({ kind: "tv", title: s.title, year: s.year, detailKey: `series:${source.id}:${s.seriesId}` });
+  return <h2 className={art.logo ? "has-logo" : undefined}><TitleLogo logo={art.logo} title={s.title} /></h2>;
+}
+
+/** « Nouveaux épisodes » (TVmaze) : séries en cours ou favorites avec un épisode sorti ou à venir à ±7 jours. */
+function NewEpisodesSection({ rows, onOpen }: { rows: NewEpisode<NewEpSeries>[]; onOpen: (seriesId: number) => void }) {
+  const t = useT();
+  const lang = usePrefs((p) => p.lang);
+  if (!rows.length) return null;
+  const now = Date.now();
+  const code = (s: number, e: number) => t("ext.epCode", { s, e });
+  return (
+    <section>
+      <h2 className="section-title">{t("home.newEpisodes")}</h2>
+      <HScroll className="row-scroll">
+        {rows.map((r) => (
+          <div key={`n${r.series.seriesId}`} style={{ flex: "0 0 9.5rem" }}>
+            <PosterCard kind="tv" year={r.series.year} title={r.series.title} image={r.series.poster}
+              meta={fmtEpisodeLine(r.ep, now, localeOf(lang), code, false)} onClick={() => onOpen(r.series.seriesId)} />
+          </div>
+        ))}
+      </HScroll>
+    </section>
+  );
+}
+
 /** Rangées calculées en local : affichées seulement avec assez de titres (une rangée de 2 affiches fait vide). */
 const MIN_LOCAL_ROW = 4;
 
@@ -129,6 +161,9 @@ function HomeInner({ source }: { source: Source }) {
   const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep).first()), [favChans, source.cid]);
   const nn = useNowNext(source, featured?.epg, featured?.streamId);
   const trakt = useTraktRows(source);
+  const favSeries = useFavorites(source, "series");
+  const seriesHist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.kind === "series"), [profileId, source.id]) ?? [];
+  const newEps = useNewEpisodes(source, seriesHist, favSeries);
   const seen = useIsWatchedMovie();
   const openTrakt = (r: TraktRow) => nav(r.kind === "movie" ? `/movie/${r.ref}` : `/serie/${r.ref}`);
   const movies = useLiveQuery(() => db.movies.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
@@ -195,7 +230,7 @@ function HomeInner({ source }: { source: Source }) {
               <span className="badge-live">{t("nav.series")}</span>
               <span>{[slide.year, slide.rating > 0 ? `★ ${slide.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}</span>
             </div>
-            <h2>{slide.title}</h2>
+            <HeroSeriesTitle source={source} s={slide} />
             <div className="actions">
               <button className="btn primary lg" onClick={() => nav(`/serie/${slide.seriesId}`)}><Icon name="play" size={20} fill />{t("common.watch")}</button>
             </div>
@@ -257,6 +292,7 @@ function HomeInner({ source }: { source: Source }) {
         </section>
       )}
 
+      <NewEpisodesSection rows={newEps} onOpen={(id) => nav(`/serie/${id}`)} />
       <UpNextSection title={t("home.traktUpNext")} rows={trakt.upNext} onOpen={(u) => nav(`/serie/${u.ref}`)} />
       <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />

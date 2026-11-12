@@ -68,6 +68,8 @@ export async function seedDemo(): Promise<void> {
     { key: "main:1:movie:1002", profile: "main", sourceId: id, kind: "movie", refId: 1002, title: MOVIES[2]!, image: null, pos: 4800, dur: 6000, updatedAt: now - 1000 },
     { key: "main:1:series:2000:1", profile: "main", sourceId: id, kind: "series", refId: 5, title: SERIES[0]!, image: null, pos: 1200, dur: 3000, updatedAt: now - 2000, seriesId: 2000, season: 2, episode: 4, epId: 5 },
   ]);
+  // Séries favorites : alimentent la rangée « Nouveaux épisodes » (calendrier fictif de demoExt.ts).
+  await db.favorites.bulkAdd([1, 2, 4].map((k) => ({ key: `main:${id}:series:${2000 + k}`, profile: "main", sourceId: id, kind: "series" as const, refId: 2000 + k, name: SERIES[k]!, image: null, addedAt: now - k * 1000 })));
   // Évite l'assistant de première ouverture et fixe la langue du rendu.
   usePrefs.getState().set({ activeSourceId: id, lang: new URLSearchParams(location.search).get("lang") === "en" ? "en" : "fr" });
 }

@@ -471,3 +471,31 @@ export async function tmdbGet(base: string, token: string, pathAndQuery: string)
   if (r.status < 200 || r.status >= 300) throw new CloudError("tmdb", r.status);
   return parse<unknown>(r);
 }
+
+/**
+ * Logo / fond Fanart.tv via le Worker : film par identifiant TMDB, série par identifiant TheTVDB.
+ * Corps brut (à passer à `parseFanart`) ; null : Worker sans clé Fanart (503) ou introuvable. Lève sur 401 / 429 / réseau.
+ */
+export async function fanartGet(base: string, token: string, kind: "movie" | "tv", id: number, lang: string): Promise<unknown | null> {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  const r = await http({ url: `${base}/api/fanart/${kind}/${id}?lang=${encodeURIComponent(lang)}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404 || r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("fanart", r.status);
+  return parse<unknown>(r);
+}
+
+/** Série TVmaze (statut, épisodes précédent / prochain) via le Worker, par IMDb (`tt…`) ou TheTVDB. Corps brut ; null si refusé / introuvable. */
+export async function tvmazeGet(base: string, token: string, q: { imdb?: string | null; tvdb?: number | null }): Promise<unknown | null> {
+  const p = new URLSearchParams();
+  if (q.imdb && /^tt[0-9]{5,10}$/.test(q.imdb)) p.set("imdb", q.imdb);
+  else if (q.tvdb && Number.isInteger(q.tvdb) && q.tvdb > 0) p.set("tvdb", String(q.tvdb));
+  else return null;
+  const r = await http({ url: `${base}/api/tvmaze/show?${p}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404 || r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("tvmaze", r.status);
+  return parse<unknown>(r);
+}

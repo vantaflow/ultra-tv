@@ -535,5 +535,10 @@
   "set.sub.playback": "Odtwarzacz, jakość, na żywo",
   "set.sub.sync": "Katalog i przewodnik",
   "set.sub.categories": "Wyświetlane kategorie",
-  "set.sub.profiles": "Profile i historia"
+  "set.sub.profiles": "Profile i historia",
+  "home.newEpisodes": "Nowe odcinki",
+  "ext.epCode": "S{s} E{e}",
+  "ext.nextEp": "Następny odcinek: {ep}",
+  "ext.lastEp": "Ostatnio wyemitowany: {ep}",
+  "ext.ended": "Serial zakończony"
 }

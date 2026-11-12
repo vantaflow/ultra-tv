@@ -564,5 +564,10 @@
   "set.sub.playback": "المشغل والجودة والبث",
   "set.sub.sync": "الكتالوج والدليل",
   "set.sub.categories": "الفئات المعروضة",
-  "set.sub.profiles": "الملفات والسجل"
+  "set.sub.profiles": "الملفات والسجل",
+  "home.newEpisodes": "حلقات جديدة",
+  "ext.epCode": "م{s} ح{e}",
+  "ext.nextEp": "الحلقة القادمة: {ep}",
+  "ext.lastEp": "آخر حلقة معروضة: {ep}",
+  "ext.ended": "انتهى المسلسل"
 }
