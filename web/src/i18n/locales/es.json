@@ -191,6 +191,8 @@
   "player.drmUnsupported": "Señal protegida no compatible en el ordenador",
   "player.errorHint": "Puede que la fuente haya alcanzado su límite de conexiones simultáneas, o que el flujo no esté disponible.",
   "player.retry": "Reintentar",
+  "player.limit": "Límite de conexiones alcanzado ({a}/{b}): cierre el otro reproductor o dispositivo e inténtelo de nuevo.",
+  "player.limitNoCount": "Límite de conexiones alcanzado: cierre el otro reproductor o dispositivo e inténtelo de nuevo.",
   "player.skipIntro": "Saltar intro",
   "player.skipRecap": "Saltar resumen",
   "player.skipCredits": "Saltar créditos",

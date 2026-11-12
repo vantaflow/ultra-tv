@@ -191,6 +191,8 @@
   "player.drmUnsupported": "Chronione strumienie nie są obsługiwane na komputerze",
   "player.errorHint": "Źródło mogło osiągnąć limit jednoczesnych połączeń lub strumień jest niedostępny.",
   "player.retry": "Spróbuj ponownie",
+  "player.limit": "Osiągnięto limit połączeń ({a}/{b}): zamknij drugi odtwarzacz lub urządzenie i spróbuj ponownie.",
+  "player.limitNoCount": "Osiągnięto limit połączeń: zamknij drugi odtwarzacz lub urządzenie i spróbuj ponownie.",
   "player.skipIntro": "Pomiń intro",
   "player.skipRecap": "Pomiń podsumowanie",
   "player.skipCredits": "Pomiń napisy końcowe",

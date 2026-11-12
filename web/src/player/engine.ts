@@ -6,6 +6,7 @@ import type Hls from "hls.js";
 import type { Level } from "hls.js";
 import type MpegtsNs from "mpegts.js";
 import { StartupWatchdog } from "./startup";
+import { ConnectionSlot } from "./connectionSlot";
 import { bestTrackIndex, trackLabel } from "./trackChoice";
 import { requestHeaders, wrapUrl, type Transport } from "@/net/transport";
 
@@ -31,7 +32,8 @@ export interface Stats { engine: string; width: number; height: number; bitrate:
 
 export interface EngineEvents {
   onState(s: PlayState): void;
-  onError(code: string): void;
+  /** [status] : statut HTTP du fournisseur quand le moteur le connaît (détection de la limite de connexions). */
+  onError(code: string, status?: number): void;
   onTracks(t: Tracks): void;
 }
 
@@ -60,6 +62,8 @@ export class PlayerEngine {
   private audioManual = false;
   /** Démarrage figé (aucune lecture ni progrès de chargement) : erreur plutôt que chargement sans fin. */
   private startup: StartupWatchdog;
+  /** Une seule connexion fournisseur à la fois : le flux précédent est libéré avant l'ouverture du suivant. */
+  private slot = new ConnectionSlot(() => this.teardown());
 
   constructor(private video: HTMLVideoElement, private getTransport: () => Transport, private ev: EngineEvents) {
     const v = video;
@@ -83,13 +87,17 @@ export class PlayerEngine {
   }
 
   /** Erreur du moteur : le délai de démarrage n'a plus lieu d'être (le lecteur décide du repli). */
-  private fail(code: string) { this.startup.stop(); this.ev.onError(code); }
+  private fail(code: string, status?: number) { this.startup.stop(); this.ev.onError(code, status); }
 
   async load(a: LoadArgs): Promise<void> {
     const my = ++this.token;
     this.audioManual = false;
+    // Libération complète de l'ancien flux (fetch avorté, source détachée) AVANT d'ouvrir le suivant.
     this.teardown();
     this.ev.onState("loading");
+    const lease = await this.slot.acquire();
+    if (!lease || my !== this.token) return;
+    void lease;
     this.startup.start();
     const t = this.getTransport();
     const headers = requestHeaders(t, { userAgent: a.userAgent, referer: a.referer });
@@ -147,7 +155,8 @@ export class PlayerEngine {
     hls.on(HlsCtor.Events.SUBTITLE_TRACKS_UPDATED, () => this.emitTracks());
     hls.on(HlsCtor.Events.ERROR, (_e, d) => {
       if (!d.fatal) return;
-      if (d.type === HlsCtor.ErrorTypes.NETWORK_ERROR && d.response?.code === undefined && d.details === "manifestLoadError") { this.fail("manifest"); return; }
+      const status = d.response?.code;
+      if (d.type === HlsCtor.ErrorTypes.NETWORK_ERROR && status === undefined && d.details === "manifestLoadError") { this.fail("manifest"); return; }
       if (d.type === HlsCtor.ErrorTypes.MEDIA_ERROR) {
         // Flux au codec cassé : recoverMediaError sans limite bouclait indéfiniment et le repli de format ne venait jamais.
         const now = Date.now();
@@ -158,7 +167,7 @@ export class PlayerEngine {
         hls.recoverMediaError();
         return;
       }
-      this.fail(`hls:${d.details}`);
+      this.fail(`hls:${d.details}`, status);
     });
     hls.attachMedia(this.video);
     hls.loadSource(wrap(a.url));
@@ -174,7 +183,7 @@ export class PlayerEngine {
       { enableWorker: true, liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 8, liveBufferLatencyMinRemain: 1.5, lazyLoadMaxDuration: 60 } as never,
     );
     this.engineName = "mpegts.js";
-    player.on(mod.Events.ERROR, () => this.fail("mpegts"));
+    player.on(mod.Events.ERROR, (_t: unknown, _d: unknown, info: unknown) => this.fail("mpegts", (info as { code?: number } | undefined)?.code));
     player.on(mod.Events.MEDIA_INFO, (i: unknown) => {
       const info = i as { videoCodec?: string; audioCodec?: string };
       this.codec = [info.videoCodec, info.audioCodec].filter(Boolean).join(" · ");
@@ -247,6 +256,7 @@ export class PlayerEngine {
   }
 
   private teardown() {
+    this.slot.releaseAll();
     if (this.hls) { this.hls.destroy(); this.hls = null; }
     if (this.mpegts) {
       try { this.mpegts.pause(); this.mpegts.unload(); this.mpegts.detachMediaElement(); this.mpegts.destroy(); } catch { /* déjà détruit */ }

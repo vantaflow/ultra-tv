@@ -191,6 +191,8 @@
   "player.drmUnsupported": "Flux protégé non pris en charge sur ordinateur",
   "player.errorHint": "La source a peut-être atteint sa limite de connexions simultanées, ou le flux est indisponible.",
   "player.retry": "Réessayer",
+  "player.limit": "Limite de connexions atteinte ({a}/{b}) : fermez l'autre lecteur ou appareil, puis réessayez.",
+  "player.limitNoCount": "Limite de connexions atteinte : fermez l'autre lecteur ou appareil, puis réessayez.",
   "player.skipIntro": "Passer l'intro",
   "player.skipRecap": "Passer le résumé",
   "player.skipCredits": "Passer le générique",
