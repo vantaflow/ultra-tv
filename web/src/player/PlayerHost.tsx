@@ -13,7 +13,11 @@ import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
 import { useT } from "@/i18n";
 import { fmtClock } from "@/lib/text";
-import { bridge, transportSync } from "@/net/transport";
+import { bridge, currentTransport, requestHeaders, transportSync, wrapUrl } from "@/net/transport";
+import { handshake } from "@/net/xtream";
+import { credsOf } from "@/sync/core";
+import { connCounts, isConnectionLimit, limitCounts, probeFailure } from "./connectionLimit";
+import { slotConfig } from "./connectionSlot";
 import { usePrefs } from "@/state/prefs";
 import { useSources } from "@/state/sources";
 import { hhmm, QBadge } from "@/ui/common";
@@ -104,6 +108,13 @@ export function PlayerHost() {
   const liveRef = useRef(live);
   liveRef.current = live;
   const [reconnecting, setReconnecting] = useState(false);
+  /** Limite de connexions simultanées du fournisseur atteinte : compteurs x/y si connus (null dedans = inconnus). */
+  const [limit, setLimit] = useState<{ a: number; b: number } | null | false>(false);
+  /** Nouvelle tentative unique après une limite de connexions (le fournisseur compte parfois encore l'ancienne). */
+  const limitRetriedRef = useRef(false);
+  const limitTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  /** Sonde d'un échec sans statut déjà faite pour cette lecture. */
+  const probedRef = useRef(false);
   // Direct coupé (session fermée par le serveur, réseau, flux figé) : on rouvre la même adresse tout seul.
   const reconRef = useRef<LiveReconnect | null>(null);
 
@@ -121,28 +132,73 @@ export function PlayerHost() {
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
       onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
-      onError: () => {
+      onError: (_code, status) => {
+        // Limite de connexions : inutile d'enchaîner les replis (chacun rouvrirait une connexion refusée).
+        if (isConnectionLimit({ status })) { void onLimit(); return; }
         if (recon.onError(liveRef.current)) return;
-        const c = candRef.current;
-        if (c.i + 1 < c.list.length) {
-          c.i += 1;
-          const a = c.list[c.i]!;
-          void startCandidate(a);
-        } else {
-          // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
-          const back = revertToSilent(silentIdxRef.current, c.list.length);
-          if (back >= 0) { c.i = back; skipProbeRef.current = true; setNoAudio(true); void startCandidate(c.list[back]!); return; }
-          setError(true); setState("error");
+        if (status === undefined && !probedRef.current && (_code.startsWith("media:") || _code === "mpegts")) {
+          // Échec sans statut (lecture native, MPEG-TS) : on libère la connexion, puis on sonde le fournisseur.
+          probedRef.current = true;
+          eng.stop();
+          void probeCurrent().then((f) => { if (engineRef.current === eng) { if (isConnectionLimit(f)) void onLimit(); else fallback(); } });
+          return;
         }
+        fallback();
       },
       onTracks: setTracks,
     });
+    const fallback = () => {
+      const c = candRef.current;
+      if (c.i + 1 < c.list.length) {
+        c.i += 1;
+        const a = c.list[c.i]!;
+        void startCandidate(a);
+      } else {
+        // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
+        const back = revertToSilent(silentIdxRef.current, c.list.length);
+        if (back >= 0) { c.i = back; skipProbeRef.current = true; setNoAudio(true); void startCandidate(c.list[back]!); return; }
+        setError(true); setState("error");
+      }
+    };
+    /** Sonde le flux courant (connexion précédente déjà fermée) : statut et début du corps de la réponse. */
+    const probeCurrent = async () => {
+      const c = candRef.current.list[candRef.current.i];
+      const tg = usePlayer.getState().target;
+      const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
+      if (!c || !src) return {};
+      const t = transportSync();
+      const headers = requestHeaders(t, { userAgent: src.userAgent || (src.type === "stalker" ? STALKER_UA : null), referer: src.referer || null });
+      return probeFailure(wrapUrl(t, c.url), headers);
+    };
+    /** Limite de connexions : une seule nouvelle tentative après un court délai, puis message clair (pas de repli de format). */
+    const onLimit = async () => {
+      eng.stop();
+      if (!limitRetriedRef.current) {
+        limitRetriedRef.current = true;
+        setReconnecting(true); setState("loading");
+        clearTimeout(limitTimerRef.current);
+        limitTimerRef.current = setTimeout(() => {
+          const c = candRef.current; const a = c.list[c.i];
+          if (a) void startCandidate(a);
+        }, slotConfig.retryMs);
+        return;
+      }
+      setReconnecting(false);
+      const tg = usePlayer.getState().target;
+      const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
+      let counts: { a: number; b: number } | null = null;
+      if (src && src.type === "xtream") {
+        try { counts = limitCounts(connCounts((await handshake(await currentTransport(), credsOf(src))).user_info)); } catch { /* compteurs inconnus */ }
+      }
+      if (engineRef.current !== eng) return;
+      setLimit(counts); setError(true); setState("error");
+    };
     engineRef.current = eng;
     eng.uiLang = usePrefs.getState().lang;
     eng.preferredAudio = effectivePreferred([], usePrefs.getState().lang);
     v.volume = usePrefs.getState().volume;
     v.muted = usePrefs.getState().muted;
-    return () => { recon.dispose(); eng.stop(); engineRef.current = null; };
+    return () => { recon.dispose(); clearTimeout(limitTimerRef.current); eng.stop(); engineRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -165,6 +221,9 @@ export function PlayerHost() {
   useEffect(() => {
     reconRef.current?.reset();
     setReconnecting(false);
+    clearTimeout(limitTimerRef.current);
+    limitRetriedRef.current = false; probedRef.current = false;
+    setLimit(false);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setPanel(null);
@@ -719,8 +778,8 @@ export function PlayerHost() {
       {error && (
         <div className="pstate">
           <div className="msg">
-            <b>{t(drmBlocked ? "player.drmUnsupported" : "player.error")}</b>
-            {!drmBlocked && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>}
+            <b>{limit !== false ? (limit ? t("player.limit", limit) : t("player.limitNoCount")) : t(drmBlocked ? "player.drmUnsupported" : "player.error")}</b>
+            {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>}
             {!drmBlocked && <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>}
           </div>
         </div>

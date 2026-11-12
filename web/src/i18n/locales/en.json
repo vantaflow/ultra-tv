@@ -187,6 +187,8 @@
   "player.drmUnsupported": "Protected stream not supported on computer",
   "player.errorHint": "The source may have reached its simultaneous connection limit, or the stream is unavailable.",
   "player.retry": "Retry",
+  "player.limit": "Connection limit reached ({a}/{b}): close the other player or device, then try again.",
+  "player.limitNoCount": "Connection limit reached: close the other player or device, then try again.",
   "player.skipIntro": "Skip intro",
   "player.skipRecap": "Skip recap",
   "player.skipCredits": "Skip credits",
