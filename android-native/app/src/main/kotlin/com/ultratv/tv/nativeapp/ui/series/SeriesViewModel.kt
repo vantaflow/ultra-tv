@@ -41,6 +41,7 @@ class SeriesDetailViewModel @Inject constructor(
     private val ratingsClient: com.ultratv.tv.nativeapp.data.tmdb.RatingsClient,
     private val fanart: com.ultratv.tv.nativeapp.data.extmeta.FanartRepository,
     private val tvMaze: com.ultratv.tv.nativeapp.data.extmeta.TvMazeRepository,
+    private val tmdbSeasons: com.ultratv.tv.nativeapp.data.tmdb.TmdbSeasonRepository,
 ) : ViewModel() {
 
     /** Logo officiel (Fanart.tv, par identifiant TheTVDB) ; null tant qu'inconnu ou absent. */
@@ -99,8 +100,46 @@ class SeriesDetailViewModel @Inject constructor(
     private val _loading = MutableStateFlow(false)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
+    /** Épisodes tels que la source les donne (Room). */
+    private val _rawEpisodes = MutableStateFlow<List<EpisodeEntity>>(emptyList())
+
+    /** Saisons TMDB déjà chargées (numéro → épisodes), pour compléter titres génériques, résumés et vignettes. */
+    private val _tmdbSeasons = MutableStateFlow<Map<Int, List<com.ultratv.tv.nativeapp.data.tmdb.TmdbEpisode>>>(emptyMap())
+
+    /** Identifiant TMDB de la série, une fois la fiche enrichie résolue (null hors appairage ou série inconnue). */
+    private val _tmdbId = MutableStateFlow<Int?>(null)
+
+    /** Saison affichée (demandée par l'écran) : seule elle, et la suivante en arrière-plan, est chargée depuis TMDB. */
+    private val _shownSeason = MutableStateFlow<Int?>(null)
+
+    /** Épisodes affichés : ceux de la source, complétés par TMDB à l'affichage (aucune écriture en base). */
     private val _episodes = MutableStateFlow<List<EpisodeEntity>>(emptyList())
     val episodes: StateFlow<List<EpisodeEntity>> = _episodes.asStateFlow()
+
+    /** L'écran affiche la saison [n] : charge ses titres TMDB (et ceux de la suivante, en arrière-plan). */
+    fun showSeason(n: Int?) { _shownSeason.value = n }
+
+    init {
+        viewModelScope.launch {
+            combine(_rawEpisodes, _tmdbSeasons, _series) { eps, seasons, s ->
+                com.ultratv.tv.nativeapp.data.tmdb.mergeEpisodes(eps, seasons, s?.name, s?.title)
+            }.collect { _episodes.value = it }
+        }
+        viewModelScope.launch {
+            combine(_tmdbId, _shownSeason) { id, n -> id to n }.distinctUntilChanged().collect { (id, n) ->
+                if (id == null || n == null) return@collect
+                fetchSeason(id, n)
+                // Suivante en arrière-plan, seulement si la source la propose.
+                if (_rawEpisodes.value.any { it.season == n + 1 }) launch { fetchSeason(id, n + 1) }
+            }
+        }
+    }
+
+    private suspend fun fetchSeason(tmdbId: Int, n: Int) {
+        if (_tmdbSeasons.value.containsKey(n)) return
+        val eps = tmdbSeasons.season(tmdbId, n) ?: return
+        if (_tmdbId.value == tmdbId) _tmdbSeasons.value = _tmdbSeasons.value + (n to eps)
+    }
 
     fun load(id: Long) {
         viewModelScope.launch {
@@ -118,10 +157,11 @@ class SeriesDetailViewModel @Inject constructor(
                 it.trailerKey?.let { k -> _trailer.value = com.ultratv.tv.nativeapp.data.tmdb.TmdbTrailer.webUrl(k) }
                 it.tmdbId?.let { id -> _ratings.value = runCatching { ratingsClient.forTmdb(com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV, id) }.getOrNull() }
                 it.tmdbId?.let { id -> loadExtras(id) }
+                _tmdbId.value = it.tmdbId
             }
         }
         viewModelScope.launch {
-            catalog.episodes(id).collect { _episodes.value = it }
+            catalog.episodes(id).collect { _rawEpisodes.value = it }
         }
     }
 

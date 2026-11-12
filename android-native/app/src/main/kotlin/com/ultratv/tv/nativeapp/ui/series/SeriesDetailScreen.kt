@@ -99,6 +99,8 @@ fun SeriesDetailScreen(
     var season by remember(series.id) { mutableStateOf<Int?>(null) }
     val activeSeason = com.ultratv.tv.nativeapp.ui.detail.activeSeasonOf(seasons, season, target?.season)
     val shown = remember(eps, activeSeason) { eps.filter { it.season == activeSeason } }
+    // Titres / résumés / vignettes TMDB : seule la saison affichée est demandée (la suivante en arrière-plan).
+    LaunchedEffect(activeSeason) { vm.showSeason(activeSeason) }
     // Téléchargements hors ligne de la série (par identifiant d'épisode) et avertissement « connexion » avant une lecture en ligne.
     val dlVm: com.ultratv.tv.nativeapp.ui.downloads.DownloadActionsViewModel = hiltViewModel()
     val dlStrings = com.ultratv.tv.nativeapp.ui.downloads.rememberDownloadStrings()

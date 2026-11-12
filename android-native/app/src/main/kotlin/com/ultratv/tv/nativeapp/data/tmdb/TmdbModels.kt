@@ -76,4 +76,6 @@ object TmdbImages {
     fun backdrop(path: String) = BASE + "w1280" + path
     /** Photo de personne (distribution) : w185, assez net pour une bulle de 96 px sans charger l'image complète. */
     fun profile(path: String) = BASE + "w185" + path
+    /** Vignette d'épisode (`still_path`) : w300, assez pour une carte 16:9 de liste d'épisodes. */
+    fun still(path: String) = BASE + "w300" + path
 }

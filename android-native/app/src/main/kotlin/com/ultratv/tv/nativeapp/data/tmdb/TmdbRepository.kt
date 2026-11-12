@@ -29,6 +29,8 @@ interface TmdbApi {
     suspend fun searchPoster(kind: TmdbKind, query: TmdbQuery, lang: String): String? = null
     /** Titres recommandés par TMDB puis « similaires », dans l'ordre, sans doublon. Vide si rien ; IOException si le réseau échoue. */
     suspend fun related(kind: TmdbKind, id: Int, lang: String): List<PersonCredit> = emptyList()
+    /** Épisodes d'une saison de série (`tv/{id}/season/{n}`) ; null si inconnue (404) ; IOException si le réseau échoue. */
+    suspend fun season(tvId: Int, season: Int, lang: String): List<TmdbEpisode>? = null
 }
 
 /** Client du proxy TMDB du Worker (/api/tmdb/…) : jeton d'appareil en Bearer, pas de redirection suivie. */
@@ -75,6 +77,9 @@ class TmdbHttpApi @Inject constructor(
         val sim = get("${kind.path}/$id/similar?language=$lang")?.let { TmdbParser.related(it, tv) }.orEmpty()
         return (rec + sim).distinctBy { "${PersonLogic.key(it.title)}|${it.year ?: ""}" }
     }
+
+    override suspend fun season(tvId: Int, season: Int, lang: String): List<TmdbEpisode>? =
+        get("tv/$tvId/season/$season?language=$lang")?.let(TmdbSeasonCodec::parse)
 
     override suspend fun details(kind: TmdbKind, id: Int, lang: String): TmdbDetails? =
         // external_ids : identifiants IMDb / TheTVDB (TVmaze, Fanart.tv). Vidéos dans la langue de l'appli PUIS en anglais : beaucoup de séries n'ont aucune bande-annonce traduite,
@@ -180,6 +185,13 @@ class TmdbRepository @Inject constructor(
         if (d != null) photoCache["${kind.path}:${d.tmdbId}"] = d.photos.mapValues { TmdbImages.profile(it.value) }
         return ids
     }
+
+    /** Identifiant TMDB déjà résolu (cache Room) pour ce titre ; ne déclenche aucune requête. */
+    suspend fun cachedTmdbId(kind: TmdbKind, providerId: Long, remoteId: String): Int? =
+        dao.get(kind.path, providerId, remoteId)?.tmdbId
+
+    /** Langue TMDB complète (« fr-FR », « ar »…) alignée sur la langue de l'application. */
+    suspend fun lang(): String = currentLang()
 
     /** Code de langue sur deux lettres (« fr », « en »…) aligné sur la langue de l'application. */
     suspend fun langCode(): String = currentLang().take(2)
