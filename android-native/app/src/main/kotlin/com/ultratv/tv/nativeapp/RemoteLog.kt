@@ -117,13 +117,16 @@ object RemoteLog {
         if (!telemetryEnabled) return
         val file = pendingCrashFile() ?: return
         if (!file.exists() || file.length() == 0L) return
-        val stack = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
-        if (stack.isBlank()) return
+        val raw = runCatching { file.readText(Charsets.UTF_8) }.getOrNull().orEmpty()
+        if (raw.isBlank()) return
+        // Version qui a réellement planté (écrite au moment du plantage), pas celle qui envoie le rapport :
+        // sinon un plantage d'une ancienne version remonte sous le numéro de la nouvelle.
+        val (crashedVersion, crashedCode, stack) = CrashFile.parse(raw, ctx.versionName, ctx.versionCode)
         runCatching {
             val body = JSONObject().apply {
                 put("mac", ctx.mac)
-                put("version", ctx.versionName)
-                put("versionCode", ctx.versionCode)
+                put("version", crashedVersion)
+                put("versionCode", crashedCode)
                 put("device", ctx.device)
                 put("androidSdk", ctx.androidSdk)
                 put("stack", sanitize(stack).take(60_000))
@@ -177,7 +180,7 @@ object RemoteLog {
         // 1. Persist locally so we can retry on next launch if the network leg
         //    doesn't complete in time. The crash.txt file is the source of
         //    truth — flushPendingCrash() deletes it on a successful upload.
-        runCatching { pendingCrashFile()?.appendText(payload + "\n\n", Charsets.UTF_8) }
+        runCatching { pendingCrashFile()?.appendText(CrashFile.entry(ctx.versionName, ctx.versionCode, payload), Charsets.UTF_8) }
 
         // 2. Best-effort live upload. Honour the user's telemetry toggle.
         if (!telemetryEnabled) return
@@ -198,4 +201,25 @@ object RemoteLog {
     }
 
     private val JSON = "application/json".toMediaType()
+}
+
+
+/** Format du fichier de plantage en attente : chaque entrée commence par la version qui a planté. Pur, testé. */
+internal object CrashFile {
+    private const val PREFIX = "@@ultratv-version "
+
+    fun entry(versionName: String, versionCode: Int, payload: String): String = "$PREFIX$versionName $versionCode\n$payload\n\n"
+
+    /**
+     * Version et code de la PREMIÈRE entrée du fichier (sinon ceux d'aujourd'hui : fichier d'une version qui n'écrivait
+     * pas l'en-tête), et la trace sans les lignes d'en-tête.
+     */
+    fun parse(raw: String, currentName: String, currentCode: Int): Triple<String, Int, String> {
+        val header = raw.lineSequence().firstOrNull { it.startsWith(PREFIX) }
+        val parts = header?.removePrefix(PREFIX)?.trim()?.split(' ')
+        val name = parts?.getOrNull(0)?.takeIf { it.isNotBlank() } ?: currentName
+        val code = parts?.getOrNull(1)?.toIntOrNull() ?: currentCode
+        val stack = raw.lineSequence().filterNot { it.startsWith(PREFIX) }.joinToString("\n")
+        return Triple(name, code, stack)
+    }
 }
