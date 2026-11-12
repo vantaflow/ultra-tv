@@ -3,7 +3,8 @@
 // (mode inline, calé sur un emplacement), soit en plein écran (mode full) avec la surcouche de la maquette.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { channelsCol } from "@/db/queries";
+import { useLiveQuery } from "dexie-react-hooks";
+import { channelsCol, favKey, nowNext, toggleFavorite } from "@/db/queries";
 import { Img } from "@/ui/Img";
 import { VList, arrayRows, type VListHandle } from "@/ui/Virtual";
 import { db } from "@/db/db";
@@ -18,6 +19,10 @@ import { useSources } from "@/state/sources";
 import { hhmm, QBadge } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { createOsdIdle } from "./osdIdle";
+import {
+  appendDigit, backEffect, decide, keyOf, KEYBOARD_EXTRA_MS, navigate, NUMBER_ENTRY_MS, OSD_BANNER_HIDE_MS, pushRecent,
+  recentsToShow, type OsdStage, type RecentChannel,
+} from "./liveOsd";
 import { parseEpisodes } from "@/screens/Detail";
 import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
@@ -88,7 +93,14 @@ export function PlayerHost() {
   const [zapFlash, setZapFlash] = useState<string | null>(null);
   const [rate, setRate] = useState(1);
   const hideTimer = useRef<number | undefined>(undefined);
-  const live = target?.kind === "live" && !target.replay;
+  // OSD du Direct : simple bandeau (programme) après un zap, saisie d'un numéro, ouverture au clavier (masquage à 8 s).
+  const [banner, setBanner] = useState(false);
+  const bannerTimer = useRef<number | undefined>(undefined);
+  const [numBuf, setNumBuf] = useState("");
+  const numRef = useRef("");
+  const numTimer = useRef<number | undefined>(undefined);
+  const kbOsdRef = useRef(false);
+  const live =target?.kind === "live" && !target.replay;
   const liveRef = useRef(live);
   liveRef.current = live;
   const [reconnecting, setReconnecting] = useState(false);
@@ -328,7 +340,7 @@ export function PlayerHost() {
     hideTimer.current = window.setTimeout(() => {
       // Barre survolée / focalisée ou menu ouvert : on repousse ; sinon on masque.
       if (idle.shouldHide()) setUi(false); else armHide();
-    }, Math.max(250, idle.remaining()));
+    }, Math.max(250, idle.remaining() + (kbOsdRef.current ? KEYBOARD_EXTRA_MS : 0)));
   }, [idle]);
   // Touche, clic ou changement de lecture : activité certaine.
   const poke = useCallback(() => {
@@ -336,18 +348,49 @@ export function PlayerHost() {
     setUi(true);
     armHide();
   }, [idle, armHide]);
+  // Simple bandeau du programme (après un zap, ou à l'arrivée sur une chaîne) : 5 s.
+  const showBanner = useCallback(() => {
+    setBanner(true);
+    window.clearTimeout(bannerTimer.current);
+    bannerTimer.current = window.setTimeout(() => setBanner(false), OSD_BANNER_HIDE_MS);
+  }, []);
+  // Ferme tout l'OSD (bandeau compris) et rend le focus au lecteur.
+  const closeOsd = useCallback(() => {
+    window.clearTimeout(hideTimer.current);
+    window.clearTimeout(bannerTimer.current);
+    kbOsdRef.current = false;
+    idle.setHold(false);
+    setUi(false);
+    setBanner(false);
+    const a = document.activeElement as HTMLElement | null;
+    if (a && a !== document.body && a.closest(".pbot")) a.blur();
+  }, [idle]);
   // Souris : seulement si le pointeur a réellement bougé.
   const onMove = useCallback((e: React.MouseEvent) => {
-    if (idle.move(e.screenX, e.screenY, e.movementX, e.movementY)) poke();
+    if (idle.move(e.screenX, e.screenY, e.movementX, e.movementY)) { kbOsdRef.current = false; poke(); }
   }, [idle, poke]);
-  // Survol ou focus clavier dans la barre / le panneau : l'OSD reste affiché.
+  // Survol (ou focus clavier, hors Direct) dans la barre / le panneau : l'OSD reste affiché.
+  // Au Direct, le focus au clavier ne retient pas l'OSD : il se masque après 8 s sans touche.
   const holdOver = useCallback((e: React.SyntheticEvent) => {
     idle.setHold(!!(e.target as HTMLElement).closest?.(".pbot,.pside"));
   }, [idle]);
   useEffect(() => { idle.setMenuOpen(panel !== null); }, [idle, panel]);
-  useEffect(() => () => window.clearTimeout(hideTimer.current), []);
-  useEffect(() => { poke(); }, [mode, target?.refId, poke]);
+  useEffect(() => () => { window.clearTimeout(hideTimer.current); window.clearTimeout(bannerTimer.current); window.clearTimeout(numTimer.current); }, []);
+  useEffect(() => {
+    // Direct plein écran : l'arrivée sur une chaîne (zap, liste, lancement) montre le bandeau, pas tout l'OSD.
+    if (mode === "full" && liveRef.current) showBanner(); else poke();
+  }, [mode, target?.refId, poke, showBanner]);
   const showUi = ui || state !== "playing" || panel !== null;
+  // Chaînes récentes (session) : la chaîne en cours passe en tête.
+  const recents = usePlayer((s) => s.recents);
+  useEffect(() => {
+    const tg = usePlayer.getState().target;
+    if (!tg || tg.kind !== "live" || tg.replay || !tg.channel) return;
+    const c = tg.channel;
+    usePlayer.setState((s) => ({
+      recents: pushRecent(s.recents, { streamId: tg.refId, num: c.num, name: tg.title, logo: c.logo, ord: c.ord, catExt: c.catExt, epg: c.epg, archive: c.archive, q: c.q, url: tg.url }),
+    }));
+  }, [target?.refId, target?.kind, target?.replay]);
 
   // --- progression et statistiques : seulement en plein écran avec l'interface visible (rien à afficher sinon) ---
   const tickOn = mode === "full" && showUi;
@@ -446,11 +489,58 @@ export function PlayerHost() {
       else await v.requestPictureInPicture?.();
     } catch { /* non pris en charge */ }
   }, []);
-  const zap = useCallback(async (d: 1 | -1) => {
+  // Zap : au Direct plein écran, le bandeau du programme remplace le petit cartouche ; `close` referme l'OSD complet.
+  const zap = useCallback(async (d: 1 | -1, close = false) => {
     await usePlayer.getState().zap(d);
+    if (close) closeOsd();
     const tg = usePlayer.getState().target;
-    if (tg) { setZapFlash(`${tg.channel?.num ?? ""} ${tg.title}`); window.setTimeout(() => setZapFlash(null), 1400); }
+    if (tg && modeRef.current === "full") showBanner();
+    else if (tg) { setZapFlash(`${tg.channel?.num ?? ""} ${tg.title}`); window.setTimeout(() => setZapFlash(null), 1400); }
+  }, [closeOsd, showBanner]);
+  // Ouvre une chaîne mémorisée (rangée des récents, rappel de la précédente, saisie d'un numéro).
+  const tune = useCallback((c: RecentChannel) => {
+    const tg = usePlayer.getState().target;
+    if (!tg) return;
+    usePlayer.getState().open({
+      ...tg, refId: c.streamId, title: c.name, subtitle: undefined, image: c.logo, url: c.url, replay: undefined,
+      channel: { ord: c.ord, catExt: c.catExt, num: c.num, epg: c.epg, archive: c.archive, q: c.q, logo: c.logo },
+    }, "full");
   }, []);
+  const clearNum = useCallback(() => {
+    window.clearTimeout(numTimer.current);
+    numRef.current = "";
+    setNumBuf("");
+  }, []);
+  const commitNum = useCallback(async () => {
+    const buf = numRef.current;
+    clearNum();
+    const tg = usePlayer.getState().target;
+    if (!buf || !tg) return;
+    const n = Number(buf);
+    const row = await db.channels.where("[sourceId+ord]").between([tg.cid, -1], [tg.cid, Infinity], true, true).filter((c) => c.num === n && !c.sep).first();
+    if (!row || usePlayer.getState().target?.refId === row.streamId) { showBanner(); return; }
+    tune({ streamId: row.streamId, num: row.num, name: row.display, logo: row.logo, ord: row.ord, catExt: row.catExt, epg: row.epg, archive: !!row.archive, q: row.q, url: row.url });
+  }, [clearNum, showBanner, tune]);
+  const uiRef = useRef(ui);
+  uiRef.current = ui;
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const errorRef = useRef(error);
+  errorRef.current = error;
+
+  // Focus dans l'OSD du Direct : étage courant et boutons de l'étage.
+  const stageOf = (): OsdStage | null => {
+    const a = document.activeElement as HTMLElement | null;
+    if (!a) return null;
+    if (a.closest(".precent")) return "recents";
+    if (a.closest(".pbot")) return "controls";
+    return null;
+  };
+  const stageButtons = (stage: OsdStage) =>
+    [...(wrapRef.current?.querySelectorAll<HTMLButtonElement>(stage === "recents" ? ".precent button" : ".pbot button") ?? [])]
+      .filter((b) => stage === "recents" || !b.closest(".precent"));
+  // Contrôles : « Lecture / Pause » (premier bouton) ; récents : la première chaîne.
+  const focusStage = (stage: OsdStage) => stageButtons(stage)[0]?.focus({ preventScroll: true });
 
   // --- raccourcis (actifs en plein écran, ou en aperçu quand la lecture est lancée) ---
   useEffect(() => {
@@ -465,6 +555,75 @@ export function PlayerHost() {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const isLive = tg.kind === "live" && !tg.replay;
       const full = m === "full";
+
+      // --- Direct plein écran : OSD à trois étages (décisions pures dans liveOsd.ts) ---
+      if (full && isLive && !errorRef.current) {
+        const p = panelRef.current;
+        if (e.key === "Escape") {
+          e.preventDefault(); e.stopPropagation();
+          if (numRef.current) { clearNum(); return; }
+          if (p) { setPanel(null); return; }
+          const eff = backEffect(uiRef.current, stageOf() ?? "controls", stateRef.current === "playing");
+          if (eff === "focusControls") focusStage("controls");
+          else if (eff === "closeOsd") closeOsd();
+          else void leaveFull();
+          return;
+        }
+        if (p) {
+          // Panneau ouvert : rien ne zappe. Liste des chaînes : ↑ ↓ parcourent les lignes (Entrée active la ligne focalisée).
+          if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+            if (p === "channels") {
+              const bs = [...(wrapRef.current?.querySelectorAll<HTMLButtonElement>(".pch-list button") ?? [])];
+              const i = bs.indexOf(document.activeElement as HTMLButtonElement);
+              if (bs.length) { e.preventDefault(); bs[Math.max(0, Math.min(bs.length - 1, i < 0 ? 0 : i + (e.key === "ArrowDown" ? 1 : -1)))]!.focus(); }
+            }
+            return;
+          }
+          if (e.key === "PageUp" || e.key === "PageDown") return;
+        } else {
+          // Saisie d'un numéro de chaîne : 0-9 ; Entrée valide tout de suite.
+          const nb = appendDigit(numRef.current, e.key);
+          if (nb !== null) {
+            e.preventDefault();
+            numRef.current = nb;
+            setNumBuf(nb);
+            window.clearTimeout(numTimer.current);
+            numTimer.current = window.setTimeout(() => void commitNum(), NUMBER_ENTRY_MS);
+            return;
+          }
+          if (e.key === "Enter" && numRef.current) { e.preventDefault(); void commitNum(); return; }
+          const k = keyOf(e.key);
+          if (k !== "other") {
+            const osdOpen = uiRef.current;
+            const stage = stageOf();
+            // OK sur un bouton de l'OSD : le bouton agit (clic natif). OK sans focus dans l'OSD ouvert : liste des chaînes.
+            if (k === "ok" && osdOpen && el && el.tagName === "BUTTON") { poke(); return; }
+            const d = k === "ok" && osdOpen && stage === null ? ({ type: "openChannels" } as const) : decide(k, osdOpen, false, false);
+            e.preventDefault();
+            switch (d.type) {
+              case "openOsd": kbOsdRef.current = true; setBanner(false); poke(); break;
+              case "zap": void zap(d.forward ? 1 : -1, d.closeOsd); break;
+              case "openChannels": closeOsd(); setPanel("channels"); break;
+              case "recallPrevious": { const prev = usePlayer.getState().recents[1]; if (prev) tune(prev); break; }
+              case "pass": {
+                const nav = navigate(k, stage, recentsToShow(usePlayer.getState().recents, tg.refId).length > 0, document.dir === "rtl");
+                kbOsdRef.current = true;
+                if (nav.type === "focusStage") focusStage(nav.stage);
+                else if (nav.type === "step" && stage) {
+                  const bs = stageButtons(stage);
+                  const i = bs.indexOf(document.activeElement as HTMLButtonElement);
+                  bs[Math.max(0, Math.min(bs.length - 1, i + nav.delta))]?.focus({ preventScroll: true });
+                }
+                poke();
+                break;
+              }
+              default: break;
+            }
+            return;
+          }
+        }
+      }
+
       switch (e.key) {
         case "Escape":
           if (full) { e.preventDefault(); e.stopPropagation(); if (panelRef.current) setPanel(null); else void leaveFull(); }
@@ -487,11 +646,31 @@ export function PlayerHost() {
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [leaveFull, toggleOsFull, toggleMute, pip, togglePlay, seekBy, setVol, zap, poke]);
+  }, [leaveFull, toggleOsFull, toggleMute, pip, togglePlay, seekBy, setVol, zap, poke, closeOsd, clearNum, commitNum, tune]);
   const panelRef = useRef(panel);
   panelRef.current = panel;
 
   const nn = useNowNext(source, target?.channel?.epg, target?.kind === "live" ? target.refId : undefined);
+
+  // Étage « Chaînes récentes » : programme en cours de chaque chaîne, lu au guide local quand l'OSD est visible.
+  const curId = target?.kind === "live" ? target.refId : undefined;
+  const shownRecents = useMemo(() => recentsToShow(recents, curId), [recents, curId]);
+  const [recentNow, setRecentNow] = useState<Map<string, string>>(new Map());
+  const recentsVisible = mode === "full" && live && ui && shownRecents.length > 0;
+  useEffect(() => {
+    if (!recentsVisible || !source?.cid) return;
+    let dead = false;
+    const ids = shownRecents.map((r) => r.epg).filter((x): x is string => !!x);
+    void nowNext(source.cid, ids).then((m) => {
+      if (!dead) setRecentNow(new Map([...m].flatMap(([k, v]) => (v.now ? [[k, v.now.title] as [string, string]] : []))));
+    }).catch(() => {});
+    return () => { dead = true; };
+  }, [recentsVisible, shownRecents, source?.cid]);
+  // Favori de la chaîne en cours (bouton du bas).
+  const isFav = useLiveQuery(
+    async () => (source?.id != null && curId != null ? !!(await db.favorites.get(favKey(prefs.profileId, source.id, "live", curId))) : false),
+    [source?.id, curId, prefs.profileId],
+  ) ?? false;
 
   if (!target || mode === "closed") {
     return <div className="player hidden"><video ref={videoRef} playsInline /></div>;
@@ -517,12 +696,12 @@ export function PlayerHost() {
   return (
     <div
       ref={wrapRef}
-      className={`player ${full ? "full" : "inline"}${showUi ? " ui" : ""}${!showUi && full ? " nocursor" : ""}`}
+      className={`player ${full ? "full" : "inline"}${showUi ? " ui" : ""}${!showUi && full && banner && live ? " banner" : ""}${!showUi && full && !(banner && live) ? " nocursor" : ""}`}
       style={style}
       onMouseMove={onMove}
       onMouseOver={holdOver}
       onMouseLeave={() => idle.setHold(false)}
-      onFocus={holdOver}
+      onFocus={live && full ? undefined : holdOver}
       onBlur={() => idle.setHold(false)}
       onClickCapture={poke}
       onDoubleClick={(e) => { if ((e.target as HTMLElement).closest("button,.seek,.pside")) return; if (full) void toggleOsFull(); else goFull(); }}
@@ -547,7 +726,7 @@ export function PlayerHost() {
         </div>
       )}
       {noAudio && !error && <div className="noaudio" role="status">{t(bridge()?.isElectron && !bridge()?.transcode ? "player.noAudioInstall" : "player.noAudio")}</div>}
-      {zapFlash && <div className="zap">{zapFlash}</div>}
+      {(numBuf || zapFlash) && <div className="zap" role="status" aria-label={numBuf ? t("player.chNumber") : undefined}>{numBuf || zapFlash}</div>}
       {full && skipOffer && panel === null && (
         <button className="skipbtn" onClick={(e) => { e.stopPropagation(); skipRef.current(); }}>
           <Icon name="fwd" size={20} />
@@ -563,11 +742,39 @@ export function PlayerHost() {
             {target.channel && <QBadge q={target.channel.q} />}
           </div>
           <h2>{title}</h2>
+          {full && live && (
+            <div className="osd-prog">
+              {prog && (
+                <div className="mono osd-range">{hhmm(prog.start, locale)} – {hhmm(prog.end, locale)}</div>
+              )}
+              {prog?.desc?.trim() && <p className="osd-desc">{prog.desc.trim()}</p>}
+              {nn.next && <div className="osd-then">{t("player.then")} · {hhmm(nn.next.start, locale)} · {nn.next.title}</div>}
+              <div className="osd-hint">{t("player.osdHint")}</div>
+            </div>
+          )}
         </div>
         {full && <div className="clock mono">{hhmm(clock.getTime(), locale)}</div>}
       </div>
 
       <div className="pbot">
+        {full && live && (
+          <div className="precent" role="group" aria-label={t("player.recents")}>
+            <div className="precent-t">{t("player.recents")}</div>
+            {shownRecents.length === 0 ? <div className="precent-empty">{t("player.recentsEmpty")}</div> : (
+              <div className="precent-row">
+                {shownRecents.map((r) => (
+                  <button key={r.streamId} className="precent-ch" onClick={() => tune(r)}>
+                    <span className="logo" aria-hidden="true"><Img src={r.logo} contain /></span>
+                    <span className="meta">
+                      <span className="ellipsis"><span className="num mono">{r.num}</span> {r.name}</span>
+                      <span className="ellipsis sub">{(r.epg && recentNow.get(r.epg)) || ""}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {full && (live ? prog : cur.d > 0) && (
           <div className="seek mono">
             <span>{live ? hhmm(prog!.start, locale) : fmtClock(cur.t)}</span>
@@ -594,6 +801,12 @@ export function PlayerHost() {
                 <button className={`popt${panel === "tracks" ? " on" : ""}`} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={18} />{t("player.tracks")}</button>
                 <button className={`popt${panel === "display" ? " on" : ""}`} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={18} />{t("player.display")}</button>
                 {live && <button className={`popt${panel === "channels" ? " on" : ""}`} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={18} />{t("player.channels")}</button>}
+                {live && source?.id != null && target.channel && (
+                  <button
+                    className={`pbtn${isFav ? " fav" : ""}`} aria-pressed={isFav} aria-label={t(isFav ? "common.removeFav" : "common.addFav")}
+                    onClick={() => void toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: target.refId, name: target.title, image: target.image ?? null })}
+                  ><Icon name="heart" size={20} fill={isFav} /></button>
+                )}
                 <button className={`popt${panel === "player" || panel === "stats" ? " on" : ""}`} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={18} />{t("player.player")}</button>
                 <button className="pbtn" aria-label={t("player.pip")} onClick={() => void pip()}><Icon name="pip" size={20} /></button>
                 <button className="pbtn" aria-label={t("player.fullscreen")} onClick={() => void toggleOsFull()}><Icon name="full" size={20} /></button>
@@ -660,8 +873,10 @@ export function PlayerHost() {
               <div className="grp-t">{t("player.shortcuts")}</div>
               <div className="hotkeys">
                 <span><span className="kbd">{t("key.space")}</span></span><span>{t("player.sk.space")}</span>
-                <span><span className="kbd">←</span> <span className="kbd">→</span></span><span>{t("player.sk.arrows")}</span>
-                <span><span className="kbd">↑</span> <span className="kbd">↓</span></span><span>{live ? t("player.sk.zap") : t("player.sk.vol")}</span>
+                {live && <><span><span className="kbd">{t("key.enter")}</span></span><span>{t("player.channels")}</span></>}
+                <span><span className="kbd">←</span> <span className="kbd">→</span></span><span>{live ? t("player.sk.zap") : t("player.sk.arrows")}</span>
+                <span><span className="kbd">↑</span> <span className="kbd">↓</span></span><span>{live ? t("player.sk.osd") : t("player.sk.vol")}</span>
+                {live && <><span><span className="kbd">0-9</span></span><span>{t("player.chNumber")}</span></>}
                 <span><span className="kbd">F</span></span><span>{t("player.sk.full")}</span>
                 <span><span className="kbd">P</span></span><span>{t("player.sk.pip")}</span>
                 <span><span className="kbd">M</span></span><span>{t("player.sk.mute")}</span>
