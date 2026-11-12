@@ -47,6 +47,7 @@ import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnounc
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage } from "./pages.js";
 import { pwaResponse } from "./pwa.js";
+import { legacyRedirectTarget } from "./legacyhost.js";
 
 export { Guard };
 
@@ -137,6 +138,9 @@ async function route(req, env, ctx) {
   const url = new URL(req.url);
   const { pathname: path } = url;
   const m = req.method;
+
+  // Ancienne adresse : les pages ouvertes dans un navigateur partent vers la nouvelle (l'API reste servie ici).
+  { const to = legacyRedirectTarget(m, req.url, req.headers.get("accept")); if (to) return Response.redirect(to, 301); }
 
   // Aucune origine tierce n'a besoin d'appeler ce Worker depuis un navigateur : pas de CORS.
   if (m === "OPTIONS") return new Response(null, { status: 204 });
