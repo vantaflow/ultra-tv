@@ -9,6 +9,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Lecteur film / épisode (Android et bureau) : **avance et retour rapides** avec Gauche / Droite (flèches du clavier sur le bureau, touches Avance / Retour rapide de la télécommande). Un appui déplace une position visée de ±10 s ; en maintenant la touche, le pas grandit (30 s, 60 s puis 120 s, plafonné à 2 % de la durée). Un curseur cible montre l'heure visée et l'écart (« +2:30 », « −0:40 ») ; le saut a lieu au relâchement ou sur OK / Entrée, Retour / Échap annule. Sur TV, commandes masquées, Gauche / Droite les affiche avec le focus sur la barre de progression (Haut / Bas pour aller aux boutons) ; avant, elles déplaçaient le focus entre les boutons au lieu de la lecture. Sens inversé en arabe ; le Direct n'est pas modifié.
 - Images Fanart.tv et TVmaze plus légères (Android et bureau) : fonds, vignettes et logos sont servis en WebP à la bonne taille par [wsrv.nl](https://wsrv.nl), service open source de redimensionnement (fonds 1280 px, 960 px en économie de mémoire ; vignettes 640 px ; logos 500 px). Les images TMDB et celles des autres hôtes ne sont pas concernées ; si wsrv.nl ne répond pas en 4 s, l'image d'origine est chargée. Réglage **Optimiser les images**, activé par défaut (Android : Réglages › Mémoire et stockage ; bureau : Réglages › Affichage).
 
+### Corrigé
+- Android : les tampons de la pause du direct (timeshift) laissés sur le disque par un plantage ou une appli tuée sont supprimés au lancement de l'appli (avant : seulement à l'ouverture suivante du lecteur).
+
 ## [1.3.0] — 2026-11-12 (Android) et bureau 1.2.49
 
 ### Corrigé

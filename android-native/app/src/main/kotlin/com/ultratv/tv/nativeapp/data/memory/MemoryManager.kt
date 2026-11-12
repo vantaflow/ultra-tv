@@ -117,6 +117,19 @@ class MemoryManager @Inject constructor(
         runCatching { ActionResult.Done(StorageMath.clearDirectory(timeshiftDir())) }.getOrDefault(ActionResult.Failed)
     }
 
+    /** Supprime les tampons de pause du direct orphelins (appli tuée, plantage) ; sans effet si un relais est actif. */
+    suspend fun purgeTimeshiftOrphans(): Long = withContext(Dispatchers.IO) {
+        if (TimeshiftRegistry.active) return@withContext 0L
+        val files = timeshiftDir().listFiles()?.filter { it.isFile }.orEmpty()
+        val names = TimeshiftOrphans.toDelete(files.map { TimeshiftOrphans.Entry(it.name, it.lastModified()) }, emptySet(), System.currentTimeMillis())
+        var freed = 0L
+        for (f in files.filter { it.name in names }) {
+            val len = f.length()
+            if (runCatching { f.delete() }.getOrDefault(false)) freed += len
+        }
+        freed
+    }
+
     /** VACUUM : refusé pendant une synchro, et sans la place de la copie (≈ taille de la base). */
     suspend fun compactDatabase(): ActionResult = withContext(Dispatchers.IO) {
         if (syncRunning()) return@withContext ActionResult.BlockedBySync

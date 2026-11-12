@@ -160,4 +160,17 @@ class MemoryLogicTest {
         assertEquals("0 o", SizeFormat.format(-10, AppLang.French))
         assertEquals("2 To", SizeFormat.format(2L * 1024 * gb, AppLang.French))
     }
+
+    // ── Tampons de pause du direct orphelins ──
+    @Test fun timeshift_orphelins_supprimeAnciensHorsUsage() {
+        val now = 1_000_000L
+        val files = listOf(
+            TimeshiftOrphans.Entry("buf-1.ts", now - 10 * 60_000L),   // ancien, orphelin
+            TimeshiftOrphans.Entry("buf-2.ts", now - 10 * 60_000L),   // ancien mais en cours d'usage
+            TimeshiftOrphans.Entry("buf-3.ts", now - 5_000L),         // récent : peut-être encore écrit
+        )
+        assertEquals(listOf("buf-1.ts"), TimeshiftOrphans.toDelete(files, setOf("buf-2.ts"), now))
+        assertEquals(listOf("buf-1.ts", "buf-3.ts"), TimeshiftOrphans.toDelete(files, setOf("buf-2.ts"), now, minAgeMs = 0L))
+        assertTrue(TimeshiftOrphans.toDelete(emptyList(), emptySet(), now).isEmpty())
+    }
 }

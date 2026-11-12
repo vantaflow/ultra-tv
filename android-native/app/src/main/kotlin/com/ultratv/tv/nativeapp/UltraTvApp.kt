@@ -221,6 +221,8 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // Nettoyage automatique (fichiers temporaires anciens, cache d'images au-delà de la limite) 30 s après le départ,
         // et planification quotidienne via WorkManager ; sans effet pendant une synchro ni si le réglage est coupé.
         bgScope.launch {
+            // Tampons de pause du direct laissés par un plantage ou une appli tuée : purgés tout de suite, quel que soit le réglage.
+            runCatching { memoryManager.get().purgeTimeshiftOrphans() }
             kotlinx.coroutines.delay(30_000)
             runCatching { memoryManager.get().autoClean() }
             runCatching { memoryManager.get().applySchedule() }

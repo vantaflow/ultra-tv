@@ -76,6 +76,18 @@ object TempFiles {
     }
 }
 
+/** Tampons de pause du direct restés sur le disque (appli tuée, plantage) : lesquels supprimer. */
+object TimeshiftOrphans {
+    /** Un tampon modifié plus récemment que ceci est peut-être encore écrit : on n'y touche pas. */
+    const val MIN_AGE_MS = 60_000L
+
+    data class Entry(val name: String, val lastModified: Long)
+
+    /** Noms à supprimer : tout fichier hors [inUse] dont la dernière écriture remonte à au moins [minAgeMs]. */
+    fun toDelete(files: List<Entry>, inUse: Set<String>, now: Long, minAgeMs: Long = MIN_AGE_MS): List<String> =
+        files.filter { it.name !in inUse && now - it.lastModified >= minAgeMs }.map { it.name }
+}
+
 /** Limite du cache d'images (disque, Coil). `null` = Auto selon l'espace libre. */
 object ImageCacheLimit {
     const val AUTO = "auto"
