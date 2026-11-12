@@ -70,6 +70,11 @@ object LivePreviewPolicy {
 
     fun delayMs(ms: Int): Long = ms.coerceIn(MIN_DELAY_MS, MAX_DELAY_MS).toLong()
 
+    /** Guide : on le parcourt ligne par ligne ; l'aperçu attend une vraie pause (1,5 s au moins), sinon chaque
+     *  chaîne survolée se met à jouer, comme un zapping (retour utilisateur). */
+    const val GUIDE_MIN_DELAY_MS = 1_500L
+    fun guideDelayMs(ms: Int): Long = maxOf(delayMs(ms), GUIDE_MIN_DELAY_MS)
+
     enum class Action { KEEP, START, STOP }
 
     /**
