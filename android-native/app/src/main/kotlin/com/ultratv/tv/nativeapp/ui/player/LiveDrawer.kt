@@ -106,6 +106,9 @@ internal fun LiveDrawer(
     val focusIdx = LiveDrawerLogic.entryFocusIndex(entries.indexOfFirst { it.isCurrent }, entries.size)
     val catFocus = remember { FocusRequester() }
     var focusedOnce by remember { mutableStateOf(false) }
+    // Colonne des catégories repliée tant qu'on parcourt les chaînes (la vidéo reste visible) ; Gauche la déplie.
+    var catsOpen by remember { mutableStateOf(false) }
+    val catListState = rememberLazyListState()
     var enterWhenReady by remember { mutableStateOf(false) }
     // Garde-fou si la chaîne en cours est introuvable (aucun focus initial) : les catégories chargent après 600 ms.
     var armed by remember { mutableStateOf(false) }
@@ -157,13 +160,23 @@ internal fun LiveDrawer(
             rowModifier = { k ->
                 val back = Modifier.onPreviewKeyEvent { ev ->
                     // Retour de la liste vers la catégorie en cours (Gauche ; Droite en lecture de droite à gauche).
-                    if (ev.type == KeyEventType.KeyDown && ev.key == (if (rtl) Key.DirectionRight else Key.DirectionLeft))
-                        runCatching { catFocus.requestFocus() }.isSuccess
-                    else false
+                    if (ev.key == (if (rtl) Key.DirectionRight else Key.DirectionLeft)) {
+                        if (ev.type == KeyEventType.KeyDown && ev.nativeKeyEvent.repeatCount == 0) {
+                            catsOpen = true
+                            scope.launch {
+                                // La colonne vient d'être dépliée : on l'amène sur la catégorie en cours, puis le focus s'y pose.
+                                val at = cats.indexOfFirst { it.id == currentCat }
+                                if (at >= 0) runCatching { catListState.scrollToItem((at - 3).coerceAtLeast(0)) }
+                                repeat(15) { if (runCatching { catFocus.requestFocus() }.isSuccess) return@launch; delay(30) }
+                            }
+                        }
+                        true
+                    } else false
                 }
                 if (k == focusIdx) back.focusRequester(entryFocus) else back
             },
-            onRowFocus = { k -> entries.getOrNull(k)?.let { e -> if (e.now == null) vm.fillProgrammes(listOf(e.channel)) } },
+            showCats = catsOpen || rows.isEmpty(), catState = catListState,
+            onRowFocus = { k -> catsOpen = false; entries.getOrNull(k)?.let { e -> if (e.now == null) vm.fillProgrammes(listOf(e.channel)) } },
             onRowClick = { k -> entries.getOrNull(k)?.let { onPick(it.channel) } },
             onAirLabel = D.onAirPill, emptyText = if (rows.isEmpty() && currentCat == CATEGORY_FAVORITES && pending == null) D.noFavorites else null,
         )
@@ -195,11 +208,13 @@ internal fun DrawerSheet(
     rows: List<DrawerRowUi>, listState: LazyListState, rowModifier: (Int) -> Modifier,
     onRowFocus: (Int) -> Unit, onRowClick: (Int) -> Unit, onAirLabel: String, emptyText: String?,
     modifier: Modifier = Modifier,
+    showCats: Boolean = true, catState: LazyListState = rememberLazyListState(),
 ) {
-    // Feuille flottante à droite (côté fin), marge de 32 px ; angles 32.
-    Box(modifier.fillMaxSize().padding(32.design), contentAlignment = Alignment.CenterEnd) {
+    // Feuille flottante à gauche (côté début), marge de 32 px ; angles 32. Fond translucide : la chaîne regardée reste
+    // visible derrière ; sans la colonne des catégories (repliée pendant le parcours des chaînes), la feuille est étroite.
+    Box(modifier.fillMaxSize().padding(32.design), contentAlignment = Alignment.CenterStart) {
         Column(
-            Modifier.width(860.design).fillMaxHeight().clip(RoundedCornerShape(32.design)).background(P.rail)
+            Modifier.width(if (showCats) 860.design else 580.design).fillMaxHeight().clip(RoundedCornerShape(32.design)).background(P.rail.copy(alpha = 0.84f))
                 .padding(start = 28.design, end = 28.design, top = 32.design, bottom = 24.design),
             verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
@@ -211,9 +226,9 @@ internal fun DrawerSheet(
                 }
             }
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(20.design)) {
-                DrawerCategoryColumn(
+                if (showCats) DrawerCategoryColumn(
                     cats = cats, highlightId = highlightId, rtl = rtl, selectedFocus = catFocus,
-                    onFocused = onCatFocused, onEnter = onCatEnter, modifier = Modifier.width(260.design).fillMaxHeight(),
+                    onFocused = onCatFocused, onEnter = onCatEnter, modifier = Modifier.width(260.design).fillMaxHeight(), state = catState,
                 )
                 if (rows.isEmpty() && emptyText != null) {
                     Text(emptyText, color = P.text3, fontFamily = Manrope, fontSize = 22.spx, modifier = Modifier.weight(1f).padding(top = 12.design))
@@ -251,9 +266,9 @@ private fun DrawerTab(label: String, selected: Boolean, onClick: () -> Unit) {
 @Composable
 internal fun DrawerCategoryColumn(
     cats: List<DrawerCategory>, highlightId: String?, rtl: Boolean, selectedFocus: FocusRequester,
-    onFocused: (String) -> Unit, onEnter: () -> Unit, modifier: Modifier = Modifier,
+    onFocused: (String) -> Unit, onEnter: () -> Unit, modifier: Modifier = Modifier, state: LazyListState = rememberLazyListState(),
 ) {
-    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(6.design)) {
+    LazyColumn(modifier, state = state, verticalArrangement = Arrangement.spacedBy(6.design)) {
         items(cats, key = { it.id }) { c ->
             val sel = c.id == highlightId
             val enterKey = if (rtl) Key.DirectionLeft else Key.DirectionRight
@@ -284,7 +299,7 @@ internal fun DrawerCategoryColumn(
 }
 
 @Composable
-private fun ModalDark(content: @Composable () -> Unit) = com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(onBack = null, modifier = Modifier.background(Color(0x66000000))) { Box(Modifier.fillMaxSize()) { content() } }
+private fun ModalDark(content: @Composable () -> Unit) = com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(onBack = null, modifier = Modifier.background(Color(0x33000000))) { Box(Modifier.fillMaxSize()) { content() } }
 
 @Composable
 private fun ChannelRow(r: DrawerRowUi, onAirLabel: String, onFocus: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier) {
