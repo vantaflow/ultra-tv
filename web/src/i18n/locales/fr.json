@@ -518,5 +518,21 @@
   "trailer.errNotFound": "Cette bande-annonce n’est plus disponible (supprimée ou privée).",
   "trailer.errEmbed": "Le propriétaire de cette vidéo n’autorise pas sa lecture en dehors de YouTube.",
   "trailer.errConfig": "Cette bande-annonce ne peut pas être lue dans l’appli pour le moment.",
-  "trailer.errUnknown": "La bande-annonce n’a pas pu être lue."
+  "trailer.errUnknown": "La bande-annonce n’a pas pu être lue.",
+  "player.nowLabel": "MAINTENANT",
+  "player.favPill": "Favori",
+  "player.remainingEnds": "Reste {rest} · fin à {time}",
+  "home.greetMorning": "Bonjour",
+  "home.greetAfternoon": "Bon après-midi",
+  "home.greetEvening": "Bonsoir",
+  "home.stats": "· {live} chaînes · {movies} films · {series} séries",
+  "home.tonight": "Ce soir",
+  "home.shortcuts": "Raccourcis",
+  "home.liveNow": "En direct maintenant",
+  "set.sub.sources": "Abonnements IPTV",
+  "set.sub.cloud": "Compte et appareils",
+  "set.sub.playback": "Lecteur, qualité, direct",
+  "set.sub.sync": "Catalogue et guide",
+  "set.sub.categories": "Catégories affichées",
+  "set.sub.profiles": "Profils et historique"
 }

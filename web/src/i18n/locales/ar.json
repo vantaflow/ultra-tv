@@ -548,5 +548,21 @@
   "trailer.errNotFound": "هذا الإعلان لم يعد متاحًا (محذوف أو خاص).",
   "trailer.errEmbed": "صاحب هذا الفيديو لا يسمح بتشغيله خارج يوتيوب.",
   "trailer.errConfig": "تعذّر تشغيل هذا الإعلان داخل التطبيق حاليًا.",
-  "trailer.errUnknown": "تعذّر تشغيل الإعلان."
+  "trailer.errUnknown": "تعذّر تشغيل الإعلان.",
+  "player.nowLabel": "الآن",
+  "player.favPill": "مفضلة",
+  "player.remainingEnds": "المتبقي {rest} · ينتهي في {time}",
+  "home.greetMorning": "صباح الخير",
+  "home.greetAfternoon": "مساء الخير",
+  "home.greetEvening": "مساء الخير",
+  "home.stats": "· {live} قناة · {movies} فيلم · {series} مسلسل",
+  "home.tonight": "هذا المساء",
+  "home.shortcuts": "اختصارات",
+  "home.liveNow": "مباشر الآن",
+  "set.sub.sources": "اشتراكات IPTV",
+  "set.sub.cloud": "الحساب والأجهزة",
+  "set.sub.playback": "المشغل والجودة والبث",
+  "set.sub.sync": "الكتالوج والدليل",
+  "set.sub.categories": "الفئات المعروضة",
+  "set.sub.profiles": "الملفات والسجل"
 }

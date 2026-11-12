@@ -1,0 +1,122 @@
+/* Design v2 : structure des écrans (Accueil, Films, Guide, Fiches, Réglages). Largeurs fluides. */
+
+/* ---------- Accueil ---------- */
+.page.home { gap: 1.5rem; }
+.home-head { display: flex; align-items: baseline; gap: 0.9rem; flex-wrap: wrap; }
+.home-head h1 { font-size: 2rem; font-weight: 800; }
+.home-stats { color: var(--text-3); font-size: 1rem; }
+.home-clock { margin-inline-start: auto; font-family: var(--font-title); font-weight: 700; font-size: 1.75rem; }
+.home-top { display: flex; gap: 1.5rem; align-items: stretch; flex: 0 0 auto; }
+.home-top .hero { flex: 1 1 0; min-width: 0; min-height: 18rem; border-radius: 2rem; padding: 0; background: var(--surface); }
+.home-top .hero .art { inset: 0; width: 100%; }
+.home-top .hero .art::after { display: none; }
+.home-top .hero > *:not(.art) { max-width: none; }
+.hero .meta, .hero h2, .hero .actions { position: relative; z-index: 1; }
+.home-top .hero > .meta, .home-top .hero > h2, .home-top .hero > .actions { margin-inline: 2.25rem; }
+.home-top .hero > .meta { margin-top: auto; }
+.home-top .hero > .actions { margin-bottom: 2rem; }
+.home-top .hero > h2 { font-size: clamp(1.75rem, 3.2vw, 3rem); max-width: 60%; }
+.home-top .hero::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: 0; width: min(36rem, 62%); background: color-mix(in srgb, var(--bg) 72%, transparent); z-index: 0; }
+.shortcuts { flex: 0 0 min(22rem, 30%); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; align-content: stretch; }
+.shortcuts button { display: flex; align-items: center; gap: 0.75rem; padding: 0 1rem; border-radius: 1.4rem; background: var(--surface); color: var(--text); text-align: start; min-height: 5rem; transition: background 0.12s; }
+.shortcuts button:first-child { background: var(--sel-bg); color: var(--sel-ink); }
+.shortcuts button:hover, .shortcuts button:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.shortcuts button b { display: block; font-size: 1.05rem; font-weight: 800; }
+.shortcuts .s { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-3); }
+.shortcuts button:first-child .s, .shortcuts button:hover .s, .shortcuts button:focus-visible .s { color: var(--sel-sub); }
+.live-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 1rem; }
+.live-card { display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem 1.1rem; border-radius: 1.4rem; background: var(--surface); text-align: start; min-width: 0; transition: background 0.12s; }
+.live-card:hover, .live-card:focus-visible { background: var(--sel-bg); color: var(--sel-ink); }
+.live-card .lc-head { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.live-card .lc-logo { position: relative; width: 3rem; height: 3rem; flex: none; border-radius: 0.8rem; background: var(--surface-3); display: grid; place-items: center; overflow: hidden; font-family: var(--font-title); font-weight: 800; font-size: 0.9rem; }
+.live-card .lc-logo .img { position: absolute; inset: 0.25rem; width: calc(100% - 0.5rem); height: calc(100% - 0.5rem); background: transparent; }
+.live-card .lc-logo .ini { position: relative; }
+.live-card:hover .lc-logo, .live-card:focus-visible .lc-logo { background: var(--sel-logo); }
+.live-card .lc-id { display: flex; flex-direction: column; min-width: 0; }
+.live-card .lc-id b { font-weight: 800; font-size: 1rem; }
+.live-card .lc-id .s { font-size: 0.85rem; font-weight: 600; color: var(--text-3); }
+.live-card:hover .lc-id .s, .live-card:focus-visible .lc-id .s { color: var(--sel-sub); }
+.live-card .lc-title { font-weight: 700; font-size: 1.1rem; color: var(--text-2); }
+.live-card:hover .lc-title, .live-card:focus-visible .lc-title { color: var(--sel-ink); }
+.lc-trk { height: 4px; border-radius: 2px; background: color-mix(in srgb, var(--text) 10%, transparent); }
+.lc-trk i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.resume-card { position: relative; flex: 0 0 17rem; height: 7rem; border-radius: 1.25rem; background: var(--surface-3); overflow: hidden; display: flex; align-items: flex-end; text-align: start; transition: box-shadow 0.12s; }
+.resume-card .img { position: absolute; inset: 0; }
+.resume-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to top, rgba(10, 12, 16, 0.85), rgba(10, 12, 16, 0.1) 70%); }
+.resume-card .rc-tx { position: relative; z-index: 1; padding: 0.9rem 1rem 1rem; color: #F4F5F7; display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.resume-card .rc-tx b { font-weight: 800; font-size: 1.05rem; }
+.resume-card .rc-tx .s { font-size: 0.8rem; color: #C9CDD6; }
+.resume-card .progress { position: absolute; inset-inline: 0; bottom: 0; height: 5px; border-radius: 0; z-index: 2; background: rgba(244, 245, 247, 0.15); }
+.resume-card:hover, .resume-card:focus-visible { box-shadow: 0 0 0 3px var(--sel-bg); outline: none; }
+.section-title { font-size: 1.35rem; }
+
+/* ---------- Films / Séries ---------- */
+.vod-hero { min-height: 16rem; flex: 0 0 auto; padding: 2rem 2.25rem; border-radius: 2rem; }
+.vod-hero .art { inset: 0; width: 100%; }
+.vod-hero .art::after { display: block; background: linear-gradient(to right, var(--surface) 8%, transparent 70%); }
+[dir="rtl"] .vod-hero .art::after { background: linear-gradient(to left, var(--surface) 8%, transparent 70%); }
+.vod-hero > *:not(.art) { max-width: 46rem; }
+.vod-hero h2 { font-size: clamp(1.9rem, 3.6vw, 3.4rem); }
+.vod-hero .hero-plot { color: var(--text-2); font-size: 1.05rem; line-height: 1.5; }
+.cat-title { font-size: 1.25rem; margin-bottom: 0.75rem; }
+
+/* ---------- Guide ---------- */
+.guide { padding: 1.5rem 2rem 1rem; gap: 1.1rem; }
+.g-top { display: flex; gap: 1.75rem; flex: 0 0 auto; min-height: 12rem; }
+.g-preview { position: relative; flex: 0 0 min(26rem, 34%); aspect-ratio: 16 / 9; align-self: flex-start; border-radius: 1.5rem; background: var(--tone); display: grid; place-items: center; overflow: hidden; }
+.g-preview .img { width: 50%; height: 50%; background: transparent; }
+.g-info { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 0.6rem; }
+.g-eyebrow { font-weight: 800; font-size: 0.95rem; letter-spacing: 0.08em; color: var(--accent-text); text-transform: uppercase; }
+.g-title { font-size: clamp(1.6rem, 2.8vw, 2.6rem); line-height: 1.08; letter-spacing: -0.02em; }
+.g-desc { color: var(--text-2); font-size: 1.05rem; line-height: 1.45; max-width: 56rem; }
+.g-actions { display: flex; gap: 0.75rem; margin-top: 0.35rem; }
+.g-filters { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 0 0 auto; }
+.g-filters .chips { flex: 0 0 auto; }
+.g-filters .g-cats { flex: 1 1 0; min-width: 0; }
+.g-sep { width: 2px; height: 1.8rem; background: var(--line); flex: none; }
+.g-catlabel { flex: none; }
+.g-cats .chip[aria-selected="true"], .g-cats .chip[aria-selected="true"]:hover { background: var(--accent); color: var(--on-accent); }
+.chip .n { margin-inline-start: 0.35rem; }
+.guide-grid { border-radius: 1.25rem; }
+.g-head { height: 2rem; border-bottom: 0; }
+.g-chan { background: var(--bg); }
+.g-chan::before { content: ""; position: absolute; inset: 0.15rem 0.25rem 0.15rem 0; border-radius: 1.1rem; background: var(--surface); z-index: -1; }
+.g-chan { isolation: isolate; padding-inline-start: 0.75rem; }
+.g-chan .num { font-family: var(--font-title); font-weight: 800; color: var(--text); font-size: 1rem; text-align: end; }
+.g-chan .logo { border-radius: 0.6rem; width: 2.75rem; height: 2.25rem; }
+.g-now { width: 3px; border-radius: 2px; }
+.g-now-pill { position: absolute; top: 0.2rem; transform: translateX(-50%); padding: 0.1rem 0.6rem; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 800; font-size: 0.8rem; z-index: 6; pointer-events: none; }
+[dir="rtl"] .g-now-pill { transform: translateX(50%); }
+.g-prog { border-radius: 1rem; }
+
+/* ---------- Fiches film / série ---------- */
+.detail h1 { font-weight: 800; }
+.cast { gap: 1.1rem; }
+.cast .c { width: 6.5rem; gap: 0.4rem; }
+.cast .c i { width: 5.25rem; height: 5.25rem; background: var(--surface-2); color: var(--text-3); }
+.cast .c { font-weight: 700; }
+.serie-layout { grid-template-columns: minmax(18rem, 30rem) minmax(0, 1fr); gap: 2.5rem; }
+.chips[role="tablist"] .chip { height: 2.75rem; padding: 0 1.4rem; font-size: 0.95rem; }
+.episode { gap: 1.1rem; padding: 0.75rem; }
+.episode .th { width: 11rem; border-radius: 0.9rem; }
+.episode b { font-size: 1.05rem; font-weight: 800; }
+
+/* ---------- Réglages ---------- */
+.settings { grid-template-columns: minmax(17rem, 23rem) minmax(0, 1fr); }
+.settings .nav { background: transparent; padding: 2rem 1rem 1.5rem 1.5rem; gap: 0.4rem; }
+.settings .nav h1 { font-size: 2.4rem; font-weight: 800; margin-bottom: 1.25rem; }
+.nav-item { height: auto; min-height: 4.1rem; padding: 0.55rem 0.9rem; gap: 0.9rem; border-radius: 1.3rem; }
+.nav-item .ico { width: 2.6rem; height: 2.6rem; flex: none; border-radius: 0.9rem; display: grid; place-items: center; background: var(--surface-2); }
+.nav-item .tx { display: flex; flex-direction: column; min-width: 0; text-align: start; }
+.nav-item .lb { font-weight: 800; font-size: 1.05rem; }
+.nav-item .sb { font-size: 0.8rem; font-weight: 600; color: var(--text-3); }
+.nav-item:hover .ico, .nav-item:focus-visible .ico, .nav-item.on .ico { background: color-mix(in srgb, var(--sel-ink) 12%, transparent); }
+.nav-item:hover .sb, .nav-item:focus-visible .sb, .nav-item.on .sb { color: var(--sel-sub); }
+.settings .pane { padding: 2rem 2.5rem 2.5rem 2rem; }
+.pane h2 { font-size: 1.9rem; font-weight: 700; }
+/* Lignes de réglage regroupées en une seule carte, séparées par un filet. */
+.pane .pref { border-radius: 0; background: var(--surface); min-height: 4.25rem; padding: 0.85rem 1.5rem; font-size: 1.05rem; }
+.pane .pref + .pref { margin-top: -1.25rem; border-top: 1px solid var(--line); }
+.pane > :not(.pref) + .pref { border-start-start-radius: 1.6rem; border-start-end-radius: 1.6rem; }
+.pane > .pref:not(:has(+ .pref)) { border-end-start-radius: 1.6rem; border-end-end-radius: 1.6rem; }
+.pane .pref .d { font-size: 0.9rem; }

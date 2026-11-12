@@ -14,7 +14,7 @@ import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { type GuideLoadState, useGuideLoad } from "@/hooks/guideLoad";
 import { sortGuideChannels } from "@/lib/guideOrder";
-import { CategoryList } from "@/ui/CategoryList";
+import { HScroll } from "@/ui/HScroll";
 import { hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { Img } from "@/ui/Img";
@@ -140,7 +140,6 @@ function Inner({ source }: { source: Source }) {
   const now = useNow(30_000);
   const [day, setDay] = useState(0);
   const [cat, setCat] = useState<string | null>(null);
-  const [pop, setPop] = useState(false);
   const [pick, setPick] = useState<Pick | null>(null);
   // Le guide se charge en arrière-plan à l'ouverture (si absent ou périmé) ; la grille s'affiche tout de suite.
   const { state: load, reload } = useGuideLoad(source);
@@ -180,24 +179,54 @@ function Inner({ source }: { source: Source }) {
     setPick(null);
   };
 
+  // Programme présenté en haut : celui choisi dans la grille, sinon le programme en cours de la première chaîne.
+  const firstChan = chans[0];
+  const firstProg = firstChan?.epg ? (progs.get(`${from}|${firstChan.epg}`) ?? EMPTY_PROGS).find((p) => p.start <= now && p.end > now) : undefined;
+  const shown: { prog: ProgramRow; chan: ChannelRow } | null = pick ? { prog: pick.prog, chan: pick.chan } : firstChan && firstProg ? { prog: firstProg, chan: firstChan } : null;
+  const shownLive = !!shown && shown.prog.start <= now && shown.prog.end > now;
+
   return (
     <div className="guide" onClick={() => setPick(null)}>
-      <header className="page-head">
-        <div style={{ flex: "none" }}>
-          <h1 style={{ whiteSpace: "nowrap" }}>{t("guide.title")}</h1>
-          <div className="sub">{new Date(from).toLocaleDateString(prefs.lang, { weekday: "long", day: "numeric", month: "long" })} · {hhmm(from)} – {hhmm(to)}{chans.length >= GUIDE_MAX_CHANNELS && effCat !== "__fav" ? ` · ${t("guide.capped", { n: GUIDE_MAX_CHANNELS })}` : ""}</div>
+      <section className="g-top" aria-label={t("guide.title")}>
+        <div className="g-preview" aria-hidden="true">
+          {shown && <Img src={shown.chan.logo} contain />}
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }} onClick={(e) => e.stopPropagation()}>
-          <button className="chip ellipsis" style={{ maxWidth: "18rem" }} title={label} onClick={() => setPop(true)}>{label} ▾</button>
-          <div className="chips" role="group" aria-label={t("a11y.day")}>{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
+        <div className="g-info" onClick={(e) => e.stopPropagation()}>
+          {shown ? (
+            <>
+              <div className="g-eyebrow mono">{shownLive ? `${t("player.nowLabel")} · ` : ""}{shown.chan.display} · {hhmm(shown.prog.start)} – {hhmm(shown.prog.end)}</div>
+              <h1 className="g-title clamp-2">{shown.prog.title}</h1>
+              {shown.prog.desc && <p className="g-desc clamp-2">{shown.prog.desc}</p>}
+              <div className="g-actions">
+                {shown.prog.end > now && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, false)}><Icon name="play" size={16} fill />{t("guide.watchLive")}</button>}
+                {shown.prog.end <= now && !!shown.chan.archive && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, true)}><Icon name="play" size={16} fill />{t("guide.replay")}</button>}
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="g-title">{t("guide.title")}</h1>
+              <p className="g-desc">{new Date(from).toLocaleDateString(prefs.lang, { weekday: "long", day: "numeric", month: "long" })} · {hhmm(from)} – {hhmm(to)}</p>
+            </>
+          )}
         </div>
-      </header>
+      </section>
+      <div className="g-filters" onClick={(e) => e.stopPropagation()}>
+        <div className="chips" role="group" aria-label={t("a11y.day")}>{days.map((d, i) => <button key={i} className="chip" aria-selected={day === i} onClick={() => setDay(i)}>{d}</button>)}</div>
+        <span className="g-sep" aria-hidden="true" />
+        <span className="eyebrow g-catlabel">{t("common.categories")}</span>
+        <HScroll wheel follow={effCat} className="chips scroll g-cats" role="tablist" aria-label={t("common.categories")}>
+          <button className="chip" role="tab" aria-selected={effCat === "__fav"} onClick={() => setCat("__fav")}>{t("common.favorites")}<span className="n">{favs.length}</span></button>
+          <button className="chip" role="tab" aria-selected={effCat === ""} onClick={() => setCat("")}>{t("common.all")}</button>
+          {(cats ?? []).map((c) => <button key={c.extId} className="chip" role="tab" aria-selected={effCat === c.extId} onClick={() => setCat(c.extId)}>{c.label}<span className="n">{c.count}</span></button>)}
+        </HScroll>
+      </div>
       <GuideBanner state={load} onRetry={reload} />
       <div className="guide-grid" ref={scroller}>
         <div className="g-head" style={{ width: TOTAL_W + col }}>
           <div className="g-corner" />
           <div style={{ position: "relative", width: TOTAL_W }}>
             {Array.from({ length: HOURS * 2 }, (_, i) => <span key={i} className="g-time mono" style={{ left: i * 30 * PX_MIN, width: 30 * PX_MIN }}>{hhmm(from + i * 30 * 60_000)}</span>)}
+            {nowX >= 0 && nowX <= TOTAL_W && <span className="g-now-pill mono" style={{ insetInlineStart: nowX }}>{hhmm(now)}</span>}
           </div>
         </div>
         <div style={{ position: "relative", height: v.getTotalSize(), width: TOTAL_W + col }}>
@@ -208,30 +237,8 @@ function Inner({ source }: { source: Source }) {
           })}
         </div>
         {chansQ && chans.length === 0 && <div className="g-empty">{t("guide.noChannels")}</div>}
+        {chans.length >= GUIDE_MAX_CHANNELS && effCat !== "__fav" && <div className="g-empty">{t("guide.capped", { n: GUIDE_MAX_CHANNELS })}</div>}
       </div>
-      {pick && (
-        <div className="popover" style={{ left: Math.min(pick.x, window.innerWidth - 400), top: Math.min(pick.y + 12, window.innerHeight - 280), position: "fixed" }} onClick={(e) => e.stopPropagation()} role="dialog" aria-label={pick.prog.title}>
-          <div className="eyebrow">{pick.chan.display} · {hhmm(pick.prog.start)} – {hhmm(pick.prog.end)}</div>
-          <h4>{pick.prog.title}</h4>
-          {pick.prog.desc && <p className="clamp-4" style={{ color: "var(--text-2)", fontSize: "0.875rem", lineHeight: 1.5 }}>{pick.prog.desc}</p>}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {pick.prog.end > Date.now() && pick.prog.start <= Date.now() && <button className="btn primary sm" onClick={() => watch(pick.chan, pick.prog, false)}><Icon name="play" size={14} fill />{t("guide.watchLive")}</button>}
-            {pick.prog.start > Date.now() && <button className="btn primary sm" onClick={() => watch(pick.chan, pick.prog, false)}><Icon name="play" size={14} fill />{t("guide.watchLive")}</button>}
-            {pick.prog.end <= Date.now() && !!pick.chan.archive && <button className="btn primary sm" onClick={() => watch(pick.chan, pick.prog, true)}>{t("guide.replay")}</button>}
-            <button className="btn sm" onClick={() => setPick(null)}>{t("common.close")}</button>
-          </div>
-        </div>
-      )}
-      {pop && (
-        <div className="scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) setPop(false); }}>
-          <div className="modal" style={{ height: "min(36rem, 80vh)", padding: "1.25rem 0.5rem 1rem" }} role="dialog" aria-label={t("common.categories")}>
-            <h3 style={{ padding: "0 1rem" }}>{t("common.categories")}</h3>
-            <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
-              <CategoryList cats={cats ?? []} value={effCat} extra={[{ id: "__fav", label: t("common.favorites"), n: favs.length }, { id: "", label: t("guide.withEpg") }]} onPick={(c) => { setCat(c); setPop(false); }} />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

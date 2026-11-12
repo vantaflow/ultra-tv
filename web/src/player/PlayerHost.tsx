@@ -4,15 +4,18 @@
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
-import { channelsCol, favKey, nowNext, toggleFavorite } from "@/db/queries";
+import { channelsCol, favKey, nowNext, programsFor, toggleFavorite } from "@/db/queries";
+import { qualityLabel } from "@/lib/channelName";
+import { ribbonSegments, type RibbonSeg } from "./ribbon";
 import { Img } from "@/ui/Img";
 import { VList, arrayRows, type VListHandle } from "@/ui/Virtual";
 import { db } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
+import { useCategories, useFavorites } from "@/hooks/data";
 import { useT } from "@/i18n";
-import { fmtClock } from "@/lib/text";
+import { fmtClock, fmtDuration } from "@/lib/text";
 import { bridge, currentTransport, requestHeaders, transportSync, wrapUrl } from "@/net/transport";
 import { handshake } from "@/net/xtream";
 import { credsOf } from "@/sync/core";
@@ -40,6 +43,9 @@ import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
 import type { PlayTarget } from "./resolve";
+
+/** HDR annoncé dans le nom de la chaîne (aucune autre source d'information côté Direct). */
+const HDR_RE = /\b(HDR10\+?|HDR|HLG|DOLBY ?VISION)\b/i;
 
 const NO_TRACKS: Tracks = { audio: [], activeAudio: -1, text: [], activeText: -1, levels: [], activeLevel: -1 };
 
@@ -96,6 +102,8 @@ export function PlayerHost() {
   const [osFull, setOsFull] = useState(false);
   const [zapFlash, setZapFlash] = useState<string | null>(null);
   const [rate, setRate] = useState(1);
+  /** Position survolée sur la barre de lecture (bulle de temps). */
+  const [hoverT, setHoverT] = useState<{ f: number } | null>(null);
   const hideTimer = useRef<number | undefined>(undefined);
   // OSD du Direct : simple bandeau (programme) après un zap, saisie d'un numéro, ouverture au clavier (masquage à 8 s).
   const [banner, setBanner] = useState(false);
@@ -731,6 +739,20 @@ export function PlayerHost() {
     [source?.id, curId, prefs.profileId],
   ) ?? false;
 
+  // Ruban de la soirée : programmes autour de maintenant, lus au guide local quand l'OSD complet est visible.
+  const [ribbon, setRibbon] = useState<RibbonSeg[]>([]);
+  const ribbonEpg = target?.channel?.epg ?? null;
+  const ribbonOn = mode === "full" && live && showUi && !!ribbonEpg && !!source?.cid;
+  const progNowStart = nn.now?.start;
+  useEffect(() => {
+    if (!ribbonOn || !source?.cid || !ribbonEpg) { setRibbon([]); return; }
+    let dead = false;
+    const now = Date.now();
+    void programsFor(source.cid, ribbonEpg, now - 3 * 3600_000, now + 6 * 3600_000)
+      .then((rows) => { if (!dead) setRibbon(ribbonSegments(rows, Date.now())); }).catch(() => {});
+    return () => { dead = true; };
+  }, [ribbonOn, source?.cid, ribbonEpg, progNowStart]);
+
   if (!target || mode === "closed") {
     return <div className="player hidden"><video ref={videoRef} playsInline /></div>;
   }
@@ -747,6 +769,11 @@ export function PlayerHost() {
     const r = e.currentTarget.getBoundingClientRect();
     const f = (e.clientX - r.left) / r.width;
     seekTo((document.dir === "rtl" ? 1 - f : f) * cur.d);
+  };
+  const onSeekHover = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
+    setHoverT({ f: document.dir === "rtl" ? 1 - f : f });
   };
   const locale = prefs.lang;
   const title = live ? (prog?.title || target.title) : target.title;
@@ -786,46 +813,57 @@ export function PlayerHost() {
       )}
       {noAudio && !error && <div className="noaudio" role="status">{t(bridge()?.isElectron && !bridge()?.transcode ? "player.noAudioInstall" : "player.noAudio")}</div>}
       {(numBuf || zapFlash) && <div className="zap" role="status" aria-label={numBuf ? t("player.chNumber") : undefined}>{numBuf || zapFlash}</div>}
-      {full && skipOffer && panel === null && (
+      {full && skipOffer && !(skipOffer.next && skipNext) && panel === null && (
         <button className="skipbtn" onClick={(e) => { e.stopPropagation(); skipRef.current(); }}>
           <Icon name="fwd" size={20} />
           {t(skipOffer.next ? "player.nextEpisode" : skipOffer.kind === "recap" ? "player.skipRecap" : skipOffer.kind === "credits" ? "player.skipCredits" : "player.skipIntro")}
         </button>
       )}
 
-      <div className="ptop">
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "0.8125rem", fontWeight: 700 }}>
-            {live && <span className="badge-live">{t("common.live")}</span>}
-            <span style={{ color: "#c4c4cc" }}>{subtitle}</span>
-            {target.channel && <QBadge q={target.channel.q} />}
-          </div>
-          <h2>{title}</h2>
-          {full && live && (
-            <div className="osd-prog">
-              {prog && (
-                <div className="mono osd-range">{hhmm(prog.start, locale)} – {hhmm(prog.end, locale)}</div>
-              )}
-              {prog?.desc?.trim() && <p className="osd-desc">{prog.desc.trim()}</p>}
-              {nn.next && <div className="osd-then">{t("player.then")} · {hhmm(nn.next.start, locale)} · {nn.next.title}</div>}
-              <div className="osd-hint">{t("player.osdHint")}</div>
+      {full && live ? (
+        <div className="ptop">
+          <div className="id">
+            <span className="id-num mono">{target.channel?.num || ""}</span>
+            <span className="id-logo" aria-hidden="true">
+              <span className="ini">{(target.title.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span>
+              <Img src={target.channel?.logo ?? target.image} contain />
+            </span>
+            <div className="id-meta">
+              <h2 className="id-name ellipsis">{target.title}</h2>
+              <div className="pills">
+                <span className="pill live"><i />{t("common.live")}</span>
+                {target.channel && target.channel.q > 0 && <span className="pill">{qualityLabel(target.channel.q)}</span>}
+                {HDR_RE.test(target.title) && <span className="pill">{(target.title.match(HDR_RE) ?? [""])[0]!.toUpperCase()}</span>}
+                {isFav && <span className="pill">{t("player.favPill")}</span>}
+              </div>
             </div>
-          )}
+          </div>
+          <div className="clock mono">{hhmm(clock.getTime(), locale)}</div>
         </div>
-        {full && <div className="clock mono">{hhmm(clock.getTime(), locale)}</div>}
-      </div>
+      ) : (
+        <div className="ptop">
+          <div className="vt">
+            {subtitle && <div className="eyebrow vt-sub">{subtitle}</div>}
+            <h2>{title}</h2>
+          </div>
+          {full && <div className="clock mono">{hhmm(clock.getTime(), locale)}</div>}
+        </div>
+      )}
 
-      <div className="pbot">
-        {full && live && (
-          <div className="precent" role="group" aria-label={t("player.recents")}>
+      {full && live ? (
+        <div className="pbot live">
+          <div className="precent tier2" role="group" aria-label={t("player.recents")}>
             <div className="precent-t">{t("player.recents")}</div>
             {shownRecents.length === 0 ? <div className="precent-empty">{t("player.recentsEmpty")}</div> : (
               <div className="precent-row">
-                {shownRecents.map((r) => (
+                {shownRecents.slice(0, 5).map((r) => (
                   <button key={r.streamId} className="precent-ch" onClick={() => tune(r)}>
-                    <span className="logo" aria-hidden="true"><Img src={r.logo} contain /></span>
+                    <span className="logo" aria-hidden="true">
+                      <span className="ini">{(r.name.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span>
+                      <Img src={r.logo} contain />
+                    </span>
                     <span className="meta">
-                      <span className="ellipsis"><span className="num mono">{r.num}</span> {r.name}</span>
+                      <span className="ellipsis nm"><span className="num mono">{r.num}</span> · {r.name}</span>
                       <span className="ellipsis sub">{(r.epg && recentNow.get(r.epg)) || ""}</span>
                     </span>
                   </button>
@@ -833,50 +871,117 @@ export function PlayerHost() {
               </div>
             )}
           </div>
-        )}
-        {full && (live ? prog : cur.d > 0) && (
-          <div className="seek mono">
-            <span>{live ? hhmm(prog!.start, locale) : fmtClock(cur.t)}</span>
-            <div className="bar" onClick={onSeekBar} role="slider" aria-label={t("a11y.position")} aria-valuenow={Math.round((live ? progRatio : vodRatio) * 100)}>
-              {!live && cur.d > 0 && <div className="buf" style={{ width: `${(cur.buf / cur.d) * 100}%` }} />}
-              <div className="fill" style={{ width: `${(live ? progRatio : vodRatio) * 100}%` }} />
-              <div className="knob" style={{ insetInlineStart: `${(live ? progRatio : vodRatio) * 100}%` }} />
-            </div>
-            <span>{live ? hhmm(prog!.end, locale) : fmtClock(cur.d)}</span>
-          </div>
-        )}
-        <div className="pctl">
-          <div className="grp">
-            {full && !live && <button className="pbtn" aria-label={t("player.back10")} onClick={() => seekBy(-10)}><Icon name="rew" size={22} /></button>}
-            <button className={full ? "pbtn big" : "pbtn"} aria-label={t("player.pause")} onClick={togglePlay}>
-              <Icon name={state === "paused" ? "play" : "pause"} size={full ? 26 : 20} fill />
-            </button>
-            {full && !live && <button className="pbtn" aria-label={t("player.fwd10")} onClick={() => seekBy(10)}><Icon name="fwd" size={22} /></button>}
-            <button className="pbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
-          </div>
-          <div className="grp">
-            {full ? (
-              <>
-                <button className={`popt${panel === "tracks" ? " on" : ""}`} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={18} />{t("player.tracks")}</button>
-                <button className={`popt${panel === "display" ? " on" : ""}`} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={18} />{t("player.display")}</button>
-                {live && <button className={`popt${panel === "channels" ? " on" : ""}`} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={18} />{t("player.channels")}</button>}
-                {live && source?.id != null && target.channel && (
-                  <button
-                    className={`pbtn${isFav ? " fav" : ""}`} aria-pressed={isFav} aria-label={t(isFav ? "common.removeFav" : "common.addFav")}
-                    onClick={() => void toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: target.refId, name: target.title, image: target.image ?? null })}
-                  ><Icon name="heart" size={20} fill={isFav} /></button>
-                )}
-                <button className={`popt${panel === "player" || panel === "stats" ? " on" : ""}`} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={18} />{t("player.player")}</button>
-                <button className="pbtn" aria-label={t("player.pip")} onClick={() => void pip()}><Icon name="pip" size={20} /></button>
-                <button className="pbtn" aria-label={t("player.fullscreen")} onClick={() => void toggleOsFull()}><Icon name="full" size={20} /></button>
-                <button className="pbtn" aria-label={t("common.close")} onClick={() => void leaveFull()}><Icon name="x" size={20} /></button>
-              </>
-            ) : (
-              <button className="pbtn" aria-label={t("player.fullscreen")} onClick={goFull}><Icon name="full" size={20} /></button>
+
+          <div className="pnowrow">
+            {prog && (
+              <div className="pnow">
+                <div className="pnow-t mono">{t("player.nowLabel")} · {hhmm(prog.start, locale)} – {hhmm(prog.end, locale)} · {t("common.minLeft", { t: `${Math.max(0, Math.round((prog.end - Date.now()) / 60_000))} min` })}</div>
+                <h3 className="pnow-title clamp-2">{prog.title}</h3>
+                {prog.desc?.trim() && <p className="pnow-desc clamp-2">{prog.desc.trim()}</p>}
+              </div>
+            )}
+            {nn.next && (
+              <div className="pnext tier2">
+                <div className="pnext-t mono">{t("player.then")} · {hhmm(nn.next.start, locale)} – {hhmm(nn.next.end, locale)}</div>
+                <b className="clamp-2">{nn.next.title}</b>
+                {nn.next.desc?.trim() && <p className="clamp-2">{nn.next.desc.trim()}</p>}
+              </div>
             )}
           </div>
+
+          {ribbon.length > 0 && (
+            <div className="ribbon tier2" aria-hidden="true">
+              {ribbon.map((s) => (
+                <div key={s.p.start} className={`seg ${s.state}`} style={{ flexGrow: s.grow }}>
+                  {s.state === "now" && <i className="fill" style={{ width: `${s.ratio * 100}%` }} />}
+                  <span className="st mono">{hhmm(s.p.start, locale)}{s.state === "now" ? ` · ${t("search.onAir")}` : ""}</span>
+                  <span className="sn ellipsis">{s.p.title}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="pdock tier2">
+            <button className="dbtn" aria-label={t("player.pause")} onClick={togglePlay}>
+              <Icon name={state === "paused" ? "play" : "pause"} size={22} fill /><span className="lbl">{t("player.pause")}</span>
+            </button>
+            <button className="dbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={22} /><span className="lbl">{t("a11y.volume")}</span></button>
+            <button className={`dbtn${panel === "tracks" ? " on" : ""}`} aria-label={t("player.tracks")} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={22} /><span className="lbl">{t("player.tracks")}</span></button>
+            <button className={`dbtn${panel === "display" ? " on" : ""}`} aria-label={t("player.display")} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={22} /><span className="lbl">{t("player.display")}</span></button>
+            <button className={`dbtn${panel === "channels" ? " on" : ""}`} aria-label={t("player.channels")} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={22} /><span className="lbl">{t("player.channels")}</span></button>
+            {source?.id != null && target.channel && (
+              <button
+                className={`dbtn${isFav ? " fav" : ""}`} aria-pressed={isFav} aria-label={t(isFav ? "common.removeFav" : "common.addFav")}
+                onClick={() => void toggleFavorite({ profile: prefs.profileId, sourceId: source.id!, kind: "live", refId: target.refId, name: target.title, image: target.image ?? null })}
+              ><Icon name="heart" size={22} fill={isFav} /><span className="lbl">{t(isFav ? "common.removeFav" : "common.addFav")}</span></button>
+            )}
+            <button className={`dbtn${panel === "player" || panel === "stats" ? " on" : ""}`} aria-label={t("player.player")} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={22} /><span className="lbl">{t("player.player")}</span></button>
+            <button className="dbtn" aria-label={t("player.pip")} onClick={() => void pip()}><Icon name="pip" size={22} /><span className="lbl">{t("player.pip")}</span></button>
+            <button className="dbtn" aria-label={t("player.fullscreen")} onClick={() => void toggleOsFull()}><Icon name="full" size={22} /><span className="lbl">{t("player.fullscreen")}</span></button>
+            <button className="dbtn" aria-label={t("common.close")} onClick={() => void leaveFull()}><Icon name="x" size={22} /><span className="lbl">{t("common.close")}</span></button>
+            <span className="phint">{t("player.osdHint")}</span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className={`pbot${full ? " vod" : ""}`}>
+          {full && skipOffer?.next && skipNext && panel === null && (
+            <div className="pnextep">
+              <button className="nx" onClick={(e) => { e.stopPropagation(); skipRef.current(); }}>
+                <span className="th"><Img src={skipNext.image} />{skipNext.episode != null && <span className="ep">{t("common.episodeShort", { n: skipNext.episode })}</span>}</span>
+                <span className="tx">
+                  <span className="nx-t">{t("player.nextEpisode")}</span>
+                  <b className="ellipsis">{skipNext.title}</b>
+                  {skipNext.subtitle && <span className="ellipsis nx-s">{skipNext.subtitle}</span>}
+                </span>
+              </button>
+            </div>
+          )}
+          {full && cur.d > 0 && (
+            <div className="seek-wrap">
+              <div className="seek mono">
+                <div className="bar" onClick={onSeekBar} onMouseMove={onSeekHover} onMouseLeave={() => setHoverT(null)} role="slider" aria-label={t("a11y.position")} aria-valuenow={Math.round(vodRatio * 100)}>
+                  <div className="buf" style={{ width: `${(cur.buf / cur.d) * 100}%` }} />
+                  <div className="fill" style={{ width: `${vodRatio * 100}%` }} />
+                  <div className="knob" style={{ insetInlineStart: `${vodRatio * 100}%` }} />
+                  {hoverT && <span className="bubble" style={{ insetInlineStart: `${hoverT.f * 100}%` }}>{fmtClock(hoverT.f * cur.d)}</span>}
+                </div>
+              </div>
+              <div className="seek-meta mono">
+                <span>{fmtClock(cur.t)}</span>
+                <span className="mid">{t("player.remainingEnds", { rest: fmtDuration(Math.max(0, cur.d - cur.t)), time: hhmm(Date.now() + Math.max(0, cur.d - cur.t) * 1000, locale) })}</span>
+                <span>{fmtClock(cur.d)}</span>
+              </div>
+            </div>
+          )}
+          <div className="pctl">
+            <div className="grp">
+              {full && <button className="pbtn" aria-label={t("player.back10")} onClick={() => seekBy(-10)}><Icon name="rew" size={22} /></button>}
+              <button className={full ? "pbtn big" : "pbtn"} aria-label={t("player.pause")} onClick={togglePlay}>
+                <Icon name={state === "paused" ? "play" : "pause"} size={full ? 26 : 20} fill />
+              </button>
+              {full && <button className="pbtn" aria-label={t("player.fwd10")} onClick={() => seekBy(10)}><Icon name="fwd" size={22} /></button>}
+              {full && skipNext && target.kind === "episode" && (
+                <button className="pbtn" aria-label={t("player.nextEpisode")} onClick={() => usePlayer.getState().open(skipNext, "full")}><Icon name="chevron" size={22} /></button>
+              )}
+              <button className="pbtn" aria-label={t("a11y.volume")} onClick={toggleMute}><Icon name={videoRef.current?.muted ? "mute" : "volume"} size={20} /></button>
+            </div>
+            <div className="grp">
+              {full ? (
+                <>
+                  <button className={`popt${panel === "tracks" ? " on" : ""}`} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={18} />{t("player.tracks")}</button>
+                  <button className={`popt${panel === "display" ? " on" : ""}`} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={18} />{t("player.display")}</button>
+                  <button className={`popt${panel === "player" || panel === "stats" ? " on" : ""}`} onClick={() => setPanel(panel === "player" ? null : "player")}><Icon name="info" size={18} />{t("player.player")}</button>
+                  <button className="pbtn" aria-label={t("player.pip")} onClick={() => void pip()}><Icon name="pip" size={20} /></button>
+                  <button className="pbtn" aria-label={t("player.fullscreen")} onClick={() => void toggleOsFull()}><Icon name="full" size={20} /></button>
+                  <button className="pbtn" aria-label={t("common.close")} onClick={() => void leaveFull()}><Icon name="x" size={20} /></button>
+                </>
+              ) : (
+                <button className="pbtn" aria-label={t("player.fullscreen")} onClick={goFull}><Icon name="full" size={20} /></button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {full && panel && panel !== "channels" && (
         <aside className="pside" aria-label={t("player.player")}>
@@ -964,13 +1069,47 @@ export function PlayerHost() {
   );
 }
 
+/** Programme en cours d'une chaîne de la liste (lu au guide local, mis en cache 60 s). */
+const rowNowCache = new Map<string, { at: number; title: string; ratio: number }>();
+function useRowNow(cid: number, epg: string | null): { title: string; ratio: number } | null {
+  const [v, setV] = useState<{ title: string; ratio: number } | null>(() => {
+    const hit = epg ? rowNowCache.get(`${cid}:${epg}`) : undefined;
+    return hit && Date.now() - hit.at < 60_000 ? hit : null;
+  });
+  useEffect(() => {
+    if (!epg) { setV(null); return; }
+    const key = `${cid}:${epg}`;
+    const hit = rowNowCache.get(key);
+    if (hit && Date.now() - hit.at < 60_000) { setV(hit); return; }
+    let dead = false;
+    void nowNext(cid, [epg]).then((m) => {
+      const n = m.get(epg)?.now;
+      const r = n ? { at: Date.now(), title: n.title, ratio: Math.min(1, Math.max(0, (Date.now() - n.start) / Math.max(1, n.end - n.start))) } : null;
+      if (r) rowNowCache.set(key, r);
+      if (!dead) setV(r);
+    }).catch(() => {});
+    return () => { dead = true; };
+  }, [cid, epg]);
+  return v;
+}
+
 /** Ligne de la liste « Chaînes » : mémoïsée, seule la chaîne courante change d'état au zapping. */
-const ChannelRowBtn = memo(function ChannelRowBtn({ c, on, onPick }: { c: ChannelRow; on: boolean; onPick: (c: ChannelRow) => void }) {
+const ChannelRowBtn = memo(function ChannelRowBtn({ c, cid, on, onPick }: { c: ChannelRow; cid: number; on: boolean; onPick: (c: ChannelRow) => void }) {
+  const t = useT();
+  const now = useRowNow(cid, c.epg);
   return (
     <button className="opt ch" role="radio" aria-checked={on} data-cur={on ? "1" : undefined} onClick={() => onPick(c)}>
-      <span className="logo" aria-hidden="true"><Img src={c.logo} contain /></span>
       <span className="num">{c.num}</span>
-      <span className="ellipsis nm">{c.display}</span>
+      <span className="logo" aria-hidden="true">
+        <span className="ini">{(c.display.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span>
+        <Img src={c.logo} contain />
+      </span>
+      <span className="tx">
+        <span className="ellipsis nm">{c.display}</span>
+        {now && <span className="ellipsis now">{now.title}</span>}
+        {now && <span className="trk"><i style={{ width: `${now.ratio * 100}%` }} /></span>}
+      </span>
+      {on && <span className="badge">{t("search.onAir")}</span>}
     </button>
   );
 });
@@ -979,17 +1118,26 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const t = useT();
   const [rows, setRows] = useState<ChannelRow[]>([]);
   const cur = usePlayer((s) => s.target);
+  const sources = useSources((s) => s.list);
+  const source = sources.find((s) => s.id === cur?.sourceId);
   const list = useRef<VListHandle>(null);
   const curId = cur?.refId;
-  // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
+  // Onglets : « Chaînes » (catégorie choisie) ou « Favoris » (filtre favoris existant).
+  const [tab, setTab] = useState<"all" | "fav">("all");
+  const favs = useFavorites(source, "live");
   // Catégorie de la chaîne en cours si aucune n'a été choisie (lancée depuis l'accueil, la recherche…).
-  const effCat = cat ?? cur?.channel?.catExt ?? null;
-  const [catLabel, setCatLabel] = useState<string | null>(null);
-  useEffect(() => { void channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray().then(setRows); }, [cid, effCat]);
+  const [catSel, setCatSel] = useState<string | null | undefined>(undefined);
+  const effCat = catSel !== undefined ? catSel : cat ?? cur?.channel?.catExt ?? null;
+  const cats = useCategories(source, "live");
   useEffect(() => {
-    if (effCat == null) { setCatLabel(null); return; }
-    void db.categories.where("[sourceId+kind]").equals([cid, "live"]).filter((c) => c.extId === effCat).first().then((c) => setCatLabel(c?.label ?? null));
-  }, [cid, effCat]);
+    if (tab === "fav") {
+      void Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([cid, f.refId]).first()))
+        .then((r) => setRows(r.filter((x): x is ChannelRow => !!x && !x.sep)));
+      return;
+    }
+    // Toute la catégorie (plafond large) : la chaîne regardée peut être loin du début (ex. n° 10965).
+    void channelsCol(cid, effCat).filter((c) => !c.sep).limit(5000).toArray().then(setRows);
+  }, [cid, effCat, tab, favs]);
   // Liste virtualisée : seules les lignes visibles existent dans le DOM (jusqu'à 5000 chaînes).
   const arr = useMemo(() => arrayRows(rows), [rows]);
   const pick = useCallback((c: ChannelRow) => {
@@ -1015,9 +1163,27 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   }, [rows, curId]);
   return (
     <aside className="pside pch" aria-label={t("player.channels")}>
-      <div className="grp-t">{(catLabel ?? t("player.channels")).toUpperCase()} · {rows.length}</div>
-      <VList ref={list} rows={arr} rowH={58} className="vlist pch-list" label={t("player.channels")}
-        render={(c) => (c ? <ChannelRowBtn c={c} on={curId === c.streamId} onPick={pick} /> : null)} />
+      <div className="pch-head">
+        <h3>{t("player.channels")}</h3>
+        <div className="pch-tabs" role="tablist" aria-label={t("player.channels")}>
+          <button role="tab" aria-selected={tab === "all"} onClick={() => { centered.current = false; setTab("all"); }}>{t("player.channels")}</button>
+          <button role="tab" aria-selected={tab === "fav"} onClick={() => setTab("fav")}>{t("common.favorites")}</button>
+        </div>
+      </div>
+      <div className="pch-body">
+        {tab === "all" && (
+          <div className="pch-cats" role="group" aria-label={t("common.categories")}>
+            <button className={`cat${effCat == null ? " on" : ""}`} onClick={() => { centered.current = true; setCatSel(null); }}><span className="ellipsis">{t("common.allCategories")}</span></button>
+            {(cats ?? []).map((c) => (
+              <button key={c.extId} className={`cat${effCat === c.extId ? " on" : ""}`} onClick={() => { centered.current = true; setCatSel(c.extId); }}>
+                <span className="ellipsis">{c.label}</span><span className="n">{c.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <VList ref={list} rows={arr} rowH={76} className="vlist pch-list" label={t("player.channels")}
+          render={(c) => (c ? <ChannelRowBtn c={c} cid={cid} on={curId === c.streamId} onPick={pick} /> : null)} />
+      </div>
     </aside>
   );
 }

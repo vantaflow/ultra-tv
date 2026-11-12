@@ -11,7 +11,11 @@ export default defineConfig({
   // Chemins relatifs : l'appli est servie telle quelle depuis app://, un hébergement
   // statique ou un sous-dossier.
   base: "./",
-  define: { "import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version) },
+  define: {
+    "import.meta.env.VITE_APP_VERSION": JSON.stringify(pkg.version),
+    // « 1 » seulement pour les rendus de contrôle (scripts/screens.mjs) : sinon le chargeur de données fictives est éliminé du build.
+    "import.meta.env.VITE_DEMO": JSON.stringify(process.env.VITE_DEMO === "1" ? "1" : ""),
+  },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   worker: { format: "es" },
   server: { port: 5173, host: true },

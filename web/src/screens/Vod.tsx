@@ -2,7 +2,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
-import { moviesCol, searchByWords, seriesCol, type VodSort } from "@/db/queries";
+import { historyOf, moviesCol, searchByWords, seriesCol, type VodSort } from "@/db/queries";
 import { filterActive, matchesFilter, NO_FILTER, PERIODS, RATINGS, type VodFilter } from "@/lib/vodFilter";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
 import { useCategories, useFavorites } from "@/hooks/data";
@@ -19,6 +19,9 @@ import { PosterCard, PosterSkeleton } from "@/ui/Poster";
 import { Seg } from "@/ui/common";
 import { VGrid, arrayRows, type Rows } from "@/ui/Virtual";
 import { useIsWatchedMovie } from "@/trakt/hooks";
+import { fmtDuration } from "@/lib/text";
+import { Img } from "@/ui/Img";
+import { resumeOf } from "./Home";
 import { EmptyCatalog, NoSource } from "./states";
 
 export function VodScreen({ kind }: { kind: "movie" | "series" }) {
@@ -106,7 +109,7 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
         </div>
       </div>
       {cat === "" && !arrayMode && !narrowed && (cats?.length ?? 0) > 0 ? (
-        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={sort}
+        <CategoryRows source={source} kind={kind} cats={cats!} favSet={favSet} sort={sort} head={<VodTop source={source} kind={kind} onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />}
           onSeeAll={(id) => prefs.set({ liveCat: { ...prefs.liveCat, [key]: id } })}
           onOpen={(id) => nav(`/${kind === "movie" ? "movie" : "serie"}/${id}`)} />
       ) : rows.count === 0 ? <div className="state-card"><p>{t("vod.empty")}</p></div> : (
@@ -152,8 +155,8 @@ export function sortHits<T extends { rating: number; added: number; ord: number 
 }
 
 /** Vue « Tout » : une rangée défilante par catégorie (20 premiers selon le tri choisi), « Voir tout » ouvre la grille. Chargement progressif. */
-function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen }: {
-  source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>; sort: VodSort;
+function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen, head }: {
+  source: Source; kind: "movie" | "series"; cats: CategoryRow[]; favSet: Set<number>; sort: VodSort; head?: ReactNode;
   onSeeAll: (extId: string) => void; onOpen: (id: number) => void;
 }) {
   const [shown, setShown] = useState(8);
@@ -167,6 +170,7 @@ function CategoryRows({ source, kind, cats, favSet, sort, onSeeAll, onOpen }: {
   }, [cats.length]);
   return (
     <div className="cat-rows">
+      {head}
       {cats.slice(0, shown).map((c) => <LazyRow key={c.extId}><CategoryRowView source={source} kind={kind} cat={c} favSet={favSet} sort={sort} onSeeAll={onSeeAll} onOpen={onOpen} /></LazyRow>)}
       <div ref={sentinel} style={{ height: 1 }} />
     </div>
@@ -230,5 +234,56 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
         )}
       </HScroll>
     </section>
+  );
+}
+
+/** En-tête de la vue « Tout » : « À la une » (le mieux noté avec affiche) puis « Reprendre » (historique du même type). */
+function VodTop({ source, kind, onOpen }: { source: Source; kind: "movie" | "series"; onOpen: (id: number) => void }) {
+  const t = useT();
+  const { profileId } = usePrefs();
+  const best = useLiveQuery(async () => {
+    const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
+    return table.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).first();
+  }, [source.cid, kind]);
+  const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => (kind === "movie" ? h.kind === "movie" : h.kind === "series") && h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id, kind]) ?? [];
+  const id = best ? (kind === "movie" ? (best as MovieRow).streamId : (best as SeriesRow).seriesId) : 0;
+  const backdrop = best && kind === "series" ? (best as SeriesRow).backdrop : null;
+  const plot = best && kind === "series" ? (best as SeriesRow).plot : null;
+  return (
+    <>
+      {best && (
+        <section className="hero vod-hero" aria-label={t("home.featured")}>
+          <div className="art" aria-hidden="true">
+            {backdrop ? <div className="slide-bg" style={{ backgroundImage: `url("${backdrop.replace(/"/g, "%22")}")` }} /> : <Img src={best.poster} contain />}
+          </div>
+          <div className="meta">
+            <span className="badge-live">{t("home.featured")}</span>
+            <span>{[best.year, best.rating > 0 ? `★ ${best.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}</span>
+          </div>
+          <h2>{best.title}</h2>
+          {plot && <p className="hero-plot clamp-2">{plot}</p>}
+          <div className="actions">
+            <button className="btn primary lg" onClick={() => onOpen(id)}><Icon name="play" size={20} fill />{t("common.watch")}</button>
+          </div>
+        </section>
+      )}
+      {hist.length > 0 && (
+        <section>
+          <h2 className="cat-title">{t("home.resume")}</h2>
+          <HScroll className="cat-row-scroll">
+            {hist.map((h) => (
+              <button key={h.key} className="resume-card" onClick={() => resumeOf(source, h)}>
+                <Img src={h.image} />
+                <span className="rc-tx">
+                  <b className="clamp-2">{h.title}</b>
+                  <span className="s ellipsis">{t("common.minLeft", { t: fmtDuration(h.dur - h.pos) })}</span>
+                </span>
+                <span className="progress"><i style={{ width: `${(h.pos / h.dur) * 100}%` }} /></span>
+              </button>
+            ))}
+          </HScroll>
+        </section>
+      )}
+    </>
   );
 }

@@ -19,10 +19,11 @@
 .btn.primary:hover, .btn.primary:focus-visible { filter: none; background: var(--text-2); color: var(--bg); }
 .btn.accent:hover, .btn.accent:focus-visible { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 3px var(--sel-bg); }
 .btn.danger:hover { color: var(--sel-ink); }
-.chip[aria-selected="true"], .chip.on { background: var(--accent); color: var(--on-accent); }
-.chip[aria-selected="true"]:hover { background: var(--accent); color: var(--on-accent); box-shadow: 0 0 0 2px var(--sel-bg); }
+.chip { background: var(--surface); }
+.chip[aria-selected="true"], .chip.on { background: var(--sel-bg); color: var(--sel-ink); }
 .badge-live { border-radius: 999px; padding: 0.25rem 0.75rem; }
-.seg button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+.seg { background: var(--surface); }
+.seg button[aria-checked="true"] { background: var(--sel-bg); color: var(--sel-ink); }
 .seg button:hover:not([aria-checked="true"]), .seg button:focus-visible:not([aria-checked="true"]) { background: var(--sel-bg); color: var(--sel-ink); }
 .input, .search-box .input { background: var(--surface-2); }
 

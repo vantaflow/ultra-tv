@@ -49,13 +49,29 @@ export function Settings() {
   const { section } = useParams();
   const cur = (SECTIONS.find((s) => s.id === section)?.id ?? "sources") as Section;
   const label = (id: Section) => t(({ sources: "set.sources", cloud: "set.cloud", display: "set.display", playback: "set.playback", sync: "set.sync", categories: "set.categories", language: "set.language", profiles: "set.profiles", about: "set.about" } as const)[id]);
+  const prefs = usePrefs();
+  // Résumé sous chaque rubrique : valeur courante quand elle est courte, sinon une phrase d'aide.
+  const summary = (id: Section): string => {
+    switch (id) {
+      case "display": return t(prefs.theme === "dark" ? "set.themeDark" : prefs.theme === "light" ? "set.themeLight" : "set.themeAuto");
+      case "language": return LANGS.find((l) => l.code === prefs.lang)?.label ?? "";
+      case "about": return `v${bridge()?.version ?? "web"}`;
+      case "sources": return t("set.sub.sources");
+      case "cloud": return t("set.sub.cloud");
+      case "playback": return t("set.sub.playback");
+      case "sync": return t("set.sub.sync");
+      case "categories": return t("set.sub.categories");
+      default: return t("set.sub.profiles");
+    }
+  };
   return (
     <div className="settings">
       <nav className="nav" aria-label={t("set.title")}>
         <h1>{t("set.title")}</h1>
         {SECTIONS.map((s) => (
           <button key={s.id} className={`nav-item${cur === s.id ? " on" : ""}`} onClick={() => nav(`/settings/${s.id}`)}>
-            <Icon name={s.icon} size={22} />{label(s.id)}
+            <span className="ico"><Icon name={s.icon} size={22} /></span>
+            <span className="tx"><span className="lb">{label(s.id)}</span><span className="sb ellipsis">{summary(s.id)}</span></span>
           </button>
         ))}
       </nav>

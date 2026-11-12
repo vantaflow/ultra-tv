@@ -518,5 +518,21 @@
   "trailer.errNotFound": "Este tráiler ya no está disponible (eliminado o privado).",
   "trailer.errEmbed": "El propietario de este vídeo no permite reproducirlo fuera de YouTube.",
   "trailer.errConfig": "Este tráiler no se puede reproducir en la aplicación por ahora.",
-  "trailer.errUnknown": "No se pudo reproducir el tráiler."
+  "trailer.errUnknown": "No se pudo reproducir el tráiler.",
+  "player.nowLabel": "AHORA",
+  "player.favPill": "Favorito",
+  "player.remainingEnds": "Quedan {rest} · termina a las {time}",
+  "home.greetMorning": "Buenos días",
+  "home.greetAfternoon": "Buenas tardes",
+  "home.greetEvening": "Buenas noches",
+  "home.stats": "· {live} canales · {movies} películas · {series} series",
+  "home.tonight": "Esta noche",
+  "home.shortcuts": "Accesos directos",
+  "home.liveNow": "En directo ahora",
+  "set.sub.sources": "Suscripciones IPTV",
+  "set.sub.cloud": "Cuenta y dispositivos",
+  "set.sub.playback": "Reproductor, calidad, directo",
+  "set.sub.sync": "Catálogo y guía",
+  "set.sub.categories": "Categorías mostradas",
+  "set.sub.profiles": "Perfiles e historial"
 }

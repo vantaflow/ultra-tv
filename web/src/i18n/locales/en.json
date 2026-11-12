@@ -508,5 +508,21 @@
   "trailer.errNotFound": "This trailer is no longer available (removed or private).",
   "trailer.errEmbed": "The owner of this video does not allow it to be played outside YouTube.",
   "trailer.errConfig": "This trailer cannot be played in the app right now.",
-  "trailer.errUnknown": "The trailer could not be played."
+  "trailer.errUnknown": "The trailer could not be played.",
+  "player.nowLabel": "NOW",
+  "player.favPill": "Favorite",
+  "player.remainingEnds": "{rest} left · ends at {time}",
+  "home.greetMorning": "Good morning",
+  "home.greetAfternoon": "Good afternoon",
+  "home.greetEvening": "Good evening",
+  "home.stats": "· {live} channels · {movies} movies · {series} series",
+  "home.tonight": "Tonight",
+  "home.shortcuts": "Shortcuts",
+  "home.liveNow": "Live now",
+  "set.sub.sources": "IPTV subscriptions",
+  "set.sub.cloud": "Account and devices",
+  "set.sub.playback": "Player, quality, live",
+  "set.sub.sync": "Catalogue and guide",
+  "set.sub.categories": "Shown categories",
+  "set.sub.profiles": "Profiles and history"
 }

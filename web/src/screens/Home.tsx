@@ -7,6 +7,7 @@ import { channelsCol, historyOf } from "@/db/queries";
 import type { ChannelRow, HistoryRow, Source } from "@/db/types";
 import { useFavorites } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
+import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { fmtDuration } from "@/lib/text";
 import { usePlayer } from "@/player/store";
@@ -36,7 +37,27 @@ function FavChannel({ source, ch }: { source: Source; ch: ChannelRow }) {
   );
 }
 
-function resumeOf(source: Source, h: HistoryRow) {
+function LiveNowCard({ source, ch }: { source: Source; ch: ChannelRow }) {
+  const { lang } = usePrefs();
+  const nn = useNowNext(source, ch.epg, ch.streamId, false);
+  const p = nn.now;
+  const ratio = p ? Math.min(1, Math.max(0, (Date.now() - p.start) / Math.max(1, p.end - p.start))) : 0;
+  return (
+    <button className="live-card" onClick={() => usePlayer.getState().open(channelTarget(source, ch), "full", null)}>
+      <span className="lc-head">
+        <span className="lc-logo" aria-hidden="true"><span className="ini">{(ch.display.match(/[\p{L}\p{N}]/gu) ?? []).slice(0, 2).join("").toUpperCase()}</span><Img src={ch.logo} contain /></span>
+        <span className="lc-id">
+          <b className="ellipsis">{ch.num} · {ch.display}</b>
+          <span className="ellipsis s mono">{p ? `${hhmm(p.start, lang)} – ${hhmm(p.end, lang)}` : ""}</span>
+        </span>
+      </span>
+      <span className="ellipsis lc-title">{p?.title ?? ""}</span>
+      <span className="lc-trk"><i style={{ width: `${ratio * 100}%` }} /></span>
+    </button>
+  );
+}
+
+export function resumeOf(source: Source, h: HistoryRow) {
   const open = usePlayer.getState().open;
   if (h.kind === "movie") open(movieTarget(source, { streamId: h.refId, title: h.title, poster: h.image, ext: h.ext ?? "mp4" }, h.pos), "full");
   else open({
@@ -139,9 +160,31 @@ function HomeInner({ source }: { source: Source }) {
   }, [heroCount, heroPaused, animations]);
   const slide = heroIdx % heroCount === 0 ? null : heroSeries[(heroIdx % heroCount) - 1] ?? null;
 
+  const now = useNow(30_000);
+  const hour = new Date(now).getHours();
+  const greet = t(hour < 12 ? "home.greetMorning" : hour < 18 ? "home.greetAfternoon" : "home.greetEvening");
+  const liveRow = useLiveQuery(async () => {
+    if (favChans.length >= 5) return favChans.slice(0, 5);
+    const extra = await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg).limit(8).toArray();
+    return [...favChans, ...extra.filter((c) => !favChans.some((f) => f.streamId === c.streamId))].slice(0, 5);
+  }, [favChans, source.cid]) ?? [];
+  const shortcuts: { to: string; icon: "live" | "guide" | "movies" | "series" | "heart"; label: string; sub: string }[] = [
+    { to: "/live", icon: "live", label: t("nav.live"), sub: t("common.channelsCount", { count: source.counts.live }) },
+    { to: "/guide", icon: "guide", label: t("nav.guide"), sub: t("home.tonight") },
+    { to: "/movies", icon: "movies", label: t("nav.movies"), sub: source.counts.movie.toLocaleString(lang) },
+    { to: "/series", icon: "series", label: t("nav.series"), sub: source.counts.series.toLocaleString(lang) },
+    { to: "/favorites", icon: "heart", label: t("nav.favorites"), sub: String(favs.length) },
+  ];
+
   if (!source.cid) return <EmptyCatalog />;
   return (
-    <div className="page">
+    <div className="page home">
+      <header className="home-head">
+        <h1>{greet}</h1>
+        <span className="home-stats">{t("home.stats", { live: source.counts.live.toLocaleString(lang), movies: source.counts.movie.toLocaleString(lang), series: source.counts.series.toLocaleString(lang) })}</span>
+        <span className="home-clock mono">{hhmm(now, lang)}</span>
+      </header>
+      <div className="home-top">
       <section className="hero" aria-label={t("home.featured")}
         onMouseEnter={() => setHeroPaused(true)} onMouseLeave={() => setHeroPaused(false)}
         onFocus={() => setHeroPaused(true)} onBlur={() => setHeroPaused(false)}>
@@ -179,16 +222,35 @@ function HomeInner({ source }: { source: Source }) {
           </div>
         )}
       </section>
+      <nav className="shortcuts" aria-label={t("home.shortcuts")}>
+        {shortcuts.map((c, i) => (
+          <button key={c.to} className={i === 0 ? "first" : ""} onClick={() => nav(c.to)}>
+            <Icon name={c.icon} size={22} />
+            <span><b>{c.label}</b><span className="s">{c.sub}</span></span>
+          </button>
+        ))}
+      </nav>
+      </div>
+
+      {liveRow.length > 0 && (
+        <section>
+          <h2 className="section-title">{t("home.liveNow")}</h2>
+          <div className="live-row">{liveRow.map((c) => <LiveNowCard key={c.id} source={source} ch={c} />)}</div>
+        </section>
+      )}
 
       {hist.length > 0 && (
         <section>
           <h2 className="section-title">{t("home.resume")}</h2>
           <HScroll className="row-scroll">
             {hist.map((h) => (
-              <button key={h.key} className="thumb-card" onClick={() => resumeOf(source, h)}>
-                <span className="t"><Img src={h.image} /><span className="progress"><i style={{ width: `${(h.pos / h.dur) * 100}%` }} /></span></span>
-                <b className="ellipsis">{h.title}</b>
-                <span className="s">{h.kind === "series" && h.season ? `${t("common.season", { n: h.season })} · ${t("common.episodeShort", { n: h.episode ?? 0 })} · ` : ""}{t("common.minLeft", { t: fmtDuration(h.dur - h.pos) })}</span>
+              <button key={h.key} className="resume-card" onClick={() => resumeOf(source, h)}>
+                <Img src={h.image} />
+                <span className="rc-tx">
+                  <b className="clamp-2">{h.title}</b>
+                  <span className="s ellipsis">{h.kind === "series" && h.season ? `${t("common.season", { n: h.season })} · ${t("common.episodeShort", { n: h.episode ?? 0 })} · ` : ""}{t("common.minLeft", { t: fmtDuration(h.dur - h.pos) })}</span>
+                </span>
+                <span className="progress"><i style={{ width: `${(h.pos / h.dur) * 100}%` }} /></span>
               </button>
             ))}
           </HScroll>
@@ -201,13 +263,6 @@ function HomeInner({ source }: { source: Source }) {
       <TraktRowSection title={t("home.traktTrending")} rows={trakt.trending} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktPopular")} rows={trakt.popular} seen={seen} onOpen={openTrakt} />
       {trakt.lists.map((l) => <TraktRowSection key={l.id} title={t("home.traktList", { name: l.name })} rows={l.rows} seen={seen} onOpen={openTrakt} />)}
-
-      {favChans.length > 0 && (
-        <section>
-          <h2 className="section-title">{t("home.favChannels")}</h2>
-          <HScroll className="row-scroll">{favChans.map((c) => <FavChannel key={c.id} source={source} ch={c} />)}</HScroll>
-        </section>
-      )}
 
       {because && because.list.length >= MIN_LOCAL_ROW && (
         <PosterSection title={t("home.because", { t: because.title })} items={because.list.map((m) => ({ key: m.id!, kind: "movie" as const, title: m.title, year: m.year, image: m.poster, open: () => nav(`/movie/${m.streamId}`), watched: seen(m.title, m.year) }))} />

@@ -519,5 +519,21 @@
   "trailer.errNotFound": "Ten zwiastun jest już niedostępny (usunięty lub prywatny).",
   "trailer.errEmbed": "Właściciel tego filmu nie zezwala na jego odtwarzanie poza YouTube.",
   "trailer.errConfig": "Tego zwiastuna nie można teraz odtworzyć w aplikacji.",
-  "trailer.errUnknown": "Nie udało się odtworzyć zwiastuna."
+  "trailer.errUnknown": "Nie udało się odtworzyć zwiastuna.",
+  "player.nowLabel": "TERAZ",
+  "player.favPill": "Ulubiona",
+  "player.remainingEnds": "Zostało {rest} · koniec o {time}",
+  "home.greetMorning": "Dzień dobry",
+  "home.greetAfternoon": "Dzień dobry",
+  "home.greetEvening": "Dobry wieczór",
+  "home.stats": "· {live} kanałów · {movies} filmów · {series} seriali",
+  "home.tonight": "Dziś wieczorem",
+  "home.shortcuts": "Skróty",
+  "home.liveNow": "Teraz na żywo",
+  "set.sub.sources": "Subskrypcje IPTV",
+  "set.sub.cloud": "Konto i urządzenia",
+  "set.sub.playback": "Odtwarzacz, jakość, na żywo",
+  "set.sub.sync": "Katalog i przewodnik",
+  "set.sub.categories": "Wyświetlane kategorie",
+  "set.sub.profiles": "Profile i historia"
 }
