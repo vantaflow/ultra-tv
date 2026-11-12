@@ -87,7 +87,13 @@ class CloudSyncManager @Inject constructor(
      * (`failed`), un jeton révoqué est signalé par `NotPaired` dans le résultat.
      */
     suspend fun sync(force: Boolean = false): Result = mutex.withLock {
-        if (!tokens.isPaired) return Result.NotPaired
+        if (!tokens.isPaired) {
+            // Jeton déjà effacé par un refus du serveur (version précédente, ou appel TMDB / notes refusé avant la synchro)
+            // alors que des sources liées au cloud sont encore là : c'est une révocation jamais appliquée. Un
+            // dé-appairage depuis les Réglages efface aussi les liens (forget), il n'est donc pas concerné.
+            if (hasCloudLinkedSources()) onRevoked()
+            return Result.NotPaired
+        }
         val base = workerBase() ?: return Result.Failed
         _state.value = _state.value.copy(syncing = true, failed = false)
         try {
@@ -436,6 +442,9 @@ class CloudSyncManager @Inject constructor(
         } catch (t: Throwable) { false }
     }
 
+    private suspend fun hasCloudLinkedSources(): Boolean =
+        runCatching { repo.observeProviders().first().any { links.cloudIdOf(it.id) != null } }.getOrDefault(false)
+
     private suspend fun onRevoked() {
         val linked = repo.observeProviders().first().filter { links.cloudIdOf(it.id) != null }.map { it.id }
         linked.forEach { runCatching { removeLocal(it) } }
@@ -450,7 +459,7 @@ class CloudSyncManager @Inject constructor(
     @Volatile private var lastForegroundCheck = 0L
     suspend fun syncOnForeground() {
         val now = System.currentTimeMillis()
-        if (!tokens.isPaired || now - lastForegroundCheck < 2 * 60_000L) return
+        if (now - lastForegroundCheck < 2 * 60_000L) return
         lastForegroundCheck = now
         sync()
     }
