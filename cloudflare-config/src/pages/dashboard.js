@@ -203,7 +203,7 @@ ${SCAN_JS}
   // Premiers pas : visibles tant que le compte n'a ni appareil ni source.
   const gettingStarted = !devices.length || !providers.length
     ? `<section class="panel" aria-labelledby="h-start"><h2 id="h-start">Pour bien démarrer</h2><p class="sub">Deux étapes suffisent pour regarder tes chaînes.</p>
-<ol class="steps">${step(providers.length > 0, `<span>Ajoute une <a href="#ajouter">source</a> (Xtream Codes, playlist M3U ou portail Stalker).</span>`)}${step(devices.length > 0, `<span><a href="#appairer">Appaire ta TV</a> avec le code affiché à l'écran : elle reçoit tes sources toute seule.</span>`)}</ol></section>`
+<ol class="steps">${step(devices.length > 0, `<span><a href="#appairer">Appaire ta TV</a> avec le code affiché à l'écran : elle reçoit tes sources toute seule.</span>`)}${step(providers.length > 0, `<span>Ajoute une <a href="#ajouter">source</a> (Xtream Codes, playlist M3U ou portail Stalker).</span>`)}</ol></section>`
     : "";
   return shell(n, { title: `Ultra TV — ${acct.login}`, ctx: "user", spy: true, acct, admin, csrfInput, camera: true, extra: script, body: `
 ${msg}
@@ -211,12 +211,19 @@ ${msg}
     ? `Compte <strong>Ultra TV Pro</strong> : ${proDevices.length} appareil${proDevices.length > 1 ? "s" : ""} sous licence revendeur. Sources, appareils, abonnements et licences.`
     : "Ta configuration Ultra TV : sources, appareils et abonnements."}</p>
 <div class="tiles">
-<div class="tile hero"><b>${providers.length}</b><span>source${providers.length > 1 ? "s" : ""}</span></div>
-<div class="tile"><b>${devices.length}</b><span>appareil${devices.length > 1 ? "s" : ""} appairé${devices.length > 1 ? "s" : ""}</span></div>
+<div class="tile hero"><b>${devices.length}</b><span>appareil${devices.length > 1 ? "s" : ""} appairé${devices.length > 1 ? "s" : ""}</span></div>
+<div class="tile"><b>${providers.length}</b><span>source${providers.length > 1 ? "s" : ""}</span></div>
 ${isPro ? `<div class="tile${nextLic && nextLic < Date.now() ? " bad" : nextLic && nextLic - Date.now() < 15 * 86_400_000 ? " warn" : ""}"><b>${nextLic ? e(frDate(nextLic)) : "—"}</b><span>${nextLic ? "prochaine échéance de licence Pro" : "licence Pro : en attente de l'appareil"}</span></div>` : ""}
 <div class="tile" id="sub-tile"><b id="sub-n">${xtreamCount ? "…" : "—"}</b><span id="sub-l">${xtreamCount ? "abonnements : vérification" : "aucun abonnement Xtream"}</span></div>
 </div>
 ${gettingStarted}</section>
+
+<div class="section-h" id="appareils"><div class="sh-t"><h2 id="h-dev">Appareils <span class="count">${devices.length}</span></h2><p class="muted small">Les TV qui lisent ta configuration.</p></div></div>
+<section class="panel" id="appairer" aria-labelledby="h-pair"><h2 id="h-pair">Appairer un appareil</h2><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
+<ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol>
+${pairForm(csrfInput)}</section>
+${listbar("dev-list", "un appareil")}
+<div class="cards c2 mt16" id="dev-list">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div>
 
 <div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">Sources <span class="count">${providers.length}</span></h2><p class="muted small">Tes fournisseurs de chaînes, leur abonnement, et les appareils qui les reçoivent.</p></div><a class="button secondary" href="#ajouter">${ico("plus")}Ajouter une source</a></div>
 ${listbar("prov-list", "une source")}
@@ -241,13 +248,6 @@ ${listbar("prov-list", "une source")}
 <label for="sp">Mot de passe du portail <span class="hint">(facultatif)</span></label><input id="sp" name="password" type="password" maxlength="256" autocomplete="off"/>
 <div class="row"><button type="submit">${ico("plus")}Ajouter</button></div></form></div>
 <p class="secure">${ico("lock")}<span>Les identifiants sont chiffrés au repos et ne sont plus jamais réaffichés.</span></p></section>
-
-<div class="section-h" id="appareils"><div class="sh-t"><h2 id="h-dev">Appareils <span class="count">${devices.length}</span></h2><p class="muted small">Les TV qui lisent ta configuration.</p></div><a class="button secondary" href="#appairer">${ico("plus")}Appairer un appareil</a></div>
-${listbar("dev-list", "un appareil")}
-<div class="cards c2" id="dev-list">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>Aucun appareil</strong><span class="small">Appaire ta première TV avec le code affiché à l'écran.</span></div>`}</div>
-<section class="panel mt16" id="appairer" aria-labelledby="h-pair"><h2 id="h-pair">Appairer un appareil</h2><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
-<ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol>
-${pairForm(csrfInput)}</section>
 
 <div class="section-h" id="integrations"><span id="compte" class="anchor"></span><div class="sh-t"><h2>Intégrations</h2><p class="muted small">Services facultatifs reliés à ton compte : ils fonctionnent sur tous tes appareils, sans rien régler sur la TV.</p></div></div>
 <div class="two">

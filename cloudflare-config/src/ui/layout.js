@@ -50,8 +50,8 @@ export function layout(title, body, n, extra = "", camera = false, loc = {}) {
 // Navigation de l'espace utilisateur : ancres du tableau de bord.
 export const USER_NAV = [
   ["apercu", "Vue d'ensemble", "home"],
-  ["sources", "Sources", "list"],
   ["appareils", "Appareils", "tv"],
+  ["sources", "Sources", "list"],
   ["integrations", "Intégrations", "puzzle"],
   ["securite", "Compte", "shield"],
 ];
