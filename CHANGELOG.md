@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.99] — 2026-11-12 (Android) et bureau 1.2.48
+
 ### Ajouté
 - Android (TV) : **logo officiel du titre** (Fanart.tv) à la place du titre texte sur les fiches film et série et dans « À la une » de l'accueil, **fond HD** sur une fiche film qui n'en a pas ; le texte reste affiché tant que l'image manque.
 - Android (TV) : fiche série, ligne **« Prochain épisode : S2 É5 · titre · date »** (sinon « Série terminée » ou « Dernier épisode diffusé ») d'après TVmaze ; accueil, rangée **« Nouveaux épisodes »** (séries en cours ou favorites dont un épisode est sorti ces 7 derniers jours ou sort dans les 7 jours), réglable dans Réglages › Affichage.
@@ -15,7 +17,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Worker : relais pour les appareils appairés (clés côté serveur, réponses réduites, cache, débit limité) vers **Fanart.tv** (logo officiel du titre, fond HD ; secret `FANART_API_KEY`), **TVmaze** (épisodes précédent et prochain d'une série, sans clé) et **TheSportsDB** (écusson et compétition d'une équipe ; clé publique gratuite, ou secret `SPORTSDB_API_KEY`). Le proxy TMDB accepte `external_ids` (identifiants IMDb et TheTVDB).
 
 ### Corrigé
-- Android : un appareil révoqué depuis le tableau de bord retire les sources reçues du cloud (adresses et identifiants de l'abonnement), oublie l'appairage et l'indique ; les sources ajoutées à la main restent. La révocation est vue au retour sur l'appli et au plus toutes les 10 minutes (avant : au lancement suivant ou toutes les 6 h, et les sources restaient).
+- Android : plantage « Compose Runtime internal error » quand le contenu d'un écran disparaît d'un coup (sources retirées, liste rafraîchie) : le menu latéral renvoyait le focus vers la page en pleine recomposition (Fire TV et autres box).
+- Android (Sport) : équipes reconnues dans les titres « Compétition | Équipe A / Équipe B » (écussons affichés), un autre sport (« Ski alpin : Coupe du monde ») n'est plus classé en football, plus de minute de jeu fausse (le début du programme n'est pas le coup d'envoi), un même programme diffusé sur plusieurs chaînes n'apparaît qu'une fois.
+- Android (accueil) : plus de numéro de la source sur les cartes de chaînes (souvent propre à une catégorie : « 2 » partout), date des épisodes avec le mois (« mar. 17 nov. »).
+- Android : un appareil révoqué depuis le tableau de bord retire les sources reçues du cloud (adresses et identifiants de l'abonnement), oublie l'appairage et l'indique ; les sources ajoutées à la main restent. La révocation est vue au retour sur l'appli et au plus toutes les 10 minutes (avant : au lancement suivant ou toutes les 6 h, et les sources restaient) ; elle s'applique aussi à un appareil déjà révoqué avant cette version.
 
 ### Modifié
 - README et site : captures de la nouvelle interface réalisées avec un catalogue entièrement fictif (FR, EN, AR, bureau), bannière refaite, textes mis à jour (Sport, Fanart.tv, TVmaze, révocation).
