@@ -563,7 +563,7 @@ private fun Hero(
             }
             Text(
                 h.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 60.spx, lineHeight = 62.spx,
-                letterSpacing = (-1.5).spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                letterSpacing = (-0.75).sp, maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             HeroPlot(h, extras)
             Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {

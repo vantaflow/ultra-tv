@@ -444,7 +444,7 @@ private fun ProgramInfo(
         val isNow = p.startMs <= nowMs && p.endMs > nowMs
         val head = (if (isNow) "${D.nowBadge} · " else "") + "${ch.title} · ${EpgClock.range(p.startMs, p.endMs)}"
         Text(
-            head.uppercase(), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, letterSpacing = 1.5.spx,
+            head.uppercase(), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, letterSpacing = 0.75.sp,
             maxLines = 1, overflow = TextOverflow.Ellipsis,
             style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
         )
@@ -692,7 +692,7 @@ internal fun GuideTvContent(
             // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
             DayChip(D.nowButton, selected = false) { onDay(0) }
             Box(Modifier.padding(horizontal = 8.design).width(2.design).height(32.design).background(Ux.Line))
-            Text(D.categoryLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, letterSpacing = 1.5.spx, maxLines = 1, softWrap = false)
+            Text(D.categoryLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, letterSpacing = 0.75.sp, maxLines = 1, softWrap = false)
             val chipsState = rememberLazyListState()
             LaunchedEffect(groups.size) {
                 val i = groups.indexOfFirst { it.id == group }
