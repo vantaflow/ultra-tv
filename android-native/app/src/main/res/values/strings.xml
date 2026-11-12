@@ -473,6 +473,7 @@
     <string name="dsb1_rec_connection_busy">A recording is in progress on your only connection</string>
     <string name="dsb1_trailer_label">Trailer</string>
     <string name="dsb1_tmdb_attribution">This product uses the TMDB API but is not endorsed or certified by TMDB.</string>
+    <string name="dsb1_data_sources">Data sources</string>
     <string name="dsb1_trakt_watchlist">My Trakt watchlist</string>
     <string name="dsb1_trakt_recommended">Recommended for you (Trakt)</string>
     <string name="dsb1_trakt_trending">Trending (Trakt)</string>

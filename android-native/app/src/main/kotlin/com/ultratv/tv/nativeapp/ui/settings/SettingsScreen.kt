@@ -70,6 +70,7 @@ import com.ultratv.tv.nativeapp.data.prefs.SidebarPosition
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.dataSources
 import com.ultratv.tv.nativeapp.i18n.tmdbAttribution
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.AppViewModel
@@ -819,5 +820,17 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
     }
     // Attribution exigée par les conditions d'utilisation de l'API TMDB.
     androidx.tv.material3.Text(D.tmdbAttribution, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3)
+    // Sources des données : l'adresse est affichée en clair (sur TV un lien ne s'ouvre pas forcément) ; les lignes sont
+    // focalisables, ce qui fait défiler la page à la télécommande.
+    Spacer(Modifier.height(8.design))
+    androidx.tv.material3.Text(D.dataSources, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx)
+    SettingsCard {
+        PrefRow("TMDB", "themoviedb.org") { }
+        PrefRow("Fanart.tv", "fanart.tv") { }
+        PrefRow("TVmaze (CC BY-SA 4.0)", "tvmaze.com", hint = "https://creativecommons.org/licenses/by-sa/4.0/") { }
+        PrefRow("TheSportsDB", "thesportsdb.com") { }
+        PrefRow("OMDb", "omdbapi.com") { }
+        PrefRow("TheIntroDB", "theintrodb.org") { }
+    }
     com.ultratv.tv.nativeapp.update.UpdateDialog()
 }

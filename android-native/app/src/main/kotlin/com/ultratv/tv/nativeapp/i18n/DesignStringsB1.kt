@@ -37,6 +37,7 @@ val DesignStrings.recConnectionBusy get() = tx(R.string.dsb1_rec_connection_busy
 // Fiches enrichies TMDB
 val DesignStrings.trailerLabel get() = tx(R.string.dsb1_trailer_label)
 val DesignStrings.tmdbAttribution get() = tx(R.string.dsb1_tmdb_attribution)
+val DesignStrings.dataSources get() = tx(R.string.dsb1_data_sources)
 
 /** Locale de FORMATAGE (noms de jours, de langues, dates) alignée sur la langue de l'application, pas sur celle de l'appareil. Chiffres latins en arabe. */
 val DesignStrings.locale: java.util.Locale get() = when (lang) {

@@ -130,7 +130,7 @@ describe("i18n : non-régression (golden)", () => {
 // Complétude : une valeur copiée telle quelle de l'anglais reste non traduite.
 const ARABIC = /[؀-ۿ]/;
 // Noms propres, formats et valeurs techniques identiques dans toutes les langues.
-const SAME_AS_EN_OK = new Set(["app.name", "src.xtream", "src.serverPh", "src.userAgent", "src.referer", "sync.percent"]);
+const SAME_AS_EN_OK = new Set(["app.name", "src.xtream", "src.serverPh", "src.userAgent", "src.referer", "sync.percent", "set.about.tmdb"]);
 describe("i18n : complétude arabe", () => {
   const ar = resources.ar!;
   const fr = resources.fr!;

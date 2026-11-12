@@ -477,6 +477,7 @@
     <string name="dsb1_rec_connection_busy">Un enregistrement est en cours sur votre seule connexion</string>
     <string name="dsb1_trailer_label">Bande-annonce</string>
     <string name="dsb1_tmdb_attribution">Ce produit utilise l’API TMDB mais n’est ni approuvé ni certifié par TMDB.</string>
+    <string name="dsb1_data_sources">Sources des données</string>
     <string name="dsb1_trakt_watchlist">Ma watchlist Trakt</string>
     <string name="dsb1_trakt_recommended">Recommandé pour vous (Trakt)</string>
     <string name="dsb1_trakt_trending">Tendances (Trakt)</string>

@@ -470,6 +470,7 @@
     <string name="dsb1_rec_connection_busy">Trwa nagrywanie na Twoim jedynym połączeniu</string>
     <string name="dsb1_trailer_label">Zwiastun</string>
     <string name="dsb1_tmdb_attribution">Ten produkt korzysta z API TMDB, ale nie jest przez TMDB popierany ani certyfikowany.</string>
+    <string name="dsb1_data_sources">Źródła danych</string>
     <string name="dsb1_trakt_watchlist">Moja lista Trakt</string>
     <string name="dsb1_trakt_recommended">Polecane dla Ciebie (Trakt)</string>
     <string name="dsb1_trakt_trending">Na topie (Trakt)</string>

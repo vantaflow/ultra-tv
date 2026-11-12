@@ -649,6 +649,7 @@
   "DesignStrings/DesignStringsB1Kt.getStalkerFailed()": "Le portail a refusé la connexion. Vérifiez l\u2019adresse et l\u2019adresse MAC.",
   "DesignStrings/DesignStringsB1Kt.getStartsInOneMin()": "Commence dans 1 min",
   "DesignStrings/DesignStringsB1Kt.getTmdbAttribution()": "Ce produit utilise l\u2019API TMDB mais n\u2019est ni approuvé ni certifié par TMDB.",
+  "DesignStrings/DesignStringsB1Kt.getDataSources()": "Sources des donn\u00e9es",
   "DesignStrings/DesignStringsB1Kt.getTrailerLabel()": "Bande-annonce",
   "DesignStrings/DesignStringsB1Kt.getTraktPopular()": "Populaires (Trakt)",
   "DesignStrings/DesignStringsB1Kt.getTraktRecommended()": "Recommandé pour vous (Trakt)",

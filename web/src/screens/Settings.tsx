@@ -444,6 +444,28 @@ function openTranslate() {
   else window.open(TRANSLATE_URL, "_blank", "noopener,noreferrer");
 }
 
+/** Sources des données affichées dans « À propos » : nom, adresse affichée, lien ouvert dans le navigateur du système. */
+const DATA_SOURCES = [
+  { name: "TMDB", url: "https://www.themoviedb.org" },
+  { name: "Fanart.tv", url: "https://fanart.tv" },
+  { name: "TVmaze", url: "https://www.tvmaze.com", license: "https://creativecommons.org/licenses/by-sa/4.0/" },
+  { name: "TheSportsDB", url: "https://www.thesportsdb.com" },
+  { name: "OMDb", url: "https://www.omdbapi.com" },
+  { name: "TheIntroDB", url: "https://theintrodb.org" },
+] as const;
+
+function openLink(url: string) {
+  const b = bridge();
+  if (b?.openExternal) void b.openExternal(url);
+  else window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function ExtLink({ url }: { url: string }) {
+  return (
+    <a href={url} onClick={(e) => { e.preventDefault(); openLink(url); }}>{url}</a>
+  );
+}
+
 function LanguagePane() {
   const t = useT();
   const p = usePrefs();
@@ -529,6 +551,17 @@ function AboutPane() {
         </Pref>
       )}
       {(msg || update?.state === "downloading") && <div className="alert">{update?.state === "downloading" ? t("state.downloading", { p: Math.round(update.percent ?? 0) }) : msg}</div>}
+      <div className="eyebrow">{t("set.about.sources")}</div>
+      <p className="lead">{t("set.about.sourcesD")}</p>
+      <p className="lead" dir="ltr">{t("set.about.tmdb")}</p>
+      <ul className="data-sources">
+        {DATA_SOURCES.map((s) => (
+          <li key={s.name}>
+            <strong>{s.name}</strong> · <ExtLink url={s.url} />
+            {"license" in s && <div>{t("set.about.tvmazeLicense")} · <ExtLink url={s.license} /></div>}
+          </li>
+        ))}
+      </ul>
       <div className="eyebrow">{t("set.about.shortcuts")}</div>
       <div className="hotkeys">
         <span><span className="kbd">/</span> <span className="kbd">Ctrl/⌘ K</span></span><span>{t("set.sk.search")}</span>
