@@ -3,7 +3,7 @@
 //
 // Etats envoyes au renderer : { state, version?, percent?, message? } avec state
 // dans checking | available | not-available | downloading | downloaded |
-// unavailable | error. "unavailable" couvre : mode dev, application non signee
+// unavailable | error | manual (paquet .deb/.rpm : { version, url } à télécharger soi-même). "unavailable" couvre : mode dev, application non signee
 // sur macOS (Squirrel.Mac refuse d'installer une mise a jour non signee), absence
 // de metadonnees de publication. Rien ne plante : tout est dans des try/catch.
 
@@ -29,6 +29,29 @@ function isMacSigned() {
 }
 
 const REPO = "vantaflow/ultra-tv";
+const DOWNLOAD_BASE = "https://tv.weedy.dpdns.org/download";
+
+/**
+ * Linux installé par un paquet système (.deb / .rpm) : pas de variable APPIMAGE (posée par le lanceur de l'AppImage).
+ * Ces installations ne se mettent pas à jour toutes seules (racine requise, gestionnaire de paquets) : on prévient
+ * l'utilisateur et on lui donne le lien de téléchargement. Pure, exportée pour les tests.
+ */
+function isLinuxPackageInstall(platform, env) {
+  return platform === "linux" && !(env && env.APPIMAGE);
+}
+
+/** Famille de paquet du système : "deb" (Debian, Ubuntu…), "rpm" (Fedora, openSUSE…) ou null. Pure, exportée pour les tests. */
+function linuxPackageKind(exists) {
+  if (exists("/etc/debian_version") || exists("/usr/bin/dpkg")) return "deb";
+  if (exists("/etc/redhat-release") || exists("/etc/fedora-release") || exists("/etc/SuSE-release") || exists("/usr/bin/rpm")) return "rpm";
+  return null;
+}
+
+/** Lien de téléchargement proposé : la route du Worker du bon format, sinon la page de la release bureau. Pure. */
+function manualUpdateUrl(kind, tag) {
+  if (kind === "deb" || kind === "rpm") return `${DOWNLOAD_BASE}/linux-${kind}`;
+  return tag ? `https://github.com/${REPO}/releases/tag/${tag}` : `https://github.com/${REPO}/releases`;
+}
 
 // La release GitHub "Latest" est celle de l'application Android (vX.Y.Z), sans latest.yml :
 // le fournisseur GitHub d'electron-updater ne trouvait donc jamais la version de bureau.
@@ -163,6 +186,7 @@ function createMacUnsignedUpdater({ app, publish }) {
 function createUpdater({ app, send }) {
   let autoUpdater = null;
   let macUpdater = null;
+  let pkgManual = false;
   let last = { state: "unavailable", message: "not-initialised" };
   let initPromise = null;
 
@@ -179,6 +203,11 @@ function createUpdater({ app, send }) {
     if (!app.isPackaged) {
       publish({ state: "unavailable", message: "dev" });
       return false;
+    }
+    if (isLinuxPackageInstall(process.platform, process.env)) {
+      // .deb / .rpm : jamais d'installation automatique, seulement une notification avec lien (voir doCheck).
+      pkgManual = true;
+      return true;
     }
     if (process.platform === "darwin" && !(await isMacSigned())) {
       // Pas de signature Apple : mise à jour faite par l'application elle-même (voir createMacUnsignedUpdater).
@@ -216,6 +245,16 @@ function createUpdater({ app, send }) {
   async function doCheck() {
     if (!initPromise) initPromise = init();
     const ok = await initPromise;
+    if (ok && pkgManual) {
+      try {
+        publish({ state: "checking" });
+        const tag = await latestDesktopTag();
+        const version = tag && tag.slice("desktop-v".length);
+        if (!version || compareVersions(version, app.getVersion()) <= 0) publish({ state: "not-available" });
+        else publish({ state: "manual", version, url: manualUpdateUrl(linuxPackageKind((f) => fs.existsSync(f)), tag) });
+      } catch { publish({ state: "error", message: "update-failed" }); }
+      return last;
+    }
     if (ok && macUpdater) {
       try { await macUpdater.check(); } catch { publish({ state: "error", message: "update-failed" }); }
       return last;
@@ -248,4 +287,4 @@ function createUpdater({ app, send }) {
   return { check, install, status: () => last };
 }
 
-module.exports = { createUpdater, pickDesktopTag, compareVersions };
+module.exports = { createUpdater, pickDesktopTag, compareVersions, isLinuxPackageInstall, linuxPackageKind, manualUpdateUrl };

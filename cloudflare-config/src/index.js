@@ -205,7 +205,7 @@ async function route(req, env, ctx) {
   if (path === "/assets/jsqr.js" && m === "GET") return new Response(JSQR_SOURCE, { headers: { "content-type": "text/javascript; charset=utf-8", "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" } });
 
   // ---- pages publiques ----
-  { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux)$/); if (dm && (m === "GET" || m === "HEAD")) return downloadRedirect(dm[1]); }
+  { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux|linux-deb|linux-rpm)$/); if (dm && (m === "GET" || m === "HEAD")) return downloadRedirect(dm[1]); }
   if ((path === "/apk" || path === "/download") && (m === "GET" || m === "HEAD")) return apkPage(nonce());
   // Application web installable (manifeste, service worker, icônes, page hors ligne).
   if (m === "GET" || m === "HEAD") { const pw = pwaResponse(path, () => offlinePage(nonce())); if (pw) return pw; }

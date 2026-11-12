@@ -171,6 +171,23 @@ function UpdateReady() {
   );
 }
 
+/** Installation par paquet (.deb / .rpm) : pas d'installation automatique, on propose le téléchargement du nouveau paquet. */
+function UpdateManual() {
+  const t = useT();
+  const u = useUi((s) => s.update);
+  const [hidden, setHidden] = useState<string | null>(null);
+  const b = bridge();
+  const url = u?.url ?? "";
+  if (u?.state !== "manual" || !b?.openExternal || !/^https:\/\//.test(url) || hidden === (u.version ?? "")) return null;
+  return (
+    <div className="update-ready" role="status">
+      <div><strong>{t("state.updateManual", { v: u.version ?? "" })}</strong><div className="sub">{t("state.updateManualBody")}</div></div>
+      <button className="btn primary sm" onClick={() => void b.openExternal!(url)}>{t("state.download")}</button>
+      <button className="btn sm" onClick={() => setHidden(u.version ?? "")}>{t("state.later")}</button>
+    </div>
+  );
+}
+
 function Shell() {
   const loc = useLocation();
   const { ready } = useSources();
@@ -204,6 +221,7 @@ function Shell() {
       <Toasts />
       <ReminderBanners />
       <UpdateReady />
+      <UpdateManual />
     </div>
   );
 }

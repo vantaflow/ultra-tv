@@ -1,4 +1,4 @@
-// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /linux.
+// Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /linux (AppImage), /linux-deb, /linux-rpm.
 // Android : l'APK universel de la dernière release (« Latest » = Android). Bureau : les releases « desktop-v* » ne sont
 // pas « Latest » et leurs fichiers portent le numéro de version ; on lit la dernière release bureau via l'API GitHub
 // (cache 1 h) et on redirige vers le fichier de la plateforme.
@@ -19,6 +19,8 @@ const PATTERNS = {
   windows: /-win-x64\.exe$/,
   mac: /-mac-universal\.dmg$/,
   linux: /\.AppImage$/,
+  "linux-deb": /\.deb$/,
+  "linux-rpm": /\.rpm$/,
 };
 
 /** Fichier de la plateforme dans la liste des releases GitHub (la plus récente « desktop-v* » publiée d'abord). */

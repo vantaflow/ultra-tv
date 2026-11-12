@@ -6,7 +6,7 @@ interface UiStore {
   toast: (text: string) => void;
   online: boolean;
   setOnline: (b: boolean) => void;
-  update: { state: string; version?: string; percent?: number } | null;
+  update: { state: string; version?: string; percent?: number; url?: string } | null;
   setUpdate: (u: UiStore["update"]) => void;
 }
 let n = 0;

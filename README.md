@@ -32,7 +32,7 @@
 | **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5189921`** |
 | **Windows** (x64) | [Installeur .exe](https://tv.weedy.dpdns.org/download/windows) |
 | **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://tv.weedy.dpdns.org/download/mac) |
-| **Linux** (x86_64) | [AppImage](https://tv.weedy.dpdns.org/download/linux) |
+| **Linux** (x86_64) | [AppImage](https://tv.weedy.dpdns.org/download/linux) · [.deb](https://tv.weedy.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://tv.weedy.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+ : `sudo apt install libfuse2` si l'AppImage ne démarre pas |
 
 Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'est nécessaire.
 

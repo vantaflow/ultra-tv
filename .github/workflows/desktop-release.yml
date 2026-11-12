@@ -1,7 +1,7 @@
 name: Desktop release
 
 # Application bureau (Electron) : macOS (.dmg + .zip universels), Windows (NSIS x64),
-# Linux (AppImage x64). Declenchee par un tag `desktop-vX.Y.Z` (= version de
+# Linux (AppImage + .deb + .rpm x64). Declenchee par un tag `desktop-vX.Y.Z` (= version de
 # electron/package.json) ou a la main (workflow_dispatch : artefacts seulement).
 # La publication sur GitHub Releases (brouillon) n'a lieu que sur tag.
 
@@ -104,7 +104,7 @@ jobs:
           - name: Linux (x64)
             os: ubuntu-latest
             artifact: desktop-linux
-            builder_args: "--linux AppImage --x64"
+            builder_args: "--linux AppImage deb rpm --x64"
     defaults:
       run:
         shell: bash
@@ -218,6 +218,16 @@ jobs:
         if: runner.os == 'Linux'
         run: chmod +x electron/vendor/ffmpeg/ffmpeg
 
+      # Le .rpm est construit sur ce runner Ubuntu : electron-builder (fpm) a besoin de rpmbuild.
+      - name: Linux - outils de paquets (rpm)
+        if: runner.os == 'Linux'
+        run: |
+          for i in 1 2 3; do
+            sudo apt-get update -q -o Acquire::Retries=3 && sudo apt-get install -y -q -o Acquire::Retries=3 rpm && exit 0
+            echo "Essai $i échoué"; sleep 15
+          done
+          exit 1
+
       - name: Package
         working-directory: electron
         run: npx electron-builder ${{ matrix.builder_args }} --publish never
@@ -233,6 +243,8 @@ jobs:
             electron/release/*.zip
             electron/release/*.exe
             electron/release/*.AppImage
+            electron/release/*.deb
+            electron/release/*.rpm
             electron/release/*.blockmap
             electron/release/latest*.yml
 

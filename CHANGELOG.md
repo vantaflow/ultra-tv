@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Linux : paquets **.deb** (Debian, Ubuntu) et **.rpm** (Fedora, openSUSE) en plus de l'AppImage, avec le ffmpeg minimal inclus ; liens stables `/download/linux-deb` et `/download/linux-rpm` (`/download/linux` reste l'AppImage). Installée par paquet, l'appli ne tente pas de se mettre à jour seule : elle affiche « Nouvelle version disponible » avec un lien vers le nouveau paquet ; l'AppImage garde la mise à jour automatique.
+
 ## [1.3.0] — 2026-11-12 (Android) et bureau 1.2.49
 
 ### Corrigé

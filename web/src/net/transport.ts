@@ -30,7 +30,7 @@ export interface UltraTvBridge {
   /** Vérification automatique des mises à jour (activée par défaut ; le bouton manuel reste utilisable). */
   getAutoUpdate?(): Promise<boolean>;
   setAutoUpdate?(on: boolean): Promise<boolean>;
-  onUpdateStatus?(cb: (s: { state: string; version?: string; percent?: number }) => void): (() => void) | void;
+  onUpdateStatus?(cb: (s: { state: string; version?: string; percent?: number; url?: string }) => void): (() => void) | void;
   openExternal?(url: string): Promise<unknown> | void;
   setTitleBarTheme?(isDark: boolean): Promise<unknown> | void;
   /** DNS personnalisé (voir net/dns.ts). */

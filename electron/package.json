@@ -19,7 +19,7 @@
     "icons": "node scripts/make-icons.mjs",
     "package:mac": "npm run prepare:web && electron-builder --mac dmg zip --universal --publish never",
     "package:win": "npm run prepare:web && electron-builder --win nsis --x64 --publish never",
-    "package:linux": "npm run prepare:web && electron-builder --linux AppImage --x64 --publish never",
+    "package:linux": "npm run prepare:web && electron-builder --linux AppImage deb rpm --x64 --publish never",
     "build:ffmpeg:win": "bash scripts/build-ffmpeg-min.sh win",
     "build:ffmpeg:linux": "bash scripts/build-ffmpeg-min.sh linux"
   },
@@ -132,9 +132,32 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "AudioVideo",
+      "executableName": "ultratv",
+      "maintainer": "Ultra TV <76207730+vantaflow@users.noreply.github.com>",
+      "synopsis": "Lecteur IPTV",
+      "desktop": {
+        "entry": {
+          "Name": "Ultra TV",
+          "Comment": "Lecteur IPTV",
+          "Categories": "AudioVideo;Video;Player;",
+          "StartupWMClass": "Ultra TV"
+        }
+      },
       "icon": "build/icon.png",
       "extraResources": [
         {
@@ -144,6 +167,26 @@
             "**/*"
           ]
         }
+      ]
+    },
+    "deb": {
+      "depends": [
+        "libnss3",
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libasound2 | libasound2t64",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils"
+      ]
+    },
+    "rpm": {
+      "depends": [
+        "nss",
+        "gtk3",
+        "alsa-lib",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils"
       ]
     },
     "afterSign": "scripts/adhoc-sign.cjs"

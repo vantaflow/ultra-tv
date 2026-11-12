@@ -9,6 +9,8 @@ const releases = [
     { name: "UltraTV-1.2.39-win-x64.exe.blockmap", browser_download_url: "https://x.test/map" },
     { name: "UltraTV-1.2.39-mac-universal.dmg", browser_download_url: "https://x.test/mac" },
     { name: "UltraTV-1.2.39-linux-x86_64.AppImage", browser_download_url: "https://x.test/linux" },
+    { name: "UltraTV-1.2.39-linux-amd64.deb", browser_download_url: "https://x.test/deb" },
+    { name: "UltraTV-1.2.39-linux-x86_64.rpm", browser_download_url: "https://x.test/rpm" },
   ] },
 ];
 
@@ -17,6 +19,8 @@ describe("liens de téléchargement", () => {
     expect(pickDesktopAsset(releases, "windows")).toBe("https://x.test/win");
     expect(pickDesktopAsset(releases, "mac")).toBe("https://x.test/mac");
     expect(pickDesktopAsset(releases, "linux")).toBe("https://x.test/linux");
+    expect(pickDesktopAsset(releases, "linux-deb")).toBe("https://x.test/deb");
+    expect(pickDesktopAsset(releases, "linux-rpm")).toBe("https://x.test/rpm");
     expect(pickDesktopAsset(releases, "ios")).toBeNull();
   });
   it("Android : /download/android = APK arm64-v8a de la dernière release", async () => {
