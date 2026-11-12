@@ -78,7 +78,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
         // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
         // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
-        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks() }
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); detectHdr(tracks) }
     }
 
     init {
@@ -156,6 +156,25 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         return listOfNotNull(c, t, b)
     }
 
+    /** HDR déjà signalé pour le flux en cours (réarmé à chaque ouverture). */
+    private var hdrSignalled = false
+
+    /** Piste vidéo sélectionnée en HDR10 / HLG / Dolby Vision : signalé une seule fois par flux. */
+    private fun detectHdr(tracks: androidx.media3.common.Tracks) {
+        if (hdrSignalled) return
+        for (g in tracks.groups) {
+            if (g.type != C.TRACK_TYPE_VIDEO) continue
+            for (i in 0 until g.length) {
+                if (!g.isTrackSelected(i)) continue
+                val f = g.getTrackFormat(i)
+                val kind = HdrOutput.contentKind(f.colorInfo?.colorTransfer, f.sampleMimeType) ?: continue
+                hdrSignalled = true
+                _events.tryEmit(EngineEvent.HdrDetected(kind))
+                return
+            }
+        }
+    }
+
     private var audioManual = false
     private var textManual = false
     private var lastAutoAudio: String? = null
@@ -223,7 +242,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         streamHeaders = props?.let { DrmMedia.streamHeaders(it) } ?: emptyMap()
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
-        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null
+        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false
         ccProbe.clear()   // chaîne suivante : les CC vus sur la précédente ne comptent plus
         if (player.mediaItemCount > 0) {
             player.stop()
@@ -312,6 +331,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             bufferedSeconds = ((player.bufferedPosition - player.currentPosition).coerceAtLeast(0) / 1000).toInt(),
             droppedFrames = counters?.let { it.maxConsecutiveDroppedBufferCount.let { _ -> it.droppedBufferCount } },
             hardwareDecoding = hw?.let { config.decoder != DecoderMode.SOFTWARE },
+            hdrKind = v?.let { HdrOutput.contentKind(it.colorInfo?.colorTransfer, it.sampleMimeType) },
         )
     }
 

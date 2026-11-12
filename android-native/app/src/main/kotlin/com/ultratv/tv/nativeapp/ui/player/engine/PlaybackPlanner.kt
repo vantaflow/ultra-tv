@@ -36,9 +36,13 @@ object PlaybackPlanner {
     }
 
     /** Prochaine combinaison à essayer après un échec, ou null s'il n'y en a plus. */
-    fun next(choice: EngineChoice, tried: Set<Combo>, protectedStream: Boolean = false): Combo? {
+    fun next(choice: EngineChoice, tried: Set<Combo>, protectedStream: Boolean = false, hdr: Boolean = false): Combo? {
         if (protectedStream) return null   // jamais de repli (ni VLC, ni décodage logiciel) : l'erreur est affichée
-        val order = listOf(
+        // Contenu HDR : le décodage logiciel rend du SDR terne ; on épuise d'abord les combinaisons matérielles.
+        val order = if (hdr) listOf(
+            Combo(EngineKind.EXO, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.AUTO),
+            Combo(EngineKind.EXO, DecoderMode.SOFTWARE), Combo(EngineKind.VLC, DecoderMode.SOFTWARE),
+        ) else listOf(
             Combo(EngineKind.EXO, DecoderMode.AUTO), Combo(EngineKind.EXO, DecoderMode.SOFTWARE),
             Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE),
         )

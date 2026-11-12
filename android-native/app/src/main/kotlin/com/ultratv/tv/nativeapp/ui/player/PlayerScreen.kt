@@ -580,6 +580,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             opener = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.open(context, u) },
             presence = { u -> com.ultratv.tv.nativeapp.data.stalker.StreamUrls.presence(context, u) },   // stalker:// : lien + en-têtes MAG à chaque ouverture
             textureView = com.ultratv.tv.nativeapp.ui.player.engine.useTextureView(p.videoSurface, touchUi),
+            videoSurfacePref = { latestPrefs.videoSurface },
             subtitles = { subVm.current },
             uiLanguage = { if (latestPrefs.language == "system") java.util.Locale.getDefault().language else latestPrefs.language },
             propsLookup = { k -> vm.streamProps(k) },

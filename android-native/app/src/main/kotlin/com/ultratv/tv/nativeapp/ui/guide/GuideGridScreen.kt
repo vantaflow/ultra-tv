@@ -592,7 +592,7 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
                     com.ultratv.tv.nativeapp.ui.live.LivePreviewPolicy.Action.START -> {
                         val url = vm.previewUrl(c)
                         if (sel.value?.first?.id != c.id) return@collectLatest
-                        shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView) }
+                        shared.preview(row, row, url, mutedNow) { pvm.createSession(ctx, shared.scope, shared, textureView, userPrefs?.videoSurface ?: "auto") }
                     }
                 }
             }
