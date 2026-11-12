@@ -352,6 +352,7 @@
     <string name="ds_theme_dark">Sombre</string>
     <string name="ds_theme_light">Clair</string>
     <string name="ds_theme_auto">Automatique</string>
+    <string name="ds_theme_oled">Noir (OLED)</string>
     <string name="ds_language">Langue</string>
     <string name="ds_menu">Menu</string>
     <string name="ds_menu_sidebar">Barre latérale</string>
@@ -639,6 +640,12 @@
     <string name="perso_accent_name_green">Vert</string>
     <string name="perso_accent_name_orange">Orange</string>
     <string name="perso_accent_name_pink">Rose</string>
+    <string name="perso_accent_name_ocean">Bleu océan</string>
+    <string name="perso_accent_name_emerald">Vert émeraude</string>
+    <string name="perso_accent_name_amber">Ambre</string>
+    <string name="perso_accent_name_teal">Turquoise</string>
+    <string name="perso_accent_name_indigo">Indigo</string>
+    <string name="perso_accent_name_fuchsia">Fuchsia</string>
     <string name="perso_text_size_name_normal">Normal</string>
     <string name="perso_text_size_name_large">Grand</string>
     <string name="perso_text_size_name_xlarge">Très grand</string>

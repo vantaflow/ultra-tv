@@ -136,3 +136,6 @@ fr|uxv2_sport_combat
 fr|uxv2_sport_rugby
 fr|uxv2_sources
 es|uxv2_sport_rugby
+fr|perso_accent_name_teal
+fr|perso_accent_name_indigo
+fr|perso_accent_name_fuchsia

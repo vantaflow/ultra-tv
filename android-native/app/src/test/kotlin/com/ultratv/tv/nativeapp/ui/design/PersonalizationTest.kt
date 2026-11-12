@@ -34,7 +34,7 @@ class PersonalizationTest {
     // ── Accent ──
 
     @Test fun accent_chaqueAccentEtChaqueFondDePage_anneauDeFocusAuMoinsTrois() {
-        for (a in AccentChoice.entries) for (bg in UxSurfaces.PAGE_DARK + UxSurfaces.PAGE_LIGHT) {
+        for (a in AccentChoice.entries) for (bg in UxSurfaces.PAGE_DARK + UxSurfaces.PAGE_OLED + UxSurfaces.PAGE_LIGHT) {
             val r = Wcag.ratio(a.argb, bg)
             assertTrue("${a.name} sur ${hex(bg)} = $r", r >= Wcag.AA_UI)
         }
@@ -63,6 +63,32 @@ class PersonalizationTest {
         for (a in AccentChoice.entries) for (bg in UxSurfaces.DARK) {
             val r = Wcag.ratio(a.inkOnDark, bg)
             assertTrue("${a.name} ${hex(a.inkOnDark)} sur ${hex(bg)} = $r", r >= Wcag.AA_TEXT)
+        }
+    }
+
+    @Test fun accent_texteAccentSurSurfacesOled_AA() {
+        for (a in AccentChoice.entries) for (bg in UxSurfaces.OLED) {
+            val r = Wcag.ratio(a.inkOnDark, bg)
+            assertTrue("${a.name} ${hex(a.inkOnDark)} sur ${hex(bg)} = $r", r >= Wcag.AA_TEXT)
+        }
+    }
+
+    @Test fun accents_douzeCouleurs_clesEtCouleursDistinctes() {
+        assertEquals(12, AccentChoice.entries.size)
+        assertEquals(12, AccentChoice.entries.map { it.key }.toSet().size)
+        assertEquals(12, AccentChoice.entries.map { it.argb }.toSet().size)
+        val added = listOf("ocean", "emerald", "amber", "teal", "indigo", "fuchsia")
+        for (k in added) assertEquals(k, AccentChoice.parse(k).key)
+        // Les six couleurs d'origine gardent leurs clés (réglages déjà enregistrés).
+        for (k in listOf("red", "blue", "violet", "green", "orange", "pink")) assertEquals(k, AccentChoice.parse(k).key)
+    }
+
+    @Test fun accents_lisiblesEnClairEtEnSombre_texteSurAccent_AA() {
+        // Texte posé sur l'accent : ≥ 4,5:1 ; accent en texte : ≥ 4,5:1 sur toutes les surfaces sombres, OLED et claires.
+        for (a in AccentChoice.entries) {
+            assertTrue(a.name, Wcag.ratio(a.onAccent, a.argb) >= Wcag.AA_TEXT)
+            for (bg in UxSurfaces.DARK + UxSurfaces.OLED) assertTrue("${a.name} sombre", Wcag.ratio(a.inkOnDark, bg) >= Wcag.AA_TEXT)
+            for (bg in UxSurfaces.LIGHT) assertTrue("${a.name} clair", Wcag.ratio(a.inkOnLight, bg) >= Wcag.AA_TEXT)
         }
     }
 

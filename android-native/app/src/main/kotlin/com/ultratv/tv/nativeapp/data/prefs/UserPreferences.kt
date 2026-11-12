@@ -17,13 +17,14 @@ private val Context.userPrefsDs by preferencesDataStore(name = "user_prefs")
 
 enum class SidebarPosition { LEFT, TOP }
 enum class AppTheme {
-    DARK, LIGHT, AUTO;
+    DARK, LIGHT, AUTO, OLED;
 
     companion object {
-        /** Tolérant : les anciennes valeurs (AMOLED, BLUE, SYSTEM…) retombent sur Sombre, la valeur inconnue aussi. */
+        /** Tolérant : une valeur inconnue (autre appareil, version future) retombe sur Sombre, jamais d'erreur. */
         fun parse(raw: String?): AppTheme = when (raw?.uppercase()) {
             "LIGHT" -> LIGHT
             "AUTO", "SYSTEM" -> AUTO
+            "OLED", "AMOLED" -> OLED
             else -> DARK
         }
     }

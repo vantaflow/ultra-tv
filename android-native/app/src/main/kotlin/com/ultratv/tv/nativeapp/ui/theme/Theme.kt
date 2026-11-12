@@ -10,6 +10,7 @@ import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.ui.design.DarkPalette
 import com.ultratv.tv.nativeapp.ui.design.LightPalette
 import com.ultratv.tv.nativeapp.ui.design.LocalUxPalette
+import com.ultratv.tv.nativeapp.ui.design.OledPalette
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.paletteFor
 
@@ -41,9 +42,12 @@ private val Light = lightColorScheme(
  */
 fun isLightTheme(theme: AppTheme, systemDark: Boolean, isTv: Boolean = false): Boolean = when (theme) {
     AppTheme.LIGHT -> true
-    AppTheme.DARK -> false
+    AppTheme.DARK, AppTheme.OLED -> false
     AppTheme.AUTO -> if (isTv) false else !systemDark
 }
+
+/** Thème « Noir (OLED) » choisi (fond #000000). */
+fun isOledTheme(theme: AppTheme): Boolean = theme == AppTheme.OLED
 
 /** Le lecteur reste TOUJOURS sombre, quel que soit le réglage. */
 fun isLightEffective(themeLight: Boolean, playerShown: Boolean): Boolean = themeLight && !playerShown
@@ -66,6 +70,8 @@ fun ApplyUxTheme(
     val tv = androidx.compose.runtime.remember(ctx) { com.ultratv.tv.nativeapp.ui.common.isTelevision(ctx) }
     val light = isLightTheme(theme, isSystemInDarkTheme(), tv)
     if (Ux.themeLight != light) Ux.themeLight = light
+    val oled = isOledTheme(theme)
+    if (Ux.themeOled != oled) Ux.themeOled = oled
     if (Ux.accentChoice != accent) Ux.accentChoice = accent
     if (Ux.textScale != textSize.scale) Ux.textScale = textSize.scale
 }
@@ -75,8 +81,12 @@ fun UltraTvTheme(content: @Composable () -> Unit) {
     // Accent choisi par l'utilisateur (le jeu de couleurs Material ne sert qu'aux rares composants Material restants).
     val accent = Ux.Accent; val onAccent = Ux.OnAccent
     val base = if (isLightEffective(Ux.themeLight, Ux.playerActive)) Light else Dark
-    val scheme = androidx.compose.runtime.remember(base, accent) { base.copy(primary = accent, onPrimary = onAccent) }
-    val palette = paletteFor(isLightEffective(Ux.themeLight, Ux.playerActive))
+    val oledBg = Ux.themeOled && base === Dark
+    val scheme = androidx.compose.runtime.remember(base, accent, oledBg) {
+        val s = base.copy(primary = accent, onPrimary = onAccent)
+        if (oledBg) s.copy(background = OledPalette.bg, surface = OledPalette.card2, surfaceVariant = OledPalette.button, border = OledPalette.line) else s
+    }
+    val palette = paletteFor(isLightEffective(Ux.themeLight, Ux.playerActive), Ux.themeOled)
     androidx.compose.runtime.CompositionLocalProvider(LocalUxPalette provides palette) {
         MaterialTheme(colorScheme = scheme, content = content)
     }

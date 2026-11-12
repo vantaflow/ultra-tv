@@ -57,6 +57,12 @@ fun DesignStrings.accentName(a: AccentChoice): String = when (a) {
     AccentChoice.GREEN -> tx(R.string.perso_accent_name_green)
     AccentChoice.ORANGE -> tx(R.string.perso_accent_name_orange)
     AccentChoice.PINK -> tx(R.string.perso_accent_name_pink)
+    AccentChoice.OCEAN -> tx(R.string.perso_accent_name_ocean)
+    AccentChoice.EMERALD -> tx(R.string.perso_accent_name_emerald)
+    AccentChoice.AMBER -> tx(R.string.perso_accent_name_amber)
+    AccentChoice.TEAL -> tx(R.string.perso_accent_name_teal)
+    AccentChoice.INDIGO -> tx(R.string.perso_accent_name_indigo)
+    AccentChoice.FUCHSIA -> tx(R.string.perso_accent_name_fuchsia)
 }
 
 fun DesignStrings.textSizeName(s: TextSize): String = when (s) {

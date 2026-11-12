@@ -41,7 +41,18 @@ val LightPalette = UxPalette(
     scrim = Color(0xCCF5F6F8),
 )
 
-fun paletteFor(light: Boolean): UxPalette = if (light) LightPalette else DarkPalette
+/**
+ * Thème « Noir (OLED) » : fond #000000 (pixels éteints sur écran OLED), surfaces très sombres. Même disposition que
+ * [DarkPalette] (texte, accent, focus inchangés : tous les contrastes du thème sombre ne font qu'augmenter).
+ */
+val OledPalette = DarkPalette.copy(
+    bg = Color(0xFF000000), rail = Color(0xFF050506), card = Color(0xFF0D0F13), card2 = Color(0xFF08090B),
+    button = Color(0xFF14171D), tile = Color(0xFF20242D),
+    line = Color(0xFF1C2029), scrim = Color(0xE6000000),
+)
+
+/** Palette d'un thème : clair > Noir (OLED) > sombre. [light] est déjà « effectif » (le lecteur le force à faux). */
+fun paletteFor(light: Boolean, oled: Boolean = false): UxPalette = if (light) LightPalette else if (oled) OledPalette else DarkPalette
 
 /** Palette courante pour les écrans qui préfèrent la lire par CompositionLocal ; défaut sombre. */
 val LocalUxPalette = staticCompositionLocalOf { DarkPalette }

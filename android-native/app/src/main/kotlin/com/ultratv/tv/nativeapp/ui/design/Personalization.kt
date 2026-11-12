@@ -64,6 +64,8 @@ object Wcag {
 object UxSurfaces {
     /** Sombre : Bg, Rail, SurfaceDeep, Tone, Surface, Surface2. */
     val DARK = longArrayOf(0xFF0A0A0CL, 0xFF0F0F12L, 0xFF141418L, 0xFF1F1F25L, 0xFF1C1C21L, 0xFF26262DL)
+    /** Noir (OLED) : Bg, Rail, SurfaceDeep, Tone, Surface, Surface2 (mêmes rôles que [DARK]). */
+    val OLED = longArrayOf(0xFF000000L, 0xFF050506L, 0xFF08090BL, 0xFF20242DL, 0xFF0D0F13L, 0xFF14171DL)
     /** Clair : Bg, Rail, SurfaceDeep, Tone, Surface, Surface2. */
     val LIGHT = longArrayOf(0xFFF4F3EFL, 0xFFFFFFFFL, 0xFFFFFFFFL, 0xFFE3E1DBL, 0xFFECEAE5L, 0xFFD9D6CFL)
     /**
@@ -71,6 +73,7 @@ object UxSurfaces {
      * Surface. Surface2 est un fond d'élément (bouton, logo), pas un fond sur lequel l'anneau est dessiné.
      */
     val PAGE_DARK = longArrayOf(0xFF0A0A0CL, 0xFF0F0F12L, 0xFF141418L, 0xFF1C1C21L)
+    val PAGE_OLED = longArrayOf(0xFF000000L, 0xFF050506L, 0xFF08090BL, 0xFF0D0F13L)
     val PAGE_LIGHT = longArrayOf(0xFFF4F3EFL, 0xFFFFFFFFL, 0xFFECEAE5L)
 }
 
@@ -84,7 +87,14 @@ enum class AccentChoice(val key: String, val argb: Long) {
     VIOLET("violet", 0xFF7C4DFFL),
     GREEN("green", 0xFF15803DL),
     ORANGE("orange", 0xFFD9480FL),
-    PINK("pink", 0xFFDB2777L);
+    PINK("pink", 0xFFDB2777L),
+    // Accents supplémentaires : luminance relative 0,13–0,24 (anneau de focus ≥ 3:1 sur toutes les surfaces, claires, sombres et OLED).
+    OCEAN("ocean", 0xFF0284C7L),
+    EMERALD("emerald", 0xFF059669L),
+    AMBER("amber", 0xFFB7791FL),
+    TEAL("teal", 0xFF0A9396L),
+    INDIGO("indigo", 0xFF5B5BE0L),
+    FUCHSIA("fuchsia", 0xFFC026D3L);
 
     /** Texte / icône sur un fond accent (blanc, ou encre pour l'orange). */
     val onAccent: Long = Wcag.onColor(argb)

@@ -3,13 +3,15 @@ import { create } from "zustand";
 import { detectLang, type Lang } from "@/i18n/lang";
 import type { DnsSettings } from "@/net/dns";
 import { clockText, parseTimeFormat, type TimeFormat } from "@/lib/clock";
+import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
-export type Theme = "auto" | "dark" | "light";
+export type Theme = ThemeId;
 export interface Profile { id: string; name: string; color: string }
 
 export interface Prefs {
   theme: Theme;
-  accent: string;
+  /** Identifiant de la couleur d'accent (voir lib/themes.ts) : mêmes clés qu'Android. */
+  accent: AccentId;
   lang: Lang;
   /** Format de l'heure : « auto » (langue / système), 12 h ou 24 h. Local à l'appareil : les réglages synchronisés ne contiennent que langues et catégories. */
   timeFormat: TimeFormat;
@@ -40,13 +42,11 @@ export interface Prefs {
   optimizeImages: boolean;
 }
 
-// Le 1er accent est celui du design v2 : il laisse les jetons (rouge sombre / clair) décider.
-export const ACCENTS = ["#FF3B47", "#7C3AED", "#0EA5E9", "#F59E0B"];
 export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B981"];
 const KEY = "ultratv.prefs.v1";
 
 const defaults = (): Prefs => ({
-  theme: "auto", accent: ACCENTS[0]!, lang: detectLang(), timeFormat: "auto", activeSourceId: null,
+  theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), timeFormat: "auto", activeSourceId: null,
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
@@ -59,8 +59,9 @@ function load(): Prefs {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const v = { ...defaults(), ...JSON.parse(raw) } as Prefs;
-      // Ancien rouge par défaut : migré vers l'accent du design v2.
-      if (typeof v.accent === "string" && v.accent.toUpperCase() === "#D91E2B") v.accent = ACCENTS[0]!;
+      // Anciens réglages (accent en hexadécimal, valeur inconnue) migrés / repliés sur la valeur par défaut.
+      v.accent = parseAccent(v.accent);
+      v.theme = parseTheme(v.theme);
       v.timeFormat = parseTimeFormat(v.timeFormat);
       return v;
     }
@@ -80,10 +81,15 @@ export const usePrefs = create<PrefsStore>((set, get) => ({
   },
 }));
 
+const systemLight = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: light)").matches;
+
+/** Thème clair ou sombre effectif (Noir OLED = sombre). */
 export function resolveTheme(t: Theme): "dark" | "light" {
-  if (t !== "auto") return t;
-  return typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  return themeAttr(t, systemLight()) === "light" ? "light" : "dark";
 }
+
+/** Valeur de `data-theme` : « dark », « light » ou « oled ». */
+export const resolveThemeAttr = (t: Theme) => themeAttr(t, systemLight());
 
 /** Heure d'un instant selon le réglage « Format de l'heure » (langue de l'interface par défaut). Point d'entrée UNIQUE de l'affichage des heures. */
 export function timeLabel(ms: number, locale?: string): string {

@@ -1,9 +1,12 @@
 package com.ultratv.tv.nativeapp.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.ui.design.DarkPalette
 import com.ultratv.tv.nativeapp.ui.design.LightPalette
+import com.ultratv.tv.nativeapp.ui.design.OledPalette
+import com.ultratv.tv.nativeapp.ui.design.Wcag
 import com.ultratv.tv.nativeapp.ui.design.paletteFor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -37,6 +40,45 @@ class ThemeResolutionTest {
         assertFalse(isLightEffective(themeLight = true, playerShown = true))
         assertSame(DarkPalette, paletteFor(isLightEffective(themeLight = true, playerShown = true)))
         assertSame(LightPalette, paletteFor(isLightEffective(themeLight = true, playerShown = false)))
+    }
+
+    @Test fun oled_estSombre_quelQueSoitLeSysteme() {
+        assertFalse(isLightTheme(AppTheme.OLED, systemDark = false))
+        assertFalse(isLightTheme(AppTheme.OLED, systemDark = true, isTv = true))
+        assertTrue(isOledTheme(AppTheme.OLED))
+        for (t in listOf(AppTheme.DARK, AppTheme.LIGHT, AppTheme.AUTO)) assertFalse(isOledTheme(t))
+    }
+
+    @Test fun oled_fondNoirPur_surfacesTresSombres() {
+        val p = paletteFor(light = false, oled = true)
+        assertSame(OledPalette, p)
+        assertEquals(Color(0xFF000000), p.bg)
+        assertFalse(p.light)
+        for (c in listOf(p.rail, p.card, p.card2, p.button)) assertTrue(Wcag.luminance(c.toArgb().toLong() and 0xFFFFFFFFL) < 0.01)
+        // Texte, accent et focus : ceux du thème sombre.
+        assertEquals(DarkPalette.text, p.text); assertEquals(DarkPalette.accent, p.accent); assertEquals(DarkPalette.focusFill, p.focusFill)
+        assertTrue(Wcag.ratio(0xFFF4F5F7L, 0xFF000000L) > 15)
+    }
+
+    @Test fun oled_neChangePasLesAutresThemes() {
+        assertSame(DarkPalette, paletteFor(light = false))
+        assertSame(DarkPalette, paletteFor(light = false, oled = false))
+        assertSame(LightPalette, paletteFor(light = true, oled = true))
+    }
+
+    @Test fun oled_lecteurResteSombre() {
+        assertFalse(isLightEffective(themeLight = false, playerShown = true))
+        assertSame(DarkPalette, paletteFor(isLightEffective(themeLight = true, playerShown = true)))
+    }
+
+    @Test fun themeParse_valeurInconnue_retombeSurSombre_jamaisDErreur() {
+        assertEquals(AppTheme.DARK, AppTheme.parse(null))
+        assertEquals(AppTheme.DARK, AppTheme.parse(""))
+        assertEquals(AppTheme.DARK, AppTheme.parse("neon"))
+        assertEquals(AppTheme.OLED, AppTheme.parse("oled"))
+        assertEquals(AppTheme.OLED, AppTheme.parse("OLED"))
+        assertEquals(AppTheme.OLED, AppTheme.parse("AMOLED"))
+        for (t in AppTheme.entries) assertEquals(t, AppTheme.parse(t.name))
     }
 
     @Test fun paletteSombre_valeursDeLaMaquette() {

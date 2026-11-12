@@ -10,7 +10,8 @@ import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
 import { SyncPill } from "@/ui/SyncPill";
-import { ACCENTS, resolveTheme, usePrefs } from "@/state/prefs";
+import { resolveTheme, resolveThemeAttr, usePrefs } from "@/state/prefs";
+import { accentVars } from "@/lib/themes";
 import { startSourcesWatcher, useActiveSource, useSources } from "@/state/sources";
 import { isStaleSyncing, needsFirstSync } from "@/lib/syncPolicy";
 import { useSync } from "@/state/sync";
@@ -49,10 +50,12 @@ function Effects() {
   useEffect(() => {
     const apply = () => {
       const r = document.documentElement;
-      r.dataset.theme = resolveTheme(theme);
-      // Accent par défaut : on laisse le jeton du thème (rouge adapté clair/sombre) ; sinon valeur choisie.
-      if (accent === ACCENTS[0]) { r.style.removeProperty("--accent"); r.style.removeProperty("--accent-text"); }
-      else { r.style.setProperty("--accent", accent); r.style.setProperty("--accent-text", accent); }
+      const mode = resolveThemeAttr(theme);
+      r.dataset.theme = mode;
+      // Accent par défaut (rouge) : on laisse les jetons du thème ; sinon couleur choisie + texte lisible (≥ 4,5:1) dessus et en texte.
+      const av = accentVars(accent, mode);
+      if (!av) { for (const k of ["--accent", "--accent-text", "--on-accent"]) r.style.removeProperty(k); }
+      else { r.style.setProperty("--accent", av.accent); r.style.setProperty("--accent-text", av.accentText); r.style.setProperty("--on-accent", av.onAccent); }
       r.lang = lang;
       r.dir = dirOf(lang);
       // Animations : « off » coupe transitions et défilement de « À la une », « subtle » les raccourcit.

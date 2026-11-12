@@ -67,12 +67,14 @@ object Ux {
      * Le lecteur reste toujours sombre ([playerActive]).
      */
     var themeLight by mutableStateOf(false)
+    /** Thème « Noir (OLED) » (fond #000000) ; sans effet en thème clair. Le lecteur reste sombre dans tous les cas. */
+    var themeOled by mutableStateOf(false)
     /** Dérivé de la navigation (voir `isPlayerShown`), jamais d'un compteur d'entrées/sorties. */
     var playerActive by mutableStateOf(false)
     private val light: Boolean get() = com.ultratv.tv.nativeapp.ui.theme.isLightEffective(themeLight, playerActive)
 
     /** Palette effective (claire seulement hors lecteur). Lue dans une composition : s'abonne à [themeLight] / [playerActive]. */
-    val palette: UxPalette get() = paletteFor(light)
+    val palette: UxPalette get() = paletteFor(light, themeOled)
 
     // Surfaces (palette v2 : voir Palette.kt)
     val Bg: Color get() = palette.bg

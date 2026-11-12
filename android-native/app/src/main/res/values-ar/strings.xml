@@ -367,6 +367,7 @@
     <string name="ds_theme_dark">داكن</string>
     <string name="ds_theme_light">فاتح</string>
     <string name="ds_theme_auto">تلقائي</string>
+    <string name="ds_theme_oled">أسود (OLED)</string>
     <string name="ds_language">اللغة</string>
     <string name="ds_menu">القائمة</string>
     <string name="ds_menu_sidebar">شريط جانبي</string>
@@ -675,6 +676,12 @@
     <string name="perso_accent_name_green">أخضر</string>
     <string name="perso_accent_name_orange">برتقالي</string>
     <string name="perso_accent_name_pink">وردي</string>
+    <string name="perso_accent_name_ocean">أزرق المحيط</string>
+    <string name="perso_accent_name_emerald">أخضر زمردي</string>
+    <string name="perso_accent_name_amber">كهرماني</string>
+    <string name="perso_accent_name_teal">فيروزي</string>
+    <string name="perso_accent_name_indigo">نيلي</string>
+    <string name="perso_accent_name_fuchsia">فوشيا</string>
     <string name="perso_text_size_name_normal">عادي</string>
     <string name="perso_text_size_name_large">كبير</string>
     <string name="perso_text_size_name_xlarge">كبير جدًا</string>

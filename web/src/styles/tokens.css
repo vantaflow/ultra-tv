@@ -62,6 +62,20 @@
   --track: #c4cad6;
 }
 
+/* Noir (OLED) : fond #000000 et surfaces très sombres ; texte, accent et focus comme en sombre. */
+:root[data-theme="oled"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --rail: #050506;
+  --surface: #0d0f13;
+  --surface-2: #14171d;
+  --surface-3: #20242d;
+  --tone: #08090b;
+  --line: #14171d;
+  --scrim: rgba(0, 0, 0, 0.9);
+  --track: #2a3140;
+}
+
 :root {
   --font-title: "Sora", system-ui, sans-serif;
   --font-text: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;

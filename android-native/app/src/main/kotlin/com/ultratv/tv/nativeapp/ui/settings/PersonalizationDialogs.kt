@@ -70,14 +70,21 @@ internal fun AccentDialog(current: AccentChoice, onPick: (AccentChoice) -> Unit,
     val D = LocalDs.current
     ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
         Column(
-            Modifier.widthIn(min = 560.design, max = 760.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design),
+            Modifier.widthIn(min = 560.design, max = 1320.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design),
             verticalArrangement = Arrangement.spacedBy(10.design),
         ) {
             Text(D.accentColor, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(bottom = 8.design))
-            AccentChoice.entries.forEach { a ->
-                ChoiceRow(D.accentName(a), a == current, { onPick(a) }, heightPx = 68, fontPx = 24, bg = Ux.Surface, selectedBg = Ux.Surface2, ringWidth = 5.design, leading = {
-                    Box(Modifier.size(32.design).clip(CircleShape).background(Color(a.argb)).border(2.design, Color(0x33FFFFFF), CircleShape))
-                })
+            // 12 couleurs : deux colonnes de 6 (une seule dépasserait la hauteur de l'écran).
+            Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
+                AccentChoice.entries.chunked((AccentChoice.entries.size + 1) / 2).forEach { col ->
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.design)) {
+                        col.forEach { a ->
+                            ChoiceRow(D.accentName(a), a == current, { onPick(a) }, heightPx = 68, fontPx = 24, bg = Ux.Surface, selectedBg = Ux.Surface2, ringWidth = 5.design, leading = {
+                                Box(Modifier.size(32.design).clip(CircleShape).background(Color(a.argb)).border(2.design, Color(0x33FFFFFF), CircleShape))
+                            })
+                        }
+                    }
+                }
             }
         }
     }

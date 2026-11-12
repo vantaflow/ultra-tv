@@ -384,6 +384,7 @@ class DesignStrings(val lang: AppLang) {
     val themeDark get() = tx(R.string.ds_theme_dark)
     val themeLight get() = tx(R.string.ds_theme_light)
     val themeAuto get() = tx(R.string.ds_theme_auto)
+    val themeOled get() = tx(R.string.ds_theme_oled)
     val language get() = tx(R.string.ds_language)
     val menu get() = tx(R.string.ds_menu)
     val menuSidebar get() = tx(R.string.ds_menu_sidebar)

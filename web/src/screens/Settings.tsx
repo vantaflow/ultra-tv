@@ -5,13 +5,14 @@ import { db, getSetting, setSetting } from "@/db/db";
 import { deleteSource, saveSource } from "@/db/sources";
 import { categoriesOf } from "@/db/queries";
 import type { CategoryRow, Kind, Source } from "@/db/types";
-import { LANGS, useT, type Lang } from "@/i18n";
+import { LANGS, useT, type Key, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
 import { guideErrorForSave } from "@/lib/guideAddress";
 import { EXTRA_EPG_KEY } from "@/sync/epg";
 import type { TimeFormat } from "@/lib/clock";
-import { ACCENTS, PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
+import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
+import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
@@ -281,14 +282,14 @@ function DisplayPane() {
         <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
       </Pref>
       <Pref label={t("set.theme")}>
-        <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }]} />
+        <Seg<Theme> label={t("set.theme")} value={p.theme} onChange={(theme) => p.set({ theme })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "dark", label: t("set.themeDark") }, { v: "light", label: t("set.themeLight") }, { v: "oled", label: t("set.themeOled") }]} />
       </Pref>
       <Pref label={t("set.timeFormat")}>
         <Seg<TimeFormat> label={t("set.timeFormat")} value={p.timeFormat} onChange={(timeFormat) => p.set({ timeFormat })} options={[{ v: "auto", label: t("set.themeAuto") }, { v: "12", label: t("set.time12") }, { v: "24", label: t("set.time24") }]} />
       </Pref>
       <Pref label={t("set.accent")}>
-        <div style={{ display: "flex", gap: 10 }} role="radiogroup" aria-label={t("set.accent")}>
-          {ACCENTS.map((c) => <button key={c} className="swatch" role="radio" aria-checked={p.accent === c} aria-label={c} style={{ background: c }} onClick={() => p.set({ accent: c })} />)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1.75rem)", gap: 10 }} role="radiogroup" aria-label={t("set.accent")}>
+          {ACCENT_DEFS.map((a) => { const name = t(`set.accent.${a.id}` as Key); return <button key={a.id} className="swatch" role="radio" aria-checked={p.accent === a.id} aria-label={name} title={name} style={{ background: a.hex }} onClick={() => p.set({ accent: a.id })} />; })}
         </div>
       </Pref>
       <Pref label={t("set.uiLanguage")}>
