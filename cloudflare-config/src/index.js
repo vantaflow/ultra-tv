@@ -141,9 +141,7 @@ async function route(req, env, ctx) {
 
   // Ancienne adresse : les pages ouvertes dans un navigateur partent vers la nouvelle (l'API reste servie ici).
   { const d = legacyDecision(m, req.url);
-    if (d.kind === "redirect") return Response.redirect(d.to, 302);
-    if (d.kind === "gone") return new Response(`Ultra TV a changé d'adresse : https://${PRIMARY_HOST}
-`, { status: 410, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } }); }
+    if (d.kind === "redirect") return new Response(null, { status: d.status, headers: { location: d.to, "cache-control": "no-store" } }); }
 
   // Aucune origine tierce n'a besoin d'appeler ce Worker depuis un navigateur : pas de CORS.
   if (m === "OPTIONS") return new Response(null, { status: 204 });
