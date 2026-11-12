@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.96] — 2026-11-12 (Android) · Bureau 1.2.46 · Worker
+
 ### Modifié
 - Nouvelle adresse principale du Worker : **https://tv.weedy.dpdns.org** (tableau de bord, `/apk`, `/envoyer`, `/download/*`), car `workers.dev` est bloqué sur certains réseaux et box. Android et bureau basculent automatiquement sur l'autre adresse en cas de panne réseau (DNS, connexion, TLS, délai) et retiennent celle qui répond ; l'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active et l'ancien défaut enregistré dans les Réglages est traité comme « défaut ». Nouveau code Downloader **5189921** : il ouvre `tv.weedy.dpdns.org/apk` (remplace 5447141). README, site et messages de l'appli mis à jour.
 
