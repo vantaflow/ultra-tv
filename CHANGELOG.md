@@ -4,8 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.2.94] — 2026-11-12 (Android) · Worker
+
 ### Corrigé
 - Android (TV), Direct : après « Déplacer » (Valider ou Annuler), le focus reste sur la chaîne déplacée au lieu de revenir sur la catégorie « Favoris ».
+
 ### Modifié
 - Site : l'appairage passe en premier (tableau de bord : Appareils et formulaire d'appairage avant les sources ; navigation ; « Pour bien démarrer » ; raccourci de l'appli installée). Captures du site (lecteur TV à trois étages, espace cloud) mises à jour.
 - Nouveau code Downloader **5447141** : il ouvre la page `/apk` (choix 64 bits, 32 bits ou universel). README, site et messages de mise à jour de l'appli renvoient vers `/apk` au lieu de l'APK universel de 217 Mo.
