@@ -180,7 +180,7 @@ object RemoteLog {
         // 1. Persist locally so we can retry on next launch if the network leg
         //    doesn't complete in time. The crash.txt file is the source of
         //    truth — flushPendingCrash() deletes it on a successful upload.
-        runCatching { pendingCrashFile()?.appendText(payload + "\n\n", Charsets.UTF_8) }
+        runCatching { pendingCrashFile()?.appendText(CrashFile.entry(ctx.versionName, ctx.versionCode, payload), Charsets.UTF_8) }
 
         // 2. Best-effort live upload. Honour the user's telemetry toggle.
         if (!telemetryEnabled) return
