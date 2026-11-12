@@ -16,6 +16,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Android : les tampons de la pause du direct (timeshift) laissés sur le disque par un plantage ou une appli tuée sont supprimés au lancement de l'appli (avant : seulement à l'ouverture suivante du lecteur).
 - Android (accueil TV) : en revenant sur « À la une » ou sur les raccourcis, la page remonte tout en haut ; la salutation et l'heure ne restaient plus affichées (le défilement automatique vers le bouton s'arrêtait avant l'en-tête).
+- Android (accueil TV) : plus de va-et-vient de la page quand on passe d'un bouton à l'autre dans « À la une » et les raccourcis (le défilement automatique ne déplace plus la page tant que le focus est dans le bloc du haut).
 
 ## [1.3.0] — 2026-11-12 (Android) et bureau 1.2.49
 

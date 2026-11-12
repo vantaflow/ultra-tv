@@ -266,6 +266,9 @@ internal fun HomeTvContent(
     // défilement automatique vers l'élément focalisé s'arrête dès que le bouton est visible et annulait le retour en
     // haut lancé au même instant : on remonte donc APRÈS lui, dès que la liste est au repos et pas tout en haut.
     var topHasFocus by remember { mutableStateOf(false) }
+    // Lu par le pivot hors composition (pendant le défilement) : drapeau simple, posé avant la demande de défilement.
+    val topFocusFlag = remember { booleanArrayOf(false) }
+    val pivotSpec = remember { HomePivotSpec { topFocusFlag[0] } }
     LaunchedEffect(topHasFocus, animsOff) {
         if (!topHasFocus) return@LaunchedEffect
         androidx.compose.runtime.snapshotFlow {
@@ -286,7 +289,7 @@ internal fun HomeTvContent(
             count(ShortcutId.SERIES)?.let { add(D.homeSeriesCount(it, formatCount(it, D.locale))) }
         }.joinToString(" · ")
     }
-    CompositionLocalProvider(LocalBringIntoViewSpec provides HomePivotSpec) {
+    CompositionLocalProvider(LocalBringIntoViewSpec provides pivotSpec) {
         LazyColumn(
             Modifier.fillMaxSize(),
             state = listState,
@@ -296,7 +299,7 @@ internal fun HomeTvContent(
         ) {
             item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Column(Modifier.onFocusChanged { topHasFocus = it.hasFocus }.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
+                    Column(Modifier.onFocusChanged { topFocusFlag[0] = it.hasFocus; topHasFocus = it.hasFocus }.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
                         HomeGreeting(clock, stats)
                         if (slot == HomeTopSlot.HERO) {
                             if (hero != null) Row(Modifier.fillMaxWidth().height(420.design), horizontalArrangement = Arrangement.spacedBy(28.design)) {
@@ -348,10 +351,16 @@ private fun HomeGreeting(clock: State<Long>, stats: String) {
 
 /** Pivot vertical de l'accueil : voir [pivotScrollDistance] ; animation courte (125 ms) comme le pivot TV de Compose. */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
-private object HomePivotSpec : BringIntoViewSpec {
+/**
+ * [topFocused] : focus dans le bloc du haut (« À la une », raccourcis). Le pivot ne déplace alors PAS la page : il
+ * voulait amener le bouton à 30 % de l'écran, donc descendre la page et cacher l'en-tête ; le retour en haut la
+ * remontait ensuite, d'où un va-et-vient à chaque Gauche / Droite entre les boutons.
+ */
+private class HomePivotSpec(private val topFocused: () -> Boolean) : BringIntoViewSpec {
     override val scrollAnimationSpec: androidx.compose.animation.core.AnimationSpec<Float> =
         androidx.compose.animation.core.tween(durationMillis = 125, easing = androidx.compose.animation.core.CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f))
-    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = pivotScrollDistance(offset, size, containerSize)
+    override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float =
+        if (topFocused()) 0f else pivotScrollDistance(offset, size, containerSize)
 }
 
 /**
