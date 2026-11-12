@@ -44,6 +44,9 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class DetailRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
+    private fun tr(fr: String, en: String) = if (lang == AppLang.English) en else fr
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -54,7 +57,7 @@ class DetailRenderTest {
         I18n.init(ApplicationProvider.getApplicationContext())
         Ux.themeLight = light
         rule.setContent {
-            CompositionLocalProvider(LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French)) {
+            CompositionLocalProvider(LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang)) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = LocalInputModeManager.current
                 SideEffect { inputMode.requestInputMode(InputMode.Keyboard) }
@@ -73,15 +76,15 @@ class DetailRenderTest {
     private fun movieModel() = MovieDetailTvModel(
         title = "Orbite basse", backdrop = null, poster = null,
         chips = listOf("2024", "Science-fiction", "Thriller", "4K", "VF"),
-        ratings = listOf(RatingCell("7,6", "IMDb"), RatingCell("88 %", "Rotten Tomatoes"), RatingCell("2 h 06", "Durée")),
+        ratings = listOf(RatingCell("7,6", "IMDb"), RatingCell("88 %", "Rotten Tomatoes"), RatingCell("2 h 06", tr("Durée", "Runtime"))),
         synopsis = "Une ingénieure coincée dans une station orbitale en perdition a six heures pour ramener son équipage sur Terre, alors que les communications avec le sol se coupent une à une.",
-        skeleton = false, primaryLabel = "Reprendre à 31:12", fromStartLabel = "Depuis le début", trailerLabel = "Bande-annonce",
-        progress = 0.25f, progressLine = "Reprendre à 31:12 · 94 min restantes",
+        skeleton = false, primaryLabel = tr("Reprendre à 31:12", "Resume at 31:12"), fromStartLabel = tr("Depuis le début", "From the start"), trailerLabel = tr("Bande-annonce", "Trailer"),
+        progress = 0.25f, progressLine = tr("Reprendre à 31:12 · 94 min restantes", "Resume at 31:12 · 94 min left"),
         cast = listOf(
             CastUi("Nora Valin", "Elsa", null), CastUi("Tom Reyes", "Malik", null), CastUi("Ana Kiel", null, null),
-            CastUi("Jo Bram", null, null), CastUi("Lou Marez", null, null), CastUi("Sam Doré", "Réalisation", null),
+            CastUi("Jo Bram", null, null), CastUi("Lou Marez", null, null), CastUi("Sam Doré", tr("Réalisation", "Director"), null),
         ),
-        castTitle = "Distribution", backDescription = "Retour",
+        castTitle = tr("Distribution", "Cast"), backDescription = tr("Retour", "Back"),
     )
 
     private fun renderMovie(file: String, light: Boolean): Int = capture(file, light) {
@@ -120,7 +123,7 @@ class DetailRenderTest {
     private fun renderSeries(file: String, light: Boolean): Int = capture(file, light) {
         SeriesDetailTvContent(
             data = seriesData(), onSeason = {}, onPlayTarget = {}, onPlayEpisode = {}, onOpenPerson = {}, onBack = {},
-            onLongPressEpisode = {}, downloadLabel = "Télécharger la saison", onDownloadSeason = {},
+            onLongPressEpisode = {}, downloadLabel = tr("Télécharger la saison", "Download season"), onDownloadSeason = {},
             favorite = { V2IconButton("M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z", "Favori", {}) }, trakt = {},
         )
     }
@@ -138,4 +141,7 @@ class DetailRenderTest {
         assertEquals(1920, renderSeries("series-detail-tv-dark.png", light = false))
         assertTrue(File(outDir, "series-detail-tv-dark.png").length() > 10_000)
     }
+
+    @Test fun capture_film_tv_en() { lang = AppLang.English; renderMovie("movie-detail-tv-en.png", light = false) }
+    @Test fun capture_serie_tv_en() { lang = AppLang.English; renderSeries("series-detail-tv-en.png", light = false) }
 }

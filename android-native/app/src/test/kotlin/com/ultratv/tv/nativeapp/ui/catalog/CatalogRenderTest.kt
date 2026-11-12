@@ -110,4 +110,7 @@ class CatalogRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "movies-tv-fr-dark.png").length() > 10_000)
     }
+
+    @Test fun capture_movies_tv_en_dark() { render(AppLang.English, light = false, series = false, file = "movies-tv-en-dark.png") }
+    @Test fun capture_series_tv_en_dark() { render(AppLang.English, light = false, series = true, file = "series-tv-en-dark.png") }
 }

@@ -56,12 +56,12 @@ class LiveOsdRenderTest {
 
     companion object {
     private fun recents() = listOf(
-        OsdRecent("p:1", null, 1, "TF1", "Météo"),
-        OsdRecent("p:2", null, 7, "Arte", "Court-circuit"),
-        OsdRecent("p:3", null, 6, "M6", "Capital"),
-        OsdRecent("p:4", null, 12, "beIN Sports 1", "Ligue 1 · Direct"),
-        OsdRecent("p:5", null, 4, "Canal+", "Le Grand Journal"),
-        OsdRecent("p:6", null, 15, "BFMTV", "Édition spéciale"),
+        OsdRecent("p:1", null, 1, "Nova 1", "Météo"),
+        OsdRecent("p:2", null, 7, "Horizon", "Court-circuit"),
+        OsdRecent("p:3", null, 6, "Six", "Capital"),
+        OsdRecent("p:4", null, 12, "Stade 1", "Ligue 1 · Direct"),
+        OsdRecent("p:5", null, 4, "Écran+", "Le Grand Journal"),
+        OsdRecent("p:6", null, 15, "Flash 24", "Édition spéciale"),
     )
 
     /** Ruban de la soirée de la maquette (précédent / en cours à 40 % / trois suivants). */
@@ -87,7 +87,7 @@ class LiveOsdRenderTest {
             O.labels(D, X, S),
         )
         return LiveOsdState(
-            channel = OsdChannelInfo(logo = null, number = 101, name = "France Info", quality = "FHD", hdr = "hdr10"),
+            channel = OsdChannelInfo(logo = null, number = 101, name = "Le Fil Info", quality = "FHD", hdr = "hdr10"),
             programme = OsdProgrammeInfo(
                 title = "Journal de 20h",
                 description = "Les titres de l'actualité nationale et internationale, suivis d'un grand reportage en direct depuis la capitale et des invités du jour.",

@@ -52,6 +52,8 @@ import java.util.Calendar
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class HomeRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -64,11 +66,11 @@ class HomeRenderTest {
 
     private fun rows(): HomeRows {
         val live = listOf(
-            ChannelCardUi(channel(1, 1, "TF1"), "Esprits criminels", "20:00 – 21:00", 0.60f),
-            ChannelCardUi(channel(4, 4, "Canal+"), "Le Grand Journal", "20:15 – 21:00", 0.45f),
-            ChannelCardUi(channel(12, 12, "beIN Sports 1"), "Ligue 1 · PSG – OM", "20:45 – 22:45", 0.20f),
-            ChannelCardUi(channel(7, 7, "Arte"), "Court-circuit", "20:30 – 21:30", 0.10f),
-            ChannelCardUi(channel(101, 101, "France Info"), "Journal de 20h", "20:00 – 21:30", 0.40f),
+            ChannelCardUi(channel(1, 1, "Nova 1"), "Esprits criminels", "20:00 – 21:00", 0.60f),
+            ChannelCardUi(channel(4, 4, "Écran+"), "Le Grand Journal", "20:15 – 21:00", 0.45f),
+            ChannelCardUi(channel(12, 12, "Stade 1"), "Ligue 1 · PSG – OM", "20:45 – 22:45", 0.20f),
+            ChannelCardUi(channel(7, 7, "Horizon"), "Court-circuit", "20:30 – 21:30", 0.10f),
+            ChannelCardUi(channel(101, 101, "Le Fil Info"), "Journal de 20h", "20:00 – 21:30", 0.40f),
         )
         fun resume(i: Int, title: String, p: Float, left: Int) = ResumeCardUi(
             key = "r$i", entry = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "$i", title = title, poster = null, streamUrl = "u"),
@@ -96,7 +98,7 @@ class HomeRenderTest {
         )
         rule.setContent {
             CompositionLocalProvider(
-                LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French), LocalTouch provides false,
+                LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
             ) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
@@ -137,4 +139,6 @@ class HomeRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "home-tv-fr.png").length() > 10_000)
     }
+
+    @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "home-tv-en.png", sport = true) }
 }

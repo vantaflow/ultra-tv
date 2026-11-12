@@ -50,6 +50,8 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class SettingsRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -77,8 +79,8 @@ class SettingsRenderTest {
         val focusRow = FocusRequester()
         val rubFocus = List(rubs.size) { FocusRequester() }
         rule.setContent {
-            val D = designStringsFor(AppLang.French)
-            CompositionLocalProvider(LocalDs provides D, LocalStrings provides stringsFor(AppLang.French)) {
+            val D = designStringsFor(lang)
+            CompositionLocalProvider(LocalDs provides D, LocalStrings provides stringsFor(lang)) {
                 // Mode clavier (télécommande) : sans lui, les éléments cliquables ne prennent pas le focus.
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
                 androidx.compose.runtime.SideEffect { inputMode.requestInputMode(androidx.compose.ui.input.InputMode.Keyboard) }
@@ -114,4 +116,6 @@ class SettingsRenderTest {
 
     @Test fun capture_tv_fr_sombre() { render(false, "settings-tv-fr-dark.png") }
     @Test fun capture_tv_fr_clair() { render(true, "settings-tv-fr-light.png") }
+
+    @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(false, "settings-tv-en-dark.png") }
 }

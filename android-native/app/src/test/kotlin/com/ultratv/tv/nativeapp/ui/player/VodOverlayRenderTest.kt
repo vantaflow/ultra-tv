@@ -49,6 +49,8 @@ import java.io.File
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class VodOverlayRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -69,7 +71,6 @@ class VodOverlayRenderTest {
 
     private fun render(episode: Boolean, file: String, steps: Int = 0) {
         I18n.init(ApplicationProvider.getApplicationContext())
-        val lang = AppLang.French
         val labels = vodLabels(PlayerExtraStrings(lang), stringsOf(lang), DesignStrings(lang))
         val pauseFocus = FocusRequester()
         rule.setContent {
@@ -120,4 +121,6 @@ class VodOverlayRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "movie-player-tv-fr.png").length() > 10_000)
     }
+
+    @Test fun capture_movie_player_tv_en() { lang = AppLang.English; render(episode = false, file = "movie-player-tv-en.png") }
 }

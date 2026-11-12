@@ -62,7 +62,7 @@ class LiveDrawerRenderTest {
     )
 
     private val rows = listOf(
-        DrawerRowUi(1, 1, null, "France Info", "Journal de 20h · 20:00", 0.40f, false),
+        DrawerRowUi(1, 1, null, "Le Fil Info", "Journal de 20h · 20:00", 0.40f, false),
         DrawerRowUi(2, 2, null, "Chaîne Info", "Le grand débat · 20:00", 0.62f, true),
         DrawerRowUi(3, 3, null, "Info 24", "Édition spéciale · 19:45", 0.75f, false),
         DrawerRowUi(4, 4, null, "Actu Plus", "Reportage · 20:15", 0.30f, false),

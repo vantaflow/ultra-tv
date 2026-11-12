@@ -56,6 +56,8 @@ import java.util.Calendar
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class SportRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -71,13 +73,13 @@ class SportRenderTest {
     private fun channel(id: Long, num: Int, name: String) =
         ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = name, logo = null, categoryId = "sport", streamUrl = "u", num = num)
 
-    private val bein1 = channel(1, 12, "beIN Sports 1")
-    private val bein3 = channel(2, 14, "beIN Sports 3")
-    private val canal = channel(3, 21, "Canal+ Sport")
-    private val euro = channel(4, 30, "Eurosport 1")
-    private val rmc = channel(5, 31, "RMC Sport 1")
-    private val dazn = channel(6, 32, "DAZN 1")
-    private val bein2 = channel(7, 13, "beIN Sports 2")
+    private val bein1 = channel(1, 12, "Stade 1")
+    private val bein3 = channel(2, 14, "Stade 3")
+    private val canal = channel(3, 21, "Écran+ Sport")
+    private val euro = channel(4, 30, "Arena Sport")
+    private val rmc = channel(5, 31, "Tribune 1")
+    private val dazn = channel(6, 32, "Podium 1")
+    private val bein2 = channel(7, 13, "Stade 2")
 
     private fun entry(ch: ChannelEntity, title: String, start: Long, end: Long) =
         SportEntry(ch, EpgEntity(id = start + ch.id, channelId = ch.id, title = title, description = null, startMs = start, endMs = end), sportChannel = true, strict = true)
@@ -107,7 +109,7 @@ class SportRenderTest {
         val st = state()
         rule.setContent {
             CompositionLocalProvider(
-                LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French), LocalTouch provides false,
+                LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
             ) {
                 val D = LocalDs.current
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
@@ -169,4 +171,6 @@ class SportRenderTest {
         // Une série n'est pas un match de « Serie A ».
         assertNull(SportKind.of("Série policière : épisode 4"))
     }
+
+    @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "sport-tv-en.png", reminded = emptySet()) }
 }

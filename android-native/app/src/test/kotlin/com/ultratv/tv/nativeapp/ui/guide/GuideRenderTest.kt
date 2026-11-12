@@ -63,6 +63,8 @@ import java.util.Calendar
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], qualifiers = "w960dp-h540dp-xhdpi")
 class GuideRenderTest {
+    /** Langue de l'interface du rendu (variantes anglaises pour le README et le site en anglais). */
+    private var lang: AppLang = AppLang.French
     @get:Rule val rule = createComposeRule()
 
     private val outDir = File("build/outputs/ui-v2").also { it.mkdirs() }
@@ -77,8 +79,8 @@ class GuideRenderTest {
         ChannelEntity(id = id, providerId = 1, remoteId = "$id", name = name, logo = null, categoryId = "c3", streamUrl = "u", num = num)
 
     private val chans = listOf(
-        channel(1, 1, "Canal+ Cinéma"), channel(2, 2, "Ciné+ Classic"), channel(3, 3, "Ciné+ Club"),
-        channel(4, 4, "Ciné+ Émotion"), channel(5, 5, "OCS Max"),
+        channel(1, 1, "Écran+ Cinéma"), channel(2, 2, "Cinétoile Classic"), channel(3, 3, "Cinétoile Club"),
+        channel(4, 4, "Cinétoile Émotion"), channel(5, 5, "Grand Écran"),
     )
 
     private fun prog(ch: Long, i: Int, title: String, s: Pair<Int, Int>, e: Pair<Int, Int>, desc: String? = null) =
@@ -107,7 +109,7 @@ class GuideRenderTest {
         val windowStart = at(1, 0)
         rule.setContent {
             CompositionLocalProvider(
-                LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French), LocalTouch provides false,
+                LocalDs provides designStringsFor(lang), LocalStrings provides stringsFor(lang), LocalTouch provides false,
             ) {
                 val D = LocalDs.current
                 val inputMode = androidx.compose.ui.platform.LocalInputModeManager.current
@@ -161,4 +163,6 @@ class GuideRenderTest {
         assertEquals(1920, bmp.width); assertEquals(1080, bmp.height)
         assertTrue(File(outDir, "guide-tv-fr.png").length() > 10_000)
     }
+
+    @Test fun capture_tv_en_sombre() { lang = AppLang.English; render(light = false, file = "guide-tv-en.png") }
 }
