@@ -39,21 +39,21 @@ Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'e
 
 Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **portails Stalker / Ministra** par adresse MAC). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
 
-> Les captures TV ci-dessous viennent d'une **vraie box Android TV** (Android 14, 2 Go de RAM) ; Ultra TV ne fournit aucun contenu. Le lecteur, les profils, les langues et les captures en anglais et en arabe utilisent des **données synthétiques** (faux serveur Xtream local, `android-native/tools/fake-xtream`).
+> Captures de la nouvelle interface (1.2.98), rendues avec un **catalogue entièrement fictif** : chaînes, catégories, programmes et titres inventés. Ultra TV ne fournit aucun contenu.
 
 <p align="center">
   <img src="docs/screenshots/fr/home.png" alt="Accueil" width="48%" />
-  <img src="docs/screenshots/fr/live.png" alt="Direct" width="48%" />
+  <img src="docs/screenshots/fr/live.png" alt="Liste des chaînes du lecteur" width="48%" />
   <img src="docs/screenshots/fr/guide.png" alt="Guide des programmes" width="48%" />
+  <img src="docs/screenshots/fr/sport.png" alt="Rubrique Sport" width="48%" />
+  <img src="docs/screenshots/fr/categories.png" alt="Films par catégories" width="48%" />
+  <img src="docs/screenshots/fr/movie-detail.png" alt="Fiche film" width="48%" />
   <img src="docs/screenshots/fr/detail.png" alt="Fiche série : saisons et épisodes" width="48%" />
-  <img src="docs/screenshots/fr/categories.png" alt="Films par catégories du fournisseur" width="48%" />
-  <img src="docs/screenshots/fr/home-rows.png" alt="Accueil : Top 10, Reprendre, Parce que vous avez regardé" width="48%" />
-  <img src="docs/screenshots/fr/search.png" alt="Recherche en temps réel" width="48%" />
-  <img src="docs/screenshots/fr/kairo.png" alt="« À suivre » et « Nouveautés » d'Ultra TV dans le lanceur Kairo" width="48%" />
-  <img src="docs/screenshots/fr/player.png" alt="Lecteur" width="48%" />
+  <img src="docs/screenshots/fr/movie-player.png" alt="Lecteur des films" width="48%" />
+  <img src="docs/screenshots/fr/player.png" alt="Surcouche du Direct" width="48%" />
   <img src="docs/screenshots/fr/settings.png" alt="Réglages" width="48%" />
+  <img src="docs/screenshots/fr/home-light.png" alt="Accueil, thème clair" width="48%" />
   <img src="docs/screenshots/fr/profiles.png" alt="Qui regarde ?" width="48%" />
-  <img src="docs/screenshots/fr/languages.png" alt="Réglages, panneau Langues" width="48%" />
 </p>
 
 Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/en)) et en arabe, interface en miroir ([`docs/screenshots/ar`](docs/screenshots/ar)).

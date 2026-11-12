@@ -39,17 +39,20 @@ Automatic updates afterwards, on every platform. No account needed.
 
 Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
 
-> The screenshots below use **synthetic data** (a local fake Xtream server, `android-native/tools/fake-xtream`). Channel and programme names come from that data set, not from the app. The French README shows screenshots taken on a real Android TV box.
+> Screenshots of the new interface (1.2.98), rendered with an **entirely fictional catalog**: made-up channels, categories, programmes and titles. Ultra TV provides no content.
 
 <p align="center">
   <img src="docs/screenshots/en/home.png" alt="Home" width="48%" />
-  <img src="docs/screenshots/en/live.png" alt="Live TV" width="48%" />
+  <img src="docs/screenshots/en/live.png" alt="Player channel list" width="48%" />
   <img src="docs/screenshots/en/guide.png" alt="TV guide" width="48%" />
-  <img src="docs/screenshots/en/detail.png" alt="Movie details" width="48%" />
-  <img src="docs/screenshots/en/player.png" alt="Player" width="48%" />
+  <img src="docs/screenshots/en/sport.png" alt="Sport section" width="48%" />
+  <img src="docs/screenshots/en/categories.png" alt="Movies by category" width="48%" />
+  <img src="docs/screenshots/en/movie-detail.png" alt="Movie details" width="48%" />
+  <img src="docs/screenshots/en/detail.png" alt="Series details: seasons and episodes" width="48%" />
+  <img src="docs/screenshots/en/movie-player.png" alt="Movie player" width="48%" />
+  <img src="docs/screenshots/en/player.png" alt="Live TV overlay" width="48%" />
   <img src="docs/screenshots/en/settings.png" alt="Settings" width="48%" />
   <img src="docs/screenshots/en/profiles.png" alt="Who's watching?" width="48%" />
-  <img src="docs/screenshots/en/languages.png" alt="Settings, Languages panel" width="48%" />
 </p>
 
 The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/fr)) and in Arabic, with a mirrored interface ([`docs/screenshots/ar`](docs/screenshots/ar)).
