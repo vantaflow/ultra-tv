@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.ui.components
 
+import kotlinx.coroutines.launch
 import com.ultratv.tv.nativeapp.ui.design.designT
 import com.ultratv.tv.nativeapp.ui.mobile.navigateTopLevel
 import androidx.compose.foundation.background
@@ -148,6 +149,11 @@ fun SidebarNav(navController: NavController) {
     val showLabels by remember { androidx.compose.runtime.derivedStateOf { expanded || labelAlphaState.value > 0f } }
 
     val activeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    // Renvoi du focus vers la page REPORTÉ à l'image suivante : déplacé pendant le traitement de l'événement de focus
+    // (contenu disparu, ex. sources retirées), il forçait la liste de la page à se composer au milieu d'une
+    // recomposition — « Compose Runtime internal error (pending composition has not been applied) », Fire TV 1.2.96.
+    val railScope = androidx.compose.runtime.rememberCoroutineScope()
+    var railHasFocus by remember { mutableStateOf(false) }
     val hasActive = route == "search" || items.any { isSelected(route, it.route) }
 
     Box(Modifier.fillMaxSize()) {
@@ -172,13 +178,16 @@ fun SidebarNav(navController: NavController) {
                     // Ne s'ouvre que sur une VRAIE touche : un focus récupéré tout seul (liste rafraîchie par une synchro
                     // en arrière-plan) ouvrait le menu sans action de l'utilisateur ; on rend alors le focus à la page.
                     .onFocusChanged { st ->
+                        railHasFocus = st.hasFocus
                         if (!st.hasFocus) expanded = false
                         else if (com.ultratv.tv.nativeapp.ui.common.InputClock.recentNavKey()) expanded = true
                         // Focus arrivé sans touche (élément disparu, fenêtre fermée, clavier) : retour à l'élément mémorisé
-                        // de l'écran ; à défaut seulement, déplacement vers la droite.
-                        else if (!expanded) {
+                        // de l'écran ; à défaut seulement, déplacement vers la droite. Jamais pendant cet événement.
+                        else if (!expanded) railScope.launch {
+                            androidx.compose.runtime.withFrameNanos { }
+                            if (!railHasFocus || expanded) return@launch
                             val back = com.ultratv.tv.nativeapp.ui.common.CurrentScreenFocus.requester
-                            if (back == null || !runCatching { back.requestFocus() }.getOrDefault(false)) leaveRail()
+                            if (back == null || !runCatching { back.requestFocus() }.getOrDefault(false)) runCatching { leaveRail() }
                         }
                     }
                     .onPreviewKeyEvent { ev -> if (!expanded && ev.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) expanded = true; false }
