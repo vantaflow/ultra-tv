@@ -255,6 +255,7 @@ class DesignStrings(val lang: AppLang) {
     val tomorrow get() = tx(R.string.ds_tomorrow)
     val announcementTitle get() = tx(R.string.ds_announcement_title)
     val announcementOk get() = tx(R.string.ds_announcement_ok)
+    val announcementCloseHint get() = tx(R.string.ds_announcement_close_hint)
     val announcementUpdate get() = tx(R.string.ds_announcement_update)
     val rubMessages get() = tx(R.string.ds_rub_messages)
     val noMessages get() = tx(R.string.ds_no_messages)

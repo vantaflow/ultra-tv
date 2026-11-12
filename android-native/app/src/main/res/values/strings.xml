@@ -217,6 +217,7 @@
     <string name="ds_tomorrow">Tomorrow</string>
     <string name="ds_announcement_title">Notice</string>
     <string name="ds_announcement_ok">OK</string>
+    <string name="ds_announcement_close_hint">Back: close</string>
     <string name="ds_announcement_update">Update</string>
     <string name="ds_rub_messages">Messages</string>
     <string name="ds_no_messages">No messages yet. Service notices will appear here.</string>

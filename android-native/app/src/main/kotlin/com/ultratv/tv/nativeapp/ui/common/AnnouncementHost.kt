@@ -2,12 +2,14 @@ package com.ultratv.tv.nativeapp.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -161,18 +163,32 @@ private fun AnnouncementBanner(shown: Announcement, vm: AnnouncementViewModel, k
         if (keepPending) hidden = true else vm.dismiss(shown, byUser = false)
     }
     if (hidden) return
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    // Fermeture par l'utilisateur : Retour (télécommande) ou toucher (mobile) ; sinon il disparaît seul.
+    val close = { if (keepPending) hidden = true else vm.dismiss(shown) }
+    androidx.activity.compose.BackHandler(onBack = close)
+    // Temps restant avant disparition, visible : le bandeau ne paraît plus « bloqué ».
+    val left = remember(shown.id) { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(shown.id) { left.animateTo(0f, androidx.compose.animation.core.tween(AnnouncementViewModel.BANNER_MS.toInt(), easing = androidx.compose.animation.core.LinearEasing)) }
     val accent = accentOf(shown.level)
     Box(Modifier.fillMaxSize().padding(end = 96.design, top = 54.design), contentAlignment = Alignment.TopEnd) {
-        Row(
+        Column(
             Modifier.width(620.design).clip(RoundedCornerShape(22.design)).background(Ux.Surface)
-                .border(2.design, accent, RoundedCornerShape(22.design)).padding(horizontal = 28.design, vertical = 24.design),
+                .border(2.design, accent, RoundedCornerShape(22.design))
+                .then(if (touch) Modifier.clickable { close() } else Modifier),
+        ) {
+        Row(
+            Modifier.padding(horizontal = 28.design, vertical = 24.design),
             horizontalArrangement = Arrangement.spacedBy(20.design),
         ) {
             DIcon(Icons.Info, 40.design, accent, strokeWidth = 2.2f)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(shown.title.ifBlank { D.announcementTitle }, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(shown.message, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 4, overflow = TextOverflow.Ellipsis)
+                if (!touch) Text(D.announcementCloseHint, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, modifier = Modifier.padding(top = 4.design))
             }
+        }
+        Box(Modifier.fillMaxWidth(left.value).height(4.design).background(accent))
         }
     }
 }

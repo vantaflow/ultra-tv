@@ -213,6 +213,7 @@
     <string name="ds_tomorrow">Jutro</string>
     <string name="ds_announcement_title">Komunikat</string>
     <string name="ds_announcement_ok">OK</string>
+    <string name="ds_announcement_close_hint">Wstecz: zamknij</string>
     <string name="ds_announcement_update">Aktualizacja</string>
     <string name="ds_rub_messages">Wiadomości</string>
     <string name="ds_no_messages">Brak wiadomości. Komunikaty serwisowe pojawią się tutaj.</string>
