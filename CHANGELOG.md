@@ -31,6 +31,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Android TV, OSD du Direct : la rangée « Chaînes récentes » n'affiche plus deux fois la même chaîne (ex. « TF1 1 » en double) ni la chaîne en cours sous une autre variante ; dédoublonnage par identifiant et par nom affiché, plus récente d'abord, 10 au plus.
 
 ### Modifié
+- Site du Worker (Cloudflare) refondu avec un seul système de design : gabarit commun (en-tête, navigation selon le contexte public, espace utilisateur ou administration, menu du compte, pied de page avec GitHub et confidentialité), thèmes sombre et clair à jetons CSS, navigation mobile en bas, tableaux défilant dans leur cadre. Tableau de bord réorganisé en *Vue d'ensemble*, *Sources*, *Appareils*, *Intégrations* (Trakt, OpenSubtitles) et *Compte et sécurité*, avec étapes de démarrage et états vides ; pages de connexion, inscription, appairage, `/envoyer` (en, fr, es, ar, pl, avec étapes) et `/apk` harmonisées ; administration alignée sur le même système (onglets, filtres, pagination, graphiques et export CSV conservés). Aucune route, champ de formulaire ni route `/api/*` modifiés.
 - Bande-annonce (Android et bureau) : plus de sous-titres automatiques de YouTube par-dessus la vidéo.
 
 ## [Bureau 1.2.44] — 2026-11-12

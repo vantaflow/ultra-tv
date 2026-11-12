@@ -2,7 +2,10 @@
 // style= ni on*= (CSP à nonce). Les valeurs viennent de admin.js (liste blanche) ; tout texte dynamique est échappé.
 
 import { escapeHtml as e } from "./http.js";
-import { layout, LOGO, ago, ico, announcementsPanel, ANN_SCRIPT, fmtTime, sourcesLabel } from "./pages.js";
+import { notice as noticeBox } from "./ui/components.js";
+import { ago, fmtTime, sourcesLabel } from "./ui/format.js";
+import { shell as pageShell } from "./ui/layout.js";
+import { announcementsPanel, ANN_SCRIPT } from "./pages/alerts.js";
 import { DAY_MS, PERIOD_LABELS, countBy, listUrl, mergeCounts, pct, topWithOthers, flattenDevices } from "./admin.js";
 import { PLATFORM_LABELS } from "./telemetry.js";
 
@@ -33,15 +36,11 @@ export function flagCode(code) {
 /** Libellé d'un pays pour une barre : drapeau + code, ou « autres ». */
 const countryBarLabel = (k) => (/^[A-Z]{2}$/.test(k) ? flagCode(k) : k === "autres" ? "Autres pays" : k === "inconnu" ? "Inconnu" : k);
 
-/** Cadre commun : marque, onglets, compte courant. [nav] faux : accès par jeton d'exploitation (pas de session). */
+/** Cadre commun : gabarit du site (contexte « administration »), onglets, compte courant. [nav] faux : accès par jeton d'exploitation (pas de session). */
 function shell(n, { active, title, body, csrfInput = "", me = "", nav = true, script = "" }) {
-  const tabs = nav ? `<nav class="tabs" aria-label="Administration">${TABS.map(([k, label, href]) => `<a href="${href}"${k === active ? ' aria-current="page"' : ""}>${e(label)}</a>`).join("")}</nav>` : "";
-  const top = nav
-    ? `<div class="spacer"></div><span class="who">${ico("user")} ${e(me)}</span><a class="button secondary" href="/">Mon compte</a><form method="post" action="/logout">${csrfInput}<button class="secondary" type="submit">Se déconnecter</button></form>`
-    : "";
+  const sub = nav ? `<div class="tabs-bar"><nav class="tabs" aria-label="Administration">${TABS.map(([k, label, href]) => `<a href="${href}"${k === active ? ' aria-current="page"' : ""}>${e(label)}</a>`).join("")}</nav></div>` : "";
   const bars = `document.querySelectorAll('.bars i[data-w]').forEach(function(i){i.style.width=i.getAttribute('data-w')+'%';});`;
-  return layout(`Ultra TV — ${title}`, `<main id="main" class="adm"><header class="adm-top"><div class="brand">${LOGO}<span>Administration</span></div>${top}</header>${tabs}${body}</main>`,
-    n, `<script nonce="${n}">${bars}${script}</script>`);
+  return pageShell(n, { title: `Ultra TV — ${title}`, ctx: "admin", bare: !nav, acct: nav ? { login: me } : null, admin: true, csrfInput, sub, width: "wide", body, extra: `<script nonce="${n}">${bars}${script}</script>` });
 }
 
 /** En-tête de colonne triable : lien qui bascule le sens (aria-sort sur la colonne active). */
@@ -229,7 +228,7 @@ const ALERT_MSG = {
 
 export function alertsPage(n, { announcements, annStats, ok, err, now = Date.now(), me, csrfInput }) {
   const okMsg = ok && ALERT_MSG.ok[ok], errMsg = err && ALERT_MSG.err[err];
-  const notice = okMsg ? `<div class="notice ok" role="status">${ico("info")}<span>${e(okMsg)}</span></div>` : errMsg ? `<div class="notice err" role="alert">${ico("info")}<span>${e(errMsg)}</span></div>` : "";
+  const notice = okMsg ? noticeBox("ok", okMsg) : errMsg ? noticeBox("err", errMsg) : "";
   const confirm = `document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventListener('submit',function(ev){if(!window.confirm(f.getAttribute('data-confirm')))ev.preventDefault();});});`;
   const body = `${notice}<div class="agrid">${announcementsPanel(announcements, csrfInput, now, annStats)}</div>`;
   return shell(n, { active: "alerts", title: "alertes", body, me, csrfInput, script: ANN_SCRIPT + confirm });

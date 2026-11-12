@@ -93,3 +93,6 @@ release-signing.env
 # ffmpeg LGPL embarqué (téléchargé au moment du packaging)
 electron/vendor/
 __pycache__/
+
+# Aperçu local du Worker (scripts/preview.mjs)
+cloudflare-config/.preview/

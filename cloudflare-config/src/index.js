@@ -228,7 +228,7 @@ async function route(req, env, ctx) {
   if (pairRoute) {
     const raw = url.searchParams.get("code");
     const c = normalizeCode(raw);
-    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c });
+    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c, admin: isAdmin(env, sess.acct) });
   }
 
   if (adminRoute) {
