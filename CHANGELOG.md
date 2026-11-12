@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Worker : les liens `/download/windows`, `/mac` et `/linux*` renvoyaient à la page des versions au lieu du fichier quand plus de 20 versions Android ou pré-versions avaient été publiées après la dernière version bureau ; les 100 dernières versions sont maintenant lues.
+
 ## [1.3.1] — 2026-11-12 (Android) et bureau 1.2.50
 
 ### Ajouté

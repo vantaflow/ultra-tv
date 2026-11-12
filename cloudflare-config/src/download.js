@@ -1,7 +1,7 @@
 // Liens de téléchargement stables (README, site, posts) : /download/android (+ -arm64, -32, -armv7, -universal), /windows, /mac, /linux (AppImage), /linux-deb, /linux-rpm.
 // Android : l'APK universel de la dernière release (« Latest » = Android). Bureau : les releases « desktop-v* » ne sont
 // pas « Latest » et leurs fichiers portent le numéro de version ; on lit la dernière release bureau via l'API GitHub
-// (cache 1 h) et on redirige vers le fichier de la plateforme.
+// (100 dernières releases, cache 1 h : les releases Android et les pré-versions sont nombreuses) et on redirige vers le fichier de la plateforme.
 
 export const REPO = "vantaflow/ultra-tv";
 const RELEASES = `https://github.com/${REPO}/releases`;
@@ -40,7 +40,7 @@ export async function downloadRedirect(platform, fetchImpl = fetch) {
   if (!PATTERNS[platform]) return null;
   let target = null;
   try {
-    const r = await fetchImpl(`https://api.github.com/repos/${REPO}/releases?per_page=20`, {
+    const r = await fetchImpl(`https://api.github.com/repos/${REPO}/releases?per_page=100`, {
       headers: { "user-agent": "ultratv-config", accept: "application/vnd.github+json" },
       cf: { cacheTtl: 3600, cacheEverything: true },
     });
