@@ -27,7 +27,19 @@ enum class SportKind(private val words: Set<String>, private val phrases: List<S
         }
 
         /** Discipline d'un programme : le TITRE d'abord (un résumé qui cite « football » ne fait pas du ski un match). */
-        fun ofProgramme(title: String?, description: String?): SportKind? = of(title) ?: of(description)
+        fun ofProgramme(title: String?, description: String?): SportKind? =
+            of(title) ?: if (isOtherSport(title)) null else of(description)
+
+        /** Sports sans onglet (ski, golf, cyclisme…) : un tel titre ne prend jamais la discipline citée dans le résumé. */
+        private val OTHER_SPORTS = setOf(
+            "ski", "golf", "cyclisme", "cycling", "ciclismo", "athletisme", "athletics", "atletismo", "natation", "swimming",
+            "handball", "volley", "volleyball", "equitation", "hippisme", "biathlon", "patinage", "snooker", "flechettes", "darts",
+            "voile", "sailing", "triathlon", "escrime", "lutte", "halterophilie", "badminton", "hockey", "curling", "gymnastique",
+        )
+        private fun isOtherSport(title: String?): Boolean {
+            val f = SportDetector.fold(title ?: return false)
+            return f.split(' ').any { it in OTHER_SPORTS }
+        }
 
         /** Disciplines présentes dans [entries], dans l'ordre de déclaration (onglets proposés). */
         fun present(list: List<SportEntry>): List<SportKind> {
