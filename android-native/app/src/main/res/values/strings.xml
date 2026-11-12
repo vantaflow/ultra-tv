@@ -1528,4 +1528,23 @@
     <string name="set2_sport_summary">Sport: %1$s</string>
     <string name="set2_version_summary">Version %1$s</string>
     <string name="v2_duration_label">Duration</string>
+    <!-- Interface v2 : accueil, guide, sport -->
+    <string name="uxv2_greet_morning">Good morning</string>
+    <string name="uxv2_greet_afternoon">Good afternoon</string>
+    <string name="uxv2_greet_evening">Good evening</string>
+    <string name="uxv2_featured">Featured</string>
+    <string name="uxv2_category">Category</string>
+    <string name="uxv2_reminder_on">Reminder set</string>
+    <string name="uxv2_sport_live_count">%1$s live</string>
+    <string name="uxv2_sport_from_guide">Based on your sources\' guide</string>
+    <string name="uxv2_sport_football">Football</string>
+    <string name="uxv2_sport_basket">Basketball</string>
+    <string name="uxv2_sport_tennis">Tennis</string>
+    <string name="uxv2_sport_combat">Combat</string>
+    <string name="uxv2_sport_motor">Motorsport</string>
+    <string name="uxv2_sport_rugby">Rugby</string>
+    <plurals name="uxv2_sources">
+        <item quantity="one">%1$s source</item>
+        <item quantity="other">%1$s sources</item>
+    </plurals>
 </resources>

@@ -79,9 +79,9 @@ data class ResumeCardUi(
 @Immutable
 data class PosterCardUi(val key: String, val item: PosterItem, val isShow: Boolean, val kind: TmdbKind)
 
-/** Carte chaîne : programme en cours déjà résolu (titre seul, rafraîchi toutes les minutes). */
+/** Carte chaîne : programme en cours déjà résolu (titre, horaire et part écoulée, rafraîchis toutes les minutes). */
 @Immutable
-data class ChannelCardUi(val channel: ChannelEntity, val nowTitle: String?, val timeRange: String? = null)
+data class ChannelCardUi(val channel: ChannelEntity, val nowTitle: String?, val timeRange: String? = null, val progress: Float? = null)
 
 /** Compteurs des raccourcis (requêtes COUNT, hors fil principal). */
 @Immutable

@@ -1480,4 +1480,25 @@
     <string name="set2_sport_summary">Sport: %1$s</string>
     <string name="set2_version_summary">Wersja %1$s</string>
     <string name="v2_duration_label">Czas trwania</string>
+    <!-- Interface v2 : accueil, guide, sport -->
+    <string name="uxv2_greet_morning">Dzień dobry</string>
+    <string name="uxv2_greet_afternoon">Dzień dobry</string>
+    <string name="uxv2_greet_evening">Dobry wieczór</string>
+    <string name="uxv2_featured">Wyróżnione</string>
+    <string name="uxv2_category">Kategoria</string>
+    <string name="uxv2_reminder_on">Przypomnienie włączone</string>
+    <string name="uxv2_sport_live_count">%1$s na żywo</string>
+    <string name="uxv2_sport_from_guide">Na podstawie przewodnika Twoich źródeł</string>
+    <string name="uxv2_sport_football">Piłka nożna</string>
+    <string name="uxv2_sport_basket">Koszykówka</string>
+    <string name="uxv2_sport_tennis">Tenis</string>
+    <string name="uxv2_sport_combat">Sporty walki</string>
+    <string name="uxv2_sport_motor">Sporty motorowe</string>
+    <string name="uxv2_sport_rugby">Rugby</string>
+    <plurals name="uxv2_sources">
+        <item quantity="one">%1$s źródło</item>
+        <item quantity="few">%1$s źródła</item>
+        <item quantity="many">%1$s źródeł</item>
+        <item quantity="other">%1$s źródła</item>
+    </plurals>
 </resources>

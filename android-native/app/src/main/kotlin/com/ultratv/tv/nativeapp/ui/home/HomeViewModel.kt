@@ -311,7 +311,7 @@ class HomeViewModel @Inject constructor(
             recentChannels = recent.map { resumeCardOf(it, "rc-", clean) }.distinctKeys { it.key },
             latestMovies = movies.map { catalogPosterOf(it, isShow = false) }.distinctKeys { it.key },
             latestSeries = series.map { catalogPosterOf(it, isShow = true) }.distinctKeys { it.key },
-            channels = chans.distinctBy { it.id }.map { c -> val p = now[c.id]; ChannelCardUi(c, p?.title, p?.let { com.ultratv.tv.nativeapp.ui.common.EpgClock.range(it.startMs, it.endMs) }) },
+            channels = chans.distinctBy { it.id }.map { c -> val p = now[c.id]; ChannelCardUi(c, p?.title, p?.let { com.ultratv.tv.nativeapp.ui.common.EpgClock.range(it.startMs, it.endMs) }, p?.let { com.ultratv.tv.nativeapp.ui.common.EpgProgress.fraction(it.startMs, it.endMs, System.currentTimeMillis()) }) },
             shortcuts = shortcutsOf(homeCounts, chans.mapNotNull { it.logo }, movies.firstOrNull()?.poster, series.firstOrNull()?.poster),
             top10 = top10Of(
                 t.trending.map(::traktPosterOf).distinctKeys { it.key },
