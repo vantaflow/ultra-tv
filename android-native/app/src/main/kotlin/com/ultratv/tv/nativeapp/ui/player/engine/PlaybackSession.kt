@@ -475,6 +475,11 @@ class PlaybackSession(
                 return@launch
             }
             val next = fallbackAfter(kind)
+            // Journal serveur (appareil appairé, télémétrie active) : anomalies de lecture jamais signalées par les
+            // utilisateurs (bascule de moteur, échec final). Aucune adresse, seulement type, moteur, format.
+            val st = runCatching { engine?.stats() }.getOrNull()
+            val line = PlayAnomaly.describe(kind, lastHttp, combo, next, isLive, st?.resolution, st?.videoCodec)
+            if (next != null) com.ultratv.tv.nativeapp.RemoteLog.warn("play", line) else com.ultratv.tv.nativeapp.RemoteLog.error("play", line)
             if (next != null) {
                 _notices.tryEmit(if (next.engine == EngineKind.VLC) Notice.USING_VLC else if (next.decoder == DecoderMode.SOFTWARE) Notice.USING_SOFTWARE else Notice.USING_EXO)
                 launch(next)
@@ -533,5 +538,20 @@ class PlaybackSession(
         startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
         reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
+    }
+}
+
+
+/** Ligne de journal d'une anomalie de lecture (pure, testée). Jamais d'adresse ni d'identifiant de flux. */
+internal object PlayAnomaly {
+    fun describe(kind: PlayErrorKind, http: Int?, from: Combo, to: Combo?, live: Boolean, resolution: String?, codec: String?): String = buildString {
+        append(if (to != null) "fallback" else "failed")
+        append(" kind=").append(kind.name)
+        if (http != null) append(" http=").append(http)
+        append(" from=").append(from.engine.name).append('/').append(from.decoder.name)
+        if (to != null) append(" to=").append(to.engine.name).append('/').append(to.decoder.name)
+        append(" live=").append(live)
+        if (!resolution.isNullOrBlank()) append(" res=").append(resolution)
+        if (!codec.isNullOrBlank()) append(" codec=").append(codec.take(24))
     }
 }

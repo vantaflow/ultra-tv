@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Android : les anomalies de lecture (bascule de moteur ou de décodeur, échec final) sont remontées dans les journaux du serveur, avec le type d'erreur, le moteur, la résolution et le codec (jamais d'adresse), pour repérer les problèmes que personne ne signale. Appareils appairés avec la télémétrie active seulement.
+
 ## [1.2.96] — 2026-11-12 (Android) · Bureau 1.2.46 · Worker
 
 ### Modifié
