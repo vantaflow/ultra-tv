@@ -88,6 +88,8 @@ import com.ultratv.tv.nativeapp.data.recording.ConnectionWarning
 import com.ultratv.tv.nativeapp.data.recording.ScheduleResult
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.categoryLabel
+import com.ultratv.tv.nativeapp.i18n.sportRemind
 import com.ultratv.tv.nativeapp.i18n.guideGroupEmpty
 import com.ultratv.tv.nativeapp.i18n.guideGroupPill
 import com.ultratv.tv.nativeapp.i18n.guideGroupTitle
@@ -353,11 +355,6 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     // Horloge UNIQUE (30 s) : lue seulement au dessin (barres, ligne de l'heure) ou dans de petits textes dédiés.
     val clock = com.ultratv.tv.nativeapp.ui.common.rememberEpgClock()
     val shared = com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive.current
-    val focus = LocalFocusManager.current
-    var inGrid by remember { mutableStateOf(false) }
-    // Programme focalisé : lu SEULEMENT par le panneau du bas (FocusedInfo) — lu ici, chaque déplacement recomposait
-    // tout l'écran et ses lignes.
-    val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     var actionTarget by remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
     val recordingRunning by vm.recordingRunning.collectAsState()
     val guideLoad by vm.guideLoad.collectAsState()
@@ -370,6 +367,23 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
     val groupLabel = guideGroupName(groups, group, groupName)
     val nameColPx = LocalChannelDisplay.current.guideNameWidth.tvPx
 
+    // Lecture et enregistrement hissés : partagés par le dialogue du programme et par les boutons du panneau du haut.
+    val watchLive: (ChannelEntity) -> Unit = { ch ->
+        shared?.stopPreview()   // connexion unique : l'aperçu se ferme avant que le lecteur n'ouvre le flux
+        // Lecture et enregistrement se partagent la connexion : on prévient avant de la prendre.
+        if (ConnectionPolicy.onPlayRequested(recordingRunning, vm.maxConnections(ch.providerId)) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
+        vm.playLive(ch) { onPlayChannel(ch) }
+    }
+    val recordProgramme: (ChannelEntity, EpgEntity, Boolean) -> Unit = { ch, pr, series ->
+        vm.record(ch, pr, series) { r ->
+            when (r) {
+                is ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
+                ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
+                ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
+            }
+        }
+    }
+
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) GuideTouch(
         channels = channels, programmes = programmes, windowStart = windowStart, day = day, D = D, vm = vm, guideLoad = guideLoad,
         onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
@@ -377,117 +391,22 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         onSelect = { c, p -> actionTarget = c to p },
         onRemind = { c, p -> vm.addReminder(c, p); askNotifications(); Toaster.ok(D.remindSet) },
         groupLabel = groupLabel, onGroup = { groupOpen = true },
-    ) else Column(
-        Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 40.design, bottom = 20.design)
-            // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
-            .onPreviewKeyEvent { e ->
-                // ⏪ ⏩ : un jour en arrière / en avant (Hier … après-demain), sans quitter la grille.
-                if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
-                    val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
-                    if (d != day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
-                    return@onPreviewKeyEvent true
-                }
-                if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
-                val dir = if (e.key == Key.DirectionRight) FocusDirection.Right else FocusDirection.Left
-                // Hors de la grille (jours, en-tête) : navigation normale — avant, la touche était
-                // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
-                if (!inGrid) return@onPreviewKeyEvent false
-                if (!focus.moveFocus(dir)) vm.setWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
-                true
-            },
-        verticalArrangement = Arrangement.spacedBy(16.design),
-    ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
-            // Titre mesuré en premier et jamais coupé (softWrap = false) : c'est la pastille du groupe, plafonnée plus bas, qui s'abrège.
-            Column(verticalArrangement = Arrangement.spacedBy(4.design)) {
-                Text(D.tvGuide, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 44.spx, maxLines = 1, softWrap = false)
-                val dayLabel = dayName(D, day)
-                Text("$dayLabel · ${EpgClock.range(windowStart, windowStart + GUIDE_WINDOW_MS)}", color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
-                // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
-                if (channels.itemCount > 0) guideProgressLine(D, guideLoad)?.let { Text(it, color = Ux.Accent, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1) }
-            }
-            Spacer(Modifier.weight(1f))
-            DateTimePill(clock, windowStart, day, D)
-            // Groupe de chaînes : un seul bouton dans l'en-tête, la liste (mêmes groupes que le Direct) s'ouvre en boîte de choix.
-            com.ultratv.tv.nativeapp.ui.design.PillButton(D.guideGroupPill(groupLabel), onClick = { groupOpen = true }, modifier = Modifier.widthIn(max = 420.design), heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
-            // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
-            com.ultratv.tv.nativeapp.ui.design.PillButton(D.nowButton, onClick = { day = 0; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), 0)) }, heightPx = 56, hPadPx = 28, fontPx = 22, bg = Ux.Surface)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.design)) {
-                for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) }
-            }
-        }
-
-        // Carte du programme sélectionné (à gauche) + aperçu vidéo de sa chaîne (à droite). Chacun lit l'état focalisé
-        // dans SA portée : un déplacement ne recompose que ces deux blocs, jamais la grille.
-        Row(Modifier.fillMaxWidth().height(280.design), horizontalArrangement = Arrangement.spacedBy(24.design)) {
-            ProgramCard(focusedProg, clock, D, Modifier.weight(1f).fillMaxHeight())
-            GuidePreviewPane(focusedProg, vm, Modifier.width(498.design).fillMaxHeight())
-        }
-
-        // En-tête des créneaux
-        Row(Modifier.fillMaxWidth().padding(bottom = 4.design)) {
-            Spacer(Modifier.width(nameColPx.design))
-            Row(Modifier.weight(1f)) {
-                for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, modifier = Modifier.weight(1f), maxLines = 1)
-            }
-        }
-        Box(Modifier.fillMaxWidth().height(1.dp1()).background(Ux.Surface2))
-
-        if (channels.itemCount == 0) {
-            // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
-            // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
-            if (group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL && guideLoad is GuideLoad.Idle) Text(if (day > 0) D.guideNoDataYet else D.guideGroupEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
-            else if (day > 0 && guideLoad is GuideLoad.Idle) Text(D.guideNoDataYet, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
-            else GuideEmptyState(guideLoad, D, onRetry = { vm.retryGuide() }, touch = false)
-            return@Column
-        }
-
-        val state = rememberLazyListState()
-        LaunchedEffect(state, channels) {
-            // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
-            snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channels.itemCount) channels.peek(it.index)?.id else null } }
-                .distinctUntilChanged().collect { vm.setVisible(it) }
-        }
-        val first = remember { FocusRequester() }
-        var firstFocused by remember { mutableStateOf(false) }
-        RequestInitialFocus(first, hasFocus = { firstFocused }, key = programmes.isNotEmpty())
-        BoxWithConstraints(
-            Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }
-                // Entrée (↓ depuis les jours) : sur la première ligne, au programme en cours, et non sur la case qui se trouve
-                // sous l'onglet (TimeShift 01, à droite). Sortie par → interdite : au bord droit, la fenêtre défile de
-                // 90 min (onPreviewKeyEvent) au lieu de sauter sur l'onglet « Samedi ».
-                .focusProperties {
-                    enter = { first }
-                    exit = { dir -> if (dir == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default }
-                }
-                .focusGroup(),
-        ) {
-            val gridW = maxWidth - nameColPx.design
-            val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
-            LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
-                items(count = channels.itemCount, key = safeKey0, contentType = { "row" }) { i ->
-                    val c = channels[i]
-                    if (c != null) {
-                        GuideRow(
-                            c, programmes[c.id].orEmpty(), windowStart, gridW, nameColPx, D, clock,
-                            firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
-                            onSelect = { p -> actionTarget = c to p }, onRemind = { vm.addReminder(c, it); askNotifications(); Toaster.ok(D.remindSet) }, onFocusProg = { p -> focusedProg.value = c to p },
-                        )
-                    } else Spacer(Modifier.height(84.designT))
-                }
-            }
-            // Ligne « maintenant » (accent, 3 px) : seulement si l'instant courant est dans la fenêtre.
-            // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
-            val accent = Ux.Accent
-            Box(
-                Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
-                    .width(3.design).fillMaxHeight()
-                    .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
-                    .background(accent),
-            )
-        }
-        GuideHelpBar(D)
-    }
+    ) else GuideTvContent(
+        channelCount = channels.itemCount, channelAt = { channels[it] }, peekAt = { channels.peek(it) },
+        itemKey = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id },
+        programmes = programmes, windowStart = windowStart, day = day, D = D, clock = clock,
+        groups = groups, group = group, guideLoad = guideLoad, nameColPx = nameColPx, groupName = groupName,
+        onDay = { d -> day = d; vm.setWindowStart(guideWindowStart(System.currentTimeMillis(), d)) },
+        onWindowStart = { ms -> vm.setWindowStart(ms) },
+        onGroup = { id -> vm.selectGroup(id) },
+        onVisible = { ids -> vm.setVisible(ids) },
+        onRetry = { vm.retryGuide() },
+        onSelect = { c, p -> actionTarget = c to p },
+        onWatch = { ch -> watchLive(ch) },
+        onRemind = { c, p -> vm.addReminder(c, p); askNotifications(); Toaster.ok(D.remindSet) },
+        onRecord = { c, p -> recordProgramme(c, p, false) },
+        preview = { sel, m -> GuidePreviewPane(sel, vm, m) },
+    )
     if (groupOpen) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
         D.guideGroupTitle, guideGroupOptions(groups, groupName), group,
         onPick = { id -> groupOpen = false; if (id != group) vm.selectGroup(id) }, onDismiss = { groupOpen = false },
@@ -498,64 +417,64 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         ProgramActionsDialog(
             channel = ch, prog = pr, state = programActionState(pr, replayUrl, nowMs), D = D, recordingRunning = recordingRunning,
             onReplay = { actionTarget = null; shared?.stopPreview(); replayUrl?.let { vm.armReplay(ch, pr); onPlayUrl(it, pr.title) } },
-            onWatch = {
-                actionTarget = null
-                shared?.stopPreview()   // connexion unique : l'aperçu se ferme avant que le lecteur n'ouvre le flux
-                // Lecture et enregistrement se partagent la connexion : on prévient avant de la prendre.
-                if (ConnectionPolicy.onPlayRequested(recordingRunning, vm.maxConnections(ch.providerId)) != ConnectionWarning.NONE) Toaster.show(D.recConnectionBusy)
-                vm.playLive(ch) { onPlayChannel(ch) }
-            },
+            onWatch = { actionTarget = null; watchLive(ch) },
             onRemind = { actionTarget = null; vm.addReminder(ch, pr); askNotifications(); Toaster.ok(D.remindSet) },
-            onRecord = { series ->
-                actionTarget = null
-                vm.record(ch, pr, series) { r ->
-                    when (r) {
-                        is ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
-                        ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
-                        ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
-                    }
-                }
-            },
+            onRecord = { series -> actionTarget = null; recordProgramme(ch, pr, series) },
             onDismiss = { actionTarget = null },
         )
     }
 }
 
-/** Date, séparateur et heure (horloge partagée : seul ce petit bloc se met à jour). */
+/**
+ * Panneau du programme sélectionné (maquette) : intitulé « MAINTENANT · CHAÎNE · horaire », titre, progression, description,
+ * puis « Regarder » / « Me rappeler » / « Enregistrer » (les deux derniers seulement quand le programme le permet,
+ * comme dans le dialogue d'actions).
+ */
 @Composable
-private fun DateTimePill(clock: androidx.compose.runtime.State<Long>, windowStart: Long, day: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings) {
-    val date = remember(day, D.lang) { SimpleDateFormat("EEE dd.MM.", D.locale).format(Date(guideWindowStart(System.currentTimeMillis(), day))) }
-    Row(Modifier.height(56.designT).clip(RoundedCornerShape(28.design)).background(Ux.Surface).padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-        Text(date, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
-        Box(Modifier.width(1.dp).height(24.design).background(Ux.Muted2))
-        Text(EpgClock.wall(clock.value), color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false)
-    }
-}
-
-/** Carte du programme sélectionné : pastille MAINTENANT, chaîne · horaire · durée, titre, progression, description. */
-@Composable
-private fun ProgramCard(sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, clock: androidx.compose.runtime.State<Long>, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, modifier: Modifier) {
-    Column(modifier.clip(RoundedCornerShape(24.design)).background(Ux.SurfaceDeep).padding(horizontal = 32.design, vertical = 22.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
+private fun ProgramInfo(
+    sel: androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, clock: androidx.compose.runtime.State<Long>,
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings, progressLine: String?, modifier: Modifier,
+    onWatch: (ChannelEntity) -> Unit, onRemind: (ChannelEntity, EpgEntity) -> Unit, onRecord: (ChannelEntity, EpgEntity) -> Unit,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.design, Alignment.CenterVertically)) {
         val s = sel.value
         if (s == null) { Text(D.noProgramInfo, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 2); return@Column }
         val (ch, p) = s
         val nowMs = clock.value
         val isNow = p.startMs <= nowMs && p.endMs > nowMs
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-            if (isNow) com.ultratv.tv.nativeapp.ui.design.LiveBadge(D.nowBadge)
-            Text(
-                "${ch.title}  ·  ${EpgClock.range(p.startMs, p.endMs)}  ·  ${com.ultratv.tv.nativeapp.ui.live.durationText(D, p.endMs - p.startMs)}",
-                color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-                style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
-            )
-        }
-        Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 38.spx, lineHeight = 44.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (isNow) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
+        val head = (if (isNow) "${D.nowBadge} · " else "") + "${ch.title} · ${EpgClock.range(p.startMs, p.endMs)}"
+        Text(
+            head.uppercase(), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, letterSpacing = 0.75.sp,
+            maxLines = 1, overflow = TextOverflow.Ellipsis,
+            style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
+        )
+        Text(p.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, lineHeight = 58.spx, letterSpacing = (-1).spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (isNow) Row(Modifier.widthIn(max = 900.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
             Box(Modifier.weight(1f)) { com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, heightDp = 4f) }
-            Text(D.minutesRemaining(com.ultratv.tv.nativeapp.ui.common.EpgProgress.remainingMinutes(p.endMs, nowMs)), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false)
+            Text(D.minutesRemaining(com.ultratv.tv.nativeapp.ui.common.EpgProgress.remainingMinutes(p.endMs, nowMs)), color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false)
         }
-        p.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3, overflow = TextOverflow.Ellipsis) }
+        p.description?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 900.design)) }
+        val acts = programActionState(p, null, nowMs)
+        Row(Modifier.padding(top = 6.design), horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            com.ultratv.tv.nativeapp.ui.design.PillButton(D.watch, onClick = { onWatch(ch) }, heightPx = 56, hPadPx = 26, fontPx = 19, weight = FontWeight.Bold, bg = Ux.Accent)
+            if (acts.remindEnabled) com.ultratv.tv.nativeapp.ui.design.PillButton(D.sportRemind, onClick = { onRemind(ch, p) }, heightPx = 56, hPadPx = 26, fontPx = 19)
+            if (acts.recordEnabled) com.ultratv.tv.nativeapp.ui.design.PillButton(D.pRecord, onClick = { onRecord(ch, p) }, heightPx = 56, hPadPx = 26, fontPx = 19)
+        }
+        // Des programmes sont déjà là mais le guide continue d'arriver : progression visible, jamais muette.
+        if (progressLine != null) Text(progressLine, color = Ux.AccentInk, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1)
     }
+}
+
+/** Pastille « maintenant » au-dessus de la ligne d'accent : l'heure courante, seulement si elle est dans la fenêtre. */
+@Composable
+private fun NowPill(clock: androidx.compose.runtime.State<Long>, windowStart: Long, nameCol: Dp, gridW: Dp) {
+    val frac = com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: return
+    Text(
+        EpgClock.wall(clock.value), color = Ux.OnAccent, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 14.spx, maxLines = 1, softWrap = false,
+        modifier = Modifier
+            .offset { androidx.compose.ui.unit.IntOffset((nameCol + gridW * frac - 30.design).roundToPx(), -(66.design).roundToPx()) }
+            .clip(RoundedCornerShape(50)).background(Ux.Accent).padding(horizontal = 10.design, vertical = 4.design),
+    )
 }
 
 /**
@@ -622,26 +541,6 @@ private fun GuidePreviewPane(sel: androidx.compose.runtime.State<Pair<ChannelEnt
     }
 }
 
-/** Barre d'aide : touches et libellés (◀ ▶ Programmes · ▲ ▼ Chaînes · OK Regarder · ◀◀ ▶▶ 1 jour · Retour). */
-@Composable
-private fun GuideHelpBar(D: com.ultratv.tv.nativeapp.i18n.DesignStrings) {
-    Row(Modifier.fillMaxWidth().height(44.designT), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
-        HelpItem("◀ ▶", D.helpPrograms)
-        HelpItem("▲ ▼", D.helpChannels)
-        HelpItem("OK", D.helpWatch)
-        HelpItem("◀◀ ▶▶", D.helpOneDay)
-        HelpItem(D.helpBackKey, "")
-    }
-}
-
-@Composable
-private fun HelpItem(key: String, label: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-        Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false, modifier = Modifier.clip(RoundedCornerShape(10.design)).background(Ux.Surface).padding(horizontal = 14.design, vertical = 6.design))
-        if (label.isNotEmpty()) Text(label, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, softWrap = false)
-    }
-}
-
 private fun Int.dp1() = androidx.compose.ui.unit.Dp(0.5f)
 
 private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int): String = when (offset) {
@@ -653,9 +552,19 @@ private fun dayName(D: com.ultratv.tv.nativeapp.i18n.DesignStrings, offset: Int)
 
 @Composable
 private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(28.design), bg = if (selected) Ux.Cta else Ux.Surface, modifier = Modifier.height(56.designT)) { f ->
-        Box(Modifier.padding(horizontal = 28.design).height(56.designT), contentAlignment = Alignment.Center) {
-            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1)
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(50), bg = if (selected) Ux.Cta else Ux.Card, focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.height(48.designT)) { f ->
+        Box(Modifier.padding(horizontal = 22.design).height(48.designT), contentAlignment = Alignment.Center) {
+            Text(label, color = if (f || selected) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1)
+        }
+    }
+}
+
+/** Catégorie de chaînes du guide : la choisie est pleine d'accent ; OK la sélectionne (filtre la grille). */
+@Composable
+private fun CategoryChip(label: String, selected: Boolean, onClick: () -> Unit) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(50), bg = if (selected) Ux.Accent else Ux.Card, focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.height(48.designT)) { f ->
+        Box(Modifier.padding(horizontal = 20.design).height(48.designT), contentAlignment = Alignment.Center) {
+            Text(label, color = if (f) Ux.TextOnLight else if (selected) Ux.OnAccent else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1)
         }
     }
 }
@@ -665,19 +574,21 @@ private fun DayChip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun GuideRow(
     c: ChannelEntity, progs: List<EpgEntity>, windowStart: Long, gridW: Dp, nameColPx: Int, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
     firstModifier: Modifier, onSelect: (EpgEntity) -> Unit, onRemind: (EpgEntity) -> Unit, onFocusProg: (EpgEntity) -> Unit,
+    nowMs: Long = System.currentTimeMillis(),
 ) {
-    val nowMs = System.currentTimeMillis()
     Row(Modifier.fillMaxWidth().height(84.designT)) {
-        Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 16.design), verticalAlignment = Alignment.CenterVertically) {
-            if (LocalChannelDisplay.current.showLogos) {
-                LogoBox(c.logo, c.title, Modifier.width(64.design).height(40.design), radius = 8, pad = 4)
+        // Cellule de la chaîne (maquette) : numéro, logo 48 et nom dans une carte arrondie, 8 px avant les programmes.
+        Row(Modifier.width(nameColPx.design).fillMaxHeight().padding(end = 8.design).clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 14.design), verticalAlignment = Alignment.CenterVertically) {
+            channelNumber(c.seq, c.num)?.let { n ->
+                Text(n.toString(), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, softWrap = false, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(40.design))
                 Spacer(Modifier.width(14.design))
-            } else channelNumber(c.seq, c.num)?.let { n ->
-                // Sans logo : le numéro prend la place du logo, le nom garde tout le reste.
-                Text(n.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(56.design))
+            }
+            if (LocalChannelDisplay.current.showLogos) {
+                LogoBox(c.logo, c.title, Modifier.width(48.design).height(48.design), radius = 12, pad = 4, bg = Ux.Tile)
+                Spacer(Modifier.width(14.design))
             }
             // Deux lignes au lieu d'un nom coupé.
-            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
+            Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, lineHeight = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
                 style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
             // Variantes de qualité (« 13EME RUE » HD / SD) : un badge les distingue.
             val q = remember(c.id) { com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(c.name, live = true).quality }
@@ -694,8 +605,8 @@ private fun GuideRow(
                     onClick = { onSelect(p) },
                     onLongClick = { if (p.startMs > nowMs) onRemind(p) },
                     shape = RoundedCornerShape(14.design),
-                    bg = if (isNow) Ux.Surface2 else Ux.SurfaceDeep,
-                    ringWidth = 5.design, focusedScale = 1.03f,
+                    bg = if (isNow) Ux.NowTint else Ux.Card,
+                    ringWidth = 0.dp, focusedScale = 1f,
                     modifier = Modifier.offset(x = gridW * slot.startFrac).width(w).fillMaxHeight()
                         .then(if (idx == 0 || isNow) firstModifier.takeIf { idx == 0 } ?: Modifier else Modifier),
                 ) { f ->
@@ -704,11 +615,11 @@ private fun GuideRow(
                     // Sous ~90 px : fond seul (le titre apparaît dans le panneau du bas). Entre 90 et 200 px : titre seul.
                     if (wPx >= 90) Column(Modifier.fillMaxSize().clip(RoundedCornerShape(14.design)).padding(horizontal = if (wPx < 200) 10.design else 18.design, vertical = 12.design), verticalArrangement = Arrangement.spacedBy(4.design, Alignment.CenterVertically)) {
                         // softWrap = false : un titre trop long sur une ligne coupée, sans quoi la cellule repoussait l'horaire hors du cadre.
-                        Text(p.title, color = if (f) Ux.TextOnLight else if (isNow) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
+                        Text(p.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Clip)
                         // Programme passé encore rejouable : badge « Replay » (la lecture passe par « Revoir »).
                         if (wPx >= 200 && p.endMs <= nowMs && ReplayUrls.availability(c, p, nowMs) == ReplayAvailability.AVAILABLE)
                             Text(D.replayTag, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.clip(RoundedCornerShape(6.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Surface2).padding(horizontal = 8.design, vertical = 2.design))
-                        if (wPx >= 200) Text("${EpgClock.range(p.startMs, p.endMs)}", color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Clip)
+                        if (wPx >= 200) Text("${EpgClock.range(p.startMs, p.endMs)}", color = if (f) Ux.OnFocus2 else if (isNow) Ux.AccentInk else Ux.Text3, fontFamily = Manrope, fontSize = 15.spx, maxLines = 1, overflow = TextOverflow.Clip)
                     }
                     // Progression dans le programme en cours : fine barre en pied de case, dessinée depuis l'horloge partagée.
                     if (isNow) com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(p.startMs, p.endMs, clock, Modifier.align(Alignment.BottomStart).padding(horizontal = 12.design, vertical = 8.design), heightDp = 2.5f, track = if (f) Color(0x33000000) else Ux.Surface)
@@ -718,6 +629,152 @@ private fun GuideRow(
     }
 }
 
+
+/**
+ * Guide TV (maquette Guide.dc.html / GuideClair.dc.html), sans ViewModel : aperçu + programme + actions, jours et catégories
+ * (filtrent les chaînes de la grille), en-tête des créneaux avec pastille « maintenant », colonne des chaînes et grille.
+ * [preview] dessine l'aperçu de la chaîne du programme sélectionné (le moteur vidéo reste du ressort de l'écran).
+ */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+internal fun GuideTvContent(
+    channelCount: Int, channelAt: (Int) -> ChannelEntity?, peekAt: (Int) -> ChannelEntity?, itemKey: (Int) -> Any,
+    programmes: Map<Long, List<EpgEntity>>, windowStart: Long, day: Int,
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings, clock: androidx.compose.runtime.State<Long>,
+    groups: List<com.ultratv.tv.nativeapp.ui.live.DirectCategory>, group: String, guideLoad: GuideLoad, nameColPx: Int,
+    groupName: (com.ultratv.tv.nativeapp.ui.live.DirectCategory) -> String,
+    onDay: (Int) -> Unit, onWindowStart: (Long) -> Unit, onGroup: (String) -> Unit, onVisible: (List<Long>) -> Unit, onRetry: () -> Unit,
+    onSelect: (ChannelEntity, EpgEntity) -> Unit, onWatch: (ChannelEntity) -> Unit,
+    onRemind: (ChannelEntity, EpgEntity) -> Unit, onRecord: (ChannelEntity, EpgEntity) -> Unit,
+    preview: @Composable (androidx.compose.runtime.State<Pair<ChannelEntity, EpgEntity>?>, Modifier) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Instant « maintenant » des cases de la grille (injectable pour un rendu de test figé). */
+    nowProvider: () -> Long = { System.currentTimeMillis() },
+) {
+    val focus = LocalFocusManager.current
+    var inGrid by remember { mutableStateOf(false) }
+    // Programme focalisé : lu SEULEMENT par le panneau du haut et l'aperçu — lu ici, chaque déplacement recomposait
+    // tout l'écran et ses lignes.
+    val focusedProg = remember { mutableStateOf<Pair<ChannelEntity, EpgEntity>?>(null) }
+    Column(
+        modifier.fillMaxSize().padding(start = 48.design, end = 56.design, top = 40.design, bottom = 12.design)
+            // Au bord de la fenêtre, DROITE / GAUCHE font défiler le temps de 90 min au lieu de buter.
+            .onPreviewKeyEvent { e ->
+                // ⏪ ⏩ : un jour en arrière / en avant (Hier … après-demain), sans quitter la grille.
+                if (e.type == KeyEventType.KeyDown && (e.key == Key.MediaRewind || e.key == Key.MediaFastForward)) {
+                    val d = (day + if (e.key == Key.MediaFastForward) 1 else -1).coerceIn(-1, 2)
+                    if (d != day) onDay(d)
+                    return@onPreviewKeyEvent true
+                }
+                if (e.type != KeyEventType.KeyDown || (e.key != Key.DirectionRight && e.key != Key.DirectionLeft)) return@onPreviewKeyEvent false
+                val dir = if (e.key == Key.DirectionRight) FocusDirection.Right else FocusDirection.Left
+                // Hors de la grille (jours, catégories) : navigation normale — avant, la touche était
+                // avalée et GAUCHE ne menait plus au menu depuis « Hier ».
+                if (!inGrid) return@onPreviewKeyEvent false
+                if (!focus.moveFocus(dir)) onWindowStart(windowStart + if (dir == FocusDirection.Right) 3 * SLOT_MS else -3 * SLOT_MS)
+                true
+            },
+        verticalArrangement = Arrangement.spacedBy(28.design),
+    ) {
+        // Aperçu vidéo de la chaîne (à gauche) + programme sélectionné et ses actions (à droite). Chacun lit l'état focalisé
+        // dans SA portée : un déplacement ne recompose que ces deux blocs, jamais la grille.
+        Row(Modifier.fillMaxWidth().height(300.design), horizontalArrangement = Arrangement.spacedBy(28.design)) {
+            preview(focusedProg, Modifier.width(520.design).fillMaxHeight())
+            ProgramInfo(
+                focusedProg, clock, D, if (channelCount > 0) guideProgressLine(D, guideLoad) else null, Modifier.weight(1f).fillMaxHeight(),
+                onWatch, onRemind, onRecord,
+            )
+        }
+
+        // Jours, puis catégories de chaînes (Favoris, Toutes, catégories réelles de la source avec leur nombre de chaînes).
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            for (d in -1..2) DayChip(dayName(D, d), selected = d == day) { onDay(d) }
+            // « Maintenant » : retour à aujourd'hui, fenêtre calée sur la demi-heure courante.
+            DayChip(D.nowButton, selected = false) { onDay(0) }
+            Box(Modifier.padding(horizontal = 8.design).width(2.design).height(32.design).background(Ux.Line))
+            Text(D.categoryLabel.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, letterSpacing = 0.75.sp, maxLines = 1, softWrap = false)
+            val chipsState = rememberLazyListState()
+            LaunchedEffect(groups.size) {
+                val i = groups.indexOfFirst { it.id == group }
+                if (i > 0) chipsState.scrollToItem(i)
+            }
+            androidx.compose.foundation.lazy.LazyRow(Modifier.weight(1f), state = chipsState, horizontalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(end = 24.design)) {
+                items(groups, key = { it.id }, contentType = { "category" }) { g ->
+                    val name = groupName(g)
+                    val label = if (g.id == com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES) name else "$name · ${com.ultratv.tv.nativeapp.ui.home.formatCount(g.count, D.locale)}"
+                    CategoryChip(label, selected = g.id == group) { if (g.id != group) onGroup(g.id) }
+                }
+            }
+        }
+
+        // En-tête des créneaux, puis la grille (colonne des chaînes + programmes) et la ligne « maintenant ».
+        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.design)) {
+            Row(Modifier.fillMaxWidth().height(32.design), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(nameColPx.design), contentAlignment = Alignment.CenterStart) {
+                    Text(dayName(D, day), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, maxLines = 1)
+                }
+                Row(Modifier.weight(1f)) {
+                    for (i in 0 until 6) Text(EpgClock.hm(windowStart + i * SLOT_MS), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 17.spx, modifier = Modifier.weight(1f), maxLines = 1)
+                }
+            }
+
+            if (channelCount == 0) {
+                // Jour à venir sans aucun programme : ce n'est pas un chargement en cours (le guide n'est publié que sur
+                // quelques dizaines d'heures) ; « se charge encore » faisait attendre pour rien.
+                if (group != com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL && guideLoad is GuideLoad.Idle) Text(if (day > 0) D.guideNoDataYet else D.guideGroupEmpty, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+                else if (day > 0 && guideLoad is GuideLoad.Idle) Text(D.guideNoDataYet, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 33.spx, maxLines = 3)
+                else GuideEmptyState(guideLoad, D, onRetry = onRetry, touch = false)
+                return@Column
+            }
+
+            val state = rememberLazyListState()
+            LaunchedEffect(state, channelCount) {
+                // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
+                snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channelCount) peekAt(it.index)?.id else null } }
+                    .distinctUntilChanged().collect { onVisible(it) }
+            }
+            val first = remember { FocusRequester() }
+            var firstFocused by remember { mutableStateOf(false) }
+            RequestInitialFocus(first, hasFocus = { firstFocused }, key = programmes.isNotEmpty())
+            BoxWithConstraints(
+                Modifier.fillMaxWidth().weight(1f).onFocusChanged { inGrid = it.hasFocus }
+                    // Entrée (↓ depuis les jours) : sur la première ligne, au programme en cours, et non sur la case qui se trouve
+                    // sous l'onglet (TimeShift 01, à droite). Sortie par → interdite : au bord droit, la fenêtre défile de
+                    // 90 min (onPreviewKeyEvent) au lieu de sauter sur l'onglet « Samedi ».
+                    .focusProperties {
+                        enter = { first }
+                        exit = { dir -> if (dir == FocusDirection.Right) FocusRequester.Cancel else FocusRequester.Default }
+                    }
+                    .focusGroup(),
+            ) {
+                val gridW = maxWidth - nameColPx.design
+                // Ligne « maintenant » (accent, 3 px), dessinée SOUS les cellules (visible entre elles) : seulement si l'instant courant est dans la fenêtre.
+                // Position lue DANS le calque (mise en page + alpha) : le tic de l'horloge ne recompose rien.
+                val accent = Ux.Accent
+                Box(
+                    Modifier.offset { androidx.compose.ui.unit.IntOffset((nameColPx.design + gridW * (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) ?: 0f)).roundToPx(), 0) }
+                        .width(3.design).fillMaxHeight()
+                        .graphicsLayer { alpha = if (com.ultratv.tv.nativeapp.ui.common.EpgProgress.nowLineFraction(clock.value, windowStart, GUIDE_WINDOW_MS) != null) 1f else 0f }
+                        .background(accent),
+                )
+                LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.design), contentPadding = PaddingValues(top = 8.design, bottom = 24.design)) {
+                    items(count = channelCount, key = itemKey, contentType = { "row" }) { i ->
+                        val c = channelAt(i)
+                        if (c != null) {
+                            GuideRow(
+                                c, programmes[c.id].orEmpty(), windowStart, gridW, nameColPx, D, clock,
+                                firstModifier = if (i == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier,
+                                onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) }, onFocusProg = { p -> focusedProg.value = c to p },
+                                nowMs = nowProvider(),
+                            )
+                        } else Spacer(Modifier.height(84.designT))
+                    }
+                }
+                NowPill(clock, windowStart, nameColPx.design, gridW)
+            }
+        }
+    }
+}
 
 // ───────────────────────── Tactile ─────────────────────────
 

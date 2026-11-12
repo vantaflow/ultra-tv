@@ -1586,4 +1586,27 @@
     <string name="set2_sport_summary">الرياضة: %1$s</string>
     <string name="set2_version_summary">الإصدار %1$s</string>
     <string name="v2_duration_label">المدة</string>
+    <!-- Interface v2 : accueil, guide, sport -->
+    <string name="uxv2_greet_morning">صباح الخير</string>
+    <string name="uxv2_greet_afternoon">مساء الخير</string>
+    <string name="uxv2_greet_evening">مساء الخير</string>
+    <string name="uxv2_featured">الأبرز</string>
+    <string name="uxv2_category">الفئة</string>
+    <string name="uxv2_reminder_on">تم تفعيل التذكير</string>
+    <string name="uxv2_sport_live_count">%1$s مباشر</string>
+    <string name="uxv2_sport_from_guide">بحسب دليل مصادرك</string>
+    <string name="uxv2_sport_football">كرة القدم</string>
+    <string name="uxv2_sport_basket">كرة السلة</string>
+    <string name="uxv2_sport_tennis">التنس</string>
+    <string name="uxv2_sport_combat">قتال</string>
+    <string name="uxv2_sport_motor">رياضة المحركات</string>
+    <string name="uxv2_sport_rugby">الرغبي</string>
+    <plurals name="uxv2_sources">
+        <item quantity="zero">%1$s مصدر</item>
+        <item quantity="one">%1$s مصدر</item>
+        <item quantity="two">%1$s مصدر</item>
+        <item quantity="few">%1$s مصدر</item>
+        <item quantity="many">%1$s مصدر</item>
+        <item quantity="other">%1$s مصدر</item>
+    </plurals>
 </resources>

@@ -130,3 +130,9 @@ ar|wiz_kind_xtream
 ar|wiz_hint_ok
 fr|sport_nav
 fr|set2_version_summary
+fr|uxv2_sport_football
+fr|uxv2_sport_tennis
+fr|uxv2_sport_combat
+fr|uxv2_sport_rugby
+fr|uxv2_sources
+es|uxv2_sport_rugby
