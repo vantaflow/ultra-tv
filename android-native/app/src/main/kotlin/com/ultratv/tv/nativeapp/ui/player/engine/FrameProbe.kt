@@ -1,21 +1,15 @@
 package com.ultratv.tv.nativeapp.ui.player.engine
 
 import android.graphics.Bitmap
-import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.view.PixelCopy
 import android.view.SurfaceView
 import android.view.TextureView
 import android.view.View
 import android.view.ViewGroup
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 /**
  * Regarde réellement l'image affichée. Certains décodeurs matériels (HEVC 10 bits sur Exynos, par exemple) signalent
  * « première image rendue » mais ne produisent que du noir : le son passe, l'écran reste noir et rien ne se déclenche.
- * On copie une vignette de la surface vidéo (PixelCopy pour une SurfaceView, getBitmap pour une TextureView).
+ * On copie une vignette de la surface vidéo (getBitmap d'une TextureView ; une SurfaceView n'est pas vérifiable, voir [sample]).
  */
 object FrameProbe {
     private const val W = 32
@@ -51,16 +45,15 @@ object FrameProbe {
             val bmp = runCatching { v.getBitmap(W, H) }.getOrNull() ?: return null
             return pixels(bmp)
         }
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return null
-        val sv = v as SurfaceView
-        if (sv.holder.surface?.isValid != true) return null
-        val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
-        return suspendCancellableCoroutine { cont ->
-            runCatching {
-                PixelCopy.request(sv, bmp, { res -> if (cont.isActive) cont.resume(if (res == PixelCopy.SUCCESS) pixels(bmp) else null) }, Handler(Looper.getMainLooper()))
-            }.onFailure { if (cont.isActive) cont.resume(null) }
-        }
+        // SurfaceView (TV, box, Fire TV) : la vidéo matérielle passe souvent par un plan d'affichage séparé (overlay
+        // Amlogic / Fire TV, HDR, 4K) que PixelCopy ne voit pas : la copie revient NOIRE alors que l'image s'affiche.
+        // Conclure « pas d'image » faisait basculer en décodage logiciel (flash au démarrage), puis en boucle entre
+        // moteurs en 4K (le logiciel ne suit pas). Copie jugée non fiable : on ne conclut rien.
+        return null
     }
+
+    /** La vignette n'est fiable que sur une TextureView (rendue par le GPU de l'appli). Pur, testé. */
+    fun reliable(isTextureView: Boolean): Boolean = isTextureView
 
     private fun pixels(bmp: Bitmap): IntArray {
         val px = IntArray(bmp.width * bmp.height)

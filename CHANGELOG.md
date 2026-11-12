@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Android (TV, box, Fire TV) : plus de bascule à tort en « décodage logiciel » au démarrage d'une chaîne, ni de boucle entre moteurs sur les flux 4K. La vérification « image noire » copiait la surface vidéo, que les box Amlogic et Fire TV affichent sur un plan séparé : la copie revenait noire alors que l'image s'affichait. Elle ne s'applique plus qu'aux téléphones (TextureView).
+
 ## [1.2.94] — 2026-11-12 (Android) · Worker
 
 ### Corrigé
