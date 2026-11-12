@@ -261,7 +261,7 @@ Logs and crash reports are scrubbed (`username`, `password`, `token`… paramete
 | TMDB details, ratings | when opening a details page, **paired** device | Worker `/api/tmdb`, `/api/ratings` | cleaned title, year, language, or TMDB id | **No** |
 | Logos and backdrops (Fanart.tv), episodes (TVmaze) | when opening a details page or the home screen, **paired** device | Worker `/api/fanart`, `/api/tvmaze/show` | TMDB, TheTVDB or IMDb id of the title, language | **No** |
 | Team badges (TheSportsDB) | Sport section enabled, **paired** device | Worker `/api/sports/team` | team name as written in the guide | **No** |
-| TMDB posters | on display | `image.tmdb.org` | image request | **No** |
+| Images (posters, logos, backdrops, badges) | on display | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | image request sent directly from the device, nothing else transmitted | **No** |
 | Online subtitles | only on *Search online*, paired device | Worker `/api/subtitles` | title, languages, year | **No** |
 | Cloud sync | paired: at launch, every 6 h; favourites and history ≈ 60 s after a change then every 10 min | Worker | device token, version, edition; display settings; favourites and history per profile (title, poster address, position, duration) | **No** (unpairing stops it) |
 | Trakt | while playing a movie/episode, paired device | Worker `/api/device/trakt` | action, progress, title, year, TMDB ids, season, episode | **No** |

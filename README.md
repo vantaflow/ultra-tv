@@ -264,7 +264,7 @@ Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `pa
 | Fiches TMDB, notes | à l'ouverture d'une fiche, appareil **appairé** | Worker `/api/tmdb`, `/api/ratings` | titre nettoyé, année, langue, ou identifiant TMDB | **Non** |
 | Logos et fonds (Fanart.tv), épisodes (TVmaze) | à l'ouverture d'une fiche ou de l'accueil, appareil **appairé** | Worker `/api/fanart`, `/api/tvmaze/show` | identifiant TMDB, TheTVDB ou IMDb du titre, langue | **Non** |
 | Écussons des équipes (TheSportsDB) | rubrique Sport activée, appareil **appairé** | Worker `/api/sports/team` | nom d'équipe tel qu'écrit dans le guide | **Non** |
-| Affiches TMDB | à l'affichage | `image.tmdb.org` | requête d'image | **Non** |
+| Images (affiches, logos, fonds, écussons) | à l'affichage | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | requête d'image directe depuis l'appareil, rien d'autre transmis | **Non** |
 | Sous-titres en ligne | seulement sur *Rechercher en ligne*, appareil appairé | Worker `/api/subtitles` | titre, langues, année | **Non** |
 | Synchro cloud | appairé : au lancement, toutes les 6 h ; favoris et historique ≈ 60 s après un changement puis toutes les 10 min | Worker | jeton d'appareil, version, édition ; réglages d'affichage ; favoris et historique par profil (titre, adresse de l'affiche, position, durée) | **Non** (dissocier l'appareil l'arrête) |
 | Trakt | pendant la lecture d'un film ou épisode, appareil appairé | Worker `/api/device/trakt` | action, progression, titre, année, identifiants TMDB, saison, épisode | **Non** |
