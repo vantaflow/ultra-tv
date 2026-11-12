@@ -45,7 +45,7 @@ class SportRepositoryTest {
             EpgEntity(channelId = b, title = "Trop loin", description = null, startMs = now + 60 * H, endMs = now + 61 * H),     // hors fenêtre 48 h
             EpgEntity(channelId = b, title = "Passe", description = null, startMs = now - 6 * H, endMs = now - 5 * H),            // terminé
             EpgEntity(channelId = c, title = "Live: Wydad - Raja", description = null, startMs = now - H, endMs = now + H),       // autre chaîne, reconnu
-            EpgEntity(channelId = c, title = "Les Feux de l'amour", description = null, startMs = now - H, endMs = now + H),     // pas du sport
+            EpgEntity(channelId = c, title = "Les Feux de l'amour", description = null, startMs = now - 2 * H, endMs = now + H),     // pas du sport
             EpgEntity(channelId = c, title = "Godzilla vs Kong", description = null, startMs = now + H, endMs = now + 3 * H),    // « vs » sans équipe
             EpgEntity(channelId = d, title = "Transport en commun", description = null, startMs = now - H, endMs = now + H),
         ))
