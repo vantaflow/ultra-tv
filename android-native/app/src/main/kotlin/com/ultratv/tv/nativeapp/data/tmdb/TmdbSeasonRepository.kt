@@ -27,7 +27,7 @@ class TmdbSeasonRepository @Inject constructor(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Entry>?) = size > 40
     })
 
-    private fun key(tvId: Int, season: Int, lang: String) = "$tvId-$season-${lang.replace(Regex("[^A-Za-z-]"), "")}"
+    private fun key(tvId: Int, season: Int, lang: String) = "v2-$tvId-$season-${lang.replace(Regex("[^A-Za-z-]"), "")}"
 
     /** Saison en cache (mémoire puis disque), sans aucune requête ; null si absente ou périmée. */
     suspend fun cached(tvId: Int, season: Int, now: Long = System.currentTimeMillis()): List<TmdbEpisode>? =
@@ -51,7 +51,23 @@ class TmdbSeasonRepository @Inject constructor(
             val k = key(tvId, season, lang)
             cachedFor(k, now)?.let { return it }
             if (!api.isEnabled()) return null
-            val eps = api.season(tvId, season, lang).orEmpty()
+            var eps = api.season(tvId, season, lang).orEmpty()
+            // TMDB sans titres dans la langue de l'appli : il renvoie lui-même « Épisode 3 ». On reprend alors les titres
+            // anglais, sinon ceux de la langue d'origine de la série (turc, coréen…), en gardant résumés et vignettes.
+            val generic = { l: List<TmdbEpisode> -> l.isNotEmpty() && l.all { isGenericEpisodeTitle(it.name, null, it.number) } }
+            if (generic(eps)) {
+                val fallbacks = buildList {
+                    if (!lang.startsWith("en")) add("en-US")
+                    runCatching { api.details(TmdbKind.TV, tvId, lang)?.originalLanguage }.getOrNull()
+                        ?.takeIf { it.length == 2 && !lang.startsWith(it) && it != "en" }?.let { add(it) }
+                }
+                for (fl in fallbacks) {
+                    val other = runCatching { api.season(tvId, season, fl).orEmpty() }.getOrDefault(emptyList()).associateBy { it.number }
+                    if (other.isEmpty()) continue
+                    eps = eps.map { e -> other[e.number]?.name?.takeIf { !isGenericEpisodeTitle(it, null, e.number) }?.let { e.copy(name = it) } ?: e }
+                    if (!generic(eps)) break
+                }
+            }
             mem[k] = Entry(now, eps)
             withContext(Dispatchers.IO) {
                 runCatching {

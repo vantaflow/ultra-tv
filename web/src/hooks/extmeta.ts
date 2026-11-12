@@ -11,7 +11,7 @@ import {
   DAY_MS, NO_ART, firstSearchId, parseExternalIds, parseFanart, parseTvShow, pickCandidates, pickNewEpisodes,
   type ExternalIds, type FanartArt, type NewEpCandidate, type NewEpisode, type TvShow,
 } from "@/lib/extmeta";
-import { parseTmdbSeason, type TmdbEpisode } from "@/lib/episodeTitles";
+import { isGenericEpisodeTitle, parseTmdbSeason, type TmdbEpisode } from "@/lib/episodeTitles";
 import { normText } from "@/lib/text";
 import { tmdbOf } from "@/player/trakt";
 import { usePrefs } from "@/state/prefs";
@@ -141,8 +141,27 @@ export async function loadTmdbSeason(ref: TitleRef, season: number, lang: string
   const tmdb = await resolveTmdbId(c, { ...ref, kind: "tv" }, lang);
   if (!tmdb) return [];
   const tl = TMDB_LANG[lang as keyof typeof TMDB_LANG] ?? "en-US";
-  return cachedValue(`tmdbseason:${tmdb}:${season}:${lang}`, TTL.season, async () =>
-    parseTmdbSeason(await tmdbGet(c.worker, c.token, `tv/${tmdb}/season/${season}?language=${encodeURIComponent(tl)}`)));
+  // v2 : titres anglais repris quand TMDB n'a que « Épisode 3 » dans la langue de l'appli (anciennes entrées ignorées).
+  return cachedValue(`tmdbseason:v2:${tmdb}:${season}:${lang}`, TTL.season, async () => {
+    const eps = parseTmdbSeason(await tmdbGet(c.worker, c.token, `tv/${tmdb}/season/${season}?language=${encodeURIComponent(tl)}`));
+    const generic = (l: TmdbEpisode[]) => l.length > 0 && l.every((e) => isGenericEpisodeTitle(e.name, null, e.number));
+    if (!generic(eps)) return eps;
+    // Titres anglais, sinon ceux de la langue d'origine de la série (turc, coréen…) ; résumés et vignettes gardés.
+    const fallbacks: string[] = tl.startsWith("en") ? [] : ["en-US"];
+    const orig = await tmdbGet(c.worker, c.token, `tv/${tmdb}`).then((d) => (d as { original_language?: unknown })?.original_language).catch(() => null);
+    if (typeof orig === "string" && /^[a-z]{2}$/.test(orig) && orig !== "en" && !tl.startsWith(orig)) fallbacks.push(orig);
+    let out = eps;
+    for (const fl of fallbacks) {
+      const other = await tmdbGet(c.worker, c.token, `tv/${tmdb}/season/${season}?language=${fl}`).then(parseTmdbSeason).catch(() => [] as TmdbEpisode[]);
+      const byNum = new Map(other.map((e) => [e.number, e.name] as const));
+      out = out.map((e) => {
+        const n = byNum.get(e.number);
+        return isGenericEpisodeTitle(e.name, null, e.number) && n && !isGenericEpisodeTitle(n, null, e.number) ? { ...e, name: n } : e;
+      });
+      if (!generic(out)) break;
+    }
+    return out;
+  });
 }
 
 /** Épisodes TMDB de la saison affichée (vide tant que rien n'est connu, hors appairage ou en cas d'échec). */
