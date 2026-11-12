@@ -60,7 +60,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 ## Features
 
 - **New interface (1.2.98)** on TV, phone, tablet and desktop: redesigned dark and light themes, home screen with “Featured” and shortcuts, live TV overlay (recent channels, current programme, “Up next”, evening ribbon), channel list as a side sheet, TV guide filtered by category, redesigned movie / series pages and players, short opening animation.
-- **Sport** (optional section, Settings › Display): live and upcoming matches over 48 h from your sources' guide, by discipline, with reminders, recordings and **team badges** ([TheSportsDB](https://www.thesportsdb.com)).
+- **Sport** (optional section, Settings › Display, on TV and desktop): live and upcoming matches over 48 h from your sources' guide, by discipline, with reminders, recordings and **team badges** ([TheSportsDB](https://www.thesportsdb.com)).
 - **Search** from any screen: a button at the top of the side rail, plus the remote's Search and microphone keys.
 - **Live TV**: **video preview** of the selected channel in the list (with sound, adjustable delay), **OK switches it to full screen without reloading the stream**; Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, Back returns to the menu (Last channel key recalls the previous one), 20 recent channels, instant search (FTS).
 - **Categories**: names and playlist order exactly as the source provides them, enable / disable / reorder, text filter ("FR" = whole word); quality badges (SD, HD, FHD, 4K, RAW, HEVC…) to tell apart streams of the same channel.
