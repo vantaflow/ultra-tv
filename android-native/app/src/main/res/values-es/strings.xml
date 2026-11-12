@@ -1531,4 +1531,5 @@
     <string name="set2_ago">Hace %1$s</string>
     <string name="set2_sport_summary">Deporte: %1$s</string>
     <string name="set2_version_summary">Versión %1$s</string>
+    <string name="v2_duration_label">Duración</string>
 </resources>

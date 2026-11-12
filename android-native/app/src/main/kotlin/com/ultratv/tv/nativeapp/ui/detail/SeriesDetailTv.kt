@@ -1,28 +1,26 @@
 package com.ultratv.tv.nativeapp.ui.detail
 
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.tv.material3.Text
 import com.ultratv.tv.nativeapp.data.downloads.DownloadEntity
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
@@ -64,20 +63,18 @@ import com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
-import com.ultratv.tv.nativeapp.i18n.episodesCount
 import com.ultratv.tv.nativeapp.i18n.jumpToEpisode
-import com.ultratv.tv.nativeapp.i18n.seasonsHelp
 import com.ultratv.tv.nativeapp.i18n.longPressDownload
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
-import com.ultratv.tv.nativeapp.i18n.typeSeries
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.ChoiceDialog
+import com.ultratv.tv.nativeapp.ui.design.DarkPalette
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface
 import com.ultratv.tv.nativeapp.ui.design.Icons
 import com.ultratv.tv.nativeapp.ui.design.Manrope
-import com.ultratv.tv.nativeapp.ui.design.PillButton
 import com.ultratv.tv.nativeapp.ui.design.ProgressLine
+import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.ThumbImage
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.designT
@@ -106,11 +103,9 @@ class SeriesDetailData(
 )
 
 /**
- * Fiche série pour télécommande : fond plein écran fixe, en-tête (type, titre, infos, synopsis, boutons, pastilles) puis, en
- * dessous, saisons à gauche et grandes cartes d'épisodes à droite. Le contenu défile d'un bloc entre l'en-tête et le volet
- * saisons / épisodes ; le fond ne bouge pas.
+ * Fiche série pour télécommande (version liée à Hilt) : branche le favori, Trakt et les téléchargements sur la mise en page
+ * [SeriesDetailTvContent], qui ne dépend d'aucun ViewModel.
  */
-@OptIn(ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun SeriesDetailTv(
     data: SeriesDetailData,
@@ -120,12 +115,43 @@ fun SeriesDetailTv(
     onOpenPerson: (String) -> Unit,
     dlVm: DownloadActionsViewModel,
     dlStrings: DownloadStrings,
+    onBack: () -> Unit = {},
+) {
+    val series = data.series
+    SeriesDetailTvContent(
+        data = data, onSeason = onSeason, onPlayTarget = onPlayTarget, onPlayEpisode = onPlayEpisode, onOpenPerson = onOpenPerson, onBack = onBack,
+        onLongPressEpisode = { ep -> val d = data.downloads[ep.remoteId]; if (d != null) dlVm.act(d, dlStrings) else dlVm.downloadEpisode(series, ep, dlStrings) },
+        downloadLabel = dlStrings.downloadSeason,
+        onDownloadSeason = { dlVm.downloadSeason(series, data.episodes.filter { it.season == data.activeSeason }, dlStrings) },
+        favorite = { FavoriteIconButton("SERIES", series.remoteId) },
+        trakt = { com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, data.episodes, data.activeSeason) },
+    )
+}
+
+/**
+ * Fiche série (maquette FicheSerie) : colonne gauche (retour, titre, infos, synopsis, boutons, Distribution) et, à droite,
+ * onglets de saisons puis liste d'épisodes. Fond uni, sans flou. Gauche / Droite dans la liste changent de saison.
+ */
+@OptIn(ExperimentalFoundationApi::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
+@Composable
+fun SeriesDetailTvContent(
+    data: SeriesDetailData,
+    onSeason: (Int) -> Unit,
+    onPlayTarget: () -> Unit,
+    onPlayEpisode: (EpisodeEntity) -> Unit,
+    onOpenPerson: (String) -> Unit,
+    onBack: () -> Unit,
+    onLongPressEpisode: (EpisodeEntity) -> Unit,
+    downloadLabel: String,
+    onDownloadSeason: () -> Unit,
+    favorite: @Composable () -> Unit,
+    trakt: @Composable () -> Unit,
 ) {
     val series = data.series
     val S = LocalStrings.current
     val D = LocalDs.current
+    val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val scope = rememberCoroutineScope()
-    val scroll = rememberScrollState()
     val playRequester = remember { FocusRequester() }
     var playFocused by remember { mutableStateOf(false) }
     RequestInitialFocus(playRequester, hasFocus = { playFocused }, key = series.remoteId to (data.target != null))
@@ -141,19 +167,17 @@ fun SeriesDetailTv(
     var jumpIdx by remember(data.activeSeason) { mutableStateOf<Int?>(null) }
     val entryIdx = jumpIdx ?: entryIndexOf(shown, data.target)
     val entryNow by rememberUpdatedState(entryIdx)
-    val shownNow by rememberUpdatedState(shown)
     val activeNow by rememberUpdatedState(data.activeSeason)
     val seasonsNow by rememberUpdatedState(data.seasons)
     val listState = rememberLazyListState()
     val entry = remember { FocusRequester() }
     val seasonEntry = remember { FocusRequester() }
-    // Barre « Aller à l'épisode » / « Télécharger la saison » : Haut depuis le 1er épisode y mène (avant, il la sautait).
+    // Barre « Aller à l'épisode » / « Télécharger la saison » : Haut depuis le 1er épisode y mène.
     val toolbarReq = remember { FocusRequester() }
     var jumpOpen by remember { mutableStateOf(false) }
     // Bande-annonce : clé YouTube (TMDB), lue dans l'appli par le lecteur intégré.
     val trailerKey = remember(data.trailerUrl) { data.trailerUrl?.let(TmdbTrailer::keyOf) }
     var trailerOpen by remember { mutableStateOf(false) }
-    val hasTarget = data.target != null
 
     suspend fun focusEntry() {
         androidx.compose.runtime.withFrameNanos { }
@@ -168,104 +192,89 @@ fun SeriesDetailTv(
     // Nouvelle saison : la liste repart de son point d'entrée (la reprise si elle y est, sinon le haut).
     LaunchedEffect(data.activeSeason) { listState.scrollToItem(entryNow) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Ux.Bg)) {
-        val paneHeight = maxHeight - 56.design
-        DetailBackdrop(series.backdrop, series.poster, series.title)
-        DetailScrim()
+    Row(Modifier.fillMaxSize().background(Ux.Bg)) {
+        // ─── Colonne gauche ───
         Column(
-            Modifier.fillMaxSize().verticalScroll(scroll).padding(start = 72.design, end = 72.design, top = 56.design),
-            verticalArrangement = Arrangement.spacedBy(28.design),
+            Modifier.width(780.design).fillMaxHeight().padding(start = 72.design, top = 56.design, bottom = 48.design).focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
-            // ─── En-tête : le focus qui y revient remonte la fiche en haut ───
-            Column(
-                Modifier.fillMaxWidth().focusGroup().onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(0, tween(160)) } },
-                verticalArrangement = Arrangement.spacedBy(18.design),
-            ) {
-                TypeBadge(D.typeSeries)
-                DetailTitle(T.tidy(series.title))
-                val line = remember(series.id, series.year, series.genre, data.seasons.size, data.episodes.size, data.ratings, series.rating, D.lang) {
-                    buildInfoLine(
-                        series.year?.toString(), T.presentable(series.genre),
-                        if (data.seasons.isEmpty()) null else "${D.seasonsCount(data.seasons.size)} · ${D.episodesCount(data.episodes.size)}",
-                        data.ratings, series.rating?.takeIf { it > 0.0 && it <= 10.0 },
-                    )
-                }
-                InfoLineRow(line, listOfNotNull(series.lang.takeIf { it.isNotBlank() }?.uppercase()))
-                T.presentable(series.plot)?.let { DetailSynopsis(it) }
-                Spacer(Modifier.height(4.design))
-                if (data.target != null) PillButton(
+            V2BackButton(M.a11yBack, onBack)
+            Spacer(Modifier.height(18.design))
+            Text(T.tidy(series.title), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, lineHeight = 64.spx, letterSpacing = (-1).sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            val line = remember(series.id, series.year, series.genre, data.seasons.size, data.episodes.size, data.ratings, series.rating, D.lang) {
+                buildInfoLine(
+                    series.year?.toString(), T.presentable(series.genre),
+                    if (data.seasons.isEmpty()) null else D.seasonsCount(data.seasons.size),
+                    data.ratings, series.rating?.takeIf { it > 0.0 && it <= 10.0 },
+                )
+            }
+            val meta = (line.texts + listOfNotNull(line.imdb, line.rt?.let { "🍅 $it" }, series.lang.takeIf { it.isNotBlank() }?.uppercase())).joinToString(" · ")
+            if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            T.presentable(series.plot)?.let {
+                Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 21.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+                if (data.target != null) V2Pill(
                     if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
-                    onClick = onPlayTarget, heightPx = 76, hPadPx = 44, fontPx = 28, weight = FontWeight.Bold, iconPath = Icons.Play, iconFill = true, bg = Ux.Cta,
+                    onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
                     modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
-                    FavoritePill("SERIES", series.remoteId)
-                    if (trailerKey != null) PillButton(D.trailerLabel, onClick = { trailerOpen = true }, heightPx = 64, hPadPx = 30, fontPx = 22, iconPath = Icons.Play)
-                    com.ultratv.tv.nativeapp.ui.trakt.TraktSeriesButton(series, data.episodes, data.activeSeason)
-                }
-                val cast = remember(series.cast) { T.presentable(series.cast).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(4) }
-                PeopleRow(D.castTitle, cast, onOpenPerson)
+                if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26)
+                favorite()
             }
+            trakt()
+            val cast = remember(series.cast) {
+                T.presentable(series.cast).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
+                    .map { CastUi(it, null, null) }
+            }
+            V2CastRow(D.castTitle, cast, onOpenPerson, Modifier.padding(top = 4.design), avatarPx = 80, cellPx = 100, namePx = 15, rolePx = 13)
+        }
 
-            // ─── Volet saisons (gauche) + épisodes (droite) ───
-            Row(
-                Modifier.fillMaxWidth().height(paneHeight)
-                    .clip(RoundedCornerShape(28.design)).background(Ux.Bg.copy(alpha = 0.80f)).padding(24.design)
-                    .onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(scroll.maxValue, tween(160)) } }
-                    // Haut / Bas vont à l'élément juste au-dessus / au-dessous (pas de saut vers l'épisode à reprendre).
-                    .focusGroup(),
-                horizontalArrangement = Arrangement.spacedBy(28.design),
-            ) {
-                SeasonsColumn(
-                    seasons = data.seasons, active = data.activeSeason, episodes = data.episodes, upTo = FocusRequester.Default,
-                    seasonEntry = seasonEntry, awayKey = awayFromSeasons, D = D,
-                    onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } },
-                    modifier = Modifier.width(320.design),
+        // ─── Colonne droite : saisons puis épisodes ───
+        Column(
+            Modifier.weight(1f).fillMaxHeight().padding(start = 32.design, top = 56.design, end = 72.design, bottom = 48.design).focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(18.design),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
+                SeasonTabs(
+                    seasons = data.seasons, active = data.activeSeason, seasonEntry = seasonEntry, D = D,
+                    onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } }, modifier = Modifier.weight(1f),
                 )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.design)) {
-                    // Barre d'aide + saut rapide + téléchargement de la saison
-                    Row(horizontalArrangement = Arrangement.spacedBy(16.design), verticalAlignment = Alignment.CenterVertically) {
-                        Text(D.seasonsHelp, color = Ux.Text3, fontFamily = Manrope, fontSize = 21.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                        if (shown.isNotEmpty()) {
-                            PillButton(D.jumpToEpisode, onClick = { jumpOpen = true }, heightPx = 56, hPadPx = 28, fontPx = 22, modifier = Modifier.focusRequester(toolbarReq))
-                            PillButton(
-                                dlStrings.downloadSeason, onClick = { dlVm.downloadSeason(series, shown, dlStrings) }, heightPx = 56, hPadPx = 28, fontPx = 22,
-                                iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download,
-                            )
-                        }
-                    }
-                    if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    when {
-                        shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
-                        else -> LazyColumn(
-                            Modifier.fillMaxSize()
-                                .onPreviewKeyEvent { ev ->
-                                    if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                    when (ev.key) {
-                                        awayFromSeasons -> {
-                                            // Droite : saison suivante, focus sur son point d'entrée. Pas de saison suivante : rien ne bouge.
-                                            stepSeason(seasonsNow, activeNow, +1)?.let { n -> onSeason(n); scope.launch { focusEntry() } }
-                                            true
-                                        }
-                                        towardSeasons -> { runCatching { seasonEntry.requestFocus() }; true }
-                                        else -> false
-                                    }
+                if (shown.isNotEmpty()) {
+                    V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22, modifier = Modifier.focusRequester(toolbarReq))
+                    V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download)
+                }
+            }
+            if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            when {
+                shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
+                else -> LazyColumn(
+                    Modifier.fillMaxSize()
+                        .onPreviewKeyEvent { ev ->
+                            if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                            when (ev.key) {
+                                awayFromSeasons -> {
+                                    // Droite : saison suivante, focus sur son point d'entrée. Pas de saison suivante : rien ne bouge.
+                                    stepSeason(seasonsNow, activeNow, +1)?.let { n -> onSeason(n); scope.launch { focusEntry() } }
+                                    true
                                 }
-                                .focusGroup(),
-                            state = listState, verticalArrangement = Arrangement.spacedBy(14.design),
-                        ) {
-                            itemsIndexed(shown, key = { _, e -> "${e.season}:${e.episode}:${e.remoteId}" }, contentType = { _, _ -> "episode" }) { i, ep ->
-                                EpisodeCard(
-                                    ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
-                                    seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
-                                    modifier = Modifier
-                                        .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
-                                        .then(if (i == 0) Modifier.focusProperties { up = toolbarReq } else Modifier),
-                                    onLongClick = { val d = data.downloads[ep.remoteId]; if (d != null) dlVm.act(d, dlStrings) else dlVm.downloadEpisode(series, ep, dlStrings) },
-                                    onClick = { onPlayEpisode(ep) },
-                                )
+                                towardSeasons -> { runCatching { seasonEntry.requestFocus() }; true }
+                                else -> false
                             }
                         }
+                        .focusGroup(),
+                    state = listState, verticalArrangement = Arrangement.spacedBy(12.design),
+                ) {
+                    itemsIndexed(shown, key = { _, e -> "${e.season}:${e.episode}:${e.remoteId}" }, contentType = { _, _ -> "episode" }) { i, ep ->
+                        EpisodeCard(
+                            ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
+                            seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
+                            modifier = Modifier
+                                .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
+                                .then(if (i == 0) Modifier.focusProperties { up = toolbarReq } else Modifier),
+                            onLongClick = { onLongPressEpisode(ep) },
+                            onClick = { onPlayEpisode(ep) },
+                        )
                     }
                 }
             }
@@ -285,16 +294,17 @@ fun SeriesDetailTv(
     if (trailerOpen && trailerKey != null) TrailerPlayer(trailerKey, T.tidy(series.title), onClose = { trailerOpen = false })
 }
 
-/** Colonne des saisons : « Saison 1 · 24 épisodes » ; la saison choisie est surlignée, le focus la choisit après une courte pause. */
+/**
+ * Onglets de saisons : la saison choisie prend les couleurs de focus, le focus la choisit après une courte pause ; Bas (ou OK)
+ * entre dans la liste d'épisodes.
+ */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-private fun SeasonsColumn(
-    seasons: List<Int>, active: Int?, episodes: List<EpisodeEntity>, upTo: FocusRequester, seasonEntry: FocusRequester, awayKey: Key, D: DesignStrings,
+private fun SeasonTabs(
+    seasons: List<Int>, active: Int?, seasonEntry: FocusRequester, D: DesignStrings,
     onSeason: (Int) -> Unit, onEnterEpisodes: () -> Unit, modifier: Modifier,
 ) {
-    // Nombre d'épisodes par saison, calculé une fois par liste d'épisodes.
-    val counts = remember(episodes) { episodes.groupingBy { it.season }.eachCount() }
-    // État local : le survol des saisons ne recompose que cette colonne, pas tout l'écran.
+    // État local : le survol des saisons ne recompose que cette rangée, pas tout l'écran.
     var pending by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(pending) {
         val p = pending ?: return@LaunchedEffect
@@ -304,42 +314,36 @@ private fun SeasonsColumn(
     }
     val state = rememberLazyListState()
     LaunchedEffect(Unit) { val i = seasons.indexOf(active); if (i > 2) state.scrollToItem(i - 1) }
-    LazyColumn(
+    LazyRow(
         modifier
             .onPreviewKeyEvent { ev ->
-                if (ev.type == KeyEventType.KeyDown && ev.key == awayKey) {
+                if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionDown) {
                     pending?.takeIf { it != active }?.let(onSeason)
                     onEnterEpisodes(); true
                 } else false
             }
             .focusGroup(),
-        state = state, verticalArrangement = Arrangement.spacedBy(10.design),
+        state = state, horizontalArrangement = Arrangement.spacedBy(10.design),
     ) {
         items(seasons, key = { it }, contentType = { "season" }) { n ->
             val sel = n == active
             FocusSurface(
-                onClick = { onSeason(n); onEnterEpisodes() }, shape = RoundedCornerShape(18.design),
-                bg = if (sel) Ux.Accent.copy(alpha = 0.22f) else Color.Transparent, ringWidth = 4.design, focusedScale = 1f,
-                modifier = Modifier.fillMaxWidth().height(96.designT)
+                onClick = { onSeason(n); onEnterEpisodes() }, shape = RoundedCornerShape(26.design),
+                bg = if (sel) Ux.Cta else Ux.Card, focusedBg = if (sel) Ux.Cta else Ux.Button, ringWidth = 4.design, focusedScale = 1f,
+                modifier = Modifier.height(52.designT)
                     .then(if (sel) Modifier.focusRequester(seasonEntry) else Modifier)
-                    .then(if (n == seasons.first()) Modifier.focusProperties { up = upTo } else Modifier)
                     .onFocusChanged { if (it.isFocused) pending = n }
                     .semantics { selected = sel },
-            ) { f ->
-                Row(Modifier.fillMaxSize().padding(horizontal = 18.design), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.width(6.design).height(48.design).clip(RoundedCornerShape(3.design)).background(if (sel) (if (f) Ux.TextOnLight else Ux.Accent) else Color.Transparent))
-                    Spacer(Modifier.width(16.design))
-                    Column(verticalArrangement = Arrangement.spacedBy(2.design)) {
-                        Text(D.seasonLabel(n), color = if (f) Ux.TextOnLight else if (sel) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 28.spx, maxLines = 1)
-                        if (sel || f) Text(D.episodesCount(counts[n] ?: 0), color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 21.spx, maxLines = 1)
-                    }
+            ) { _ ->
+                Box(Modifier.height(52.designT).padding(horizontal = 24.design), contentAlignment = Alignment.Center) {
+                    Text(D.seasonLabel(n), color = if (sel) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 19.spx, maxLines = 1)
                 }
             }
         }
     }
 }
 
-/** Grande carte d'épisode : vignette 16:9 (petite, décodée à sa taille), « 1. Titre », durée, « vu », résumé sur 3 lignes, progression. */
+/** Carte d'épisode (maquette) : vignette 220 × 124, « 1. Titre », durée / « Vu » / reste, résumé sur une ligne, progression. Focus = couleurs de focus. */
 @Composable
 private fun EpisodeCard(
     ep: EpisodeEntity, title: String, fallbackImage: String?, h: WatchHistoryEntity?, D: DesignStrings, seen: Boolean,
@@ -353,37 +357,30 @@ private fun EpisodeCard(
     }
     val done = isDone(dur, pos) || (seen && dur <= 0)
     val left = if (!done && dur > 0 && pos > 0) D.remainingMin(((dur - pos) / 60_000L).toInt().coerceAtLeast(1)) else null
+    val state = if (done) D.watchedLabel.replaceFirstChar { it.uppercase() } else left
+    val meta = listOfNotNull(length, state).joinToString(" · ")
     FocusSurface(
-        onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(20.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f,
-        modifier = modifier.fillMaxWidth().height(188.designT),
+        onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(22.design), bg = Ux.Card2, focusedBg = Ux.Cta,
+        ringWidth = 4.design, focusedScale = 1f, modifier = modifier.fillMaxWidth(),
     ) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
-            Box(Modifier.width(264.design).aspectRatio(16f / 9f)) {
-                ThumbImage(ep.image ?: fallbackImage, "", Modifier.fillMaxSize(), radius = 14, decodeSize = DpSize(132.dp, 75.dp))
-                if (fraction > 0f && !done) ProgressLine(fraction, Modifier.align(Alignment.BottomStart).fillMaxWidth(), heightPx = 6, track = Color(0x66000000))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.design)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        if (title.isEmpty()) D.episodeWord(ep.episode) else "${ep.episode}. $title",
-                        color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false),
-                    )
-                    for (b in listOfNotNull(length, left)) EpisodeBadge(b, f)
-                    if (done) EpisodeBadge("✓ " + D.watchedLabel, f, accent = true)
-                }
+        Row(Modifier.fillMaxWidth().padding(14.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+            ThumbImage(ep.image ?: fallbackImage, "", Modifier.width(220.design).aspectRatio(16f / 9f), radius = 16, decodeSize = DpSize(110.dp, 62.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
+                Text(
+                    if (title.isEmpty()) D.episodeWord(ep.episode) else "${ep.episode}. $title",
+                    color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                )
+                // Méta : rouge foncé sur le fond clair du focus (thème sombre), rose clair sur le fond encre (thème clair).
+                val metaInk = if (f) (if (Ux.palette.light) DarkPalette.accentText else Color(0xFFB3121D)) else Ux.Text3
+                if (meta.isNotEmpty()) Text(meta, color = metaInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1)
                 ep.plot?.takeIf { it.isNotBlank() }?.let {
-                    Text(it, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    Text(it, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
+                if (fraction > 0f) ProgressLine(
+                    fraction, Modifier.fillMaxWidth().padding(top = 4.design).clip(RoundedCornerShape(2.design)), heightPx = 4,
+                    track = (if (f) Ux.TextOnLight else Ux.Text).copy(alpha = 0.12f),
+                )
             }
         }
-    }
-}
-
-@Composable
-private fun EpisodeBadge(text: String, focused: Boolean, accent: Boolean = false) {
-    val bg = when { accent -> Ux.Accent; focused -> Color(0x14000000); else -> Ux.Surface2 }
-    val ink = when { accent -> Ux.OnAccent; focused -> Ux.OnFocus2; else -> Ux.Text2 }
-    Box(Modifier.clip(RoundedCornerShape(8.design)).background(bg).padding(horizontal = 12.design, vertical = 3.design)) {
-        Text(text, color = ink, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, maxLines = 1)
     }
 }

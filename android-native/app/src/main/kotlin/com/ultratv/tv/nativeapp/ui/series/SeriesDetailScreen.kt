@@ -189,7 +189,7 @@ fun SeriesDetailScreen(
         onPlayTarget = { target?.let { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) } },
         onPlayEpisode = { vm.playEpisode(series.name, series.remoteId, series.providerId, it, onPlayEpisode) },
         onOpenPerson = onOpenPerson,
-        dlVm = dlVm, dlStrings = dlStrings,
+        dlVm = dlVm, dlStrings = dlStrings, onBack = onBack,
     )
 }
 

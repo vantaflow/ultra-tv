@@ -1585,4 +1585,5 @@
     <string name="set2_ago">منذ %1$s</string>
     <string name="set2_sport_summary">الرياضة: %1$s</string>
     <string name="set2_version_summary">الإصدار %1$s</string>
+    <string name="v2_duration_label">المدة</string>
 </resources>

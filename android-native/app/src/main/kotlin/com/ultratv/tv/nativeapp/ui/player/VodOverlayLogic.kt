@@ -6,16 +6,22 @@ import java.util.Locale
 import java.util.TimeZone
 
 /** Pastilles techniques du flux en cours (film / épisode). Un champ inconnu reste null : rien n'est affiché pour lui. */
-data class TechBadges(val quality: String? = null, val codec: String? = null, val audio: String? = null) {
-    val isEmpty get() = quality == null && codec == null && audio == null
+data class TechBadges(val quality: String? = null, val codec: String? = null, val audio: String? = null, val hdr: String? = null) {
+    val isEmpty get() = quality == null && codec == null && audio == null && hdr == null
     companion object { val EMPTY = TechBadges() }
 }
+
+/** Épisode qui suit l'épisode en cours (carte « Épisode suivant dans N s ») : numéro, titre, résumé et vignette. */
+data class NextEpisodeInfo(val number: Int, val title: String, val summary: String?, val image: String?)
 
 /** Logique pure de la surcouche film / épisode (testée à part) : pastilles, temps restant, heure de fin. */
 object VodOverlayLogic {
     /** Pastilles d'après les statistiques du moteur (Media3 comme LibVLC). */
     fun badges(s: EngineStats?): TechBadges =
-        if (s == null) TechBadges.EMPTY else TechBadges(quality(s.resolution), codec(s.videoCodec), audio(s.audioChannels))
+        if (s == null) TechBadges.EMPTY else TechBadges(quality(s.resolution), codec(s.videoCodec), audio(s.audioChannels), hdrLabel(s.hdrKind))
+
+    /** Pastille HDR : « hdr10 » → « HDR10 », « hlg » → « HLG », « dv » → « Dolby Vision » ; null = SDR / inconnu. */
+    fun hdrLabel(kind: String?): String? = com.ultratv.tv.nativeapp.ui.player.osd.OsdText.hdrLabel(kind)
 
     /** SD / HD / FHD / 4K d'après « 1920×1080 ». La largeur compte aussi : un film en 2,39:1 en 1920×800 reste FHD. */
     fun quality(resolution: String?): String? {
