@@ -39,11 +39,24 @@ macOS : pas de ffmpeg embarqué ; celui du système est utilisé s'il est instal
 
 ## Données et services
 
-- **TMDB** : affiches, synopsis, distribution, filmographies. *This product uses the TMDB API but is not endorsed or
-  certified by TMDB.*
+- **TMDB** : affiches, synopsis, distribution, bandes-annonces, filmographies, titres et résumés des épisodes, identifiants
+  IMDb / TheTVDB. *This product uses the TMDB API but is not endorsed or certified by TMDB.*
+- **Fanart.tv** : logos officiels des titres et fonds HD (clé du Worker). Images fournies par [fanart.tv](https://fanart.tv),
+  propriété de leurs auteurs et ayants droit.
+- **TVmaze** : épisodes précédent et prochain des séries (calendrier de diffusion), sans clé. Données de
+  [TVmaze](https://www.tvmaze.com), sous licence [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
+- **TheSportsDB** : écussons d'équipes et compétitions de la rubrique Sport (clé publique gratuite, ou clé du Worker).
+  Données et images de [TheSportsDB](https://www.thesportsdb.com).
 - **OMDb** : notes IMDb / Rotten Tomatoes / Metacritic (clé du Worker, facultative).
 - **TheIntroDB** : passages intro / résumé / générique (base communautaire, sans clé).
+- **YouTube** (`youtube-nocookie.com`) : lecture des bandes-annonces.
+- **Guides XMLTV complémentaires** (xmltvfr.fr, epgshare01) : programmes des chaînes sans guide, selon les conditions de
+  chaque fournisseur.
 - **Trakt**, **OpenSubtitles** : via le Worker, comptes de l'utilisateur.
+
+Fanart.tv, TVmaze, TheSportsDB, OMDb, TMDB, Trakt et OpenSubtitles sont interrogés par le Worker pour les appareils
+appairés : seuls des identifiants de titres ou des noms d'équipes leur sont transmis, jamais une donnée personnelle ni
+une adresse de flux.
 
 ## Polices
 
