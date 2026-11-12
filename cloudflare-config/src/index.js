@@ -45,7 +45,8 @@ import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } f
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
-import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage } from "./pages.js";
+import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage } from "./pages.js";
+import { pwaResponse } from "./pwa.js";
 
 export { Guard };
 
@@ -197,6 +198,8 @@ async function route(req, env, ctx) {
   // ---- pages publiques ----
   { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux)$/); if (dm && (m === "GET" || m === "HEAD")) return downloadRedirect(dm[1]); }
   if ((path === "/apk" || path === "/download") && (m === "GET" || m === "HEAD")) return apkPage(nonce());
+  // Application web installable (manifeste, service worker, icônes, page hors ligne).
+  if (m === "GET" || m === "HEAD") { const pw = pwaResponse(path, () => offlinePage(nonce())); if (pw) return pw; }
   if (path === "/envoyer" && m === "GET") {
     // Langue : paramètre `l`, puis cookie de préférence, puis Accept-Language, sinon anglais.
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
@@ -228,7 +231,7 @@ async function route(req, env, ctx) {
   if (pairRoute) {
     const raw = url.searchParams.get("code");
     const c = normalizeCode(raw);
-    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c });
+    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c, admin: isAdmin(env, sess.acct) });
   }
 
   if (adminRoute) {
