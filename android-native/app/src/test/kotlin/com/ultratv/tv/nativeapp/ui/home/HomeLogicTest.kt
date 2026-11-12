@@ -251,7 +251,7 @@ class HomeLogicTest {
 
     @Test fun newEpisodePosterOf_titreEpisodeEtJour_ouvreLaSerie() {
         val p = newEpisodePosterOf(newEp(9), "S2 É5", "Demain")
-        assertEquals("S9\nS2 É5 · Demain", p.item.title)
+        assertEquals("S2 É5 · Demain", p.item.title)
         assertTrue(p.isShow); assertEquals(9L, p.item.id); assertEquals(TmdbKind.TV, p.kind)
         assertEquals("S9", newEpisodePosterOf(newEp(9), null, null).item.title)
     }

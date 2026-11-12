@@ -276,8 +276,9 @@ data class NewEpisodeCardUi(
 )
 
 /** Affiche de la rangée « Nouveaux épisodes » : « Série · S2 É5 · Demain » ([tag] et [day] déjà localisés), ouvre la fiche série. */
+/** Libellé sous l'affiche : « S2 É5 · mar. 17 nov. » (l'affiche montre déjà la série ; une seule ligne affichée). */
 fun newEpisodePosterOf(c: NewEpisodeCardUi, tag: String?, day: String?): PosterCardUi =
-    PosterCardUi("n-${c.seriesId}", PosterItem(c.seriesId, listOfNotNull(c.title, listOfNotNull(tag, day).joinToString(" · ").ifEmpty { null }).joinToString("\n"), c.poster, c.year, c.rating), true, TmdbKind.TV)
+    PosterCardUi("n-${c.seriesId}", PosterItem(c.seriesId, listOfNotNull(tag, day).joinToString(" · ").ifEmpty { c.title }, c.poster, c.year, c.rating), true, TmdbKind.TV)
 
 /** Affiche du catalogue (derniers films / séries). */
 fun catalogPosterOf(p: PosterItem, isShow: Boolean): PosterCardUi =
