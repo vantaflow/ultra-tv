@@ -86,7 +86,7 @@ class WorkerTraktTransport @Inject constructor(
 
     override suspend fun send(req: ScrobbleRequest): ScrobbleResult {
         val token = tokens.token() ?: return ScrobbleResult.FAILED
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG)
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG)
             ?: return ScrobbleResult.FAILED
         return client.traktScrobble(base, token, req)
     }

@@ -58,7 +58,7 @@ class WorkerTraktLibrarySource @Inject constructor(
 
     override suspend fun fetch(lang: String): String? {
         val token = tokens.token() ?: return null
-        val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return null
+        val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG) ?: return null
         return client.traktLibrary(base, token, lang)
     }
 }

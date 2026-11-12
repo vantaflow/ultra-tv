@@ -18,5 +18,6 @@
         <domain includeSubdomains="true">githubusercontent.com</domain>
         <domain includeSubdomains="true">api.github.com</domain>
         <domain includeSubdomains="true">khalilbenaz.workers.dev</domain>
+        <domain includeSubdomains="true">weedy.dpdns.org</domain>
     </domain-config>
 </network-security-config>

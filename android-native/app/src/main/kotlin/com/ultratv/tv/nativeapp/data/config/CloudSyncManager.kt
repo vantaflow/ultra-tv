@@ -62,7 +62,7 @@ class CloudSyncManager @Inject constructor(
     val isPaired: Boolean get() = tokens.isPaired
 
     private suspend fun workerBase(): String? {
-        val raw = prefs.flow.first().workerBaseUrl.ifBlank { com.ultratv.tv.nativeapp.BuildConfig.WORKER_URL }
+        val raw = WorkerUrl.resolve(prefs.flow.first().workerBaseUrl)
         return WorkerUrl.normalize(raw, allowCleartext = com.ultratv.tv.nativeapp.BuildConfig.DEBUG)
     }
 

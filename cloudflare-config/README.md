@@ -4,6 +4,8 @@ Un Worker Cloudflare qui laisse l'utilisateur gérer ses fournisseurs IPTV depui
 navigateur et les faire récupérer par la TV. Version 2 : **aucune lecture anonyme,
 aucun secret partagé dans l'APK**.
 
+Adresse principale : **<https://tv.weedy.dpdns.org>** (tableau de bord, `/apk`, `/envoyer`, `/download/*`). L'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active (même Worker, mêmes jetons) ; les applis basculent automatiquement de l'une à l'autre si une est injoignable. Les cookies de session sont liés à l'hôte : une reconnexion est nécessaire une fois sur le nouveau domaine. Trakt : ajouter `https://tv.weedy.dpdns.org/trakt/callback` aux adresses de retour de l'application Trakt.
+
 ```
 cloudflare-config/
 ├── src/index.js      routeur et handlers

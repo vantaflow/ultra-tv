@@ -15,7 +15,7 @@ TV box + your Cloudflare Worker), so the primary threats are:
 ## Already in place
 
 - **Network security config** pins TLS for `github.com`,
-  `api.github.com`, `githubusercontent.com` and `*.khalilbenaz.workers.dev`,
+  `api.github.com`, `githubusercontent.com` and `*.khalilbenaz.workers.dev` and `weedy.dpdns.org`,
   so the update channel and telemetry endpoints can't be downgraded.
 - **Backup encryption** (AES-GCM + PBKDF2-SHA256, 120 k iterations, 256-bit
   key) — opt-in via a password field in Settings. Plain exports are still

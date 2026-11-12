@@ -34,7 +34,7 @@ class RatingsClient @Inject constructor(
         val r = withContext(Dispatchers.IO) {
             runCatching {
                 val token = tokens.token() ?: return@runCatching null
-                val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG) ?: return@runCatching null
+                val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG) ?: return@runCatching null
                 val q = "kind=${if (kind == TmdbKind.MOVIE) "movie" else "tv"}&tmdb=$tmdbId"
                 val req = Request.Builder().url("$base/api/ratings?$q").header("Authorization", "Bearer $token").get().build()
                 http.newCall(req).execute().use { res -> if (res.isSuccessful) Result.success(RatingsLogic.parse(res.body?.string().orEmpty())) else null }

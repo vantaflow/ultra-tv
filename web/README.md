@@ -57,7 +57,7 @@ dans un navigateur, il faut un proxy CORS (`../cloudflare`, `../vercel-proxy`, `
 ## Compte cloud (application de bureau)
 
 Même fournisseur sur tous les appareils via le Worker `cloudflare-config` (par défaut
-`https://ultratv-config.khalilbenaz.workers.dev`, modifiable dans Réglages › Cloud). Protocole
+`https://tv.weedy.dpdns.org`, modifiable dans Réglages › Cloud). Protocole
 identique à celui de l'application Android (`CloudPairingClient.kt`) :
 
 * **Appairage** : `POST /api/pair/start` donne un code à 8 caractères ; l'utilisateur le saisit sur le

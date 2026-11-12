@@ -30,4 +30,20 @@ class WorkerUrlTest {
         assertNull(WorkerUrl.normalize("https://", allowCleartext = true))
         assertNull(WorkerUrl.normalize("pas une url", allowCleartext = true))
     }
+
+    private val newUrl = "https://tv.weedy.dpdns.org"
+    private val oldUrl = "https://ultratv-config.khalilbenaz.workers.dev"
+
+    @Test fun `resolve : vide ou ancien defaut donne le nouveau defaut`() {
+        assertEquals(newUrl, WorkerUrl.resolve("", newUrl))
+        assertEquals(newUrl, WorkerUrl.resolve("  ", newUrl))
+        assertEquals(newUrl, WorkerUrl.resolve(oldUrl, newUrl))
+        assertEquals(newUrl, WorkerUrl.resolve("$oldUrl/", newUrl))
+    }
+
+    @Test fun `resolve : une adresse personnalisee reste intacte`() {
+        assertEquals("https://mon.worker.exemple.dev", WorkerUrl.resolve("https://mon.worker.exemple.dev/", newUrl))
+        assertEquals("http://10.0.2.2:8787", WorkerUrl.resolve("http://10.0.2.2:8787", newUrl))
+        assertEquals(newUrl, WorkerUrl.resolve(newUrl, newUrl))
+    }
 }

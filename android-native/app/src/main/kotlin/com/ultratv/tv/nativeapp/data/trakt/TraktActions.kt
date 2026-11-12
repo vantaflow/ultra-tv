@@ -98,7 +98,7 @@ class WorkerTraktWriteTransport @Inject constructor(
     override suspend fun post(path: String, body: JSONObject): TraktWriteResult = withContext(Dispatchers.IO) {
         try {
             val token = tokens.token() ?: return@withContext TraktWriteResult.NOT_LINKED
-            val base = WorkerUrl.normalize(prefs.flow.first().workerBaseUrl.ifBlank { BuildConfig.WORKER_URL }, BuildConfig.DEBUG)
+            val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG)
                 ?: return@withContext TraktWriteResult.FAILED
             val req = Request.Builder().url("$base/api/device/trakt/$path").header("Authorization", "Bearer $token")
                 .post(body.toString().toRequestBody(json)).build()

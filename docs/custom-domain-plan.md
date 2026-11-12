@@ -1,6 +1,6 @@
 # Plan : nom de domaine personnalisé pour le Worker
 
-Statut : **plan, rien n'est encore fait.** Retour utilisateur (P2) : certaines box et certains réseaux bloquent `*.workers.dev`. L'appli affiche alors « Cloud injoignable » : appairage, envoi depuis le téléphone, synchro, alertes, TMDB et Trakt ne passent plus. Constaté sur une box de test.
+Statut : **fait.** Domaine retenu : `tv.weedy.dpdns.org` (Custom Domain du Worker, `workers.dev` reste actif). Repli automatique dans l'appli Android et le bureau ; à faire côté propriétaire : ajouter `https://tv.weedy.dpdns.org/trakt/callback` sur trakt.tv. Contexte d'origine : Retour utilisateur (P2) : certaines box et certains réseaux bloquent `*.workers.dev`. L'appli affiche alors « Cloud injoignable » : appairage, envoi depuis le téléphone, synchro, alertes, TMDB et Trakt ne passent plus. Constaté sur une box de test.
 
 ## Ce qui existe déjà
 
@@ -27,6 +27,6 @@ L'adresse du Worker est déjà configurable partout, il n'y a donc pas de refont
 
 Environ 10 $ par an pour un `.com` chez Cloudflare. Le Custom Domain d'un Worker est gratuit.
 
-## Décision attendue
+## Décision
 
-Le nom de domaine à acheter.
+Domaine : `tv.weedy.dpdns.org`.

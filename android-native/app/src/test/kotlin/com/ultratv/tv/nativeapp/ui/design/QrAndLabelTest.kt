@@ -7,7 +7,7 @@ import org.junit.Test
 
 class QrAndLabelTest {
     @Test fun qr_adresseDuTableauDeBord_matriceCarreeNonVide() {
-        val m = qrMatrix("https://ultratv-config.khalilbenaz.workers.dev")
+        val m = qrMatrix("https://tv.weedy.dpdns.org")
         assertTrue(m.size >= 21)
         assertTrue(m.all { it.size == m.size })
         assertTrue(m.any { row -> row.any { it } })

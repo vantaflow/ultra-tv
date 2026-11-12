@@ -5,7 +5,7 @@
 //  - contenu : identifiant, version, système (windows / macos / linux). Le pays est déduit par le Worker, jamais l'adresse IP gardée.
 import { getSetting, setSetting, db } from "@/db/db";
 import { bridge } from "@/net/transport";
-import { DEFAULT_WORKER, cloudAvailable, normalizeWorkerUrl, sendAnonPing, type AnonPingBody } from "./client";
+import { resolveWorker, cloudAvailable, normalizeWorkerUrl, sendAnonPing, type AnonPingBody } from "./client";
 import { useCloud } from "./service";
 
 /** Au plus un relevé par 20 h (marge pour ne pas glisser d'un jour à l'autre), comme sur Android. */
@@ -47,7 +47,7 @@ export async function reportAnonPing(d: AnonDeps): Promise<"sent" | "off" | "pai
   if (!anonDue(await d.last(), now)) return "skipped";
   const platform = anonPlatform(d.platform());
   const version = anonVersion(d.version());
-  const base = normalizeWorkerUrl(d.worker() || DEFAULT_WORKER);
+  const base = normalizeWorkerUrl(resolveWorker(d.worker()));
   if (!platform || !version || !base) return "skipped";
   const ok = await d.send(base, { install: await d.install(), version, platform });
   if (!ok) return "error";
