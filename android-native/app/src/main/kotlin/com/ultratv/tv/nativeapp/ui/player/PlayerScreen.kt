@@ -158,6 +158,7 @@ class PlayerViewModel @Inject constructor(
     private val prefs: UserPreferencesStore,
     private val channelDao: ChannelDao,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
     private val adaptive: AdaptiveProfile,
     private val categoryManager: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     private val catalogRepo: com.ultratv.tv.nativeapp.data.repo.CatalogRepository,
@@ -355,7 +356,7 @@ class PlayerViewModel @Inject constructor(
         val cur = playback.current.value ?: return
         val pid = cur.providerId
         val channels = when (categoryId) {
-            com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.favoritesList(pid, profiles.currentIdNow)
+            com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelOrder.favorites(pid)
             com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {
                 // Fenêtre centrée sur la chaîne en cours (comme le zapping depuis « Tout » dans le Direct).
                 val c = channelDao.byRemoteId(pid, cur.remoteId)
@@ -369,7 +370,7 @@ class PlayerViewModel @Inject constructor(
                     else -> channelDao.windowAllLegacy(pid, 401, 0)
                 }
             }
-            else -> channelDao.windowCategory(pid, categoryId, 300, 0)
+            else -> channelOrder.categoryWindow(pid, categoryId, null, 300)
         }.filter { !it.junk && !it.isSeparator }
         val entries = entriesFor(channels, null)
         if (browser.pending.value != categoryId) return   // tiroir refermé ou autre catégorie demandée entre-temps
@@ -419,7 +420,7 @@ class PlayerViewModel @Inject constructor(
     suspend fun zapToRecent(channel: com.ultratv.tv.nativeapp.data.db.ChannelEntity): String? {
         val inQueue = zapQueue.state.value?.channels?.any { it.id == channel.id } == true
         if (inQueue && browsedEntries.value == null) return zapTo(channel)
-        val inCategory = channel.categoryId?.let { channelDao.windowCategory(channel.providerId, it, 300, 0) }.orEmpty()
+        val inCategory = channel.categoryId?.let { channelOrder.categoryWindow(channel.providerId, it, null, 300) }.orEmpty()
         val list = if (inCategory.any { it.id == channel.id }) inCategory else listOf(channel) + inCategory
         return guard.request(channel) { zapQueue.set(list, channel); setLive(channel, channel.streamUrl); channel.streamUrl }
     }

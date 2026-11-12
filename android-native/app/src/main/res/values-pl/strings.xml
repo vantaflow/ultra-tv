@@ -1426,4 +1426,13 @@
     <string name="osd_drawer_all">Wszystkie kanały</string>
     <string name="osd_no_previous">Brak poprzedniego kanału</string>
     <string name="osd_drawer_hint">OK przełącz · ▲▼ przeglądaj · ◀ kategorie · ▶ kanały · ‹ zamknij</string>
+    <!-- ui/live/ChannelOrderStrings.kt -->
+    <string name="cor_move">Przenieś</string>
+    <string name="cor_reset">Zresetuj kolejność</string>
+    <string name="cor_title">Przenieś kanał</string>
+    <string name="cor_hint">Góra / Dół: przesuń kanał · OK: zatwierdź · Wstecz: anuluj</string>
+    <string name="cor_up">Przesuń w górę</string>
+    <string name="cor_down">Przesuń w dół</string>
+    <string name="cor_done">Gotowe</string>
+    <string name="cor_cancel">Anuluj</string>
 </resources>

@@ -227,7 +227,23 @@ val MIGRATION_20_21 = object : Migration(20, 21) {
     }
 }
 
-val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+/**
+ * 21 → 22 (ordre personnel des chaînes, par profil) : table `channel_order` et son index de lecture. SCHÉMA SEULEMENT : la
+ * table démarre vide (ordre naturel partout) et ne se remplit que quand l'utilisateur déplace une chaîne. La colonne
+ * `channel.userPosition` (globale, jamais lue) est laissée telle quelle : la retirer imposerait de reconstruire la table
+ * `channel` (et ses déclencheurs plein texte) pour rien.
+ */
+val MIGRATION_21_22 = object : Migration(21, 22) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `channel_order` (`profileId` INTEGER NOT NULL, `providerId` INTEGER NOT NULL, `scope` TEXT NOT NULL, " +
+                "`remoteId` TEXT NOT NULL, `position` INTEGER NOT NULL, PRIMARY KEY(`profileId`, `providerId`, `scope`, `remoteId`))",
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_channel_order_profileId_providerId_scope_position` ON `channel_order` (`profileId`, `providerId`, `scope`, `position`)")
+    }
+}
+
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
 
 /** Profil « Principal » (id 1) : posé par la migration 14 → 15 ET par [DefaultProfileCallback] sur une installation neuve. */
 const val DEFAULT_PROFILE_SEED_SQL =

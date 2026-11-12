@@ -1530,4 +1530,13 @@
     <string name="osd_drawer_all">كل القنوات</string>
     <string name="osd_no_previous">لا توجد قناة سابقة</string>
     <string name="osd_drawer_hint">OK للتبديل · ▲▼ تصفح · ◀ الفئات · ▶ القنوات · ‹ إغلاق</string>
+    <!-- ui/live/ChannelOrderStrings.kt -->
+    <string name="cor_move">نقل</string>
+    <string name="cor_reset">إعادة ضبط الترتيب</string>
+    <string name="cor_title">نقل القناة</string>
+    <string name="cor_hint">أعلى / أسفل: نقل القناة · موافق: تأكيد · رجوع: إلغاء</string>
+    <string name="cor_up">تحريك لأعلى</string>
+    <string name="cor_down">تحريك لأسفل</string>
+    <string name="cor_done">تم</string>
+    <string name="cor_cancel">إلغاء</string>
 </resources>

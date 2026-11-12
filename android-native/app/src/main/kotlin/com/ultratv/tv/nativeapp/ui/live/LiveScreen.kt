@@ -104,6 +104,9 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
     var langPanel by remember { mutableStateOf(false) }
     var pinPrompt by remember { mutableStateOf<ChannelEntity?>(null) }
     var actionsFor by remember { mutableStateOf<ChannelEntity?>(null) }
+    val orderStrings = remember(D.lang) { ChannelOrderStrings(D.lang) }
+    val customScopes by vm.customScopes.collectAsState()
+    val moving by vm.moveState.collectAsState()
     // Chaîne focalisée : flux HORS composition — un état lu ici recomposait tout l'écran (catégories, liste, aperçu)
     // à chaque déplacement du D-pad ; seul l'aperçu change, une fois le focus posé depuis 300 ms.
     val focusedChannel = remember { kotlinx.coroutines.flow.MutableStateFlow<ChannelEntity?>(null) }
@@ -286,6 +289,28 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
             onCancel = { pinPrompt = null },
         )
     }
+    moving?.let { m ->
+        // Mode déplacement : Haut / Bas déplacent la chaîne (la liste derrière suit), OK valide, Retour annule. Les boutons
+        // font la même chose au toucher. « Valider » reçoit le focus à l'ouverture (premier bouton).
+        ModalFocusScope(onBack = { vm.cancelMove() }, modifier = Modifier.background(Ux.Scrim)) {
+            Column(
+                Modifier.clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(48.design)
+                    .onPreviewKeyEvent { e ->
+                        val dir = when (e.key) { androidx.compose.ui.input.key.Key.DirectionUp -> -1; androidx.compose.ui.input.key.Key.DirectionDown -> 1; else -> 0 }
+                        if (dir == 0) false
+                        else { if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown) vm.moveStep(dir); true }
+                    },
+                verticalArrangement = Arrangement.spacedBy(16.design),
+            ) {
+                Text(orderStrings.title + " · " + m.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.width(560.design))
+                Text(orderStrings.hint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3, modifier = Modifier.width(560.design))
+                PillButton(orderStrings.done, onClick = { vm.commitMove() }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                PillButton(orderStrings.up, onClick = { vm.moveStep(-1) }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                PillButton(orderStrings.down, onClick = { vm.moveStep(1) }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                PillButton(orderStrings.cancel, onClick = { vm.cancelMove() }, bg = Ux.Surface, modifier = Modifier.width(560.design))
+            }
+        }
+    }
     actionsFor?.let { ch ->
         val isFav = ch.remoteId in favs
         val isLocked = "${ch.providerId}:${ch.remoteId}" in locked
@@ -299,6 +324,12 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
                 PillButton(if (isFav) D.removeFavorite else D.addFavorite, onClick = { vm.toggleFavorite(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 PillButton(if (isLocked) D.unlockChannel else D.lockChannel, onClick = { vm.toggleLock(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
                 if (variants.size > 1) PillButton(D.otherQualities, onClick = { variantPicker = true }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                // Ordre personnel du profil : pas dans « Tout » (liste mélangée de toutes les catégories) ni sous un filtre de langue
+                // (le rang d'un déplacement serait faussé par les chaînes masquées).
+                if (selected != CATEGORY_ALL && langView.useLang == 0) {
+                    PillButton(orderStrings.move, onClick = { vm.startMove(ch); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                    if (selected in customScopes) PillButton(orderStrings.reset, onClick = { vm.resetOrder(); actionsFor = null }, bg = Ux.Surface2, modifier = Modifier.width(560.design))
+                }
                 PillButton(D.close, onClick = { actionsFor = null }, bg = Ux.Surface, modifier = Modifier.width(560.design))
             }
         }

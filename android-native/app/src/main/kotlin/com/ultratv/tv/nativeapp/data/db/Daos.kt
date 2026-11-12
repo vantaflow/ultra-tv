@@ -323,6 +323,78 @@ interface ChannelDao {
     """)
     suspend fun favoritesList(pid: Long, profileId: Long): List<ChannelEntity>
 
+    // ── Ordre PERSONNEL du profil (table channel_order, voir ChannelOrderEntity) ──
+    // Variantes des requêtes ci-dessus, utilisées SEULEMENT pour les listes qui ont un ordre personnel (sinon les requêtes
+    // d'origine, servies par l'index, restent en service). Tri : place choisie (les chaînes sans place à la suite), puis
+    // l'ordre naturel (numéro, identifiant). 2147483647 = « sans place » : doit rester égal à ChannelOrder.NO_POSITION.
+
+    /** Une catégorie du fournisseur dans l'ordre du profil (liste paginée du Direct). */
+    @Query("""
+        SELECT c.* FROM channel c
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND (:useLang = 0 OR c.lang IN (:langs))
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
+    """)
+    fun pagedForCategoryOrdered(pid: Long, cat: String, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Favoris dans l'ordre du profil (liste paginée du Direct). */
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.isSeparator = 0 AND (:useLang = 0 OR c.lang IN (:langs))
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
+    """)
+    fun pagedFavoritesOrdered(pid: Long, useLang: Int, langs: List<String>, profileId: Long): androidx.paging.PagingSource<Int, ChannelEntity>
+
+    /** Même fenêtre que [windowCategory], dans l'ordre du profil. */
+    @Query("""
+        SELECT c.* FROM channel c
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id LIMIT :limit OFFSET :offset
+    """)
+    suspend fun windowCategoryOrdered(pid: Long, cat: String, profileId: Long, limit: Int, offset: Int): List<ChannelEntity>
+
+    /** Même rang que [rankCategory], dans l'ordre du profil ([pos] = place de la chaîne, 2147483647 si elle n'en a pas). */
+    @Query("""
+        SELECT COUNT(*) FROM channel c
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0 AND c.isSeparator = 0
+        AND (COALESCE(o.position, 2147483647) < :pos
+            OR (COALESCE(o.position, 2147483647) = :pos AND (c.num < :num OR (c.num = :num AND c.id < :id))))
+    """)
+    suspend fun rankCategoryOrdered(pid: Long, cat: String, profileId: Long, pos: Int, num: Int, id: Long): Int
+
+    /** Même liste que [favoritesList], dans l'ordre du profil. */
+    @Query("""
+        SELECT c.* FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.isSeparator = 0
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
+    """)
+    suspend fun favoritesListOrdered(pid: Long, profileId: Long): List<ChannelEntity>
+
+    /** Identifiants fournisseur d'une catégorie, dans l'ordre affiché (séparateurs compris, décorations exclues) : base du déplacement. */
+    @Query("""
+        SELECT c.remoteId FROM channel c
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = :cat AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.categoryId = :cat AND c.junk = 0
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
+    """)
+    suspend fun orderedKeysForCategory(pid: Long, cat: String, profileId: Long): List<String>
+
+    /** Identifiants fournisseur des favoris, dans l'ordre affiché : base du déplacement. */
+    @Query("""
+        SELECT c.remoteId FROM channel c
+        JOIN favorite f ON f.profileId = :profileId AND f.providerId = c.providerId AND f.kind = 'LIVE' AND f.remoteId = c.remoteId
+        LEFT JOIN channel_order o ON o.profileId = :profileId AND o.providerId = c.providerId AND o.scope = '__fav__' AND o.remoteId = c.remoteId
+        WHERE c.providerId = :pid AND c.isSeparator = 0
+        ORDER BY COALESCE(o.position, 2147483647), c.num, c.id
+    """)
+    suspend fun orderedKeysForFavorites(pid: Long, profileId: Long): List<String>
+
     /** Autres qualités d'une même chaîne (même titre nettoyé et même langue), de la meilleure à la moins bonne. */
     @Query("SELECT * FROM channel WHERE providerId = :pid AND title = :title AND lang = :lang AND junk = 0 AND isSeparator = 0 ORDER BY quality DESC, num LIMIT 12")
     suspend fun variantsOf(pid: Long, title: String, lang: String): List<ChannelEntity>
