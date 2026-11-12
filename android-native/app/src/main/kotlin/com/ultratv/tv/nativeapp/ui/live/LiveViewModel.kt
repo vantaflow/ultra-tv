@@ -134,7 +134,7 @@ class LiveViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
     /** Déplacement en cours d'une chaîne (menu « Déplacer ») ; null = aucun. */
-    data class MoveState(val scope: String, val key: String, val title: String)
+    data class MoveState(val scope: String, val key: String, val title: String, val providerId: Long = 0)
     private val _move = MutableStateFlow<MoveState?>(null)
     val moveState: StateFlow<MoveState?> = _move.asStateFlow()
     private var moveKeys: List<String> = emptyList()
@@ -151,7 +151,7 @@ class LiveViewModel @Inject constructor(
                 movePid = channel.providerId
                 moveKeys = channelOrder.orderedKeys(movePid, scope)
                 moveBefore = channelOrder.positions(movePid, scope)
-                _move.value = MoveState(scope, channel.remoteId, channel.title)
+                _move.value = MoveState(scope, channel.remoteId, channel.title, channel.providerId)
             }
         }
     }
