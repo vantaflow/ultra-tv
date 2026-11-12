@@ -120,7 +120,7 @@ Side rail, list and details side by side.
 
 ### Windows and macOS
 
-The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)). On the web, only the management dashboard is offered (no player). Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen.
+The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)). On the web, only the management dashboard is offered (no player). Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen. **Sport, reminders and recordings**: Sport section, “Remind me” (system notification) and “Record” (.ts file in Videos/Ultra TV, the app must stay open) from the guide and Sport, “Recorded” screen; **Episodes** button in the series player (E key).
 
 <p align="center">
   <img src="docs/screenshots/desktop/en/06-direct.png" alt="Live TV on desktop" width="48%" />
