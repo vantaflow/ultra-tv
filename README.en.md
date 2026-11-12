@@ -245,7 +245,7 @@ Logs and crash reports are scrubbed (`username`, `password`, `token`… paramete
 
 | What | When | To | Content | Turned off by the setting |
 |---|---|---|---|---|
-| Anonymous install count | ≈ 10 s after start, at most once per 20 h, **unpaired** device | Worker `/api/anon/ping` | random install ID, version | Yes |
+| Anonymous install count | ≈ 10 s after start, at most once per 20 h, **unpaired** device | Worker `/api/anon/ping` | random install ID, version, app in use (`android-tv` or `android-mobile`), device model (manufacturer + model, 64 characters at most) | Yes |
 | Diagnostic logs | during use, **paired** device | Worker `/api/event` | level, tag, scrubbed message (start, screen shown, smoothness metrics, freezes, key counters, Google TV, update, sync failures), version, model, device label | Yes |
 | Crash reports | on crash (or next start), **paired** device | Worker `/api/crash` | scrubbed stack trace, version, model, Android version | Yes |
 | Update check | 30 s after each launch, or on request | `api.github.com`, then GitHub | request without identifier; if a newer version exists the APK is downloaded and Android's installer asks for confirmation | **No** |
@@ -264,20 +264,20 @@ Images supplied by your source are loaded directly from the addresses it gives.
 
 ### Windows and macOS
 
-No anonymous count, crash report, remote log or alerts. Sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
+No crash report, remote log or alerts. **Anonymous count** (same rule as Android): at most once per 20 h, **unpaired** device only, to the Worker `/api/anon/ping`; it sends a random install ID kept on the device, the version and the system (`windows`, `macos` or `linux`). It turns off in Settings › About › *Anonymous telemetry* (on by default): nothing is sent any more and the ID is erased. Other sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
 
 ### What the Worker keeps
 
 - **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
 - **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
 - **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
-- **Anonymous count**: hash of the install ID, dates, version, country; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
+- **Anonymous count**: hash of the install ID, dates, version, app in use (Android TV, Android mobile, Windows, macOS, Linux), device model (Android), country, number of sources sent from the web; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
 - **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
 
 ### Turning telemetry off
 
-**Settings › About › *Telemetry and crash reports*** (on by default). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
+**Settings › About › *Telemetry and crash reports*** (on by default; on Windows and macOS the setting is called *Anonymous telemetry* and only covers the anonymous count). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
 
 ### Check it in the code
 
@@ -291,7 +291,8 @@ Every point above can be checked in the source code (links pinned to a specific 
 | … delivered once to the TV, then deleted (`envoiTake` removes the entry) | [`guard.js` — `envoiInit` / `envoiPut` / `envoiTake`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/guard.js#L122-L153) |
 | Cloud sync: sources stored encrypted (`providersEnc`) | [`store.js` — `loadProviders` / `saveProviders`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/store.js#L41-L48) |
 | Account passwords: only a PBKDF2 hash is kept | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
-| Anonymous count: a random install ID and the version, nothing else | [`AnonPing.kt` — request body](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L28) |
+| Anonymous count (Android): a random install ID, version, app (TV or mobile) and model, nothing else | [`AnonPing.kt` — request body](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
+| Anonymous count (desktop): random ID, version and system, at most once per 20 h, never when paired, setting respected | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
 | … nothing is sent when telemetry is off | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
 | The Worker only keeps the country code provided by Cloudflare, never the IP address | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
 

@@ -175,11 +175,11 @@ describe("installations sans compte (relevé anonyme)", () => {
       const cookie = (login.headers.get("set-cookie") || "").match(/(__Host-utv_sess)=([^;]*)/);
       acct = { cookie: `${cookie[1]}=${cookie[2]}`, ip };
     }
-    const page = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
-    expect(page).toContain("Installations sans compte");
+    const page = await (await call("/admin", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(page).toContain("Sans compte, par application");
     expect(page).toContain("Sources envoyées depuis le web");
     expect(page).toContain("v9.9.9");
-    expect(page).toContain("dont 1 sans compte");
+    expect(page).toContain("installations sans compte actives");
     expect(page).not.toContain(id);
     expect(page).not.toContain("s3cret-pw");
   });

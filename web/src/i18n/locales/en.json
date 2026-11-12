@@ -308,6 +308,8 @@
   "set.about.update": "Check for updates",
   "set.about.autoUpdate": "Check for updates automatically",
   "set.about.autoUpdateD": "At launch, then every 6 hours. Off: only the manual check contacts GitHub.",
+  "set.about.telemetry": "Anonymous telemetry",
+  "set.about.telemetryD": "Once a day at most, only while this device is not paired: a random install ID, app version and system (Windows, macOS or Linux). The country is deduced by the server; no IP address is kept. Off: nothing is sent.",
   "set.about.updateNone": "You are up to date.",
   "set.about.updateAvail": "Update {v} available.",
   "set.about.updateFail": "Couldn’t check for updates. Try again later or download the latest version from the website.",

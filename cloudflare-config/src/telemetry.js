@@ -19,7 +19,7 @@ export const ANON_REFRESH_MS = 6 * 3600_000;
 const PURGE_PROBABILITY = 0.02;
 
 /** Exécute [fn] ; toute erreur (D1 absent, quota, SQL) est avalée et renvoie [fallback]. */
-async function safe(env, fn, fallback = null) {
+export async function safe(env, fn, fallback = null) {
   if (!env?.DB) return fallback;
   try { return await fn(env.DB); } catch (e) {
     console.error("telemetrie D1:", e?.message);
@@ -37,7 +37,7 @@ export async function purgeTelemetry(env, now = Date.now()) {
   ]));
 }
 
-const maybePurge = (env) => (Math.random() < PURGE_PROBABILITY ? purgeTelemetry(env) : undefined);
+export const maybePurge = (env) => (Math.random() < PURGE_PROBABILITY ? purgeTelemetry(env) : undefined);
 
 /** Enregistre un journal ou un plantage ([entry] = objet construit par `ingest`). */
 export async function recordEvent(env, kind, entry) {
@@ -48,45 +48,48 @@ export async function recordEvent(env, kind, entry) {
   await maybePurge(env);
 }
 
-/** Derniers [limit] journaux / plantages, du plus récent au plus ancien, au même format que les anciennes entrées KV. */
-export async function listEvents(env, kind, limit) {
-  await maybePurge(env);
-  const rows = await safe(env, async (db) => (await db.prepare(
-    "SELECT * FROM events WHERE kind = ? ORDER BY ts DESC, id DESC LIMIT ?",
-  ).bind(kind, limit).all()).results, []);
-  return (rows || []).map((r) => ({
-    v: 2, ts: r.ts, deviceId: r.device_id, mac: r.mac, version: r.version, versionCode: r.version_code, device: r.device,
-    acct: r.acct, country: r.country,
-    ...(kind === "crash" ? { androidSdk: r.android_sdk, stack: r.stack } : { level: r.level, tag: r.tag, message: r.message }),
-  }));
+/** Ligne D1 `events` → entrée de journal / plantage (même format que les anciennes entrées KV). */
+export const eventFromRow = (kind, r) => ({
+  v: 2, ts: r.ts, deviceId: r.device_id, mac: r.mac, version: r.version, versionCode: r.version_code, device: r.device,
+  acct: r.acct, country: r.country,
+  ...(kind === "crash" ? { androidSdk: r.android_sdk, stack: r.stack } : { level: r.level, tag: r.tag, message: r.message }),
+});
+
+
+/** Plateformes acceptées pour une installation sans compte (liste blanche). */
+export const ANON_PLATFORMS = ["android-tv", "android-mobile", "windows", "macos", "linux"];
+export const PLATFORM_LABELS = { "android-tv": "Android TV", "android-mobile": "Android mobile", windows: "Windows", macos: "macOS", linux: "Linux" };
+
+/** Plateforme déclarée (liste blanche) ou null. */
+export const platformOf = (raw) => (typeof raw === "string" && ANON_PLATFORMS.includes(raw.trim()) ? raw.trim() : null);
+
+/** Modèle d'appareil : texte court nettoyé (contrôles et guillemets retirés, 64 caractères au plus) ou null. */
+export function modelOf(raw) {
+  if (typeof raw !== "string") return null;
+  // eslint-disable-next-line no-control-regex
+  const m = raw.replace(/[\u0000-\u001f\u007f<>"'`]/g, " ").replace(/\s+/g, " ").trim().slice(0, 64);
+  return m || null;
 }
 
 /**
- * Relevé d'une installation anonyme. Au plus une écriture par 6 h et par installation (sauf nouvelle version ou
- * envoi web). [legacy] : lit l'ancienne ligne KV pour une installation encore inconnue de D1.
+ * Relevé d'une installation anonyme. Au plus une écriture par 6 h et par installation (sauf nouvelle version,
+ * nouvelle plateforme ou envoi web). [legacy] : lit l'ancienne ligne KV pour une installation encore inconnue de D1.
  */
-export async function anonTouch(env, fingerprint, { version = null, web = 0, country = null, legacy = null } = {}) {
+export async function anonTouch(env, fingerprint, { version = null, web = 0, country = null, platform = null, model = null, legacy = null } = {}) {
   await safe(env, async (db) => {
     const now = Date.now();
-    const cur = await db.prepare("SELECT first_seen, last_seen, version, country, web FROM anon_pings WHERE fingerprint = ?").bind(fingerprint).first();
+    const cur = await db.prepare("SELECT first_seen, last_seen, version, country, web, platform, model FROM anon_pings WHERE fingerprint = ?").bind(fingerprint).first();
     const ver = version || cur?.version || null;
-    if (cur && !web && now - cur.last_seen < ANON_REFRESH_MS && cur.version === ver) return;
+    const plat = platform || cur?.platform || null;
+    if (cur && !web && now - cur.last_seen < ANON_REFRESH_MS && cur.version === ver && cur.platform === plat) return;
     let old = null;
     if (!cur && legacy) { try { old = await legacy(); } catch { old = null; } }
     await db.prepare(
-      "INSERT INTO anon_pings (fingerprint, first_seen, last_seen, version, country, web) VALUES (?,?,?,?,?,?) "
-      + "ON CONFLICT(fingerprint) DO UPDATE SET last_seen = excluded.last_seen, version = excluded.version, country = excluded.country, web = excluded.web",
+      "INSERT INTO anon_pings (fingerprint, first_seen, last_seen, version, country, web, platform, model) VALUES (?,?,?,?,?,?,?,?) "
+      + "ON CONFLICT(fingerprint) DO UPDATE SET last_seen = excluded.last_seen, version = excluded.version, country = excluded.country, web = excluded.web, platform = excluded.platform, model = excluded.model",
     ).bind(fingerprint, cur?.first_seen || old?.f || now, now, ver || old?.v || null, country || cur?.country || old?.c || null,
-      (cur?.web ?? old?.w ?? 0) + web).run();
+      (cur?.web ?? old?.w ?? 0) + web, plat, model || cur?.model || null).run();
   });
-}
-
-/** Installations sans compte : [{first, last, version, country, web}]. */
-export async function listAnon(env) {
-  const rows = await safe(env, async (db) => (await db.prepare(
-    "SELECT first_seen, last_seen, version, country, web FROM anon_pings ORDER BY last_seen DESC LIMIT 50000",
-  ).all()).results, []);
-  return (rows || []).map((r) => ({ first: r.first_seen, last: r.last_seen, version: r.version || "", country: r.country || null, web: r.web || 0 }));
 }
 
 /** Marque l'appareil [hash] comme vu (au plus une écriture par heure), sans toucher à KV. */

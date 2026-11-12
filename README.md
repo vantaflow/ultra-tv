@@ -251,7 +251,7 @@ Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `pa
 
 | Envoi | Quand | Vers | Ce qui part | Coupé par le réglage |
 |---|---|---|---|---|
-| Comptage anonyme | ≈ 10 s après le démarrage, au plus une fois par 20 h, appareil **non appairé** | Worker `/api/anon/ping` | identifiant aléatoire d'installation, version | Oui |
+| Comptage anonyme | ≈ 10 s après le démarrage, au plus une fois par 20 h, appareil **non appairé** | Worker `/api/anon/ping` | identifiant aléatoire d'installation, version, application utilisée (`android-tv` ou `android-mobile`), modèle de l'appareil (fabricant + modèle, 64 caractères au plus) | Oui |
 | Journaux de diagnostic | pendant l'usage, appareil **appairé** | Worker `/api/event` | niveau, étiquette, message nettoyé (démarrage, écran affiché, mesures de fluidité, blocages, compteurs de touches, Google TV, mise à jour, échecs de synchro), version, modèle, étiquette d'appareil | Oui |
 | Rapports de plantage | au plantage (ou au démarrage suivant), appareil **appairé** | Worker `/api/crash` | trace nettoyée, version, modèle, version d'Android | Oui |
 | Mise à jour | 30 s après chaque lancement, ou à la demande | `api.github.com`, puis GitHub | requête sans identifiant ; si une version plus récente existe, l'APK est téléchargé et l'installateur d'Android demande confirmation | **Non** |
@@ -270,20 +270,20 @@ Les images fournies par votre source sont chargées directement depuis les adres
 
 ### Windows et macOS
 
-Pas de comptage anonyme, de rapport de plantage, de journal distant ni d'alertes. Envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
+Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme** (même règle qu'Android) : au plus une fois par 20 h, appareil **non appairé** seulement, vers le Worker `/api/anon/ping` ; part un identifiant d'installation aléatoire gardé sur l'appareil, la version et le système (`windows`, `macos` ou `linux`). Il se coupe dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut) : plus rien ne part et l'identifiant est effacé. Autres envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
 
 ### Ce que le Worker conserve
 
 - **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
 - **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
 - **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
-- **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, pays ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
+- **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, application utilisée (Android TV, Android mobile, Windows, macOS, Linux), modèle de l'appareil (Android), pays, nombre de sources envoyées depuis le web ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
 - **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
 
 ### Couper la télémétrie
 
-**Réglages › À propos › *Télémétrie et rapports de plantage*** (activé par défaut). Désactivé : plus de journaux de diagnostic, de rapports de plantage, de comptage anonyme ni de statistiques d'alertes, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+**Réglages › À propos › *Télémétrie et rapports de plantage*** (activé par défaut ; sur Windows et macOS, le réglage s'appelle *Télémétrie anonyme* et ne concerne que le comptage anonyme). Désactivé : plus de journaux de diagnostic, de rapports de plantage, de comptage anonyme ni de statistiques d'alertes, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
 
 ### Vérifier dans le code
 
@@ -297,7 +297,8 @@ Chaque point ci-dessus se vérifie dans le code source (liens figés sur une ver
 | … livrée une seule fois à la TV puis supprimée (`envoiTake` efface l'entrée) | [`guard.js` — `envoiInit` / `envoiPut` / `envoiTake`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/guard.js#L122-L153) |
 | Synchro cloud : sources stockées chiffrées (`providersEnc`) | [`store.js` — `loadProviders` / `saveProviders`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/store.js#L41-L48) |
 | Mots de passe de compte : seule une empreinte PBKDF2 est gardée | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
-| Comptage anonyme : identifiant aléatoire d'installation et version, rien d'autre | [`AnonPing.kt` — corps de la requête](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L28) |
+| Comptage anonyme (Android) : identifiant aléatoire d'installation, version, application (TV ou mobile) et modèle, rien d'autre | [`AnonPing.kt` — corps de la requête](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
+| Comptage anonyme (bureau) : identifiant aléatoire, version et système, au plus une fois par 20 h, jamais appairé, réglage respecté | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
 | … rien n'est envoyé si la télémétrie est coupée | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
 | Le Worker ne garde que le code pays fourni par Cloudflare, jamais l'adresse IP | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
 
