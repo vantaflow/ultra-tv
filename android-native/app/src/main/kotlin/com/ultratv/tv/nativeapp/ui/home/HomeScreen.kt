@@ -262,6 +262,16 @@ internal fun HomeTvContent(
             }
         }
     }
+    // Focus dans le bloc du haut (« À la une », raccourcis) : la liste doit montrer l'en-tête (salutation, heure). Le
+    // défilement automatique vers l'élément focalisé s'arrête dès que le bouton est visible et annulait le retour en
+    // haut lancé au même instant : on remonte donc APRÈS lui, dès que la liste est au repos et pas tout en haut.
+    var topHasFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(topHasFocus, animsOff) {
+        if (!topHasFocus) return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow {
+            !listState.isScrollInProgress && (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0)
+        }.collect { off -> if (off) { if (animsOff) listState.scrollToItem(0) else listState.animateScrollToItem(0) } }
+    }
     // Raccourcis à côté de « À la une » (maquette) ; sans « À la une » ils gardent leur rangée à part.
     val embedShortcuts = slot == HomeTopSlot.HERO && hero != null && HomeSectionId.SHORTCUTS in rows.order
     val order = remember(rows, embedShortcuts) { if (embedShortcuts) rows.order.filter { it != HomeSectionId.SHORTCUTS } else rows.order }
@@ -286,7 +296,7 @@ internal fun HomeTvContent(
         ) {
             item(key = "top", contentType = slot.name) {
                 CompositionLocalProvider(LocalBringIntoViewSpec provides inheritedSpec) {
-                    Column(Modifier.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
+                    Column(Modifier.onFocusChanged { topHasFocus = it.hasFocus }.padding(start = HomeStart, top = 44.design, end = 72.design), verticalArrangement = Arrangement.spacedBy(30.design)) {
                         HomeGreeting(clock, stats)
                         if (slot == HomeTopSlot.HERO) {
                             if (hero != null) Row(Modifier.fillMaxWidth().height(420.design), horizontalArrangement = Arrangement.spacedBy(28.design)) {
