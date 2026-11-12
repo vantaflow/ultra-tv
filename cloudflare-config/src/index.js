@@ -30,6 +30,7 @@ import {
 import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
+import { fanartProxy, tvmazeProxy, sportsTeamProxy } from "./extmeta.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
 import { recordEvent, anonTouch as anonTouchD1, purgeTelemetry, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
@@ -174,6 +175,9 @@ async function route(req, env, ctx) {
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
   if (path === "/api/ratings" && m === "GET") return deviceRatings(req, env, url);
+  if (path.startsWith("/api/fanart/") && m === "GET") return deviceExtmeta(req, env, "fanart", () => fanartProxy(path.slice("/api/fanart/".length), url.searchParams, env));
+  if (path === "/api/tvmaze/show" && m === "GET") return deviceExtmeta(req, env, "tvmaze", () => tvmazeProxy(url.searchParams, env));
+  if (path === "/api/sports/team" && m === "GET") return deviceExtmeta(req, env, "sports", () => sportsTeamProxy(url.searchParams, env));
   // Alertes programmées par l'administrateur : lecture publique (un appareil pas encore appairé doit aussi les voir).
   if (path === "/api/announcements" && m === "GET") {
     const aud = url.searchParams.get("audience");
@@ -1308,6 +1312,16 @@ async function deviceTmdb(req, env, rest, url) {
     || (await limited(env, `tmdb:dev:${auth.device.id}`, 120, 600, true));
   if (rl) return rl;
   return tmdbProxy(rest, url.searchParams, env);
+}
+
+// Fanart.tv, TVmaze, TheSportsDB (voir extmeta.js) : appareils appairés, débit limité comme TMDB.
+async function deviceExtmeta(req, env, name, run) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `${name}:ip:${clientIp(req)}`, 300, 600, true))
+    || (await limited(env, `${name}:dev:${auth.device.id}`, 120, 600, true));
+  if (rl) return rl;
+  return run();
 }
 
 // Notes IMDb / Rotten Tomatoes (OMDb) : appareils appairés, débit limité comme TMDB (le cache absorbe l'essentiel).

@@ -16,7 +16,7 @@ const ALLOWED_PATHS = [
   // Fiche d'une personne (photo, naissance, biographie) pour l'en-tête de ces pages.
   new RegExp(`^person/${ID}$`),
 ];
-const APPEND_OK = new Set(["credits", "videos", "images"]);
+const APPEND_OK = new Set(["credits", "videos", "images", "external_ids"]);
 const LANG = /^[a-z]{2}(-[A-Z]{2})?$/;
 const YEAR = /^(19|20)[0-9]{2}$/;
 const IMG_LANG = /^[a-z]{2}(,[a-z]{2}|,null)*$/;
