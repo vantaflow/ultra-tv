@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.14] — 2026-11-13 (Android)
+
 ### Corrigé
 - Téléphone, Réglages › Synchronisation : titre en double et coupé, bouton « Synchroniser maintenant » serré contre le texte, quatre modes tronqués côte à côte. L'état et le bouton sont l'un sous l'autre, et les modes forment une liste avec leur description en entier ; les boutons-pilules s'agrandissent avec leur libellé (2 lignes au plus).
 
