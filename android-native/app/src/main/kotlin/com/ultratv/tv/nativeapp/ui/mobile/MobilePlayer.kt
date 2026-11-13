@@ -376,14 +376,18 @@ fun PortraitInfo(
     entries: List<com.ultratv.tv.nativeapp.ui.player.PlayerViewModel.DrawerEntry>, channelsLabel: String,
     onPick: (com.ultratv.tv.nativeapp.data.db.ChannelEntity) -> Unit, modifier: Modifier = Modifier, thenLine: String? = null,
 ) {
-    Column(modifier.fillMaxWidth().background(Color(0xFF0A0A0C)), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Column(Modifier.padding(horizontal = 20.dp).padding(top = 14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier.fillMaxWidth().background(Color(0xFF0A0A0C)), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.padding(horizontal = 20.dp).padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (live) LiveBadge(liveLabel)
             Text(title, color = Color(0xFFF5F5F7), fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) Text(subtitle, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            if (subtitle != null && subtitle != title) Text(subtitle, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (thenLine != null) Text(thenLine, color = Color(0xFFA1A1AA), fontFamily = Manrope, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        androidx.compose.foundation.layout.FlowRow(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pills.forEach { PlayerPill(it) } }
+        // Une seule ligne qui défile horizontalement : en direct, une quinzaine d'actions s'empilaient sur 7 lignes et ne
+        // laissaient qu'une ou deux chaînes visibles sous la vidéo.
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp)) {
+            items(pills.size) { i -> PlayerPill(pills[i]) }
+        }
         if (live && entries.isNotEmpty()) {
             Text(channelsLabel.uppercase(), color = Color(0xFFA1A1AA), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 11.sp, letterSpacing = 1.4.sp, modifier = Modifier.padding(horizontal = 20.dp))
             val listState = androidx.compose.foundation.lazy.rememberLazyListState()
