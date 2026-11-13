@@ -248,6 +248,17 @@ class MainActivity : ComponentActivity() {
         intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setPlayerEngine(v) } }
         intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setDecoderMode(v) } }
         intent.getStringExtra("debug_buffer")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setBufferPreset(v) } }
+        // Captures d'écran automatiques (CI, émulateur) : source Xtream « url|utilisateur|mot de passe » ajoutée, choisie
+        // par défaut et synchronisée, seulement s'il n'y a encore aucune source (jamais en release : BuildConfig.DEBUG).
+        intent.getStringExtra("debug_xtream")?.split('|')?.takeIf { it.size == 3 }?.let { (url, user, pass) ->
+            lifecycleScope.launch(Dispatchers.IO) {
+                val repo = providerRepo.get()
+                if (repo.firstActive() != null) return@launch
+                val id = repo.addXtream("Démo", url, user, pass)
+                repo.setDefault(id)
+                syncCoordinator.get().request(id, force = true)
+            }
+        }
     }
 
     override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {

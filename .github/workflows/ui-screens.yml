@@ -1,0 +1,76 @@
+# Captures d'écran de l'app Android TV sur émulateur (Android TV 11, 1080p), avec un faux serveur Xtream
+# (tools/screens/mock_xtream.py, catalogue fictif). Les images sont publiées sur la branche `ui-screens`
+# (dossier = numéro du run), lisibles sans télécharger d'artefact. À la main (Actions › UI screenshots).
+name: UI screenshots
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ui-screens
+  cancel-in-progress: true
+
+jobs:
+  screens:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build debug APK
+        working-directory: android-native
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --console=plain
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Start mock Xtream server
+        run: |
+          nohup python3 tools/screens/mock_xtream.py 8080 > mock.log 2>&1 &
+          sleep 2
+          curl -fsS "http://127.0.0.1:8080/player_api.php?username=demo&password=demo" | head -c 200
+
+      - name: Emulator + captures
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          target: android-tv
+          arch: x86
+          profile: tv_1080p
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: OUT=screens bash tools/screens/capture.sh
+
+      - name: Publish screenshots to branch ui-screens
+        if: always()
+        run: |
+          set -e
+          [ -d screens ] || exit 0
+          cp mock.log screens/ 2>/dev/null || true
+          RUN="${GITHUB_RUN_NUMBER}"
+          mkdir -p /tmp/pub && cd /tmp/pub
+          git init -q && git checkout -q -b ui-screens
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin ui-screens && git reset -q --soft FETCH_HEAD || true
+          git reset -q || true
+          mkdir -p "$RUN" && cp -r "$GITHUB_WORKSPACE/screens/." "$RUN/"
+          printf '%s\n' "$RUN" > latest.txt
+          git add "$RUN" latest.txt
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "Captures run $RUN (${GITHUB_SHA::8})"
+          git push -q origin ui-screens
