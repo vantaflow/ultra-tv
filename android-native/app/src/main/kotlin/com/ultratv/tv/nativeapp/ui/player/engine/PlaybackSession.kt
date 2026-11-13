@@ -150,6 +150,13 @@ class PlaybackSession(
      * Fixé par le lecteur avant chaque [start].
      */
     var liveReconnect: Boolean = true
+    /**
+     * Le nom de la chaîne annonce du HDR (« HDR », « HDR10 », « HDR10+ ») : sur un écran HDR avec le réglage « auto », la
+     * lecture démarre directement en SurfaceView, sans attendre que le flux le signale (certains flux HDR10 ne le
+     * signalent jamais et restaient en SDR). Fixé par le lecteur avant chaque [start].
+     */
+    var hdrHint: Boolean = false
+    private var hdrDiagJob: Job? = null
     private val reconnectAllowed get() = isLive && liveReconnect
 
     /** Son coupé (aperçu du Direct) : appliqué au moteur en place ET à chaque moteur recréé (repli, nouvelle tentative). */
@@ -198,7 +205,9 @@ class PlaybackSession(
         this.url = url; this.key = channelKey; this.resumeMs = resumeMs
         this.props = found?.takeIf { it.isProtected }
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
-        hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false
+        hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false; hdrDiagJob?.cancel()
+        val hintSurface = hdrHint && videoSurfacePref() == "auto" && textureView && HdrOutput.displayHdrCapable(ctx) && !HdrOutput.surfaceKnownBad(ctx)
+        val wantTexture = if (hintSurface) false else textureView
         syncPresence(); lastHttp = null; playedSinceMs = 0L
         reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
@@ -218,7 +227,7 @@ class PlaybackSession(
         // Zapping : même moteur, même décodage, même tampon → on enchaîne le flux sur le moteur EN PLACE au lieu de le
         // détruire et d'en recréer un (lecteur, vue, décodeurs : plusieurs centaines de ms sur une box modeste).
         // Réglages de sous-titres changés depuis la création du moteur : on le recrée (ils sont fixés à sa création).
-        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && textureNow == textureView && _state.value.phase != Phase.ERROR && (isStalkerUrl || launchedHeaders.isEmpty())) {
+        if (isLive && e != null && e.reusable && next == combo && bufferFor(s) == launchedBuffer && subtitles() == launchedSubs && textureNow == wantTexture && _state.value.phase != Phase.ERROR && (isStalkerUrl || launchedHeaders.isEmpty())) {
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
             tried = mutableSetOf(combo); firstFrame = false; launchedAtNs = System.nanoTime()
             _state.value = SessionState(Phase.LOADING, null, combo, presetOverride ?: s.bufferPreset, false, protectedNow)
@@ -230,7 +239,8 @@ class PlaybackSession(
             }
         } else {
             combo = next
-            textureNow = textureView   // un élément précédent en SurfaceView (HDR) ne dicte pas la surface du suivant
+            textureNow = wantTexture   // un élément précédent en SurfaceView (HDR) ne dicte pas la surface du suivant
+            if (hintSurface) { hdrSwitched = true; hdrSurfaceTrial = true; android.util.Log.i("UltraPlay", "hdr hint (name) -> surface") }
             launch(combo)
         }
         adaptJob?.cancel()
@@ -383,6 +393,11 @@ class PlaybackSession(
                 if (again) android.util.Log.i("UltraPlay", "picture again (surface changed) engine=${combo.engine}")
                 else android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
                 if (reconnectAllowed && frozenJob?.isActive != true) armFrozenWatch(e)
+                // Nom « HDR » mais aucun HDR signalé par le flux au bout de 10 s : signalisation couleur brute au journal (diagnostic).
+                if (hdrHint && !again && hdrDiagJob?.isActive != true) hdrDiagJob = scope.launch {
+                    delay(10_000)
+                    if (engine === e && hdrKind == null) com.ultratv.tv.nativeapp.RemoteLog.warn("play", "hdr named but not signalled engine=${combo.engine.name} surface=${if (textureNow) "texture" else "surface"} ${e.colorDebug() ?: "-"}")
+                }
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.

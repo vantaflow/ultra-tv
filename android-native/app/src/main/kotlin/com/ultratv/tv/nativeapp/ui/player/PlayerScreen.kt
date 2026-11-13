@@ -798,10 +798,15 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val guideReplay = remember { replayVm.takePending() }
     var replayProg by remember { mutableStateOf<EpgEntity?>(guideReplay?.first) }
     var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
+    // Chaîne dont le nom annonce le HDR : départ direct en SurfaceView (écran HDR) et pastille « HDR » de secours.
+    val nameHdr = isLive && remember(item?.title, title) {
+        com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(item?.title ?: title).flags and com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.F_HDR != 0
+    }
     // Reconnexion automatique : vrai direct seulement (pas un replay « Depuis le début » ni le relais du différé).
     // SideEffect : appliqué à chaque composition, avant le démarrage du lancement (LaunchedEffect(currentUrl)).
     androidx.compose.runtime.SideEffect {
         session.liveReconnect = replayProg == null && !tsActive
+        session.hdrHint = nameHdr
         // Vrai direct sans différé ni replay, sans erreur : Retour rend la chaîne à l'aperçu de la liste.
         handBack[0] = adoption != null && isLive && !tsActive && replayProg == null && state.phase != Phase.ERROR
     }
@@ -1133,7 +1138,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             channel = OsdChannelInfo(
                 item?.poster, osdChannelNumber, item?.title ?: title, item?.badge,
                 // Pastille HDR dès que le moteur le détecte (aussi au changement de chaîne), relevés des statistiques en secours.
-                quality = osdCurrentChannel?.let { OsdText.qualityLabel(it.quality) }, hdr = state.hdr ?: liveHdr,
+                quality = osdCurrentChannel?.let { OsdText.qualityLabel(it.quality) }, hdr = state.hdr ?: liveHdr ?: if (osdCurrentChannel?.let { it.flags and com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.F_HDR != 0 } == true) "hdr" else null,
             ),
             ribbon = if (osdSchedule.isEmpty()) emptyList() else OsdRibbon.slots(osdSchedule, nowMs, EpgClock::hm, O.onAir),
             favorite = isFavNow, nowWord = O.now, favoriteWord = O.favoritePill, recentsShort = O.recentsShort,

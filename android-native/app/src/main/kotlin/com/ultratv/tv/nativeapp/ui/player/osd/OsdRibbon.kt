@@ -54,7 +54,7 @@ enum class OsdNextAction { REMIND, RECORD }
 /** Petits calculs de texte de l'OSD (purs). */
 object OsdText {
     /** Pastille HDR : « hdr10 » → « HDR10 », « hlg » → « HLG », « dv » → « Dolby Vision » ; null = SDR / inconnu. */
-    fun hdrLabel(kind: String?): String? = when (kind?.lowercase()) { "hdr10" -> "HDR10"; "hlg" -> "HLG"; "dv" -> "Dolby Vision"; else -> null }
+    fun hdrLabel(kind: String?): String? = when (kind?.lowercase()) { "hdr10" -> "HDR10"; "hlg" -> "HLG"; "dv" -> "Dolby Vision"; "hdr" -> "HDR"; else -> null }
 
     /** Nombre de chaînes récentes montrées sur la rangée (disposition de la maquette). */
     const val RECENTS_SHOWN = 5

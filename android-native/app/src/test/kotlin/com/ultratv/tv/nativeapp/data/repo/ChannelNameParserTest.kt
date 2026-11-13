@@ -63,4 +63,12 @@ class ChannelNameParserTest {
     @Test fun nom_arabe_cyrillique_inchanges() { assertEquals("الكندوش", p("AR: الكندوش").displayName); assertEquals("Спорт ТВ", p("RU: Спорт ТВ HD").displayName) }
     @Test fun nom_jamaisVide() { assertTrue(p("US: HD").displayName.isNotBlank()) }
     @Test fun nom_dollars_et_chiffres() = assertEquals("SKY SPORTS 1", p("UK: SKY SPORTS 1 FHD").displayName)
+
+    @org.junit.Test fun hdr10PlusEstReconnu() {
+        for (n in listOf("UK: Sky Nature HDR10+", "Sky Nature HDR10PLUS", "Sky Nature HDR10", "Sky Nature HDR")) {
+            val r = ChannelNameParser.parse(n)
+            org.junit.Assert.assertTrue(n, r.flags and ChannelNameParser.F_HDR != 0)
+            org.junit.Assert.assertFalse(n, r.displayName.contains("+"))
+        }
+    }
 }

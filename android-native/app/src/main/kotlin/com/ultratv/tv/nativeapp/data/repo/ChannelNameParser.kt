@@ -45,7 +45,7 @@ object ChannelNameParser {
     private val leadingDecor = Regex("""^[#=\-_*~<>|•●★☆▬▪■□◆◇─━═]{3,}""")
     private val prefixSep = Regex("""^\s*([\p{L}\p{N}+ \-]{1,14}?)\s*(?:[:|]|\s-\s)\s*""")
     private val bracketPrefix = Regex("""^\s*(?:\[([^\]]{1,12})]|\(([A-Za-z]{2,4})\))\s*""")
-    private val token = Regex("""(?<![\p{L}\p{N}])(8K|4K|UHD|FHD|FULLHD|HD|SD|LQ|HEVC|H265|H\.265|HDR|HDR10|RAW|BACKUP|VIP|2160P|3840P|4320P|7680P|1080P|1080I|720P|576P|480P|50FPS|60FPS|25FPS|30FPS)(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
+    private val token = Regex("""(?<![\p{L}\p{N}])(8K|4K|UHD|FHD|FULLHD|HD|SD|LQ|HEVC|H265|H\.265|HDR10\+|HDR10PLUS|HDR|HDR10|RAW|BACKUP|VIP|2160P|3840P|4320P|7680P|1080P|1080I|720P|576P|480P|50FPS|60FPS|25FPS|30FPS)(?![\p{L}\p{N}])""", RegexOption.IGNORE_CASE)
 
     fun parse(raw: String): Parsed {
         val n = Normalizer.normalize(raw, Normalizer.Form.NFKC).trim()
@@ -119,7 +119,7 @@ object ChannelNameParser {
                 "SD", "576P", "480P" -> q = maxOf(q, Q_SD)
                 "LQ" -> { flags = flags or F_LQ; if (q == Q_NONE) q = Q_SD }
                 "HEVC", "H265", "H.265" -> flags = flags or F_HEVC
-                "HDR", "HDR10" -> flags = flags or F_HDR
+                "HDR", "HDR10", "HDR10+", "HDR10PLUS" -> flags = flags or F_HDR
                 "50FPS" -> flags = flags or F_50FPS
                 "60FPS" -> flags = flags or F_60FPS
                 "RAW" -> flags = flags or F_RAW

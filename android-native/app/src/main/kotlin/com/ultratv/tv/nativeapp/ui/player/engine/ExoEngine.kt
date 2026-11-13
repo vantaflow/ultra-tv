@@ -292,6 +292,11 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         c.ensureUpdated(); (c.renderedOutputBufferCount + c.skippedOutputBufferCount + c.droppedBufferCount).toLong()
     } ?: -1L
     override val durationMs get() = if (player.duration == C.TIME_UNSET) -1L else player.duration
+    override fun colorDebug(): String? = runCatching {
+        val v = player.videoFormat ?: return@runCatching null
+        val ci = v.colorInfo
+        "mime=${v.sampleMimeType} codecs=${v.codecs} transfer=${ci?.colorTransfer} space=${ci?.colorSpace} range=${ci?.colorRange} static=${ci?.hdrStaticInfo != null}"
+    }.getOrNull()
 
     private fun tracks(type: Int): List<TrackInfo> = player.currentTracks.groups.withIndex().filter { it.value.type == type }.flatMap { (gi, g) ->
         (0 until g.length).filter { ccProbe.isVisible(g.getTrackFormat(it).sampleMimeType, g.getTrackFormat(it).accessibilityChannel) }.map { ti ->

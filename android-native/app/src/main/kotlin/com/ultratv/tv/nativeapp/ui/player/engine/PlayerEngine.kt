@@ -132,6 +132,8 @@ interface PlayerEngine {
     fun loadProgress(): Long = -1L
     /** Images vidéo sorties du décodeur (rendues, sautées ou perdues) depuis l'ouverture ; -1 si le moteur ne l'expose pas. */
     fun renderedFrames(): Long = -1L
+    /** Signalisation couleur brute de la vidéo (type, codecs, transfert, espace, plage) pour le journal ; jamais d'adresse. */
+    fun colorDebug(): String? = null
 
     /** Applique le style de sous-titres. Vrai = pris en compte tout de suite ; faux = au prochain démarrage du moteur. */
     fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean = false

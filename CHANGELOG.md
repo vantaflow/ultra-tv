@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- HDR en direct : une chaîne dont le nom annonce le HDR (« HDR », « HDR10 », « HDR10+ ») affiche la pastille HDR même si le flux ne le signale pas, et démarre directement en sortie HDR (SurfaceView) sur un écran HDR avec le réglage automatique ; « HDR10+ » est reconnu dans les noms. Si le flux ne signale aucun HDR, sa signalisation couleur (sans adresse) est journalisée pour diagnostic.
+
 ## [Bureau 1.2.56] — 2026-11-13
 
 ### Modifié
