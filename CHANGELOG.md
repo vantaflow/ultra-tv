@@ -6,9 +6,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Téléphone : **barre du bas personnalisable** (Réglages › Affichage › Barre du bas) — les trois rubriques entre Accueil et Plus se choisissent parmi Direct, Guide, Films, Séries, Sport, Favoris, Enregistrements et Téléchargements ; les autres restent dans « Plus ».
+- Enregistrer le direct : choix de la fin — fin du programme, 30 min, 1 h, 2 h ou 3 h, jusqu'à une heure précise (trois prochaines heures pleines), ou jusqu'à l'arrêt manuel (8 h au plus).
 
 ### Corrigé
 - Enregistrer le direct depuis le lecteur : l'enregistrement s'arrête à la fin du programme en cours (+ 10 min de marge ; 4 h sans guide) et le message indique l'heure de fin, au lieu d'une durée fixe de « 120 min max ».
+- Enregistrement : un direct en flux continu (.ts) s'enregistrait sans fin (la durée n'était appliquée qu'au HLS) ; une coupure réseau effaçait ce qui avait été enregistré au lieu de le compléter ; la taille restait à 0 pendant l'enregistrement ; un enregistrement arrêté à la main était « annulé » au lieu d'être gardé. Avertissement quand l'abonnement n'autorise qu'une connexion (le fournisseur peut refuser l'enregistrement pendant la lecture).
 
 ### Modifié
 - Films et Séries (téléphone) : tri, note, période et catégories sur une seule ligne, comme le Direct ; la rangée de tri n'est plus affichée deux fois (aussi sur TV en mode rangées).

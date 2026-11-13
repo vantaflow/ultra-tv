@@ -25,6 +25,8 @@ class HlsRecorder(
     private val sourceM3u8: String,
     private val outFile: File,
     private val maxDurationMs: Long,
+    /** Nouvelle tentative : compléter le fichier existant au lieu de l'écraser. */
+    private val append: Boolean = false,
     private val shouldStop: () -> Boolean,
     private val onProgress: (downloadedBytes: Long, elapsedMs: Long) -> Unit,
 ) {
@@ -44,7 +46,7 @@ class HlsRecorder(
         var lastNewSegmentMs = startMs
         var targetSec = 6.0   // sensible default before we see #EXT-X-TARGETDURATION
 
-        outFile.outputStream().use { sink ->
+        java.io.FileOutputStream(outFile, append).use { sink ->
             while (true) {
                 if (shouldStop()) return false
                 val elapsed = System.currentTimeMillis() - startMs

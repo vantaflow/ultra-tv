@@ -52,6 +52,18 @@ class RecordingWorker @AssistedInject constructor(
             if (remaining <= 0) { dao.setStatus(id, "failed", "missed"); return Result.failure() }
             maxDurationMs = minOf(maxDurationMs, remaining)
         }
+        // Direct lancé « maintenant » : heure de fin absolue, respectée aussi après une nouvelle tentative (coupure réseau).
+        val deadline = inputData.getLong(KEY_DEADLINE_MS, 0L)
+        if (deadline > 0) {
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) {
+                val len = File(r.filePath).length()
+                if (len > 0) dao.updateProgress(id, "done", len, len, null, System.currentTimeMillis()) else dao.setStatus(id, "failed", "missed")
+                return Result.success()
+            }
+            maxDurationMs = minOf(maxDurationMs, remaining)
+        }
+        val live = r.kind == "LIVE"
         // Service de premier plan (dataSync) : une émission de deux heures ne doit pas être tuée par le système.
         runCatching { setForeground(foregroundInfo(applicationContext)) }
 
@@ -67,7 +79,10 @@ class RecordingWorker @AssistedInject constructor(
                 // Un enregistrement de plusieurs heures : sans signal de présence, le portail peut couper le flux.
                 val presence = if (opened.stalker) launch { while (true) { urls.presence(r.sourceUrl); delay(120_000) } } else null
                 val cancelled = try {
-                    if (src.contains(".m3u8", ignoreCase = true)) runHls(http, id, src, file, maxDurationMs) else runHttp(http, id, src, file)
+                    // Direct : une nouvelle tentative COMPLÈTE le fichier (segments TS concaténables) au lieu de l'écraser.
+                    val append = live && file.length() > 0
+                    if (src.contains(".m3u8", ignoreCase = true)) runHls(http, id, src, file, maxDurationMs, append)
+                    else runHttp(http, id, src, file, if (live) maxDurationMs else Long.MAX_VALUE, append)
                 } finally { presence?.cancel() }
                 // The download path may have short-circuited on user cancel and
                 // already written the "cancelled" status — don't clobber it with
@@ -94,43 +109,51 @@ class RecordingWorker @AssistedInject constructor(
     }
 
     /** Returns true if the download was cancelled (status already written). */
-    private suspend fun runHttp(ok: OkHttpClient, id: Long, url: String, file: File): Boolean {
+    private suspend fun runHttp(ok: OkHttpClient, id: Long, url: String, file: File, maxDurationMs: Long, append: Boolean): Boolean {
         val resp = ok.newCall(Request.Builder().url(url).build()).execute()
         // Non-2xx is terminal (404/410/invalid) — IllegalStateException maps to
         // Result.failure() in doWork, not a retry.
         if (!resp.isSuccessful) error("HTTP ${resp.code}")
         val total = resp.body?.contentLength() ?: -1L
-        var down = 0L
+        // Flux continu du direct (.ts) : il ne finit jamais seul ; on s'arrête à la durée demandée. Auparavant cette durée
+        // n'était appliquée qu'au HLS, et un direct en .ts s'enregistrait sans fin.
+        val startMs = System.currentTimeMillis()
+        var down = if (append) file.length() else 0L
+        resp.use {
         resp.body?.byteStream()?.use { input ->
-            file.outputStream().use { out ->
+            java.io.FileOutputStream(file, append).use { out ->
                 val buf = ByteArray(64 * 1024)
                 var n: Int
                 var lastPct = -1L
+                var lastReport = 0L
                 while (input.read(buf).also { n = it } > 0) {
-                    if (isStopped) {
-                        dao.updateProgress(id, "cancelled", down, total, "Cancelled", System.currentTimeMillis())
-                        return true
-                    }
+                    if (isStopped) { finishStopped(id, file); return true }
                     out.write(buf, 0, n)
                     down += n
+                    val now = System.currentTimeMillis()
+                    // Taille connue (film) : à chaque pour-cent ; direct (taille inconnue) : toutes les 2 s, sinon l'écran
+                    // restait à 0 octet pendant tout l'enregistrement.
                     val pct = if (total > 0) (down * 100 / total) else -1
-                    if (pct != lastPct) {
+                    if ((total > 0 && pct != lastPct) || (total <= 0 && now - lastReport >= 2_000)) {
                         dao.updateProgress(id, "running", down, total, null, null)
-                        lastPct = pct
+                        lastPct = pct; lastReport = now
                     }
+                    if (now - startMs >= maxDurationMs) return false
                 }
             }
+        }
         }
         return false
     }
 
     /** Returns true if recording was cancelled (status already written). */
-    private suspend fun runHls(ok: OkHttpClient, id: Long, url: String, file: File, maxDurationMs: Long): Boolean {
+    private suspend fun runHls(ok: OkHttpClient, id: Long, url: String, file: File, maxDurationMs: Long, append: Boolean): Boolean {
         val recorder = HlsRecorder(
             ok = ok,
             sourceM3u8 = url,
             outFile = file,
             maxDurationMs = maxDurationMs,
+            append = append,
             shouldStop = { isStopped },
             onProgress = { bytes, _ ->
                 // The recorder callback isn't suspendable; the DAO write is fine
@@ -142,11 +165,19 @@ class RecordingWorker @AssistedInject constructor(
         // request; in that case mark the row cancelled so doWork doesn't write
         // "done" over it. true means it ran to completion / max duration.
         val completed = recorder.run()
-        if (!completed) {
-            dao.updateProgress(id, "cancelled", file.length(), 0, "Cancelled", System.currentTimeMillis())
-            return true
-        }
+        if (!completed) { finishStopped(id, file); return true }
         return false
+    }
+
+    /**
+     * Arrêt demandé (bouton Arrêter, ou travail interrompu) : ce qui est enregistré est GARDÉ et devient un enregistrement
+     * terminé ; « annulé » seulement si rien n'a été écrit. Ne réécrit pas un statut déjà posé par [RecordingRepository.stop].
+     */
+    private suspend fun finishStopped(id: Long, file: File) = kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+        if (dao.byId(id)?.status == "done") return@withContext
+        val len = file.length()
+        if (len > 0) dao.updateProgress(id, "done", len, len, null, System.currentTimeMillis())
+        else dao.updateProgress(id, "cancelled", 0, 0, "Cancelled", System.currentTimeMillis())
     }
 
     companion object {
@@ -167,5 +198,7 @@ class RecordingWorker @AssistedInject constructor(
 
         const val KEY_RECORDING_ID = "recording_id"
         const val KEY_MAX_DURATION_MS = "max_duration_ms"
+        /** Heure de fin absolue (ms) d'un direct lancé maintenant ; 0 = aucune. */
+        const val KEY_DEADLINE_MS = "deadline_ms"
     }
 }

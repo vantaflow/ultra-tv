@@ -51,17 +51,19 @@ class RecordingRepository @Inject constructor(
             ),
         )
 
-        enqueueWork(id, maxDurationMinutes * 60L * 1000)
+        val maxMs = maxDurationMinutes * 60L * 1000
+        enqueueWork(id, maxMs, deadlineMs = if (kind == "LIVE") System.currentTimeMillis() + maxMs else 0L)
         return id
     }
 
     /** Une seule exécution par enregistrement (nom unique) : permet aussi de l'arrêter proprement. */
-    internal fun enqueueWork(id: Long, maxDurationMs: Long) {
+    internal fun enqueueWork(id: Long, maxDurationMs: Long, deadlineMs: Long = 0L) {
         val req = OneTimeWorkRequestBuilder<RecordingWorker>()
             .setInputData(
                 Data.Builder()
                     .putLong(RecordingWorker.KEY_RECORDING_ID, id)
                     .putLong(RecordingWorker.KEY_MAX_DURATION_MS, maxDurationMs)
+                    .putLong(RecordingWorker.KEY_DEADLINE_MS, deadlineMs)
                     .build(),
             )
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
@@ -91,6 +93,11 @@ class RecordingRepository @Inject constructor(
         val r = dao.byId(id) ?: return
         WorkManager.getInstance(context).cancelUniqueWork(workName(id))
         if (r.status == "queued") dao.setStatus(id, "cancelled", null)
+        // En cours : ce qui est enregistré est gardé (enregistrement terminé), même si le travail est coupé avant d'écrire son statut.
+        else if (r.status == "running") {
+            val len = runCatching { File(r.filePath).length() }.getOrDefault(0L)
+            if (len > 0) dao.updateProgress(id, "done", len, len, null, System.currentTimeMillis()) else dao.setStatus(id, "cancelled", null)
+        }
     }
 
     suspend fun delete(id: Long) {
