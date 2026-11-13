@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.15] — 2026-11-13 (Android) et bureau 1.2.59
+
 ### Corrigé
 - Réglages › Synchronisation : les quatre modes (Automatique, À chaque lancement, Planifiée, Manuelle) sont en liste avec leur description en entier, sur TV comme sur téléphone (les cartes côte à côte coupaient les textes, même sur un grand téléviseur).
 - Bureau, Films et Séries : dans « À la une », l'affiche était posée sur le texte quand le titre n'a pas d'image paysage ; elle sert désormais de fond au rectangle, en fondu.
