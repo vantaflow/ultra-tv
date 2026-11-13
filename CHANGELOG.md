@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.3] — 2026-11-13 (Android) et bureau 1.2.51
+
 ### Corrigé
 - Recherche (Android TV) : tous les résultats sont désormais accessibles. Auparavant, l'écran annonçait par exemple « 30 » films et séries mais n'en affichait que 12 (deux rangées), sans moyen d'atteindre la suite ; les chaînes étaient limitées à 6. Le plafond de 40 résultats par type passe à 500 (Android) et de 30 à 400 (bureau).
 
