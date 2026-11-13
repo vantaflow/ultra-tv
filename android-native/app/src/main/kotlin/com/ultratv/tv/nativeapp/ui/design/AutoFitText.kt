@@ -59,9 +59,11 @@ fun Text(
     }
     // 1) deux lignes ; 2) le conteneur n'a pas la hauteur de deux lignes : retour à une ligne ;
     // 3) téléphone / tablette : réduction de la taille (jusqu'à 80 %) avant « … ».
-    var lines by remember(text, base) { mutableIntStateOf(AutoFit.WRAP_LINES) }
+    var lines by remember(text, base, maxLines) { mutableIntStateOf(AutoFit.wrapLines(maxLines)) }
     var scale by remember(text, base) { mutableFloatStateOf(1f) }
     var ready by remember(text, base) { mutableStateOf(false) }
+    // Un mot seul trop long pour la ligne : réduction autorisée aussi sur TV (sinon « Recherch… »).
+    var mayShrink by remember(text, base) { mutableStateOf(false) }
     val size = if (base.isSpecified) base * scale else base
     androidx.tv.material3.Text(
         text = text, modifier = modifier.drawWithContent { if (ready) drawContent() }, color = color, fontSize = size,
@@ -70,7 +72,10 @@ fun Text(
         textAlign = textAlign, lineHeight = lineHeight, overflow = overflow, softWrap = softWrap, maxLines = lines, minLines = minLines,
         onTextLayout = { r ->
             val cut = r.lineCount > 0 && r.isLineEllipsized(r.lineCount - 1)
-            when (val step = AutoFit.next(lines, scale, cut = cut, tooTall = r.didOverflowHeight && r.lineCount > 1, touch = touch && base.isSpecified)) {
+            // Retour à la ligne AU MILIEU d'un mot (« Recherch / er ») : jamais — une ligne, puis réduction de la taille.
+            val midWord = r.lineCount > 1 && AutoFit.breaksWord(text, r.getLineEnd(0, visibleEnd = true))
+            if (midWord) mayShrink = true
+            when (val step = AutoFit.next(lines, scale, cut = cut || midWord, tooTall = (r.didOverflowHeight && r.lineCount > maxLines) || (midWord && maxLines == 1), touch = (touch || mayShrink || midWord) && base.isSpecified, floor = maxLines)) {
                 null -> ready = true
                 else -> { lines = step.first; scale = step.second }
             }
@@ -88,15 +93,22 @@ object AutoFit {
 
     /** Concerne les textes « une ligne + … » qui peuvent passer à la ligne (pas les pastilles en softWrap = false). */
     fun applies(maxLines: Int, overflow: TextOverflow, softWrap: Boolean): Boolean =
-        maxLines == 1 && overflow == TextOverflow.Ellipsis && softWrap
+        maxLines in 1..3 && overflow == TextOverflow.Ellipsis && softWrap
+
+    /** Lignes tentées d'abord : une de plus que la limite demandée (le texte passe à la ligne au lieu de « … »). */
+    fun wrapLines(maxLines: Int): Int = maxLines + 1
 
     /**
      * Étape suivante, ou null quand le rendu est définitif. [tooTall] : le conteneur n'a pas la hauteur des lignes demandées.
      * [cut] : la dernière ligne finit par « … ».
      */
-    fun next(lines: Int, scale: Float, cut: Boolean, tooTall: Boolean, touch: Boolean): Pair<Int, Float>? = when {
-        tooTall && lines > 1 -> 1 to scale
-        cut && lines == 1 && touch && scale > MIN_SCALE -> 1 to maxOf(MIN_SCALE, scale - STEP)
+    /** Vrai si la coupure de ligne à [end] tombe entre deux lettres (ou chiffres) d'un même mot. */
+    fun breaksWord(text: String, end: Int): Boolean =
+        end in 1 until text.length && text[end - 1].isLetterOrDigit() && text[end].isLetterOrDigit()
+
+    fun next(lines: Int, scale: Float, cut: Boolean, tooTall: Boolean, touch: Boolean, floor: Int = 1): Pair<Int, Float>? = when {
+        tooTall && lines > floor -> floor to scale
+        cut && lines == floor && touch && scale > MIN_SCALE -> floor to maxOf(MIN_SCALE, scale - STEP)
         else -> null
     }
 }

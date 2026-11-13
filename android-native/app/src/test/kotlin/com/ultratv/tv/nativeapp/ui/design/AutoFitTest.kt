@@ -10,7 +10,9 @@ import org.junit.Test
 class AutoFitTest {
     @Test fun concerneLesTextesUneLigneAvecPointsDeSuspension() {
         assertTrue(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = true))
-        assertFalse(AutoFit.applies(maxLines = 2, overflow = TextOverflow.Ellipsis, softWrap = true))
+        assertTrue(AutoFit.applies(maxLines = 2, overflow = TextOverflow.Ellipsis, softWrap = true))    // 2 → 3 lignes
+        assertFalse(AutoFit.applies(maxLines = 4, overflow = TextOverflow.Ellipsis, softWrap = true))
+        assertEquals(2, AutoFit.wrapLines(1)); assertEquals(3, AutoFit.wrapLines(2))
         assertFalse(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Clip, softWrap = true))
         assertFalse(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false))   // pastilles
     }
@@ -18,6 +20,7 @@ class AutoFitTest {
     @Test fun passeALaLigneSaufSiLeConteneurEstTropBas() {
         assertNull(AutoFit.next(2, 1f, cut = false, tooTall = false, touch = false))      // tient sur deux lignes : fini
         assertEquals(1 to 1f, AutoFit.next(2, 1f, cut = false, tooTall = true, touch = false))   // trop bas : une ligne
+        assertEquals(2 to 1f, AutoFit.next(3, 1f, cut = false, tooTall = true, touch = false, floor = 2))   // limite d'origine
         assertNull(AutoFit.next(1, 1f, cut = true, tooTall = false, touch = false))       // TV : « … » en dernier recours
     }
 
@@ -26,5 +29,14 @@ class AutoFitTest {
         var s = 1f
         while (true) { val n = AutoFit.next(1, s, cut = true, tooTall = false, touch = true) ?: break; s = n.second }
         assertEquals(AutoFit.MIN_SCALE, s, 0.001f)
+    }
+}
+
+class AutoFitWordTest {
+    @Test fun coupureAuMilieuDUnMot() {
+        assertTrue(AutoFit.breaksWord("Rechercher", 8))          // « Recherch | er »
+        assertFalse(AutoFit.breaksWord("Mes favoris", 4))        // après l'espace
+        assertFalse(AutoFit.breaksWord("Télé en direct", 5))
+        assertFalse(AutoFit.breaksWord("abc", 0))
     }
 }

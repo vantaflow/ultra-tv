@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Textes : la règle « passer à la ligne plutôt que couper » s'applique à tous les textes limités à 1, 2 ou 3 lignes (une ligne de plus quand ils dépassent) ; un mot n'est jamais coupé en deux (« Recherch / er ») : il reste sur sa ligne et réduit légèrement sa taille.
+
 ## [1.3.20] — 2026-11-13 (Android)
 
 ### Modifié
