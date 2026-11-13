@@ -3,23 +3,28 @@ package com.ultratv.tv.nativeapp.ui.design
 import androidx.compose.ui.text.style.TextOverflow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AutoFitTest {
-    @Test fun seulementTexteUneLigneAvecPointsDeSuspensionSurTactile() {
-        assertTrue(AutoFit.applies(touch = true, maxLines = 1, overflow = TextOverflow.Ellipsis, sizeKnown = true))
-        assertFalse(AutoFit.applies(touch = false, maxLines = 1, overflow = TextOverflow.Ellipsis, sizeKnown = true))   // TV : inchangé
-        assertFalse(AutoFit.applies(touch = true, maxLines = 2, overflow = TextOverflow.Ellipsis, sizeKnown = true))
-        assertFalse(AutoFit.applies(touch = true, maxLines = 1, overflow = TextOverflow.Clip, sizeKnown = true))
-        assertFalse(AutoFit.applies(touch = true, maxLines = 1, overflow = TextOverflow.Ellipsis, sizeKnown = false))
+    @Test fun concerneLesTextesUneLigneAvecPointsDeSuspension() {
+        assertTrue(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = true))
+        assertFalse(AutoFit.applies(maxLines = 2, overflow = TextOverflow.Ellipsis, softWrap = true))
+        assertFalse(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Clip, softWrap = true))
+        assertFalse(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = false))   // pastilles
     }
 
-    @Test fun reduitParPasSansDescendreSousLeMinimum() {
-        assertEquals(1f, AutoFit.nextScale(1f, overflowing = false), 0f)
-        assertEquals(0.95f, AutoFit.nextScale(1f, overflowing = true), 0.001f)
+    @Test fun passeALaLigneSaufSiLeConteneurEstTropBas() {
+        assertNull(AutoFit.next(2, 1f, cut = false, tooTall = false, touch = false))      // tient sur deux lignes : fini
+        assertEquals(1 to 1f, AutoFit.next(2, 1f, cut = false, tooTall = true, touch = false))   // trop bas : une ligne
+        assertNull(AutoFit.next(1, 1f, cut = true, tooTall = false, touch = false))       // TV : « … » en dernier recours
+    }
+
+    @Test fun telephoneReduitAvantDeCouper() {
+        assertEquals(1 to 0.95f, AutoFit.next(1, 1f, cut = true, tooTall = false, touch = true))
         var s = 1f
-        repeat(20) { s = AutoFit.nextScale(s, overflowing = true) }
+        while (true) { val n = AutoFit.next(1, s, cut = true, tooTall = false, touch = true) ?: break; s = n.second }
         assertEquals(AutoFit.MIN_SCALE, s, 0.001f)
     }
 }
