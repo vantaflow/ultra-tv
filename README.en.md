@@ -309,6 +309,10 @@ Questions or doubts about this code? Open an [issue](https://github.com/vantaflo
 
 On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, micro-benchmark) and rates it **Low / Medium / High**. From that it derives buffer, parallelism and sync batch size, resolution and bitrate caps (low-memory boxes: 720p / 6 Mb/s) and adjusts the buffer if drop-outs occur. Everything stays adjustable: Settings › Playback (engine, decoding, buffer preset: Low latency, Auto, Balanced, Stable, Custom).
 
+## Support the project
+
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://tv.weedy.dpdns.org/donate> (the repository's "Sponsor" button). Card payment on ChariPay's secure page; no card details ever go through Ultra TV.
+
 ## Help translate
 
 The interface is available in French, English, Spanish and Arabic (official languages), and in Polish and Brazilian Portuguese (community languages, first drafts awaiting review). More languages are welcome: they can be partial, and English is shown for missing texts.

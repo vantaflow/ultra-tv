@@ -312,6 +312,10 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
 
+## Soutenir le projet
+
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://tv.weedy.dpdns.org/donate> (bouton « Sponsor » du dépôt). Paiement par carte sur la page sécurisée de ChariPay ; aucune donnée bancaire ne passe par Ultra TV.
+
 ## Aider à traduire
 
 L'interface existe en français, anglais, espagnol et arabe (langues officielles), et en polonais et portugais du Brésil (langues communautaires, premiers jets à relire). D'autres langues sont les bienvenues : elles peuvent être partielles, l'anglais s'affiche pour les textes manquants.
