@@ -214,7 +214,7 @@ internal fun DrawerSheet(
     // visible derrière ; sans la colonne des catégories (repliée pendant le parcours des chaînes), la feuille est étroite.
     Box(modifier.fillMaxSize().padding(32.design), contentAlignment = Alignment.CenterStart) {
         Column(
-            Modifier.width(if (showCats) 860.design else 580.design).fillMaxHeight().clip(RoundedCornerShape(32.design)).background(P.rail.copy(alpha = 0.84f))
+            Modifier.width(if (showCats) 940.design else 580.design).fillMaxHeight().clip(RoundedCornerShape(32.design)).background(P.rail.copy(alpha = 0.84f))
                 .padding(start = 28.design, end = 28.design, top = 32.design, bottom = 24.design),
             verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
@@ -228,7 +228,7 @@ internal fun DrawerSheet(
             Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(20.design)) {
                 if (showCats) DrawerCategoryColumn(
                     cats = cats, highlightId = highlightId, rtl = rtl, selectedFocus = catFocus,
-                    onFocused = onCatFocused, onEnter = onCatEnter, modifier = Modifier.width(260.design).fillMaxHeight(), state = catState,
+                    onFocused = onCatFocused, onEnter = onCatEnter, modifier = Modifier.width(340.design).fillMaxHeight(), state = catState,
                 )
                 if (rows.isEmpty() && emptyText != null) {
                     Text(emptyText, color = P.text3, fontFamily = Manrope, fontSize = 22.spx, modifier = Modifier.weight(1f).padding(top = 12.design))
@@ -289,7 +289,8 @@ internal fun DrawerCategoryColumn(
                     Text(
                         c.label, color = if (f) P.focusText else if (sel) P.accentText else P.text2, fontFamily = Manrope,
                         fontWeight = if (sel) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = 20.spx, lineHeight = 24.spx,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                        // Nom de catégorie sur 2 lignes au besoin (« FRANCE GÉNÉRALISTES » était coupé en « FRANCE GÉ… »).
+                        maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                     )
                     c.count?.let { Text("$it", color = if (f) P.focusText2 else if (sel) P.accentText else P.muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1) }
                 }

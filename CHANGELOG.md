@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Règle commune à tous les écrans et tous les appareils (TV, téléphone, tablette) : un texte qui dépasse sa ligne passe à la ligne (deux lignes) au lieu d'être coupé ; si la place manque en hauteur, il reste sur une ligne (et sur téléphone réduit d'abord sa taille avant « … »).
 
+### Corrigé
+- Lecteur, liste des chaînes : colonne des catégories plus large, noms longs (« FRANCE GÉNÉRALISTES ») sur deux lignes au lieu d'être coupés.
+
 ## [1.3.15] — 2026-11-13 (Android) et bureau 1.2.59
 
 ### Corrigé
