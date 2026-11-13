@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.24] — 2026-11-13 (Android)
+
 ### Modifié
 - Base de données : moteur SQLite 3.49 embarqué dans l'application (au lieu de celui, souvent ancien, du système ; repli automatique sur le système si besoin) et cache de pages porté à 8 Mo — listes, guide et recherche plus rapides sur les box modestes.
 - Démarrage et navigation plus rapides : profil de compilation enregistré sur une box Android TV réelle en parcourant les écrans principaux (accueil, Direct, Guide, Films, Séries, fiches, Recherche, Favoris, Réglages), au lieu d'une courte liste écrite à la main.
