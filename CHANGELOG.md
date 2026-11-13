@@ -9,6 +9,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Menu latéral (TV), comme sur la maquette : nombre de favoris et « N en cours » pendant un enregistrement à côté des entrées du menu ouvert ; pastille d'accent sur l'icône Enregistrements quand le menu est replié.
+- Barre latérale du bureau : nombre de favoris et « N en cours » pendant un enregistrement dans la barre large, pastille d'accent sur l'icône Enregistrements dans la barre repliée.
 
 ## [1.3.4] — 2026-11-13 (Android)
 

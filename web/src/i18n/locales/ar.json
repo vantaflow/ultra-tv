@@ -707,5 +707,6 @@
   "rail.collapse": "طي القائمة",
   "rail.expand": "توسيع القائمة",
   "rail.switchProfile": "تغيير الملف الشخصي",
+  "rail.recordingRunning": "{n} قيد التسجيل",
   "rail.syncing": "جارٍ المزامنة"
 }

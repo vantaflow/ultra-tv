@@ -677,5 +677,6 @@
   "rail.collapse": "Contraer el menú",
   "rail.expand": "Expandir el menú",
   "rail.switchProfile": "Cambiar de perfil",
+  "rail.recordingRunning": "{n} en curso",
   "rail.syncing": "Sincronizando"
 }

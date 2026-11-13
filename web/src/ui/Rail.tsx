@@ -1,4 +1,8 @@
 import { useEffect } from "react";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/db/db";
+import { useFavorites } from "@/hooks/data";
+import { useActiveSource } from "@/state/sources";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useT, type Key } from "@/i18n";
 import { usePrefs } from "@/state/prefs";
@@ -30,6 +34,13 @@ const FOOT: Item[] = [
   { to: "/settings", icon: "settings", label: "nav.settings", match: "/settings" },
 ];
 
+/** Repère à droite d'une entrée de la barre large (maquette « Menu latéral ») ; null = rien. Pur, testé. */
+export function railBadge(to: string, favorites: number, recording: number, running: (n: number) => string): string | null {
+  if (to === "/favorites") return favorites > 0 ? String(favorites) : null;
+  if (to === "/recordings") return recording > 0 ? running(recording) : null;
+  return null;
+}
+
 const PHASES: SyncProgress["phase"][] = ["categories", "live", "movie", "series", "epg"];
 /** Avancement global de la synchro (0–100) d'après la phase et sa progression. */
 export function syncPercent(p: SyncProgress | null): number | null {
@@ -53,6 +64,8 @@ export function Rail() {
   const syncing = useSync((s) => s.running);
   const pct = syncPercent(useSync((s) => s.progress));
   const me = profiles.find((p) => p.id === profileId) ?? profiles[0]!;
+  const favCount = useFavorites(useActiveSource()).length;
+  const recCount = useLiveQuery(() => db.recordings.where("state").equals("recording").count().catch(() => 0), []) ?? 0;
   const isActive = (m: string) => (m === "/" ? loc.pathname === "/" : loc.pathname.startsWith(m));
 
   // Largeur de la colonne du rail (grille de l'application, toasts, barre de titre) : classe sur <html>.
@@ -61,13 +74,17 @@ export function Rail() {
     return () => document.documentElement.classList.remove("rail-wide");
   }, [railCollapsed]);
 
-  const link = (i: Item) => (
-    <NavLink key={i.to} to={i.to} className={`rail-item${isActive(i.match) ? " active" : ""}`} title={t(i.label)}>
-      <span className="pill"><Icon name={i.icon} /></span>
-      <span className="rail-tx rail-short">{t(i.short ?? i.label)}</span>
-      <span className="rail-tx rail-long">{t(i.label)}</span>
-    </NavLink>
-  );
+  const link = (i: Item) => {
+    const badge = railBadge(i.to, favCount, recCount, (n) => t("rail.recordingRunning", { n }));
+    return (
+      <NavLink key={i.to} to={i.to} className={`rail-item${isActive(i.match) ? " active" : ""}${i.to === "/recordings" && recCount > 0 ? " rail-rec" : ""}`} title={t(i.label)}>
+        <span className="pill"><Icon name={i.icon} /></span>
+        <span className="rail-tx rail-short">{t(i.short ?? i.label)}</span>
+        <span className="rail-tx rail-long">{t(i.label)}</span>
+        {badge && <span className="rail-badge">{badge}</span>}
+      </NavLink>
+    );
+  };
 
   return (
     <nav className="rail" aria-label={t("app.name")}>

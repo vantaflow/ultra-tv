@@ -138,3 +138,14 @@
   html.rail-wide .rail-profile-tx .nm { font-size: 0.9375rem; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   html.rail-wide .rail-profile-tx .sb { font-size: 0.8125rem; color: var(--text-3); white-space: nowrap; }
 }
+
+/* Repères de la barre latérale : enregistrement en cours (pastille sur l'icône), nombres dans la barre large. */
+.rail-item { position: relative; }
+.rail-item.rail-rec .pill { position: relative; }
+.rail-item.rail-rec .pill::after { content: ""; position: absolute; top: 3px; inset-inline-end: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--rail); }
+.rail-badge { display: none; }
+@media (min-width: 1100px) {
+  html.rail-wide .rail-item.rail-rec .pill::after { display: none; }
+  html.rail-wide .rail-item .rail-long { flex: 1; }
+  html.rail-wide .rail-badge { display: block; font-size: 0.8125rem; font-weight: 700; color: var(--text-3); white-space: nowrap; }
+}
