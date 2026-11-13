@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.5] — 2026-11-13 (Android) et bureau 1.2.52
+
 ### Corrigé
 - Direct qui se fige au bout de quelques minutes sans message (image gelée, lecteur toujours « en lecture ») : le lecteur surveille maintenant la position et les images décodées, et se reconnecte tout seul après 10 s de gel. Auparavant, seul un chargement bloqué était rattrapé.
 - Recherche (Android et bureau) : « Aucun résultat » s'affichait pendant la recherche (titres trouvés vides alors que les programmes du guide étaient encore cherchés, ou saisie pas encore prise en compte). Un indicateur de chargement reste affiché jusqu'à la fin de la recherche.
@@ -11,6 +13,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Ajouté
 - Menu latéral (TV), comme sur la maquette : nombre de favoris et « N en cours » pendant un enregistrement à côté des entrées du menu ouvert ; pastille d'accent sur l'icône Enregistrements quand le menu est replié.
 - Barre latérale du bureau : nombre de favoris et « N en cours » pendant un enregistrement dans la barre large, pastille d'accent sur l'icône Enregistrements dans la barre repliée.
+
+### Modifié
+- Bureau 1.2.52 : la nouvelle barre latérale décrite en 1.3.4 (groupes Regarder et Ma liste, barre large ou repliée) arrive sur le bureau, qui n'avait pas été republié depuis.
 
 ## [1.3.4] — 2026-11-13 (Android)
 
