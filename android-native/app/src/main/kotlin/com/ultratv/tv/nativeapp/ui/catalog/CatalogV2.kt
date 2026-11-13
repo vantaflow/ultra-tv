@@ -159,7 +159,11 @@ private const val ROW_SIZE_TV = 20
 
 /** Hero : image à droite (voile vers la gauche et le bas), pastille « À la une », titre, boutons. */
 @Composable
-private fun CatalogHeroTv(hero: CatalogHero, featured: String, watch: String, onWatch: () -> Unit, extra: @Composable () -> Unit) {
+private fun CatalogHeroTv(hero: CatalogHero, featured: String, watch: String, onWatch: () -> Unit, extra: @Composable () -> Unit) =
+    com.ultratv.tv.nativeapp.ui.design.NoTextWrap { CatalogHeroTvBody(hero, featured, watch, onWatch, extra) }
+
+@Composable
+private fun CatalogHeroTvBody(hero: CatalogHero, featured: String, watch: String, onWatch: () -> Unit, extra: @Composable () -> Unit) {
     val bg = Ux.Bg
     Box(Modifier.fillMaxWidth().height(440.design)) {
         BackdropImage(hero.image, Modifier.align(Alignment.CenterEnd).fillMaxWidth(0.62f).fillMaxHeight(), decodeSize = DpSize(400.dp, 440.dp))

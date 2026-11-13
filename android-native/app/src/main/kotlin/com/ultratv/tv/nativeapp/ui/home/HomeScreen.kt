@@ -574,6 +574,15 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 private fun Hero(
     h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
     takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int = 0, count: Int = 1, modifier: Modifier = Modifier,
+) = com.ultratv.tv.nativeapp.ui.design.NoTextWrap {
+    // Bandeau de hauteur fixe : pas de ligne de plus (les boutons « Regarder / Plus d'infos » étaient écrasés).
+    HeroBody(h, extras, onWatch, onInfo, takeFocus, onFocused, onFocusTop, index, count, modifier)
+}
+
+@Composable
+private fun HeroBody(
+    h: HeroItem, extras: State<Map<String, HeroExtras>>, onWatch: (HeroItem) -> Unit, onInfo: (HeroItem) -> Unit,
+    takeFocus: Boolean, onFocused: () -> Unit, onFocusTop: () -> Unit, index: Int, count: Int, modifier: Modifier,
 ) {
     val D = LocalDs.current
     val requester = remember { FocusRequester() }

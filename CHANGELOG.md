@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Ajouté
 - Mode simple sur tous les écrans : Films et Séries (onglets Nouveautés / Les mieux notés / De A à Z, grosses affiches, bouton Recherche), fiche d'un film (gros bouton Regarder, favori), série (épisode suivant en grand, saisons, épisodes « Vu »), Mes favoris (chaînes et titres, appui long pour retirer) et Recherche (micro, clavier en grandes touches, résultats en liste) ; sans menu latéral, Retour revient à l'écran précédent.
 
+### Corrigé
+- Boutons écrasés en simples traits (carrousel « À la une » de l'accueil : Regarder / Plus d'infos ; clavier de la recherche simple) : le passage à la ligne automatique ne s'applique plus qu'aux textes d'une ligne, et jamais dans les bandeaux « À la une » ni dans la surcouche du direct.
+
 ## [1.3.21] — 2026-11-13 (Android)
 
 ### Modifié

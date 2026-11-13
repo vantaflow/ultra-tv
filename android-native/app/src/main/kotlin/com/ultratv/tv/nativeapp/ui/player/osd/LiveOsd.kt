@@ -155,7 +155,7 @@ fun LiveOsd(
     }
     // TV : nouvelle disposition (OsdTv.kt), toujours sur la palette sombre (la surcouche est posée sur la vidéo).
     if (!touch) {
-        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalUxPalette provides com.ultratv.tv.nativeapp.ui.design.DarkPalette) {
+        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalUxPalette provides com.ultratv.tv.nativeapp.ui.design.DarkPalette, com.ultratv.tv.nativeapp.ui.design.LocalTextWrap provides false) {
             Box(modifier.fillMaxSize()) { TvOsd(state, focus, onAction, onRecent, onStage, onNextAction) }
         }
         return

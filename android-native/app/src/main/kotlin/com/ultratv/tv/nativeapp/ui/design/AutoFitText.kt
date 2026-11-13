@@ -49,7 +49,7 @@ fun Text(
 ) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val base = if (fontSize.isSpecified) fontSize else style.fontSize
-    if (!AutoFit.applies(maxLines, overflow, softWrap)) {
+    if (!LocalTextWrap.current || !AutoFit.applies(maxLines, overflow, softWrap)) {
         androidx.tv.material3.Text(
             text = text, modifier = modifier, color = color, fontSize = fontSize, fontStyle = fontStyle, fontWeight = fontWeight, fontFamily = fontFamily,
             letterSpacing = letterSpacing, textDecoration = textDecoration, textAlign = textAlign, lineHeight = lineHeight, overflow = overflow,
@@ -85,6 +85,17 @@ fun Text(
     )
 }
 
+/**
+ * Passage à la ligne autorisé (par défaut). Désactivé dans les zones de HAUTEUR FIXE (bandeaux « À la une », surcouche du
+ * direct) : une ligne de plus y poussait les boutons placés dessous jusqu'à les écraser en un trait.
+ */
+val LocalTextWrap = androidx.compose.runtime.staticCompositionLocalOf { true }
+
+/** Bloc sans passage à la ligne automatique (zone de hauteur fixe). */
+@Composable
+fun NoTextWrap(content: @Composable () -> Unit) =
+    androidx.compose.runtime.CompositionLocalProvider(LocalTextWrap provides false, content = content)
+
 /** Règle d'ajustement (pure, testée). */
 object AutoFit {
     const val MIN_SCALE = 0.8f
@@ -93,7 +104,9 @@ object AutoFit {
 
     /** Concerne les textes « une ligne + … » qui peuvent passer à la ligne (pas les pastilles en softWrap = false). */
     fun applies(maxLines: Int, overflow: TextOverflow, softWrap: Boolean): Boolean =
-        maxLines in 1..3 && overflow == TextOverflow.Ellipsis && softWrap
+        // Une ligne seulement : un texte de 2-3 lignes qui grandit dans une zone de hauteur fixe (carrousel de l'accueil,
+        // clavier) écrasait les boutons placés dessous jusqu'à n'en laisser qu'un trait.
+        maxLines == 1 && overflow == TextOverflow.Ellipsis && softWrap
 
     /** Lignes tentées d'abord : une de plus que la limite demandée (le texte passe à la ligne au lieu de « … »). */
     fun wrapLines(maxLines: Int): Int = maxLines + 1

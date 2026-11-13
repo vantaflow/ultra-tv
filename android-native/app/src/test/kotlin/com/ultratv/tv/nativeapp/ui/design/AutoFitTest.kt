@@ -10,7 +10,7 @@ import org.junit.Test
 class AutoFitTest {
     @Test fun concerneLesTextesUneLigneAvecPointsDeSuspension() {
         assertTrue(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Ellipsis, softWrap = true))
-        assertTrue(AutoFit.applies(maxLines = 2, overflow = TextOverflow.Ellipsis, softWrap = true))    // 2 → 3 lignes
+        assertFalse(AutoFit.applies(maxLines = 2, overflow = TextOverflow.Ellipsis, softWrap = true))   // pas de 3e ligne (boutons écrasés)
         assertFalse(AutoFit.applies(maxLines = 4, overflow = TextOverflow.Ellipsis, softWrap = true))
         assertEquals(2, AutoFit.wrapLines(1)); assertEquals(3, AutoFit.wrapLines(2))
         assertFalse(AutoFit.applies(maxLines = 1, overflow = TextOverflow.Clip, softWrap = true))
