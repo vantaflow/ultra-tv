@@ -296,4 +296,12 @@ class LiveOsdLogicTest {
         // OSD ouvert : le focus circule comme avant, quel que soit le réglage.
         assertEquals(OsdDecision.Pass, LiveOsdLogic.decide(OsdKey.UP, osdOpen = true, controlsHidden = false, tsActive = false, zapVertical = true))
     }
+
+    @Test fun volumeKeysAreNeverConsumed() {
+        assertTrue(LiveOsdLogic.isSystemPassThrough(android.view.KeyEvent.KEYCODE_VOLUME_UP))
+        assertTrue(LiveOsdLogic.isSystemPassThrough(android.view.KeyEvent.KEYCODE_VOLUME_DOWN))
+        assertTrue(LiveOsdLogic.isSystemPassThrough(android.view.KeyEvent.KEYCODE_VOLUME_MUTE))
+        assertFalse(LiveOsdLogic.isSystemPassThrough(android.view.KeyEvent.KEYCODE_DPAD_UP))
+        assertFalse(LiveOsdLogic.isSystemPassThrough(android.view.KeyEvent.KEYCODE_CHANNEL_UP))
+    }
 }

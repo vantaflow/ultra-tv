@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Téléphone, direct : les boutons Volume + / Volume − (et la coupure du son) n'avaient aucun effet ; le lecteur les absorbait pour afficher les commandes. Ils sont désormais toujours laissés à Android.
+
 ## [1.3.9] — 2026-11-13 (Android)
 
 ### Corrigé

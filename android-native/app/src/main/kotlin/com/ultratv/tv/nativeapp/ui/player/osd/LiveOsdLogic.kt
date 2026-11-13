@@ -37,6 +37,13 @@ object LiveOsdLogic {
     const val MAX_RECENTS = 10
 
     /**
+     * Touches que le lecteur ne doit JAMAIS absorber : volume et coupure du son (boutons du téléphone, télécommandes).
+     * Le direct traitait Volume+ / Volume− comme « autre touche » (affichage de la surcouche) et le volume ne changeait pas.
+     */
+    fun isSystemPassThrough(keyCode: Int): Boolean = keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP ||
+        keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_MUTE
+
+    /**
      * Décision d'une touche pendant le Direct (aucun panneau, tiroir, fiche ni code parental ouvert ; la saisie de
      * numéro, les touches média Lecture/Pause/Avance/Retour et « Passer l'intro » sont traitées avant).
      *

@@ -1161,6 +1161,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 // et antérieurs ne déclenchaient jamais le retour ; la touche suivante masquait les commandes, et ainsi de suite
                 // (impossible de quitter le lecteur, issue #30). Android 13+ rattrapait le cas au niveau de la fenêtre.
                 if (ev.key == Key.Back || ev.key == Key.Escape) return@onPreviewKeyEvent false
+                // Volume : toujours laissé à Android (sinon les boutons du téléphone n'avaient aucun effet en direct).
+                if (com.ultratv.tv.nativeapp.ui.player.osd.LiveOsdLogic.isSystemPassThrough(ev.nativeKeyEvent.keyCode)) return@onPreviewKeyEvent false
                 // Fenêtre de code ou fiche programme ouverte : elles gèrent leurs propres touches.
                 if (pinPending != null || infoOpen) return@onPreviewKeyEvent false
                 // Panneau d'erreur affiché : ses boutons (Réessayer, Chaîne suivante, Fermer) reçoivent les touches. Avant, le
