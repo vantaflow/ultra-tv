@@ -45,6 +45,61 @@ fun tabForRoute(route: String?): MobileTab = when {
     else -> MobileTab.MORE
 }
 
+// ───────────────────────── Barre du bas personnalisable ─────────────────────────
+
+/** Rubriques possibles au milieu de la barre du bas (entre Accueil et Plus), dans l'ordre du choix. */
+val BOTTOM_TAB_CHOICES = listOf(Routes.LIVE, Routes.GUIDE, Routes.MOVIES, Routes.SERIES, Routes.SPORT, Routes.FAVORITES, "recordings", Routes.DOWNLOADS)
+
+/** Barre d'origine : Direct, Guide, Films. */
+val DEFAULT_BOTTOM_TABS = listOf(Routes.LIVE, Routes.GUIDE, Routes.MOVIES)
+
+/** Nombre de rubriques choisies (Accueil et Plus sont fixes). */
+const val BOTTOM_TAB_SLOTS = 3
+
+/**
+ * Rubriques de la barre du bas d'après le réglage enregistré (« live,guide,series ») : valeurs inconnues, doublons et Sport
+ * masqué ignorés, complété avec les rubriques d'origine pour en avoir toujours [BOTTOM_TAB_SLOTS].
+ */
+fun bottomTabRoutes(saved: String?, sportOn: Boolean): List<String> {
+    val allowed = BOTTOM_TAB_CHOICES.filter { sportOn || it != Routes.SPORT }
+    val out = saved.orEmpty().split(',').map { it.trim() }.filter { it in allowed }.distinct().take(BOTTOM_TAB_SLOTS).toMutableList()
+    for (d in DEFAULT_BOTTOM_TABS + allowed) if (out.size < BOTTOM_TAB_SLOTS && d !in out) out += d
+    return out
+}
+
+/** Place [route] à la position [slot] ; déjà présente ailleurs, les deux rubriques échangent leur place. */
+fun withBottomTab(tabs: List<String>, slot: Int, route: String): List<String> {
+    if (slot !in tabs.indices) return tabs
+    val out = tabs.toMutableList()
+    val at = out.indexOf(route)
+    if (at >= 0) out[at] = out[slot]
+    out[slot] = route
+    return out
+}
+
+/** Rubrique d'origine d'une route (fiche film → Films, lecteur → Direct…). */
+fun bottomTabRootOf(route: String?): String = when {
+    route == null -> Routes.HOME
+    route == Routes.SIMPLE_CHANNELS || route.startsWith("player") -> Routes.LIVE
+    route.startsWith("movies/") -> Routes.MOVIES
+    route.startsWith("series/") -> Routes.SERIES
+    else -> route
+}
+
+/** Onglet actif : Accueil, l'une des rubriques choisies, sinon null (= « Plus »). */
+fun activeBottomTab(route: String?, tabs: List<String>): String? {
+    val root = bottomTabRootOf(route)
+    return when {
+        root == Routes.HOME -> Routes.HOME
+        root in tabs -> root
+        else -> null
+    }
+}
+
+/** Contenu de « Plus » : les rubriques non retenues dans la barre, puis Réglages et Profils. */
+fun moreRoutesFor(tabs: List<String>, sportOn: Boolean): List<String> =
+    BOTTOM_TAB_CHOICES.filter { it !in tabs && (sportOn || it != Routes.SPORT) } + listOf(Routes.SETTINGS, "profiles")
+
 /** Le lecteur est plein écran : ni barre d'onglets, ni rail. */
 fun isFullscreenRoute(route: String?): Boolean = route?.startsWith("player") == true
 

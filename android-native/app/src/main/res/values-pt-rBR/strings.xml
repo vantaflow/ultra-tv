@@ -1621,4 +1621,6 @@
     <string name="ds_rail_group_watch">Assistir</string>
     <string name="ds_rail_group_mine">Minha lista</string>
     <string name="ds_rail_recording_running">%1$d gravando</string>
+    <string name="ds_bottom_tabs">Barra inferior</string>
+    <string name="ds_bottom_tab_slot">Aba %1$d</string>
 </resources>

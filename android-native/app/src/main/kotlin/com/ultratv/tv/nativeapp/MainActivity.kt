@@ -410,6 +410,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.i18n.LocalDs provides com.ultratv.tv.nativeapp.i18n.designStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled provides prefs.sportSection,
+        com.ultratv.tv.nativeapp.ui.mobile.LocalBottomTabs provides prefs.bottomTabs,
         com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(prefs.guideNameWidth)),
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
         com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides com.ultratv.tv.nativeapp.ui.design.Animations.resolve(

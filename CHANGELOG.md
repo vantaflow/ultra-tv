@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Téléphone : **barre du bas personnalisable** (Réglages › Affichage › Barre du bas) — les trois rubriques entre Accueil et Plus se choisissent parmi Direct, Guide, Films, Séries, Sport, Favoris, Enregistrements et Téléchargements ; les autres restent dans « Plus ».
+
 ## [1.3.6] — 2026-11-13 (Android) et bureau 1.2.53
 
 ### Modifié

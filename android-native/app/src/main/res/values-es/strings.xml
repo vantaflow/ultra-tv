@@ -1607,4 +1607,6 @@
     <string name="ds_rail_group_watch">Ver</string>
     <string name="ds_rail_group_mine">Mi lista</string>
     <string name="ds_rail_recording_running">%1$d en curso</string>
+    <string name="ds_bottom_tabs">Barra inferior</string>
+    <string name="ds_bottom_tab_slot">Pestaña %1$d</string>
 </resources>

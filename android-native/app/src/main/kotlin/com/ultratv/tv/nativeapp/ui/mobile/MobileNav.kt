@@ -79,15 +79,32 @@ object MobileIcons {
     const val Refresh = "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7"
 }
 
-private data class TabDef(val tab: MobileTab, val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings, com.ultratv.tv.nativeapp.i18n.DesignStrings, MobileStrings) -> String)
+/** Réglage « Barre du bas » brut (« live,guide,series ») ; lu par [bottomTabRoutes]. */
+val LocalBottomTabs = androidx.compose.runtime.staticCompositionLocalOf { "" }
 
-private val tabs = listOf(
-    TabDef(MobileTab.HOME, Routes.HOME, Icons.Home) { s, _, _ -> s.navHome },
-    TabDef(MobileTab.LIVE, Routes.LIVE, Icons.Live) { _, d, _ -> d.directTitle },
-    TabDef(MobileTab.GUIDE, Routes.GUIDE, Icons.Guide) { s, _, _ -> s.navGuide },
-    TabDef(MobileTab.MOVIES, Routes.MOVIES, Icons.Movies) { s, _, _ -> s.navMovies },
-    TabDef(MobileTab.MORE, "", MobileIcons.More) { _, _, m -> m.tabMore },
-)
+private data class TabDef(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings, com.ultratv.tv.nativeapp.i18n.DesignStrings, MobileStrings) -> String)
+
+/** Icône et libellé de chaque destination de la barre du bas et de « Plus ». */
+private val routeDefs = listOf(
+    TabDef(Routes.HOME, Icons.Home) { s, _, _ -> s.navHome },
+    TabDef(Routes.LIVE, Icons.Live) { _, d, _ -> d.directTitle },
+    TabDef(Routes.GUIDE, Icons.Guide) { s, _, _ -> s.navGuide },
+    TabDef(Routes.MOVIES, Icons.Movies) { s, _, _ -> s.navMovies },
+    TabDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
+    TabDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d, _ -> d.sportNav },
+    TabDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
+    TabDef("recordings", Icons.Record) { s, _, _ -> s.navRecordings },
+    TabDef(Routes.DOWNLOADS, MobileIcons.Download) { _, d, _ -> com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(d.lang).navTitle },
+    TabDef(Routes.SETTINGS, Icons.Settings) { _, d, _ -> d.settingsTitle },
+    TabDef("profiles", MobileIcons.User) { _, _, m -> m.navProfiles },
+).associateBy { it.route }
+
+private val moreTab = TabDef("", MobileIcons.More) { _, _, m -> m.tabMore }
+
+/** Libellé d'une rubrique de la barre du bas (réglage « Barre du bas »). */
+@Composable
+fun bottomTabLabel(route: String): String =
+    routeDefs[route]?.label?.invoke(LocalStrings.current, com.ultratv.tv.nativeapp.i18n.LocalDs.current, LocalMobileStrings.current) ?: route
 
 /** Navigation d'un onglet / d'une entrée de rail : mêmes réglages de pile que la TV (état sauvegardé, un seul exemplaire). */
 fun NavController.navigateTopLevel(route: String) {
@@ -113,7 +130,10 @@ fun NavController.navigateTopLevel(route: String) {
 fun BottomTabs(navController: NavController, onMore: () -> Unit, modifier: Modifier = Modifier) {
     val entry by navController.currentBackStackEntryAsState()
     val route = entry?.destination?.route
-    val active = tabForRoute(route)
+    val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+    val chosen = bottomTabRoutes(LocalBottomTabs.current, sportOn)
+    val tabs = remember(chosen) { listOfNotNull(routeDefs[Routes.HOME]) + chosen.mapNotNull { routeDefs[it] } + moreTab }
+    val active = activeBottomTab(route, chosen)
     val S = LocalStrings.current
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val M = LocalMobileStrings.current
@@ -127,7 +147,7 @@ fun BottomTabs(navController: NavController, onMore: () -> Unit, modifier: Modif
         horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         tabs.forEach { t ->
-            val selected = t.tab == active
+            val selected = if (t === moreTab) active == null else t.route == active
             val ink = if (selected) Ux.OnAccent else Ux.Text3
             val label = t.label(S, D, M)
             Column(
@@ -138,7 +158,7 @@ fun BottomTabs(navController: NavController, onMore: () -> Unit, modifier: Modif
                     .selectable(
                         selected = selected, role = Role.Tab,
                         interactionSource = remember { MutableInteractionSource() }, indication = ripple(color = Ux.Text),
-                        onClick = { if (t.tab == MobileTab.MORE) onMore() else if (route != t.route) navController.navigateTopLevel(t.route) },
+                        onClick = { if (t === moreTab) onMore() else if (route != t.route) navController.navigateTopLevel(t.route) },
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
@@ -159,17 +179,8 @@ private fun Spacer4() = androidx.compose.foundation.layout.Spacer(Modifier.heigh
 
 private data class MoreDef(val route: String, val icon: String, val label: (com.ultratv.tv.nativeapp.i18n.Strings, com.ultratv.tv.nativeapp.i18n.DesignStrings, MobileStrings) -> String)
 
-private val sportMoreItem = MoreDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d, _ -> d.sportNav }
 private val sportRailDef get() = RailDef(Routes.SPORT, com.ultratv.tv.nativeapp.ui.sport.SportIcons.Trophy) { _, d -> d.sportNav }
 
-private val moreItems = listOf(
-    MoreDef(Routes.SERIES, Icons.Series) { s, _, _ -> s.navSeries },
-    MoreDef(Routes.FAVORITES, Icons.Heart) { s, _, _ -> s.navFavorites },
-    MoreDef("recordings", Icons.Record) { s, _, _ -> s.navRecordings },
-    MoreDef(Routes.DOWNLOADS, MobileIcons.Download) { _, d, _ -> com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings(d.lang).navTitle },
-    MoreDef(Routes.SETTINGS, Icons.Settings) { _, d, _ -> d.settingsTitle },
-    MoreDef("profiles", MobileIcons.User) { _, _, m -> m.navProfiles },
-)
 
 /** Feuille « Plus » : Séries, Recherche, Favoris, Enregistrements, Réglages, Profils. Retour système = fermer. */
 @Composable
@@ -195,7 +206,9 @@ fun MoreSheet(navController: NavController, onDismiss: () -> Unit, onProfiles: (
             Box(Modifier.align(Alignment.CenterHorizontally).width(36.dp).height(4.dp).clip(RoundedCornerShape(2.dp)).background(Ux.Line))
             Text(M.moreTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(top = 12.dp, bottom = 8.dp))
             val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
-            val shownMore = if (sportOn) listOf(sportMoreItem) + moreItems else moreItems
+            // Les rubriques non retenues dans la barre du bas (réglage « Barre du bas »), puis Réglages et Profils.
+            val chosen = bottomTabRoutes(LocalBottomTabs.current, sportOn)
+            val shownMore = moreRoutesFor(chosen, sportOn).mapNotNull { r -> routeDefs[r]?.let { MoreDef(it.route, it.icon, it.label) } }
             shownMore.forEach { item ->
                 val label = item.label(S, D, M)
                 Row(

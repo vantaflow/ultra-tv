@@ -1665,4 +1665,6 @@
     <string name="ds_rail_group_watch">مشاهدة</string>
     <string name="ds_rail_group_mine">قائمتي</string>
     <string name="ds_rail_recording_running">%1$d قيد التسجيل</string>
+    <string name="ds_bottom_tabs">الشريط السفلي</string>
+    <string name="ds_bottom_tab_slot">التبويب %1$d</string>
 </resources>

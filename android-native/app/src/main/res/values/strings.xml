@@ -1603,4 +1603,6 @@
     <string name="ds_rail_group_watch">Watch</string>
     <string name="ds_rail_group_mine">My list</string>
     <string name="ds_rail_recording_running">%1$d recording</string>
+    <string name="ds_bottom_tabs">Bottom bar</string>
+    <string name="ds_bottom_tab_slot">Tab %1$d</string>
 </resources>

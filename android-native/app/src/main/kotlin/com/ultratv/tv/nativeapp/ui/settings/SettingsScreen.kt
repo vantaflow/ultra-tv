@@ -641,6 +641,11 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
+        // Téléphone : les trois rubriques entre Accueil et Plus (les autres restent dans « Plus »).
+        if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+            val tabs = com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection)
+            tabs.forEachIndexed { i, r -> PrefRow("${D.bottomTabs} · ${D.bottomTabSlot(i + 2)}", com.ultratv.tv.nativeapp.ui.mobile.bottomTabLabel(r)) { choice = "bt$i" } }
+        }
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
         SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
@@ -671,6 +676,15 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
         "home" -> HomeRowsDialog(com.ultratv.tv.nativeapp.ui.home.HomeLayout.parse(p.homeOrder, p.homeHidden), onSave = { app.setHomeLayout(it) }, onDismiss = { choice = "" })
+        "bt0", "bt1", "bt2" -> {
+            val slot = choice.last().digitToInt()
+            val tabs = com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection)
+            val options = com.ultratv.tv.nativeapp.ui.mobile.BOTTOM_TAB_CHOICES.filter { p.sportSection || it != com.ultratv.tv.nativeapp.nav.Routes.SPORT }
+                .map { it to com.ultratv.tv.nativeapp.ui.mobile.bottomTabLabel(it) }
+            ChoiceDialog("${D.bottomTabs} · ${D.bottomTabSlot(slot + 2)}", options, tabs.getOrNull(slot), {
+                app.setBottomTabs(com.ultratv.tv.nativeapp.ui.mobile.withBottomTab(tabs, slot, it)); choice = ""
+            }, { choice = "" })
+        }
         "tf" -> ChoiceDialog(D.timeFormat, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.entries.map { it to timeFormatLabel(D, it) }, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat), { app.setTimeFormat(it.key); choice = "" }, { choice = "" })
         "tz" -> ChoiceDialog(D.timeZone, TIME_ZONES.map { it to timeZoneLabel(D, it) }, p.timeZone, { app.setTimeZone(it); choice = "" }, { choice = "" })
     }
