@@ -4,14 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.3] — 2026-11-13 (Android) et bureau 1.2.51
+
 ### Corrigé
 - Recherche (Android) : un titre avec un trait d'union ou une apostrophe n'était pas trouvé, même tapé exactement (« Spider-Man », « L'Odyssée » : la saisie devenait « spiderman », « lodyssée », absents de l'index). La saisie est maintenant découpée comme l'index.
 - Recherche (Android) : avec un mot très courant, les résultats s'arrêtaient au plafond dans l'ordre de la table et le titre cherché pouvait manquer ; les titres qui commencent par la saisie sont désormais ajoutés en tête.
 - Recherche (Android) : index de recherche réparé automatiquement s'il a été laissé incomplet par une première synchro interrompue (appli tuée, box en veille) ; les titres ajoutés ensuite n'étaient plus jamais trouvés.
-
-## [1.3.3] — 2026-11-13 (Android) et bureau 1.2.51
-
-### Corrigé
 - Recherche (Android TV) : tous les résultats sont désormais accessibles. Auparavant, l'écran annonçait par exemple « 30 » films et séries mais n'en affichait que 12 (deux rangées), sans moyen d'atteindre la suite ; les chaînes étaient limitées à 6. Le plafond de 40 résultats par type passe à 500 (Android) et de 30 à 400 (bureau).
 
 ### Modifié
