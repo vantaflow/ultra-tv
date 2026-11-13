@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Base de données : moteur SQLite 3.49 embarqué dans l'application (au lieu de celui, souvent ancien, du système ; repli automatique sur le système si besoin) et cache de pages porté à 8 Mo — listes, guide et recherche plus rapides sur les box modestes.
+
 ## [1.3.23] — 2026-11-13 (Android)
 
 ### Corrigé

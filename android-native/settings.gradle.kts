@@ -10,6 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        // SQLite embarqué (com.github.requery:sqlite-android) : publié seulement sur JitPack, limité à ce groupe.
+        maven("https://jitpack.io") { content { includeGroup("com.github.requery") } }
     }
 }
 

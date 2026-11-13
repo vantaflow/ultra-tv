@@ -21,6 +21,9 @@ object DatabaseModule {
     @Provides @Singleton
     fun provideDb(@ApplicationContext ctx: Context): UltraDb =
         Room.databaseBuilder(ctx, UltraDb::class.java, "ultra-tv.db")
+            // Moteur SQLite embarqué (3.49) au lieu de celui du système : mêmes fichiers, même API. Seulement si sa
+            // bibliothèque native se charge (sinon, ex. ABI inattendue ou tests sur ordinateur : moteur du système).
+            .apply { if (BundledSqlite.available) openHelperFactory(io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory()) }
             // Versions 1..9 predate schema export; there are no Migration objects
             // for them, so we wipe-and-rebuild when upgrading from any of them.
             // FUTURE: any bump past 10 MUST ship an explicit Migration and be
@@ -43,6 +46,8 @@ object DatabaseModule {
                 override fun onOpen(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                     runCatching { db.query("PRAGMA synchronous = NORMAL").close() }
                     runCatching { db.query("PRAGMA journal_size_limit = 33554432").close() }
+                    // Cache de pages de 8 Mo (≈ 2 Mo par défaut) : listes, guide et recherche relisent moins le stockage lent.
+                    runCatching { db.query("PRAGMA cache_size = -8000").close() }
                 }
             })
             .build()
@@ -86,4 +91,15 @@ object NetworkModule {
         .readTimeout(30, TimeUnit.SECONDS)
         .callTimeout(60, TimeUnit.SECONDS)
         .build()
+}
+
+/** Moteur SQLite embarqué disponible (bibliothèque native chargée) ; jamais sous Robolectric. */
+object BundledSqlite {
+    val available: Boolean by lazy {
+        if (android.os.Build.FINGERPRINT == "robolectric") false
+        else runCatching { System.loadLibrary("sqlite3x") }
+            .onFailure { android.util.Log.w("UltraDb", "SQLite embarqué indisponible, moteur du système : $it") }
+            .onSuccess { android.util.Log.i("UltraDb", "SQLite embarqué chargé") }
+            .isSuccess
+    }
 }

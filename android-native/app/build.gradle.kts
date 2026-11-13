@@ -226,6 +226,9 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     // Installe le Baseline Profile (src/main/baseline-prof.txt) au premier lancement : compilation AOT des chemins de démarrage.
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // SQLite 3.49 embarqué dans l'APK (même moteur, récent et rapide, sur toutes les box ; une box Android 8-9 tourne
+    // sinon avec un SQLite de 2017). Branché sur Room via openHelperFactory : l'API SupportSQLite reste inchangée.
+    implementation("com.github.requery:sqlite-android:3.49.0")
     // Télémétrie de fluidité (images saccadées par écran) : voir perf/PerfTelemetry.kt.
     implementation("androidx.metrics:metrics-performance:1.0.0")
     implementation(libs.activity.compose)
