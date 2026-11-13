@@ -221,8 +221,10 @@ class CatalogRepository @Inject constructor(
         // Mot courant : la recherche plein texte rend ses lignes dans l'ordre de la table et s'arrête au plafond, le titre
         // cherché pouvait être au-delà. On ajoute alors, en tête, les titres qui commencent par la saisie.
         val prefix = query.trim().takeIf { it.length >= 2 }?.let { likePrefix(it) }
-        val mHead = if (prefix != null && rawMovies.size >= cap) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
-        val sHead = if (prefix != null && rawSeries.size >= cap) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        // Index vide (déclencheurs perdus, reconstruction pas encore faite) : même recherche par début de titre, sans l'index —
+        // avant, la recherche ne rendait alors plus rien du tout.
+        val mHead = if (prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        val sHead = if (prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
         var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
         var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).

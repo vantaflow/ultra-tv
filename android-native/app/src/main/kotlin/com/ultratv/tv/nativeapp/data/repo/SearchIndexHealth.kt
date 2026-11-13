@@ -2,6 +2,9 @@ package com.ultratv.tv.nativeapp.data.repo
 
 import com.ultratv.tv.nativeapp.data.db.UltraDb
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -25,6 +28,10 @@ class SearchIndexHealth @Inject constructor(
 ) {
     private val lock = Mutex()
     @Volatile private var checked = false
+
+    /** Émet à chaque fois qu'aucune synchro ne tourne (au départ, puis à la fin de chacune). */
+    fun idleTicks(): kotlinx.coroutines.flow.Flow<Unit> =
+        sync.status.map { it == null }.distinctUntilChanged().filter { it }.map { }
 
     suspend fun ensure() {
         if (checked || sync.status.value != null) return

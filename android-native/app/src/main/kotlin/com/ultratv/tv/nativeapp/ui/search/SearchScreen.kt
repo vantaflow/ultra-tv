@@ -166,7 +166,9 @@ class SearchViewModel @Inject constructor(
 
     init {
         // Index de recherche réparé s'il a été laissé incomplet (synchro interrompue) : une fois par lancement.
-        viewModelScope.launch(Dispatchers.IO) { runCatching { indexHealth.ensure() } }
+        // Synchro en cours à l'ouverture : la vérification était abandonnée et jamais retentée — un index cassé ne rendait
+        // alors plus aucun résultat. Elle est relancée à chaque fin de synchro (et à chaque recherche, voir setQuery).
+        viewModelScope.launch(Dispatchers.IO) { indexHealth.idleTicks().collect { runCatching { indexHealth.ensure() } } }
         viewModelScope.launch {
             val pid = provider.firstActiveId() ?: return@launch
             runCatching {
@@ -183,6 +185,7 @@ class SearchViewModel @Inject constructor(
         _q.value = s
         job?.cancel()
         _searching.value = s.isNotBlank()
+        viewModelScope.launch(Dispatchers.IO) { runCatching { indexHealth.ensure() } }   // sans attendre (base peut-être occupée)
         job = viewModelScope.launch {
             delay(220)
             // Aucune source : on ne laisse pas « Recherche… » affiché indéfiniment.

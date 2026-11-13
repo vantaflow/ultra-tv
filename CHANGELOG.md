@@ -10,6 +10,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Règle commune à tous les écrans et tous les appareils (TV, téléphone, tablette) : un texte qui dépasse sa ligne passe à la ligne (deux lignes) au lieu d'être coupé ; si la place manque en hauteur, il reste sur une ligne (et sur téléphone réduit d'abord sa taille avant « … »).
 
 ### Corrigé
+- Recherche : plus aucun résultat quand l'index de recherche était incomplet et qu'une synchro tournait à l'ouverture (réparation abandonnée, jamais retentée depuis 1.3.5). Réparation retentée à chaque recherche et après chaque synchro, et recherche par début de titre si l'index ne rend rien.
 - Lecteur, liste des chaînes : colonne des catégories plus large, noms longs (« FRANCE GÉNÉRALISTES ») sur deux lignes au lieu d'être coupés.
 - Plantage quand une liste de chaînes, du guide ou d'affiches raccourcissait pendant l'affichage (resynchro, changement de catégorie) : « index 0 in ItemSnapshotList of size 0 ».
 
