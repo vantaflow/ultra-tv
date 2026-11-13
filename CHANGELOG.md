@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.19] — 2026-11-13 (Android)
+
 ### Ajouté
 - Films et Séries : bouton « Recherche » (pastille en tête des onglets sur TV, loupe sur téléphone) qui ouvre une recherche limitée à la rubrique — « Recherche · Films » / « Recherche · Séries » ; seule la rubrique est interrogée (ni chaînes, ni guide), donc plus rapide.
 
