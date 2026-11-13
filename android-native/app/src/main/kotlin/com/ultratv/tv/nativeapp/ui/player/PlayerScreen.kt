@@ -58,7 +58,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.adaptive.AdaptiveProfile
 import com.ultratv.tv.nativeapp.adaptive.NetworkMonitor
 import com.ultratv.tv.nativeapp.adaptive.PlaybackResolver

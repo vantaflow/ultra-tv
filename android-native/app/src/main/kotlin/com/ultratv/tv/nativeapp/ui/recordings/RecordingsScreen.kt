@@ -37,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.RecordingEntity
 import com.ultratv.tv.nativeapp.data.recording.RecordingRepository
 import com.ultratv.tv.nativeapp.i18n.LocalDs

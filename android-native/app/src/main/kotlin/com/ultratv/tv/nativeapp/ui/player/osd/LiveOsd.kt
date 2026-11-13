@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface

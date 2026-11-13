@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.tmdb.TmdbKind
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.BackdropImage

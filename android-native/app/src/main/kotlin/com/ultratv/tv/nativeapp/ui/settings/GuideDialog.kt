@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.xmltv.GuideAddress
 import com.ultratv.tv.nativeapp.data.xmltv.GuideCheck
 import com.ultratv.tv.nativeapp.data.xmltv.GuideMode

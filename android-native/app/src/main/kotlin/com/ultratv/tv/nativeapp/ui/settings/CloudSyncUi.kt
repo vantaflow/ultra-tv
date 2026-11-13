@@ -24,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.config.CloudDevice
 import com.ultratv.tv.nativeapp.data.config.CloudSyncLogic
 import com.ultratv.tv.nativeapp.data.config.PendingRemoval

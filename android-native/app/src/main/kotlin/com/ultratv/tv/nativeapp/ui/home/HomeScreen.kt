@@ -56,7 +56,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity
 import com.ultratv.tv.nativeapp.i18n.LocalDs

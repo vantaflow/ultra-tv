@@ -38,7 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope

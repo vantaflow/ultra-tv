@@ -29,7 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.lifecycle.ViewModel
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.remote.RemoteController
 import com.ultratv.tv.nativeapp.data.remote.RemoteUi
 import com.ultratv.tv.nativeapp.i18n.LocalDs

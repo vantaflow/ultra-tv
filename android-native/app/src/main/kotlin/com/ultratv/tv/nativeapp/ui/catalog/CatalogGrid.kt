@@ -51,7 +51,7 @@ import androidx.paging.cachedIn
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import androidx.paging.map
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
 import com.ultratv.tv.nativeapp.data.db.CategoryCount
 import com.ultratv.tv.nativeapp.data.db.MovieDao

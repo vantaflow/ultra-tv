@@ -39,7 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.SyncPart
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs

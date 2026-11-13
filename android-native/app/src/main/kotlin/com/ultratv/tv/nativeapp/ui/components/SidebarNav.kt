@@ -54,7 +54,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.FocusSurface

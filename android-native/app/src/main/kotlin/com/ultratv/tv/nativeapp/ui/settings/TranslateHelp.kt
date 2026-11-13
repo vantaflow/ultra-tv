@@ -24,7 +24,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.TRANSLATE_URL

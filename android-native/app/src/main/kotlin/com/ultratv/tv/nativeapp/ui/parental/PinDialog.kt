@@ -40,7 +40,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import javax.inject.Inject
 
 @HiltViewModel

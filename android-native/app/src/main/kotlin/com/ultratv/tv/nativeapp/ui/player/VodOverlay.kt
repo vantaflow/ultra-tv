@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.Strings
 import com.ultratv.tv.nativeapp.ui.common.design

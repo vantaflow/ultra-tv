@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.reminders.ReminderBus
 import com.ultratv.tv.nativeapp.data.reminders.ReminderEvent
 import com.ultratv.tv.nativeapp.i18n.LocalDs

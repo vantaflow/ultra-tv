@@ -57,7 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.i18n.DesignStrings

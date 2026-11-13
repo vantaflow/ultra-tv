@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Téléphone, Réglages › Synchronisation : titre en double et coupé, bouton « Synchroniser maintenant » serré contre le texte, quatre modes tronqués côte à côte. L'état et le bouton sont l'un sous l'autre, et les modes forment une liste avec leur description en entier ; les boutons-pilules s'agrandissent avec leur libellé (2 lignes au plus).
 
+### Ajouté
+- Téléphone et tablette : règle commune à tous les écrans — un texte limité à une ligne réduit d'abord sa taille (jusqu'à 80 %) pour tenir en entier avant d'être coupé par « … », sans décaler la mise en page. La TV n'est pas concernée.
+
 ## [1.3.13] — 2026-11-13 (Android) et bureau 1.2.58
 
 ### Corrigé

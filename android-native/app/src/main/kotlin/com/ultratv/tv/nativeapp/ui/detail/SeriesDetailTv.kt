@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.downloads.DownloadEntity
 import com.ultratv.tv.nativeapp.data.db.EpisodeEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity

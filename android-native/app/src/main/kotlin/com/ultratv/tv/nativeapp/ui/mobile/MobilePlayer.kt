@@ -56,7 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.ui.design.DIcon
 import com.ultratv.tv.nativeapp.ui.design.LiveBadge
 import com.ultratv.tv.nativeapp.ui.design.Manrope

@@ -34,7 +34,7 @@ import com.ultratv.tv.nativeapp.data.repo.SyncStatusBus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.ultratv.tv.nativeapp.ui.design.spx
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 
 @HiltViewModel
 class SyncStatusViewModel @Inject constructor(

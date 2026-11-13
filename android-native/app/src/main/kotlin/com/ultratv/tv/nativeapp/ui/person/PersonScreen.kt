@@ -49,7 +49,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import com.ultratv.tv.nativeapp.data.tmdb.PersonInfo
 import com.ultratv.tv.nativeapp.data.tmdb.PersonRepository

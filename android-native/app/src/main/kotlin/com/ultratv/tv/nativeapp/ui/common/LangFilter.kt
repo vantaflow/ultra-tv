@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.LangCount
 import com.ultratv.tv.nativeapp.data.repo.LangView
 import com.ultratv.tv.nativeapp.i18n.DesignStrings

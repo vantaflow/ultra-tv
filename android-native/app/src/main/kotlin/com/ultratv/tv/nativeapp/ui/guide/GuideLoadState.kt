@@ -12,7 +12,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.xmltv.EpgFailReason
 import com.ultratv.tv.nativeapp.data.xmltv.EpgProgress
 import com.ultratv.tv.nativeapp.data.xmltv.EpgState

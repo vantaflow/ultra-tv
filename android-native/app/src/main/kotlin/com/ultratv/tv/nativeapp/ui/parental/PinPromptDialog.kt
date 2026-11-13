@@ -33,7 +33,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import androidx.tv.material3.Button
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 
 /**
  * Invite de code parental (maquette Parental.dc.html). Appelle [onUnlocked] si le code est correct, [onCancel] sinon.

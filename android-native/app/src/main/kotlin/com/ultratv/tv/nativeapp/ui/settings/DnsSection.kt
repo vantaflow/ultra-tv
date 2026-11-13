@@ -14,7 +14,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.net.dns.AppDns
 import com.ultratv.tv.nativeapp.data.net.dns.DnsMode
 import com.ultratv.tv.nativeapp.data.net.dns.DnsSettings

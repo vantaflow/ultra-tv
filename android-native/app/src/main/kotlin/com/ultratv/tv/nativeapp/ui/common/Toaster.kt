@@ -20,7 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.tv.material3.MaterialTheme
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 

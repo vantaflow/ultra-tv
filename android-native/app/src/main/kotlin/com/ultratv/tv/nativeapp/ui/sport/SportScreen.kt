@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.recording.ScheduleResult
 import com.ultratv.tv.nativeapp.data.sport.SportDay
