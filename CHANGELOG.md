@@ -9,6 +9,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Boutons écrasés en simples traits (carrousel « À la une » de l'accueil : Regarder / Plus d'infos ; clavier de la recherche simple) : le passage à la ligne automatique ne s'applique plus qu'aux textes d'une ligne, et jamais dans les bandeaux « À la une » ni dans la surcouche du direct.
+- Réglages : après une validation, le focus reste sur la ligne choisie au lieu de remonter en haut ; réglages sans effet retirés (« Menu : barre latérale / barre du haut ») ainsi que « Colonne des chaînes du guide » (largeur normale pour tous).
 
 ## [1.3.21] — 2026-11-13 (Android)
 

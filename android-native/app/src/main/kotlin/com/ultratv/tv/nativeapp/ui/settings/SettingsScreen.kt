@@ -7,8 +7,6 @@ import com.ultratv.tv.nativeapp.i18n.locale
 import com.ultratv.tv.nativeapp.i18n.channelLogos
 import com.ultratv.tv.nativeapp.i18n.sportSectionHint
 import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
-import com.ultratv.tv.nativeapp.i18n.guideNameWidthLabel
-import com.ultratv.tv.nativeapp.i18n.guideNameWidthName
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.guideCheckMessage
 import com.ultratv.tv.nativeapp.i18n.guideCustomLabel
@@ -66,7 +64,6 @@ import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.data.prefs.DefaultPlayer
-import com.ultratv.tv.nativeapp.data.prefs.SidebarPosition
 import com.ultratv.tv.nativeapp.i18n.AppLang
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -276,7 +273,9 @@ internal fun SettingsTvLayout(
         val paneScope = rememberCoroutineScope()
         Column(
             Modifier.weight(1f).fillMaxHeight()
-                .focusProperties { enter = { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } }.focusGroup()
+                // Seulement à l'arrivée par la flèche horizontale depuis les rubriques : un focus RENDU au volet (fenêtre de choix
+                // fermée après une validation) revenait sur la première ligne, volet remonté en haut (retour Reddit).
+                .focusProperties { enter = { if (SettingsFocus.enteringFromRubrics()) { paneScope.launch { paneScroll.scrollTo(0) }; firstSlot.target() } else androidx.compose.ui.focus.FocusRequester.Default } }.focusGroup()
                 .verticalScroll(paneScroll).padding(start = 72.design, end = 88.design, top = 54.design, bottom = 54.design),
             verticalArrangement = Arrangement.spacedBy(24.design),
         ) {
@@ -636,7 +635,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
-        PrefRow(D.menu, if (p.sidebarPosition == SidebarPosition.LEFT) D.menuSidebar else D.menuTop) { choice = "menu" }
+        // (Réglage « Menu : barre latérale / barre du haut » retiré : depuis le nouveau menu latéral il n'avait plus d'effet.)
         // Téléphone : les trois rubriques entre Accueil et Plus (les autres restent dans « Plus »).
         if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
             val tabs = com.ultratv.tv.nativeapp.ui.mobile.bottomTabRoutes(p.bottomTabs, p.sportSection)
@@ -645,7 +644,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         SwitchPrefRow(D.channelNumbers, p.showChannelNumbers) { app.setShowChannelNumbers(it) }
         SwitchPrefRow(D.channelLogos, p.showChannelLogos) { app.setShowChannelLogos(it) }
         SwitchPrefRow(D.sportSectionLabel, p.sportSection, hint = D.sportSectionHint) { app.setSportSection(it) }
-        PrefRow(D.guideNameWidthLabel, D.guideNameWidthName(com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(p.guideNameWidth))) { choice = "guidew" }
+        // (« Colonne des chaînes du guide » retiré : largeur normale pour tous, un réglage de moins.)
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
         PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
@@ -665,9 +664,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     when (choice) {
         "theme" -> ChoiceDialog(D.theme, AppTheme.entries.map { it to themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
-        "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
-        "guidew" -> ChoiceDialog(D.guideNameWidthLabel, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.entries.map { it to D.guideNameWidthName(it) }, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(p.guideNameWidth), { app.setGuideNameWidth(it.key); choice = "" }, { choice = "" })
         "accent" -> AccentDialog(AccentChoice.parse(p.accent), { app.setAccent(it.key); choice = "" }, { choice = "" })
         "anim" -> ChoiceDialog(D.animations, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.entries.map { it to D.animationName(it) }, com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(p.animations), { app.setAnimations(it.key); choice = "" }, { choice = "" })
         "text" -> ChoiceDialog(D.textSizeLabel, TextSize.entries.map { it to D.textSizeName(it) }, TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
@@ -855,4 +852,11 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
         PrefRow("TheIntroDB", "theintrodb.org") { }
     }
     com.ultratv.tv.nativeapp.update.UpdateDialog()
+}
+
+/** Règle d'entrée dans le volet des Réglages (pure, testée). */
+internal object SettingsFocus {
+    /** Entrée depuis la liste des rubriques : flèche droite (ou gauche en arabe) pressée à l'instant. */
+    fun enteringFromRubrics(lastKeyCode: Int = com.ultratv.tv.nativeapp.ui.common.InputClock.lastKeyCode, recent: Boolean = com.ultratv.tv.nativeapp.ui.common.InputClock.recentKey()): Boolean =
+        recent && (lastKeyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT || lastKeyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT)
 }
