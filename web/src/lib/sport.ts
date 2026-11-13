@@ -309,11 +309,19 @@ export function upcoming(entries: SportEntry[], now: number, zone: Zone = "local
 export const progress = (start: number, end: number, now: number): number =>
   Math.min(1, Math.max(0, (now - start) / Math.max(1, end - start)));
 
-/** Chaînes de sport : sans doublon, triées par numéro (ceux sans numéro en dernier) puis nom, au plus `limit`. */
+/**
+ * Chaîne « réservée » sans évènement (« NO EVENT STREAMING NOW », « No events », « Event offline »…) : les fournisseurs
+ * en publient des centaines pour leurs évènements à la demande ; vides, elles noyaient la liste.
+ */
+export function isPlaceholderChannel(name: string): boolean {
+  return /\bno\s+(live\s+)?events?\b|\bevents?\s+(offline|not\s+(live|started))\b|\bno\s+stream(ing)?\b/i.test(name);
+}
+
+/** Chaînes de sport : sans doublon ni chaîne réservée vide, triées par numéro (ceux sans numéro en dernier) puis nom, au plus `limit`. */
 export function sportChannels(channels: ChannelRow[], limit = 200): ChannelRow[] {
   const seen = new Set<number>();
   return channels
-    .filter((c) => { const k = chanKey(c); if (seen.has(k)) return false; seen.add(k); return true; })
+    .filter((c) => { const k = chanKey(c); if (seen.has(k) || isPlaceholderChannel(c.display)) return false; seen.add(k); return true; })
     .sort((a, b) => Number(a.num === 0) - Number(b.num === 0) || a.num - b.num || byText(a.display, b.display) || chanKey(a) - chanKey(b))
     .slice(0, limit);
 }

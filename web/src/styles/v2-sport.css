@@ -38,6 +38,10 @@
 .sp-what > span { color: var(--text-3); font-size: 0.85rem; }
 .sp-acts { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 .sp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 0.75rem; }
+/* Colonne des chaînes : défile dans son cadre (hauteur de la fenêtre) au lieu d'allonger toute la page. */
+.sp-cols > .sp-chans { position: sticky; top: 0; max-height: calc(100vh - 4rem); display: flex; flex-direction: column; min-height: 0; }
+.sp-cols > .sp-chans .sp-grid { overflow-y: auto; min-height: 0; padding: 0.25rem; }
+@media (max-width: 1100px) { .sp-cols > .sp-chans { position: static; max-height: 70vh; } }
 .sp-ch { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 0.9rem; border-radius: 1.2rem; background: var(--surface); text-align: start; min-width: 0; transition: background 0.12s; }
 .sp-ch .tx { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
 .sp-ch .tx b { font-weight: 800; font-size: 0.95rem; }

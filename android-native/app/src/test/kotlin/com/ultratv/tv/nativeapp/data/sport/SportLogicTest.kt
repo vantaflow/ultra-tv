@@ -127,4 +127,12 @@ class SportLogicTest {
         assertEquals(1, SportLogic.liveNow(list, 150).size)
         assertEquals(1, SportLogic.upcoming(list, 50, TimeZone.getTimeZone("UTC")).flatMap { it.entries }.size)
     }
+
+    @org.junit.Test fun chainesReserveesEcartees() {
+        org.junit.Assert.assertTrue(SportLogic.isPlaceholderChannel("NO EVENT STREAMING NOW - I EXTRA 12"))
+        org.junit.Assert.assertTrue(SportLogic.isPlaceholderChannel("DAZN 3: No Events"))
+        org.junit.Assert.assertTrue(SportLogic.isPlaceholderChannel("PPV 4 | Event Offline"))
+        org.junit.Assert.assertFalse(SportLogic.isPlaceholderChannel("beIN Sports 1"))
+        org.junit.Assert.assertFalse(SportLogic.isPlaceholderChannel("Eventos Deportivos"))
+    }
 }

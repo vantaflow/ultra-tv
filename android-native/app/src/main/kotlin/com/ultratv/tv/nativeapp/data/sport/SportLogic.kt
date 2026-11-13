@@ -71,6 +71,13 @@ object SportLogic {
         ((nowMs - startMs).toFloat() / (endMs - startMs).coerceAtLeast(1)).coerceIn(0f, 1f)
 
     /** Chaînes de sport pour la rangée « Chaînes sport » : sans doublon, triées par numéro (ceux sans numéro en dernier) puis titre, au plus [limit]. */
+    /**
+     * Chaîne « réservée » sans évènement (« NO EVENT STREAMING NOW », « No events », « Event offline »…) : les fournisseurs
+     * en publient des centaines pour leurs évènements à la demande ; vides, elles noyaient la liste.
+     */
+    private val placeholder = Regex("""\bno\s+(live\s+)?events?\b|\bevents?\s+(offline|not\s+(live|started))\b|\bno\s+stream(ing)?\b""", RegexOption.IGNORE_CASE)
+    fun isPlaceholderChannel(name: String): Boolean = placeholder.containsMatchIn(name)
+
     fun sportChannels(channels: List<ChannelEntity>, limit: Int = 200): List<ChannelEntity> =
-        channels.distinctBy { it.id }.sortedWith(compareBy<ChannelEntity> { it.num == 0 }.thenBy { it.num }.thenBy { it.title }.thenBy { it.id }).take(limit)
+        channels.distinctBy { it.id }.filterNot { isPlaceholderChannel(it.name) }.sortedWith(compareBy<ChannelEntity> { it.num == 0 }.thenBy { it.num }.thenBy { it.title }.thenBy { it.id }).take(limit)
 }

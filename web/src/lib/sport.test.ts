@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChannelRow, ProgramRow } from "@/db/types";
 import {
-  BADGE_TTL_MS, MAX_LIVE, MAX_UPCOMING, TITLE_HINT, badgeOfResponse, dayOffset, dayStart, fold, isSportChannel, isSportProgramme, liveNow,
+  BADGE_TTL_MS, isPlaceholderChannel, MAX_LIVE, MAX_UPCOMING, TITLE_HINT, badgeOfResponse, dayOffset, dayStart, fold, isSportChannel, isSportProgramme, liveNow,
   matchLineOf, ofKind, playMinute, presentKinds, progress, readBadge, sportChannels, sportKindOf, teamKey, teamNamesOf, teamQueryName, upcoming,
   type SportEntry,
 } from "./sport";
@@ -270,5 +270,16 @@ describe("Écussons d'équipes", () => {
     expect(badgeOfResponse({ team: null })).toBeNull();
     expect(badgeOfResponse({ team: { badge: "javascript:alert(1)" } })).toBeNull();
     expect(badgeOfResponse("x")).toBeUndefined();
+  });
+});
+
+describe("isPlaceholderChannel", () => {
+  it("écarte les chaînes réservées sans évènement", () => {
+    expect(isPlaceholderChannel("NO EVENT STREAMING NOW - I EXTRA 12")).toBe(true);
+    expect(isPlaceholderChannel("DAZN 3: No Events")).toBe(true);
+    expect(isPlaceholderChannel("PPV 4 | Event Offline")).toBe(true);
+    expect(isPlaceholderChannel("beIN Sports 1")).toBe(false);
+    expect(isPlaceholderChannel("Eventos Deportivos")).toBe(false);
+    expect(isPlaceholderChannel("Canal+ Sport 360")).toBe(false);
   });
 });
