@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Écran d'ouverture : nouveau choix « Dernier écran utilisé » (Réglages › Affichage › Ouvrir sur) — l'application rouvre la dernière rubrique (Direct, Guide, Films, Séries, Sport, Favoris…) ; fiches, lecteur et réglages ne sont jamais rouverts.
+
 ## [1.3.10] — 2026-11-13 (Android) et bureau 1.2.54
 
 ### Corrigé

@@ -150,6 +150,8 @@ data class UserPrefs(
     val homeHidden: String = "",
     /** Écran d'ouverture : "" (= hérité de « Reprendre au lancement »), "home", "live", "movies", "series", "guide", "last". */
     val startScreen: String = "",
+    /** Dernière rubrique ouverte (pour « Ouvrir sur › Dernier écran »). */
+    val lastScreen: String = "",
     /** Rubrique Sport (entrée de menu + rangée d'accueil « Sport en direct ») : désactivée par défaut, activée dans Réglages › Affichage. */
     val sportSection: Boolean = false,
     /** Mode simple : grandes tuiles à la place de l'accueil (surchargé PAR PROFIL, voir ProfilePrefs.simpleMode). */
@@ -228,6 +230,7 @@ class UserPreferencesStore @Inject constructor(
         val homeOrder = stringPreferencesKey("home_order")
         val homeHidden = stringPreferencesKey("home_hidden")
         val startScreen = stringPreferencesKey("start_screen")
+        val lastScreen = stringPreferencesKey("last_screen")
         val sportSection = booleanPreferencesKey("sport_section")
         val catalogSource = stringPreferencesKey("catalog_source")
         val catalogLayout = stringPreferencesKey("catalog_layout")
@@ -284,7 +287,7 @@ class UserPreferencesStore @Inject constructor(
             syncVod = p[Keys.syncVod] ?: true, syncSeries = p[Keys.syncSeries] ?: true, syncUnmeteredOnly = p[Keys.syncUnmetered] ?: true,
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
             accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
-            homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "",
+            homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "", lastScreen = p[Keys.lastScreen] ?: "",
             sportSection = p[Keys.sportSection] ?: false,
             catalogSource = p[Keys.catalogSource] ?: "provider", catalogLayout = p[Keys.catalogLayout] ?: "split",
             catalogColumns = p[Keys.catalogColumns] ?: 0, catalogSort = p[Keys.catalogSort] ?: 0,
@@ -339,6 +342,7 @@ class UserPreferencesStore @Inject constructor(
     /** Ordre et rangées masquées de l'accueil, écrits ensemble (une seule émission du flux). */
     suspend fun setHomeLayout(orderCsv: String, hiddenCsv: String) = update { it[Keys.homeOrder] = orderCsv; it[Keys.homeHidden] = hiddenCsv }
     suspend fun setStartScreen(key: String) = update { it[Keys.startScreen] = key }
+    suspend fun setLastScreen(route: String) = update { it[Keys.lastScreen] = route }
     /** Mode simple du profil COURANT. */
     suspend fun setSimpleMode(v: Boolean) = profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SIMPLE_MODE, v.toString())
     suspend fun setSportSection(v: Boolean) = update { it[Keys.sportSection] = v }

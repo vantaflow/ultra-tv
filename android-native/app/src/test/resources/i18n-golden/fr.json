@@ -1686,5 +1686,6 @@
   "DesignStrings.getRecUntilTemplate()": "Jusqu'\u00e0 %1$s",
   "DesignStrings.getRecForTemplate()": "Pendant %1$s",
   "DesignStrings.getRecManual()": "Jusqu'\u00e0 l'arr\u00eat manuel (8 h max)",
-  "DesignStrings.getRecSingleConnection()": "Connexion unique : le fournisseur peut refuser l'enregistrement ou couper la lecture."
+  "DesignStrings.getRecSingleConnection()": "Connexion unique : le fournisseur peut refuser l'enregistrement ou couper la lecture.",
+  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Dernier écran utilisé"
 }

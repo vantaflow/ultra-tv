@@ -87,8 +87,8 @@ object SimpleHome {
      * d'office ferait perdre une personne peu à l'aise) ; seul « dernière chaîne » est respecté, c'est un choix explicite
      * de lecture automatique.
      */
-    fun startupTarget(simple: Boolean, screen: StartScreen): StartupTarget {
-        val t = startupTarget(screen)
+    fun startupTarget(simple: Boolean, screen: StartScreen, lastScreen: String? = null): StartupTarget {
+        val t = startupTarget(screen, lastScreen)
         return if (simple && t is StartupTarget.Route) StartupTarget.Stay else t
     }
 

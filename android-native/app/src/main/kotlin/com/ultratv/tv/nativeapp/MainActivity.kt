@@ -79,6 +79,8 @@ object StartupNav {
     val pending = MutableStateFlow<Pending?>(null)
     /** Route à ouvrir une fois l'application affichée (ex. « Regarder le direct » depuis le chargement). */
     val pendingRoute = MutableStateFlow<String?>(null)
+    /** Écran d'ouverture déjà décidé : avant, l'accueil affiché au démarrage aurait écrasé le « Dernier écran » mémorisé. */
+    val startupDecided = MutableStateFlow(false)
     /** Débogage uniquement : rubrique de Réglages à ouvrir. */
     val debugRub = MutableStateFlow<Int?>(null)
     /** Demande d'appairage cloud depuis un autre écran (accueil vide) : Réglages › Sources la consomme. */
@@ -338,9 +340,10 @@ class MainActivity : ComponentActivity() {
             val prefs = prefsStore.get().flow.first()
             // Écran d'ouverture (Réglages › Affichage) : seulement au vrai lancement (pas après une rotation ni une
             // recréation), et jamais par-dessus un lien profond déjà en attente. Tout de suite, avant le délai qui suit.
-            val target = com.ultratv.tv.nativeapp.ui.simple.SimpleHome.startupTarget(prefs.simpleMode, com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch))
+            val target = com.ultratv.tv.nativeapp.ui.simple.SimpleHome.startupTarget(prefs.simpleMode, com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch), prefs.lastScreen)
             val deepLinkPending = StartupNav.pending.value != null || StartupNav.pendingRoute.value != null
             if (coldStart && !deepLinkPending && target is com.ultratv.tv.nativeapp.nav.StartupTarget.Route) StartupNav.pendingRoute.value = target.route
+            StartupNav.startupDecided.value = true
             if (coldStart && !deepLinkPending && target == com.ultratv.tv.nativeapp.nav.StartupTarget.LastChannel) {
                 val firstProvider = providerRepo.get().observeProviders().first().firstOrNull()
                 if (firstProvider != null) {
@@ -541,6 +544,11 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
       androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalOverlayHost provides overlays, com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch provides openSearch, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack provides navBack, com.ultratv.tv.nativeapp.ui.player.engine.LocalSharedLive provides sharedLive) {
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         val backEntryRoute by nav.currentBackStackEntryAsState()
+        // « Ouvrir sur › Dernier écran » : la dernière rubrique ouverte est mémorisée (fiches, lecteur et réglages ignorés).
+        val rememberRoute = com.ultratv.tv.nativeapp.nav.rememberableScreen(backEntryRoute?.destination?.route)
+        val appVm: com.ultratv.tv.nativeapp.ui.AppViewModel = hiltViewModel()
+        val decided by StartupNav.startupDecided.collectAsState()
+        androidx.compose.runtime.LaunchedEffect(rememberRoute, decided) { if (decided && rememberRoute != null) appVm.setLastScreen(rememberRoute) }
         val onPlayer = com.ultratv.tv.nativeapp.ui.mobile.isFullscreenRoute(backEntryRoute?.destination?.route)
         when (layout) {
             com.ultratv.tv.nativeapp.ui.mobile.NavLayout.BOTTOM_TABS, com.ultratv.tv.nativeapp.ui.mobile.NavLayout.SIDE_RAIL -> {

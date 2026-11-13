@@ -666,6 +666,7 @@
     <string name="perso_start_screen_name_series">Séries</string>
     <string name="perso_start_screen_name_guide">Guia de TV</string>
     <string name="perso_start_screen_name_last_channel">Último canal assistido</string>
+    <string name="perso_start_screen_name_last_screen">Última tela usada</string>
     <plurals name="perso_channel_count">
         <item quantity="one">%1$s canal</item>
         <item quantity="many">%1$s de canais</item>

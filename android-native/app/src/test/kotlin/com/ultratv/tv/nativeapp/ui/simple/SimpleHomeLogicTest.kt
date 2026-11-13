@@ -185,6 +185,18 @@ class SimpleHomeLogicTest {
         assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.HOME))
     }
 
+    @Test fun ouverture_dernierEcran() {
+        assertEquals(StartupTarget.Route(Routes.GUIDE), SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.GUIDE))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.HOME))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, null))
+        // Fiche, lecteur, réglages : jamais rouverts au lancement.
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.SETTINGS))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.PLAYER))
+        // Mode simple : les tuiles restent l'écran d'ouverture.
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.GUIDE))
+        assertEquals(StartScreen.LAST_SCREEN, StartScreen.parse("last_screen", false))
+    }
+
     @Test fun rail_masqueSeulementSurLesTuiles() {
         assertTrue(SimpleHome.railHidden(true, Routes.HOME))
         assertFalse(SimpleHome.railHidden(true, Routes.MOVIES))

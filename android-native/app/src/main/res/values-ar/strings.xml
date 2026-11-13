@@ -698,6 +698,7 @@
     <string name="perso_start_screen_name_series">المسلسلات</string>
     <string name="perso_start_screen_name_guide">دليل البرامج</string>
     <string name="perso_start_screen_name_last_channel">آخر قناة تمت مشاهدتها</string>
+    <string name="perso_start_screen_name_last_screen">آخر شاشة مستخدمة</string>
     <plurals name="perso_channel_count" tools:ignore="ImpliedQuantity">
         <item quantity="zero">%1$s قناة</item>
         <item quantity="one">قناة واحدة</item>

@@ -78,6 +78,7 @@ fun DesignStrings.startScreenName(s: StartScreen): String = when (s) {
     StartScreen.SERIES -> tx(R.string.perso_start_screen_name_series)
     StartScreen.GUIDE -> tx(R.string.perso_start_screen_name_guide)
     StartScreen.LAST_CHANNEL -> tx(R.string.perso_start_screen_name_last_channel)
+    StartScreen.LAST_SCREEN -> tx(R.string.perso_start_screen_name_last_screen)
 }
 
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {

@@ -1686,5 +1686,6 @@
   "DesignStrings.getRecUntilTemplate()": "Until %1$s",
   "DesignStrings.getRecForTemplate()": "For %1$s",
   "DesignStrings.getRecManual()": "Until I stop it (8 h max)",
-  "DesignStrings.getRecSingleConnection()": "Single connection: the provider may refuse the recording or stop playback."
+  "DesignStrings.getRecSingleConnection()": "Single connection: the provider may refuse the recording or stop playback.",
+  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Last screen used"
 }
