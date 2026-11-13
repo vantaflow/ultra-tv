@@ -4,6 +4,19 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.4] — 2026-11-13 (Android)
+
+### Ajouté
+- **Thèmes de couleur** (Réglages › Affichage › Thème) : Bleu nuit, Forêt, Prune, Sable (clair) et Contraste élevé, en plus de Sombre, Clair, Automatique et Noir (OLED). Chaque thème a ses fonds, surfaces, focus et couleur d'accent (contrastes au niveau AAA) ; une couleur d'accent personnalisée reste prioritaire. Le lecteur reste sombre.
+- Menu latéral : appui long sur le profil pour **renommer le profil actuel**.
+
+### Corrigé
+- Recherche bloquée sur « Recherche… » quand aucune source n'était marquée active (source active supprimée sans relais) : la première source est alors utilisée, partout dans l'appli.
+- Recherche : depuis les résultats, Haut mène aux onglets (Tout, Films, Séries…) et aux tris, qui n'étaient plus atteignables à la télécommande ; la vérification de l'index n'est plus attendue avant chaque recherche.
+- Menu latéral : pastille du profil rognée.
+- Première synchronisation : un message long (« Le guide ne contient aucun programme… ») est raccourci proprement au lieu d'être coupé.
+- Déchiffrement des identifiants de la source (Keystore) fait hors du thread principal : il pouvait figer l'interface un instant.
+
 ### Modifié
 - Menu latéral refait (Android TV et bureau), d'après la maquette « Menu latéral » : deux groupes, **Regarder** (Accueil, Direct, Guide, Sport, Films, Séries) et **Ma liste** (Favoris, Enregistrements, Téléchargements), avec Abonnement et Réglages en bas, près du profil. Page ouverte signalée par un fond teinté et une barre d'accent au lieu d'un aplat plein ; le focus garde la pastille claire. Synchro : anneau de progression (menu replié), barre et pourcentage (menu ouvert).
 - TV : entrées de 56 px au plus, têtes de groupe de même hauteur replié / ouvert (les entrées ne bougent plus verticalement à l'ouverture).
