@@ -148,12 +148,15 @@ fun AddProviderDialog(
                     Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(24.dp), bg = Ux.Surface2, modifier = Modifier.height(48.dp).testTag("dialog-cancel")) { _ ->
-                        Box(Modifier.height(48.dp).padding(horizontal = 20.dp), contentAlignment = Alignment.Center) { Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Ux.Text) }
+                    // Petits écrans : « Ajouter et synchroniser » était coupé (« Ajouter et ») ; le bouton principal prend toute la
+                    // place restante et son libellé passe sur deux lignes si besoin.
+                    FocusSurface(onClick = onDismiss, shape = RoundedCornerShape(24.dp), bg = Ux.Surface2, modifier = Modifier.heightIn(min = 48.dp).testTag("dialog-cancel")) { _ ->
+                        Box(Modifier.heightIn(min = 48.dp).padding(horizontal = 18.dp), contentAlignment = Alignment.Center) { Text(S.cancel, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, color = Ux.Text, maxLines = 1) }
                     }
-                    FocusSurface(onClick = submit, shape = RoundedCornerShape(24.dp), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.height(48.dp).weight(1f, fill = false).testTag("dialog-submit")) { _ ->
-                        Box(Modifier.height(48.dp).padding(horizontal = 22.dp), contentAlignment = Alignment.Center) {
-                            Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, color = if (canSubmit) Ux.TextOnLight else Ux.Muted)
+                    FocusSurface(onClick = submit, shape = RoundedCornerShape(24.dp), bg = if (canSubmit) Ux.Cta else Ux.Surface, modifier = Modifier.heightIn(min = 48.dp).weight(1f).testTag("dialog-submit")) { _ ->
+                        Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 14.dp, vertical = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(submitLabel ?: D.addAndSync, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp, maxLines = 2,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, color = if (canSubmit) Ux.TextOnLight else Ux.Muted)
                         }
                     }
                 }

@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Ajout d'une source (téléphone) : le bouton « Ajouter et synchroniser » était coupé (« Ajouter et ») sur les petits écrans ; il prend toute la largeur restante et passe sur deux lignes si besoin.
+
 ## [1.3.7] — 2026-11-13 (Android)
 
 ### Ajouté
