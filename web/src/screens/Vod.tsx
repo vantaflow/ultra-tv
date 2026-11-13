@@ -265,7 +265,8 @@ function VodTop({ source, kind, onOpen }: { source: Source; kind: "movie" | "ser
       {best && (
         <section className="hero vod-hero" aria-label={t("home.featured")}>
           <div className="art" aria-hidden="true">
-            {backdrop ? <div className="slide-bg" style={{ backgroundImage: `url("${backdrop.replace(/"/g, "%22")}")` }} /> : <Img src={best.poster} contain />}
+            {/* Pas de grande image : l'affiche sert de fond (recadrée, fondu vers le texte) au lieu d'être posée sur le texte. */}
+            <div className={`slide-bg${backdrop ? "" : " from-poster"}`} style={{ backgroundImage: `url("${(backdrop ?? best.poster ?? "").replace(/"/g, "%22")}")` }} />
           </div>
           <div className="meta">
             <span className="badge-live">{t("home.featured")}</span>

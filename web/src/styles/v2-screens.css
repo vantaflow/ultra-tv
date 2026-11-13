@@ -53,6 +53,7 @@
 /* ---------- Films / Séries ---------- */
 .vod-hero { min-height: 16rem; flex: 0 0 auto; padding: 2rem 2.25rem; border-radius: 2rem; }
 .vod-hero .art { inset: 0; width: 100%; }
+.vod-hero .art .slide-bg.from-poster { background-size: cover; background-position: center 25%; }
 .vod-hero .art::after { display: block; background: linear-gradient(to right, var(--surface) 8%, transparent 70%); }
 [dir="rtl"] .vod-hero .art::after { background: linear-gradient(to left, var(--surface) 8%, transparent 70%); }
 .vod-hero > *:not(.art) { max-width: 46rem; }
