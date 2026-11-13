@@ -1456,7 +1456,7 @@
   "Strings.getPrefThemeDark()": "Oscuro",
   "Strings.getPrefTopBar()": "Barra superior",
   "Strings.getRailOther()": "Otros",
-  "Strings.getRecordingQueuedTemplate()": "Grabación en cola (máx %1$d min)",
+  "Strings.getRecordingQueuedTemplate()": "Grabando hasta las %1$s",
   "Strings.getRecordingStatusCancelled()": "Cancelado",
   "Strings.getRecordingStatusDone()": "Guardado",
   "Strings.getRecordingStatusFailed()": "Falló",

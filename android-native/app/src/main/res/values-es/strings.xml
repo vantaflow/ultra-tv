@@ -1310,7 +1310,7 @@
     <string name="str_sleep2h">2 horas</string>
     <string name="str_sleep_cancel">Cancelar temporizador</string>
     <string name="str_sleep_reached">Temporizador agotado — reproducción pausada</string>
-    <string name="str_recording_queued_template">Grabación en cola (máx %1$d min)</string>
+    <string name="str_recording_queued_template">Grabando hasta las %1$s</string>
     <string name="str_stat_resolution">Resolución</string>
     <string name="str_stat_video_codec">Códec vídeo</string>
     <string name="str_stat_frame_rate">Fotogramas/s</string>

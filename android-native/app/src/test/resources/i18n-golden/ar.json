@@ -1456,7 +1456,7 @@
   "Strings.getPrefThemeDark()": "داكن",
   "Strings.getPrefTopBar()": "الشريط العلوي",
   "Strings.getRailOther()": "أخرى",
-  "Strings.getRecordingQueuedTemplate()": "التسجيل في الانتظار (بحد أقصى %1$d د)",
+  "Strings.getRecordingQueuedTemplate()": "\u0627\u0644\u062a\u0633\u062c\u064a\u0644 \u062d\u062a\u0649 %1$s",
   "Strings.getRecordingStatusCancelled()": "أُلغي",
   "Strings.getRecordingStatusDone()": "محفوظ",
   "Strings.getRecordingStatusFailed()": "فشل",

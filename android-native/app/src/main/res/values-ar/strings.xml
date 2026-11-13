@@ -1361,7 +1361,7 @@
     <string name="str_sleep2h">ساعتان</string>
     <string name="str_sleep_cancel">إلغاء المؤقت</string>
     <string name="str_sleep_reached">انتهى مؤقت النوم — أُوقف التشغيل</string>
-    <string name="str_recording_queued_template">التسجيل في الانتظار (بحد أقصى %1$d د)</string>
+    <string name="str_recording_queued_template">التسجيل حتى %1$s</string>
     <string name="str_stat_resolution">الدقة</string>
     <string name="str_stat_video_codec">كودك الفيديو</string>
     <string name="str_stat_frame_rate">معدل الإطارات</string>

@@ -1307,7 +1307,7 @@
     <string name="str_sleep2h">2 hours</string>
     <string name="str_sleep_cancel">Cancel timer</string>
     <string name="str_sleep_reached">Sleep timer reached — playback paused</string>
-    <string name="str_recording_queued_template">Recording queued (max %1$d min)</string>
+    <string name="str_recording_queued_template">Recording until %1$s</string>
     <string name="str_stat_resolution">Resolution</string>
     <string name="str_stat_video_codec">Video codec</string>
     <string name="str_stat_frame_rate">Frame rate</string>

@@ -248,12 +248,18 @@ class PlayerViewModel @Inject constructor(
         }
     }.distinctUntilChanged().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    fun recordLive(maxMinutes: Int = 120, toastTemplate: String = "Recording queued (max %1\$d min)") {
+    /**
+     * Enregistre le direct jusqu'à la fin du programme en cours (+ 10 min de marge, 15 min au moins, 6 h au plus) ; sans guide,
+     * 4 h. Auparavant : 120 min fixes, quel que soit le programme. L'enregistrement s'arrête aussi depuis Enregistrements.
+     */
+    fun recordLive(toastTemplate: String = "Recording until %1\$s") {
         val c = playback.current.value ?: return
         if (c.kind != "LIVE") return
+        val now = System.currentTimeMillis()
+        val minutes = liveRecordMinutes(now, nowProgramme.value?.endMs)
         viewModelScope.launch {
-            recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, maxMinutes)
-            Toaster.ok(toastTemplate.format(maxMinutes))
+            recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, minutes)
+            Toaster.ok(toastTemplate.format(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(now + minutes * 60_000L)))
         }
     }
 
@@ -1068,7 +1074,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // Historique : pas d'écran « regardé récemment » pour le Direct ; on place le focus sur la rangée des chaînes récentes.
             OsdActionId.HISTORY -> if (osdRecents.isNotEmpty()) runCatching { osdFocus.recents.requestFocus() } else Toaster.show(O.historyEmpty)
             OsdActionId.FAVORITE -> vm.toggleFavorite()
-            OsdActionId.RECORD -> vm.recordLive(120, S.recordingQueuedTemplate)
+            OsdActionId.RECORD -> vm.recordLive(S.recordingQueuedTemplate)
             OsdActionId.PIP -> if (!context.enterPip()) Toaster.show(M.pipUnavailable)
             OsdActionId.REPLAY -> if (tsActive) tsBackToLive() else toggleReplay()
             OsdActionId.SLEEP -> sleepMenu = true
@@ -1716,3 +1722,9 @@ private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
 /** Masquage de la surcouche sans touche : bandeau (et VOD) / OSD complet du direct. */
 private const val OSD_HIDE_BANNER_MS = 5_000L
 private const val OSD_HIDE_FULL_MS = 8_000L
+
+
+/** Durée d'un enregistrement du direct (pure, testée) : fin du programme + 10 min, bornée à [15 ; 360] ; sans guide, 240. */
+internal fun liveRecordMinutes(nowMs: Long, programmeEndMs: Long?): Int =
+    if (programmeEndMs == null || programmeEndMs <= nowMs) 240
+    else (((programmeEndMs - nowMs) / 60_000L).toInt() + 10).coerceIn(15, 360)

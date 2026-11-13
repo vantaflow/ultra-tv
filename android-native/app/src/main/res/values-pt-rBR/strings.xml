@@ -1323,7 +1323,7 @@
     <string name="str_sleep2h">2 horas</string>
     <string name="str_sleep_cancel">Cancelar timer</string>
     <string name="str_sleep_reached">Timer de soneca atingido — reprodução pausada</string>
-    <string name="str_recording_queued_template">Gravação na fila (máx. %1$d min)</string>
+    <string name="str_recording_queued_template">Gravando até %1$s</string>
     <string name="str_stat_resolution">Resolução</string>
     <string name="str_stat_video_codec">Codec de vídeo</string>
     <string name="str_stat_frame_rate">Taxa de quadros</string>

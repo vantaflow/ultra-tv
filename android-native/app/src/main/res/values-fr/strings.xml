@@ -1319,7 +1319,7 @@
     <string name="str_sleep2h">2 heures</string>
     <string name="str_sleep_cancel">Annuler le minuteur</string>
     <string name="str_sleep_reached">Minuteur atteint — lecture en pause</string>
-    <string name="str_recording_queued_template">Enregistrement en file (max %1$d min)</string>
+    <string name="str_recording_queued_template">Enregistrement jusqu\'à %1$s</string>
     <string name="str_stat_resolution">Résolution</string>
     <string name="str_stat_video_codec">Codec vidéo</string>
     <string name="str_stat_frame_rate">Images/s</string>

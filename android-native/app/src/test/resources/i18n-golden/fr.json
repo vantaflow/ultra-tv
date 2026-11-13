@@ -1456,7 +1456,7 @@
   "Strings.getPrefThemeDark()": "Sombre",
   "Strings.getPrefTopBar()": "Barre du haut",
   "Strings.getRailOther()": "Autre",
-  "Strings.getRecordingQueuedTemplate()": "Enregistrement en file (max %1$d min)",
+  "Strings.getRecordingQueuedTemplate()": "Enregistrement jusqu'\u00e0 %1$s",
   "Strings.getRecordingStatusCancelled()": "Annulé",
   "Strings.getRecordingStatusDone()": "Enregistré",
   "Strings.getRecordingStatusFailed()": "Échec",
