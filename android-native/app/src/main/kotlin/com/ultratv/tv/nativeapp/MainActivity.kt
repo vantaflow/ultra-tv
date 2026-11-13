@@ -414,7 +414,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
         com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings provides com.ultratv.tv.nativeapp.ui.mobile.mobileStringsFor(lang),
         com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled provides prefs.sportSection,
         com.ultratv.tv.nativeapp.ui.mobile.LocalBottomTabs provides prefs.bottomTabs,
-        com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.parse(prefs.guideNameWidth)),
+        com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay provides com.ultratv.tv.nativeapp.ui.common.ChannelDisplay(prefs.showChannelLogos, com.ultratv.tv.nativeapp.ui.common.GuideNameWidth.NORMAL),   // réglage retiré : largeur normale pour tous
         androidx.compose.ui.platform.LocalLayoutDirection provides direction,
         com.ultratv.tv.nativeapp.ui.design.LocalAnimations provides com.ultratv.tv.nativeapp.ui.design.Animations.resolve(
             com.ultratv.tv.nativeapp.ui.design.AnimationLevel.parse(prefs.animations), adaptive.auto.uiEffects,
@@ -647,7 +647,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         }
         screen(Routes.MOVIES) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE) {
-                com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
+                if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleCatalogScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) }, onBack = { nav.popBackStack() })
+                else com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.MOVIES, onOpen = { id -> nav.navigate(Routes.movieDetail(id)) })
             }
         }
         screen(
@@ -655,7 +656,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
         ) { entry ->
             val id = entry.arguments?.getLong("id") ?: -1L
-            MovieDetailScreen(
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleMovieDetailScreen(id, onPlay = { url, title -> nav.navigate(Routes.player(url, title)) }, onBack = { nav.popBackStack() })
+            else MovieDetailScreen(
                 movieId = id,
                 onPlay = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBack = { nav.popBackStack() },
@@ -675,7 +677,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         }
         screen(Routes.SERIES) {
             androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalPosterKind provides com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV) {
-                com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
+                if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleCatalogScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) }, onBack = { nav.popBackStack() })
+                else com.ultratv.tv.nativeapp.ui.catalog.CatalogGridScreen(com.ultratv.tv.nativeapp.ui.catalog.CatalogKind.SERIES, onOpen = { id -> nav.navigate(Routes.seriesDetail(id)) })
             }
         }
         screen(
@@ -683,7 +686,8 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
             arguments = listOf(navArgument("id") { type = NavType.LongType }),
         ) { entry ->
             val id = entry.arguments?.getLong("id") ?: -1L
-            SeriesDetailScreen(
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleSeriesDetailScreen(id, onPlayEpisode = { url, title -> nav.navigate(Routes.player(url, title)) }, onBack = { nav.popBackStack() })
+            else SeriesDetailScreen(
                 seriesId = id,
                 onPlayEpisode = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBack = { nav.popBackStack() },
@@ -691,7 +695,12 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
             )
         }
         screen(Routes.SEARCH) {
-            SearchScreen(
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleSearchScreen(
+                onOpenChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
+                onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
+                onBack = { nav.popBackStack() },
+            ) else SearchScreen(
                 onOpenChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
@@ -724,7 +733,12 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
             com.ultratv.tv.nativeapp.ui.downloads.DownloadsScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
         screen(Routes.FAVORITES) {
-            FavoritesScreen(
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleFavoritesScreen(
+                onPlayChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
+                onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
+                onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
+                onBack = { nav.popBackStack() },
+            ) else FavoritesScreen(
                 onPlayChannel = { url, title -> nav.navigate(Routes.player(url, title)) },
                 onBrowseLive = { nav.navigate(Routes.LIVE) },
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },

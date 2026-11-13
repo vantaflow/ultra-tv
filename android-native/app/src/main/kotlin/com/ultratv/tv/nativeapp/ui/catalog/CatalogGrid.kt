@@ -159,6 +159,10 @@ class CatalogGridViewModel @Inject constructor(
     private val _filter = MutableStateFlow(CatalogFilter.DEFAULT)
     val filter: StateFlow<CatalogFilter> = _filter
     private val filterReady = MutableStateFlow(false)
+    /** Préférences de tri lues (avant : le tri mémorisé écrasait un tri posé trop tôt). */
+    val ready: StateFlow<Boolean> = filterReady
+    /** Tri / filtre de la visite SANS l'enregistrer (mode simple : ses onglets ne changent pas le tri de l'écran habituel). */
+    fun setFilterTransient(f: CatalogFilter) { _filter.value = f }
     fun setFilter(f: CatalogFilter) {
         val sortChanged = f.sort != _filter.value.sort
         _filter.value = f

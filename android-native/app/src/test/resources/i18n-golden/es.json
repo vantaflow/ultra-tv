@@ -1696,5 +1696,18 @@
   "SimpleStrings.getNextLabel()": "Después",
   "SimpleStrings.getTabAll()": "Todos",
   "DesignStrings.getFavAdded()": "Añadido a favoritos",
-  "DesignStrings.getFavRemoved()": "Quitado de favoritos"
+  "DesignStrings.getFavRemoved()": "Quitado de favoritos",
+  "SimpleStrings.getTabNew()": "Novedades",
+  "SimpleStrings.getTabTop()": "Mejor valorados",
+  "SimpleStrings.getTabAz()": "De la A a la Z",
+  "SimpleStrings.getNextEpisode()": "Siguiente episodio",
+  "SimpleStrings.getSeason()": "Temporada",
+  "SimpleStrings.getWatched()": "Visto",
+  "SimpleStrings.getMyChannels()": "Mis canales",
+  "SimpleStrings.getMyTitles()": "Mis películas y series",
+  "SimpleStrings.getSay()": "Decir lo que busco",
+  "SimpleStrings.getFound()": "Encontrado",
+  "SimpleStrings.getOrType()": "O escríbelo:",
+  "SimpleStrings.getHoldFav()": "Mantener: favorito",
+  "SimpleStrings.getHoldRemove()": "Mantener: quitar"
 }

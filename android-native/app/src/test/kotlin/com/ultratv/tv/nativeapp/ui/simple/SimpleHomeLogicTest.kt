@@ -199,8 +199,10 @@ class SimpleHomeLogicTest {
 
     @Test fun rail_masqueSeulementSurLesTuiles() {
         assertTrue(SimpleHome.railHidden(true, Routes.HOME))
-        assertFalse(SimpleHome.railHidden(true, Routes.MOVIES))
-        assertFalse(SimpleHome.railHidden(true, Routes.SIMPLE_CHANNELS))
+        assertTrue(SimpleHome.railHidden(true, Routes.MOVIES))       // écrans simples : sans menu latéral
+        assertTrue(SimpleHome.railHidden(true, Routes.SEARCH))
+        assertFalse(SimpleHome.railHidden(true, Routes.SETTINGS))
+        assertTrue(SimpleHome.railHidden(true, Routes.SIMPLE_CHANNELS))
         assertFalse(SimpleHome.railHidden(false, Routes.HOME))
         assertFalse(SimpleHome.railHidden(true, null))
     }
@@ -232,5 +234,17 @@ class SimpleHomeLogicTest {
         assertEquals(60, SimpleHome.minutesLeft(h))
         assertEquals(null, SimpleHome.progressOf(h.copy(durationMs = 0)))
         assertEquals(1, SimpleHome.minutesLeft(h.copy(positionMs = h.durationMs)))
+    }
+}
+
+class SimpleTextTest {
+    @org.junit.Test fun dureeLisible() {
+        org.junit.Assert.assertEquals("1 h 33", SimpleText.duration("01:33:00"))
+        org.junit.Assert.assertEquals("45 min", SimpleText.duration("00:45:10"))
+        org.junit.Assert.assertEquals("1 h 33", SimpleText.duration("93 min"))
+        org.junit.Assert.assertEquals("1 h 33", SimpleText.duration("5580"))
+        org.junit.Assert.assertNull(SimpleText.duration(""))
+        org.junit.Assert.assertNull(SimpleText.duration("00:00:00"))
+        org.junit.Assert.assertEquals("env. 2 h", SimpleText.duration("env. 2 h"))
     }
 }

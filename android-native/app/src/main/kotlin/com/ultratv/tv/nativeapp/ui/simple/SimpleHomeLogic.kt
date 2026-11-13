@@ -107,7 +107,10 @@ object SimpleHome {
     }
 
     /** Le rail de navigation est masqué sur l'écran des tuiles (les tuiles remplacent le menu) ; ailleurs il reste. */
-    fun railHidden(simple: Boolean, route: String?): Boolean = simple && route == Routes.HOME
+    fun railHidden(simple: Boolean, route: String?): Boolean = simple && route in SIMPLE_ROUTES
+
+    /** Écrans qui ont leur équivalent simple (sans menu latéral : chacun a son bouton retour et Retour y ramène). */
+    private val SIMPLE_ROUTES = setOf(Routes.HOME, Routes.SIMPLE_CHANNELS, Routes.MOVIES, Routes.SERIES, Routes.MOVIE_DETAIL, Routes.SERIES_DETAIL, Routes.FAVORITES, Routes.SEARCH)
 
     /**
      * La sortie du mode simple demande le code parental SI un code existe (sans code : libre, comme partout ailleurs).

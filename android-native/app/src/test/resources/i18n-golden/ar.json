@@ -1696,5 +1696,18 @@
   "SimpleStrings.getNextLabel()": "التالي",
   "SimpleStrings.getTabAll()": "الكل",
   "DesignStrings.getFavAdded()": "أُضيف إلى المفضلة",
-  "DesignStrings.getFavRemoved()": "أُزيل من المفضلة"
+  "DesignStrings.getFavRemoved()": "أُزيل من المفضلة",
+  "SimpleStrings.getTabNew()": "الجديد",
+  "SimpleStrings.getTabTop()": "الأعلى تقييمًا",
+  "SimpleStrings.getTabAz()": "من أ إلى ي",
+  "SimpleStrings.getNextEpisode()": "الحلقة التالية",
+  "SimpleStrings.getSeason()": "الموسم",
+  "SimpleStrings.getWatched()": "شوهد",
+  "SimpleStrings.getMyChannels()": "قنواتي",
+  "SimpleStrings.getMyTitles()": "أفلامي ومسلسلاتي",
+  "SimpleStrings.getSay()": "قل ما تبحث عنه",
+  "SimpleStrings.getFound()": "وجدت",
+  "SimpleStrings.getOrType()": "أو اكتبه:",
+  "SimpleStrings.getHoldFav()": "اضغط مطولًا: المفضلة",
+  "SimpleStrings.getHoldRemove()": "اضغط مطولًا: إزالة"
 }
