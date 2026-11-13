@@ -46,7 +46,7 @@ self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
         try { n = await syncEpg(req.source, req.transport, ctrl.signal, prog); }
         catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; failure = e; }
         // xmltv.php bloqué, trop lourd ou sans chaîne reconnue : repli get_short_epg (comme la synchro complète).
-        if (n === 0 && req.source.type === "xtream") n = await syncShortEpg(req.source, req.transport, ctrl.signal);
+        if (n === 0 && req.source.type === "xtream") n = await syncShortEpg(req.source, req.transport, ctrl.signal, undefined, (r) => prog(r));
         if (n === 0 && failure) throw failure;
         post({ id: req.id, type: "result", value: n });
         break;
@@ -62,11 +62,12 @@ self.onmessage = async (ev: MessageEvent<WorkerRequest>) => {
           const fresh = await db.sources.get(req.source.id!);
           const withCid = { ...req.source, cid: fresh?.cid ?? req.source.cid };
           let n = 0;
-          try { n = await syncEpg(withCid, req.transport, ctrl.signal, (ratio) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts } })); }
+          const epgProg = (ratio: number, st?: { bytes: number; programs: number }) => post({ id: req.id, type: "progress", progress: { phase: "epg", ratio, counts, bytes: st?.bytes, programs: st?.programs } });
+          try { n = await syncEpg(withCid, req.transport, ctrl.signal, epgProg); }
           catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; /* le guide est facultatif : repli ci-dessous */ }
           // xmltv.php bloqué, vide ou sans chaîne reconnue : repli get_short_epg par chaîne.
           if (n === 0) {
-            try { await syncShortEpg(withCid, req.transport, ctrl.signal); }
+            try { await syncShortEpg(withCid, req.transport, ctrl.signal, undefined, (r) => epgProg(r)); }
             catch (e) { if (e instanceof DOMException && e.name === "AbortError") throw e; }
           }
         }

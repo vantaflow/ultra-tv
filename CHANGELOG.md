@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Téléphone, direct : les boutons Volume + / Volume − (et la coupure du son) n'avaient aucun effet ; le lecteur les absorbait pour afficher les commandes. Ils sont désormais toujours laissés à Android.
+- Bureau : la synchro semblait bloquée à 80 % pendant le téléchargement du guide TV quand le serveur n'en annonce pas la taille ; la progression avance désormais avec les données reçues, y compris pendant le repli chaîne par chaîne.
 
 ### Modifié
 - Téléphone, direct en portrait : les actions (Pistes, Sous-titres, Favoris, Enregistrer…) tiennent sur une seule ligne qui défile au lieu de s'empiler sur sept lignes ; la liste des chaînes sous la vidéo gagne la place (titre répété masqué).

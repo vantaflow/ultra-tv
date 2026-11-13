@@ -47,6 +47,17 @@ export const EPG_WINDOW_AFTER_MS = 72 * 3600_000;
  */
 export const EPG_LIMITS = { totalMs: 30 * 60_000, retryDelays: [2_000, 6_000] as number[] };
 
+/**
+ * Avancement du téléchargement du guide. Sans taille annoncée (pas de Content-Length, fréquent avec les guides
+ * compressés ou générés à la volée), la progression restait à 0 : la synchro semblait bloquée à 80 % pendant tout le
+ * téléchargement. On estime alors une courbe qui avance avec les octets reçus sans jamais atteindre la fin.
+ */
+export function epgRatio(wire: number, total: number): number {
+  if (total > 0) return Math.min(0.99, wire / total);
+  const soft = 40 * 1024 * 1024;
+  return Math.min(0.95, wire / (wire + soft));
+}
+
 /** Progression : ratio 0..1 (0 si la taille est inconnue) et, quand on les connaît, octets reçus et programmes écrits. */
 export type EpgProgress = (ratio: number, stats?: { bytes: number; programs: number }) => void;
 
@@ -302,7 +313,7 @@ async function syncEpgUrlOnce(source: Source, t: Transport, url: string, signal:
     const t0 = Date.now();
     if (t0 - lastReport < 250) return; // au plus 4 messages par seconde
     lastReport = t0;
-    onProgress?.(total ? Math.min(0.99, wire / total) : 0, { bytes: wire, programs: written });
+    onProgress?.(epgRatio(wire, total), { bytes: wire, programs: written });
   };
   try {
     const reader = stream.getReader();
@@ -341,7 +352,7 @@ const b64 = (v: string | undefined) => {
 };
 
 /** Repli quand xmltv.php échoue (bloqué, trop lourd) : get_short_epg chaîne par chaîne, borné aux premières chaînes du catalogue. */
-export async function syncShortEpg(source: Source, t: Transport, signal?: AbortSignal, maxChannels = 120): Promise<number> {
+export async function syncShortEpg(source: Source, t: Transport, signal?: AbortSignal, maxChannels = 120, onProgress?: (ratio: number) => void): Promise<number> {
   const sourceId = source.cid;
   if (!sourceId || source.type !== "xtream") return 0;
   const creds = credsOf(source);
@@ -350,6 +361,7 @@ export async function syncShortEpg(source: Source, t: Transport, signal?: AbortS
   let written = 0;
   for (let i = 0; i < chans.length; i += 6) {
     if (signal?.aborted) throw new DOMException("Annulé", "AbortError");
+    onProgress?.(i / chans.length);
     await Promise.all(chans.slice(i, i + 6).map(async (c) => {
       try {
         const r = await xtreamJson<{ epg_listings?: ShortEpgListing[] }>(t, creds, { action: "get_short_epg", stream_id: c.streamId, limit: 12 }, signal);

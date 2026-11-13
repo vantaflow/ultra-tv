@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decodeXml, parseXmltvTime, scanXmltv } from "./epg";
+import { decodeXml, epgRatio, parseXmltvTime, scanXmltv } from "./epg";
 
 describe("xmltv", () => {
   it("décalage horaire", () => {
@@ -39,5 +39,19 @@ describe("xmltv", () => {
     s.push('<programme start="20260704200000 +0000" stop="20260704220000 +0000" channel="TF1.fr"><title>JT</title></programme>');
     s.end();
     expect(got.map((r) => r.epg).sort()).toEqual(["TF1.fr", "tf1.fr"]);
+  });
+});
+
+describe("epgRatio", () => {
+  it("suit la taille annoncée", () => {
+    expect(epgRatio(50, 100)).toBe(0.5);
+    expect(epgRatio(200, 100)).toBe(0.99);
+  });
+  it("avance sans taille annoncée, sans jamais finir", () => {
+    expect(epgRatio(0, 0)).toBe(0);
+    const a = epgRatio(10e6, 0), b = epgRatio(80e6, 0);
+    expect(a).toBeGreaterThan(0);
+    expect(b).toBeGreaterThan(a);
+    expect(epgRatio(1e12, 0)).toBeLessThanOrEqual(0.95);
   });
 });
