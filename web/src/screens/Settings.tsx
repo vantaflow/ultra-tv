@@ -1,4 +1,5 @@
 import { useLiveQuery } from "dexie-react-hooks";
+import { START_SCREENS, type StartScreen } from "@/lib/startScreen";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { db, getSetting, setSetting } from "@/db/db";
@@ -278,6 +279,9 @@ function DisplayPane() {
       <Pref label={t("set.channelLogos")}><Switch on={p.channelLogos} onChange={(channelLogos) => p.set({ channelLogos })} label={t("set.channelLogos")} /></Pref>
       <Pref label={t("set.optimizeImages")} desc={t("set.optimizeImagesD")}><Switch on={p.optimizeImages} onChange={(optimizeImages) => p.set({ optimizeImages })} label={t("set.optimizeImages")} /></Pref>
       <Pref label={t("sport.setting")} desc={t("sport.settingD")}><Switch on={p.sportSection} onChange={(sportSection) => p.set({ sportSection })} label={t("sport.setting")} /></Pref>
+      <Pref label={t("set.openOn")}>
+        <Seg<StartScreen> label={t("set.openOn")} value={p.startScreen} onChange={(startScreen) => p.set({ startScreen })} options={START_SCREENS.map((v) => ({ v, label: t(`set.open_${v}`) }))} />
+      </Pref>
       <Pref label={t("set.guideCol")}>
         <Seg<GuideCol> label={t("set.guideCol")} value={p.guideCol} onChange={(guideCol) => p.set({ guideCol })} options={[{ v: "narrow", label: t("set.colNarrow") }, { v: "normal", label: t("set.colNormal") }, { v: "wide", label: t("set.colWide") }]} />
       </Pref>

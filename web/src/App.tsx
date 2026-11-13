@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Account } from "@/screens/Account";
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { dirOf, translate, useT } from "@/i18n";
@@ -36,6 +36,7 @@ import { startAnonPing } from "@/cloud/anon";
 import { cloudAvailable } from "@/cloud/client";
 import { guideColRem } from "@/lib/guideCol";
 import { useTraktPrewarm, useTraktResumeImport, useTraktSync } from "@/trakt/hooks";
+import { rememberablePath, startPath } from "@/lib/startScreen";
 
 function Effects() {
   const { theme, accent, lang, syncOn, animations, channelLogos, guideCol } = usePrefs();
@@ -110,6 +111,25 @@ function Effects() {
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [nav]);
+
+  // Écran d'ouverture : une seule fois au lancement, seulement depuis l'accueil (jamais par-dessus un lien ou la configuration).
+  const opened = useRef(false);
+  useEffect(() => {
+    if (opened.current || !ready) return;
+    opened.current = true;
+    if (list.length === 0 || loc.pathname !== "/") return;
+    const { startScreen, lastScreen } = usePrefs.getState();
+    const to = startPath(startScreen, lastScreen);
+    if (to) nav(to);
+  }, [ready, list.length, loc.pathname, nav]);
+
+  // « Dernier écran » : la dernière rubrique ouverte est mémorisée (fiches, recherche et réglages ignorés).
+  useEffect(() => {
+    // Pas avant la décision d'ouverture : l'accueil affiché au démarrage effacerait la rubrique mémorisée.
+    if (!opened.current) return;
+    const p = rememberablePath(loc.pathname);
+    if (p && p !== usePrefs.getState().lastScreen) usePrefs.getState().set({ lastScreen: p });
+  }, [loc.pathname]);
 
   // Première ouverture : aucune source -> accueil de configuration.
   useEffect(() => {

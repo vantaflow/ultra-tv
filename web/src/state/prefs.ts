@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { detectLang, type Lang } from "@/i18n/lang";
 import type { DnsSettings } from "@/net/dns";
 import { clockText, parseTimeFormat, type TimeFormat } from "@/lib/clock";
+import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
@@ -42,6 +43,10 @@ export interface Prefs {
   optimizeImages: boolean;
   /** Barre latérale repliée (icônes seules) ; dépliée par défaut. */
   railCollapsed: boolean;
+  /** Écran ouvert au lancement (Réglages › Affichage › Ouvrir sur). */
+  startScreen: StartScreen;
+  /** Dernière rubrique ouverte, pour « Dernier écran ». */
+  lastScreen: string;
 }
 
 export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B981"];
@@ -53,7 +58,7 @@ const defaults = (): Prefs => ({
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
-  sportSection: false, optimizeImages: true, railCollapsed: false,
+  sportSection: false, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/",
 });
 
 function load(): Prefs {
@@ -65,6 +70,7 @@ function load(): Prefs {
       v.accent = parseAccent(v.accent);
       v.theme = parseTheme(v.theme);
       v.timeFormat = parseTimeFormat(v.timeFormat);
+      v.startScreen = parseStartScreen(v.startScreen);
       return v;
     }
   } catch { /* stockage indisponible */ }
