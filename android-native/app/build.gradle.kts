@@ -61,6 +61,8 @@ android {
     namespace = "com.ultratv.tv.nativeapp"
     // 37 : exigé par Media3 1.11 et les bibliothèques AndroidX 2026 (targetSdk inchangé : même comportement à l’exécution).
     compileSdk = 37
+    // NDK installé par le workflow de publication : il sert à retirer les symboles de débogage des bibliothèques natives.
+    ndkVersion = "27.1.12297006"
 
     defaultConfig {
         // Different applicationId during development so it can be installed
@@ -142,13 +144,14 @@ android {
     }
 
     // LibVLC pèse ~80 Mo toutes architectures confondues : en release on découpe par ABI
-    // (Chromecast HD = armeabi-v7a 32 bits, la plupart des box = arm64-v8a, x86_64 = émulateur).
+    // (Chromecast HD = armeabi-v7a 32 bits, la plupart des box et téléphones = arm64-v8a). Plus de x86 / x86_64 publiés
+    // (émulateurs seulement : le build debug, universel, reste disponible pour eux).
     // Le debug reste un APK universel pour l'installation directe.
     splits {
         abi {
             isEnable = gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            include("armeabi-v7a", "arm64-v8a")
             // APK universel en plus : c'est lui que cherche la mise à jour intégrée (UltraTV-debug.apk).
             isUniversalApk = true
         }
@@ -361,5 +364,14 @@ tasks.register("resignRelease") {
             check(code == 0) { "[resignRelease] apksigner exited with $code on ${apk.name}" }
             println("[resignRelease] APK re-signed with rotation lineage → $apk")
         }
+    }
+}
+
+// Versions publiées : bibliothèques natives compressées dans l'APK (téléchargement bien plus léger ; Android les
+// décompresse à l'installation) et sans x86 / x86_64 (émulateurs seulement) — l'APK universel ne garde que l'ARM.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { v ->
+        v.packaging.jniLibs.useLegacyPackaging.set(true)
+        v.packaging.jniLibs.excludes.addAll(listOf("lib/x86/**", "lib/x86_64/**"))
     }
 }

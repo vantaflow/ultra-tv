@@ -337,7 +337,7 @@ git clone https://github.com/vantaflow/ultra-tv && cd ultra-tv/android-native
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 ./gradlew assembleDebug                            # APK universel
 ./gradlew testDebugUnitTest                        # tests unitaires (JUnit, Robolectric)
-./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a, x86_64)
+./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a)
 ```
 
 - La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200).
