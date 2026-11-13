@@ -23,15 +23,19 @@ object ExtraEpg {
 
     fun labelOf(url: String): String? = OPTIONS.firstOrNull { it.first == url }?.second
 
+    // Compilées une fois : norm() est appelée pour chaque chaîne (des dizaines de milliers de fois à l'association du guide).
+    private val MARKS = Regex("\\p{M}+")
+    private val NON_ALNUM = Regex("[^a-z0-9+]+")
+
     /**
      * Nom comparable : minuscules, sans accents ni ponctuation, sans mention de qualité (HD, FHD, 4K…), sans préfixe de
      * pays (« PL: », « PL | », « [PL] ») ni suffixe de pays (« … PL »). Les espaces sont supprimés : « TVP 1 » = « TVP1 ».
      * Un chiffre reste significatif : « TVN » ≠ « TVN 7 ». Même règle côté bureau (web/src/sync/epgNames.ts).
      */
     fun norm(name: String): String {
-        var s = Normalizer.normalize(name, Normalizer.Form.NFKD).replace(Regex("\\p{M}+"), "").lowercase()
+        var s = Normalizer.normalize(name, Normalizer.Form.NFKD).replace(MARKS, "").lowercase()
         s = COUNTRY_PREFIX.replace(s) { m -> if ((m.groupValues[1].ifEmpty { m.groupValues[2] }) in COUNTRIES) "" else m.value }
-        val tokens = s.split(Regex("[^a-z0-9+]+")).filter { it.isNotEmpty() && it !in QUALITY }.toMutableList()
+        val tokens = s.split(NON_ALNUM).filter { it.isNotEmpty() && it !in QUALITY }.toMutableList()
         // Suffixe de pays : seulement s'il reste un nom devant (« TVP 1 PL » → « tvp1 », mais « PL » seul reste).
         while (tokens.size >= 2 && tokens.last() in COUNTRIES) tokens.removeAt(tokens.lastIndex)
         return tokens.joinToString("")

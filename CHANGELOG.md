@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Stabilité : plusieurs plantages possibles évités (relecture d'un programme sur une adresse de chaîne inattendue, bandeau « À la une » sans catégorie, focus du lecteur, sous-titres et pause du direct pendant un changement d'état, durée de film aberrante).
 
+### Modifié
+- Performances : expressions de normalisation des noms de chaînes et d'association du guide compilées une seule fois (synchro et guide plus rapides sur les box modestes) ; épisodes de la série simple filtrés une fois.
+
 ## [1.3.22] — 2026-11-13 (Android)
 
 ### Ajouté

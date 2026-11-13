@@ -61,7 +61,7 @@ object OsdText {
 
     /** Initiales d'un nom de chaîne : deux premiers mots (« France Info » → « FI »), sinon deux premiers caractères. */
     fun initials(name: String): String {
-        val words = name.trim().split(Regex("\\s+")).map { w -> w.filter { it.isLetterOrDigit() } }.filter { it.isNotEmpty() }
+        val words = name.trim().split(WHITESPACE).map { w -> w.filter { it.isLetterOrDigit() } }.filter { it.isNotEmpty() }
         return when {
             words.isEmpty() -> "·"
             words.size == 1 -> words[0].take(2)
@@ -77,3 +77,5 @@ object OsdText {
     /** Qualité de la chaîne (4 = 4K … 1 = SD) ; null si inconnue. */
     fun qualityLabel(q: Int): String? = when (q) { 4 -> "4K"; 3 -> "FHD"; 2 -> "HD"; 1 -> "SD"; else -> null }
 }
+
+private val WHITESPACE = Regex("\\s+")

@@ -233,6 +233,7 @@ fun SimpleSeriesDetailScreen(seriesId: Long, onPlayEpisode: (url: String, title:
         val seasons = remember(eps) { com.ultratv.tv.nativeapp.ui.detail.seasonsOf(eps) }
         var season by remember(series.id) { mutableStateOf<Int?>(null) }
         val active = com.ultratv.tv.nativeapp.ui.detail.activeSeasonOf(seasons, season, target?.season)
+        val seasonEps = remember(eps, active) { eps.filter { it.season == active } }
         val play: (EpisodeEntity) -> Unit = { ep -> vm.playEpisode(series.name, series.remoteId, series.providerId, ep, onPlayEpisode) }
         val first = remember { FocusRequester() }
         var hasFocus by remember { mutableStateOf(false) }
@@ -255,7 +256,7 @@ fun SimpleSeriesDetailScreen(seriesId: Long, onPlayEpisode: (url: String, title:
                 items(seasons) { n -> SimplePill("$n", active == n) { season = n } }
             }
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(14.design), contentPadding = PaddingValues(bottom = 16.design)) {
-                items(eps.filter { it.season == active }, key = { it.id }) { ep ->
+                items(seasonEps, key = { it.id }) { ep ->
                     val p = progress[ep.remoteId]
                     val seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in traktSeen ||
                         (p != null && p.durationMs > 0 && p.positionMs >= p.durationMs * 9 / 10)
@@ -442,6 +443,7 @@ fun SimpleSearchScreen(onOpenChannel: (String, String) -> Unit, onOpenMovie: (Lo
 }
 
 private const val KEY_COLS = 9
+private val MINUTES = Regex("""^(\d{1,5})\s*min""")
 
 /** Mises en forme du mode simple (pures, testées). */
 object SimpleText {
@@ -453,8 +455,8 @@ object SimpleText {
         val minutes: Int? = when {
             parts.size == 3 -> parts.mapNotNull { it.trim().toIntOrNull() }.takeIf { it.size == 3 }?.let { (h, m, _) -> h * 60 + m }
             parts.size == 2 -> parts.mapNotNull { it.trim().toIntOrNull() }.takeIf { it.size == 2 }?.let { (h, m) -> h * 60 + m }
-            Regex("""^(\d+)\s*min""").find(t) != null -> Regex("""^(\d+)""").find(t)!!.value.toInt()
-            t.all { it.isDigit() } -> t.toInt().let { if (it > 600) it / 60 else it }
+            MINUTES.find(t) != null -> MINUTES.find(t)?.groupValues?.get(1)?.toIntOrNull()
+            t.all { it.isDigit() } -> t.toIntOrNull()?.let { if (it > 600) it / 60 else it }
             else -> null
         }
         if (minutes == null) return t

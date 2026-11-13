@@ -221,7 +221,7 @@ fun durationMinutes(raw: String?): Int? {
     if (t.isEmpty()) return null
     val m = when {
         t.all { it.isDigit() } -> t.toIntOrNull()?.let { if (it > 600) it / 60 else it }
-        Regex("""\d{1,2}:\d{2}(:\d{2})?""").matches(t) -> t.split(':').let { it[0].toInt() * 60 + it[1].toInt() }
+        HM.matches(t) -> t.split(':').let { (it[0].toIntOrNull() ?: 0) * 60 + (it[1].toIntOrNull() ?: 0) }
         else -> null
     }
     return m?.takeIf { it in 1..1_500 }
@@ -366,3 +366,6 @@ fun <T> pickHeroes(series: List<T>, movies: List<T>, max: Int, fallback: Boolean
 /** Films à résoudre auprès de TMDB : sans image paysage, dans l'ordre, au plus [max] ; aucun si la sélection est déjà complète. */
 fun <T> heroesToResolve(movies: List<T>, selectedCount: Int, wanted: Int, max: Int, hasLandscape: (T) -> Boolean): List<T> =
     if (selectedCount >= wanted) emptyList() else movies.filterNot(hasLandscape).take(max)
+
+/** Durée « h:mm(:ss) » (compilée une fois). */
+private val HM = Regex("""\d{1,2}:\d{2}(:\d{2})?""")

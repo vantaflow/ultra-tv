@@ -42,6 +42,10 @@ object ChannelNameParser {
         "RE RO RS RU RW SA SB SC SD SE SG SI SK SL SM SN SO SR SS ST SV SY SZ TD TG TH TJ TL TM TN TO TR TT TW TZ UA UG US UY UZ VA VC VE VG VI VN VU WS YE ZA ZM ZW UK").split(' ').toSet()
 
     private val decor = "#=-_*~<>|•●★☆▬▪■□◆◇─━═·.:;+  "
+    // Compilées une fois (avant : à chaque chaîne normalisée pendant la synchro).
+    private val AFTER_SEP = Regex("[ +\\-].*")
+    private val MULTI_SPACE = Regex("""\s{2,}""")
+    private val EMPTY_PARENS = Regex("""\(\s*\)""")
     private val leadingDecor = Regex("""^[#=\-_*~<>|•●★☆▬▪■□◆◇─━═]{3,}""")
     private val prefixSep = Regex("""^\s*([\p{L}\p{N}+ \-]{1,14}?)\s*(?:[:|]|\s-\s)\s*""")
     private val bracketPrefix = Regex("""^\s*(?:\[([^\]]{1,12})]|\(([A-Za-z]{2,4})\))\s*""")
@@ -66,7 +70,7 @@ object ChannelNameParser {
                 s = s.substring(b.range.last + 1); return@repeat
             }
             val m = prefixSep.find(s) ?: return@repeat
-            val label = m.groupValues[1].uppercase().replace(Regex("[ +\\-].*"), "")
+            val label = m.groupValues[1].uppercase().replace(AFTER_SEP, "")
             // Un préfixe n'est retiré que s'il ressemble à une étiquette (majuscules/chiffres) — pas à un vrai titre.
             val whole = m.groupValues[1]
             if (whole.any { it.isLowerCase() } && whole.length > 3) return@repeat
@@ -77,7 +81,7 @@ object ChannelNameParser {
             if (label.isNotEmpty() || whole.isNotEmpty()) s = s.substring(m.range.last + 1)
         }
         val (name, q, flags) = cleanMarkers(s)
-        var display = name.trim { it in decor }.replace(Regex("""\s{2,}"""), " ")
+        var display = name.trim { it in decor }.replace(MULTI_SPACE, " ")
         if (display.isEmpty()) display = n
         return Parsed(false, display, country, q, flags)
     }
@@ -101,7 +105,7 @@ object ChannelNameParser {
                 if (rest.count { it.isLetter() } >= 2) { badge = b; label = rest }
             }
         }
-        label = label.replace(trailingSuper, "").replace(Regex("\\s{2,}"), " ").trim()
+        label = label.replace(trailingSuper, "").replace(MULTI_SPACE, " ").trim()
         return CategoryLabel(label.ifBlank { n }, badge, p.quality)
     }
 
@@ -128,6 +132,6 @@ object ChannelNameParser {
             }
             " "
         }
-        return Triple(out.replace(Regex("""\s{2,}"""), " ").replace(Regex("""\(\s*\)"""), "").trim(), q, flags)
+        return Triple(out.replace(MULTI_SPACE, " ").replace(EMPTY_PARENS, "").trim(), q, flags)
     }
 }
