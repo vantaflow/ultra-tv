@@ -19,8 +19,13 @@ interface ProviderRawDao {
     @Query("SELECT * FROM provider ORDER BY id ASC")
     fun observeAll(): Flow<List<ProviderEntity>>
 
-    @Query("SELECT * FROM provider WHERE active = 1 LIMIT 1")
+    // Source marquée active, SINON la première : si la source active a été supprimée sans qu'une autre ne prenne le relais
+    // (retrait d'une source, révocation), aucune n'était « active » et la recherche restait sur « Recherche… ».
+    @Query("SELECT * FROM provider ORDER BY active DESC, id ASC LIMIT 1")
     suspend fun firstActive(): ProviderEntity?
+
+    @Query("SELECT id FROM provider ORDER BY active DESC, id ASC LIMIT 1")
+    suspend fun firstActiveId(): Long?
 
     @Query("SELECT * FROM provider WHERE kind = :kind AND baseUrl = :baseUrl AND username = :username LIMIT 1")
     suspend fun findByIdentity(kind: String, baseUrl: String, username: String): ProviderEntity?
@@ -85,7 +90,9 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
     // Déchiffrement HORS du thread principal : map s'exécutait dans le contexte du collecteur (viewModelScope = Main) et
     // chaque mot de passe passe par le keystore (IPC) — au démarrage, plusieurs écrans observent les sources.
     fun observeAll(): Flow<List<ProviderEntity>> = raw.observeAll().map { l -> l.map { it.dec() } }.flowOn(kotlinx.coroutines.Dispatchers.Default)
-    suspend fun firstActive(): ProviderEntity? = raw.firstActive()?.dec()
+    // Déchiffrement (Keystore, appel système parfois lent) HORS du thread principal : appelé depuis un écran, il le figeait.
+    suspend fun firstActive(): ProviderEntity? = raw.firstActive()?.let { e -> kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { e.dec() } }
+    suspend fun firstActiveId(): Long? = raw.firstActiveId()
     suspend fun findByIdentity(kind: String, baseUrl: String, username: String): ProviderEntity? =
         raw.findByIdentity(kind, baseUrl, username)?.dec()
     suspend fun byId(id: Long): ProviderEntity? = raw.byId(id)?.dec()

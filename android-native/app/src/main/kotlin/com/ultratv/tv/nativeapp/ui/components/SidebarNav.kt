@@ -305,12 +305,18 @@ fun SidebarNav(navController: NavController) {
                 Spacer(Modifier.height(40.design))
                 val profileVm: com.ultratv.tv.nativeapp.ui.profile.ProfileViewModel = androidx.hilt.navigation.compose.hiltViewModel()
                 val prof by profileVm.current.collectAsState()
+                // Appui long : renommer le profil actuel sans passer par Réglages › Profils (appui court : changer de profil).
+                var renaming by remember { mutableStateOf(false) }
+                if (renaming) prof?.let { p -> com.ultratv.tv.nativeapp.ui.profile.ProfileEditDialog(p, profileVm, onDismiss = { renaming = false }) }
                 FocusSurface(
-                    onClick = { profileVm.requestSwitch() }, shape = RoundedCornerShape(28.design), bg = Color.Transparent,
+                    // Arrondi = celui de la pastille (24 % de 56) + la marge de 4 : avec 28 et une marge seulement en haut à
+                    // gauche, la zone rognait les coins de la pastille (profil « tronqué »).
+                    onClick = { profileVm.requestSwitch() }, onLongClick = { if (prof != null) renaming = true },
+                    shape = RoundedCornerShape(18.design), bg = Color.Transparent,
                     focusedScale = 1.05f, ringWidth = 5.design,
                     modifier = Modifier.fillMaxWidth().testTag("rail-profile"),
                 ) { focused ->
-                    Row(Modifier.padding(start = 4.design, top = 4.design), verticalAlignment = Alignment.CenterVertically) {
+                    Row(Modifier.padding(4.design), verticalAlignment = Alignment.CenterVertically) {
                         com.ultratv.tv.nativeapp.ui.profile.ProfileAvatar(prof?.initial ?: "K", prof?.color ?: 0xFF26262D.toInt(), 56)
                         if (showLabels) {
                             Spacer(Modifier.width(16.design))

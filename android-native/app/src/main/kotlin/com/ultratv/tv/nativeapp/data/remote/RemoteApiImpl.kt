@@ -37,7 +37,7 @@ class RemoteApiImpl @Inject constructor(
     @Volatile private var lastChannels: List<ChannelEntity> = emptyList()
 
     override suspend fun search(query: String, kind: String): List<RemoteHit> {
-        val pid = provider.firstActive()?.id ?: return emptyList()
+        val pid = provider.firstActiveId() ?: return emptyList()
         val r = catalog.search(pid, query, includePrograms = false)
         if (kind == RemoteKinds.LIVE) lastChannels = r.channels
         return RemoteHits.from(r, kind)

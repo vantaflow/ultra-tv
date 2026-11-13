@@ -17,7 +17,9 @@ private val Context.userPrefsDs by preferencesDataStore(name = "user_prefs")
 
 enum class SidebarPosition { LEFT, TOP }
 enum class AppTheme {
-    DARK, LIGHT, AUTO, OLED;
+    DARK, LIGHT, AUTO, OLED,
+    /** Thèmes de couleur complets (fond, surfaces, focus et accent propres). SAND est clair, les autres sombres. */
+    MIDNIGHT, FOREST, PLUM, SAND, CONTRAST;
 
     companion object {
         /** Tolérant : une valeur inconnue (autre appareil, version future) retombe sur Sombre, jamais d'erreur. */
@@ -25,6 +27,11 @@ enum class AppTheme {
             "LIGHT" -> LIGHT
             "AUTO", "SYSTEM" -> AUTO
             "OLED", "AMOLED" -> OLED
+            "MIDNIGHT" -> MIDNIGHT
+            "FOREST" -> FOREST
+            "PLUM" -> PLUM
+            "SAND" -> SAND
+            "CONTRAST" -> CONTRAST
             else -> DARK
         }
     }

@@ -69,12 +69,14 @@ object Ux {
     var themeLight by mutableStateOf(false)
     /** Thème « Noir (OLED) » (fond #000000) ; sans effet en thème clair. Le lecteur reste sombre dans tous les cas. */
     var themeOled by mutableStateOf(false)
+    /** Thème choisi (palette complète : Bleu nuit, Forêt…). Lu par [palette]. */
+    var themeKind by mutableStateOf(com.ultratv.tv.nativeapp.data.prefs.AppTheme.DARK)
     /** Dérivé de la navigation (voir `isPlayerShown`), jamais d'un compteur d'entrées/sorties. */
     var playerActive by mutableStateOf(false)
     private val light: Boolean get() = com.ultratv.tv.nativeapp.ui.theme.isLightEffective(themeLight, playerActive)
 
     /** Palette effective (claire seulement hors lecteur). Lue dans une composition : s'abonne à [themeLight] / [playerActive]. */
-    val palette: UxPalette get() = paletteFor(light, themeOled)
+    val palette: UxPalette get() = paletteFor(light, themeKind)
 
     // Surfaces (palette v2 : voir Palette.kt)
     val Bg: Color get() = palette.bg
@@ -122,7 +124,7 @@ object Ux {
 
     val Accent: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accent else Color(accentChoice.argb)
     /** Texte / icône posé SUR l'accent (blanc ou encre selon la couleur, toujours ≥ 4,5:1). */
-    val OnAccent: Color get() = if (accentChoice == AccentChoice.DEFAULT) Color.White else Color(accentChoice.onAccent)
+    val OnAccent: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.onAccent else Color(accentChoice.onAccent)
     /** Accent utilisé comme couleur de TEXTE sur les surfaces du thème (éclairci ou assombri pour rester AA). */
     val AccentInk: Color get() = if (accentChoice == AccentChoice.DEFAULT) palette.accentText else Color(if (light) accentChoice.inkOnLight else accentChoice.inkOnDark)
     /** Accent en texte (sur la teinte [NowTint] ou une carte). */

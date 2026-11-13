@@ -350,6 +350,11 @@
     <string name="ds_theme_light">Light</string>
     <string name="ds_theme_auto">Automatic</string>
     <string name="ds_theme_oled">Black (OLED)</string>
+    <string name="ds_theme_midnight">Midnight blue</string>
+    <string name="ds_theme_forest">Forest</string>
+    <string name="ds_theme_plum">Plum</string>
+    <string name="ds_theme_sand">Sand (light)</string>
+    <string name="ds_theme_contrast">High contrast</string>
     <string name="ds_language">Language</string>
     <string name="ds_menu">Menu</string>
     <string name="ds_menu_sidebar">Sidebar</string>

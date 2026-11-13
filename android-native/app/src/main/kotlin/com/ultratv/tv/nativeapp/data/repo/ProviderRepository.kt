@@ -80,6 +80,8 @@ class ProviderRepository @Inject constructor(
 
     fun observeProviders(): Flow<List<ProviderEntity>> = providerDao.observeAll()
     suspend fun firstActive(): ProviderEntity? = providerDao.firstActive()
+    /** Identifiant de la source active, SANS déchiffrer ses identifiants (Keystore, lent) : recherche, favoris. */
+    suspend fun firstActiveId(): Long? = providerDao.firstActiveId()
     suspend fun byId(id: Long): ProviderEntity? = providerDao.byId(id)
 
     suspend fun addM3u(name: String, url: String): Long {

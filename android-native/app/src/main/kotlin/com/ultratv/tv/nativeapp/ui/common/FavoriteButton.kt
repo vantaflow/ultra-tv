@@ -40,7 +40,7 @@ class FavoriteToggleViewModel @Inject constructor(
     val isFav: StateFlow<Boolean> = key
         .flatMapLatest { k ->
             if (k == null) return@flatMapLatest flowOf(false)
-            val pid = provider.firstActive()?.id ?: return@flatMapLatest flowOf(false)
+            val pid = provider.firstActiveId() ?: return@flatMapLatest flowOf(false)
             catalog.isFavorite(pid, k.first, k.second)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
@@ -50,7 +50,7 @@ class FavoriteToggleViewModel @Inject constructor(
     fun toggle() {
         val k = key.value ?: return
         viewModelScope.launch {
-            val pid = provider.firstActive()?.id ?: return@launch
+            val pid = provider.firstActiveId() ?: return@launch
             val current = catalog.isFavorite(pid, k.first, k.second).first()
             catalog.setFavorite(pid, k.first, k.second, !current)
         }

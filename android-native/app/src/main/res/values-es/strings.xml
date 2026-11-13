@@ -345,6 +345,11 @@
     <string name="ds_theme_light">Claro</string>
     <string name="ds_theme_auto">Automático</string>
     <string name="ds_theme_oled">Negro (OLED)</string>
+    <string name="ds_theme_midnight">Azul noche</string>
+    <string name="ds_theme_forest">Bosque</string>
+    <string name="ds_theme_plum">Ciruela</string>
+    <string name="ds_theme_sand">Arena (claro)</string>
+    <string name="ds_theme_contrast">Alto contraste</string>
     <string name="ds_language">Idioma</string>
     <string name="ds_menu">Menú</string>
     <string name="ds_menu_sidebar">Barra lateral</string>

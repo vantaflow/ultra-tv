@@ -208,7 +208,8 @@ private fun StepCard(step: StepUi, D: DesignStrings) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                 Text(label, color = if (step.state == StepState.WAIT) Ux.Text2 else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 28.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 Spacer(Modifier.width(16.design))
-                Text(meta, color = if (active) Ux.Text else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                // Borné avec points de suspension : un message d'erreur long (« Le guide ne contient aucun programme… ») débordait.
+                Text(meta, color = if (active) Ux.Text else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
             Box(Modifier.fillMaxWidth().height(8.design).clip(RoundedCornerShape(4.design)).background(Ux.Surface2)) {
                 if (done) Box(Modifier.fillMaxSize().background(Ux.Text))

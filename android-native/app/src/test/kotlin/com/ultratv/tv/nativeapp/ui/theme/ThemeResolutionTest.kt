@@ -99,4 +99,40 @@ class ThemeResolutionTest {
         assertEquals(Color(0xFFC4161F), p.accentText); assertEquals(Color(0xFFFBE3E5), p.nowTint)
         assertEquals(Color(0xFF12141A), p.focusFill); assertEquals(Color(0xFFF5F6F8), p.focusText)
     }
+
+    private fun lum(c: androidx.compose.ui.graphics.Color): Double {
+        fun ch(v: Float): Double = if (v <= 0.03928f) v / 12.92 else Math.pow((v + 0.055) / 1.055, 2.4)
+        return 0.2126 * ch(c.red) + 0.7152 * ch(c.green) + 0.0722 * ch(c.blue)
+    }
+    private fun ratio(a: androidx.compose.ui.graphics.Color, b: androidx.compose.ui.graphics.Color): Double {
+        val x = lum(a); val y = lum(b)
+        return (maxOf(x, y) + 0.05) / (minOf(x, y) + 0.05)
+    }
+
+    @Test fun nouveauxThemes_contrastesLisibles() {
+        val all = listOf(
+            com.ultratv.tv.nativeapp.ui.design.MidnightPalette, com.ultratv.tv.nativeapp.ui.design.ForestPalette,
+            com.ultratv.tv.nativeapp.ui.design.PlumPalette, com.ultratv.tv.nativeapp.ui.design.SandPalette,
+            com.ultratv.tv.nativeapp.ui.design.ContrastPalette,
+        )
+        for (p in all) {
+            assertTrue("texte sur fond", ratio(p.text, p.bg) >= 7.0)
+            assertTrue("texte sur carte", ratio(p.text, p.card) >= 7.0)
+            assertTrue("texte secondaire", ratio(p.text3, p.bg) >= 4.5)
+            assertTrue("focus", ratio(p.focusText, p.focusFill) >= 7.0)
+            assertTrue("accent visible sur le fond", ratio(p.accent, p.bg) >= 3.0)
+            assertTrue("texte sur l'accent", ratio(p.onAccent, p.accent) >= 3.0)
+        }
+    }
+
+    @Test fun nouveauxThemes_resolution() {
+        assertTrue(isLightTheme(AppTheme.SAND, systemDark = true, isTv = true))
+        assertFalse(isLightTheme(AppTheme.MIDNIGHT, systemDark = false))
+        assertSame(com.ultratv.tv.nativeapp.ui.design.SandPalette, paletteFor(light = true, theme = AppTheme.SAND))
+        // Le lecteur force le sombre : un thème clair y retombe sur la palette sombre.
+        assertSame(DarkPalette, paletteFor(light = false, theme = AppTheme.SAND))
+        assertSame(com.ultratv.tv.nativeapp.ui.design.ForestPalette, paletteFor(light = false, theme = AppTheme.FOREST))
+        assertEquals(AppTheme.CONTRAST, AppTheme.parse("contrast"))
+        assertEquals(AppTheme.DARK, AppTheme.parse("inconnu"))
+    }
 }

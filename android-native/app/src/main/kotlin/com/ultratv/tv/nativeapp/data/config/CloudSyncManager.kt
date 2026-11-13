@@ -234,7 +234,7 @@ class CloudSyncManager @Inject constructor(
                 for (cid in pendingIds) runCatching {
                     val localId = links.localIdOf(cid) ?: run { links.setPendingPrefs(cid, null); null } ?: return@runCatching
                     val remote = DisplayPrefs.parse(org.json.JSONObject(links.pendingPrefs(cid) ?: return@runCatching)) ?: return@runCatching
-                    if (remote.updatedAt > links.prefsAt(cid)) applyRemote(localId, cid, remote, isActive = repo.firstActive()?.id == localId)
+                    if (remote.updatedAt > links.prefsAt(cid)) applyRemote(localId, cid, remote, isActive = repo.firstActiveId() == localId)
                     else links.setPendingPrefs(cid, null)
                 }
                 // Réconciliation : un état local qui diffère de la dernière version échangée (changement jamais publié,
@@ -248,7 +248,7 @@ class CloudSyncManager @Inject constructor(
         }
         prefsScope.launch {
             DisplayPrefsEvents.changes.debounce(1_500).collect { pid ->
-                val id = if (pid == DisplayPrefsEvents.ACTIVE) repo.firstActive()?.id else pid
+                val id = if (pid == DisplayPrefsEvents.ACTIVE) repo.firstActiveId() else pid
                 if (id != null) publishPrefs(id)
             }
         }
@@ -268,7 +268,7 @@ class CloudSyncManager @Inject constructor(
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
     private suspend fun applyPrefs(cfg: CloudConfig) {
         if (!prefs.flow.first().syncDisplayPrefs) return
-        val active = repo.firstActive()?.id
+        val active = repo.firstActiveId()
         for (c in cfg.providers) {
             val remote = c.prefs ?: continue
             val localId = links.localIdOf(c.id) ?: continue
@@ -325,7 +325,7 @@ class CloudSyncManager @Inject constructor(
             val base = workerBase() ?: return
             val winner = source.withToken(base) { t -> client.putPrefs(base, t, cloudId, DisplayPrefs.toJson(local)) }
             if (winner == null) links.setPrefs(cloudId, now, print)
-            else applyRemote(localId, cloudId, winner, isActive = repo.firstActive()?.id == localId)
+            else applyRemote(localId, cloudId, winner, isActive = repo.firstActiveId() == localId)
         }
     }
 

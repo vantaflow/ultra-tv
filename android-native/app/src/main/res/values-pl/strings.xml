@@ -349,6 +349,11 @@
     <string name="ds_theme_light">Jasny</string>
     <string name="ds_theme_auto">Automatyczny</string>
     <string name="ds_theme_oled">Czarny (OLED)</string>
+    <string name="ds_theme_midnight">Nocny błękit</string>
+    <string name="ds_theme_forest">Las</string>
+    <string name="ds_theme_plum">Śliwka</string>
+    <string name="ds_theme_sand">Piasek (jasny)</string>
+    <string name="ds_theme_contrast">Wysoki kontrast</string>
     <string name="ds_language">Język</string>
     <string name="ds_menu">Menu</string>
     <string name="ds_menu_sidebar">Panel boczny</string>

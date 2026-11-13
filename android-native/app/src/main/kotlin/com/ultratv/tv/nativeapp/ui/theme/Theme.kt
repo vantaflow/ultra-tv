@@ -41,8 +41,8 @@ private val Light = lightColorScheme(
  * Automatique sur une TV (qui n'a pas de vrai réglage clair/sombre système) = Sombre.
  */
 fun isLightTheme(theme: AppTheme, systemDark: Boolean, isTv: Boolean = false): Boolean = when (theme) {
-    AppTheme.LIGHT -> true
-    AppTheme.DARK, AppTheme.OLED -> false
+    AppTheme.LIGHT, AppTheme.SAND -> true
+    AppTheme.DARK, AppTheme.OLED, AppTheme.MIDNIGHT, AppTheme.FOREST, AppTheme.PLUM, AppTheme.CONTRAST -> false
     AppTheme.AUTO -> if (isTv) false else !systemDark
 }
 
@@ -72,6 +72,7 @@ fun ApplyUxTheme(
     if (Ux.themeLight != light) Ux.themeLight = light
     val oled = isOledTheme(theme)
     if (Ux.themeOled != oled) Ux.themeOled = oled
+    if (Ux.themeKind != theme) Ux.themeKind = theme
     if (Ux.accentChoice != accent) Ux.accentChoice = accent
     if (Ux.textScale != textSize.scale) Ux.textScale = textSize.scale
 }
@@ -80,13 +81,17 @@ fun ApplyUxTheme(
 fun UltraTvTheme(content: @Composable () -> Unit) {
     // Accent choisi par l'utilisateur (le jeu de couleurs Material ne sert qu'aux rares composants Material restants).
     val accent = Ux.Accent; val onAccent = Ux.OnAccent
-    val base = if (isLightEffective(Ux.themeLight, Ux.playerActive)) Light else Dark
-    val oledBg = Ux.themeOled && base === Dark
-    val scheme = androidx.compose.runtime.remember(base, accent, oledBg) {
-        val s = base.copy(primary = accent, onPrimary = onAccent)
-        if (oledBg) s.copy(background = OledPalette.bg, surface = OledPalette.card2, surfaceVariant = OledPalette.button, border = OledPalette.line) else s
+    val palette = paletteFor(isLightEffective(Ux.themeLight, Ux.playerActive), Ux.themeKind)
+    val base = if (palette.light) Light else Dark
+    // Schéma Material aligné sur la palette du thème choisi (fonds, surfaces, focus).
+    val scheme = androidx.compose.runtime.remember(base, accent, palette) {
+        base.copy(
+            primary = accent, onPrimary = onAccent,
+            background = palette.bg, onBackground = palette.text, surface = palette.card2, onSurface = palette.text,
+            surfaceVariant = palette.button, onSurfaceVariant = palette.text2, border = palette.line,
+            inverseSurface = palette.focusFill, inverseOnSurface = palette.focusText,
+        )
     }
-    val palette = paletteFor(isLightEffective(Ux.themeLight, Ux.playerActive), Ux.themeOled)
     androidx.compose.runtime.CompositionLocalProvider(LocalUxPalette provides palette) {
         MaterialTheme(colorScheme = scheme, content = content)
     }

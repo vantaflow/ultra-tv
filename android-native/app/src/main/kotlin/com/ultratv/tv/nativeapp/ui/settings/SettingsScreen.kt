@@ -662,7 +662,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.homeRows, D.homeRowsSummary(layout.order.count { layout.isVisible(it) }, layout.order.size)) { choice = "home" }
     }
     when (choice) {
-        "theme" -> ChoiceDialog(D.theme, listOf(AppTheme.DARK to D.themeDark, AppTheme.LIGHT to D.themeLight, AppTheme.AUTO to D.themeAuto, AppTheme.OLED to D.themeOled), p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
+        "theme" -> ChoiceDialog(D.theme, AppTheme.entries.map { it to themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
         "lang" -> ChoiceDialog(D.language, AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
         "menu" -> ChoiceDialog(D.menu, listOf(SidebarPosition.LEFT to D.menuSidebar, SidebarPosition.TOP to D.menuTop), p.sidebarPosition, { app.setSidebar(it); choice = "" }, { choice = "" })
         "open" -> ChoiceDialog(D.openOn, com.ultratv.tv.nativeapp.nav.StartScreen.entries.map { it to D.startScreenName(it) }, com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch), { app.setStartScreen(it.key); choice = "" }, { choice = "" })
@@ -694,7 +694,11 @@ private fun timeFormatLabel(D: DesignStrings, f: com.ultratv.tv.nativeapp.ui.com
     com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.H24 -> D.timeFormat24
 }
 private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }
-private fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) { AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark; AppTheme.OLED -> D.themeOled }
+private fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) {
+    AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark; AppTheme.OLED -> D.themeOled
+    AppTheme.MIDNIGHT -> D.themeMidnight; AppTheme.FOREST -> D.themeForest; AppTheme.PLUM -> D.themePlum
+    AppTheme.SAND -> D.themeSand; AppTheme.CONTRAST -> D.themeContrast
+}
 
 // ───────────────────────── Lecture ─────────────────────────
 

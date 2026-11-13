@@ -35,6 +35,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -162,9 +165,9 @@ class SearchViewModel @Inject constructor(
 
     init {
         // Index de recherche réparé s'il a été laissé incomplet (synchro interrompue) : une fois par lancement.
-        viewModelScope.launch { indexHealth.ensure() }
+        viewModelScope.launch(Dispatchers.IO) { runCatching { indexHealth.ensure() } }
         viewModelScope.launch {
-            val pid = provider.firstActive()?.id ?: return@launch
+            val pid = provider.firstActiveId() ?: return@launch
             runCatching {
                 val m = movieDao.latest(pid, 12); val s = seriesDao.latest(pid, 8)
                 val out = ArrayList<Any>(m.size + s.size)
@@ -181,9 +184,11 @@ class SearchViewModel @Inject constructor(
         _searching.value = s.isNotBlank()
         job = viewModelScope.launch {
             delay(220)
-            val pid = provider.firstActive()?.id ?: return@launch
+            // Aucune source : on ne laisse pas « Recherche… » affiché indéfiniment.
+            val pid = provider.firstActiveId() ?: run { _searching.value = false; return@launch }
             // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
-            indexHealth.ensure()
+            // La vérification de l'index n'est PLUS attendue ici : elle passe par la connexion d'écriture de la base, prise
+            // par une synchro en cours ; la recherche restait alors « Recherche… » plus de 30 s. Elle tourne à part (init).
             val t0 = android.os.SystemClock.elapsedRealtime()
             val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
             // Mesure (jamais le texte saisi) : durée de la recherche rapide.
@@ -406,11 +411,13 @@ private fun Chip(label: String, count: Int?, selected: Boolean, small: Boolean =
 
 /** Onglets (seulement ceux qui ont des résultats) puis tri ; [compact] = requête repliée en tête (onglet d'un type). */
 @Composable
-private fun TabsBar(q: String?, view: SearchView, tab: SearchTab, sort: SearchSort, vm: SearchViewModel) {
+private fun TabsBar(q: String?, view: SearchView, tab: SearchTab, sort: SearchSort, vm: SearchViewModel, requester: androidx.compose.ui.focus.FocusRequester? = null) {
     val D = LocalDs.current
     androidx.compose.foundation.lazy.LazyRow(
         horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically,
-        contentPadding = PaddingValues(end = 72.design), modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(end = 72.design),
+        // Cible de « Haut » depuis les résultats ; le focus revient sur le dernier onglet ou tri utilisé.
+        modifier = Modifier.fillMaxWidth().then(if (requester != null) Modifier.focusRequester(requester).focusRestorer() else Modifier),
     ) {
         if (q != null) item(key = "query", contentType = "query") { QueryChip(q) { vm.setTab(SearchTab.ALL) } }
         for (t in SearchTab.entries) if (t == SearchTab.ALL || view.count(t) > 0) item(key = "t-${t.name}", contentType = "tab") {
@@ -487,8 +494,11 @@ private fun AllPane(
 ) {
     val D = LocalDs.current
     Column(Modifier.fillMaxSize().padding(start = 56.design, top = 54.design)) {
-        TabsBar(null, view, tab, sort, vm)
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 28.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(34.design)) {
+        val tabsReq = remember { androidx.compose.ui.focus.FocusRequester() }
+        TabsBar(null, view, tab, sort, vm, tabsReq)
+        // Haut depuis le haut des résultats : les onglets, juste au-dessus (avant : la touche du clavier la plus proche
+        // à l'écran, « F », et les onglets n'étaient plus atteignables à la télécommande).
+        LazyColumn(Modifier.fillMaxSize().upExitTo(tabsReq), contentPadding = PaddingValues(top = 28.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(34.design)) {
             view.best?.let { b -> item(key = "best", contentType = "best") { BestResult(b, openMovie, openSeries) } }
             if (view.movies.isNotEmpty()) item(key = "movies", contentType = "row") {
                 ResultRow(D.searchMovies(view.movies.size), view.movies, { it.id }, { vm.setTab(SearchTab.MOVIES) }) { MoviePoster(it, 180, openMovie) }
@@ -567,10 +577,11 @@ private fun TypePane(
     val letters = remember(titles, sort) { if (sort == SearchSort.TITLE && titles.isNotEmpty()) SearchRank.letterIndex(titles) { it } else emptyMap() }
     val current = bounds?.first?.let { titles.getOrNull(it) }?.let { SearchRank.initial(it) }
     Column(Modifier.fillMaxSize().padding(start = 72.design, top = 54.design)) {
-        TabsBar(q, view, tab, sort, vm)
+        val tabsReq = remember { androidx.compose.ui.focus.FocusRequester() }
+        TabsBar(q, view, tab, sort, vm, tabsReq)
         Spacer(Modifier.height(24.design))
         SectionHeader(title, bounds?.let { SearchRank.visibleRange(it.first, it.second, total) }, total, null)
-        Row(Modifier.fillMaxSize().padding(top = 20.design)) {
+        Row(Modifier.fillMaxSize().padding(top = 20.design).upExitTo(tabsReq)) {
             val cols = if (tab == SearchTab.CHANNELS) 3 else if (tab == SearchTab.PROGRAMS) 2 else 8
             LazyVerticalGrid(
                 GridCells.Fixed(cols), state = grid, modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -865,3 +876,10 @@ private fun TouchProgramHit(h: ProgramHit, D: com.ultratv.tv.nativeapp.i18n.Desi
         }
     }
 }
+
+/** Sortie par le HAUT de ce groupe : vers [target] (les onglets), les autres directions inchangées. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
+private fun Modifier.upExitTo(target: androidx.compose.ui.focus.FocusRequester): Modifier =
+    focusProperties {
+        exit = { dir -> if (dir == androidx.compose.ui.focus.FocusDirection.Up) target else androidx.compose.ui.focus.FocusRequester.Default }
+    }.focusGroup()
