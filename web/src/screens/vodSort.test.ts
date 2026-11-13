@@ -16,3 +16,10 @@ describe("sortHits", () => {
     expect(sortHits(items, "provider").map((i) => i.ord)).toEqual([0, 1, 2]);
   });
 });
+
+describe("sortHits A–Z", () => {
+  it("trie par titre sans article ni accent", () => {
+    const items = [{ title: "The Office", year: 2005, rating: 0, added: 1, ord: 0 }, { title: "Ébène", year: null, rating: 0, added: 2, ord: 1 }, { title: "Avatar", year: 2009, rating: 0, added: 3, ord: 2 }];
+    expect(sortHits(items, "title").map((i) => i.title)).toEqual(["Avatar", "Ébène", "The Office"]);
+  });
+});

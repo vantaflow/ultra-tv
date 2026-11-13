@@ -1524,4 +1524,28 @@
         <item quantity="many">%1$s źródeł</item>
         <item quantity="other">%1$s źródła</item>
     </plurals>
+    <!-- Recherche v2 : onglets, tris, meilleur résultat -->
+    <string name="ds_catalog_sort_name_title">A–Z</string>
+    <string name="ds_search_tab_all">Wszystko</string>
+    <string name="ds_search_tab_movies">Filmy</string>
+    <string name="ds_search_tab_series">Seriale</string>
+    <string name="ds_search_tab_channels">Kanały</string>
+    <string name="ds_search_tab_programs">W programie</string>
+    <string name="ds_search_sort">Sortuj</string>
+    <string name="ds_search_sort_relevance">Trafność</string>
+    <string name="ds_search_sort_year">Rok</string>
+    <string name="ds_search_sort_rating">Ocena</string>
+    <string name="ds_search_best">NAJLEPSZY WYNIK</string>
+    <string name="ds_search_see_all">Zobacz wszystko</string>
+    <string name="ds_search_keyboard">Klawiatura</string>
+    <string name="ds_search_no_exact">Żaden tytuł nie zawiera „%1$s”.</string>
+    <string name="ds_search_did_you_mean">Czy chodziło o</string>
+    <string name="ds_search_close_titles">PODOBNE TYTUŁY</string>
+    <string name="ds_search_recently_added">OSTATNIO DODANE</string>
+    <string name="ds_search_clear_history">Wyczyść historię</string>
+    <string name="ds_search_details">Szczegóły</string>
+    <string name="ds_search_input_hint">Działa też podłączona klawiatura lub mikrofon pilota.</string>
+    <string name="ds_search_movies">FILMY · %1$s</string>
+    <string name="ds_search_series">SERIALE · %1$s</string>
+    <string name="ds_search_range">%1$s–%2$s z %3$s</string>
 </resources>

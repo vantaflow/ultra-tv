@@ -18,7 +18,8 @@ export const channelsFrom = (cid: number, cat: string | null, fromOrd: number, t
     ? db.channels.where("[sourceId+ord]").between([cid, fromOrd], [cid, toOrd], true, true)
     : db.channels.where("[sourceId+catExt+ord]").between([cid, cat, fromOrd], [cid, cat, toOrd], true, true);
 
-export type VodSort = "recent" | "provider" | "rating";
+/** « title » : A–Z sans article (tri en mémoire, pas d'index : réservé à une catégorie ou à un petit catalogue). */
+export type VodSort = "recent" | "provider" | "rating" | "title";
 
 function vodCol<T>(table: "movies" | "series", cid: number, cat: string | null, sort: VodSort) {
   const t = db[table] as unknown as import("dexie").Table<T, number>;

@@ -5,7 +5,8 @@ package com.ultratv.tv.nativeapp.ui.catalog
  * requêtes Room ([sortCode], [minRating], [yearFrom], [yearTo] : 0 = sans filtre). Logique pure, testée à part.
  */
 data class CatalogFilter(val sort: Sort = Sort.PROVIDER, val minRating: Int = 0, val period: Period = Period.ALL) {
-    enum class Sort(val code: Int) { PROVIDER(0), RECENT(1), RATING(2) }
+    /** [TITLE] : ordre alphabétique sans article initial (« The Office » à O), clé [com.ultratv.tv.nativeapp.data.db.titleSortKeyOf]. */
+    enum class Sort(val code: Int) { PROVIDER(0), RECENT(1), RATING(2), TITLE(3) }
 
     /** Décennies proposées ; [from] / [to] inclusifs, 0 = borne ouverte. */
     enum class Period(val from: Int, val to: Int) { ALL(0, 0), Y2020S(2020, 0), Y2010S(2010, 2019), Y2000S(2000, 2009), Y1990S(1990, 1999), OLDER(0, 1989) }

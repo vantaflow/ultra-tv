@@ -139,3 +139,7 @@ es|uxv2_sport_rugby
 fr|perso_accent_name_teal
 fr|perso_accent_name_indigo
 fr|perso_accent_name_fuchsia
+fr|ds_catalog_sort_name_title
+es|ds_catalog_sort_name_title
+es|ds_search_tab_series
+es|ds_search_series
