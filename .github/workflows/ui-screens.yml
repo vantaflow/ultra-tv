@@ -5,8 +5,6 @@ name: UI screenshots
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ci/ui-screens]
 
 permissions:
   contents: write
