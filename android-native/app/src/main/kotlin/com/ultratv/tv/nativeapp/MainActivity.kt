@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.only
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.foundation.focusGroup
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
@@ -484,6 +486,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
 
 @androidx.tv.material3.ExperimentalTvMaterial3Api
 @Composable
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean) {
     val nav = rememberNavController()
     // Le lecteur reste sombre : état DÉRIVÉ des destinations visibles (écrit avant NavHost, donc
@@ -570,13 +573,19 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
                 // Mode simple : les grandes tuiles remplacent le menu sur l'écran d'accueil (rail masqué, contenu sans marge).
                 val fullscreen = backEntry?.destination?.route?.startsWith("player") == true ||
                     com.ultratv.tv.nativeapp.ui.simple.SimpleHome.railHidden(simpleHome, backEntry?.destination?.route)
+                val contentFocus = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.common.ContentFocusMemory() }
                 Box(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
-                            .padding(start = if (fullscreen) 0.dp else com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp }),
-                    ) { NavGraph(nav, simpleHome) }
+                            .padding(start = if (fullscreen) 0.dp else com.ultratv.tv.nativeapp.ui.components.RAIL_COLLAPSED_PX.let { (it / 2f).dp })
+                            // Retour du menu latéral (Droite) : le focus revient sur l'élément qu'on avait quitté (ex. « Regarder »
+                            // du bandeau), pas sur l'élément le plus proche géométriquement de l'entrée du menu (tuile « Films »).
+                            .focusProperties { enter = { contentFocus.target() } }.focusGroup(),
+                    ) {
+                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus) { NavGraph(nav, simpleHome) }
+                    }
                     if (!fullscreen) SidebarNav(navController = nav)
                 }
             }

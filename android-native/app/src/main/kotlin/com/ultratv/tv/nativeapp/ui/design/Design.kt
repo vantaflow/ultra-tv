@@ -196,6 +196,13 @@ fun FocusSurface(
     // fermant (menu d'une chaîne du Direct : le focus retombait sur la catégorie « Favoris », en haut à gauche).
     val self = remember { androidx.compose.ui.focus.FocusRequester() }
     val anim = LocalAnimations.current
+    // Mémoire du focus du contenu (retour depuis le menu latéral) : cet élément s'y inscrit au focus, s'en retire en
+    // quittant l'écran.
+    val memory = com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory.current
+    if (memory != null) {
+        androidx.compose.runtime.LaunchedEffect(focused) { if (focused) memory.last = self }
+        androidx.compose.runtime.DisposableEffect(memory) { onDispose { if (memory.last === self) memory.last = null } }
+    }
     // Premier élément d'une zone qui le demande (volet des Réglages) : cible d'entrée du focus.
     com.ultratv.tv.nativeapp.ui.common.LocalFirstFocusSlot.current?.let { slot ->
         androidx.compose.runtime.DisposableEffect(slot) { slot.offer(self); onDispose { slot.release(self) } }

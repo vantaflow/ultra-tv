@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Télécommande : en revenant du menu latéral (Droite), le focus retourne sur l'élément qu'on avait quitté (ex. « Regarder » du bandeau) au lieu de l'élément le plus proche du menu.
+
 ## [1.3.25] — 2026-11-13 (Android)
 
 ### Modifié

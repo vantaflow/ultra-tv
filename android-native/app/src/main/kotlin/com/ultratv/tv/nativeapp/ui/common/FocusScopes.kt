@@ -362,3 +362,15 @@ fun <T : Any> androidx.paging.compose.LazyPagingItems<T>.getOrNull(index: Int): 
 /** [androidx.paging.compose.LazyPagingItems.peek] sans exception (index hors de la liste courante → null). */
 fun <T : Any> androidx.paging.compose.LazyPagingItems<T>.peekOrNull(index: Int): T? =
     if (index in 0 until itemCount) runCatching { peek(index) }.getOrNull() else null
+
+/**
+ * Dernier élément focalisé du CONTENU (hors menu latéral) : en revenant du menu (Droite), le focus y retourne au lieu de
+ * tomber sur l'élément le plus proche géométriquement de l'entrée du menu. Rempli par les FocusSurface du contenu ; un
+ * élément retiré de l'écran s'efface de lui-même (repli : comportement habituel).
+ */
+class ContentFocusMemory {
+    internal var last: androidx.compose.ui.focus.FocusRequester? = null
+    fun target(): androidx.compose.ui.focus.FocusRequester = last ?: androidx.compose.ui.focus.FocusRequester.Default
+}
+
+val LocalContentFocusMemory = androidx.compose.runtime.staticCompositionLocalOf<ContentFocusMemory?> { null }
