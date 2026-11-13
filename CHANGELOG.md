@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.23] — 2026-11-13 (Android)
+
 ### Corrigé
 - Stabilité : plusieurs plantages possibles évités (relecture d'un programme sur une adresse de chaîne inattendue, bandeau « À la une » sans catégorie, focus du lecteur, sous-titres et pause du direct pendant un changement d'état, durée de film aberrante).
 
