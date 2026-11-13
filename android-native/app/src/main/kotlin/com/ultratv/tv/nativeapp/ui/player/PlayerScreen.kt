@@ -1121,7 +1121,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         LiveOsdState(
             channel = OsdChannelInfo(
                 item?.poster, osdChannelNumber, item?.title ?: title, item?.badge,
-                quality = osdCurrentChannel?.let { OsdText.qualityLabel(it.quality) }, hdr = liveHdr,
+                // Pastille HDR dès que le moteur le détecte (aussi au changement de chaîne), relevés des statistiques en secours.
+                quality = osdCurrentChannel?.let { OsdText.qualityLabel(it.quality) }, hdr = state.hdr ?: liveHdr,
             ),
             ribbon = if (osdSchedule.isEmpty()) emptyList() else OsdRibbon.slots(osdSchedule, nowMs, EpgClock::hm, O.onAir),
             favorite = isFavNow, nowWord = O.now, favoriteWord = O.favoritePill, recentsShort = O.recentsShort,

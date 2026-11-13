@@ -33,6 +33,8 @@ data class SessionState(
     val hasPicture: Boolean = false,
     /** Flux protégé (Widevine / ClearKey) : Media3 seul, aucun repli ; le choix VLC et le lecteur externe ne sont pas proposés. */
     val isProtected: Boolean = false,
+    /** Type HDR détecté par le moteur pour le flux en cours (« hdr10 », « hlg », « dv ») ; null = SDR ou pas encore connu. */
+    val hdr: String? = null,
 )
 
 /**
@@ -403,6 +405,7 @@ class PlaybackSession(
     private fun onHdr(kind: String, e: PlayerEngine) {
         if (engine !== e) return
         hdrKind = kind
+        _state.value = _state.value.copy(hdr = kind)
         val displayHdr = HdrOutput.displayHdrCapable(ctx)
         val texture = e.config.textureView
         val line = HdrOutput.describe(kind, displayHdr, texture, e.kind)

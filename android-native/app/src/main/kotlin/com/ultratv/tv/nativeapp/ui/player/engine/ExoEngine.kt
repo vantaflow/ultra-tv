@@ -136,6 +136,21 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .build().apply {
             playWhenReady = true
             addListener(listener)
+            // HDR annoncé tard (paramètres de séquence lus après la sélection des pistes, flux TS / HLS) : format d'entrée
+            // de la vidéo, puis format réellement sorti par le décodeur (transfert ST 2084 / HLG), en plus des pistes.
+            addAnalyticsListener(object : androidx.media3.exoplayer.analytics.AnalyticsListener {
+                override fun onVideoInputFormatChanged(
+                    eventTime: androidx.media3.exoplayer.analytics.AnalyticsListener.EventTime, format: androidx.media3.common.Format,
+                    decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+                ) { signalHdr(HdrOutput.contentKind(format.colorInfo?.colorTransfer, format.sampleMimeType)) }
+            })
+            setVideoFrameMetadataListener { _, _, format, mediaFormat ->
+                if (hdrSignalled) return@setVideoFrameMetadataListener
+                val transfer = mediaFormat?.takeIf { it.containsKey(android.media.MediaFormat.KEY_COLOR_TRANSFER) }
+                    ?.getInteger(android.media.MediaFormat.KEY_COLOR_TRANSFER)
+                // MediaFormat.COLOR_TRANSFER_ST2084 = 6, COLOR_TRANSFER_HLG = 7 : mêmes valeurs que Media3 (HdrOutput).
+                signalHdr(HdrOutput.contentKind(transfer ?: format.colorInfo?.colorTransfer, format.sampleMimeType))
+            }
         }
         playerView.player = player
         playerView.subtitleView?.apply { setApplyEmbeddedStyles(false); setApplyEmbeddedFontSizes(false) }
@@ -157,7 +172,14 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     /** HDR déjà signalé pour le flux en cours (réarmé à chaque ouverture). */
-    private var hdrSignalled = false
+    @Volatile private var hdrSignalled = false
+
+    /** Signale le HDR une seule fois par flux (appelé aussi depuis le fil de lecture). */
+    private fun signalHdr(kind: String?) {
+        if (kind == null || hdrSignalled) return
+        hdrSignalled = true
+        _events.tryEmit(EngineEvent.HdrDetected(kind))
+    }
 
     /** Piste vidéo sélectionnée en HDR10 / HLG / Dolby Vision : signalé une seule fois par flux. */
     private fun detectHdr(tracks: androidx.media3.common.Tracks) {
@@ -168,8 +190,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 if (!g.isTrackSelected(i)) continue
                 val f = g.getTrackFormat(i)
                 val kind = HdrOutput.contentKind(f.colorInfo?.colorTransfer, f.sampleMimeType) ?: continue
-                hdrSignalled = true
-                _events.tryEmit(EngineEvent.HdrDetected(kind))
+                signalHdr(kind)
                 return
             }
         }
