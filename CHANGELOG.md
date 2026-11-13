@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [Bureau 1.2.57] — 2026-11-13
+
 ### Corrigé
 - Bureau : dans les réglages, les lignes d'une page longue (À propos : mises à jour automatiques, télémétrie) étaient écrasées et leurs textes se chevauchaient ; elles gardent maintenant leur hauteur et la page défile.
 
