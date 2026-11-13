@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.18] — 2026-11-13 (Android)
+
 ### Corrigé
 - Recherche : l'application pouvait être fermée par Android en pleine recherche (« ne répond pas ») sur une box chargée : le tri et le dédoublonnage des résultats tournaient sur le fil de l'affichage. Ils tournent désormais en arrière-plan.
 
