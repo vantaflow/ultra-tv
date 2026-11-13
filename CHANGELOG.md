@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Recherche : « Aucun résultat » (ou les résultats de la saisie précédente) s'affichait un moment avant les vrais résultats ; la liste est maintenant calculée avant la fin de la recherche, et le chargement reste affiché tant que l'écran n'a pas les résultats de la saisie en cours.
+
 ## [1.3.16] — 2026-11-13 (Android)
 
 ### Modifié

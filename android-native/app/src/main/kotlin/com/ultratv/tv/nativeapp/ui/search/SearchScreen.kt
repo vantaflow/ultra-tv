@@ -83,6 +83,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /** Onglets de la recherche : tout, puis un onglet par type (masqué quand il ne contient rien). */
@@ -101,6 +102,8 @@ data class SearchView(
     val best: Any? = null,
     /** Résultats du repli tolérant aux fautes : affichés comme « titres proches » avec une suggestion. */
     val fuzzy: Boolean = false,
+    /** Saisie pour laquelle cette vue a été calculée (calcul en différé : elle peut retarder sur la saisie). */
+    val query: String = "",
 ) {
     val total get() = movies.size + series.size + channels.size + programs.size
     fun count(t: SearchTab) = when (t) {
@@ -145,11 +148,17 @@ class SearchViewModel @Inject constructor(
     private val _sort = MutableStateFlow(SearchSort.RELEVANCE)
     val sort: StateFlow<SearchSort> = _sort.asStateFlow()
     fun setTab(t: SearchTab) { _tab.value = t }
-    fun setSort(s: SearchSort) { _sort.value = s }
+    fun setSort(s: SearchSort) { _sort.value = s; viewModelScope.launch { _view.value = withContext(Dispatchers.Default) { build(_hits.value, s) } } }
 
-    val view: StateFlow<SearchView> = combine(_hits, _sort) { h, s -> build(h, s) }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchView())
+    // Vue calculée DANS la recherche, avant qu'elle ne soit déclarée finie : calculée à part (flux différé), elle retardait
+    // sur la saisie — l'écran montrait encore les résultats précédents, ou « Aucun résultat », puis les bons un moment après.
+    private val _view = MutableStateFlow(SearchView())
+    val view: StateFlow<SearchView> = _view.asStateFlow()
+
+    private suspend fun publish(h: Hits) {
+        _hits.value = h
+        _view.value = withContext(Dispatchers.Default) { build(h, _sort.value) }
+    }
 
     val recent: StateFlow<List<String>> = history.recent
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -189,7 +198,7 @@ class SearchViewModel @Inject constructor(
         job = viewModelScope.launch {
             delay(220)
             // Aucune source : on ne laisse pas « Recherche… » affiché indéfiniment.
-            val pid = provider.firstActiveId() ?: run { _searching.value = false; return@launch }
+            val pid = provider.firstActiveId() ?: run { publish(Hits(s, SearchResults())); _searching.value = false; return@launch }
             // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
             // La vérification de l'index n'est PLUS attendue ici : elle passe par la connexion d'écriture de la base, prise
             // par une synchro en cours ; la recherche restait alors « Recherche… » plus de 30 s. Elle tourne à part (init).
@@ -200,8 +209,11 @@ class SearchViewModel @Inject constructor(
                 val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
                 // Mesure (jamais le texte saisi) : durée de la recherche rapide.
                 android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
-                _hits.value = Hits(s, quick)
-                if (s.trim().length >= 3) _hits.value = Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s)))
+                publish(Hits(s, quick))
+                if (s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s))))
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e
+            } catch (e: Exception) {
+                publish(Hits(s, SearchResults()))   // erreur : « Aucun résultat » plutôt qu'un chargement sans fin
             } finally {
                 if (_q.value == s) _searching.value = false
             }
@@ -219,7 +231,7 @@ class SearchViewModel @Inject constructor(
         val r = h.r
         if (r.fuzzy) {
             // Repli tolérant aux fautes : l'ordre de ressemblance du dépôt est le bon, on ne le retrie pas.
-            return SearchView(movies = r.movies, series = r.series, channels = r.channels, programs = r.programs, fuzzy = true)
+            return SearchView(movies = r.movies, series = r.series, channels = r.channels, programs = r.programs, fuzzy = true, query = h.q)
         }
         val movies = SearchRank.order(r.movies, h.q, sort, { it.title }, { it.year }, { it.rating })
         val series = SearchRank.order(r.series, h.q, sort, { it.title }, { it.year }, { it.rating })
@@ -231,7 +243,7 @@ class SearchViewModel @Inject constructor(
             val rs = s?.let { SearchRank.relevance(h.q, it.title) } ?: 0
             when { rm >= 3 && rm >= rs -> m; rs >= 3 -> s; else -> null }
         }
-        return SearchView(movies, series, channels, r.programs, best, false)
+        return SearchView(movies, series, channels, r.programs, best, false, query = h.q)
     }
 }
 
@@ -334,7 +346,10 @@ fun SearchScreen(
             when {
                 q.isBlank() -> StartPane(recent, latest, vm, openMovie, openSeries)
                 // Recherche en cours : un retour visible plutôt qu'un panneau vide (box lente).
-                searching && view.total == 0 -> SearchingPane(D.searchingLabel)
+                // « Aucun résultat » seulement quand la vue correspond à la saisie ET que tout est fini : avant, la fin de la
+                // recherche arrivait avant le calcul (différé) de la vue, et l'écran disait « Aucun résultat » puis
+                // affichait les résultats un moment après.
+                view.query != q || (searching && view.total == 0) -> SearchingPane(D.searchingLabel)
                 view.total == 0 -> Message(S.searchNoMatches)
                 view.fuzzy -> FuzzyPane(q, view, vm, openMovie, openSeries)
                 effTab == SearchTab.ALL -> AllPane(view, effTab, sort, vm, playChannel, openMovie, openSeries)
@@ -800,7 +815,7 @@ private fun SearchTouch(
                     }
                 } else Text(D.searchStart, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp)
             }
-            searching && view.total == 0 -> Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+            view.query != q || (searching && view.total == 0) -> Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
                 androidx.compose.material3.CircularProgressIndicator(color = Ux.Accent, strokeWidth = 3.dp, modifier = Modifier.size(32.dp).semantics { contentDescription = D.searchingLabel })
             }
             view.total == 0 -> Text(S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 16.dp))
