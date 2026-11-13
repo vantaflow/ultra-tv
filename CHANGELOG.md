@@ -10,6 +10,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Enregistrer le direct depuis le lecteur : l'enregistrement s'arrête à la fin du programme en cours (+ 10 min de marge ; 4 h sans guide) et le message indique l'heure de fin, au lieu d'une durée fixe de « 120 min max ».
 
+### Modifié
+- Films et Séries (téléphone) : tri, note, période et catégories sur une seule ligne, comme le Direct ; la rangée de tri n'est plus affichée deux fois (aussi sur TV en mode rangées).
+
 ## [1.3.6] — 2026-11-13 (Android) et bureau 1.2.53
 
 ### Modifié

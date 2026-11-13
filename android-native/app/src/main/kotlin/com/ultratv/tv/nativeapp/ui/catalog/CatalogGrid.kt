@@ -364,9 +364,12 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
                 com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
             }
         }
-        lp?.let { ChoiceBar(vm, it, filter, split, touch, chips.size, if (split) listReq else null) }
+        // Mode liste (catégories en colonne) : barre de choix au-dessus. En mode rangées, les filtres sont plus bas : la
+        // barre ici les affichait une seconde fois (tri en double au-dessus et au-dessous des catégories).
+        if (split) lp?.let { ChoiceBar(vm, it, filter, split, touch, chips.size, listReq) }
         if (detecting && !touch) Text(D.genreHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (!split) {
+        if (!split && touch) TouchFilterRow(vm, chips, selected, filter)
+        else if (!split) {
         LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed)) {
             item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
             items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { vm.select(c.remoteId) } }
@@ -475,6 +478,31 @@ private fun GenreProgressBanner(p: GenreDetector.Progress, touch: Boolean) {
 }
 
 /** Barre du haut : tri, note minimale et période (pastilles d'origine), puis le nombre de catégories. */
+/**
+ * Téléphone : une seule ligne, comme le Direct (gain de place) — Tri, Note et Période en pastilles qui ouvrent leur choix,
+ * puis « Tous » et les catégories.
+ */
+@Composable
+private fun TouchFilterRow(vm: CatalogGridViewModel, chips: List<CategoryChip>, selected: String?, filter: CatalogFilter) {
+    val D = LocalDs.current
+    var open by remember { mutableStateOf("") }
+    LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(start = RowBleed)) {
+        item(key = "sort") { Chip("${D.catalogSortName(filter.sort)} ▾", filter.sort != CatalogFilter.Sort.entries.first()) { open = "sort" } }
+        item(key = "rating") { Chip("${if (filter.minRating == 0) D.anyRating else "★ ${filter.minRating}+"} ▾", filter.minRating != 0) { open = "rating" } }
+        item(key = "period") { Chip("${D.periodName(filter.period)} ▾", filter.period != CatalogFilter.Period.entries.first()) { open = "period" } }
+        item(key = "all") { Chip(D.allChip, selected == null) { vm.select(null) } }
+        items(chips, key = { it.remoteId }, contentType = { "chip" }) { c -> Chip(categoryLabel(c), selected == c.remoteId) { vm.select(c.remoteId) } }
+    }
+    when (open) {
+        "sort" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.catalogSortName(filter.sort), CatalogFilter.Sort.entries.map { it to D.catalogSortName(it) }, filter.sort,
+            { vm.setFilter(filter.copy(sort = it)); open = "" }, { open = "" })
+        "rating" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.anyRating, CatalogFilter.RATINGS.map { it to (if (it == 0) D.anyRating else "★ $it+") }, filter.minRating,
+            { vm.setFilter(filter.copy(minRating = it)); open = "" }, { open = "" })
+        "period" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.periodName(filter.period), CatalogFilter.Period.entries.map { it to D.periodName(it) }, filter.period,
+            { vm.setFilter(filter.copy(period = it)); open = "" }, { open = "" })
+    }
+}
+
 @Composable
 private fun ChoiceBar(vm: CatalogGridViewModel, lp: CatalogLayoutPrefs, filter: CatalogFilter, split: Boolean, touch: Boolean, categoryCount: Int, down: FocusRequester?) {
     val D = LocalDs.current
