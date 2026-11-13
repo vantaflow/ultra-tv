@@ -9,6 +9,7 @@ import { normText } from "@/lib/text";
 import { letterIndex, orderResults, relevance, SEARCH_SORTS, validRating, type SearchSort } from "@/lib/searchRank";
 import { usePlayer } from "@/player/store";
 import { channelTarget } from "@/player/targets";
+import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { QBadge, Seg, hhmm } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
@@ -112,8 +113,9 @@ function Inner({ source }: { source: Source }) {
   const openMovie = (m: MovieRow) => nav(`/movie/${m.streamId}`);
   const openSeries = (s: SeriesRow) => nav(`/serie/${s.seriesId}`);
   const playChannel = (c: ChannelRow) => usePlayer.getState().open(channelTarget(source, c), "full", null);
+  const lang = usePrefs((s) => s.lang);
   const meta = (kind: "movies" | "series", y: number | null, r: number) =>
-    [t(kind === "movies" ? "nav.movies" : "nav.series"), y, validRating(r) != null ? `★ ${validRating(r)!.toFixed(1)}` : null].filter(Boolean).join(" · ");
+    [t(kind === "movies" ? "nav.movies" : "nav.series"), y, validRating(r) != null ? `★ ${validRating(r)!.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}` : null].filter(Boolean).join(" · ");
 
   const Head = ({ x, n, label }: { x: Tab; n: number; label?: string }) => (
     <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 12 }}>
@@ -163,7 +165,10 @@ function Inner({ source }: { source: Source }) {
       )}
       {view?.best && eff === "all" && (
         <section style={{ display: "flex", gap: 24, alignItems: "center", background: "var(--surface)", borderRadius: "1.25rem", padding: "1rem" }}>
-          <div style={{ width: "8rem", flexShrink: 0, aspectRatio: "2 / 3", borderRadius: "0.75rem", overflow: "hidden" }}><Img src={view.best.poster} /></div>
+          <div style={{ width: "8rem", flexShrink: 0, aspectRatio: "2 / 3", borderRadius: "0.75rem", overflow: "hidden", position: "relative", background: "var(--surface-2)", display: "grid", placeItems: "center", textAlign: "center", padding: 8, boxSizing: "border-box" }}>
+            <span className="muted" style={{ fontSize: "0.8125rem", fontWeight: 600 }}>{view.best.title}</span>
+            <div style={{ position: "absolute", inset: 0 }}><Img src={view.best.poster} alt={view.best.title} /></div>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
             <div className="eyebrow" style={{ color: "var(--accent-text)" }}>{t("search.best")}</div>
             <div style={{ fontSize: "1.75rem", fontWeight: 700 }} className="ellipsis">{view.best.title}</div>
