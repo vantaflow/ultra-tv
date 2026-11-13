@@ -2,6 +2,7 @@
 import { escapeHtml as e } from "../http.js";
 import { ENVOYER_COOKIE, ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
+import { DONATE_DICT, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const AUTH_ERR = {
@@ -160,4 +161,40 @@ export function offlinePage(n) {
 <div class="row"><a class="button block" href="/">Réessayer</a></div>
 <div class="note">${ico("info")}<span>Vos sources et vos réglages ne sont jamais gardés hors ligne sur ce téléphone : ils restent sur votre compte.</span></div>
 </div>` });
+}
+
+/**
+ * Page de dons (/donate) : montants proposés + montant libre, en dirhams ; [state] = "form" | "thanks",
+ * [err] = "declined" | "upstream" | "invalid" ; [enabled] = clé ChariPay configurée.
+ */
+export function donatePage(n, { lang = "en", enabled = false, err = null, state = "form" } = {}) {
+  if (!ENVOYER_LANGS.includes(lang)) lang = "en";
+  const t = DONATE_DICT[lang];
+  const c = ENVOYER_DICT[lang];
+  const dir = ENVOYER_DIR[lang];
+  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`${state === "thanks" ? "/donate/merci" : "/donate"}?l=${l}`)}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
+  const msg = err && t[err] ? notice(err === "upstream" ? "info" : "err", t[err]) : "";
+  let body;
+  if (state === "thanks") {
+    body = `<div class="panel"><h1>${e(t.thanks)}</h1><p class="sub">${e(t.thanksSub)}</p>
+<div class="row"><a class="button block" href="https://github.com/vantaflow/ultra-tv">${e(t.github)}</a></div></div>`;
+  } else if (!enabled) {
+    body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${notice("info", t.off)}</div>`;
+  } else {
+    const presets = DONATE_PRESETS.map((a, i) => `<button class="${i === 1 ? "" : "alt-btn "}block" type="submit" name="amount" value="${a}"${i === 1 ? " autofocus" : ""}>${a} MAD</button>`).join("");
+    body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}
+<form method="post" action="/donate?l=${lang}">
+<p class="hint">${e(t.pick)}</p>
+<div class="apk-list">${presets}</div>
+<label for="custom">${e(t.other)}</label>
+<input id="custom" name="custom" dir="ltr" inputmode="numeric" pattern="[0-9]*" min="${DONATE_MIN}" max="${DONATE_MAX}" maxlength="5" autocomplete="off" placeholder="${DONATE_MIN} – ${DONATE_MAX}"/>
+<div class="row"><button class="block" type="submit">${e(t.give)}</button></div>
+</form>
+<div class="note">${ico("info")}<span>${e(t.secure)}</span></div></div>`;
+  }
+  const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body,
+    loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
+      foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });
+  res.headers.append("vary", "Cookie, Accept-Language");
+  return res;
 }
