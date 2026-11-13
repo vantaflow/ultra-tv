@@ -214,7 +214,8 @@ fun resumeTarget(eps: List<EpisodeEntity>, watched: List<com.ultratv.tv.nativeap
     }
     val sorted = eps.sortedWith(compareBy({ it.season }, { it.episode }))
     val seen = watched.map { it.remoteId }.toSet()
-    return sorted.firstOrNull { it.remoteId !in seen } ?: sorted.first()
+    // Liste vide (épisodes encore en chargement) : rien à proposer — avant, `first()` plantait.
+    return sorted.firstOrNull { it.remoteId !in seen } ?: sorted.firstOrNull()
 }
 
 /** Titre d'épisode lisible : retire le nom de la série et le marqueur SxxExx que beaucoup de sources y répètent. */

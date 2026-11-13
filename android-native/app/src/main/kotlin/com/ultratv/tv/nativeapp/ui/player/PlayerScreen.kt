@@ -1022,7 +1022,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     val rootFocus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { rootFocus.requestFocus() }
+    LaunchedEffect(Unit) { runCatching { rootFocus.requestFocus() } }
     // OSD refermé : le focus revient à la racine, où les touches du Direct sont lues.
     LaunchedEffect(osdOpen, isLive, state.phase == Phase.ERROR) { if (LiveOsdLogic.shouldRestoreRootFocus(isLive, osdOpen, state.phase == Phase.ERROR)) runCatching { rootFocus.requestFocus() } }
     // Focus de la barre de l'OSD : posé par LiveOsd lui-même, APRÈS sa composition (réessayé quelques images, la demande échoue
@@ -1288,7 +1288,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             val prog = vm.nowProgramme.collectAsState().value
             val liveProgress = isLive && !tsActive
             val fraction: Float; val startLabel: String; val endLabel: String
-            if (tsActive && tsSnap != null) { fraction = tsSnap!!.fraction; startLabel = EpgClock.hm(progressNow - tsSnap!!.windowSec * 1000L); endLabel = X.directMark }
+            val snapNow = tsSnap
+            if (tsActive && snapNow != null) { fraction = snapNow.fraction; startLabel = EpgClock.hm(progressNow - snapNow.windowSec * 1000L); endLabel = X.directMark }
             else if (liveProgress) {
                 val st = prog?.startMs; val en = prog?.endMs
                 fraction = if (st != null && en != null && en > st) ((progressNow - st).toFloat() / (en - st)).coerceIn(0f, 1f) else 0f

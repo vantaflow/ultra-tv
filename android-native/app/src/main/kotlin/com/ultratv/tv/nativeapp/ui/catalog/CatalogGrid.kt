@@ -447,7 +447,8 @@ private fun CatalogHeroHost(
     var firstFocused by remember { mutableStateOf(false) }
     RequestInitialFocus(first, hasFocus = { firstFocused }, key = chips.firstOrNull()?.remoteId)
     // Hero : premier titre de la première rangée (déjà en cache pour la rangée elle-même).
-    val firstRow by remember(chips.first().remoteId) { vm.rowItems(chips.first().remoteId) }.collectAsState()
+    val firstKey = chips.firstOrNull()?.remoteId.orEmpty()
+    val firstRow by remember(firstKey) { vm.rowItems(firstKey) }.collectAsState()
     val hero = remember(firstRow) { firstRow?.firstOrNull()?.let(::heroOf) }
     val tabs = buildList {
         add(CatalogTabUi(null, D.allChip))

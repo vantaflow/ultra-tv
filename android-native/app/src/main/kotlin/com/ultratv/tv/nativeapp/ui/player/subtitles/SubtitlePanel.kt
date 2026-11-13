@@ -168,10 +168,11 @@ private fun SearchPage(X: PlayerExtraStrings, vm: SubtitleViewModel, onDownloade
     val hits by vm.hits.collectAsState()
     val scope = rememberCoroutineScope()
     var busy by remember { mutableStateOf(false) }
+    val found = hits
     when {
-        hits == null -> Text(X.searching, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-        hits!!.isEmpty() -> Text(if (vm.serviceMissing) X.subtitlesNotConfigured else X.noSubtitleFound, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
-        else -> hits!!.take(15).forEach { h: SubtitleHit ->
+        found == null -> Text(X.searching, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
+        found.isEmpty() -> Text(if (vm.serviceMissing) X.subtitlesNotConfigured else X.noSubtitleFound, color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
+        else -> found.take(15).forEach { h: SubtitleHit ->
             ValueRow(h.release.ifBlank { h.id }, h.language.uppercase(), enabled = !busy) {
                 busy = true
                 scope.launch { vm.download(h)?.let(onDownloaded); busy = false }

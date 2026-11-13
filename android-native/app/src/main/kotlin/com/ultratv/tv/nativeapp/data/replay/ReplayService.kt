@@ -45,7 +45,7 @@ object ReplayUrls {
         if (availability(channel, prog, nowMs) != ReplayAvailability.AVAILABLE) return null
         val template = channel.catchupSource
         if (!template.isNullOrBlank()) return Catchup.fillTemplate(template, prog)
-        val (base, user, pass, sid) = XTREAM_LIVE.matchEntire(channel.streamUrl)!!.destructured
+        val (base, user, pass, sid) = (XTREAM_LIVE.matchEntire(channel.streamUrl) ?: return null).destructured
         val start = startStamp(prog.startMs, zone)
         val dur = durationMinutes(prog)
         return when (style) {
