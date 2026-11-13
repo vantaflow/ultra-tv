@@ -108,6 +108,32 @@ function UpNextSection({ title, rows, onOpen }: { title: string; rows: UpNextRow
   );
 }
 
+/**
+ * Fond d'une diapositive « À la une » : fond Fanart, puis image paysage du fournisseur, puis affiche — la PREMIÈRE qui se
+ * charge vraiment (les liens morts des fournisseurs laissaient un rectangle vide avec le seul logo).
+ */
+function HeroSeriesBg({ source, s }: { source: Source; s: SeriesRow }) {
+  const art = useFanart({ kind: "tv", title: s.title, year: s.year, detailKey: `series:${source.id}:${s.seriesId}` });
+  const candidates = [art.background, s.backdrop, s.poster].filter((u): u is string => !!u);
+  const key = candidates.join("|");
+  const [ok, setOk] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    setOk(null);
+    void (async () => {
+      for (const u of candidates) {
+        const loaded = await new Promise<boolean>((r) => { const im = new Image(); im.onload = () => r(im.naturalWidth > 1); im.onerror = () => r(false); im.src = u; });
+        if (!alive) return;
+        if (loaded) { setOk(u); return; }
+      }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  if (!ok) return null;
+  return <div className={`slide-bg${ok === s.poster && ok !== s.backdrop ? " from-poster" : ""}`} style={{ backgroundImage: `url("${ok.replace(/"/g, "%22")}")` }} />;
+}
+
 /** Titre d'une série « À la une » : logo Fanart si disponible, sinon le texte. */
 function HeroSeriesTitle({ source, s }: { source: Source; s: SeriesRow }) {
   const art = useFanart({ kind: "tv", title: s.title, year: s.year, detailKey: `series:${source.id}:${s.seriesId}` });
@@ -226,7 +252,7 @@ function HomeInner({ source }: { source: Source }) {
         onFocus={() => setHeroPaused(true)} onBlur={() => setHeroPaused(false)}>
         {slide ? (
           <>
-            <div className="art" aria-hidden="true"><div key={slide.id} className="slide-bg" style={{ backgroundImage: `url("${(slide.backdrop || slide.poster || "").replace(/"/g, "%22")}")` }} /></div>
+            <div className="art" aria-hidden="true"><HeroSeriesBg key={slide.id} source={source} s={slide} /></div>
             <div className="meta">
               <span className="badge-live">{t("nav.series")}</span>
               <span>{[slide.year, slide.rating > 0 ? `★ ${slide.rating.toFixed(1)}` : null].filter(Boolean).join(" · ")}</span>

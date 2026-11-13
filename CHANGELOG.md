@@ -7,6 +7,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Réglages › Synchronisation : les quatre modes (Automatique, À chaque lancement, Planifiée, Manuelle) sont en liste avec leur description en entier, sur TV comme sur téléphone (les cartes côte à côte coupaient les textes, même sur un grand téléviseur).
 - Bureau, Films et Séries : dans « À la une », l'affiche était posée sur le texte quand le titre n'a pas d'image paysage ; elle sert désormais de fond au rectangle, en fondu.
+- Bureau, accueil : le carrousel « À la une » n'affichait parfois que le logo (image du fournisseur introuvable) ; il prend la première image qui se charge : fond Fanart, image paysage du fournisseur, puis affiche.
 
 ## [1.3.14] — 2026-11-13 (Android)
 
