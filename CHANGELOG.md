@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.25] — 2026-11-13 (Android)
+
 ### Modifié
 - APK environ quatre fois plus légers : bibliothèques natives compressées et débarrassées de leurs symboles de débogage, versions publiées réduites aux processeurs ARM (box, téléphones, tablettes) — APK universel 218 → 55 Mo, arm64 66 → 34 Mo, armeabi-v7a 54 → 33 Mo. Plus d'APK x86_64 (émulateurs seulement).
 
