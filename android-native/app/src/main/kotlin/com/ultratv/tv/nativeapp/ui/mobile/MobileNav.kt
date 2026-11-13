@@ -344,9 +344,9 @@ val LocalNavBack = androidx.compose.runtime.compositionLocalOf<() -> Unit> { {} 
 
 /** Loupe de la barre du haut des écrans principaux (tactile seulement). */
 @Composable
-fun SearchAction(modifier: Modifier = Modifier) {
+fun SearchAction(modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     if (!LocalTouch.current) return
     val M = LocalMobileStrings.current
     val open = LocalOpenSearch.current
-    IconCircle(Icons.Search, M.a11ySearch, Ux.Surface, Ux.Text, open, modifier)
+    IconCircle(Icons.Search, M.a11ySearch, Ux.Surface, Ux.Text, onClick ?: open, modifier)
 }

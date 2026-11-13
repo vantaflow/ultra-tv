@@ -27,6 +27,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -173,6 +174,16 @@ class SearchViewModel @Inject constructor(
 
     private var job: Job? = null
 
+    /** Rubrique de la recherche limitée (Films / Séries) ; null = recherche générale. */
+    private val _scope = MutableStateFlow<SearchTab?>(null)
+    val scope: StateFlow<SearchTab?> = _scope.asStateFlow()
+    fun setScope(t: SearchTab?) {
+        if (t == _scope.value) return
+        _scope.value = t
+        _tab.value = SearchTab.ALL
+        if (_q.value.isNotBlank()) setQuery(_q.value)
+    }
+
     init {
         // Index de recherche réparé s'il a été laissé incomplet (synchro interrompue) : une fois par lancement.
         // Synchro en cours à l'ouverture : la vérification était abandonnée et jamais retentée — un index cassé ne rendait
@@ -206,11 +217,12 @@ class SearchViewModel @Inject constructor(
             // « Aucun résultat » seulement quand TOUT est fini : la recherche rapide vide laissait ce message à l'écran
             // pendant que les programmes du guide étaient encore cherchés. Une erreur ne laisse jamais le chargement affiché.
             try {
-                val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
+                val only = SearchScope.onlyOf(_scope.value)
+                val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false, only = only)
                 // Mesure (jamais le texte saisi) : durée de la recherche rapide.
                 android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
                 publish(Hits(s, quick))
-                if (s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s))))
+                if (only == null && s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s))))
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) {
                 publish(Hits(s, SearchResults()))   // erreur : « Aucun résultat » plutôt qu'un chargement sans fin
@@ -297,6 +309,9 @@ fun SearchScreen(
     val searching by vm.searching.collectAsState()
     val tab by vm.tab.collectAsState()
     val sort by vm.sort.collectAsState()
+    val scope by vm.scope.collectAsState()
+    // Recherche limitée demandée par Films / Séries : lue une fois à l'ouverture.
+    LaunchedEffect(Unit) { SearchScope.pending.value?.let { vm.setScope(it) }; SearchScope.pending.value = null }
     val S = LocalStrings.current
     val D = LocalDs.current
     val dbgQ by com.ultratv.tv.nativeapp.StartupNav.debugQuery.collectAsState()
@@ -314,7 +329,7 @@ fun SearchScreen(
         res.data?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.takeIf { it.isNotBlank() }?.let { vm.setQuery(it.trim()) }
     }
     // Onglet vidé par une nouvelle recherche : retour à « Tout ».
-    val effTab = if (tab != SearchTab.ALL && view.count(tab) == 0) SearchTab.ALL else tab
+    val effTab = if (scope != null || (tab != SearchTab.ALL && view.count(tab) == 0)) SearchTab.ALL else tab
     val openMovie: (MovieEntity) -> Unit = { onOpenMovie(it.id) }
     val openSeries: (SeriesEntity) -> Unit = { onOpenSeries(it.id) }
     val playChannel: (ChannelEntity) -> Unit = { c -> vm.playChannel(c) { onOpenChannel(c.streamUrl, c.name) } }
@@ -386,7 +401,7 @@ private fun KeyboardColumn(q: String, view: SearchView, voiceAvailable: Boolean,
         Modifier.width(600.design).fillMaxHeight().padding(start = 72.design, end = 48.design, top = 54.design, bottom = 40.design),
         verticalArrangement = Arrangement.spacedBy(24.design),
     ) {
-        SectionTitle(S.navSearch, 44)
+        SectionTitle(scopedTitle(S.navSearch, vm.scope.collectAsState().value), 44)
         Row(
             Modifier.fillMaxWidth().height(80.design).clip(RoundedCornerShape(20.design)).background(Ux.SurfaceDeep).border(3.design, Ux.Accent, RoundedCornerShape(20.design)).padding(horizontal = 24.design),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design),
@@ -786,7 +801,7 @@ private fun SearchTouch(
     Column(Modifier.fillMaxSize().background(Ux.Bg), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.padding(start = 8.dp, end = 20.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, M.a11yBack, Ux.Surface, Ux.Text, com.ultratv.tv.nativeapp.ui.mobile.LocalNavBack.current)
-            Text(S.navSearch, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.padding(start = 8.dp))
+            Text(scopedTitle(S.navSearch, vm.scope.collectAsState().value), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.sp, modifier = Modifier.padding(start = 8.dp))
         }
         Row(
             Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(48.dp).clip(RoundedCornerShape(14.dp)).background(Ux.SurfaceDeep).border(2.dp, Ux.Accent, RoundedCornerShape(14.dp)).padding(start = 12.dp, end = 2.dp),
@@ -920,3 +935,10 @@ private fun Modifier.upExitTo(target: androidx.compose.ui.focus.FocusRequester):
     focusProperties {
         exit = { dir -> if (dir == androidx.compose.ui.focus.FocusDirection.Up) target else androidx.compose.ui.focus.FocusRequester.Default }
     }.focusGroup()
+
+/** « Recherche » ou « Recherche · Films » / « Recherche · Séries » pour une recherche limitée. */
+@Composable
+private fun scopedTitle(base: String, scope: SearchTab?): String {
+    val D = LocalDs.current
+    return when (scope) { SearchTab.MOVIES -> "$base · ${D.moviesTitle}"; SearchTab.SERIES -> "$base · ${D.seriesTitle}"; else -> base }
+}

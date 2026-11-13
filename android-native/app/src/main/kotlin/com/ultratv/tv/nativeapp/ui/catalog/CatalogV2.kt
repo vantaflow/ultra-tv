@@ -85,6 +85,8 @@ internal fun CatalogRowsTv(
     tabs: List<CatalogTabUi>,
     selectedKey: String?,
     onTab: (String?) -> Unit,
+    /** Recherche limitée à la rubrique : pastille « Recherche » en tête des onglets. */
+    onSearch: (() -> Unit)? = null,
     filters: @Composable () -> Unit,
     hero: CatalogHero?,
     featuredLabel: String,
@@ -109,6 +111,7 @@ internal fun CatalogRowsTv(
     ) {
         item(key = "tabs", contentType = "tabs") {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.design), contentPadding = PaddingValues(start = 72.design, end = 96.design)) {
+                if (onSearch != null) item(key = "__search", contentType = "search") { SearchChip(onSearch) }
                 items(tabs, key = { it.key ?: "__all" }, contentType = { "tab" }) { t -> Chip(t.label, selectedKey == t.key) { onTab(t.key) } }
             }
         }

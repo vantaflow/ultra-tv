@@ -215,21 +215,24 @@ class CatalogRepository @Inject constructor(
      */
     // Calcul (dédoublonnage, tri, ressemblance) HORS du fil principal : appelé depuis un écran, il bloquait l'affichage
     // plus de 5 s sur une box occupée par une synchro (ANR, l'appli fermée par Android en pleine recherche).
-    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { searchNow(pid, query, limit, nowMs, includePrograms) }
+    /** [only] : « movie » ou « series » = recherche limitée à cette rubrique (ni chaînes, ni guide, ni l'autre type). */
+    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true, only: String? = null): SearchResults =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { searchNow(pid, query, limit, nowMs, includePrograms, only) }
 
-    private suspend fun searchNow(pid: Long, query: String, limit: Int, nowMs: Long, includePrograms: Boolean): SearchResults {
+    private suspend fun searchNow(pid: Long, query: String, limit: Int, nowMs: Long, includePrograms: Boolean, only: String?): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
+        val wantMovies = only == null || only == "movie"
+        val wantSeries = only == null || only == "series"
         val cap = limit * 3
-        val rawMovies = movieDao.searchFts(pid, match, cap)
-        val rawSeries = seriesDao.searchFts(pid, match, cap)
+        val rawMovies = if (wantMovies) movieDao.searchFts(pid, match, cap) else emptyList()
+        val rawSeries = if (wantSeries) seriesDao.searchFts(pid, match, cap) else emptyList()
         // Mot courant : la recherche plein texte rend ses lignes dans l'ordre de la table et s'arrête au plafond, le titre
         // cherché pouvait être au-delà. On ajoute alors, en tête, les titres qui commencent par la saisie.
         val prefix = query.trim().takeIf { it.length >= 2 }?.let { likePrefix(it) }
         // Index vide (déclencheurs perdus, reconstruction pas encore faite) : même recherche par début de titre, sans l'index —
         // avant, la recherche ne rendait alors plus rien du tout.
-        val mHead = if (prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
-        val sHead = if (prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        val mHead = if (wantMovies && prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        val sHead = if (wantSeries && prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
         var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
         var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
@@ -237,16 +240,16 @@ class CatalogRepository @Inject constructor(
         if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
             FuzzySearch.candidateMatch(query)?.let { loose ->
                 fuzzy = true
-                movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
-                series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+                if (wantMovies) movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+                if (wantSeries) series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
             }
         }
         return SearchResults(
-            channels = channelDao.searchFts(pid, match, limit),
+            channels = if (only == null) channelDao.searchFts(pid, match, limit) else emptyList(),
             movies = movies,
             series = series,
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
-            programs = if (includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
+            programs = if (only == null && includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
             fuzzy = fuzzy && (movies.isNotEmpty() || series.isNotEmpty()),
         )
     }

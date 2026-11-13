@@ -363,7 +363,9 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 48.spx, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
                 if (detecting) progress?.let { GenreProgressBanner(it, touch) }
-                com.ultratv.tv.nativeapp.ui.mobile.SearchAction()
+                // Recherche limitée à la rubrique (plus rapide que la recherche générale) : loupe en tactile, pastille en TV.
+                val openSearch = rememberScopedSearch(kind)
+                if (touch) com.ultratv.tv.nativeapp.ui.mobile.SearchAction(onClick = openSearch) else SearchChip(openSearch)
             }
         }
         // Mode liste (catégories en colonne) : barre de choix au-dessus. En mode rangées, les filtres sont plus bas : la
@@ -447,8 +449,9 @@ private fun CatalogHeroHost(
         add(CatalogTabUi(null, D.allChip))
         chips.forEach { add(CatalogTabUi(it.remoteId, if (it.isGenre) D.genreName(it.remoteId) else it.name)) }
     }
+    val openSearch = rememberScopedSearch(kind)
     CatalogRowsTv(
-        tabs = tabs, selectedKey = null, onTab = { vm.select(it) },
+        tabs = tabs, selectedKey = null, onTab = { vm.select(it) }, onSearch = openSearch,
         filters = {
             // Tri · note minimale · période (mêmes pastilles qu'avant) et, pendant la détection, son avancement.
             LazyRow(horizontalArrangement = Arrangement.spacedBy(14.design), verticalAlignment = Alignment.CenterVertically) {
@@ -692,6 +695,31 @@ private fun RowsSkeleton(touch: Boolean) {
                 androidx.compose.foundation.layout.Box(Modifier.width(if (touch) 140.dp else 320.design).height(if (touch) 16.dp else 30.design).clip(RoundedCornerShape(8.design)).background(Ux.Surface))
                 SkeletonRow(touch)
             }
+        }
+    }
+}
+
+/** Ouvre la recherche limitée à Films ou à Séries. */
+@Composable
+internal fun rememberScopedSearch(kind: CatalogKind): () -> Unit {
+    val open = com.ultratv.tv.nativeapp.ui.mobile.LocalOpenSearch.current
+    return remember(kind, open) {
+        {
+            com.ultratv.tv.nativeapp.ui.search.SearchScope.pending.value =
+                if (kind == CatalogKind.MOVIES) com.ultratv.tv.nativeapp.ui.search.SearchTab.MOVIES else com.ultratv.tv.nativeapp.ui.search.SearchTab.SERIES
+            open()
+        }
+    }
+}
+
+/** Pastille « Recherche » (loupe + libellé), à la taille des onglets. */
+@Composable
+internal fun SearchChip(onClick: () -> Unit) {
+    val S = com.ultratv.tv.nativeapp.i18n.LocalStrings.current
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(24.design), bg = Ux.Surface, focusedScale = 1f, ringWidth = 0.dp, focusedBg = Ux.Cta, modifier = Modifier.height(48.design)) { f ->
+        Row(Modifier.padding(horizontal = 20.design).height(48.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+            com.ultratv.tv.nativeapp.ui.design.DIcon(com.ultratv.tv.nativeapp.ui.design.Icons.Search, 22.design, if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.4f)
+            Text(S.navSearch, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 18.spx, maxLines = 1)
         }
     }
 }
