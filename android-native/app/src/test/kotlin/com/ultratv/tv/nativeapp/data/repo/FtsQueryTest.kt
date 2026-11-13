@@ -17,4 +17,11 @@ class FtsQueryTest {
     }
     @Test fun of_accents_sontConserves() = assertEquals("cinéma*", FtsQuery.of("cinéma"))
     @Test fun of_limiteLeNombreDeMots() = assertEquals(6, FtsQuery.of("a b c d e f g h")!!.split(" ").size)
+
+    @Test fun of_ponctuationInterne_separeLesMots() {
+        assertEquals("Spider* Man*", FtsQuery.of("Spider-Man"))
+        assertEquals("L* Odyssée*", FtsQuery.of("L'Odyssée"))
+        assertEquals("l* odyssée*", FtsQuery.of("l’odyssée"))
+        assertEquals("S* W* A* T*", FtsQuery.of("S.W.A.T."))
+    }
 }

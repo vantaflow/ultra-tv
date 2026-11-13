@@ -577,6 +577,13 @@ interface MovieDao {
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<MovieEntity>
 
+    /**
+     * Titres qui COMMENCENT par la saisie (« :prefix » se termine par %, jokers de la saisie échappés par « \\ »).
+     * Complète la recherche plein texte quand un mot courant sature son plafond : le titre exact n'y était pas forcément.
+     */
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
+    suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<MovieEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
 
@@ -713,6 +720,13 @@ interface SeriesDao {
         AND s.providerId = :pid LIMIT :limit
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<SeriesEntity>
+
+    /**
+     * Titres qui COMMENCENT par la saisie (« :prefix » se termine par %, jokers de la saisie échappés par « \\ »).
+     * Complète la recherche plein texte quand un mot courant sature son plafond : le titre exact n'y était pas forcément.
+     */
+    @Query("SELECT * FROM series WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
+    suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<SeriesEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<SeriesEntity>)

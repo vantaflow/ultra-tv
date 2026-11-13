@@ -215,8 +215,16 @@ class CatalogRepository @Inject constructor(
      */
     suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
-        var movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit)
-        var series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit)
+        val cap = limit * 3
+        val rawMovies = movieDao.searchFts(pid, match, cap)
+        val rawSeries = seriesDao.searchFts(pid, match, cap)
+        // Mot courant : la recherche plein texte rend ses lignes dans l'ordre de la table et s'arrête au plafond, le titre
+        // cherché pouvait être au-delà. On ajoute alors, en tête, les titres qui commencent par la saisie.
+        val prefix = query.trim().takeIf { it.length >= 2 }?.let { likePrefix(it) }
+        val mHead = if (prefix != null && rawMovies.size >= cap) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        val sHead = if (prefix != null && rawSeries.size >= cap) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
+        var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
         var fuzzy = false
         if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
@@ -330,6 +338,11 @@ class CatalogRepository @Inject constructor(
         }
     }
 }
+
+/** Motif LIKE « commence par » : jokers %, _ et \\ de la saisie échappés. */
+internal fun likePrefix(q: String): String = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+
+private const val PREFIX_LIMIT = 200
 
 data class SearchResults(
     val channels: List<ChannelEntity> = emptyList(),

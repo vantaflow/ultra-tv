@@ -7,9 +7,13 @@ package com.ultratv.tv.nativeapp.data.repo
  * `*` isolé…) ne peut passer : la saisie ne peut pas casser la requête.
  */
 object FtsQuery {
+    private val SEPARATORS = Regex("[^\\p{L}\\p{N}\\p{M}]+")
+
     fun of(raw: String): String? {
-        val tokens = raw.trim().split(Regex("\\s+"))
-            .map { t -> t.filter { it.isLetterOrDigit() } }
+        // Découpe sur tout ce qui n'est ni lettre, ni chiffre, ni signe diacritique, comme le tokenizer « unicode61 »
+        // de l'index : « Spider-Man » → spider* man*, « L'Odyssée » → l* odyssée*. Avant, la ponctuation était
+        // supprimée et les morceaux recollés (« spiderman* », « lodyssée* ») : aucun titre ne correspondait.
+        val tokens = raw.trim().split(SEPARATORS)
             .filter { it.isNotEmpty() }
             .take(6)
         if (tokens.isEmpty()) return null
