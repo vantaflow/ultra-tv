@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.unit.dp
@@ -209,10 +210,22 @@ fun <T> ChoiceDialog(title: String, options: List<Pair<T, String>>, selected: T?
 
 /** Affiche 2:3 de taille imposée par la colonne (jamais par l'image) + titre sur une ligne. */
 @Composable
-fun VodCard(title: String, poster: String?, modifier: Modifier, kind: com.ultratv.tv.nativeapp.data.tmdb.TmdbKind? = null, year: Int? = null, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
+fun VodCard(
+    title: String, poster: String?, modifier: Modifier, kind: com.ultratv.tv.nativeapp.data.tmdb.TmdbKind? = null, year: Int? = null,
+    /** En favori : petit cœur sur l'affiche. */
+    favorite: Boolean = false,
+    /** Appui long (ex. : ajouter aux favoris depuis la recherche). */
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    FocusSurface(onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
         Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-            PosterImage(poster, title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 16, kind = kind, year = year)
+            Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+                PosterImage(poster, title, Modifier.fillMaxSize(), radius = 16, kind = kind, year = year)
+                if (favorite) Box(Modifier.align(Alignment.TopEnd).padding(10.design).size(40.design).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xCC0A0A0C)), contentAlignment = Alignment.Center) {
+                    DIcon(Icons.Heart, 22.design, Ux.AccentInk, fill = true)
+                }
+            }
             Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }

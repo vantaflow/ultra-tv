@@ -206,6 +206,8 @@
     <string name="ds_no_program_info">Aucune information de programme</string>
     <string name="ds_add_favorite">Ajouter aux favoris</string>
     <string name="ds_remove_favorite">Retirer des favoris</string>
+    <string name="ds_fav_added">Ajouté aux favoris</string>
+    <string name="ds_fav_removed">Retiré des favoris</string>
     <string name="ds_lock_channel">Verrouiller la chaîne</string>
     <string name="ds_unlock_channel">Déverrouiller la chaîne</string>
     <string name="ds_close">Fermer</string>

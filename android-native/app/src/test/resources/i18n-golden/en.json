@@ -1694,5 +1694,7 @@
   "SimpleStrings.getKeyChange()": "Change channel",
   "SimpleStrings.getNowLabel()": "On now",
   "SimpleStrings.getNextLabel()": "Next",
-  "SimpleStrings.getTabAll()": "All"
+  "SimpleStrings.getTabAll()": "All",
+  "DesignStrings.getFavAdded()": "Added to favourites",
+  "DesignStrings.getFavRemoved()": "Removed from favourites"
 }

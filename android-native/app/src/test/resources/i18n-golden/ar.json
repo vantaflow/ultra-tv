@@ -1694,5 +1694,7 @@
   "SimpleStrings.getKeyChange()": "تغيير القناة",
   "SimpleStrings.getNowLabel()": "الآن",
   "SimpleStrings.getNextLabel()": "التالي",
-  "SimpleStrings.getTabAll()": "الكل"
+  "SimpleStrings.getTabAll()": "الكل",
+  "DesignStrings.getFavAdded()": "أُضيف إلى المفضلة",
+  "DesignStrings.getFavRemoved()": "أُزيل من المفضلة"
 }

@@ -259,6 +259,8 @@ class DesignStrings(val lang: AppLang) {
     val noProgramInfo get() = tx(R.string.ds_no_program_info)
     val addFavorite get() = tx(R.string.ds_add_favorite)
     val removeFavorite get() = tx(R.string.ds_remove_favorite)
+    val favAdded get() = tx(R.string.ds_fav_added)
+    val favRemoved get() = tx(R.string.ds_fav_removed)
     val lockChannel get() = tx(R.string.ds_lock_channel)
     val unlockChannel get() = tx(R.string.ds_unlock_channel)
     val close get() = tx(R.string.ds_close)

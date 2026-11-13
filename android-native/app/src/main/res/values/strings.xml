@@ -207,6 +207,8 @@
     <string name="ds_no_program_info">No programme information</string>
     <string name="ds_add_favorite">Add to favorites</string>
     <string name="ds_remove_favorite">Remove from favorites</string>
+    <string name="ds_fav_added">Added to favourites</string>
+    <string name="ds_fav_removed">Removed from favourites</string>
     <string name="ds_lock_channel">Lock channel</string>
     <string name="ds_unlock_channel">Unlock channel</string>
     <string name="ds_close">Close</string>

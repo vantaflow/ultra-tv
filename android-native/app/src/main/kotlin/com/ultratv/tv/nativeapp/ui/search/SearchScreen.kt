@@ -82,6 +82,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -129,6 +130,29 @@ class SearchViewModel @Inject constructor(
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
     private val indexHealth: com.ultratv.tv.nativeapp.data.repo.SearchIndexHealth,
 ) : ViewModel() {
+    /** Favoris de la source active (« LIVE:id », « MOVIE:id », « SERIES:id ») : cœur sur les résultats. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val favoriteKeys: StateFlow<Set<String>> = kotlinx.coroutines.flow.flow { emit(provider.firstActiveId()) }
+        .flatMapLatest { pid ->
+            if (pid == null) kotlinx.coroutines.flow.flowOf(emptySet())
+            else kotlinx.coroutines.flow.combine(catalog.favoritesByKind(pid, "LIVE"), catalog.favoritesByKind(pid, "MOVIE"), catalog.favoritesByKind(pid, "SERIES")) { a, b, c ->
+                (a + b + c).mapTo(HashSet()) { "${it.kind}:${it.remoteId}" }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    /**
+     * Appui long sur un résultat : ajoute aux favoris (ou retire) sans ouvrir la fiche — pratique pour ajouter plusieurs
+     * séries d'affilée depuis la recherche. Le message confirme l'action.
+     */
+    fun toggleFavorite(kind: String, remoteId: String, title: String, added: String, removed: String) {
+        viewModelScope.launch {
+            val pid = provider.firstActiveId() ?: return@launch
+            val on = "$kind:$remoteId" !in favoriteKeys.value
+            catalog.setFavorite(pid, kind, remoteId, on)
+            com.ultratv.tv.nativeapp.ui.common.Toaster.ok("${if (on) added else removed} · $title")
+        }
+    }
+
     /** Chaîne trouvée : contexte « LIVE » + file de zapping avant d'ouvrir le lecteur (OSD du direct, OK = liste). */
     fun playChannel(c: ChannelEntity, then: () -> Unit) {
         viewModelScope.launch {
@@ -293,7 +317,6 @@ private fun visibleBounds(info: LazyGridLayoutInfo): Pair<Int, Int>? {
     return (full.firstOrNull() ?: vis.first()).index to (full.lastOrNull() ?: vis.last()).index
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchScreen(
     // (streamUrl, title) — same play path the Live/Guide screens use.
@@ -301,6 +324,23 @@ fun SearchScreen(
     onOpenMovie: (Long) -> Unit,
     onOpenSeries: (Long) -> Unit,
     vm: SearchViewModel = hiltViewModel(),
+) {
+    // Appui long sur un résultat (chaîne, film, série) : favoris ajoutés / retirés sans ouvrir la fiche.
+    val D = LocalDs.current
+    val keys by vm.favoriteKeys.collectAsState()
+    val fav = remember(keys, D) { SearchFav(keys) { k, id, t -> vm.toggleFavorite(k, id, t, D.favAdded, D.favRemoved) } }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSearchFav provides fav) {
+        SearchScreenContent(onOpenChannel, onOpenMovie, onOpenSeries, vm)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SearchScreenContent(
+    onOpenChannel: (String, String) -> Unit,
+    onOpenMovie: (Long) -> Unit,
+    onOpenSeries: (Long) -> Unit,
+    vm: SearchViewModel,
 ) {
     val q by vm.query.collectAsState()
     val view by vm.view.collectAsState()
@@ -529,12 +569,18 @@ private fun <T> ResultRow(title: String, items: List<T>, key: (T) -> Any, onSeeA
 }
 
 @Composable
-private fun MoviePoster(m: MovieEntity, width: Int?, onOpen: (MovieEntity) -> Unit) =
-    VodCard(m.title, m.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.MOVIE, m.year) { onOpen(m) }
+private fun MoviePoster(m: MovieEntity, width: Int?, onOpen: (MovieEntity) -> Unit) {
+    val fav = LocalSearchFav.current
+    VodCard(m.title, m.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.MOVIE, m.year,
+        favorite = fav?.has("MOVIE", m.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle("MOVIE", m.remoteId, m.title) } }) { onOpen(m) }
+}
 
 @Composable
-private fun SeriesPoster(s: SeriesEntity, width: Int?, onOpen: (SeriesEntity) -> Unit) =
-    VodCard(s.title, s.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.TV, s.year) { onOpen(s) }
+private fun SeriesPoster(s: SeriesEntity, width: Int?, onOpen: (SeriesEntity) -> Unit) {
+    val fav = LocalSearchFav.current
+    VodCard(s.title, s.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.TV, s.year,
+        favorite = fav?.has("SERIES", s.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle("SERIES", s.remoteId, s.title) } }) { onOpen(s) }
+}
 
 /** Onglet « Tout » : meilleur résultat, puis une rangée complète par type. */
 @Composable
@@ -754,10 +800,13 @@ private fun FuzzyPane(q: String, view: SearchView, vm: SearchViewModel, openMovi
 
 @Composable
 private fun ChannelCard(c: ChannelEntity, modifier: Modifier, onClick: () -> Unit) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
+    val fav = LocalSearchFav.current
+    val isFav = fav?.has("LIVE", c.remoteId) == true
+    FocusSurface(onClick = onClick, onLongClick = fav?.let { f -> { f.toggle("LIVE", c.remoteId, c.title) } }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             LogoBox(c.logo, c.title, Modifier.width(64.design).height(44.design), radius = 10, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
             Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (isFav) DIcon(Icons.Heart, 26.design, if (f) Ux.TextOnLight else Ux.AccentInk, fill = true)
         }
     }
 }
@@ -942,3 +991,9 @@ private fun scopedTitle(base: String, scope: SearchTab?): String {
     val D = LocalDs.current
     return when (scope) { SearchTab.MOVIES -> "$base · ${D.moviesTitle}"; SearchTab.SERIES -> "$base · ${D.seriesTitle}"; else -> base }
 }
+
+/** Favoris des résultats : état (cœur) et action de l'appui long, fournis par l'écran Recherche. */
+internal class SearchFav(val keys: Set<String>, val toggle: (kind: String, remoteId: String, title: String) -> Unit) {
+    fun has(kind: String, remoteId: String) = "$kind:$remoteId" in keys
+}
+internal val LocalSearchFav = androidx.compose.runtime.compositionLocalOf<SearchFav?> { null }

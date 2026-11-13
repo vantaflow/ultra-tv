@@ -198,6 +198,8 @@
     <string name="ds_no_program_info">Sin información de programa</string>
     <string name="ds_add_favorite">Añadir a favoritos</string>
     <string name="ds_remove_favorite">Quitar de favoritos</string>
+    <string name="ds_fav_added">Añadido a favoritos</string>
+    <string name="ds_fav_removed">Quitado de favoritos</string>
     <string name="ds_lock_channel">Bloquear canal</string>
     <string name="ds_unlock_channel">Desbloquear canal</string>
     <string name="ds_close">Cerrar</string>

@@ -10,6 +10,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Mode simple : prénom affiché seulement s'il y a plusieurs profils, aides des tuiles en entier.
 
+### Ajouté
+- Recherche : appui long sur un résultat (chaîne, film, série) pour l'ajouter aux favoris ou l'en retirer, sans ouvrir la fiche ; un cœur marque les résultats déjà en favoris.
+
 ## [1.3.20] — 2026-11-13 (Android)
 
 ### Modifié

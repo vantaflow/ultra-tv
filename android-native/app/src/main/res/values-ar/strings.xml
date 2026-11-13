@@ -209,6 +209,8 @@
     <string name="ds_no_program_info">لا توجد معلومات عن البرنامج</string>
     <string name="ds_add_favorite">إضافة إلى المفضلة</string>
     <string name="ds_remove_favorite">إزالة من المفضلة</string>
+    <string name="ds_fav_added">أُضيف إلى المفضلة</string>
+    <string name="ds_fav_removed">أُزيل من المفضلة</string>
     <string name="ds_lock_channel">قفل القناة</string>
     <string name="ds_unlock_channel">فتح القناة</string>
     <string name="ds_close">إغلاق</string>

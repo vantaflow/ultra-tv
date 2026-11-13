@@ -1694,5 +1694,7 @@
   "SimpleStrings.getKeyChange()": "Changer de chaîne",
   "SimpleStrings.getNowLabel()": "En ce moment",
   "SimpleStrings.getNextLabel()": "Ensuite",
-  "SimpleStrings.getTabAll()": "Toutes"
+  "SimpleStrings.getTabAll()": "Toutes",
+  "DesignStrings.getFavAdded()": "Ajouté aux favoris",
+  "DesignStrings.getFavRemoved()": "Retiré des favoris"
 }
