@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [Bureau 1.2.56] — 2026-11-13
+
 ### Modifié
 - Bureau : la barre latérale affiche la phase de synchro en cours (Chaînes en direct, Films, Séries, Guide TV) à côté du pourcentage.
 
