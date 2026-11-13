@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { railBadge, syncPercent } from "./Rail";
+import { railBadge, syncPercent, syncPhaseKey } from "./Rail";
 
 describe("syncPercent", () => {
   it("avance de phase en phase", () => {
@@ -21,5 +21,15 @@ describe("railBadge", () => {
     expect(railBadge("/recordings", 0, 1, run)).toBe("1 en cours");
     expect(railBadge("/recordings", 4, 0, run)).toBeNull();
     expect(railBadge("/", 3, 2, run)).toBeNull();
+  });
+});
+
+describe("syncPhaseKey", () => {
+  it("nomme la phase en cours", () => {
+    const p = (phase: "categories" | "live" | "movie" | "series" | "epg" | "done") => ({ phase, ratio: 0.5, counts: { live: 0, movie: 0, series: 0 } });
+    expect(syncPhaseKey(p("series"))).toBe("sync.series");
+    expect(syncPhaseKey(p("epg"))).toBe("sync.epg");
+    expect(syncPhaseKey(p("categories"))).toBeNull();
+    expect(syncPhaseKey(null)).toBeNull();
   });
 });

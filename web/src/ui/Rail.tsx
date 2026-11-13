@@ -42,6 +42,17 @@ export function railBadge(to: string, favorites: number, recording: number, runn
 }
 
 const PHASES: SyncProgress["phase"][] = ["categories", "live", "movie", "series", "epg"];
+/** Clé de traduction de la phase en cours (null avant les chaînes ou à la fin). */
+export function syncPhaseKey(p: SyncProgress | null): "sync.live" | "sync.movies" | "sync.series" | "sync.epg" | null {
+  switch (p?.phase) {
+    case "live": return "sync.live";
+    case "movie": return "sync.movies";
+    case "series": return "sync.series";
+    case "epg": return "sync.epg";
+    default: return null;
+  }
+}
+
 /** Avancement global de la synchro (0–100) d'après la phase et sa progression. */
 export function syncPercent(p: SyncProgress | null): number | null {
   if (!p) return null;
@@ -62,7 +73,11 @@ export function Rail() {
   const { profiles, profileId, sportSection, railCollapsed, set } = usePrefs();
   const watch = sportSection ? [...WATCH.slice(0, 3), SPORT, ...WATCH.slice(3)] : WATCH;
   const syncing = useSync((s) => s.running);
-  const pct = syncPercent(useSync((s) => s.progress));
+  const progress = useSync((s) => s.progress);
+  const pct = syncPercent(progress);
+  // Phase en cours affichée à côté du pourcentage (« Séries », « Guide TV »…) : un « bloqué à 80 % » se diagnostique d'une capture.
+  const phaseKey = syncPhaseKey(progress);
+  const syncLabel = phaseKey ? t(phaseKey) : t("rail.syncing");
   const me = profiles.find((p) => p.id === profileId) ?? profiles[0]!;
   const favCount = useFavorites(useActiveSource()).length;
   const recCount = useLiveQuery(() => db.recordings.where("state").equals("recording").count().catch(() => 0), []) ?? 0;
@@ -111,10 +126,10 @@ export function Rail() {
       </nav>
       <div className="rail-foot">
         {syncing && (
-          <div className="rail-sync" title={t("sync.background")} role="status" aria-label={`${t("rail.syncing")} ${pct ?? 0} %`}>
+          <div className="rail-sync" title={`${t("rail.syncing")} · ${syncLabel}`} role="status" aria-label={`${t("rail.syncing")} · ${syncLabel} ${pct ?? 0} %`}>
             <span className="rail-ring" style={{ ["--p" as string]: `${pct ?? 0}%` }}><span>{pct ?? 0}</span></span>
             <span className="rail-sync-wide">
-              <span className="rail-sync-row"><span>{t("rail.syncing")}</span><span>{pct ?? 0} %</span></span>
+              <span className="rail-sync-row"><span>{syncLabel}</span><span>{pct ?? 0} %</span></span>
               <span className="rail-bar"><span style={{ width: `${pct ?? 0}%` }} /></span>
             </span>
           </div>
