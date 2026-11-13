@@ -661,5 +661,11 @@
   "search.didYouMean": "Did you mean",
   "search.closeTitles": "Close matches",
   "search.details": "Details",
-  "common.sortTitle": "A–Z"
+  "common.sortTitle": "A–Z",
+  "nav.groupWatch": "Watch",
+  "nav.groupMine": "My list",
+  "rail.collapse": "Collapse menu",
+  "rail.expand": "Expand menu",
+  "rail.switchProfile": "Switch profile",
+  "rail.syncing": "Syncing"
 }

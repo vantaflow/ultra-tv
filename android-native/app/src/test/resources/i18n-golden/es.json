@@ -1662,5 +1662,7 @@
   "DesignStrings.searchRange(5,5,5)": "5\u20135 de 5",
   "DesignStrings.searchMovies(22)": "PELÍCULAS · 22",
   "DesignStrings.searchSeries(22)": "SERIES · 22",
-  "DesignStrings.searchRange(22,22,22)": "22\u201322 de 22"
+  "DesignStrings.searchRange(22,22,22)": "22\u201322 de 22",
+  "DesignStrings.getRailGroupWatch()": "Ver",
+  "DesignStrings.getRailGroupMine()": "Mi lista"
 }

@@ -1662,5 +1662,7 @@
   "DesignStrings.searchRange(5,5,5)": "5\u20135 من 5",
   "DesignStrings.searchMovies(22)": "الأفلام · 22",
   "DesignStrings.searchSeries(22)": "المسلسلات · 22",
-  "DesignStrings.searchRange(22,22,22)": "22\u201322 من 22"
+  "DesignStrings.searchRange(22,22,22)": "22\u201322 من 22",
+  "DesignStrings.getRailGroupWatch()": "مشاهدة",
+  "DesignStrings.getRailGroupMine()": "قائمتي"
 }

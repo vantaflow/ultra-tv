@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Menu latéral refait (Android TV et bureau), d'après la maquette « Menu latéral » : deux groupes, **Regarder** (Accueil, Direct, Guide, Sport, Films, Séries) et **Ma liste** (Favoris, Enregistrements, Téléchargements), avec Abonnement et Réglages en bas, près du profil. Page ouverte signalée par un fond teinté et une barre d'accent au lieu d'un aplat plein ; le focus garde la pastille claire. Synchro : anneau de progression (menu replié), barre et pourcentage (menu ouvert).
+- TV : entrées de 56 px au plus, têtes de groupe de même hauteur replié / ouvert (les entrées ne bougent plus verticalement à l'ouverture).
+- Bureau : barre latérale large par défaut (libellés, groupes, champ Recherche avec le raccourci « / », profil « Changer de profil »), repliable avec le bouton en haut ; toujours repliée sous 1 100 px de large.
+
 ## [1.3.3] — 2026-11-13 (Android) et bureau 1.2.51
 
 ### Corrigé

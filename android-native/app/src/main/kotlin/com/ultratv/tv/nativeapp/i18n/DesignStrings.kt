@@ -15,6 +15,8 @@ class DesignStrings(val lang: AppLang) {
     // Rail
     val railProfile get() = tx(R.string.ds_rail_profile)
     val railSwitchProfile get() = tx(R.string.ds_rail_switch_profile)
+    val railGroupWatch get() = tx(R.string.ds_rail_group_watch)
+    val railGroupMine get() = tx(R.string.ds_rail_group_mine)
 
     // Fiches film / série
     val castTitle get() = tx(R.string.ds_cast_title)

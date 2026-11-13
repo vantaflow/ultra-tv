@@ -64,11 +64,15 @@ import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
 
+/** Groupes du rail (maquette « Menu latéral ») : contenus, listes de l'utilisateur, puis compte et réglages en bas. */
+internal enum class RailGroup { WATCH, MINE, FOOT }
+
 internal data class RailItem(
     val route: String,
     val icon: String,
     /** Libellé pris dans [com.ultratv.tv.nativeapp.i18n.DesignStrings] (prioritaire sur [label] quand il est fourni). */
     val labelD: ((com.ultratv.tv.nativeapp.i18n.DesignStrings) -> String)? = null,
+    val group: RailGroup = RailGroup.WATCH,
     // Dernier paramètre : les items existants gardent leur construction RailItem(route, icon) { it.navX }.
     val label: (com.ultratv.tv.nativeapp.i18n.Strings) -> String,
 )
@@ -82,11 +86,11 @@ internal val railItems = listOf(
     RailItem("guide", Icons.Guide) { it.navGuide },
     RailItem("movies", Icons.Movies) { it.navMovies },
     RailItem("series", Icons.Series) { it.navSeries },
-    RailItem("favorites", Icons.Heart) { it.navFavorites },
-    RailItem("recordings", Icons.Record) { it.navRecordings },
-    RailItem("downloads", com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download) { com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings.of(it).navTitle },
-    RailItem("account", Icons.Account) { it.navAccount },
-    RailItem("settings", Icons.Settings) { it.navSettings },
+    RailItem("favorites", Icons.Heart, group = RailGroup.MINE) { it.navFavorites },
+    RailItem("recordings", Icons.Record, group = RailGroup.MINE) { it.navRecordings },
+    RailItem("downloads", com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, group = RailGroup.MINE) { com.ultratv.tv.nativeapp.ui.downloads.DownloadStrings.of(it).navTitle },
+    RailItem("account", Icons.Account, group = RailGroup.FOOT) { it.navAccount },
+    RailItem("settings", Icons.Settings, group = RailGroup.FOOT) { it.navSettings },
 )
 
 /** Entrée facultative « Sport » (Réglages › Affichage), juste après le Guide. */
@@ -231,27 +235,20 @@ fun SidebarNav(navController: NavController) {
                         }
                     }
                 }
-                Spacer(Modifier.height(20.design))
-                Box(Modifier.fillMaxWidth().height(2.design).background(Ux.Surface2))
                 Spacer(Modifier.height(12.design))
-                // Hauteur des entrées selon la place réelle : neuf entrées + synchro + profil ne tenaient plus en 64 px
-                // et la dernière (Paramètres) était écrasée en une barre.
+                // Hauteur des entrées selon la place réelle, avec deux têtes de groupe (« Regarder », « Ma liste ») et le compte /
+                // les réglages en bas : 56 px au plus (maquette), jamais écrasées en une barre.
                 // Seule la HAUTEUR est mesurée (onSizeChanged, état modifié seulement si elle change) : un BoxWithConstraints
-                // recomposait les neuf entrées à chaque image de l'élargissement du menu (largeur animée) → ouverture
-                // ralentie et libellés affichés en retard.
+                // recomposait les entrées à chaque image de l'élargissement du menu (largeur animée).
                 val density = androidx.compose.ui.platform.LocalDensity.current
                 var areaPx by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                 Box(Modifier.weight(1f).fillMaxWidth().onSizeChanged { if (it.height != areaPx) areaPx = it.height }) {
                 val n = items.size
-                val maxHeight = if (areaPx > 0) with(density) { areaPx.toDp() } else (64 * n + 10 * (n - 1)).design
-                val gapPx = if (maxHeight >= (64 * n + 10 * (n - 1)).design) 10 else 4
-                val itemDp = ((maxHeight - (gapPx * (n - 1)).design) / n).coerceIn(40.design, 64.design)
-                Column(
-                    Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(gapPx.design, Alignment.CenterVertically),
-                    horizontalAlignment = Alignment.Start,
-                ) {
-                    items.forEach { item ->
+                val slots = 2 * GROUP_SLOT_PX + 16   // deux têtes de groupe + écart minimal avant le bas
+                val maxHeight = if (areaPx > 0) with(density) { areaPx.toDp() } else (56 * n + 6 * (n - 1) + slots).design
+                val gapPx = if (maxHeight >= (56 * n + 6 * (n + 1) + slots).design) 6 else 2
+                val itemDp = ((maxHeight - (gapPx * (n + 1) + slots).design) / n).coerceIn(40.design, 56.design)
+                val railEntry: @Composable (RailItem) -> Unit = { item ->
                         val active = isSelected(route, item.route)
                         FocusSurface(
                             onClick = {
@@ -267,28 +264,41 @@ fun SidebarNav(navController: NavController) {
                                 } else leaveRail()
                             },
                             shape = RoundedCornerShape(16.design),
-                            bg = if (active) Ux.Accent else Color.Transparent,
-                            focusedScale = 1.05f,
+                            // Page ouverte : fond teinté + barre d'accent (plus d'aplat plein) ; le focus garde la pastille claire.
+                            bg = if (active) Ux.Accent.copy(alpha = 0.18f) else Color.Transparent,
+                            focusedScale = 1.04f,
                             ringWidth = 5.design,
                             modifier = Modifier.height(itemDp).fillMaxWidth().then(if (active) Modifier.focusRequester(activeFocus) else Modifier),
                         ) { focused ->
+                            if (active) Box(Modifier.align(Alignment.CenterStart).width(4.design).height(32.design).clip(RoundedCornerShape(2.design)).background(Ux.Accent))
                             Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
                                 Spacer(Modifier.width(16.design))
                                 Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
-                                    DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; expanded -> Ux.Text; else -> Ux.Text3 })
+                                    DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.AccentInk; expanded -> Ux.Text; else -> Ux.Text3 })
                                 }
                                 if (showLabels) {
                                     Spacer(Modifier.width(16.design))
                                     Text(
                                         item.labelD?.invoke(D) ?: item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
-                                        color = when { focused -> Ux.TextOnLight; active -> Ux.OnAccent; else -> Ux.Text2 },
+                                        color = when { focused -> Ux.TextOnLight; active -> Ux.Text; else -> Ux.Text2 },
                                         maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                                         modifier = Modifier.padding(end = 12.design).graphicsLayer { alpha = labelAlphaState.value },
                                     )
                                 }
                             }
                         }
-                    }
+                }
+                Column(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(gapPx.design),
+                    horizontalAlignment = Alignment.Start,
+                ) {
+                    GroupSlot(D.railGroupWatch, showLabels, labelAlphaState)
+                    items.filter { it.group == RailGroup.WATCH }.forEach { railEntry(it) }
+                    GroupSlot(D.railGroupMine, showLabels, labelAlphaState)
+                    items.filter { it.group == RailGroup.MINE }.forEach { railEntry(it) }
+                    Spacer(Modifier.weight(1f))
+                    items.filter { it.group == RailGroup.FOOT }.forEach { railEntry(it) }
                 }
                 }
                 SyncPill(syncVm.pill, showLabels, labelAlphaState, D.syncing)
@@ -328,9 +338,27 @@ internal fun isSelected(route: String, candidate: String): Boolean = when {
     else -> false
 }
 
+/** Hauteur d'une tête de groupe du rail, en px de maquette. */
+private const val GROUP_SLOT_PX = 30
+
 /**
- * Pastille de synchro du rail, dans son PROPRE composable : lue dans SidebarNav, chaque progression (2 par seconde)
- * recomposait tout le menu.
+ * Tête de groupe : trait court quand le rail est replié, libellé (« REGARDER », « MA LISTE ») quand il est ouvert.
+ * Même hauteur dans les deux états : les entrées ne bougent pas verticalement à l'ouverture.
+ */
+@Composable
+private fun GroupSlot(label: String, showLabels: Boolean, labelAlpha: androidx.compose.runtime.State<Float>) {
+    Box(Modifier.fillMaxWidth().height(GROUP_SLOT_PX.design), contentAlignment = Alignment.CenterStart) {
+        if (showLabels) Text(
+            label.uppercase(), fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 17.spx, letterSpacing = 2.sp, color = Ux.Text3,
+            maxLines = 1, softWrap = false, modifier = Modifier.padding(start = 20.design).graphicsLayer { alpha = labelAlpha.value },
+        )
+        else Box(Modifier.padding(start = 12.design).width(40.design).height(2.design).clip(RoundedCornerShape(1.design)).background(Ux.Surface2))
+    }
+}
+
+/**
+ * Synchro du rail, dans son PROPRE composable : lue dans SidebarNav, chaque progression (2 par seconde) recomposait
+ * tout le menu. Replié : anneau de progression avec le pourcentage ; ouvert : libellé, pourcentage et barre.
  */
 @Composable
 private fun SyncPill(
@@ -340,16 +368,31 @@ private fun SyncPill(
     syncing: String,
 ) {
     val p = pillFlow.collectAsState().value ?: return
-    Spacer(Modifier.height(20.design))
-    Row(Modifier.padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(56.design).clip(CircleShape).background(Ux.Surface), contentAlignment = Alignment.Center) {
-            Text("${p.percent ?: 0}", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.spx, color = Ux.Text, maxLines = 1)
+    val pct = (p.percent ?: 0).coerceIn(0, 100)
+    val accent = Ux.Accent
+    val track = Ux.Surface2
+    Spacer(Modifier.height(16.design))
+    Row(Modifier.fillMaxWidth().padding(start = 4.design), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(56.design), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.Canvas(Modifier.size(52.design)) {
+                val stroke = androidx.compose.ui.graphics.drawscope.Stroke(width = 5.design.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                drawArc(track, 0f, 360f, false, style = stroke)
+                if (pct > 0) drawArc(accent, -90f, 360f * pct / 100f, false, style = stroke)
+            }
+            Text("$pct", fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 18.spx, color = Ux.Text, maxLines = 1)
         }
         if (showLabels) {
             Spacer(Modifier.width(16.design))
-            // Le pourcentage est déjà dans la pastille : le libellé seul (« Synchronisation · 25 % » était coupé dans le menu).
-            Text(syncing, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, color = Ux.Text2, maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false).graphicsLayer { alpha = labelAlpha.value })
+            Column(Modifier.weight(1f).padding(end = 12.design).graphicsLayer { alpha = labelAlpha.value }, verticalArrangement = Arrangement.spacedBy(8.design)) {
+                Row {
+                    Text(syncing, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 20.spx, color = Ux.Text2, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text("$pct %", fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, color = Ux.Text2, maxLines = 1)
+                }
+                Box(Modifier.fillMaxWidth().height(6.design).clip(RoundedCornerShape(3.design)).background(track)) {
+                    Box(Modifier.fillMaxWidth(pct / 100f).height(6.design).background(accent))
+                }
+            }
         }
     }
 }

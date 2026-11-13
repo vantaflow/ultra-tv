@@ -671,5 +671,11 @@
   "search.didYouMean": "¿Quisiste decir",
   "search.closeTitles": "Títulos parecidos",
   "search.details": "Ficha",
-  "common.sortTitle": "A–Z"
+  "common.sortTitle": "A–Z",
+  "nav.groupWatch": "Ver",
+  "nav.groupMine": "Mi lista",
+  "rail.collapse": "Contraer el menú",
+  "rail.expand": "Expandir el menú",
+  "rail.switchProfile": "Cambiar de perfil",
+  "rail.syncing": "Sincronizando"
 }

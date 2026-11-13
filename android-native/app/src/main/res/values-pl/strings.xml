@@ -1548,4 +1548,7 @@
     <string name="ds_search_movies">FILMY · %1$s</string>
     <string name="ds_search_series">SERIALE · %1$s</string>
     <string name="ds_search_range">%1$s–%2$s z %3$s</string>
+    <!-- Menu latéral : têtes de groupe -->
+    <string name="ds_rail_group_watch">Oglądaj</string>
+    <string name="ds_rail_group_mine">Moja lista</string>
 </resources>
