@@ -1556,4 +1556,5 @@
     <!-- Menu latéral : têtes de groupe -->
     <string name="ds_rail_group_watch">Oglądaj</string>
     <string name="ds_rail_group_mine">Moja lista</string>
+    <string name="ds_rail_recording_running">%1$d w toku</string>
 </resources>

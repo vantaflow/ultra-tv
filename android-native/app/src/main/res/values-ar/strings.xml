@@ -1664,4 +1664,5 @@
     <!-- Menu latéral : têtes de groupe -->
     <string name="ds_rail_group_watch">مشاهدة</string>
     <string name="ds_rail_group_mine">قائمتي</string>
+    <string name="ds_rail_recording_running">%1$d قيد التسجيل</string>
 </resources>

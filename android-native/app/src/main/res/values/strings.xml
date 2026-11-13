@@ -1602,4 +1602,5 @@
     <!-- Menu latéral : têtes de groupe -->
     <string name="ds_rail_group_watch">Watch</string>
     <string name="ds_rail_group_mine">My list</string>
+    <string name="ds_rail_recording_running">%1$d recording</string>
 </resources>

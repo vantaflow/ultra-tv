@@ -17,6 +17,8 @@ class DesignStrings(val lang: AppLang) {
     val railSwitchProfile get() = tx(R.string.ds_rail_switch_profile)
     val railGroupWatch get() = tx(R.string.ds_rail_group_watch)
     val railGroupMine get() = tx(R.string.ds_rail_group_mine)
+    /** Enregistrements en cours, à droite de l'entrée du menu ouvert (« 1 en cours »). */
+    fun railRecordingRunning(n: Int) = tx(R.string.ds_rail_recording_running, n)
 
     // Fiches film / série
     val castTitle get() = tx(R.string.ds_cast_title)

@@ -1669,5 +1669,10 @@
   "DesignStrings.searchSeries(22)": "SERIES · 22",
   "DesignStrings.searchRange(22,22,22)": "22\u201322 de 22",
   "DesignStrings.getRailGroupWatch()": "Ver",
-  "DesignStrings.getRailGroupMine()": "Mi lista"
+  "DesignStrings.getRailGroupMine()": "Mi lista",
+  "DesignStrings.railRecordingRunning(0)": "0 en curso",
+  "DesignStrings.railRecordingRunning(1)": "1 en curso",
+  "DesignStrings.railRecordingRunning(2)": "2 en curso",
+  "DesignStrings.railRecordingRunning(5)": "5 en curso",
+  "DesignStrings.railRecordingRunning(22)": "22 en curso"
 }

@@ -1606,4 +1606,5 @@
     <!-- Menu latéral : têtes de groupe -->
     <string name="ds_rail_group_watch">Ver</string>
     <string name="ds_rail_group_mine">Mi lista</string>
+    <string name="ds_rail_recording_running">%1$d en curso</string>
 </resources>

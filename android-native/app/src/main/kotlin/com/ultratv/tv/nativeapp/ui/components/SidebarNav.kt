@@ -122,6 +122,10 @@ fun SidebarNav(navController: NavController) {
     val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val syncVm: com.ultratv.tv.nativeapp.ui.common.SyncStatusViewModel = androidx.hilt.navigation.compose.hiltViewModel()
     val sportOn = com.ultratv.tv.nativeapp.ui.sport.LocalSportEnabled.current
+    // Repères de la maquette : nombre de favoris, enregistrements en cours (pastille d'accent quand le menu est replié).
+    val badgesVm: RailBadgesViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+    val favCount by badgesVm.favorites.collectAsState()
+    val recCount by badgesVm.recording.collectAsState()
     val items = remember(sportOn) { railItemsFor(sportOn) }
     val lowRam = LocalLowRam.current
     var expanded by remember { mutableStateOf(false) }
@@ -275,14 +279,24 @@ fun SidebarNav(navController: NavController) {
                                 Spacer(Modifier.width(16.design))
                                 Box(Modifier.size(32.design), contentAlignment = Alignment.Center) {
                                     DIcon(item.icon, 30.design, when { focused -> Ux.TextOnLight; active -> Ux.AccentInk; expanded -> Ux.Text; else -> Ux.Text3 })
+                                    if (!showLabels && railDot(item.route, recCount)) Box(
+                                        Modifier.align(Alignment.TopEnd).offset(x = 4.design, y = (-2).design).size(12.design)
+                                            .clip(CircleShape).background(Ux.Rail).padding(2.design).clip(CircleShape).background(Ux.Accent),
+                                    )
                                 }
                                 if (showLabels) {
+                                    val badge = railBadge(item.route, favCount, recCount) { D.railRecordingRunning(it) }
                                     Spacer(Modifier.width(16.design))
                                     Text(
                                         item.labelD?.invoke(D) ?: item.label(S), fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 26.spx,
                                         color = when { focused -> Ux.TextOnLight; active -> Ux.Text; else -> Ux.Text2 },
                                         maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                                        modifier = Modifier.padding(end = 12.design).graphicsLayer { alpha = labelAlphaState.value },
+                                        modifier = (if (badge != null) Modifier.weight(1f) else Modifier).padding(end = 12.design).graphicsLayer { alpha = labelAlphaState.value },
+                                    )
+                                    if (badge != null) Text(
+                                        badge, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx,
+                                        color = if (focused) Ux.OnFocus2 else Ux.Text3, maxLines = 1, softWrap = false,
+                                        modifier = Modifier.padding(end = 16.design).graphicsLayer { alpha = labelAlphaState.value },
                                     )
                                 }
                             }

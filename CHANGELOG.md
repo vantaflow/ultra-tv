@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Direct qui se fige au bout de quelques minutes sans message (image gelée, lecteur toujours « en lecture ») : le lecteur surveille maintenant la position et les images décodées, et se reconnecte tout seul après 10 s de gel. Auparavant, seul un chargement bloqué était rattrapé.
 
+### Ajouté
+- Menu latéral (TV), comme sur la maquette : nombre de favoris et « N en cours » pendant un enregistrement à côté des entrées du menu ouvert ; pastille d'accent sur l'icône Enregistrements quand le menu est replié.
+
 ## [1.3.4] — 2026-11-13 (Android)
 
 ### Ajouté
