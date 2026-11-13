@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseListParams, paginate, sortRows, topWithOthers, countBy, mergeCounts, anonQuery, eventsQuery, filterAccounts, filterDevices,
-  flattenDevices, listUrl, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS,
-} from "../src/admin.js";
+  flattenDevices, listUrl, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS, fixedInOf } from "../src/admin.js";
 import { dateCell, flagCode } from "../src/adminui.js";
 
 const sp = (q) => new URLSearchParams(q);
@@ -94,6 +93,17 @@ describe("requêtes SQL (D1)", () => {
     expect(cr.where).toContain("stack LIKE");
     expect(cr.where).not.toContain("message LIKE");
     expect(cr.order).toBe("ts DESC, id DESC");
+    // Plantages déjà corrigés masqués par défaut ; « fixed=show » les remontre.
+    expect(cr.where).toContain("NOT ((stack LIKE ? AND version_code < ?)");
+    const oc = { ...o, filters: ["version", "country", "fixed"] };
+    expect(eventsQuery("crash", parseListParams(sp("fixed=show"), oc), NOW).where).not.toContain("NOT (");
+  });
+  it("plantages réglés : version de correction, régression visible", () => {
+    const stack = "main: java.lang.IndexOutOfBoundsException: Illegal attempt to access index 0 in ItemSnapshotList of size 0";
+    expect(fixedInOf(stack, 10308)).toBe("1.3.16");
+    expect(fixedInOf(stack, 10316)).toBeNull();
+    expect(fixedInOf("java.lang.IllegalStateException: A migration from 21 to 20 was required but not found.", 10292)).toBe("1.2.93");
+    expect(fixedInOf("java.lang.NullPointerException", 10200)).toBeNull();
   });
 });
 

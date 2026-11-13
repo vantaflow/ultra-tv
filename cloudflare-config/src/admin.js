@@ -109,6 +109,30 @@ export function anonQuery(params, now = Date.now()) {
 /** Colonnes triables des journaux / plantages. */
 export const EVENT_SORTS = { ts: "ts", version: "version_code", device: "device", country: "country", level: "level", tag: "tag" };
 
+/**
+ * Plantages corrigés : signature (motif LIKE sur la pile) et première version qui contient la correction (code de
+ * version Android). Un plantage d'une version ANTÉRIEURE est « réglé » : masqué par défaut et hors du compteur 24 h.
+ * Le même plantage sur une version qui contient la correction reste visible (régression).
+ */
+export const FIXED_CRASHES = [
+  { like: "%ItemSnapshotList%", code: 10316, label: "1.3.16" },
+  { like: "%was already used. If you are using LazyColumn%", code: 10298, label: "1.2.98" },
+  { like: "%A migration from % was required but not found%", code: 10293, label: "1.2.93" },
+];
+
+/** Condition SQL « plantage déjà corrigé » et ses paramètres. */
+export function fixedCrashCond() {
+  return { sql: `(${FIXED_CRASHES.map(() => "(stack LIKE ? AND version_code < ?)").join(" OR ")})`, args: FIXED_CRASHES.flatMap((f) => [f.like, f.code]) };
+}
+
+/** Version qui corrige ce plantage, ou null (même règle que [fixedCrashCond], côté affichage). */
+export function fixedInOf(stack, versionCode) {
+  const s = String(stack || "");
+  const re = (like) => new RegExp("^" + like.split("%").map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[\\s\\S]*") + "$");
+  const hit = FIXED_CRASHES.find((f) => Number(versionCode) < f.code && re(f.like).test(s));
+  return hit ? hit.label : null;
+}
+
 /** Journaux (kind = 'event') ou plantages (kind = 'crash') : filtres version, pays, niveau, période, recherche. */
 export function eventsQuery(kind, params, now = Date.now()) {
   const cond = ["kind = ?"], args = [kind];
@@ -117,6 +141,8 @@ export function eventsQuery(kind, params, now = Date.now()) {
   if (f.country) { cond.push("country = ?"); args.push(f.country.toUpperCase()); }
   if (f.level) { cond.push("level = ?"); args.push(f.level.toLowerCase()); }
   if (p) { cond.push("ts >= ?"); args.push(now - PERIODS[p]); }
+  // Plantages déjà corrigés : masqués sauf demande explicite (filtre « Réglés »).
+  if (kind === "crash" && f.fixed !== "show") { const fx = fixedCrashCond(); cond.push(`NOT ${fx.sql}`); args.push(...fx.args); }
   if (q) {
     const cols = kind === "crash" ? ["device", "version", "stack", "country"] : ["message", "tag", "device", "version", "country"];
     cond.push(`(${cols.map((c) => `${c} LIKE ? ESCAPE '\\'`).join(" OR ")})`);

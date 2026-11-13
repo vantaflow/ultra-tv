@@ -1425,7 +1425,7 @@ async function opsPage(req, env, url, kind) {
     const c = await checkSecret(req, env, env.OPS_TOKEN, "ops");
     if (c.res) return c.res;
   }
-  const params = parseListParams(url.searchParams, { sorts: EVENT_SORTS, sort: "ts", dir: "desc", filters: kind === "crash" ? ["version", "country"] : ["version", "country", "level"] });
+  const params = parseListParams(url.searchParams, { sorts: EVENT_SORTS, sort: "ts", dir: "desc", filters: kind === "crash" ? ["version", "country", "fixed"] : ["version", "country", "level"] });
   const now = Date.now();
   const [{ pg, rows }, facets] = await Promise.all([
     queryEvents(env, kind, eventsQuery(kind, params, now), params.page, params.size),

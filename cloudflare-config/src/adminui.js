@@ -6,7 +6,7 @@ import { notice as noticeBox } from "./ui/components.js";
 import { ago, fmtTime, sourcesLabel } from "./ui/format.js";
 import { shell as pageShell } from "./ui/layout.js";
 import { announcementsPanel, ANN_SCRIPT } from "./pages/alerts.js";
-import { DAY_MS, PERIOD_LABELS, countBy, listUrl, mergeCounts, pct, topWithOthers, flattenDevices } from "./admin.js";
+import { DAY_MS, PERIOD_LABELS, countBy, listUrl, mergeCounts, pct, topWithOthers, flattenDevices, fixedInOf } from "./admin.js";
 import { PLATFORM_LABELS } from "./telemetry.js";
 
 export const TABS = [
@@ -197,7 +197,7 @@ export function eventsAdminPage(n, kind, { rows, pg, params, facets, now = Date.
   const base = crash ? "/crashes" : "/events";
   const levels = [["error", "Erreur"], ["warn", "Avertissement"], ["info", "Information"], ["debug", "Débogage"]];
   const row = crash
-    ? (it) => `<tr><td>${dateCell(it.ts, now)}</td><td>${e(it.version || "?")} (${e(it.versionCode ?? "?")})</td><td>${e(it.device || "")}</td><td>SDK ${e(it.androidSdk ?? "?")}</td><td>${flagCode(it.country)}</td><td>${e(it.acct || "")}</td>
+    ? (it) => `<tr><td>${dateCell(it.ts, now)}</td><td>${e(it.version || "?")} (${e(it.versionCode ?? "?")})${(() => { const fx = fixedInOf(it.stack, it.versionCode); return fx ? ` <span class="chip">Réglé en ${e(fx)}</span>` : ""; })()}</td><td>${e(it.device || "")}</td><td>SDK ${e(it.androidSdk ?? "?")}</td><td>${flagCode(it.country)}</td><td>${e(it.acct || "")}</td>
 <td><details><summary>Pile</summary><pre>${e(it.stack || "")}</pre></details></td></tr>`
     : (it) => {
       const lvl = String(it.level || "info").toLowerCase();
@@ -209,8 +209,9 @@ export function eventsAdminPage(n, kind, { rows, pg, params, facets, now = Date.
   const cols = crash ? 7 : 9;
   const selects = [{ name: "version", label: "Version", options: facets.versions.map((v) => [v, `v${v}`]) }, { name: "country", label: "Pays", options: facets.countries.map((c) => [c, flagCode(c)]) }];
   if (!crash) selects.push({ name: "level", label: "Niveau", options: levels });
+  else selects.push({ name: "fixed", label: "Réglés masqués", options: [["show", "Afficher aussi les réglés"]] });
   const body = `<div class="section-h"><h2>${crash ? "Plantages" : "Journaux"} <span class="count">${pg.total}</span></h2></div>
-<p class="muted small mb16">${crash ? "Fenêtre glissante de 30 jours." : "Fenêtre glissante de 7 jours. Messages nettoyés côté serveur."}</p>
+<p class="muted small mb16">${crash ? "Fenêtre glissante de 30 jours. Les plantages déjà corrigés (versions antérieures à la correction) sont masqués par défaut." : "Fenêtre glissante de 7 jours. Messages nettoyés côté serveur."}</p>
 ${filters(base, params, { selects, placeholder: crash ? "Appareil, version, pile, pays" : "Message, tag, appareil, version" })}
 <div class="tablewrap"><table class="atable"><thead><tr>${head}</tr></thead>
 <tbody>${rows.map(row).join("") || `<tr><td colspan="${cols}" class="muted">${crash ? "Aucun plantage" : "Aucun événement"}.</td></tr>`}</tbody></table></div>

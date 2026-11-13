@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Textes : la règle « passer à la ligne plutôt que couper » s'applique à tous les textes limités à 1, 2 ou 3 lignes (une ligne de plus quand ils dépassent) ; un mot n'est jamais coupé en deux (« Recherch / er ») : il reste sur sa ligne et réduit légèrement sa taille.
+- Tableau de bord : les plantages déjà corrigés (versions antérieures à la correction) sont marqués « Réglé en x.y.z », masqués par défaut et exclus du compteur sur 24 h ; un plantage qui revient sur une version corrigée reste visible.
 
 ### Corrigé
 - Mode simple : prénom affiché seulement s'il y a plusieurs profils, aides des tuiles en entier.

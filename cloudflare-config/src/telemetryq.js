@@ -2,6 +2,7 @@
 // Les fragments WHERE viennent de admin.js (valeurs toujours liées, colonnes de tri en liste blanche).
 
 import { safe, maybePurge, eventFromRow } from "./telemetry.js";
+import { fixedCrashCond } from "./admin.js";
 import { paginate } from "./admin.js";
 
 /** Page d'installations sans compte (requête construite par `anonQuery`) : { pg, rows }. */
@@ -42,7 +43,10 @@ export async function anonOverview(env, now = Date.now()) {
 
 /** Nombre de journaux / plantages [kind] depuis [since] (ms). */
 export async function countEvents(env, kind, since) {
-  return safe(env, async (db) => (await db.prepare("SELECT COUNT(*) AS n FROM events WHERE kind = ? AND ts >= ?").bind(kind, since).first())?.n || 0, 0);
+  // Plantages : seulement ceux qui ne sont pas déjà corrigés (tuile « plantages (24 h) »).
+  const fx = kind === "crash" ? fixedCrashCond() : null;
+  const sql = `SELECT COUNT(*) AS n FROM events WHERE kind = ? AND ts >= ?${fx ? ` AND NOT ${fx.sql}` : ""}`;
+  return safe(env, async (db) => (await db.prepare(sql).bind(kind, since, ...(fx ? fx.args : [])).first())?.n || 0, 0);
 }
 
 /** Page de journaux / plantages (requête construite par `eventsQuery`) : { pg, rows } au format des entrées KV d'origine. */
