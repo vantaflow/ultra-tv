@@ -269,13 +269,6 @@ interface ChannelDao {
     @Query("UPDATE channel SET catRank = :rank WHERE id IN (SELECT id FROM channel WHERE providerId = :pid AND catRank != :rank AND (categoryId IS NULL OR categoryId NOT IN (SELECT remoteId FROM category WHERE providerId = :pid AND kind = 'LIVE')) LIMIT :limit)")
     suspend fun setCatRankOrphansBatch(pid: Long, rank: Int, limit: Int): Int
 
-    /** Chaînes qui ONT un programme dans la fenêtre [from, to] (lignes de la grille du guide). */
-    @Query("""
-        SELECT * FROM channel c WHERE c.providerId = :pid AND c.junk = 0 AND c.isSeparator = 0
-        AND EXISTS (SELECT 1 FROM epg e WHERE e.channelId = c.id AND e.endMs >= :from AND e.startMs <= :to)
-        ORDER BY c.num, c.id
-    """)
-    fun pagedWithEpg(pid: Long, from: Long, to: Long): androidx.paging.PagingSource<Int, ChannelEntity>
 
     /** Idem, groupe « Tout » du Direct : mêmes catégories masquées exclues, même ordre (rang de catégorie, numéro). */
     @Query("""
@@ -779,9 +772,6 @@ interface EpisodeDao {
 
 @Dao
 interface CategoryDao {
-    /** Catégories désactivées d'une source (« type|identifiant fournisseur ») : réglages partagés entre appareils. */
-    @Query("SELECT kind || '|' || remoteId FROM category WHERE providerId = :pid AND enabled = 0")
-    fun observeDisabledKeys(pid: Long): Flow<List<String>>
 
     @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind")
     suspend fun remoteIds(pid: Long, kind: String): List<String>

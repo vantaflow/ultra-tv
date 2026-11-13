@@ -276,7 +276,6 @@ dependencies {
     if (ffmpegLgpl.exists()) implementation(files(ffmpegLgpl)) else implementation(libs.media3.ffmpeg.decoder)
 
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
     // DNS personnalisé (Réglages › Lecture › DNS) : DNS-over-HTTPS, Apache-2.0 comme OkHttp.
     implementation(libs.okhttp.dnsoverhttps)
 

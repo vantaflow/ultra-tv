@@ -9,6 +9,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Performances : expressions de normalisation des noms de chaînes et d'association du guide compilées une seule fois (synchro et guide plus rapides sur les box modestes) ; épisodes de la série simple filtrés une fois.
+- Ménage : environ 180 lignes de code mort retirées (anciens composants de fiche, fonctions et requêtes jamais appelées) et une dépendance inutilisée (journal OkHttp).
 
 ## [1.3.22] — 2026-11-13 (Android)
 

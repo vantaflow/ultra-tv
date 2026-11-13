@@ -154,12 +154,5 @@ fun BackdropImage(url: String?, modifier: Modifier, bg: Color = Ux.Tone, decodeS
 fun AvatarImage(url: String?, name: String, modifier: Modifier) =
     SlotImage(url, name, modifier, CircleShape, SlotFit.Crop, Ux.Surface2, initialsSize = 28)
 
-/** Style de texte tronqué : tout nom (chaîne, titre) tient sur N lignes avec ellipse. */
-@Composable
-fun EllipsisText(
-    text: String, color: Color, fontSizePx: Int, modifier: Modifier = Modifier,
-    weight: FontWeight = FontWeight.Normal, maxLines: Int = 1, family: androidx.compose.ui.text.font.FontFamily = Manrope,
-) = Text(text, modifier = modifier, color = color, fontFamily = family, fontWeight = weight, fontSize = fontSizePx.spx,
-    lineHeight = (fontSizePx * 1.2f).spx, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
 
 private val Float.spx get() = (this / 2f).sp

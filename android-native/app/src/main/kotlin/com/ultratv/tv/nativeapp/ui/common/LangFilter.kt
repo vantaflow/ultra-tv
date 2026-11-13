@@ -45,18 +45,6 @@ fun langPillText(view: LangView, D: DesignStrings): String {
     return D.langPill(if (codes.size <= 3) codes.joinToString(" · ") else codes.take(3).joinToString(" · ") + " +${codes.size - 3}")
 }
 
-/** Pilule « Langues : … » d'une vue ; OK ouvre [LangViewPanel]. */
-@Composable
-fun LangPill(view: LangView, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val D = LocalDs.current
-    val active = view.useLang == 1
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(24.design), bg = if (active) Ux.Surface2 else Ux.Surface, ringWidth = 4.design, focusedScale = 1f, modifier = modifier.height(48.design)) { f ->
-        Row(Modifier.height(48.design).padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-            DIcon(Icons.Globe, 22.design, if (f) Ux.TextOnLight else if (active) Ux.Accent else Ux.Text3, strokeWidth = 2f)
-            Text(langPillText(view, D), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-    }
-}
 
 /** Panneau latéral à cases à cocher : filtre TEMPORAIRE de la vue (rien n'est enregistré dans les réglages). */
 @Composable

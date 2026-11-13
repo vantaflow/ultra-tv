@@ -57,13 +57,6 @@ class LivePlaybackQueue @Inject constructor() {
         return s.channels[i]
     }
 
-    /** Saute à la chaîne de numéro [number] dans la catégorie en cours ; null si aucune. */
-    fun jumpToNumber(number: Int): ChannelEntity? {
-        val s = _state.value ?: return null
-        val i = ZapLogic.byNumber(s.channels, number) ?: return null
-        _state.value = s.copy(index = i)
-        return s.channels[i]
-    }
 
     /** Chaîne cherchée par numéro, sans changer l'index (aperçu pendant la saisie). */
     fun peekNumber(number: Int): ChannelEntity? {

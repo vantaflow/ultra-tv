@@ -16,8 +16,6 @@ class FanartRepository @Inject constructor(private val api: ExtMetaApi) {
     suspend fun movie(tmdbId: Int, lang: String, now: Long = System.currentTimeMillis()): FanartArt? = load("movie/$tmdbId", lang, now)
     suspend fun tv(tvdbId: Int, lang: String, now: Long = System.currentTimeMillis()): FanartArt? = load("tv/$tvdbId", lang, now)
 
-    /** Déjà en mémoire (aucun appel) : pour un premier affichage sans attendre. */
-    fun cachedMovie(tmdbId: Int, lang: String, now: Long = System.currentTimeMillis()): FanartArt? = cache.peek(key("movie/$tmdbId", lang), now)?.value
 
     private fun key(path: String, lang: String) = "$path|${safeLang(lang)}"
     private fun safeLang(lang: String) = lang.lowercase().take(2).takeIf { it.length == 2 && it.all { c -> c in 'a'..'z' } } ?: "en"

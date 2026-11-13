@@ -151,14 +151,7 @@ class SyncCoordinator @Inject constructor(@ApplicationContext private val ctx: C
         WorkManager.getInstance(ctx).enqueue(req)
     }
 
-    /** Une source de plus à synchroniser maintenant, TTL ignorés (première synchro). */
-    fun requestAll(force: Boolean = false) {
-        val req = OneTimeWorkRequestBuilder<SyncWorker>()
-            .setInputData(workDataOf(SyncWorker.KEY_PROVIDER to SyncWorker.ALL, SyncWorker.KEY_FORCE to force))
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
-        WorkManager.getInstance(ctx).enqueueUniqueWork("sync-all", ExistingWorkPolicy.KEEP, req)
-    }
+
 }
 
 object SyncScheduler {

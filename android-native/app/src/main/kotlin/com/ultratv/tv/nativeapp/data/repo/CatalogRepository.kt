@@ -48,8 +48,7 @@ class CatalogRepository @Inject constructor(
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) {
-    fun heroSeries(pid: Long): Flow<SeriesEntity?> = seriesDao.observeHero(pid)
-    fun heroMovie(pid: Long): Flow<MovieEntity?> = movieDao.observeHero(pid)
+
     fun heroSeriesList(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeHeroes(pid, limit)
     fun heroMovieList(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeHeroes(pid, limit)
     fun latestMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeLatest(pid, limit)
@@ -132,11 +131,9 @@ class CatalogRepository @Inject constructor(
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
     fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
-    fun topChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTop(pid, limit)
+
     fun topMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTop(pid, limit)
     fun topSeries(pid: Long, limit: Int): Flow<List<SeriesEntity>> = seriesDao.observeTop(pid, limit)
-    fun channelsForCategory(pid: Long, categoryRemoteId: String): Flow<List<ChannelEntity>> =
-        channelDao.observeForCategory(pid, categoryRemoteId)
     // Par paquets de 900 identifiants (limite de variables SQLite) : aucun favori n'est perdu au-delà.
     fun moviesByRemoteIds(pid: Long, ids: List<String>): Flow<List<MovieEntity>> =
         if (ids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptyList())
@@ -293,8 +290,6 @@ class CatalogRepository @Inject constructor(
     suspend fun setCategoryLocked(catId: Long, locked: Boolean) =
         categoryDao.setLocked(catId, locked)
 
-    fun upcomingEpg(channelId: Long): kotlinx.coroutines.flow.Flow<List<EpgEntity>> =
-        epgDao.observeUpcoming(channelId, System.currentTimeMillis())
 
     private val shortEpgTried = java.util.concurrent.ConcurrentHashMap<Long, Long>()
     private val shortEpgGate = kotlinx.coroutines.sync.Semaphore(3)

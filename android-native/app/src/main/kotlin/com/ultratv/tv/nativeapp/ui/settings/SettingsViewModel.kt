@@ -320,24 +320,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun importFromRemoteConfig(url: String) {
-        viewModelScope.launch {
-            _syncing.value = true
-            _message.value = "Fetching config from $url…"
-            try {
-                val res = remoteConfig.importFromUrl(url) { _message.value = it }
-                if (res.imported > 0 && repo.firstActive() == null) {
-                    repo.observeProviders().first().firstOrNull()?.id?.let { repo.setDefault(it) }
-                }
-                val errs = if (res.errors.isEmpty()) "" else "  ·  ${res.errors.size} error(s): ${res.errors.first()}"
-                _message.value = "Imported ${res.imported} provider(s)$errs"
-            } catch (t: Throwable) {
-                _message.value = ""  // l'échec est présenté, traduit, par la bannière globale (SyncStatusBanner)
-            } finally {
-                _syncing.value = false
-            }
-        }
-    }
 
     private val _message = MutableStateFlow<String?>(null)
     private val _syncing = MutableStateFlow(false)
@@ -370,7 +352,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun startSync(providerId: Long) { sync.request(providerId, force = true) }
 
     fun addAndSync(name: String, baseUrl: String, username: String, password: String) {
         viewModelScope.launch {
