@@ -128,6 +128,9 @@ function Inner({ source }: { source: Source }) {
   const total = count("all");
   const suggestion = view?.fuzzy ? (view.movies[0]?.title ?? view.series[0]?.title ?? null) : null;
 
+  // En attente : saisie pas encore « posée » (anti-rebond) ou recherche en route, pour une saisie d'au moins 2 caractères.
+  const pending = normText(q).length >= 2 && (busy || q !== dq);
+
   return (
     <div className="page">
       <div className="page-head"><h1>{t("search.title")}</h1></div>
@@ -136,8 +139,14 @@ function Inner({ source }: { source: Source }) {
         <input ref={input} className="input" style={{ height: "3.25rem", fontSize: "1.125rem", paddingInlineStart: "3rem", borderRadius: "1rem", border: "2px solid var(--accent)" }}
           value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("search.placeholder")} aria-label={t("search.title")} />
       </div>
-      {!view && <div className="muted">{busy ? t("search.searching") : t("search.hint")}</div>}
-      {view && total === 0 && <div className="muted">{t("search.empty", { q: dq })}</div>}
+      {/* Recherche en cours (frappe pas encore prise en compte ou requêtes en route) : indicateur, jamais « aucun résultat ». */}
+      {pending && total === 0 && (
+        <div className="muted" role="status" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span className="spinner" aria-hidden="true" style={{ width: "1.5rem", height: "1.5rem", borderWidth: 3 }} />{t("search.searching")}
+        </div>
+      )}
+      {!view && !pending && <div className="muted">{t("search.hint")}</div>}
+      {view && !pending && total === 0 && <div className="muted">{t("search.empty", { q: dq })}</div>}
       {view && total > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
           <div className="chips" role="tablist" aria-label={t("search.title")} style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

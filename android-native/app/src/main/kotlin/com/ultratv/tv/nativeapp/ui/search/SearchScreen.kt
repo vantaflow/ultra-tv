@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -190,12 +191,17 @@ class SearchViewModel @Inject constructor(
             // La vérification de l'index n'est PLUS attendue ici : elle passe par la connexion d'écriture de la base, prise
             // par une synchro en cours ; la recherche restait alors « Recherche… » plus de 30 s. Elle tourne à part (init).
             val t0 = android.os.SystemClock.elapsedRealtime()
-            val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
-            // Mesure (jamais le texte saisi) : durée de la recherche rapide.
-            android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
-            _hits.value = Hits(s, quick)
-            _searching.value = false
-            if (s.trim().length >= 3) _hits.value = Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s)))
+            // « Aucun résultat » seulement quand TOUT est fini : la recherche rapide vide laissait ce message à l'écran
+            // pendant que les programmes du guide étaient encore cherchés. Une erreur ne laisse jamais le chargement affiché.
+            try {
+                val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
+                // Mesure (jamais le texte saisi) : durée de la recherche rapide.
+                android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
+                _hits.value = Hits(s, quick)
+                if (s.trim().length >= 3) _hits.value = Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s)))
+            } finally {
+                if (_q.value == s) _searching.value = false
+            }
             // Récents : seulement la saisie finale (une nouvelle touche annule ce délai).
             if (s.length >= 3) { delay(1_500); history.record(s) }
         }
@@ -325,12 +331,23 @@ fun SearchScreen(
             when {
                 q.isBlank() -> StartPane(recent, latest, vm, openMovie, openSeries)
                 // Recherche en cours : un retour visible plutôt qu'un panneau vide (box lente).
-                searching && view.total == 0 -> Message(D.searchingLabel)
+                searching && view.total == 0 -> SearchingPane(D.searchingLabel)
                 view.total == 0 -> Message(S.searchNoMatches)
                 view.fuzzy -> FuzzyPane(q, view, vm, openMovie, openSeries)
                 effTab == SearchTab.ALL -> AllPane(view, effTab, sort, vm, playChannel, openMovie, openSeries)
                 else -> TypePane(q, view, effTab, sort, vm, playChannel, openMovie, openSeries)
             }
+        }
+    }
+}
+
+/** Recherche en cours : indicateur de chargement et libellé, à la place de « Aucun résultat » tant que rien n'est fini. */
+@Composable
+private fun SearchingPane(text: String) {
+    Box(Modifier.fillMaxSize().padding(56.design), contentAlignment = Alignment.TopStart) {
+        Row(Modifier.padding(top = 60.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
+            androidx.compose.material3.CircularProgressIndicator(color = Ux.Accent, strokeWidth = 4.design, modifier = Modifier.size(36.design))
+            Text(text, color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx)
         }
     }
 }
@@ -780,7 +797,9 @@ private fun SearchTouch(
                     }
                 } else Text(D.searchStart, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp)
             }
-            searching && view.total == 0 -> Box(Modifier.fillMaxSize())
+            searching && view.total == 0 -> Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.TopCenter) {
+                androidx.compose.material3.CircularProgressIndicator(color = Ux.Accent, strokeWidth = 3.dp, modifier = Modifier.size(32.dp).semantics { contentDescription = D.searchingLabel })
+            }
             view.total == 0 -> Text(S.searchNoMatches, color = Ux.Text3, fontFamily = Manrope, fontSize = 15.sp, modifier = Modifier.padding(horizontal = 16.dp))
             else -> {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 16.dp)) {
