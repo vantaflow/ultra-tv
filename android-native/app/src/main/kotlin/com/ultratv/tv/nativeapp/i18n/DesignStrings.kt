@@ -20,6 +20,13 @@ class DesignStrings(val lang: AppLang) {
     /** Enregistrements en cours, à droite de l'entrée du menu ouvert (« 1 en cours »). */
     /** Réglage (mobile) : rubriques de la barre du bas. */
     val bottomTabs get() = tx(R.string.ds_bottom_tabs)
+    /** Enregistrer le direct : titre du choix de durée et modèles (« %1$s » = heure ou durée). */
+    val recChoose get() = tx(R.string.ds_rec_choose)
+    val recUntilEndTemplate get() = tx(R.string.ds_rec_until_end)
+    val recUntilTemplate get() = tx(R.string.ds_rec_until)
+    val recForTemplate get() = tx(R.string.ds_rec_for)
+    val recManual get() = tx(R.string.ds_rec_manual)
+    val recSingleConnection get() = tx(R.string.ds_rec_single_connection)
     fun bottomTabSlot(n: Int) = tx(R.string.ds_bottom_tab_slot, n)
     fun railRecordingRunning(n: Int) = tx(R.string.ds_rail_recording_running, n)
 

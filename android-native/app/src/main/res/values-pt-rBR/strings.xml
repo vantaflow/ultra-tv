@@ -1623,4 +1623,10 @@
     <string name="ds_rail_recording_running">%1$d gravando</string>
     <string name="ds_bottom_tabs">Barra inferior</string>
     <string name="ds_bottom_tab_slot">Aba %1$d</string>
+    <string name="ds_rec_choose">Gravar</string>
+    <string name="ds_rec_until_end">Até o fim do programa (%1$s)</string>
+    <string name="ds_rec_until">Até %1$s</string>
+    <string name="ds_rec_for">Por %1$s</string>
+    <string name="ds_rec_manual">Até eu parar (máx. 8 h)</string>
+    <string name="ds_rec_single_connection">Conexão única: o provedor pode recusar a gravação ou interromper a reprodução.</string>
 </resources>

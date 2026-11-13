@@ -164,6 +164,7 @@ class PlayerViewModel @Inject constructor(
     private val provider: ProviderRepository,
     private val epgDao: EpgDao,
     private val recordings: RecordingRepository,
+    private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val prefs: UserPreferencesStore,
     private val channelDao: ChannelDao,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
@@ -252,16 +253,18 @@ class PlayerViewModel @Inject constructor(
      * Enregistre le direct jusqu'à la fin du programme en cours (+ 10 min de marge, 15 min au moins, 6 h au plus) ; sans guide,
      * 4 h. Auparavant : 120 min fixes, quel que soit le programme. L'enregistrement s'arrête aussi depuis Enregistrements.
      */
-    fun recordLive(toastTemplate: String = "Recording until %1\$s") {
+    fun recordLive(minutes: Int, toast: String, singleConnectionWarning: String) {
         val c = playback.current.value ?: return
         if (c.kind != "LIVE") return
-        val now = System.currentTimeMillis()
-        val minutes = liveRecordMinutes(now, nowProgramme.value?.endMs)
         viewModelScope.launch {
             recordings.enqueue(c.providerId, "LIVE", c.remoteId, c.title, c.streamUrl, minutes)
-            Toaster.ok(toastTemplate.format(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(now + minutes * 60_000L)))
+            // Abonnement à une seule connexion (réglage de la source) : l'enregistrement en ouvre une seconde pendant la lecture.
+            if (limits.maxConnections(c.providerId) <= 1) Toaster.show("$toast\n$singleConnectionWarning") else Toaster.ok(toast)
         }
     }
+
+    /** Options proposées avant d'enregistrer (fin du programme en cours si le guide la connaît). */
+    internal fun recordOptions(): List<LiveRecordOption> = liveRecordOptions(System.currentTimeMillis(), nowProgramme.value?.endMs)
 
     /**
      * La chaîne regardée est-elle dans les favoris du profil ? Même clé que la liste du Direct
@@ -606,6 +609,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     var panel by remember { mutableStateOf(Panel.None) }
     var drawerOpen by remember { mutableStateOf(false) }
     var infoOpen by remember { mutableStateOf(false) }
+    /** Choix de la durée d'un enregistrement du direct (null = fermé). */
+    var recordChoice by remember { mutableStateOf<List<LiveRecordOption>?>(null) }
     var overlayVisible by remember { mutableStateOf(true) }
     var lastInteraction by remember { mutableLongStateOf(System.currentTimeMillis()) }
     var aspect by remember { mutableStateOf(AspectMode.FIT) }
@@ -1074,7 +1079,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // Historique : pas d'écran « regardé récemment » pour le Direct ; on place le focus sur la rangée des chaînes récentes.
             OsdActionId.HISTORY -> if (osdRecents.isNotEmpty()) runCatching { osdFocus.recents.requestFocus() } else Toaster.show(O.historyEmpty)
             OsdActionId.FAVORITE -> vm.toggleFavorite()
-            OsdActionId.RECORD -> vm.recordLive(S.recordingQueuedTemplate)
+            OsdActionId.RECORD -> recordChoice = vm.recordOptions()
             OsdActionId.PIP -> if (!context.enterPip()) Toaster.show(M.pipUnavailable)
             OsdActionId.REPLAY -> if (tsActive) tsBackToLive() else toggleReplay()
             OsdActionId.SLEEP -> sleepMenu = true
@@ -1430,6 +1435,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             com.ultratv.tv.nativeapp.ui.player.zap.ZapNumberBox(pv, X, Modifier.align(Alignment.TopEnd).padding(top = 54.design, end = 96.design))
             com.ultratv.tv.nativeapp.ui.player.zap.ZapRecentStrip(zapRecent, item?.remoteId, X, Modifier.align(Alignment.BottomStart))
         }
+        recordChoice?.let { opts ->
+            val Dr = com.ultratv.tv.nativeapp.i18n.LocalDs.current
+            val hm = { ms: Long -> com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(ms) }
+            com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(Dr.recChoose, opts.map { o ->
+                o to when (o.kind) {
+                    LiveRecordOption.Kind.PROGRAMME_END -> Dr.recUntilEndTemplate.format(hm(o.endMs))
+                    LiveRecordOption.Kind.DURATION -> Dr.recForTemplate.format(liveRecordDurationLabel(o.minutes))
+                    LiveRecordOption.Kind.UNTIL -> Dr.recUntilTemplate.format(hm(o.endMs))
+                    LiveRecordOption.Kind.MANUAL -> Dr.recManual
+                }
+            }, null, { o ->
+                recordChoice = null
+                vm.recordLive(o.minutes, if (o.kind == LiveRecordOption.Kind.MANUAL) Dr.recManual else S.recordingQueuedTemplate.format(hm(o.endMs)), Dr.recSingleConnection)
+            }, { recordChoice = null })
+        }
         if (infoOpen) InfoCard(vm, isLive, item?.title ?: title, dur, X, X.thenWord, onClose = { infoOpen = false })
         pinPending?.let { pp ->
             com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
@@ -1728,3 +1748,35 @@ private const val OSD_HIDE_FULL_MS = 8_000L
 internal fun liveRecordMinutes(nowMs: Long, programmeEndMs: Long?): Int =
     if (programmeEndMs == null || programmeEndMs <= nowMs) 240
     else (((programmeEndMs - nowMs) / 60_000L).toInt() + 10).coerceIn(15, 360)
+
+/** Choix proposé avant d'enregistrer le direct. [endMs] = heure de fin affichée ; [minutes] = durée transmise à l'enregistreur. */
+internal data class LiveRecordOption(val kind: Kind, val minutes: Int, val endMs: Long) {
+    enum class Kind { PROGRAMME_END, DURATION, UNTIL, MANUAL }
+}
+
+/** Arrêt manuel : plafond de sécurité (le stockage ne doit pas se remplir si on oublie d'arrêter). */
+internal const val LIVE_RECORD_MANUAL_MAX_MIN = 480
+
+/**
+ * Options d'enregistrement du direct (pure, testée) : fin du programme (guide connu), 30 min, 1 h, 2 h, 3 h, jusqu'aux trois
+ * prochaines heures pleines, puis arrêt manuel.
+ */
+internal fun liveRecordOptions(nowMs: Long, programmeEndMs: Long?, zone: java.util.TimeZone = java.util.TimeZone.getDefault()): List<LiveRecordOption> {
+    val out = ArrayList<LiveRecordOption>()
+    if (programmeEndMs != null && programmeEndMs > nowMs) {
+        val m = liveRecordMinutes(nowMs, programmeEndMs)
+        out += LiveRecordOption(LiveRecordOption.Kind.PROGRAMME_END, m, programmeEndMs)
+    }
+    for (m in intArrayOf(30, 60, 120, 180)) out += LiveRecordOption(LiveRecordOption.Kind.DURATION, m, nowMs + m * 60_000L)
+    val hour = 3_600_000L
+    val offset = zone.getOffset(nowMs).toLong()
+    // Prochaine heure pleine locale au moins 15 min plus tard, puis les deux suivantes.
+    var t = ((nowMs + offset) / hour + 1) * hour - offset
+    if (t - nowMs < 15 * 60_000L) t += hour
+    repeat(3) { out += LiveRecordOption(LiveRecordOption.Kind.UNTIL, ((t - nowMs + 59_999) / 60_000L).toInt(), t); t += hour }
+    out += LiveRecordOption(LiveRecordOption.Kind.MANUAL, LIVE_RECORD_MANUAL_MAX_MIN, nowMs + LIVE_RECORD_MANUAL_MAX_MIN * 60_000L)
+    return out
+}
+
+/** « 30 min », « 1 h », « 2 h »… */
+internal fun liveRecordDurationLabel(minutes: Int): String = if (minutes < 60) "$minutes min" else if (minutes % 60 == 0) "${minutes / 60} h" else "${minutes / 60} h ${minutes % 60}"

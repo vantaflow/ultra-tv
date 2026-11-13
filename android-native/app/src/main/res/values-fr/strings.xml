@@ -1618,4 +1618,10 @@
     <string name="ds_rail_recording_running">%1$d en cours</string>
     <string name="ds_bottom_tabs">Barre du bas</string>
     <string name="ds_bottom_tab_slot">Onglet %1$d</string>
+    <string name="ds_rec_choose">Enregistrer</string>
+    <string name="ds_rec_until_end">Jusqu\'à la fin du programme (%1$s)</string>
+    <string name="ds_rec_until">Jusqu\'à %1$s</string>
+    <string name="ds_rec_for">Pendant %1$s</string>
+    <string name="ds_rec_manual">Jusqu\'à l\'arrêt manuel (8 h max)</string>
+    <string name="ds_rec_single_connection">Connexion unique : le fournisseur peut refuser l\'enregistrement ou couper la lecture.</string>
 </resources>

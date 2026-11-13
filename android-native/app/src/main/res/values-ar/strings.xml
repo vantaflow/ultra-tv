@@ -1667,4 +1667,10 @@
     <string name="ds_rail_recording_running">%1$d قيد التسجيل</string>
     <string name="ds_bottom_tabs">الشريط السفلي</string>
     <string name="ds_bottom_tab_slot">التبويب %1$d</string>
+    <string name="ds_rec_choose">تسجيل</string>
+    <string name="ds_rec_until_end">حتى نهاية البرنامج (%1$s)</string>
+    <string name="ds_rec_until">حتى %1$s</string>
+    <string name="ds_rec_for">لمدة %1$s</string>
+    <string name="ds_rec_manual">حتى الإيقاف اليدوي (8 ساعات كحد أقصى)</string>
+    <string name="ds_rec_single_connection">اتصال واحد فقط: قد يرفض المزوّد التسجيل أو يوقف التشغيل.</string>
 </resources>

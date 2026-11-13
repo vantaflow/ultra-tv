@@ -1605,4 +1605,10 @@
     <string name="ds_rail_recording_running">%1$d recording</string>
     <string name="ds_bottom_tabs">Bottom bar</string>
     <string name="ds_bottom_tab_slot">Tab %1$d</string>
+    <string name="ds_rec_choose">Record</string>
+    <string name="ds_rec_until_end">Until the end of the programme (%1$s)</string>
+    <string name="ds_rec_until">Until %1$s</string>
+    <string name="ds_rec_for">For %1$s</string>
+    <string name="ds_rec_manual">Until I stop it (8 h max)</string>
+    <string name="ds_rec_single_connection">Single connection: the provider may refuse the recording or stop playback.</string>
 </resources>

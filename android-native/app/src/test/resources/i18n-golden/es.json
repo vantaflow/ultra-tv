@@ -1680,5 +1680,11 @@
   "DesignStrings.bottomTabSlot(1)": "Pesta\u00f1a 1",
   "DesignStrings.bottomTabSlot(2)": "Pesta\u00f1a 2",
   "DesignStrings.bottomTabSlot(5)": "Pesta\u00f1a 5",
-  "DesignStrings.bottomTabSlot(22)": "Pesta\u00f1a 22"
+  "DesignStrings.bottomTabSlot(22)": "Pesta\u00f1a 22",
+  "DesignStrings.getRecChoose()": "Grabar",
+  "DesignStrings.getRecUntilEndTemplate()": "Hasta el final del programa (%1$s)",
+  "DesignStrings.getRecUntilTemplate()": "Hasta las %1$s",
+  "DesignStrings.getRecForTemplate()": "Durante %1$s",
+  "DesignStrings.getRecManual()": "Hasta que lo detenga (m\u00e1x. 8 h)",
+  "DesignStrings.getRecSingleConnection()": "Conexi\u00f3n \u00fanica: el proveedor puede rechazar la grabaci\u00f3n o cortar la reproducci\u00f3n."
 }

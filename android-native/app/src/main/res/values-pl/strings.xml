@@ -1559,4 +1559,10 @@
     <string name="ds_rail_recording_running">%1$d w toku</string>
     <string name="ds_bottom_tabs">Dolny pasek</string>
     <string name="ds_bottom_tab_slot">Karta %1$d</string>
+    <string name="ds_rec_choose">Nagraj</string>
+    <string name="ds_rec_until_end">Do końca programu (%1$s)</string>
+    <string name="ds_rec_until">Do %1$s</string>
+    <string name="ds_rec_for">Przez %1$s</string>
+    <string name="ds_rec_manual">Do ręcznego zatrzymania (maks. 8 h)</string>
+    <string name="ds_rec_single_connection">Jedno połączenie: dostawca może odrzucić nagrywanie lub przerwać odtwarzanie.</string>
 </resources>

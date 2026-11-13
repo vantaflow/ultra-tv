@@ -1680,5 +1680,11 @@
   "DesignStrings.bottomTabSlot(1)": "Tab 1",
   "DesignStrings.bottomTabSlot(2)": "Tab 2",
   "DesignStrings.bottomTabSlot(5)": "Tab 5",
-  "DesignStrings.bottomTabSlot(22)": "Tab 22"
+  "DesignStrings.bottomTabSlot(22)": "Tab 22",
+  "DesignStrings.getRecChoose()": "Record",
+  "DesignStrings.getRecUntilEndTemplate()": "Until the end of the programme (%1$s)",
+  "DesignStrings.getRecUntilTemplate()": "Until %1$s",
+  "DesignStrings.getRecForTemplate()": "For %1$s",
+  "DesignStrings.getRecManual()": "Until I stop it (8 h max)",
+  "DesignStrings.getRecSingleConnection()": "Single connection: the provider may refuse the recording or stop playback."
 }
