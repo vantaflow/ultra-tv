@@ -277,6 +277,9 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .nav-item.on { background: var(--surface-3); color: var(--text); box-shadow: inset 4px 0 0 var(--accent); }
 [dir="rtl"] .nav-item.on { box-shadow: inset -4px 0 0 var(--accent); }
 .settings .pane { padding: 1.75rem 2.25rem 2.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+/* Panneau qui défile : ses lignes ne rétrécissent jamais (un min-height explicite remplace le minimum « contenu » des
+   éléments flex ; une page longue, comme À propos, écrasait les lignes et leurs descriptions se chevauchaient). */
+.settings .pane > * { flex-shrink: 0; }
 .pane h2 { font-size: 1.5rem; }
 .pane > .lead { color: var(--text-3); font-size: 0.9375rem; margin-top: -0.75rem; }
 .src-card { display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; border-radius: 1.25rem; background: var(--surface); }

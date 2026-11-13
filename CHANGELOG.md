@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Bureau : dans les réglages, les lignes d'une page longue (À propos : mises à jour automatiques, télémétrie) étaient écrasées et leurs textes se chevauchaient ; elles gardent maintenant leur hauteur et la page défile.
+
 ## [1.3.12] — 2026-11-13 (Android)
 
 ### Corrigé
