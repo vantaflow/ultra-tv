@@ -1656,4 +1656,7 @@
     <string name="ds_search_movies">الأفلام · %1$s</string>
     <string name="ds_search_series">المسلسلات · %1$s</string>
     <string name="ds_search_range">%1$s–%2$s من %3$s</string>
+    <!-- Menu latéral : têtes de groupe -->
+    <string name="ds_rail_group_watch">مشاهدة</string>
+    <string name="ds_rail_group_mine">قائمتي</string>
 </resources>

@@ -701,5 +701,11 @@
   "search.didYouMean": "هل تقصد",
   "search.closeTitles": "عناوين مشابهة",
   "search.details": "التفاصيل",
-  "common.sortTitle": "أ–ي"
+  "common.sortTitle": "أ–ي",
+  "nav.groupWatch": "مشاهدة",
+  "nav.groupMine": "قائمتي",
+  "rail.collapse": "طي القائمة",
+  "rail.expand": "توسيع القائمة",
+  "rail.switchProfile": "تغيير الملف الشخصي",
+  "rail.syncing": "جارٍ المزامنة"
 }

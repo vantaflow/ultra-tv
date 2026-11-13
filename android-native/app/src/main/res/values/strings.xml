@@ -1594,4 +1594,7 @@
     <string name="ds_search_movies">MOVIES · %1$s</string>
     <string name="ds_search_series">SERIES · %1$s</string>
     <string name="ds_search_range">%1$s–%2$s of %3$s</string>
+    <!-- Menu latéral : têtes de groupe -->
+    <string name="ds_rail_group_watch">Watch</string>
+    <string name="ds_rail_group_mine">My list</string>
 </resources>
