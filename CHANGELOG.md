@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Téléphone : textes coupés dans les réglages — « Gérer les catégories » repensé pour petit écran (titre et onglets sur leurs propres lignes, filtre pleine largeur, « Tout activer / désactiver » en deux boutons égaux, noms de catégories en entier sur plusieurs lignes avec l'interrupteur à droite, ordre via ▲ ▼ ✓ au toucher, sans aides de télécommande) ; les lignes de réglages s'agrandissent avec leur texte (libellé sur 2 lignes, aide sur 3) au lieu d'être tronquées.
+
 ## [1.3.8] — 2026-11-13 (Android)
 
 ### Corrigé

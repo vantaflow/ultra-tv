@@ -80,18 +80,19 @@ fun settingsRowRing(): androidx.compose.ui.unit.Dp =
 @Composable
 fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: String? = null, onClick: () -> Unit) {
     // La fenêtre de choix qu'ouvre la ligne lui rend le focus en se fermant (FocusSurface se signale comme ouvreur).
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     FocusSurface(
         onClick = onClick,
         shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f,
-        modifier = modifier.fillMaxWidth().height(84.designT),
+        modifier = modifier.fillMaxWidth().settingsRowHeight(touch, 84),
     ) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
+        Row(settingsRowInner(touch), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis)
+                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = if (touch) 3 else 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(16.design))
-            Text(value, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 420.design))
+            Text(value, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis, textAlign = if (touch) androidx.compose.ui.text.style.TextAlign.End else null, modifier = Modifier.widthIn(max = if (touch) 300.design else 420.design))
             Spacer(Modifier.width(12.design))
             DIcon(CHEVRON, 20.design, if (f) Ux.OnFocus2 else Ux.Text3, strokeWidth = 2.5f)
         }
@@ -101,23 +102,36 @@ fun PrefRow(label: String, value: String, modifier: Modifier = Modifier, hint: S
 /** Ligne de réglage avec interrupteur (accent quand activé). */
 @Composable
 fun SwitchPrefRow(label: String, on: Boolean, modifier: Modifier = Modifier, hint: String? = null, onChange: (Boolean) -> Unit) {
-    FocusSurface(onClick = { onChange(!on) }, shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f, modifier = modifier.fillMaxWidth().height(84.designT)) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    FocusSurface(onClick = { onChange(!on) }, shape = settingsRowShape(), bg = Ux.SurfaceDeep, ringWidth = settingsRowRing(), focusedScale = 1.0f, modifier = modifier.fillMaxWidth().settingsRowHeight(touch, 84)) { f ->
+        Row(settingsRowInner(touch), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis)
+                if (hint != null) Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = if (touch) 3 else 1, overflow = TextOverflow.Ellipsis)
             }
+            if (touch) Spacer(Modifier.width(12.design))
             Switch(on, inverted = f)
         }
     }
 }
 
+/**
+ * Téléphone : la ligne grandit avec son texte (libellé sur 2 lignes, aide sur 3) au lieu d'une hauteur fixe qui coupait
+ * les libellés longs ; TV : hauteur fixe inchangée.
+ */
+private fun Modifier.settingsRowHeight(touch: Boolean, px: Int): Modifier =
+    if (touch) this.heightIn(min = px.designT) else this.height(px.designT)
+
+private fun settingsRowInner(touch: Boolean): Modifier =
+    if (touch) Modifier.fillMaxWidth().padding(horizontal = 32.design, vertical = 14.design) else Modifier.fillMaxSize().padding(horizontal = 32.design)
+
 /** Titre de rubrique (Sora 36) avec description d'une ligne facultative. */
 @Composable
 fun PaneTitle(title: String, subtitle: String? = null) {
     Column(verticalArrangement = Arrangement.spacedBy(8.design)) {
-        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        if (subtitle != null) Text(subtitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+        Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis)
+        if (subtitle != null) Text(subtitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = if (touch) 4 else 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -143,8 +157,9 @@ fun ChoiceRow(
     ringWidth: androidx.compose.ui.unit.Dp = 4.design,
     leading: (@Composable () -> Unit)? = null,
 ) {
-    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) selectedBg else bg, ringWidth = ringWidth, focusedScale = 1f, modifier = modifier.fillMaxWidth().height(heightPx.designT)) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically) {
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) selectedBg else bg, ringWidth = ringWidth, focusedScale = 1f, modifier = modifier.fillMaxWidth().settingsRowHeight(touch, heightPx)) { f ->
+        Row(if (touch) Modifier.fillMaxWidth().padding(horizontal = 22.design, vertical = 10.design) else Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically) {
             // Place de la coche toujours réservée : les libellés restent alignés, cochés ou non.
             Box(Modifier.width(36.design), contentAlignment = Alignment.CenterStart) {
                 if (selected) DIcon(Icons.Check, 26.design, if (f) Ux.TextOnLight else Ux.AccentInk, strokeWidth = 3.2f)
@@ -153,7 +168,7 @@ fun ChoiceRow(
             Text(
                 label, color = when { f -> Ux.TextOnLight; selected -> Ux.AccentInk; else -> Ux.Text },
                 fontFamily = Manrope, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = fontPx.spx,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
             )
             if (!hint.isNullOrEmpty()) {
                 Spacer(Modifier.width(12.design))

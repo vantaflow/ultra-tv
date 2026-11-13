@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.categories
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -44,6 +47,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -143,6 +147,21 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     var local by remember { mutableStateOf(rows) }
     val shown = if (moving != null) local else rows
     BackHandler(enabled = moving != null) { moving = null; local = rows }
+
+    if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
+        TouchCategories(
+            vm, kind, q, shown, tabs, unsupported, moving, D,
+            onBack = onBack,
+            onKind = { vm.kind.value = it; moving = null },
+            onStartMove = { id -> moving = id; local = rows },
+            onMove = { id, delta ->
+                val i = local.indexOfFirst { it.remoteId == id }; val j = (i + delta).coerceIn(0, local.lastIndex)
+                if (i >= 0 && i != j) local = local.toMutableList().also { l -> l.add(j, l.removeAt(i)) }
+            },
+            onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
+        )
+        return
+    }
 
     Column(Modifier.fillMaxSize().padding(start = 72.design, end = 96.design, top = 54.design, bottom = 40.design), verticalArrangement = Arrangement.spacedBy(24.design)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
@@ -277,6 +296,78 @@ private fun CategoryLine(
         }
     }
 }
+
+/**
+ * Téléphone : titre seul sur sa ligne, onglets en dessous, filtre pleine largeur puis « Tout activer / désactiver »
+ * en deux boutons égaux ; chaque catégorie affiche son nom en entier (plusieurs lignes) avec l'interrupteur à droite.
+ * Pas d'en-têtes de colonnes ni d'aides de télécommande. Ordre : la poignée sélectionne la ligne, ▲ ▼ la déplacent, ✓ valide.
+ */
+@Composable
+private fun TouchCategories(
+    vm: CategoriesViewModel, kind: String, q: String, shown: List<CategoryRow>, tabs: Map<String, Int>, unsupported: Boolean, moving: String?,
+    D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
+    onBack: () -> Unit, onKind: (String) -> Unit, onStartMove: (String) -> Unit, onMove: (String, Int) -> Unit, onConfirmMove: () -> Unit,
+) {
+    Column(Modifier.fillMaxSize().padding(horizontal = 16.dpT, vertical = 12.dpT), verticalArrangement = Arrangement.spacedBy(12.dpT)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT(onBack), contentAlignment = Alignment.Center) { DIcon("M15 6l-6 6 6 6", 22.dpT, Ux.Text, strokeWidth = 2.5f) }
+            Spacer(Modifier.width(4.dpT))
+            Text(D.manageCategories, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 26.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        }
+        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dpT)) {
+            items(listOf("LIVE" to D.directTitle, "MOVIE" to D.moviesTitle, "SERIES" to D.seriesTitle), key = { it.first }) { (k, label) ->
+                val sel = kind == k
+                Box(Modifier.heightIn44().clip(RoundedCornerShape(22.dpT)).background(if (sel) Ux.Accent else Ux.Surface).clickableT { onKind(k) }.padding(horizontal = 18.dpT), contentAlignment = Alignment.Center) {
+                    Text("$label · ${tabs[k] ?: 0}", color = if (sel) Color.White else Ux.Text2, fontFamily = Manrope, fontWeight = if (sel) FontWeight.Bold else FontWeight.SemiBold, fontSize = 15.sp, maxLines = 1)
+                }
+            }
+        }
+        FilterField(q, { vm.query.value = it }, D.filterHint, Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dpT)) {
+            for ((label, on) in listOf(D.enableAll to true, D.disableAll to false)) {
+                Box(Modifier.weight(1f).heightIn44().clip(RoundedCornerShape(14.dpT)).background(Ux.Surface).border(1.dpT, Ux.Line, RoundedCornerShape(14.dpT)).clickableT { vm.setAll(on) }.padding(horizontal = 10.dpT, vertical = 8.dpT), contentAlignment = Alignment.Center) {
+                    Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                }
+            }
+        }
+        Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 1.sp, maxLines = 1)
+        LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dpT)) {
+            items(shown, key = { it.remoteId }, contentType = { "cat" }) { r ->
+                val isMoving = moving == r.remoteId
+                val count = if (r.enabled && r.count == 0) D.categoryLoading
+                    else r.count?.let { when (kind) { "LIVE" -> D.channelsOf(it); "MOVIE" -> D.moviesOf(it); else -> D.seriesOf(it) } }.orEmpty()
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dpT)).background(if (isMoving) Ux.Surface else if (r.enabled) Ux.SurfaceDeep else Color.Transparent)
+                        .clickableT { if (moving == null) vm.toggle(r) }.padding(start = 12.dpT, end = 4.dpT, top = 10.dpT, bottom = 10.dpT),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dpT)) {
+                        Text(r.label, color = if (r.enabled) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = if (r.enabled) FontWeight.Bold else FontWeight.Medium, fontSize = 16.sp, lineHeight = 20.sp,
+                            style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                        if (count.isNotEmpty()) Text(count, color = Ux.Text3, fontFamily = Manrope, fontSize = 13.sp, maxLines = 1)
+                    }
+                    if (isMoving) {
+                        for ((path, act) in listOf("M6 15l6-6 6 6" to { onMove(r.remoteId, -1) }, "M6 9l6 6 6-6" to { onMove(r.remoteId, 1) }, "M5 12l5 5 9-10" to onConfirmMove)) {
+                            Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT(act), contentAlignment = Alignment.Center) { DIcon(path, 22.dpT, Ux.Text, strokeWidth = 2.4f) }
+                        }
+                    } else {
+                        Spacer(Modifier.width(8.dpT))
+                        Switch(r.enabled)
+                        Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { if (moving == null) onStartMove(r.remoteId) }, contentAlignment = Alignment.Center) {
+                            DIcon("M8 10l4-4 4 4M8 14l4 4 4-4", 20.dpT, Ux.Text3, strokeWidth = 2.2f)
+                        }
+                    }
+                }
+            }
+        }
+        Text(if (unsupported) D.noFilterSupport else D.categoriesFooter + " " + D.catHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 3, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+private val Int.dpT get() = this.dp
+private fun Modifier.size44() = this.size(44.dp)
+private fun Modifier.heightIn44() = this.heightIn(min = 44.dp)
+private fun Modifier.clickableT(onClick: () -> Unit) = this.clickable(onClick = onClick)
 
 private fun Modifier.defaultMinSize56() = this.then(defaultMinSize(minWidth = 56.design))
 
