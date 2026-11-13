@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Réglages › Synchronisation : les quatre modes (Automatique, À chaque lancement, Planifiée, Manuelle) sont en liste avec leur description en entier, sur TV comme sur téléphone (les cartes côte à côte coupaient les textes, même sur un grand téléviseur).
+
 ## [1.3.14] — 2026-11-13 (Android)
 
 ### Corrigé

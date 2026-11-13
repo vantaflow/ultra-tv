@@ -541,22 +541,10 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
     }
     GroupLabel(D.whenToUpdate)
     val modes = listOf("auto" to (D.modeAuto to D.modeAutoDesc), "launch" to (D.modeLaunch to D.modeLaunchDesc), "scheduled" to (D.modeScheduled to D.modeScheduledDesc(p.syncHour)), "manual" to (D.modeManual to D.modeManualDesc))
-    if (touch) SettingsCard {
-        modes.forEach { (id, pair) -> com.ultratv.tv.nativeapp.ui.design.ChoiceRow(pair.first, p.syncMode == id, { panes.setMode(id) }, hint = null, heightPx = 84, sub = pair.second) }
-    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.design)) {
-        modes.forEach { (id, pair) ->
-            val sel = p.syncMode == id
-            FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 0.design, modifier = Modifier.weight(1f).height(132.designT)) { f ->
-                // Mode actif : coche + titre accent (comme ChoiceRow), visible que la carte soit focalisée ou non.
-                Column(Modifier.fillMaxSize().padding(24.design), verticalArrangement = Arrangement.spacedBy(10.design, Alignment.CenterVertically)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-                        if (sel) DIcon(Icons.Check, 24.design, if (f) Ux.TextOnLight else Ux.AccentInk, strokeWidth = 3.2f)
-                        Text(pair.first, color = if (f) Ux.TextOnLight else if (sel) Ux.AccentInk else Ux.Text, fontFamily = Manrope, fontWeight = if (sel) FontWeight.ExtraBold else FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
-                    Text(pair.second, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
+    // Modes en liste sur TOUS les appareils : libellé et description en entier (les quatre cartes côte à côte coupaient
+    // leurs textes, même sur un grand téléviseur).
+    SettingsCard {
+        modes.forEach { (id, pair) -> com.ultratv.tv.nativeapp.ui.design.ChoiceRow(pair.first, p.syncMode == id, { panes.setMode(id) }, hint = null, heightPx = 100, sub = pair.second) }
     }
     if (p.syncMode == "scheduled") SettingsCard { PrefRow(D.modeScheduled, com.ultratv.tv.nativeapp.ui.common.EpgClock.hourLabel(p.syncHour)) { panes.setHour((p.syncHour + 1) % 24) } }
     GroupLabel(D.contentToSync)
