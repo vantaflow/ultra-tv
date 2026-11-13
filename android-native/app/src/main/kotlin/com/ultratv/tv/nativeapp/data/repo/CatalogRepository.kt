@@ -213,7 +213,12 @@ class CatalogRepository @Inject constructor(
      * Recherche plein texte (FTS4) : instantanée même sur 180 000 titres. Une seule entrée par œuvre
      * ([SearchDedup]) ; les programmes EPG (7 jours, une ligne par chaîne) s'ajoutent aux chaînes/films/séries.
      */
-    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults {
+    // Calcul (dédoublonnage, tri, ressemblance) HORS du fil principal : appelé depuis un écran, il bloquait l'affichage
+    // plus de 5 s sur une box occupée par une synchro (ANR, l'appli fermée par Android en pleine recherche).
+    suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true): SearchResults =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { searchNow(pid, query, limit, nowMs, includePrograms) }
+
+    private suspend fun searchNow(pid: Long, query: String, limit: Int, nowMs: Long, includePrograms: Boolean): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
         val cap = limit * 3
         val rawMovies = movieDao.searchFts(pid, match, cap)
@@ -246,11 +251,12 @@ class CatalogRepository @Inject constructor(
         )
     }
 
-    suspend fun searchPrograms(pid: Long, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> {
-        val pattern = EpgSearch.likePattern(query) ?: return emptyList()
-        val rows = epgDao.searchPrograms(pid, pattern, nowMs, nowMs + EpgSearch.WINDOW_MS, EpgSearch.SQL_LIMIT)
-        return EpgSearch.select(rows, query, nowMs)
-    }
+    suspend fun searchPrograms(pid: Long, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+            val pattern = EpgSearch.likePattern(query) ?: return@withContext emptyList()
+            val rows = epgDao.searchPrograms(pid, pattern, nowMs, nowMs + EpgSearch.WINDOW_MS, EpgSearch.SQL_LIMIT)
+            EpgSearch.select(rows, query, nowMs)
+        }
 
     suspend fun channelsByRemoteIds(pid: Long, ids: List<String>): List<ChannelEntity> =
         ids.chunked(500).flatMap { channelDao.byRemoteIds(pid, it) }

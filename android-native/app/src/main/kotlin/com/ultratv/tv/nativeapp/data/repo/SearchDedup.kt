@@ -16,11 +16,12 @@ object SearchDedup {
         "4k", "8k", "uhd", "fhd", "hd", "sd", "hevc", "x265", "x264", "h265", "h264", "bluray", "bdrip", "webrip", "hdrip", "dvdrip", "hdtv", "1080p", "720p", "2160p",
     )
     private val combining = Regex("\\p{Mn}+")
+    private val punctuation = Regex("[^\\p{L}\\p{N}]+")
 
     /** Minuscules, sans accents, ponctuation → espaces. */
     fun fold(s: String): String =
         Normalizer.normalize(s, Normalizer.Form.NFD).replace(combining, "").lowercase(Locale.ROOT)
-            .replace(Regex("[^\\p{L}\\p{N}]+"), " ").trim()
+            .replace(punctuation, " ").trim()
 
     /** Titre canonique + année (nulle si inconnue). */
     fun key(rawName: String, knownYear: Int?): String {
