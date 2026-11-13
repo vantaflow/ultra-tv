@@ -59,6 +59,8 @@ class I18nBehaviourTest {
     @Test @Config(qualifiers = "es-rMX") fun system_esMexique_resteEspagnol() = systemMatches(AppLang.Spanish)
     @Test @Config(qualifiers = "de") fun system_langueNonPrise_enAnglais() = systemMatches(AppLang.English)
     @Test @Config(qualifiers = "pl") fun system_polonais() = systemMatches(AppLang.Polish)
+    @Test @Config(qualifiers = "pt-rBR") fun system_portugaisBresil() = systemMatches(AppLang.PortugueseBr)
+    @Test @Config(qualifiers = "pt-rPT") fun system_portugaisPortugal_versBresil() = systemMatches(AppLang.PortugueseBr)
 
     @Test fun langueExplicite_ignoreLaLangueDeLAppareil() {
         // Même appareil (anglais par défaut) : le choix de l'utilisateur gagne.

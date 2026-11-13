@@ -18,8 +18,13 @@ enum class AppLang(val code: String, val displayName: String, val rtl: Boolean =
     French("fr", "Français"),
     Spanish("es", "Español"),
     Arabic("ar", "العربية", rtl = true),
-    // Langue communautaire (premier jet, à relire via Weblate).
-    Polish("pl", "Polski");
+    // Langues communautaires (premier jet, à relire via Weblate).
+    Polish("pl", "Polski"),
+    /** Portugais du Brésil : ressources `values-pt-rBR` ; un appareil en portugais (pt, pt-PT) la prend aussi. */
+    PortugueseBr("pt-BR", "Português (Brasil)");
+
+    /** Langue de l'appareil (« pt » pour pt-BR) : sert à reconnaître la langue du système. */
+    val baseLanguage: String get() = code.substringBefore('-')
 
     companion object {
         fun fromCode(code: String): AppLang = entries.firstOrNull { it.code == code } ?: System

@@ -51,7 +51,7 @@ class I18nGoldenTest {
                     problems += "$id\n    attendu : « $expected »\n    obtenu  : « $actual »"
                 }
                 // Le polonais (langue communautaire) est postérieur au golden : seul son nom dans le sélecteur est nouveau.
-                for (key in now.keys - golden.keys) if (key != "DesignStrings.langName(Polish)") problems += "${lang.code}|$key : entrée absente du golden"
+                for (key in now.keys - golden.keys) if (key != "DesignStrings.langName(Polish)" && key != "DesignStrings.langName(PortugueseBr)") problems += "${lang.code}|$key : entrée absente du golden"
             }
             val stale = ok.keys - seen
             assertTrue("Écarts acceptés devenus inutiles :\n" + stale.joinToString("\n"), stale.isEmpty())

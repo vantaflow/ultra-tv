@@ -183,7 +183,7 @@ object SizeFormat {
         val s = String.format(Locale.ROOT, "%.1f", v)
         val t = if (s.endsWith(".0")) s.dropLast(2) else s
         return when (lang) {
-            AppLang.French, AppLang.Spanish, AppLang.Polish -> t.replace('.', ',')
+            AppLang.French, AppLang.Spanish, AppLang.Polish, AppLang.PortugueseBr -> t.replace('.', ',')
             AppLang.Arabic -> t.replace('.', '٫')
             else -> t
         }

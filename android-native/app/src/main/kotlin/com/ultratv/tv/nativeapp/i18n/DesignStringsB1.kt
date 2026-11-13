@@ -45,6 +45,7 @@ val DesignStrings.locale: java.util.Locale get() = when (lang) {
     AppLang.Spanish -> java.util.Locale("es")
     AppLang.Arabic -> java.util.Locale.forLanguageTag("ar-u-nu-latn")
     AppLang.Polish -> java.util.Locale("pl")
+    AppLang.PortugueseBr -> java.util.Locale("pt", "BR")
     else -> java.util.Locale.ENGLISH
 }
 

@@ -10,6 +10,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Accueil (TV) : l'affiche ciblée recouvrait le titre de sa rangée (« Ma watchlist Trakt », Recommandé, Top 10) ; la rangée réserve maintenant la place du zoom.
 
+### Ajouté
+- Langue **Português (Brasil)** (Android et bureau), à choisir dans Réglages › Langue ; prise automatiquement sur un appareil en portugais. Premier jet à relire sur Weblate, comme le polonais.
+
 ## [1.3.5] — 2026-11-13 (Android) et bureau 1.2.52
 
 ### Corrigé

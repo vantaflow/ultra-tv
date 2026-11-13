@@ -99,6 +99,7 @@ fun tmdbLang(appLang: AppLang): String = when (appLang) {
     AppLang.Spanish -> "es-ES"
     AppLang.Arabic -> "ar"
     AppLang.Polish -> "pl-PL"
+    AppLang.PortugueseBr -> "pt-BR"
     else -> "en-US"
 }
 
@@ -223,6 +224,6 @@ class TmdbRepository @Inject constructor(
     }
 
     private fun systemLang(): AppLang = when (java.util.Locale.getDefault().language) {
-        "fr" -> AppLang.French; "es" -> AppLang.Spanish; "ar" -> AppLang.Arabic; "pl" -> AppLang.Polish; else -> AppLang.English
+        "fr" -> AppLang.French; "es" -> AppLang.Spanish; "ar" -> AppLang.Arabic; "pl" -> AppLang.Polish; "pt" -> AppLang.PortugueseBr; else -> AppLang.English
     }
 }

@@ -31,7 +31,7 @@ object I18n {
     fun resolve(lang: AppLang): AppLang {
         if (lang != AppLang.System) return lang
         val deviceCode = appContext?.resources?.configuration?.locales?.get(0)?.language ?: Locale.getDefault().language
-        return AppLang.entries.firstOrNull { it != AppLang.System && it.code == deviceCode } ?: AppLang.English
+        return AppLang.entries.firstOrNull { it != AppLang.System && it.baseLanguage == deviceCode } ?: AppLang.English
     }
 
     /** `Resources` configurées sur la langue (résolue) ; l'anglais utilise res/values (aucun dossier `values-en`). */
@@ -40,7 +40,7 @@ object I18n {
         val resolved = resolve(lang)
         return resourcesCache.getOrPut(resolved.code) {
             val cfg = android.content.res.Configuration(ctx.resources.configuration)
-            cfg.setLocale(Locale(resolved.code))
+            cfg.setLocale(Locale.forLanguageTag(resolved.code))
             ctx.createConfigurationContext(cfg).resources
         }
     }
