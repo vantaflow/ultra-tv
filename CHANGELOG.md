@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.20] — 2026-11-13 (Android)
+
 ### Modifié
 - Mode simple redessiné : accueil avec la date, « Bonsoir » et le prénom du profil, grande horloge, grande carte « Reprendre » (affiche, progression, temps restant) et cinq grandes tuiles sur une rangée ; liste des chaînes à gros caractères avec numéro, logo et programme en cours, onglets Toutes / Mes favoris et, sur TV, l'aperçu « En ce moment » (horaire, progression, programme suivant). Rappel des touches utiles en bas de l'écran.
 
