@@ -1,0 +1,1 @@
+# Textes coupés connus (langue|composant|ressource). Le test TextOverflowTest échoue sur tout débordement absent de cette liste.
