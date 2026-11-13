@@ -34,6 +34,7 @@ export async function purgeTelemetry(env, now = Date.now()) {
     db.prepare("DELETE FROM events WHERE kind = 'crash' AND ts < ?").bind(now - CRASH_TTL_S * 1000),
     db.prepare("DELETE FROM anon_pings WHERE last_seen < ?").bind(now - ANON_TTL_S * 1000),
     db.prepare("DELETE FROM device_seen WHERE seen < ?").bind(now - SEEN_TTL_S * 1000),
+    db.prepare("DELETE FROM device_activity WHERE last_seen < ?").bind(now - SEEN_TTL_S * 1000),
   ]));
 }
 
@@ -108,4 +109,78 @@ export async function deviceSeen(env, hash, fallback = 0) {
 /** Oublie l'appareil [hash] (révocation / rotation du jeton). */
 export async function forgetDeviceSeen(env, hash) {
   await safe(env, (db) => db.prepare("DELETE FROM device_seen WHERE hash = ?").bind(hash).run());
+}
+
+// ---- activité des appareils appairés (D1, pas KV : une écriture par heure et par appareil épuisait le quota) ----
+
+const ACTIVITY_REFRESH_MS = 3600_000;
+
+/** Note l'activité de l'appareil : au plus une écriture par heure, ou dès que le pays change. */
+export async function touchDeviceActivity(env, deviceId, country, now = Date.now()) {
+  if (!deviceId) return;
+  await safe(env, (db) => db.prepare(
+    "INSERT INTO device_activity (device_id, last_seen, country) VALUES (?, ?, ?) ON CONFLICT(device_id) DO UPDATE SET "
+    + "last_seen = excluded.last_seen, country = COALESCE(excluded.country, device_activity.country) "
+    + "WHERE device_activity.last_seen < excluded.last_seen - ? OR (excluded.country IS NOT NULL AND COALESCE(device_activity.country, '') <> excluded.country)",
+  ).bind(deviceId, now, country || null, ACTIVITY_REFRESH_MS).run());
+}
+
+/** Activité connue des appareils : Map id → { lastSeen, country } ([ids] absent = tous). */
+export async function deviceActivity(env, ids) {
+  const out = new Map();
+  if (ids && !ids.length) return out;
+  const rows = await safe(env, async (db) => {
+    if (!ids) return (await db.prepare("SELECT device_id, last_seen, country FROM device_activity").all()).results;
+    const all = [];
+    for (let i = 0; i < ids.length; i += 50) {
+      const part = ids.slice(i, i + 50);
+      const r = await db.prepare(`SELECT device_id, last_seen, country FROM device_activity WHERE device_id IN (${part.map(() => "?").join(",")})`).bind(...part).all();
+      all.push(...r.results);
+    }
+    return all;
+  }, []);
+  for (const r of rows || []) out.set(r.device_id, { lastSeen: r.last_seen || 0, country: r.country || null });
+  return out;
+}
+
+/** Appareil [d] complété par son activité D1 (la plus récente des deux valeurs ; pays D1 en priorité). */
+export function withActivity(d, act) {
+  const a = act?.get(d.id);
+  if (!a) return d;
+  return { ...d, lastSeen: Math.max(d.lastSeen || 0, a.lastSeen || 0), country: a.country || d.country || null };
+}
+
+export async function forgetDeviceActivity(env, deviceId) {
+  await safe(env, (db) => db.prepare("DELETE FROM device_activity WHERE device_id = ?").bind(deviceId).run());
+}
+
+// ---- état partagé (favoris, reprise) : D1, ancienne valeur KV relue tant qu'elle n'a pas été réécrite ----
+
+/** Blob chiffré de l'état [k] : D1 ; `undefined` si D1 est indisponible (l'appelant se replie sur KV). */
+export async function stateBlobGet(env, k) {
+  if (!env?.DB) return undefined;
+  try { const r = await env.DB.prepare("SELECT blob FROM shared_state WHERE k = ?").bind(k).first(); return r ? r.blob : null; }
+  catch (e) { console.error("etat D1:", e?.message); return undefined; }
+}
+
+/** Écrit l'état [k] dans D1 ; false si D1 est indisponible (l'appelant écrit alors dans KV). */
+export async function stateBlobPut(env, k, blob, now = Date.now()) {
+  if (!env?.DB) return false;
+  try {
+    await env.DB.prepare("INSERT INTO shared_state (k, blob, at) VALUES (?, ?, ?) ON CONFLICT(k) DO UPDATE SET blob = excluded.blob, at = excluded.at").bind(k, blob, now).run();
+    return true;
+  } catch (e) { console.error("etat D1:", e?.message); return false; }
+}
+
+export async function stateBlobDelete(env, k) {
+  await safe(env, (db) => db.prepare("DELETE FROM shared_state WHERE k = ?").bind(k).run());
+}
+
+/** Efface tout l'état partagé et l'activité d'un compte supprimé (préfixe comparé sans LIKE : le login peut contenir % ou _). */
+export async function forgetAccountD1(env, login, deviceIds) {
+  const prefix = `st:${login}:`;
+  await safe(env, (db) => db.batch([
+    db.prepare("DELETE FROM shared_state WHERE substr(k, 1, ?) = ?").bind(prefix.length, prefix),
+    ...deviceIds.map((id) => db.prepare("DELETE FROM device_activity WHERE device_id = ?").bind(id)),
+  ]));
 }

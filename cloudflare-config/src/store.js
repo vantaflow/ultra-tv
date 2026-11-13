@@ -4,7 +4,7 @@
 //   crash:*, event:*  télémétrie (TTL)
 // L'unicité d'un login est garantie par le Durable Object (claim), pas par KV.
 
-import { touchDeviceSeen, forgetDeviceSeen } from "./telemetry.js";
+import { touchDeviceSeen, forgetDeviceSeen, stateBlobGet, stateBlobPut, stateBlobDelete, forgetAccountD1, forgetDeviceActivity } from "./telemetry.js";
 import { encryptJson, decryptJson, keysFromEnv, sha256Hex, randomToken, timingSafeEqual } from "./crypto.js";
 
 // Plafonds par compte (taille du compte en KV, configuration téléchargée par chaque appareil : ~50 Ko à 100 sources).
@@ -55,6 +55,7 @@ export async function deleteAccount(env, acct) {
   // État partagé (favoris, reprises) de chaque source du compte.
   const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
   await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name)));
+  await forgetAccountD1(env, acct.login, (acct.devices || []).map((d) => d.id));
   await env.CONFIG.delete(`ostok:${acct.login}`);
   // Bibliothèque et titres Trakt en cache.
   const tl = await env.CONFIG.list({ prefix: `tlib:${acct.login}:` });
@@ -102,6 +103,7 @@ export async function revokeDevice(env, acct, deviceId) {
   await putAccount(env, acct);
   await env.CONFIG.delete(`dev:${d.hash}`);
   await forgetDeviceSeen(env, d.hash);
+  await forgetDeviceActivity(env, d.id);
   return true;
 }
 
@@ -535,13 +537,22 @@ export function mergeState(cur, incoming, now = Date.now()) {
 const stateKvKey = (login, pid) => `st:${login}:${pid}`;
 
 export async function loadState(env, login, pid) {
-  const raw = await env.CONFIG.get(stateKvKey(login, pid));
+  // D1 d'abord ; l'ancienne valeur KV reste lue tant que la source n'a pas été réécrite (migration au fil de l'eau).
+  const k = stateKvKey(login, pid);
+  const raw = (await stateBlobGet(env, k)) ?? (await env.CONFIG.get(k));
   if (!raw) return { fav: [], hist: [] };
   try { return await decryptJson(keysFromEnv(env), raw, `${login}:st:${pid}`); } catch { return { fav: [], hist: [] }; }
 }
 
+/** Écrit dans D1 (une écriture KV par synchro épuisait le quota gratuit) ; KV seulement si D1 est indisponible. */
 export async function saveState(env, login, pid, state) {
-  await env.CONFIG.put(stateKvKey(login, pid), await encryptJson(keysFromEnv(env), state, `${login}:st:${pid}`));
+  const k = stateKvKey(login, pid);
+  const blob = await encryptJson(keysFromEnv(env), state, `${login}:st:${pid}`);
+  if (!(await stateBlobPut(env, k, blob))) await env.CONFIG.put(k, blob);
 }
 
-export async function deleteState(env, login, pid) { await env.CONFIG.delete(stateKvKey(login, pid)); }
+export async function deleteState(env, login, pid) {
+  const k = stateKvKey(login, pid);
+  await stateBlobDelete(env, k);
+  await env.CONFIG.delete(k);
+}

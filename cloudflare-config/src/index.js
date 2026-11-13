@@ -33,7 +33,7 @@ import { ratingsProxy } from "./ratings.js";
 import { fanartProxy, tvmazeProxy, sportsTeamProxy } from "./extmeta.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
-import { recordEvent, anonTouch as anonTouchD1, purgeTelemetry, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
+import { recordEvent, anonTouch as anonTouchD1, purgeTelemetry, touchDeviceActivity, deviceActivity, withActivity, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
 import { anonQuery, eventsQuery, parseListParams, paginate, sortRows, filterAccounts, filterDevices, flattenDevices, countBy, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS } from "./admin.js";
 import { queryAnon, anonFacets, anonOverview, countEvents, queryEvents, eventFacets } from "./telemetryq.js";
 import { overviewPage, accountsPage, anonPage, devicesPage, eventsAdminPage, alertsPage } from "./adminui.js";
@@ -762,6 +762,7 @@ async function adminAccounts(env) {
     names.push(...page.keys.map((k) => k.name));
     cursor = page.list_complete ? undefined : page.cursor;
   } while (cursor && names.length < 2000);
+  const act = await deviceActivity(env);
   const rows = [];
   for (let i = 0; i < names.length; i += 50) {
     const got = await Promise.all(names.slice(i, i + 50).map((n) => env.CONFIG.get(n)));
@@ -769,7 +770,7 @@ async function adminAccounts(env) {
       let a;
       try { a = JSON.parse(raw); } catch { continue; }
       if (!a || !a.login) continue;
-      const devices = (a.devices || []).map((d) => ({
+      const devices = (a.devices || []).map((d) => withActivity(d, act)).map((d) => ({
         name: d.name || "", model: d.label || "", edition: d.edition || "standard", lastSeen: d.lastSeen || 0, version: d.version || "",
         country: d.country || null, createdAt: d.createdAt || 0,
       }));
@@ -1110,9 +1111,9 @@ async function noteEdition(req, env, auth) {
   const ed = (req.headers.get("x-ultra-edition") || "").trim().toLowerCase();
   const patch = {};
   if (EDITIONS.has(ed) && auth.device.edition !== ed) patch.edition = ed;
-  if (Date.now() - (auth.device.lastSeen || 0) > 3600_000) patch.lastSeen = Date.now();
-  const country = countryOf(req);
-  if (country && auth.device.country !== country) patch.country = country;
+  // Dernière activité et pays : D1 (une réécriture du compte KV par heure et par appareil épuisait le quota gratuit
+  // d'écritures, et l'appairage échouait ensuite pour tout le monde).
+  await touchDeviceActivity(env, auth.device.id, countryOf(req));
   const version = appVersionOf(req.headers.get("x-ultra-version"));
   if (version && auth.device.version !== version) patch.version = version;
   if (!Object.keys(patch).length) return;
@@ -1151,7 +1152,9 @@ async function deviceConfig(req, env) {
   if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
   // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
   const providers = (await loadProviders(env, auth.acct)).filter((p) => isSupportedKind(p) && isVisibleTo(p, auth.device.id));
-  const devices = (auth.acct.devices || []).map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
+  const act = await deviceActivity(env, (auth.acct.devices || []).map((d) => d.id));
+  const devices = (auth.acct.devices || []).map((d) => withActivity(d, act))
+    .map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
   return json(
     { version, self: auth.device.id, devices, providers: providers.map(syncProvider) },
     200, { etag, "cache-control": "no-store" },

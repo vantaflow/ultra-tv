@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Télécommande : en revenant du menu latéral (Droite), le focus retourne sur l'élément qu'on avait quitté (ex. « Regarder » du bandeau) au lieu de l'élément le plus proche du menu.
+- Appairage : « error: internal » quand le quota quotidien d'écritures du serveur était atteint ; la dernière activité des appareils et l'état partagé (favoris, reprise) ne consomment plus ce quota.
 
 ## [1.3.25] — 2026-11-13 (Android)
 
