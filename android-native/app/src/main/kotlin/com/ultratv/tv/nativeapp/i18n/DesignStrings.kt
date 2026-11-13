@@ -95,6 +95,7 @@ class DesignStrings(val lang: AppLang) {
         com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.PROVIDER -> tx(R.string.ds_catalog_sort_name_provider)
         com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT -> tx(R.string.ds_catalog_sort_name_recent)
         com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RATING -> tx(R.string.ds_catalog_sort_name_rating)
+        com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.TITLE -> tx(R.string.ds_catalog_sort_name_title)
     }
     fun periodName(o: com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period) = when (o) {
         com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Period.ALL -> tx(R.string.ds_period_name_all)
@@ -464,6 +465,33 @@ class DesignStrings(val lang: AppLang) {
     val animations get() = tx(R.string.ds_animations); val full get() = tx(R.string.ds_full); val reduced get() = tx(R.string.ds_reduced); val guideKept get() = tx(R.string.ds_guide_kept)
     val holdToReorder get() = tx(R.string.ds_hold_to_reorder)
     val syncing get() = tx(R.string.ds_syncing)
+
+    // Recherche v2 : onglets par type, tris, meilleur résultat, compteurs « 1–6 sur 18 »
+    val searchTabAll get() = tx(R.string.ds_search_tab_all)
+    val searchTabMovies get() = tx(R.string.ds_search_tab_movies)
+    val searchTabSeries get() = tx(R.string.ds_search_tab_series)
+    val searchTabChannels get() = tx(R.string.ds_search_tab_channels)
+    val searchTabPrograms get() = tx(R.string.ds_search_tab_programs)
+    val searchSort get() = tx(R.string.ds_search_sort)
+    fun searchSortName(o: com.ultratv.tv.nativeapp.data.repo.SearchSort) = when (o) {
+        com.ultratv.tv.nativeapp.data.repo.SearchSort.RELEVANCE -> tx(R.string.ds_search_sort_relevance)
+        com.ultratv.tv.nativeapp.data.repo.SearchSort.TITLE -> tx(R.string.ds_catalog_sort_name_title)
+        com.ultratv.tv.nativeapp.data.repo.SearchSort.YEAR -> tx(R.string.ds_search_sort_year)
+        com.ultratv.tv.nativeapp.data.repo.SearchSort.RATING -> tx(R.string.ds_search_sort_rating)
+    }
+    val searchBest get() = tx(R.string.ds_search_best)
+    val searchSeeAll get() = tx(R.string.ds_search_see_all)
+    val searchKeyboard get() = tx(R.string.ds_search_keyboard)
+    fun searchNoExact(q: String) = tx(R.string.ds_search_no_exact, q)
+    val searchDidYouMean get() = tx(R.string.ds_search_did_you_mean)
+    val searchCloseTitles get() = tx(R.string.ds_search_close_titles)
+    val searchRecentlyAdded get() = tx(R.string.ds_search_recently_added)
+    val searchClearHistory get() = tx(R.string.ds_search_clear_history)
+    val searchDetails get() = tx(R.string.ds_search_details)
+    val searchInputHint get() = tx(R.string.ds_search_input_hint)
+    fun searchMovies(n: Int) = tx(R.string.ds_search_movies, n)
+    fun searchSeries(n: Int) = tx(R.string.ds_search_series, n)
+    fun searchRange(first: Int, last: Int, total: Int) = tx(R.string.ds_search_range, first, last, total)
 }
 
 val LocalDs = compositionLocalOf { DesignStrings(AppLang.English) }

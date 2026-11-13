@@ -646,5 +646,20 @@
   "cor.done": "Done",
   "cor.cancel": "Cancel",
   "cor.resetDone": "Source order restored",
-  "cor.favHint": "Right-click or M: move a channel · or drag and drop"
+  "cor.favHint": "Right-click or M: move a channel · or drag and drop",
+  "search.tabAll": "All",
+  "search.movies": "Movies",
+  "search.series": "Series",
+  "search.sortBy": "Sort",
+  "search.sortRelevance": "Relevance",
+  "search.sortTitle": "A–Z",
+  "search.sortYear": "Year",
+  "search.sortRating": "Rating",
+  "search.best": "Top result",
+  "search.seeAll": "See all ({n})",
+  "search.noExact": "No title contains “{q}”.",
+  "search.didYouMean": "Did you mean",
+  "search.closeTitles": "Close matches",
+  "search.details": "Details",
+  "common.sortTitle": "A–Z"
 }

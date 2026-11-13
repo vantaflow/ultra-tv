@@ -4,6 +4,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Recherche (Android TV) : tous les résultats sont désormais accessibles. Auparavant, l'écran annonçait par exemple « 30 » films et séries mais n'en affichait que 12 (deux rangées), sans moyen d'atteindre la suite ; les chaînes étaient limitées à 6. Le plafond de 40 résultats par type passe à 500 (Android) et de 30 à 400 (bureau).
+
+### Modifié
+- Recherche refaite (Android TV, téléphone, bureau) : **onglets par type** (Tout, Films, Séries, Chaînes, Au programme) avec leur nombre réel de résultats, **tri** Pertinence / A–Z / Année / Note, **meilleur résultat** mis en avant (titre identique ou qui commence par la saisie). Sur TV, l'onglet « Tout » montre une rangée par type qui défile jusqu'au dernier résultat avec un compteur « 1–6 sur 18 » et « Tout voir » ; l'onglet d'un type replie le clavier et affiche la grille complète (8 colonnes), avec en tri A–Z un rail de lettres pour sauter directement. Avant la saisie : recherches récentes (et « Effacer l'historique ») et ajouts récents. Aucun titre exact : « Vouliez-vous dire … ? » et titres proches. Téléphone : pastilles d'onglets et de tri, listes complètes par type.
+- Pertinence : titre identique > commence par la saisie > contient le mot entier > le reste, puis le plus récent.
+
+### Ajouté
+- Catalogue Films et Séries (Android et bureau) : tri **A–Z**, qui ignore les articles en tête (« The Office » à O, « Les Nuits courtes » à N) et les accents. Android : les clés de tri des titres déjà en base sont recalculées une fois, au premier choix de ce tri. Bureau : dans « Tout », proposé jusqu'à 20 000 titres (tri en mémoire) ; toujours disponible dans une catégorie.
+
 ## [1.3.2] — 2026-11-12 (Android)
 
 ### Corrigé

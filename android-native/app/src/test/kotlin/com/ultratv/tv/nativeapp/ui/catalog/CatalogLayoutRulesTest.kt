@@ -20,7 +20,8 @@ class CatalogLayoutRulesTest {
         assertEquals(4, CatalogLayoutRules.next(CatalogLayoutRules.COLUMN_CHOICES, 0))
         assertEquals(0, CatalogLayoutRules.next(CatalogLayoutRules.COLUMN_CHOICES, 6))
         assertEquals(CatalogFilter.Sort.RECENT, CatalogLayoutRules.next(CatalogFilter.Sort.entries, CatalogFilter.Sort.PROVIDER))
-        assertEquals(CatalogFilter.Sort.PROVIDER, CatalogLayoutRules.next(CatalogFilter.Sort.entries, CatalogFilter.Sort.RATING))
+        assertEquals(CatalogFilter.Sort.TITLE, CatalogLayoutRules.next(CatalogFilter.Sort.entries, CatalogFilter.Sort.RATING))
+        assertEquals(CatalogFilter.Sort.PROVIDER, CatalogLayoutRules.next(CatalogFilter.Sort.entries, CatalogFilter.Sort.TITLE))
         assertEquals(CatalogLayout.ROWS, CatalogLayoutRules.next(CatalogLayout.entries, CatalogLayout.SPLIT))
     }
 
@@ -38,7 +39,8 @@ class CatalogLayoutRulesTest {
     }
 
     @Test fun triExistants_codesStables() {
-        assertEquals(listOf(0, 1, 2), CatalogFilter.Sort.entries.map { it.code })
+        assertEquals(listOf(0, 1, 2, 3), CatalogFilter.Sort.entries.map { it.code })
+        assertTrue(CatalogFilter(sort = CatalogFilter.Sort.TITLE).narrows)
         assertTrue(!CatalogFilter.DEFAULT.narrows)
         assertTrue(CatalogFilter(sort = CatalogFilter.Sort.RATING).narrows)
     }

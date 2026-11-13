@@ -686,5 +686,20 @@
   "cor.done": "تم",
   "cor.cancel": "إلغاء",
   "cor.resetDone": "تمت استعادة ترتيب المصدر",
-  "cor.favHint": "النقر بزر الماوس الأيمن أو M: نقل قناة · أو السحب والإفلات"
+  "cor.favHint": "النقر بزر الماوس الأيمن أو M: نقل قناة · أو السحب والإفلات",
+  "search.tabAll": "الكل",
+  "search.movies": "أفلام",
+  "search.series": "مسلسلات",
+  "search.sortBy": "ترتيب",
+  "search.sortRelevance": "الأكثر صلة",
+  "search.sortTitle": "أ–ي",
+  "search.sortYear": "السنة",
+  "search.sortRating": "التقييم",
+  "search.best": "أفضل نتيجة",
+  "search.seeAll": "عرض الكل ({n})",
+  "search.noExact": "لا يوجد عنوان يحتوي على «{q}».",
+  "search.didYouMean": "هل تقصد",
+  "search.closeTitles": "عناوين مشابهة",
+  "search.details": "التفاصيل",
+  "common.sortTitle": "أ–ي"
 }

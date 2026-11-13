@@ -1632,4 +1632,28 @@
         <item quantity="many">%1$s مصدر</item>
         <item quantity="other">%1$s مصدر</item>
     </plurals>
+    <!-- Recherche v2 : onglets, tris, meilleur résultat -->
+    <string name="ds_catalog_sort_name_title">أ–ي</string>
+    <string name="ds_search_tab_all">الكل</string>
+    <string name="ds_search_tab_movies">أفلام</string>
+    <string name="ds_search_tab_series">مسلسلات</string>
+    <string name="ds_search_tab_channels">قنوات</string>
+    <string name="ds_search_tab_programs">في البث</string>
+    <string name="ds_search_sort">ترتيب</string>
+    <string name="ds_search_sort_relevance">الأكثر صلة</string>
+    <string name="ds_search_sort_year">السنة</string>
+    <string name="ds_search_sort_rating">التقييم</string>
+    <string name="ds_search_best">أفضل نتيجة</string>
+    <string name="ds_search_see_all">عرض الكل</string>
+    <string name="ds_search_keyboard">لوحة المفاتيح</string>
+    <string name="ds_search_no_exact">لا يوجد عنوان يحتوي على «%1$s».</string>
+    <string name="ds_search_did_you_mean">هل تقصد</string>
+    <string name="ds_search_close_titles">عناوين مشابهة</string>
+    <string name="ds_search_recently_added">أضيفت مؤخرًا</string>
+    <string name="ds_search_clear_history">مسح السجل</string>
+    <string name="ds_search_details">التفاصيل</string>
+    <string name="ds_search_input_hint">يمكنك أيضًا استخدام لوحة مفاتيح موصولة أو ميكروفون جهاز التحكم.</string>
+    <string name="ds_search_movies">الأفلام · %1$s</string>
+    <string name="ds_search_series">المسلسلات · %1$s</string>
+    <string name="ds_search_range">%1$s–%2$s من %3$s</string>
 </resources>

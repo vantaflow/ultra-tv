@@ -656,5 +656,20 @@
   "cor.done": "Aceptar",
   "cor.cancel": "Cancelar",
   "cor.resetDone": "Orden de la fuente restablecido",
-  "cor.favHint": "Clic derecho o M: mover un canal · o arrastrar y soltar"
+  "cor.favHint": "Clic derecho o M: mover un canal · o arrastrar y soltar",
+  "search.tabAll": "Todo",
+  "search.movies": "Películas",
+  "search.series": "Series",
+  "search.sortBy": "Ordenar",
+  "search.sortRelevance": "Relevancia",
+  "search.sortTitle": "A–Z",
+  "search.sortYear": "Año",
+  "search.sortRating": "Nota",
+  "search.best": "Mejor resultado",
+  "search.seeAll": "Ver todo ({n})",
+  "search.noExact": "Ningún título contiene «{q}».",
+  "search.didYouMean": "¿Quisiste decir",
+  "search.closeTitles": "Títulos parecidos",
+  "search.details": "Ficha",
+  "common.sortTitle": "A–Z"
 }

@@ -11,6 +11,13 @@ import androidx.room.PrimaryKey
  * Permet un ORDER BY servi par l'index (pagination instantanée sur 180 000 lignes) au lieu
  * d'un tri complet par page.
  */
+/**
+ * Clé de tri A–Z des FILMS et SÉRIES (tri « A–Z » des catégories) : sans article initial, accents ni ponctuation
+ * ([com.ultratv.tv.nativeapp.data.repo.SearchRank.titleKey]). Les chaînes gardent [sortKeyOf].
+ */
+fun titleSortKeyOf(title: String): String =
+    com.ultratv.tv.nativeapp.data.repo.SearchRank.titleKey(title).ifEmpty { sortKeyOf(title) }
+
 fun sortKeyOf(name: String): String {
     val trimmed = name.trimStart { !it.isLetterOrDigit() }.ifEmpty { name }
     return trimmed.lowercase(java.util.Locale.ROOT)
@@ -149,7 +156,7 @@ data class MovieEntity(
     val rating: Double?,
     val plot: String?,
     val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name).title,
-    val sortKey: String = sortKeyOf(title),
+    val sortKey: String = titleSortKeyOf(title),
     /** Image PAYSAGE (hero, fiche) : seulement si la source en fournit une (get_vod_info). */
     val backdrop: String? = null,
     val genre: String? = null,
@@ -188,7 +195,7 @@ data class SeriesEntity(
     val rating: Double?,
     val plot: String?,
     val title: String = com.ultratv.tv.nativeapp.data.repo.TitleCleaner.clean(name).title,
-    val sortKey: String = sortKeyOf(title),
+    val sortKey: String = titleSortKeyOf(title),
     val backdrop: String? = null,
     val genre: String? = null,
     val cast: String? = null,

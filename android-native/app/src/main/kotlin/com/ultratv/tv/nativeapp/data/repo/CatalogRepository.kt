@@ -218,8 +218,10 @@ class CatalogRepository @Inject constructor(
         var movies = SearchDedup.movies(movieDao.searchFts(pid, match, limit * 3)).take(limit)
         var series = SearchDedup.series(seriesDao.searchFts(pid, match, limit * 3)).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
+        var fuzzy = false
         if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
             FuzzySearch.candidateMatch(query)?.let { loose ->
+                fuzzy = true
                 movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
                 series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
             }
@@ -230,6 +232,7 @@ class CatalogRepository @Inject constructor(
             series = series,
             // Programmes : LIKE sur tout le guide (pas d'index possible) — seulement à partir de 3 caractères.
             programs = if (includePrograms && query.trim().length >= 3) searchPrograms(pid, query, nowMs) else emptyList(),
+            fuzzy = fuzzy && (movies.isNotEmpty() || series.isNotEmpty()),
         )
     }
 
@@ -333,6 +336,8 @@ data class SearchResults(
     val movies: List<MovieEntity> = emptyList(),
     val series: List<SeriesEntity> = emptyList(),
     val programs: List<ProgramHit> = emptyList(),
+    /** Films et séries trouvés seulement par le repli tolérant aux fautes (aucun titre ne contient la saisie). */
+    val fuzzy: Boolean = false,
 )
 
 private const val DAY_MS = 24L * 3_600_000

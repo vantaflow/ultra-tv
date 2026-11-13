@@ -136,6 +136,7 @@ class CatalogGridViewModel @Inject constructor(
     private val prefs: UserPreferencesStore,
     private val genreDao: GenreDao,
     private val genreDetector: GenreDetector,
+    private val titleKeys: com.ultratv.tv.nativeapp.data.repo.TitleSortKeys,
 ) : ViewModel() {
     private val kind = MutableStateFlow(CatalogKind.MOVIES)
     fun bind(k: CatalogKind) { kind.value = k }
@@ -275,12 +276,15 @@ class CatalogGridViewModel @Inject constructor(
         .flatMapLatest { arr ->
             val p = arr[0] as Long?; val k = arr[1] as CatalogKind; val t = arr[2] as Target?; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView
             val f = arr[4] as CatalogFilter?
+            // Tri A–Z : clés sans article recalculées une fois pour les titres déjà en base (ensuite immédiat).
+            if (f?.sort == CatalogFilter.Sort.TITLE) titleKeys.ensure()
             val cat = t?.cat
             val genre = if (t?.source == CategorySource.GENRES) cat else null
             if (p == null || t == null || f == null) flowOf(PagingData.empty())
             else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
                 if (genre != null) when (f.sort) {
                     CatalogFilter.Sort.RATING -> movieDao.pagedGenreByRating(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    CatalogFilter.Sort.TITLE -> movieDao.pagedGenreByTitle(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.RECENT -> movieDao.pagedGenreByRecent(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.PROVIDER -> movieDao.pagedGenreByProvider(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                 }
@@ -288,6 +292,7 @@ class CatalogGridViewModel @Inject constructor(
                     cat != null -> movieDao.pagedFilteredInCategory(p, cat, lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
                     f.sort == CatalogFilter.Sort.RATING -> movieDao.pagedFilteredByRating(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     f.sort == CatalogFilter.Sort.RECENT -> movieDao.pagedFilteredByRecent(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.TITLE -> movieDao.pagedFilteredByTitle(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     else -> movieDao.pagedFilteredByProvider(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                 }
                 else if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
@@ -295,6 +300,7 @@ class CatalogGridViewModel @Inject constructor(
             else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
                 if (genre != null) when (f.sort) {
                     CatalogFilter.Sort.RATING -> seriesDao.pagedGenreByRating(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    CatalogFilter.Sort.TITLE -> seriesDao.pagedGenreByTitle(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.RECENT -> seriesDao.pagedGenreByRecent(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.PROVIDER -> seriesDao.pagedGenreByProvider(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                 }
@@ -302,6 +308,7 @@ class CatalogGridViewModel @Inject constructor(
                     cat != null -> seriesDao.pagedFilteredInCategory(p, cat, lv.useLang, lv.langs, f.sortCode, f.minRating, f.yearFrom, f.yearTo)
                     f.sort == CatalogFilter.Sort.RATING -> seriesDao.pagedFilteredByRating(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     f.sort == CatalogFilter.Sort.RECENT -> seriesDao.pagedFilteredByRecent(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
+                    f.sort == CatalogFilter.Sort.TITLE -> seriesDao.pagedFilteredByTitle(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     else -> seriesDao.pagedFilteredByProvider(p, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                 }
                 else if (cat == null) seriesDao.pagedAll(p, lv.useLang, lv.langs) else seriesDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
