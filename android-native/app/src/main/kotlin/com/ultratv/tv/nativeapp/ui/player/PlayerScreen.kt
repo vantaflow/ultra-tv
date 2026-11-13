@@ -295,7 +295,10 @@ class PlayerViewModel @Inject constructor(
     // Chaîne verrouillée : la file ne bouge pas, la fenêtre de code s'affiche (guard.pending) ; null jusqu'à l'accord.
     suspend fun zap(forward: Boolean): String? {
         val target = zapQueue.peek(forward) ?: return null
-        return guard.request(target) { zapQueue.moveTo(target); setLive(target, target.streamUrl); target.streamUrl }
+        return guard.request(target) {
+            com.ultratv.tv.nativeapp.ui.player.zap.ZapTune.onZap(android.os.SystemClock.uptimeMillis())
+            zapQueue.moveTo(target); setLive(target, target.streamUrl); target.streamUrl
+        }
     }
 
     /** Programme qui suit le programme en cours de la chaîne regardée (« Ensuite »). Relu avec le programme en cours. */
@@ -780,6 +783,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         subVm.ensureLoaded()
         if (tsActive && !ts.isLocalUrl(currentUrl)) { ts.deactivate(); tsActive = false; tsSnap = null }   // [B2·timeshift] autre chaîne : le relais lâche la connexion d'abord
         if (skipFirstStart[0]) { skipFirstStart[0] = false; if (currentUrl == url) return@LaunchedEffect }
+        // Zapping en rafale : on attend que la série s'arrête (une nouvelle chaîne annule cet effet) — un seul flux ouvert.
+        com.ultratv.tv.nativeapp.ui.player.zap.ZapTune.takeDelay().takeIf { it > 0 }?.let { kotlinx.coroutines.delay(it) }
         // [téléchargements] film / épisode téléchargé : fichier local (file://) à la place du flux.
         session.start(com.ultratv.tv.nativeapp.data.downloads.OfflineMedia.resolve(it, currentUrl), it?.let { x -> "${x.providerId}:${x.remoteId}" }, resume)   // stalker:// : la session demande le lien à chaque ouverture
     }
