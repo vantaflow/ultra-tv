@@ -119,6 +119,7 @@ class SearchViewModel @Inject constructor(
     private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
     private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
+    private val indexHealth: com.ultratv.tv.nativeapp.data.repo.SearchIndexHealth,
 ) : ViewModel() {
     /** Chaîne trouvée : contexte « LIVE » + file de zapping avant d'ouvrir le lecteur (OSD du direct, OK = liste). */
     fun playChannel(c: ChannelEntity, then: () -> Unit) {
@@ -160,6 +161,8 @@ class SearchViewModel @Inject constructor(
     private var job: Job? = null
 
     init {
+        // Index de recherche réparé s'il a été laissé incomplet (synchro interrompue) : une fois par lancement.
+        viewModelScope.launch { indexHealth.ensure() }
         viewModelScope.launch {
             val pid = provider.firstActive()?.id ?: return@launch
             runCatching {
@@ -180,6 +183,7 @@ class SearchViewModel @Inject constructor(
             delay(220)
             val pid = provider.firstActive()?.id ?: return@launch
             // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
+            indexHealth.ensure()
             val t0 = android.os.SystemClock.elapsedRealtime()
             val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false)
             // Mesure (jamais le texte saisi) : durée de la recherche rapide.
