@@ -223,7 +223,7 @@ fun TraktSeriesButton(series: SeriesEntity, episodes: List<EpisodeEntity>, seaso
     // plus la place et s'affichait « Tra… ».
     else FocusSurface(
         onClick = { open = true }, shape = androidx.compose.foundation.shape.CircleShape, bg = Ux.Surface2,
-        modifier = Modifier.size(72.design).semantics { contentDescription = D.traktButton },
+        modifier = Modifier.size(64.design).semantics { contentDescription = D.traktButton },
     ) { f ->
         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DIcon(STAR, 30.design, if (f) Ux.TextOnLight else if (st.rating != null) Ux.Accent else Ux.Text, fill = st.rating != null)

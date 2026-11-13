@@ -220,16 +220,21 @@ fun SeriesDetailTvContent(
             T.presentable(series.plot)?.let {
                 Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 21.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+            // Rangée qui passe à la ligne si elle ne tient pas (libellés longs selon la langue) : le cœur et l'étoile restent ensemble.
+            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design), itemVerticalAlignment = Alignment.CenterVertically) {
                 if (data.target != null) V2Pill(
                     if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
                     onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
                     modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
                 )
                 if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26)
-                favorite()
+                // Étoile (Trakt) à droite du cœur : seule sur sa ligne, elle passait sous les boutons.
+                Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+                    favorite()
+                    trakt()
+                }
             }
-            trakt()
             val cast = remember(series.cast) {
                 T.presentable(series.cast).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
                     .map { CastUi(it, null, null) }
