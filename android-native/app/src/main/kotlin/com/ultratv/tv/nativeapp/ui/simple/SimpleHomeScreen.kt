@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.simple
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -44,6 +47,10 @@ import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.SimpleStrings
 import com.ultratv.tv.nativeapp.nav.Routes
 import com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp
+import com.ultratv.tv.nativeapp.ui.common.EpgClock
+import com.ultratv.tv.nativeapp.i18n.greetMorning
+import com.ultratv.tv.nativeapp.i18n.greetAfternoon
+import com.ultratv.tv.nativeapp.i18n.greetEvening
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
 import com.ultratv.tv.nativeapp.ui.common.design
 import com.ultratv.tv.nativeapp.ui.design.DIcon
@@ -60,12 +67,13 @@ import com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog
 import kotlinx.coroutines.launch
 
 /**
- * Accueil du mode simple : six GRANDES tuiles (icône 68 px, texte 52 px, anneau de focus de 10 px), sans rangée
- * défilante, sans image à charger (icônes vectorielles) et sans animation autre que l'échelle du focus déjà utilisée
- * partout. Remplace l'accueil habituel ; Retour des autres écrans y ramène toujours (destination de départ).
+ * Accueil du mode simple (maquette « Mode simple ») : date et salutation au prénom du profil, grande horloge, une
+ * GRANDE carte « Reprendre » (titre, progression, temps restant), puis cinq grandes tuiles (Télé, Films, Séries,
+ * Favoris, Rechercher) et, en bas, les seules touches utiles. Aucune rangée défilante ; une seule image (l'affiche de
+ * la reprise). Remplace l'accueil habituel ; Retour des autres écrans y ramène toujours.
  *
- * Focus : [ScreenFocusHost] pose le focus sur le premier élément focalisable, la tuile « Télé en direct » ; la grille
- * garde les six tuiles en permanence (même forme avant et après l'arrivée de la reprise) pour ne jamais perdre le focus.
+ * Focus : la carte « Reprendre » d'abord ; la forme de l'écran ne change jamais (avec ou sans reprise) pour ne pas
+ * perdre le focus quand la reprise arrive.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -75,12 +83,14 @@ fun SimpleHomeScreen(
     onGoSettings: () -> Unit,
     vm: SimpleHomeViewModel = hiltViewModel(),
 ) {
-    val S = SimpleStrings(LocalDs.current.lang)
+    val D = LocalDs.current
+    val S = SimpleStrings(D.lang)
     val hasSource by vm.hasSource.collectAsStateWithLifecycle()
     val resume by vm.resume.collectAsStateWithLifecycle()
     val lastLive by vm.lastLive.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
     val multiProfiles by vm.multipleProfiles.collectAsStateWithLifecycle()
+    val profileName by vm.profileName.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var pinFor by remember { mutableStateOf<WatchHistoryEntity?>(null) }
 
@@ -100,44 +110,65 @@ fun SimpleHomeScreen(
     }
 
     val touch = LocalTouch.current
-    val columns = SimpleHome.columnsFor(touch, LocalUiWidthDp.current)
-    val rows = SimpleHome.rows(SimpleHome.tiles(), columns)
+    // Horloge : relue toutes les 20 s (seuls l'heure et la date se recomposent).
+    val now by produceState(System.currentTimeMillis()) { while (true) { value = System.currentTimeMillis(); kotlinx.coroutines.delay(20_000) } }
+    val hour = java.util.Calendar.getInstance().apply { timeInMillis = now }.get(java.util.Calendar.HOUR_OF_DAY)
+    val greet = when { hour < 12 -> D.greetMorning; hour < 18 -> D.greetAfternoon; else -> D.greetEvening }
+    val dateText = remember(now / 60_000, D.lang) {
+        val loc = java.util.Locale.forLanguageTag(D.lang.code)
+        java.text.SimpleDateFormat("EEEE d MMMM", loc).format(java.util.Date(now)).replaceFirstChar { it.titlecase(loc) }
+    }
 
     Column(
-        Modifier.fillMaxSize().background(Ux.Bg).padding(horizontal = 72.design, vertical = 48.design),
-        verticalArrangement = Arrangement.spacedBy(28.design),
+        Modifier.fillMaxSize().background(Ux.Bg).then(if (touch) Modifier.padding(16.design) else Modifier.padding(start = 96.design, end = 96.design, top = 64.design, bottom = 48.design)),
+        verticalArrangement = Arrangement.spacedBy(if (touch) 24.design else 40.design),
     ) {
-        Text(S.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 56.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // En-tête : date, « Bonsoir Mamie », grande horloge.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
+                Text(dateText, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 32.spx, maxLines = 1)
+                Text(listOfNotNull(greet, profileName).joinToString(" "), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 56.spx else 76.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(EpgClock.hm(now), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 56.spx else 92.spx, maxLines = 1)
+        }
         if (hasSource == false) Text(S.noSource, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, maxLines = 3)
 
-        // Grille : groupe de focus qui se souvient de la dernière tuile (retour d'un écran, d'une fenêtre).
-        // Focus explicite : venu du menu latéral (navigation « Accueil »), l'écran hôte ne pose pas le focus — et ce menu
-        // n'existe plus ici (rail masqué), donc sans cette demande le focus serait perdu.
+        // Carte « Reprendre » + tuiles : un groupe de focus qui se souvient du dernier élément (retour d'un écran).
+        // Focus explicite : venu du menu latéral, l'écran hôte ne pose pas le focus (et le menu est masqué ici).
         val gridFocus = remember { FocusRequester() }
         var gridHasFocus by remember { mutableStateOf(false) }
         RequestInitialFocus(gridFocus, hasFocus = { gridHasFocus })
-        val gridModifier = if (touch) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier.weight(1f)
-        Column(gridModifier.onFocusChanged { gridHasFocus = it.hasFocus }.focusRestorer().focusRequester(gridFocus).focusGroup(), verticalArrangement = Arrangement.spacedBy(28.design)) {
-            rows.forEach { line ->
+        val tiles = SimpleHome.mainTiles()
+        Column(
+            (if (touch) Modifier.weight(1f).verticalScroll(rememberScrollState()) else Modifier.weight(1f))
+                .onFocusChanged { gridHasFocus = it.hasFocus }.focusRestorer().focusRequester(gridFocus).focusGroup(),
+            verticalArrangement = Arrangement.spacedBy(if (touch) 20.design else 36.design),
+        ) {
+            ResumeCard(S, D, resume, onClick = { onTile(SimpleTile.RESUME) }, modifier = Modifier.fillMaxWidth().height(if (touch) 220.designT else 280.designT))
+            val columns = SimpleHome.mainColumnsFor(touch, LocalUiWidthDp.current)
+            SimpleHome.rows(tiles, columns).forEach { line ->
                 Row(
-                    // Tactile : hauteur fixe (la grille défile) ; TV : les lignes se partagent la hauteur.
-                    (if (touch) Modifier.height(220.design) else Modifier.weight(1f)).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(28.design),
+                    (if (touch) Modifier.height(240.designT) else Modifier.weight(1f)).fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(if (touch) 20.design else 32.design),
                 ) {
                     line.forEach { tile ->
                         key(tile) {
-                            val (label, hint) = tileTexts(S, tile, resume)
-                            BigTile(label, hint, tilePath(tile), dim = tile == SimpleTile.RESUME && resume == null, onClick = { onTile(tile) }, modifier = Modifier.weight(1f).fillMaxHeight())
+                            val (label, hint) = tileTexts(S, tile)
+                            BigTile(label, hint, tilePath(tile), onClick = { onTile(tile) }, modifier = Modifier.weight(1f).fillMaxHeight())
                         }
                     }
-                    // Dernière ligne plus courte : cases vides pour garder des tuiles de même taille.
                     repeat(columns - line.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
 
-        // Accès discrets en bas : les Réglages (sortie du mode simple comprise) et, s'il y en a plusieurs, le changement de profil.
-        Row(horizontalArrangement = Arrangement.spacedBy(20.design)) {
+        // Pied : les seules touches utiles (TV), puis Réglages (sortie du mode simple) et changement de profil.
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(40.design)) {
+            if (!touch) {
+                KeyHintBig("OK", S.keyOpen)
+                KeyHintBig("↩", S.keyBack)
+            }
+            Spacer(Modifier.weight(1f))
             PillButton(S.settings, onGoSettings, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Settings)
             if (multiProfiles) PillButton(S.switchProfile, { vm.requestProfileSwitch() }, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Account)
         }
@@ -157,9 +188,9 @@ private fun tilePath(t: SimpleTile): String = when (t) {
     SimpleTile.SEARCH -> Icons.Search
 }
 
-private fun tileTexts(S: SimpleStrings, t: SimpleTile, resume: WatchHistoryEntity?): Pair<String, String> = when (t) {
+private fun tileTexts(S: SimpleStrings, t: SimpleTile): Pair<String, String> = when (t) {
     SimpleTile.LIVE -> S.tileLive to S.tileLiveHint
-    SimpleTile.RESUME -> S.tileResume to (resume?.let { TitleCleaner.historyTitle(it.title) } ?: S.tileResumeNothing)
+    SimpleTile.RESUME -> S.tileResume to S.tileResumeHint
     SimpleTile.MOVIES -> S.tileMovies to S.tileMoviesHint
     SimpleTile.SERIES -> S.tileSeries to S.tileSeriesHint
     SimpleTile.FAVORITES -> S.tileFavorites to S.tileFavoritesHint
@@ -167,31 +198,65 @@ private fun tileTexts(S: SimpleStrings, t: SimpleTile, resume: WatchHistoryEntit
 }
 
 /**
- * Grande tuile : pastille d'accent (icône dessus, toujours très contrastée), libellé 52 px gras, aide 30 px.
- * Au focus : fond blanc / texte noir, anneau accent de 10 px (FocusSurface) — lisible à 3 mètres.
+ * Carte « Reprendre » : affiche (ou icône), pastille accent, titre en grand, barre de progression et temps restant, gros
+ * bouton lecture. Rien à reprendre : même carte, avec l'invitation à choisir un film (la forme de l'écran ne change pas).
  */
 @Composable
-private fun BigTile(label: String, hint: String, iconPath: String, dim: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    FocusSurface(
-        onClick = onClick,
-        shape = RoundedCornerShape(40.design),
-        bg = Ux.Surface2,
-        ringWidth = 10.design,
-        focusedScale = 1.03f,
-        modifier = modifier,
-    ) { f ->
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 24.design, vertical = 12.design),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Box(Modifier.size(120.design).clip(CircleShape).background(if (dim) Ux.Muted2 else Ux.Accent), contentAlignment = Alignment.Center) {
-                DIcon(iconPath, 68.design, if (dim) Ux.TextOnLight else Ux.OnAccent, strokeWidth = 2.4f, fill = iconPath == Icons.Play)
+private fun ResumeCard(S: SimpleStrings, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, resume: WatchHistoryEntity?, onClick: () -> Unit, modifier: Modifier) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(40.design), bg = Ux.Surface2, ringWidth = 10.design, focusedScale = 1.02f, modifier = modifier) { f ->
+        Row(Modifier.fillMaxSize().padding(28.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(44.design)) {
+            Box(Modifier.fillMaxHeight().width(400.design).clip(RoundedCornerShape(26.design)).background(Ux.Surface), contentAlignment = Alignment.Center) {
+                if (resume?.poster != null) com.ultratv.tv.nativeapp.ui.design.PosterImage(resume.poster, resume.title, Modifier.fillMaxSize(), radius = 26)
+                else DIcon(Icons.Play, 96.design, Ux.Text3, fill = true)
             }
-            Spacer(Modifier.height(12.design))
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 52.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
-            Spacer(Modifier.height(4.design))
-            Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().height(76.designT))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(16.design)) {
+                Text(
+                    S.tileResume.uppercase(), color = Ux.OnAccent, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 24.spx, maxLines = 1,
+                    modifier = Modifier.clip(RoundedCornerShape(999.design)).background(Ux.Accent).padding(horizontal = 20.design, vertical = 6.design),
+                )
+                Text(
+                    resume?.let { TitleCleaner.historyTitle(it.title) } ?: S.tileResumeNothing,
+                    color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold,
+                    fontSize = if (resume != null) 56.spx else 40.spx, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
+                val frac = SimpleHome.progressOf(resume)
+                if (resume != null && frac != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.design)) {
+                    Box(Modifier.weight(1f).height(14.design).clip(RoundedCornerShape(7.design)).background(if (f) Ux.OnFocus2.copy(alpha = 0.25f) else Ux.Line)) {
+                        Box(Modifier.fillMaxHeight().fillMaxWidth(frac).clip(RoundedCornerShape(7.design)).background(Ux.Accent))
+                    }
+                    SimpleHome.minutesLeft(resume)?.let { m -> Text(D.remainingMin(m), color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 30.spx, maxLines = 1) }
+                }
+            }
+            Box(Modifier.size(132.design).clip(CircleShape).background(if (f) Ux.Accent else Ux.Text), contentAlignment = Alignment.Center) {
+                DIcon(Icons.Play, 56.design, if (f) Ux.OnAccent else Ux.Bg, fill = true)
+            }
         }
+    }
+}
+
+/**
+ * Grande tuile : icône en haut à gauche, libellé 48 px et aide 28 px en bas. Au focus : fond clair / texte foncé, anneau
+ * accent de 10 px (FocusSurface) — lisible à 3 mètres.
+ */
+@Composable
+private fun BigTile(label: String, hint: String, iconPath: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    FocusSurface(onClick = onClick, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, ringWidth = 10.design, focusedScale = 1.03f, modifier = modifier) { f ->
+        Column(Modifier.fillMaxSize().padding(horizontal = 36.design, vertical = 36.design), verticalArrangement = Arrangement.SpaceBetween) {
+            DIcon(iconPath, 88.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.0f)
+            Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 46.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
+
+/** Rappel de touche en grand : « [OK] Ouvrir ». */
+@Composable
+internal fun KeyHintBig(key: String, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
+        Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1,
+            modifier = Modifier.border(3.design, Ux.Text3, RoundedCornerShape(12.design)).padding(horizontal = 14.design, vertical = 2.design))
+        Text(label, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, maxLines = 1)
     }
 }

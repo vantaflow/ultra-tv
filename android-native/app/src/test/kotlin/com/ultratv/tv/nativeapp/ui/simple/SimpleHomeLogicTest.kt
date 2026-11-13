@@ -218,4 +218,19 @@ class SimpleHomeLogicTest {
         assertTrue(isSelected(Routes.SIMPLE_CHANNELS, Routes.LIVE))
         assertFalse(isSelected(Routes.SIMPLE_CHANNELS, Routes.MOVIES))
     }
+
+    @Test fun nouvelAccueil_cinqTuilesSansReprise() {
+        assertEquals(listOf(SimpleTile.LIVE, SimpleTile.MOVIES, SimpleTile.SERIES, SimpleTile.FAVORITES, SimpleTile.SEARCH), SimpleHome.mainTiles())
+        assertEquals(5, SimpleHome.mainColumnsFor(touch = false, widthDp = 960f))
+        assertEquals(2, SimpleHome.mainColumnsFor(touch = true, widthDp = 400f))
+        assertEquals(3, SimpleHome.mainColumnsFor(touch = true, widthDp = 800f))
+    }
+
+    @Test fun reprise_progressionEtMinutesRestantes() {
+        val h = WatchHistoryEntity(providerId = 1, kind = "MOVIE", remoteId = "m", title = "t", poster = null, streamUrl = "u", positionMs = 30 * 60_000L, durationMs = 90 * 60_000L)
+        assertEquals(1f / 3f, SimpleHome.progressOf(h)!!, 0.001f)
+        assertEquals(60, SimpleHome.minutesLeft(h))
+        assertEquals(null, SimpleHome.progressOf(h.copy(durationMs = 0)))
+        assertEquals(1, SimpleHome.minutesLeft(h.copy(positionMs = h.durationMs)))
+    }
 }

@@ -71,6 +71,10 @@ class SimpleHomeViewModel @Inject constructor(
 
     fun requestProfileSwitch() = profiles.requestSwitch()
 
+    /** Prénom du profil (« Bonsoir Mamie ») ; null ou vide = salutation seule. */
+    val profileName: StateFlow<String?> = profiles.current.map { it?.name?.trim()?.takeIf { n -> n.isNotEmpty() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     /** Contexte de lecture d'un film / épisode à reprendre (le lecteur reprend à la position enregistrée). */
     fun prepareResume(h: WatchHistoryEntity) {
         queue.clear()
@@ -100,6 +104,7 @@ class SimpleChannelsViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val queue: LivePlaybackQueue,
     lockedStore: LockedChannelsStore,
+    private val epgDao: com.ultratv.tv.nativeapp.data.db.EpgDao,
 ) : ViewModel() {
     private val pid = provider.activeId()
 
@@ -114,6 +119,28 @@ class SimpleChannelsViewModel @Inject constructor(
         }
     }.map<List<SimpleChannelRow>, List<SimpleChannelRow>?> { it }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /**
+     * Programme en cours et suivant de chaque chaîne de la liste (120 au plus : une seule lecture du guide), relu chaque
+     * minute. Calcul hors du fil principal.
+     */
+    val nowNext: StateFlow<Map<Long, Pair<com.ultratv.tv.nativeapp.data.db.EpgEntity?, com.ultratv.tv.nativeapp.data.db.EpgEntity?>>> =
+        rows.flatMapLatest { list ->
+            val ids = list.orEmpty().map { it.channel.id }.distinct()
+            kotlinx.coroutines.flow.flow {
+                while (true) {
+                    if (ids.isNotEmpty()) emit(runCatching {
+                        val now = System.currentTimeMillis()
+                        val raw = ids.chunked(500).flatMap { epgDao.rangeForChannels(it, now - 30 * 60_000, now + 6 * 60 * 60_000) }
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                            val byId = raw.groupBy { it.channelId }
+                            ids.associateWith { id -> com.ultratv.tv.nativeapp.ui.common.EpgProgress.currentAndNext(byId[id].orEmpty(), now) }
+                        }
+                    }.getOrDefault(emptyMap()))
+                    kotlinx.coroutines.delay(60_000)
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     /** Prépare la lecture (contexte + file de zapping : la liste affichée) ; renvoie l'adresse du flux. */
     fun prepare(c: ChannelEntity, list: List<SimpleChannelRow>): String {

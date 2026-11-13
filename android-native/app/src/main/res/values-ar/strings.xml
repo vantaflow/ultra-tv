@@ -775,6 +775,13 @@
     <string name="simple_channels_empty">لا توجد قنوات للعرض بعد.</string>
     <string name="simple_favorite_mark">مفضلة</string>
     <string name="simple_all_channels">كل القنوات</string>
+    <string name="simple_key_open">فتح</string>
+    <string name="simple_key_back">الرجوع هنا</string>
+    <string name="simple_key_watch">مشاهدة</string>
+    <string name="simple_key_change">تغيير القناة</string>
+    <string name="simple_now">الآن</string>
+    <string name="simple_next">التالي</string>
+    <string name="simple_tab_all">الكل</string>
     <string name="simple_setting_name">الوضع المبسّط</string>
     <string name="simple_setting_hint">بلاطات كبيرة بدل الشاشة الرئيسية</string>
     <string name="simple_setting_help">بلاطات كبيرة وسهلة الاختيار لمن يفضّل البساطة. لهذا الملف الشخصي فقط. للخروج من الوضع المبسّط، عد إلى الإعدادات.</string>

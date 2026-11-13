@@ -1687,5 +1687,12 @@
   "DesignStrings.getRecForTemplate()": "Pendant %1$s",
   "DesignStrings.getRecManual()": "Jusqu'\u00e0 l'arr\u00eat manuel (8 h max)",
   "DesignStrings.getRecSingleConnection()": "Connexion unique : le fournisseur peut refuser l'enregistrement ou couper la lecture.",
-  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Dernier écran utilisé"
+  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Dernier écran utilisé",
+  "SimpleStrings.getKeyOpen()": "Ouvrir",
+  "SimpleStrings.getKeyBack()": "Revenir ici",
+  "SimpleStrings.getKeyWatch()": "Regarder",
+  "SimpleStrings.getKeyChange()": "Changer de chaîne",
+  "SimpleStrings.getNowLabel()": "En ce moment",
+  "SimpleStrings.getNextLabel()": "Ensuite",
+  "SimpleStrings.getTabAll()": "Toutes"
 }

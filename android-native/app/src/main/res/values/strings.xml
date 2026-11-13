@@ -721,6 +721,13 @@
     <string name="simple_channels_empty">No channel to show yet.</string>
     <string name="simple_favorite_mark">Favorite</string>
     <string name="simple_all_channels">All the channels</string>
+    <string name="simple_key_open">Open</string>
+    <string name="simple_key_back">Back here</string>
+    <string name="simple_key_watch">Watch</string>
+    <string name="simple_key_change">Change channel</string>
+    <string name="simple_now">On now</string>
+    <string name="simple_next">Next</string>
+    <string name="simple_tab_all">All</string>
     <string name="simple_setting_name">Simple mode</string>
     <string name="simple_setting_hint">Big tiles instead of the home screen</string>
     <string name="simple_setting_help">Big, easy tiles for those who prefer simplicity. This profile only. To leave simple mode, come back to Settings.</string>

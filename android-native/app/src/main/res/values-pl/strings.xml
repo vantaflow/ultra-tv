@@ -717,6 +717,13 @@
     <string name="simple_channels_empty">Brak kanałów do wyświetlenia.</string>
     <string name="simple_favorite_mark">Ulubiony</string>
     <string name="simple_all_channels">Wszystkie kanały</string>
+    <string name="simple_key_open">Otwórz</string>
+    <string name="simple_key_back">Wróć tutaj</string>
+    <string name="simple_key_watch">Oglądaj</string>
+    <string name="simple_key_change">Zmień kanał</string>
+    <string name="simple_now">Teraz</string>
+    <string name="simple_next">Następnie</string>
+    <string name="simple_tab_all">Wszystkie</string>
     <string name="simple_setting_name">Tryb prosty</string>
     <string name="simple_setting_hint">Duże kafelki zamiast strony głównej</string>
     <string name="simple_setting_help">Duże, proste kafelki dla tych, którzy wolą prostotę. Tylko dla tego profilu. Aby wyjść z trybu prostego, wróć do Ustawień.</string>

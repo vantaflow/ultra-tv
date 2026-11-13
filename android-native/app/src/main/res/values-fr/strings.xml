@@ -733,6 +733,13 @@
     <string name="simple_channels_empty">Aucune chaîne à afficher pour l\'instant.</string>
     <string name="simple_favorite_mark">Favori</string>
     <string name="simple_all_channels">Toutes les chaînes</string>
+    <string name="simple_key_open">Ouvrir</string>
+    <string name="simple_key_back">Revenir ici</string>
+    <string name="simple_key_watch">Regarder</string>
+    <string name="simple_key_change">Changer de chaîne</string>
+    <string name="simple_now">En ce moment</string>
+    <string name="simple_next">Ensuite</string>
+    <string name="simple_tab_all">Toutes</string>
     <string name="simple_setting_name">Mode simple</string>
     <string name="simple_setting_hint">Grandes tuiles à la place de l\'accueil</string>
     <string name="simple_setting_help">De grandes tuiles faciles à choisir, pour ceux qui préfèrent la simplicité. Ce profil seulement. Pour quitter le mode simple, revenez dans les Réglages.</string>

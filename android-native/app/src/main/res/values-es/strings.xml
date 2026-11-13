@@ -725,6 +725,13 @@
     <string name="simple_channels_empty">Aún no hay canales que mostrar.</string>
     <string name="simple_favorite_mark">Favorito</string>
     <string name="simple_all_channels">Todos los canales</string>
+    <string name="simple_key_open">Abrir</string>
+    <string name="simple_key_back">Volver aquí</string>
+    <string name="simple_key_watch">Ver</string>
+    <string name="simple_key_change">Cambiar de canal</string>
+    <string name="simple_now">Ahora</string>
+    <string name="simple_next">Después</string>
+    <string name="simple_tab_all">Todos</string>
     <string name="simple_setting_name">Modo sencillo</string>
     <string name="simple_setting_hint">Grandes mosaicos en lugar del inicio</string>
     <string name="simple_setting_help">Grandes mosaicos fáciles de elegir, para quien prefiere la sencillez. Solo este perfil. Para salir del modo sencillo, vuelva a los Ajustes.</string>

@@ -1687,5 +1687,12 @@
   "DesignStrings.getRecForTemplate()": "For %1$s",
   "DesignStrings.getRecManual()": "Until I stop it (8 h max)",
   "DesignStrings.getRecSingleConnection()": "Single connection: the provider may refuse the recording or stop playback.",
-  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Last screen used"
+  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Last screen used",
+  "SimpleStrings.getKeyOpen()": "Open",
+  "SimpleStrings.getKeyBack()": "Back here",
+  "SimpleStrings.getKeyWatch()": "Watch",
+  "SimpleStrings.getKeyChange()": "Change channel",
+  "SimpleStrings.getNowLabel()": "On now",
+  "SimpleStrings.getNextLabel()": "Next",
+  "SimpleStrings.getTabAll()": "All"
 }

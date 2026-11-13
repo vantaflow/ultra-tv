@@ -33,6 +33,13 @@ class SimpleStrings(private val lang: AppLang) {
     val channelsEmpty get() = tx(R.string.simple_channels_empty)
     val favoriteMark get() = tx(R.string.simple_favorite_mark)
     val allChannels get() = tx(R.string.simple_all_channels)
+    val keyOpen get() = tx(R.string.simple_key_open)
+    val keyBack get() = tx(R.string.simple_key_back)
+    val keyWatch get() = tx(R.string.simple_key_watch)
+    val keyChange get() = tx(R.string.simple_key_change)
+    val nowLabel get() = tx(R.string.simple_now)
+    val nextLabel get() = tx(R.string.simple_next)
+    val tabAll get() = tx(R.string.simple_tab_all)
 
     // ── Réglages ──
     val settingName get() = tx(R.string.simple_setting_name)

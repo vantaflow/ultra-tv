@@ -36,6 +36,20 @@ object SimpleHome {
      */
     fun tiles(): List<SimpleTile> = SimpleTile.entries
 
+    /** Tuiles sous la carte « Reprendre » (nouvel accueil) : toujours les cinq, dans le même ordre. */
+    fun mainTiles(): List<SimpleTile> = SimpleTile.entries.filter { it != SimpleTile.RESUME }
+
+    /** Colonnes des tuiles du nouvel accueil : 5 sur TV (une seule rangée), 2 sur un téléphone étroit, 3 sinon en tactile. */
+    fun mainColumnsFor(touch: Boolean, widthDp: Float): Int = when { !touch -> 5; widthDp < 600f -> 2; else -> 3 }
+
+    /** Avancement 0..1 d'une reprise (null si la durée est inconnue). */
+    fun progressOf(h: WatchHistoryEntity?): Float? =
+        h?.takeIf { it.durationMs > 0 }?.let { (it.positionMs.toFloat() / it.durationMs).coerceIn(0f, 1f) }
+
+    /** Minutes restantes d'une reprise (au moins 1 ; null si la durée est inconnue). */
+    fun minutesLeft(h: WatchHistoryEntity?): Int? =
+        h?.takeIf { it.durationMs > 0 }?.let { (((it.durationMs - it.positionMs).coerceAtLeast(0) + 59_999) / 60_000).toInt().coerceAtLeast(1) }
+
     /** Colonnes : 3 sur TV et grand écran, 2 sur un téléphone étroit (tactile, moins de 600 dp). */
     fun columnsFor(touch: Boolean, widthDp: Float): Int = if (touch && widthDp < 600f) 2 else COLUMNS
 

@@ -1687,5 +1687,12 @@
   "DesignStrings.getRecForTemplate()": "Durante %1$s",
   "DesignStrings.getRecManual()": "Hasta que lo detenga (m\u00e1x. 8 h)",
   "DesignStrings.getRecSingleConnection()": "Conexi\u00f3n \u00fanica: el proveedor puede rechazar la grabaci\u00f3n o cortar la reproducci\u00f3n.",
-  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Última pantalla usada"
+  "DesignStrings/PersonalizationStringsKt.startScreenName(LAST_SCREEN)": "Última pantalla usada",
+  "SimpleStrings.getKeyOpen()": "Abrir",
+  "SimpleStrings.getKeyBack()": "Volver aquí",
+  "SimpleStrings.getKeyWatch()": "Ver",
+  "SimpleStrings.getKeyChange()": "Cambiar de canal",
+  "SimpleStrings.getNowLabel()": "Ahora",
+  "SimpleStrings.getNextLabel()": "Después",
+  "SimpleStrings.getTabAll()": "Todos"
 }

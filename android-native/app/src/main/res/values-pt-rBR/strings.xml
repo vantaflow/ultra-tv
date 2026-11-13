@@ -737,6 +737,13 @@
     <string name="simple_channels_empty">Nenhum canal para exibir ainda.</string>
     <string name="simple_favorite_mark">Favorito</string>
     <string name="simple_all_channels">Todos os canais</string>
+    <string name="simple_key_open">Abrir</string>
+    <string name="simple_key_back">Voltar aqui</string>
+    <string name="simple_key_watch">Assistir</string>
+    <string name="simple_key_change">Mudar de canal</string>
+    <string name="simple_now">Agora</string>
+    <string name="simple_next">Depois</string>
+    <string name="simple_tab_all">Todos</string>
     <string name="simple_setting_name">Modo simples</string>
     <string name="simple_setting_hint">Blocos grandes no lugar da tela inicial</string>
     <string name="simple_setting_help">Blocos grandes e fáceis para quem prefere simplicidade. Somente neste perfil. Para sair do modo simples, volte às Configurações.</string>
