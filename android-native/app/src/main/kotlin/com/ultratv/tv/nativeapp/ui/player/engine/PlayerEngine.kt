@@ -130,6 +130,8 @@ interface PlayerEngine {
     fun stats(): EngineStats
     /** Progression du chargement (position tamponnée, ms) ; -1 si le moteur ne l'expose pas. Sert à ne pas couper un démarrage lent mais vivant. */
     fun loadProgress(): Long = -1L
+    /** Images vidéo sorties du décodeur (rendues, sautées ou perdues) depuis l'ouverture ; -1 si le moteur ne l'expose pas. */
+    fun renderedFrames(): Long = -1L
 
     /** Applique le style de sous-titres. Vrai = pris en compte tout de suite ; faux = au prochain démarrage du moteur. */
     fun applySubtitleStyle(style: com.ultratv.tv.nativeapp.data.subtitles.SubtitleStyle): Boolean = false

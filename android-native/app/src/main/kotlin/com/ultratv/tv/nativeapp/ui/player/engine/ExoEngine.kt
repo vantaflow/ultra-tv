@@ -267,6 +267,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun seekTo(ms: Long) = player.seekTo(ms)
     override val isPlaying get() = player.isPlaying
     override val positionMs get() = player.currentPosition
+    override fun renderedFrames(): Long = player.videoDecoderCounters?.let { c ->
+        c.ensureUpdated(); (c.renderedOutputBufferCount + c.skippedOutputBufferCount + c.droppedBufferCount).toLong()
+    } ?: -1L
     override val durationMs get() = if (player.duration == C.TIME_UNSET) -1L else player.duration
 
     private fun tracks(type: Int): List<TrackInfo> = player.currentTracks.groups.withIndex().filter { it.value.type == type }.flatMap { (gi, g) ->

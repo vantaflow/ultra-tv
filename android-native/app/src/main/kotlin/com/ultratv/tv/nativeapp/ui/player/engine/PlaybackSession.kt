@@ -120,6 +120,8 @@ class PlaybackSession(
     private var everPlayed = false
     private var reconnectJob: Job? = null
     private var stallJob: Job? = null
+    /** Direct figé en lecture (position ou images bloquées sans erreur) : voir [FrozenLiveDetector]. */
+    private var frozenJob: Job? = null
     /** Délai de démarrage : armé à chaque lancement de moteur, levé par la première image (ou Ready, relais du contrôle d'image). */
     private var startupJob: Job? = null
     private var stableJob: Job? = null
@@ -196,7 +198,7 @@ class PlaybackSession(
         tried = mutableSetOf(); sameRetries = 0; manualSwitch = false
         hdrKind = null; hdrSwitched = false; hdrSurfaceTrial = false
         syncPresence(); lastHttp = null; playedSinceMs = 0L
-        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
         val protectedNow = isProtected
@@ -302,7 +304,7 @@ class PlaybackSession(
         val c = PlaybackPlanner.manualCombo(c0, isProtected)
         eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel()
         // Nouveau moteur : une reconnexion ou une nouvelle tentative encore en attente rechargerait un flux qui joue.
-        reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         releaseEngine()
         combo = c; tried += c; firstFrame = false; launchedAtNs = System.nanoTime()
         val s = settings()
@@ -378,6 +380,7 @@ class PlaybackSession(
                 // Mesure (jamais d'URL) : moteur, décodage et délai jusqu'à la première image.
                 if (again) android.util.Log.i("UltraPlay", "picture again (surface changed) engine=${combo.engine}")
                 else android.util.Log.i("UltraPlay", "firstFrame engine=${combo.engine} decoder=${combo.decoder} ms=${(System.nanoTime() - launchedAtNs) / 1_000_000}")
+                if (reconnectAllowed && frozenJob?.isActive != true) armFrozenWatch(e)
                 _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
@@ -414,6 +417,28 @@ class PlaybackSession(
         if (!isLive && e.positionMs > 0) resumeMs = e.positionMs
         android.util.Log.i("UltraPlay", "hdr -> surface relaunch engine=${combo.engine}")
         launch(combo)
+    }
+
+    /**
+     * Direct en lecture dont la position ou les images ne bougent plus depuis 10 s, sans erreur ni chargement : on se
+     * reconnecte (mêmes délais et même plafond que pour une coupure). Le journal dit ce qui a figé, jamais l'adresse.
+     */
+    private fun armFrozenWatch(e: PlayerEngine) {
+        frozenJob?.cancel()
+        val detector = FrozenLiveDetector()
+        frozenJob = scope.launch {
+            while (true) {
+                delay(2_000)
+                if (engine !== e || !reconnectAllowed) return@launch
+                val now = System.currentTimeMillis()
+                val checkFrames = e.hasVideo && e.view.isShown
+                if (detector.feed(now, firstFrame && e.isPlaying, e.positionMs, e.renderedFrames(), checkFrames)) {
+                    val line = "live frozen (${detector.reason(now)}) engine=${combo.engine} decoder=${combo.decoder} played=${if (playedSinceMs == 0L) 0 else (now - playedSinceMs) / 1000}s"
+                    android.util.Log.i("UltraPlay", line); com.ultratv.tv.nativeapp.RemoteLog.warn("play", line)
+                    reconnectLive(); return@launch
+                }
+            }
+        }
     }
 
     /** Le son passe mais aucune image au bout de 8 s alors que le flux a une piste vidéo : on change de décodeur/moteur. */
@@ -538,7 +563,7 @@ class PlaybackSession(
 
     /** Reconnexion du direct sur la même adresse (délais croissants) ; au-delà, écran d'erreur. */
     private fun reconnectLive() {
-        stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel()
+        stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel()
         if (reconnectJob?.isActive == true) return
         // Appli en arrière-plan (lecteur en pause) : surtout pas de rechargement — le son repartirait. Le retour sur
         // l'appli relance la lecture (retry) de toute façon.
@@ -580,7 +605,7 @@ class PlaybackSession(
 
     fun release() {
         startJob?.cancel(); eventsJob?.cancel(); watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); adaptJob?.cancel()
-        reconnectJob?.cancel(); stallJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
+        reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel(); presenceJob?.cancel()
         releaseEngine()
     }
 }
