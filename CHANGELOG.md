@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.13] — 2026-11-13 (Android) et bureau 1.2.58
+
 ### Corrigé
 - Sport : les chaînes réservées sans évènement (« NO EVENT STREAMING NOW », « No events »…) ne sont plus listées (Android et bureau) ; sur le bureau, la colonne des chaînes défile dans son cadre au lieu d'allonger la page sans fin.
 
