@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.7] — 2026-11-13 (Android)
+
 ### Ajouté
 - Téléphone : **barre du bas personnalisable** (Réglages › Affichage › Barre du bas) — les trois rubriques entre Accueil et Plus se choisissent parmi Direct, Guide, Films, Séries, Sport, Favoris, Enregistrements et Téléchargements ; les autres restent dans « Plus ».
 - Enregistrer le direct : choix de la fin — fin du programme, 30 min, 1 h, 2 h ou 3 h, jusqu'à une heure précise (trois prochaines heures pleines), ou jusqu'à l'arrêt manuel (8 h au plus).
