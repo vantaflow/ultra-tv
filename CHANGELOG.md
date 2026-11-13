@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.16] — 2026-11-13 (Android)
+
 ### Modifié
 - Règle commune à tous les écrans et tous les appareils (TV, téléphone, tablette) : un texte qui dépasse sa ligne passe à la ligne (deux lignes) au lieu d'être coupé ; si la place manque en hauteur, il reste sur une ligne (et sur téléphone réduit d'abord sa taille avant « … »).
 
