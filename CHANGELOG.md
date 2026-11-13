@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Fiche série (TV) : l'étoile (Trakt) est à droite du cœur, sur la même rangée que Lecture et Bande-annonce, au lieu d'être seule sur la ligne du dessous.
 
+### Corrigé
+- Accueil (TV) : l'affiche ciblée recouvrait le titre de sa rangée (« Ma watchlist Trakt », Recommandé, Top 10) ; la rangée réserve maintenant la place du zoom.
+
 ## [1.3.5] — 2026-11-13 (Android) et bureau 1.2.52
 
 ### Corrigé

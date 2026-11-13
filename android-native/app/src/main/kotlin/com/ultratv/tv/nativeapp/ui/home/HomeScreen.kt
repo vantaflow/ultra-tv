@@ -434,7 +434,7 @@ private fun NewEpisodesRow(cards: List<NewEpisodeCardUi>, onOpen: (PosterCardUi)
 /** Rangée d'affiches (catalogue ou Trakt, films et séries mêlés) ; sélectionner ouvre la fiche existante. */
 @Composable
 private fun PosterRow(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         items(cards, key = { it.key }, contentType = { "poster" }) { p ->
             com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(PosterWidth), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
         }
@@ -465,7 +465,7 @@ private fun SeeAllCard(label: String, onClick: () -> Unit) {
 /** « Top 10 aujourd'hui » : affiches avec leur rang (1 à 10) en pastille sur l'affiche. */
 @Composable
 private fun Top10Row(cards: List<PosterCardUi>, onOpen: (PosterCardUi) -> Unit) {
-    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PaddingValues(start = RowBleed, end = 96.design)) {
+    LazyRow(Modifier.homeRow(), horizontalArrangement = Arrangement.spacedBy(28.design), contentPadding = PosterRowPadding) {
         itemsIndexed(cards, key = { _, p -> p.key }, contentType = { _, _ -> "top10" }) { i, p ->
             Box(Modifier.width(PosterWidth)) {
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.fillMaxWidth(), kind = p.kind, imageWidth = PosterWidth) { onOpen(p) }
@@ -554,6 +554,11 @@ private fun ShortcutTile(sc: ShortcutUi?, sport: SportTile?, modifier: Modifier,
 }
 
 private val PosterWidth get() = 200.design
+/**
+ * Marges des rangées d'affiches : l'affiche ciblée grandit de 15 % (≈ 23 px en haut pour 300 de haut) plus son contour (10) ;
+ * sans cette marge, elle recouvrait le titre de la rangée (« Ma watchlist Trakt » barré par l'affiche).
+ */
+private val PosterRowPadding get() = PaddingValues(start = RowBleed, end = 96.design, top = 34.design, bottom = 8.design)
 
 @Composable
 private fun Section(title: String, content: @Composable () -> Unit) {
