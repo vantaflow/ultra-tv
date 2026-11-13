@@ -8,6 +8,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Bureau : dans les réglages, les lignes d'une page longue (À propos : mises à jour automatiques, télémétrie) étaient écrasées et leurs textes se chevauchaient ; elles gardent maintenant leur hauteur et la page défile.
+- Bureau : dans les réglages, un sélecteur large (Serveur DNS et ses six choix) écrasait le libellé en une colonne étroite qui débordait sur les lignes voisines ; il passe désormais sous le libellé quand la place manque.
 
 ## [1.3.12] — 2026-11-13 (Android)
 

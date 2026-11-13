@@ -293,6 +293,12 @@ html.platform-darwin .player.full .ptop { padding-inline-start: 6rem; }
 .add-card:hover { border-color: var(--text-4); color: var(--text); }
 .pref { min-height: 3.5rem; padding: 0.75rem 1.25rem; border-radius: 1rem; background: var(--surface); display: flex; align-items: center; justify-content: space-between; gap: 1rem; font-weight: 600; }
 .pref .d { color: var(--text-3); font-weight: 500; font-size: 0.8125rem; margin-top: 2px; }
+/* Commande large (sélecteur à 6 choix : Serveur DNS) : elle passe SOUS le libellé quand la place manque, au lieu
+   d'écraser la colonne du texte en une colonne de quelques mots ; ses boutons gardent leur libellé sur une ligne. */
+.pref { flex-wrap: wrap; }
+.pref > div:first-child { flex: 1 1 16rem; min-width: 0; }
+.pref .seg { flex-wrap: wrap; max-width: 100%; }
+.pref .seg button { white-space: nowrap; }
 .seg { display: inline-flex; background: var(--surface-2); border-radius: 1.125rem; padding: 3px; gap: 2px; }
 .seg button { height: 2rem; padding: 0 0.875rem; border-radius: 1rem; font-size: 0.8125rem; font-weight: 600; color: var(--text-2); }
 .seg button[aria-checked="true"] { background: var(--sel-bg); color: var(--sel-ink); font-weight: 700; }
