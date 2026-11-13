@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.6] — 2026-11-13 (Android) et bureau 1.2.53
+
 ### Modifié
 - Fiche série (TV) : l'étoile (Trakt) est à droite du cœur, sur la même rangée que Lecture et Bande-annonce, au lieu d'être seule sur la ligne du dessous.
 
