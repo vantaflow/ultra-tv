@@ -1,13 +1,13 @@
 # Captures d'écran de l'app Android TV sur émulateur (Android TV 11, 1080p), avec un faux serveur Xtream
-# (tools/screens/mock_xtream.py, catalogue fictif). Les images sont publiées sur la branche `ui-screens`
-# (dossier = numéro du run), lisibles sans télécharger d'artefact. À la main (Actions › UI screenshots).
+# (tools/screens/mock_xtream.py, catalogue fictif). Les images sont jointes au run en artefact « ui-screens »
+# (une seule branche dans le dépôt : main). À la main (Actions › UI screenshots).
 name: UI screenshots
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ui-screens
@@ -57,20 +57,13 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: OUT=screens bash tools/screens/capture.sh
 
-      - name: Publish screenshots to branch ui-screens
+      - name: Upload screenshots
         if: always()
-        run: |
-          set -e
-          [ -d screens ] || exit 0
-          cp mock.log screens/ 2>/dev/null || true
-          RUN="${GITHUB_RUN_NUMBER}"
-          mkdir -p /tmp/pub && cd /tmp/pub
-          git init -q && git checkout -q -b ui-screens
-          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          git fetch -q --depth 1 origin ui-screens && git reset -q --soft FETCH_HEAD || true
-          git reset -q || true
-          mkdir -p "$RUN" && cp -r "$GITHUB_WORKSPACE/screens/." "$RUN/"
-          printf '%s\n' "$RUN" > latest.txt
-          git add "$RUN" latest.txt
-          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -q -m "Captures run $RUN (${GITHUB_SHA::8})"
-          git push -q origin ui-screens
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ui-screens
+          path: |
+            screens/
+            mock.log
+          if-no-files-found: ignore
+          retention-days: 30
