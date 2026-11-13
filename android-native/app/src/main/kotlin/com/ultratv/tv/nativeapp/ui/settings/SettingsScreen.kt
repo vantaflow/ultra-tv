@@ -62,7 +62,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.data.db.ProviderEntity
 import com.ultratv.tv.nativeapp.data.prefs.AppTheme
 import com.ultratv.tv.nativeapp.data.prefs.DefaultPlayer
@@ -529,13 +529,21 @@ private fun SyncPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNav
     val last = provider?.let { maxOf(it.lastLiveSyncAt, it.lastVodSyncAt, it.lastSeriesSyncAt, it.lastEpgSyncAt) } ?: 0L
     val subtitle = if (last <= 0L) D.neverSynced else D.lastUpdate.format(ago(D, System.currentTimeMillis() - last), nextText(p.syncMode, p.syncHour, p.syncIntervalHours, last))
 
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+    // Téléphone : la barre du haut porte déjà le titre ; état sur toute la largeur puis bouton dessous, et les quatre modes
+    // en liste (libellé et description en entier) au lieu de quatre cartes côte à côte tronquées.
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    if (touch) {
+        Text(subtitle, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx)
+        PillButton(D.syncNow, { panes.syncNow() }, heightPx = 64, hPadPx = 32, fontPx = 22, weight = FontWeight.Bold, iconPath = "M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5", bg = Ux.Surface2)
+    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
         Box(Modifier.weight(1f)) { PaneTitle(D.rubSync, subtitle) }
         PillButton(D.syncNow, { panes.syncNow() }, heightPx = 64, hPadPx = 32, fontPx = 22, weight = FontWeight.Bold, iconPath = "M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5", bg = Ux.Surface2)
     }
     GroupLabel(D.whenToUpdate)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.design)) {
-        val modes = listOf("auto" to (D.modeAuto to D.modeAutoDesc), "launch" to (D.modeLaunch to D.modeLaunchDesc), "scheduled" to (D.modeScheduled to D.modeScheduledDesc(p.syncHour)), "manual" to (D.modeManual to D.modeManualDesc))
+    val modes = listOf("auto" to (D.modeAuto to D.modeAutoDesc), "launch" to (D.modeLaunch to D.modeLaunchDesc), "scheduled" to (D.modeScheduled to D.modeScheduledDesc(p.syncHour)), "manual" to (D.modeManual to D.modeManualDesc))
+    if (touch) SettingsCard {
+        modes.forEach { (id, pair) -> com.ultratv.tv.nativeapp.ui.design.ChoiceRow(pair.first, p.syncMode == id, { panes.setMode(id) }, hint = null, heightPx = 84, sub = pair.second) }
+    } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.design)) {
         modes.forEach { (id, pair) ->
             val sel = p.syncMode == id
             FocusSurface(onClick = { panes.setMode(id) }, shape = RoundedCornerShape(26.design), bg = if (sel) Ux.Surface else Ux.SurfaceDeep, ringWidth = 0.design, modifier = Modifier.weight(1f).height(132.designT)) { f ->

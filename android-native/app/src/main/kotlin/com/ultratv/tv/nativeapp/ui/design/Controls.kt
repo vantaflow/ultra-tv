@@ -28,7 +28,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.design
 
@@ -156,6 +156,8 @@ fun ChoiceRow(
     selectedBg: Color = Ux.Surface,
     ringWidth: androidx.compose.ui.unit.Dp = 4.design,
     leading: (@Composable () -> Unit)? = null,
+    /** Description sous le libellé (facultative). */
+    sub: String? = null,
 ) {
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) selectedBg else bg, ringWidth = ringWidth, focusedScale = 1f, modifier = modifier.fillMaxWidth().settingsRowHeight(touch, heightPx)) { f ->
@@ -165,11 +167,14 @@ fun ChoiceRow(
                 if (selected) DIcon(Icons.Check, 26.design, if (f) Ux.TextOnLight else Ux.AccentInk, strokeWidth = 3.2f)
             }
             if (leading != null) { leading(); Spacer(Modifier.width(16.design)) }
-            Text(
-                label, color = when { f -> Ux.TextOnLight; selected -> Ux.AccentInk; else -> Ux.Text },
-                fontFamily = Manrope, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = fontPx.spx,
-                maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
+                Text(
+                    label, color = when { f -> Ux.TextOnLight; selected -> Ux.AccentInk; else -> Ux.Text },
+                    fontFamily = Manrope, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold, fontSize = fontPx.spx,
+                    maxLines = if (touch) 2 else 1, overflow = TextOverflow.Ellipsis,
+                )
+                if (!sub.isNullOrEmpty()) Text(sub, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = (fontPx - 2).spx, maxLines = if (touch) 3 else 1, overflow = TextOverflow.Ellipsis)
+            }
             if (!hint.isNullOrEmpty()) {
                 Spacer(Modifier.width(12.design))
                 Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = fontPx.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 240.design))

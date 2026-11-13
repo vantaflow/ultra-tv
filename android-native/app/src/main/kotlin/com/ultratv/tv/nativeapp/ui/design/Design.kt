@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.Text
+import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.R
 import com.ultratv.tv.nativeapp.ui.common.design
 
@@ -318,20 +318,22 @@ fun PillButton(
     iconFill: Boolean = false,
     ringWidth: Dp = 6.design,
 ) {
+    // Téléphone / tablette : la pilule grandit avec son libellé (2 lignes au plus) au lieu de le couper.
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     FocusSurface(
         onClick = onClick,
         shape = RoundedCornerShape((heightPx / 2).design),
         bg = bg,
         ringWidth = ringWidth,
-        modifier = modifier.height(heightPx.designT),
+        modifier = if (touch) modifier.heightIn(min = heightPx.designT) else modifier.height(heightPx.designT),
     ) { f ->
-        Row(Modifier.padding(horizontal = hPadPx.design).height(heightPx.designT), verticalAlignment = Alignment.CenterVertically) {
+        Row(if (touch) Modifier.padding(horizontal = hPadPx.design, vertical = 8.design).heightIn(min = heightPx.designT) else Modifier.padding(horizontal = hPadPx.design).height(heightPx.designT), verticalAlignment = Alignment.CenterVertically) {
             val ink = if (f || bg == Ux.Cta) Ux.TextOnLight else if (bg == Ux.Accent) Ux.OnAccent else Ux.Text
             if (iconPath != null) {
                 DIcon(iconPath, (fontPx - 4).design, ink, fill = iconFill, strokeWidth = 2.2f)
                 Spacer(Modifier.width(14.design))
             }
-            Text(label, color = ink, fontFamily = Manrope, fontWeight = weight, fontSize = fontPx.spx, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(label, color = ink, fontFamily = Manrope, fontWeight = weight, fontSize = fontPx.spx, maxLines = if (touch) 2 else 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }
 }
