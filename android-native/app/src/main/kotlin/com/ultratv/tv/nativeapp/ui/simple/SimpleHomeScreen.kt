@@ -127,7 +127,8 @@ fun SimpleHomeScreen(
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.SpaceBetween) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(dateText, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 32.spx, maxLines = 1)
-                Text(listOfNotNull(greet, profileName).joinToString(" "), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 56.spx else 76.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // Prénom seulement s'il y a plusieurs profils (le profil unique s'appelle « Principal »).
+                Text(listOfNotNull(greet, profileName.takeIf { multiProfiles }).joinToString(" "), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 56.spx else 76.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Text(EpgClock.hm(now), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 56.spx else 92.spx, maxLines = 1)
         }
@@ -241,11 +242,11 @@ private fun ResumeCard(S: SimpleStrings, D: com.ultratv.tv.nativeapp.i18n.Design
 @Composable
 private fun BigTile(label: String, hint: String, iconPath: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, ringWidth = 10.design, focusedScale = 1.03f, modifier = modifier) { f ->
-        Column(Modifier.fillMaxSize().padding(horizontal = 36.design, vertical = 36.design), verticalArrangement = Arrangement.SpaceBetween) {
-            DIcon(iconPath, 88.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.0f)
+        Column(Modifier.fillMaxSize().padding(horizontal = 32.design, vertical = 30.design), verticalArrangement = Arrangement.SpaceBetween) {
+            DIcon(iconPath, 72.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.0f)
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
-                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 46.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontSize = 25.spx, lineHeight = 31.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
     }
