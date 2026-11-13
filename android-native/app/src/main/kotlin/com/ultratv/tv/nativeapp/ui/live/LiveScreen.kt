@@ -80,6 +80,8 @@ import com.ultratv.tv.nativeapp.ui.design.ProgressLine
 import com.ultratv.tv.nativeapp.ui.design.Sora
 import com.ultratv.tv.nativeapp.ui.design.Ux
 import com.ultratv.tv.nativeapp.ui.design.spx
+import com.ultratv.tv.nativeapp.ui.common.peekOrNull
+import com.ultratv.tv.nativeapp.ui.common.getOrNull
 
 /**
  * Direct (maquette Direct.dc.html) : catégories avec compteurs · liste des chaînes · aperçu.
@@ -273,7 +275,7 @@ fun LiveScreen(onPlay: (url: String, title: String) -> Unit, vm: LiveViewModel =
         // ── Aperçu ──
         // Une seule recherche (avant : trois copies complètes de la liste paginée à chaque recomposition).
         // Retour du plein écran : la chaîne qui joue (dernier zap) tant que l'utilisateur n'a pas bougé.
-        val shown = (if (holdAfterReturn) heldChannel else null) ?: previewChannel ?: (0 until minOf(channels.itemCount, 20)).firstNotNullOfOrNull { i -> channels.peek(i)?.takeIf { !it.isSeparator } }
+        val shown = (if (holdAfterReturn) heldChannel else null) ?: previewChannel ?: (0 until minOf(channels.itemCount, 20)).firstNotNullOfOrNull { i -> channels.peekOrNull(i)?.takeIf { !it.isSeparator } }
         // Vidéo affichée seulement si l'aperçu joue la ligne montrée (sinon logo : jamais l'image d'une autre chaîne).
         val ownerNow by (shared?.ownerState ?: kotlinx.coroutines.flow.MutableStateFlow(com.ultratv.tv.nativeapp.ui.player.engine.LiveOwner.NONE)).collectAsState()
         val videoSession = shared?.session?.takeIf {
@@ -404,7 +406,7 @@ private fun ChannelList(
     LaunchedEffect(returnToKey, channels.itemCount, selected) {
         val key = returnToKey ?: return@LaunchedEffect
         if (returnDone) return@LaunchedEffect
-        val idx = (0 until channels.itemCount).firstOrNull { i -> channels.peek(i)?.let { channelKey(it) } == key } ?: return@LaunchedEffect
+        val idx = (0 until channels.itemCount).firstOrNull { i -> channels.peekOrNull(i)?.let { channelKey(it) } == key } ?: return@LaunchedEffect
         kotlinx.coroutines.delay(150)   // après le scrollToItem(0) d'un changement de catégorie
         state.scrollToItem((idx - 2).coerceAtLeast(0))
         repeat(15) {
@@ -454,8 +456,8 @@ private fun ChannelList(
         if (hasSections) Box(Modifier.fillMaxWidth().height(56.designT).padding(top = 6.design, bottom = 6.design)) { stickyLabel?.let { SectionHeader(it) } }
         val safeKey0 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
         LazyColumn(state = state, modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(12.design), contentPadding = PaddingValues(bottom = 54.design, top = 10.design)) {
-            items(count = channels.itemCount, key = safeKey0, contentType = { idx -> if (channels.peek(idx)?.isSeparator == true) "section" else "channel" }) { i ->
-                val c = channels[i]
+            items(count = channels.itemCount, key = safeKey0, contentType = { idx -> if (channels.peekOrNull(idx)?.isSeparator == true) "section" else "channel" }) { i ->
+                val c = channels.getOrNull(i)
                 when {
                     c == null -> Spacer(Modifier.fillMaxWidth().height(ROW_H.designT))
                     // Séparateur : en-tête de section, NON focalisable (le D-pad le saute), non lisible.
@@ -466,7 +468,7 @@ private fun ChannelList(
                         now = nowNext[c.id]?.first, next = nowNext[c.id]?.second, clock = clock,
                         highlighted = c.id == highlightId,
                         variant = rowIndex.variantAt(i),
-                        modifier = (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peek(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier)
+                        modifier = (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) Modifier else if (i == 0 || (i == 1 && channels.peekOrNull(0)?.isSeparator == true)) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier)
                             .then(if (returnToKey != null && channelKey(c) == returnToKey) Modifier.focusRequester(returnFocus) else Modifier),
                         onFocus = { onFocusChannel(c) }, onClick = { onPlay(c) }, onLongClick = { onActions(c) },
                     )

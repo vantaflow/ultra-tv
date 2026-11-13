@@ -9,6 +9,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Lecteur, liste des chaînes : colonne des catégories plus large, noms longs (« FRANCE GÉNÉRALISTES ») sur deux lignes au lieu d'être coupés.
+- Plantage quand une liste de chaînes, du guide ou d'affiches raccourcissait pendant l'affichage (resynchro, changement de catégorie) : « index 0 in ItemSnapshotList of size 0 ».
 
 ## [1.3.15] — 2026-11-13 (Android) et bureau 1.2.59
 

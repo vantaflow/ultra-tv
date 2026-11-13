@@ -350,3 +350,15 @@ fun Modifier.rowBleedStart(bleed: androidx.compose.ui.unit.Dp): Modifier = this.
 
 /** Débordement standard des rangées d'affiches : agrandissement au focus (≈ 6 %) + liseré. */
 val RowBleed: androidx.compose.ui.unit.Dp get() = 24.design
+
+/**
+ * Élément d'une liste paginée, ou null si l'index n'existe plus. La liste peut rétrécir (resynchro, changement de
+ * catégorie) entre le calcul du nombre d'éléments par la LazyColumn et la composition d'un élément : `items[i]` levait
+ * alors IndexOutOfBoundsException (« index 0 in ItemSnapshotList of size 0 », plantages remontés en 1.3.x).
+ */
+fun <T : Any> androidx.paging.compose.LazyPagingItems<T>.getOrNull(index: Int): T? =
+    if (index in 0 until itemCount) runCatching { get(index) }.getOrNull() else null
+
+/** [androidx.paging.compose.LazyPagingItems.peek] sans exception (index hors de la liste courante → null). */
+fun <T : Any> androidx.paging.compose.LazyPagingItems<T>.peekOrNull(index: Int): T? =
+    if (index in 0 until itemCount) runCatching { peek(index) }.getOrNull() else null

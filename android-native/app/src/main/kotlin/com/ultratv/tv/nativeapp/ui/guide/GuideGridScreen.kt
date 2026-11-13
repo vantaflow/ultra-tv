@@ -137,6 +137,8 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import javax.inject.Inject
+import com.ultratv.tv.nativeapp.ui.common.peekOrNull
+import com.ultratv.tv.nativeapp.ui.common.getOrNull
 
 /** Fenêtre de la grille : 3 h en 6 créneaux de 30 min (maquette Guide.dc.html). */
 const val GUIDE_WINDOW_MS = 3 * 3_600_000L
@@ -392,7 +394,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
         onRemind = { c, p -> vm.addReminder(c, p); askNotifications(); Toaster.ok(D.remindSet) },
         groupLabel = groupLabel, onGroup = { groupOpen = true },
     ) else GuideTvContent(
-        channelCount = channels.itemCount, channelAt = { channels[it] }, peekAt = { channels.peek(it) },
+        channelCount = channels.itemCount, channelAt = { channels.getOrNull(it) }, peekAt = { channels.peekOrNull(it) },
         itemKey = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id },
         programmes = programmes, windowStart = windowStart, day = day, D = D, clock = clock,
         groups = groups, group = group, guideLoad = guideLoad, nameColPx = nameColPx, groupName = groupName,
@@ -833,7 +835,7 @@ private fun GuideTouch(
         val state = rememberLazyListState()
         LaunchedEffect(state, channels) {
             // Identifiants visibles (peek en O(1), pas de copie de toute la liste ; suit aussi l'arrivée des données).
-            snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { if (it.index < channels.itemCount) channels.peek(it.index)?.id else null } }
+            snapshotFlow { state.layoutInfo.visibleItemsInfo.mapNotNull { channels.peekOrNull(it.index)?.id } }
                 .distinctUntilChanged().collect { vm.setVisible(it) }
         }
         com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh(Modifier.weight(1f).fillMaxWidth()) {
@@ -846,7 +848,7 @@ private fun GuideTouch(
                     val safeKey1 = com.ultratv.tv.nativeapp.ui.common.rememberSafeItemKey(channels) { it.id }
                     LazyColumn(state = state, verticalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(bottom = 16.dp), modifier = Modifier.weight(1f)) {
                         items(count = channels.itemCount, key = safeKey1, contentType = { "row" }) { i ->
-                            val c = channels[i]
+                            val c = channels.getOrNull(i)
                             if (c != null) TouchGuideRow(c, programmes[c.id].orEmpty(), windowStart, hScroll.value, chanW, onSelect = { p -> onSelect(c, p) }, onRemind = { p -> onRemind(c, p) })
                             else Spacer(Modifier.height(TOUCH_ROW_H))
                         }

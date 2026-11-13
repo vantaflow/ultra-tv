@@ -106,6 +106,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
+import com.ultratv.tv.nativeapp.ui.common.peekOrNull
+import com.ultratv.tv.nativeapp.ui.common.getOrNull
 
 enum class CatalogKind { MOVIES, SERIES }
 
@@ -420,7 +422,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
         ) {
             items(count = items.itemCount, key = safeKey0, contentType = { "poster" }) { i ->
-                val it = items[i]
+                val it = items.getOrNull(i)
                 if (it != null) PosterCell(it, if (i == 0) Modifier.focusRequester(first).onFocusChanged { f -> firstFocused = f.isFocused } else Modifier) { onOpen(it.id) }
                 else androidx.compose.foundation.layout.Spacer(Modifier.height(1.design))
             }
@@ -596,7 +598,7 @@ private fun SplitBody(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     items(count = items.itemCount, key = safeKey, contentType = { "poster" }) { i ->
-                        val it = items[i]
+                        val it = items.getOrNull(i)
                         if (it != null) PosterCell(it, if (CatalogLayoutRules.isFirstColumn(i, columns)) Modifier.onPreviewKeyEvent { e ->
                             // Gauche depuis la 1re colonne : retour sur la catégorie CHOISIE (et non la ligne voisine à l'écran).
                             if (e.key != androidx.compose.ui.input.key.Key.DirectionLeft) false
