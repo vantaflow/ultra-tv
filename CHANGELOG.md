@@ -10,7 +10,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Fiche série (TV) : l'étoile (Trakt) est à droite du cœur, sur la même rangée que Lecture et Bande-annonce, au lieu d'être seule sur la ligne du dessous.
 
 ### Corrigé
-- Accueil (TV) : l'affiche ciblée recouvrait le titre de sa rangée (« Ma watchlist Trakt », Recommandé, Top 10) ; la rangée réserve maintenant la place du zoom.
+- Accueil, Films et Séries (TV) : l'affiche ciblée recouvrait le titre de sa rangée (« Ma watchlist Trakt », Recommandé, Top 10, rangées par catégorie) ; les rangées réservent maintenant la place du zoom.
 - Direct (TV) : pastille HDR10 / HLG / Dolby Vision affichée dès que le flux est reconnu, y compris au changement de chaîne (elle n'était relue que trois fois au début de la lecture). La détection lit aussi le format vidéo reçu et celui sorti par le décodeur : des chaînes HDR annoncées tardivement (flux TS / HLS) passaient pour du SDR, sans pastille et sans passage en sortie HDR.
 
 ### Ajouté

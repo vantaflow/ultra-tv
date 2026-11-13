@@ -615,7 +615,9 @@ private fun CategoryRows(vm: CatalogGridViewModel, chips: List<CategoryChip>, to
             Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 16.design)) {
                 Text(categoryLabel(c), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 18.sp else 30.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (loaded == null) { SkeletonRow(touch); return@Column }
-                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = PaddingValues(start = RowBleed, end = if (touch) 16.dp else 96.design)) {
+                LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 24.design), contentPadding = if (touch) PaddingValues(start = RowBleed, end = 16.dp)
+                    // Affiche ciblée agrandie (x1,15 + contour) : ~34 px au-dessus, qui recouvraient le titre de la rangée.
+                    else PaddingValues(start = RowBleed, end = 96.design, top = 34.design, bottom = 8.design)) {
                     items(list.size, key = { list[it].id }, contentType = { "poster" }) { i ->
                         val it = list[i]
                         val w = if (touch) 120.dp else 200.design
