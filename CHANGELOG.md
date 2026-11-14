@@ -10,6 +10,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.
 
+### Corrigé
+- Tailles des APK à jour sur la page /apk et dans le README (arm64 ≈ 36 Mo, 32 bits ≈ 34 Mo, universel ≈ 58 Mo, au lieu de 67, 52 et 227 Mo).
+
 ## [1.3.36] — 2026-11-14 (Android, TV Samsung / LG)
 
 ### Ajouté

@@ -215,15 +215,15 @@ An address like `…/get.php?username=…&password=…` pasted as an M3U link is
 
 | Your device | APK | Short link (type it in Downloader) |
 |---|---|---|
-| Recent Fire TV Stick, Shield, most recent boxes and phones (64-bit) | **arm64** (≈ 67 MB), recommended | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
-| **Chromecast with Google TV (HD)**, older boxes (32-bit) | **32-bit (armv7)** (≈ 52 MB) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
-| You do not know | Universal (≈ 227 MB), last resort | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+| Recent Fire TV Stick, Shield, most recent boxes and phones (64-bit) | **arm64** (≈ 36 MB), recommended | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| **Chromecast with Google TV (HD)**, older boxes (32-bit) | **32-bit (armv7)** (≈ 34 MB) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| You do not know | Universal (≈ 58 MB), last resort | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
 `ultratv.dpdns.org/download/android` returns the arm64 APK. In Downloader, enter the code **`5189921`** or one of the short links above. If the install fails, take the 32-bit version.
 
 ### Installation impossible (« package problem »)
 
-- **Free space**: keep at least 500 MB free; the universal APK (227 MB) needs more than the per-CPU APKs.
+- **Free space**: keep at least 200 MB free; the universal APK (58 MB) needs a little more than the per-CPU APKs.
 - **Wrong APK**: on a 32-bit device (Chromecast with Google TV HD), take the 32-bit APK (`android-32`) rather than the universal one.
 - **Older version signed differently**: uninstall the old Ultra TV first (Settings › Apps), then reinstall. Your sources stay in the cloud if you enabled it.
 - **Truncated download**: compare the file size with the release's, and its SHA-256 with the `.sha256` file (or `SHA256SUMS.txt`) published alongside; download again if they differ.
@@ -234,7 +234,7 @@ An address like `…/get.php?username=…&password=…` pasted as an M3U link is
 To avoid typing credentials with a remote, manage your sources from a browser: **<https://ultratv.dpdns.org>** (the address is also shown in the app, with a QR code: Settings › Sources).
 
 1. Create an account on the dashboard and add your sources.
-2. In the dashboard, choose **Pair a TV**.
+2. In the dashboard, choose **Pair a device**.
 3. On the box: **From the cloud** (Source step of the wizard) or Settings › Sources › *Sync from the cloud*. An 8-character code is displayed; enter it in the dashboard.
 4. The box imports the configuration, then syncs.
 

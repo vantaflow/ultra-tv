@@ -6,7 +6,7 @@
 export const REPO = "vantaflow/ultra-tv";
 const RELEASES = `https://github.com/${REPO}/releases`;
 const LATEST = `${RELEASES}/latest/download`;
-// /download/android = APK arm64-v8a (≈ 67 Mo, la plupart des box et téléphones récents) ; le universel (≈ 227 Mo) en dernier recours.
+// /download/android = APK arm64-v8a (≈ 36 Mo, la plupart des box et téléphones récents) ; le universel (≈ 58 Mo) en dernier recours.
 export const ANDROID_URL = `${LATEST}/UltraTV-arm64-v8a.apk`;
 export const ANDROID_URLS = {
   android: ANDROID_URL,

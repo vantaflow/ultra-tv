@@ -169,9 +169,9 @@ export function apkPage(n, { lang = "en", url = "/apk" } = {}) {
     body: `
 <div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
 <div class="apk-list">
-${opt("/download/android-arm64", t.arm64Title, "≈ 65 MB", t.arm64Desc, true)}
-${opt("/download/android-32", t.arm32Title, "≈ 50 MB", t.arm32Desc)}
-${opt("/download/android-universal", t.uTitle, "≈ 220 MB", t.uDesc)}
+${opt("/download/android-arm64", t.arm64Title, "≈ 36 MB", t.arm64Desc, true)}
+${opt("/download/android-32", t.arm32Title, "≈ 34 MB", t.arm32Desc)}
+${opt("/download/android-universal", t.uTitle, "≈ 58 MB", t.uDesc)}
 </div>
 <div class="note">${ico("info")}<span>${e(t.note)}</span></div>
 </div>

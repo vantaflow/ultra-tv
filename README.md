@@ -219,15 +219,15 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 
 | Votre appareil | APK | Lien court (à taper dans Downloader) |
 |---|---|---|
-| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 67 Mo), recommandé | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
-| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
-| Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 36 Mo), recommandé | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 34 Mo) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| Vous ne savez pas | Universel (≈ 58 Mo), dernier recours | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
 `ultratv.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 
 ### Installation impossible (« problème de package »)
 
-- **Espace libre** : prévoyez au moins 500 Mo ; l'APK universel (227 Mo) en demande davantage que les APK par processeur.
+- **Espace libre** : prévoyez au moins 200 Mo ; l’APK universel (58 Mo) en demande un peu plus que les APK par processeur.
 - **Mauvais APK** : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits (`android-32`) plutôt que l'universel.
 - **Ancienne version signée autrement** : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez. Vos sources restent dans le cloud si vous l'avez activé.
 - **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier `.sha256` (ou `SHA256SUMS.txt`) publié avec lui ; retéléchargez en cas de différence.
@@ -238,7 +238,7 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depuis un navigateur : **<https://ultratv.dpdns.org>** (l'adresse est aussi affichée, avec un QR code, dans l'application : Réglages › Sources).
 
 1. Créez un compte sur le tableau de bord et ajoutez vos sources.
-2. Dans le tableau de bord, choisissez **Appairer une TV**.
+2. Dans le tableau de bord, choisissez **Appairer un appareil**.
 3. Sur la box : **Depuis le cloud** (écran Source de l'assistant) ou Réglages › Sources › *Synchroniser depuis le cloud*. Un code à 8 caractères s'affiche ; saisissez-le dans le tableau de bord.
 4. La box importe la configuration puis synchronise.
 
