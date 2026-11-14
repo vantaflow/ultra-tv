@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.28] — 2026-11-14 (Android)
+
 ### Modifié
 - Adresse du site : ultratv.dpdns.org (tableau de bord, téléchargements, dons) ; tv.weedy.dpdns.org reste l'adresse de l'API des applis et redirige ses pages vers le nouveau site.
 - Applis (Android et bureau) : l'adresse du tableau de bord affichée et le QR d'appairage montrent ultratv.dpdns.org ; l'API reste sur tv.weedy.dpdns.org.
