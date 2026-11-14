@@ -130,7 +130,7 @@ describe("affectations", () => {
     const other = await newAccount();
     const foreign = await pairDevice(other, "E");
     await addProvider(acct, m3u("Dash"));
-    const tvList = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const tvList = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(tvList).not.toContain(foreign.deviceId);
     const id = /\/providers\/([0-9a-f]+)\/assign/.exec(tvList)[1];
     const r = await call(`/providers/${id}/assign`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, d: foreign.deviceId } });
@@ -194,7 +194,7 @@ describe("POST /api/device/providers : validation et attaques", () => {
     expect((await putProv(phone, { ...m3u(evil), shareWith: "all" })).status).toBe(201);
     const stored = (await (await cfg(phone)).json()).providers[0].name;
     expect(stored).not.toMatch(/[\r\n]/);
-    const html = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const html = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(html).not.toContain("<script>alert(1)");
   });
   it("idForgeOuMalForme_400_et_aucuneCreationSousIdImpose", async () => {
@@ -248,7 +248,7 @@ describe("appareils : nom et tableau de bord", () => {
     const r = await call("/api/device/self", { method: "POST", ip: freshIp(), headers: bearer(phone.token), json: { name: "Pixel de Lilou" } });
     expect(r.status).toBe(200);
     await putProv(phone, { ...m3u("Ma source"), shareWith: "all" });
-    const html = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const html = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(html).toContain("Ajouté depuis Pixel de Lilou");
     expect(html).toContain('name="all"');
     expect(html).toContain("Renommer");
@@ -270,7 +270,7 @@ describe("appareils : nom et tableau de bord", () => {
     const ip = freshIp();
     const start = await (await call("/api/pair/start", { method: "POST", ip, json: { label: "Pixel 8" } })).json();
     await call("/pair", { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, code: start.code, name: "" } });
-    const html = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const html = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(html).toContain("Pixel 8");
     const id = /\/devices\/([0-9a-f]+)\/rename/.exec(html)[1];
     await call(`/devices/${id}/rename`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf, name: "Mac bureau" } });
@@ -299,12 +299,12 @@ describe("portail Stalker (MAC)", () => {
     const { acct, tv } = await twoDevices();
     const res = await addProvider(acct, { kind: "STALKER", name: "Mon portail", url: "http://p.example.test/stalker_portal/c/", mac: "00:1A:79:AB:CD:EF", username: "jean", password: "s3cret" });
     expect(res.headers.get("location")).toContain("m=added");
-    const html = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const html = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(html).toContain("Mon portail");
     expect(html).toContain("••:••:••:••:CD:EF");
     expect(html).not.toContain("00:1A:79:AB:CD:EF");
     expect(html).not.toContain("s3cret");
-    expect(html).toContain("Abonnement visible dans l'application");
+    expect(html).toContain("Abonnement visible dans l&#39;application");
     expect(html).toContain("Lien IPTV non disponible pour un portail Stalker");
     const sent = (await (await cfg(tv)).json()).providers.find((x) => x.name === "Mon portail");
     expect(sent).toMatchObject({ kind: "STALKER", mac: "00:1A:79:AB:CD:EF", username: "jean", password: "s3cret" });

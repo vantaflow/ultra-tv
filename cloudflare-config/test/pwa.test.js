@@ -38,7 +38,7 @@ describe("application web installable (PWA)", () => {
   });
 
   it("page hors ligne sans donnée de compte", async () => {
-    const r = await call("/offline");
+    const r = await call("/offline?l=fr");
     expect(r.status).toBe(200);
     expect(await r.text()).toContain("Pas de connexion");
   });

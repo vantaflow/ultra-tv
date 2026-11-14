@@ -380,20 +380,20 @@ describe("appairage par lien/QR", () => {
 
   it("GET_pair_connecte_affichePrerempliSansAppairer", async () => {
     const acct = await newAccount();
-    const r = await call("/pair?code=abcd-2345", { cookie: acct.cookie, ip: acct.ip });
+    const r = await call("/pair?code=abcd-2345&l=fr", { cookie: acct.cookie, ip: acct.ip });
     expect(r.status).toBe(200);
     const h = await r.text();
     expect(h).toContain("Appairer cet appareil");
     expect(h).toContain('value="ABCD-2345"');
     // Un GET ne crée jamais d'appareil.
-    const dash = await (await call("/", { cookie: acct.cookie, ip: acct.ip })).text();
+    const dash = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
     expect(dash).toContain("Aucun appareil");
   });
 
   it("GET_pair_codeInvalide_messagePropre", async () => {
     const acct = await newAccount();
-    const h = await (await call("/pair?code=zzz", { cookie: acct.cookie, ip: acct.ip })).text();
-    expect(h).toContain("Ce code n'est pas valide");
+    const h = await (await call("/pair?code=zzz&l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(h).toContain("Ce code n&#39;est pas valide");
   });
 
   it("login_nextHostile_ignore_pasDOpenRedirect", async () => {

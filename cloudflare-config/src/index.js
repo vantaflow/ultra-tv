@@ -47,6 +47,7 @@ import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } f
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
+import { pickSiteLang, TOO_MANY_TEXT } from "./i18n/site.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
 import { createDonationLink, parseDonateAmount } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
@@ -122,10 +123,24 @@ async function cachedAccount(env, login, p, now = Date.now()) {
 
 // ---- point d'entrée -----------------------------------------------------------
 
+/** Langue du site pour une requête : ?l=, puis cookie utv-lang, puis Accept-Language, sinon anglais. */
+const siteLangOf = (req, url) => pickSiteLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
+
+/** Les 429 en texte brut (tooMany) sont produits sans requête : on les traduit ici selon la langue de la requête. */
+function localize429(req, res) {
+  if (res.status !== 429 || !(res.headers.get("content-type") || "").startsWith("text/plain")) return res;
+  let url;
+  try { url = new URL(req.url); } catch { return res; }
+  const text = TOO_MANY_TEXT[siteLangOf(req, url)] || TOO_MANY_TEXT.en;
+  const headers = new Headers(res.headers);
+  headers.append("vary", "Cookie, Accept-Language");
+  return new Response(text, { status: 429, headers });
+}
+
 export default {
   async fetch(req, env, ctx) {
     try {
-      return withSecurityHeaders(await route(req, env, ctx));
+      return withSecurityHeaders(localize429(req, await route(req, env, ctx)));
     } catch (err) {
       console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : err?.message);
       return withSecurityHeaders(json({ error: err instanceof ConfigError ? "server_misconfigured" : "internal" }, 500));
@@ -209,9 +224,9 @@ async function route(req, env, ctx) {
 
   // ---- pages publiques ----
   { const dm = path.match(/^\/download\/(android|android-arm64|android-32|android-armv7|android-universal|windows|mac|linux|linux-deb|linux-rpm)$/); if (dm && (m === "GET" || m === "HEAD")) return downloadRedirect(dm[1]); }
-  if ((path === "/apk" || path === "/download") && (m === "GET" || m === "HEAD")) return apkPage(nonce());
+  if ((path === "/apk" || path === "/download") && (m === "GET" || m === "HEAD")) return apkPage(nonce(), { lang: siteLangOf(req, url), url: req.url });
   // Application web installable (manifeste, service worker, icônes, page hors ligne).
-  if (m === "GET" || m === "HEAD") { const pw = pwaResponse(path, () => offlinePage(nonce())); if (pw) return pw; }
+  if (m === "GET" || m === "HEAD") { const pw = pwaResponse(path, () => offlinePage(nonce(), { lang: siteLangOf(req, url), url: path })); if (pw) return pw; }
   if (path === "/envoyer" && m === "GET") {
     // Langue : paramètre `l`, puis cookie de préférence, puis Accept-Language, sinon anglais.
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
@@ -226,9 +241,9 @@ async function route(req, env, ctx) {
     }
     if (path === "/donate" && m === "POST") return donateStart(req, env, url, lang);
   }
-  if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
+  if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next")), { lang: siteLangOf(req, url), url: req.url }); }
   if (path === "/login" && m === "POST") return doLogin(req, env);
-  if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next"))); }
+  if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next")), { lang: siteLangOf(req, url), url: req.url }); }
   if (path === "/signup" && m === "POST") return doSignup(req, env);
 
   // Retour de Trakt : AVANT la session. Le cookie de session est SameSite=Strict, donc absent d'une navigation venue
@@ -252,7 +267,7 @@ async function route(req, env, ctx) {
   if (pairRoute) {
     const raw = url.searchParams.get("code");
     const c = normalizeCode(raw);
-    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c, admin: isAdmin(env, sess.acct) });
+    return pairPage(nonce(), { acct: sess.acct, csrf: sess.csrf, code: c, invalid: Boolean(raw) && !c, admin: isAdmin(env, sess.acct), lang: siteLangOf(req, url), url: req.url });
   }
 
   if (adminRoute) {
@@ -269,7 +284,7 @@ async function route(req, env, ctx) {
     const n = nonce();
     const providers = await loadProviders(env, sess.acct);
     const admin = isAdmin(env, sess.acct);
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin });
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, lang: siteLangOf(req, url), url: req.url });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.

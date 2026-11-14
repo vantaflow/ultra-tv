@@ -1,53 +1,75 @@
 // Pages publiques : connexion, inscription, envoi d'une source depuis le téléphone, choix de l'APK.
 import { escapeHtml as e } from "../http.js";
-import { ENVOYER_COOKIE, ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
+import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
+import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
 import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
-const AUTH_ERR = {
-  pw: "Identifiant ou mot de passe incorrect.",
-  login: "Identifiant invalide (3 à 64 caractères : lettres, chiffres, . _ @ : + -).",
-  short: "Mot de passe trop court (10 caractères minimum).",
-  mismatch: "Les deux mots de passe ne correspondent pas.",
-  taken: "Cet identifiant n'est pas disponible.",
-};
-
-const authErr = (err) => (err && AUTH_ERR[err] ? notice("err", AUTH_ERR[err]) : "");
-
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
-const nextQ = (next) => (next && next !== "/" ? `?next=${encodeURIComponent(next)}` : "");
 
-export function loginPage(n, err, next = "/") {
-  return shell(n, { title: "Ultra TV — connexion", ctx: "public", active: "/login", width: "narrow", body: `
-<div class="panel"><h1>Connexion</h1><p class="sub">Retrouve ta configuration et tes appareils.</p>
-${authErr(err)}
+export function loginPage(n, err, next = "/", { lang = "fr", url = "/login" } = {}) {
+  const dict = SITE_DICT[lang] || SITE_DICT.fr;
+  const t = dict.login;
+  const authMsg = err && dict.authErr[err] ? notice("err", dict.authErr[err]) : "";
+  const nextQ = (nxt) => {
+    let q = "";
+    if (nxt && nxt !== "/") q += `?next=${encodeURIComponent(nxt)}`;
+    if (lang !== "fr") q += (q ? "&" : "?") + `l=${lang}`;
+    return q;
+  };
+  return shell(n, {
+    title: t.title,
+    ctx: "public",
+    active: "/login",
+    width: "narrow",
+    loc: { lang, url },
+    body: `
+<div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
+${authMsg}
 <form method="post" action="/login">${nextField(next)}
-<label for="login">Identifiant <span class="hint">(ou ton ancienne adresse MAC)</span></label>
+<label for="login">${e(t.userLabel)} <span class="hint">${e(t.userHint)}</span></label>
 <input id="login" name="login" required autocomplete="username" autocapitalize="none" spellcheck="false" autofocus />
-<label for="pw">Mot de passe</label>
+<label for="pw">${e(t.passLabel)}</label>
 <input id="pw" name="password" type="password" required autocomplete="current-password" />
-<div class="row"><button class="block" type="submit">Se connecter</button></div>
+<div class="row"><button class="block" type="submit">${e(t.submit)}</button></div>
 </form></div>
-<p class="alt">Pas encore de compte ? <a href="/signup${e(nextQ(next))}">Créer un compte</a></p>` });
+<p class="alt">${e(t.noAccount)} <a href="/signup${e(nextQ(next))}">${e(t.createAccount)}</a></p>`
+  });
 }
 
 
-export function signupPage(n, err, next = "/") {
-  return shell(n, { title: "Ultra TV — inscription", ctx: "public", active: "/signup", width: "narrow", body: `
-<div class="panel"><h1>Créer un compte</h1><p class="sub">Une seule configuration pour toutes tes TV.</p>
-${authErr(err)}
+export function signupPage(n, err, next = "/", { lang = "fr", url = "/signup" } = {}) {
+  const dict = SITE_DICT[lang] || SITE_DICT.fr;
+  const t = dict.signup;
+  const authMsg = err && dict.authErr[err] ? notice("err", dict.authErr[err]) : "";
+  const nextQ = (nxt) => {
+    let q = "";
+    if (nxt && nxt !== "/") q += `?next=${encodeURIComponent(nxt)}`;
+    if (lang !== "fr") q += (q ? "&" : "?") + `l=${lang}`;
+    return q;
+  };
+  return shell(n, {
+    title: t.title,
+    ctx: "public",
+    active: "/signup",
+    width: "narrow",
+    loc: { lang, url },
+    body: `
+<div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
+${authMsg}
 <form method="post" action="/signup">${nextField(next)}
-<label for="login">Identifiant <span class="hint">(3 à 64 caractères)</span></label>
+<label for="login">${e(dict.login.userLabel)} <span class="hint">${e(t.userHint)}</span></label>
 <input id="login" name="login" required autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="64" />
-<label for="pw">Mot de passe <span class="hint">(10 caractères minimum)</span></label>
+<label for="pw">${e(dict.login.passLabel)} <span class="hint">${e(t.passHint)}</span></label>
 <input id="pw" name="password" type="password" required minlength="10" maxlength="200" autocomplete="new-password" />
-<label for="pw2">Confirmer le mot de passe</label>
+<label for="pw2">${e(t.confirmPass)}</label>
 <input id="pw2" name="confirm" type="password" required minlength="10" maxlength="200" autocomplete="new-password" />
-<div class="note">${ico("info")}<span>L'adresse MAC de ta box n'est plus un identifiant : ton appareil s'associe à ton compte avec un code affiché sur la TV.</span></div>
-<div class="row"><button class="block" type="submit">Créer le compte</button></div>
+<div class="note">${ico("info")}<span>${e(t.macNote)}</span></div>
+<div class="row"><button class="block" type="submit">${e(t.submit)}</button></div>
 </form></div>
-<p class="alt">Déjà inscrit ? <a href="/login${e(nextQ(next))}">J'ai déjà un compte</a></p>` });
+<p class="alt">${e(t.alreadyAccount)} <a href="/login${e(nextQ(next))}">${e(t.haveAccount)}</a></p>`
+  });
 }
 
 
@@ -85,11 +107,6 @@ if(x.s===429){say('err',T.errRate);return;}
 say('err',ERR[x.j.error]||T.errFail);})
 .catch(function(){btn.disabled=false;say('err',T.errNet);});});
 })();`;
-
-// Sélecteur de langue : mémorise le choix dans un cookie (1 an, limité à /envoyer) puis laisse le lien recharger la page.
-const ENVOI_LANG_JS = `(function(){var C=${jsonForScript(ENVOYER_COOKIE)};
-document.querySelectorAll('a[data-lang]').forEach(function(a){a.addEventListener('click',function(){
-try{document.cookie=C+'='+a.getAttribute('data-lang')+'; Path=/envoyer; Max-Age=31536000; SameSite=Lax; Secure';}catch(e){}});});})();`;
 
 /**
  * « Envoyer une playlist à ma TV » : formulaire public (code de la TV + source), dans la langue `lang`
@@ -129,7 +146,7 @@ export function envoyerPage(n, { code = null, lang = "en" } = {}) {
 <noscript><p class="note">${e(t.noscript)}</p></noscript>
 <p class="note">${e(t.note)}</p>
 </div>`,
-    extra: `<script nonce="${n}">${envoiJs(t)}</script><script nonce="${n}">${ENVOI_LANG_JS}</script>`,
+    extra: `<script nonce="${n}">${envoiJs(t)}</script>`,
     loc: { lang, dir, skip: t.skip, themeBtn: t.themeBtn, themeLabels: { auto: t.themeAuto, light: t.themeLight, dark: t.themeDark }, themeChange: t.themeChange,
       foot: { github: t.footGithub, privacy: t.footPrivacy, navLabel: t.langLabel, langs: `<nav class="langs" aria-label="${e(t.langLabel)}">${langLinks}</nav>` } } });
   // La page dépend de l'URL, du cookie de préférence et d'Accept-Language : les caches doivent le savoir.
@@ -138,29 +155,47 @@ export function envoyerPage(n, { code = null, lang = "en" } = {}) {
 }
 
 
-export function apkPage(n) {
+export function apkPage(n, { lang = "en", url = "/apk" } = {}) {
+  const dict = SITE_DICT[lang] || SITE_DICT.en;
+  const t = dict.apk;
   const opt = (href, title, size, note, primary = false) =>
     `<a class="${primary ? "button" : "button alt-btn"} block" href="${e(href)}"${primary ? " autofocus" : ""}><span><strong>${e(title)}</strong> · ${e(size)}<br/><small>${e(note)}</small></span></a>`;
-  return shell(n, { title: "Ultra TV — install", ctx: "public", width: "narrow", body: `
-<div class="panel"><h1>Install Ultra TV</h1><p class="sub">Pick the version for your device. Later updates from inside the app choose the right one automatically.</p>
+  const res = shell(n, {
+    title: t.title,
+    ctx: "public",
+    active: "/apk",
+    width: "narrow",
+    loc: { lang, url },
+    body: `
+<div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
 <div class="apk-list">
-${opt("/download/android-arm64", "64-bit (arm64)", "≈ 65 MB", "Recommended: Fire TV Stick 4K / 4K Max, Shield, Google TV Streamer, most recent boxes and phones", true)}
-${opt("/download/android-32", "32-bit (armv7)", "≈ 50 MB", "Chromecast with Google TV (HD), older or budget boxes, or if the 64-bit install fails (“package appears to be invalid”)")}
-${opt("/download/android-universal", "Universal", "≈ 220 MB", "Last resort: works everywhere, but much larger")}
+${opt("/download/android-arm64", t.arm64Title, "≈ 65 MB", t.arm64Desc, true)}
+${opt("/download/android-32", t.arm32Title, "≈ 50 MB", t.arm32Desc)}
+${opt("/download/android-universal", t.uTitle, "≈ 220 MB", t.uDesc)}
 </div>
-<div class="note">${ico("info")}<span>Not sure? Try 64-bit first. If Android refuses to install it, come back and take 32-bit.</span></div>
+<div class="note">${ico("info")}<span>${e(t.note)}</span></div>
 </div>
-<p class="alt"><a href="https://github.com/vantaflow/ultra-tv/releases/latest">All files on GitHub</a></p>`,
-    loc: { lang: "en", skip: "Skip to content", themeBtn: "Theme", themeLabels: { auto: "Theme: auto", light: "Theme: light", dark: "Theme: dark" }, themeChange: "change", foot: { github: "Source code (GitHub)", privacy: "Privacy" } } });
+<p class="alt"><a href="https://github.com/vantaflow/ultra-tv/releases/latest">${e(t.ghLink)}</a></p>`
+  });
+  res.headers.append("vary", "Cookie, Accept-Language");
+  return res;
 }
 
 /** Page hors ligne (PWA) : seule page mise en cache par le service worker, sans aucune donnée du compte. */
-export function offlinePage(n) {
-  return shell(n, { title: "Ultra TV — hors ligne", ctx: "public", width: "narrow", body: `
-<div class="panel"><h1>Pas de connexion</h1><p class="sub">Ultra TV n'arrive pas à joindre le serveur. Vérifiez le Wi-Fi ou les données mobiles, puis réessayez.</p>
-<div class="row"><a class="button block" href="/">Réessayer</a></div>
-<div class="note">${ico("info")}<span>Vos sources et vos réglages ne sont jamais gardés hors ligne sur ce téléphone : ils restent sur votre compte.</span></div>
-</div>` });
+export function offlinePage(n, { lang = "fr", url = "/offline" } = {}) {
+  const dict = SITE_DICT[lang] || SITE_DICT.fr;
+  const t = dict.offline;
+  return shell(n, {
+    title: t.title,
+    ctx: "public",
+    width: "narrow",
+    loc: { lang, url },
+    body: `
+<div class="panel"><h1>${e(t.h1)}</h1><p class="sub">${e(t.sub)}</p>
+<div class="row"><a class="button block" href="/">${e(t.retry)}</a></div>
+<div class="note">${ico("info")}<span>${e(t.note)}</span></div>
+</div>`
+  });
 }
 
 /**
@@ -172,7 +207,7 @@ export function donatePage(n, { lang = "en", enabled = false, err = null, state 
   const t = DONATE_DICT[lang];
   const c = ENVOYER_DICT[lang];
   const dir = ENVOYER_DIR[lang];
-  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`${state === "thanks" ? "/donate/merci" : "/donate"}?l=${l}`)}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
+  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`${state === "thanks" ? "/donate/merci" : "/donate"}?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
   const msg = err && t[err] ? notice(err === "upstream" ? "info" : "err", t[err]) : "";
   let body;
   if (state === "thanks") {

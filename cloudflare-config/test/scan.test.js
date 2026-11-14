@@ -45,7 +45,7 @@ describe("Permissions-Policy", () => {
 describe("bouton « Scanner le QR de la TV »", () => {
   it("pageContientBoutonEtScriptAvecNonce", async () => {
     const acct = await newAccount();
-    for (const path of ["/", "/pair"]) {
+    for (const path of ["/?l=fr", "/pair?l=fr"]) {
       const res = await call(path, { cookie: acct.cookie, ip: acct.ip });
       const html = await res.text();
       const n = res.headers.get("content-security-policy").match(/script-src 'nonce-([^']+)'/)[1];

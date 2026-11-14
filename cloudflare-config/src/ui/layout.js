@@ -7,6 +7,7 @@ import { escapeHtml as e, html } from "../http.js";
 import { CSS } from "./css.js";
 import { FAVICON, LOGO, ico, jsonForScript } from "./components.js";
 import { PWA_HEAD, PWA_REGISTER } from "../pwa.js";
+import { SITE_DICT, SITE_DIR, langLinks, LANG_COOKIE_JS } from "../i18n/site.js";
 
 export const REPO_URL = "https://github.com/vantaflow/ultra-tv";
 export const PRIVACY_URL = `${REPO_URL}#confidentialit%C3%A9`;
@@ -14,7 +15,7 @@ export const PRIVACY_URL = `${REPO_URL}#confidentialit%C3%A9`;
 // Thème choisi (Automatique / Clair / Sombre), gardé dans le navigateur ; appliqué AVANT le premier rendu (pas de flash).
 const THEME_HEAD = `try{var t=localStorage.getItem('utv-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}`;
 
-// Libellés en français par défaut ; les pages traduites (/envoyer, /apk) fournissent les leurs via `loc`.
+// Libellés en français par défaut ; les pages traduites fournissent les leurs via `loc`.
 const themeScript = (L = { auto: "Thème : automatique", light: "Thème : clair", dark: "Thème : sombre" }, change = "changer") => `(function(){var b=document.getElementById('theme-toggle');if(!b)return;var l=b.querySelector('.tt-l'),L=${jsonForScript(L)},O=['auto','light','dark'];
 function cur(){try{return localStorage.getItem('utv-theme')||'auto';}catch(e){return 'auto';}}
 function show(t){if(l)l.textContent=L[t];b.setAttribute('aria-label',L[t]+' ('+${jsonForScript(change)}+')');b.setAttribute('title',L[t]);}
@@ -44,7 +45,7 @@ window.addEventListener('scroll',onScroll,{passive:true});window.addEventListene
 /** Document complet (sans gabarit) : sert de base à `shell`. `loc` : langue, sens d'écriture et libellés du thème. */
 export function layout(title, body, n, extra = "", camera = false, loc = {}) {
   const { lang = "fr", dir = "ltr", themeLabels, themeChange, bodyClass = "" } = loc;
-  return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/>${PWA_HEAD}<title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body${bodyClass ? ` class="${e(bodyClass)}"` : ""}>${body}<script nonce="${n}">${themeScript(themeLabels, themeChange)}${MENU_JS}${PWA_REGISTER}</script>${extra}</body></html>`, n, 200, { camera });
+  return html(`<!doctype html><html lang="${lang}" dir="${dir}"><head><script nonce="${n}">${THEME_HEAD}</script><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="robots" content="noindex"/><meta name="color-scheme" content="dark light"/><meta name="theme-color" content="#0A0A0C"/><link rel="icon" href="${FAVICON}"/>${PWA_HEAD}<title>${e(title)}</title><style nonce="${n}">${CSS}</style></head><body${bodyClass ? ` class="${e(bodyClass)}"` : ""}>${body}<script nonce="${n}">${themeScript(themeLabels, themeChange)}${MENU_JS}${PWA_REGISTER}${LANG_COOKIE_JS}</script>${extra}</body></html>`, n, 200, { camera });
 }
 
 // Navigation de l'espace utilisateur : ancres du tableau de bord.
@@ -71,32 +72,51 @@ const navLink = (href, label, icon, cur) => `<a href="${e(href)}" title="${e(lab
  *  loc    : langue/sens/libellés (voir `layout`) + foot { github, privacy, langs HTML }
  */
 export function shell(n, { title, body, ctx = "public", active = "", spy = false, acct = null, admin = false, csrfInput = "", sub = "", width = "", extra = "", camera = false, bare = false, loc = {} }) {
-  const foot = { github: "Code source (GitHub)", privacy: "Confidentialité", langs: "", ...(loc.foot || {}) };
-  const translated = loc.lang && loc.lang !== "fr";
+  const lang = loc.lang || "fr";
+  const dictNav = SITE_DICT[lang]?.nav || SITE_DICT.fr.nav;
+  const dir = loc.dir || SITE_DIR[lang] || "ltr";
+
+  const foot = {
+    github: dictNav.footGithub || "Code source (GitHub)",
+    privacy: dictNav.footPrivacy || "Confidentialité",
+    navLabel: dictNav.langLabel || "Langue",
+    langs: `<nav class="langs" aria-label="${e(dictNav.langLabel || "Langue")}">${langLinks(loc.url || "/", lang)}</nav>`,
+    ...(loc.foot || {}),
+  };
+  if (ctx === "admin") foot.langs = ""; // l'administration reste en français
+
+  const userNavItems = loc.userNav || dictNav.user || USER_NAV;
+  const publicNavItems = loc.publicNav || dictNav.public || PUBLIC_NAV;
+
   let nav = "";
   if (ctx === "user") {
     const href = (id) => `${spy ? "" : "/"}#${id}`;
-    nav = `<nav class="pnav on-user" aria-label="Navigation principale"${spy ? " data-spy" : ""}>${USER_NAV.map(([id, label, icon]) => navLink(href(id), label, icon, false)).join("")}${admin ? navLink("/admin", "Administration", "chart", false) : ""}</nav>`;
+    nav = `<nav class="pnav on-user" aria-label="${e(dictNav.menuAria || "Navigation principale")}"${spy ? " data-spy" : ""}>${userNavItems.map(([id, label, icon]) => navLink(href(id), label, icon, false)).join("")}${admin ? navLink("/admin", dictNav.admin || "Administration", "chart", false) : ""}</nav>`;
   } else if (ctx === "admin") {
-    nav = bare ? "" : `<nav class="pnav on-admin" aria-label="Navigation principale">${navLink("/", "Mon espace", "home", false)}${navLink("/admin", "Administration", "chart", true)}</nav>`;
-  } else if (!translated) {
-    nav = `<nav class="pnav" aria-label="Navigation principale">${PUBLIC_NAV.map(([h, l]) => navLink(h, l, "", h === active)).join("")}</nav>`;
+    nav = bare ? "" : `<nav class="pnav on-admin" aria-label="Navigation principale">${navLink("/", dictNav.menuHome || "Mon espace", "home", false)}${navLink("/admin", dictNav.admin || "Administration", "chart", true)}</nav>`;
+  } else {
+    nav = `<nav class="pnav" aria-label="${e(dictNav.menuAria || "Navigation principale")}">${publicNavItems.map(([h, l]) => navLink(h, l, "", h === active)).join("")}</nav>`;
   }
+
   const initial = acct ? [...String(acct.login || "?")][0] : "";
   const menu = acct && !bare
-    ? `<details class="acctmenu"><summary aria-label="Menu du compte"><span class="av" aria-hidden="true">${e(initial)}</span><span class="nm">${e(acct.login)}</span>${ico("down")}</summary><div class="menu"><div class="who">Connecté en tant que<strong>${e(acct.login)}</strong></div>
-<a href="/">${ico("home")}Mon espace</a>${admin ? `<a href="/admin">${ico("chart")}Administration</a>` : ""}<a href="/pair">${ico("tv")}Appairer un appareil</a>
-<form method="post" action="/logout">${csrfInput}<button type="submit">${ico("logout")}Se déconnecter</button></form></div></details>`
+    ? `<details class="acctmenu"><summary aria-label="${e(dictNav.menuAria || "Menu du compte")}"><span class="av" aria-hidden="true">${e(initial)}</span><span class="nm">${e(acct.login)}</span>${ico("down")}</summary><div class="menu"><div class="who">${e(dictNav.menuWho || "Connecté en tant que")} <strong>${e(acct.login)}</strong></div>
+<a href="/">${ico("home")}${e(dictNav.menuHome || "Mon espace")}</a>${admin ? `<a href="/admin">${ico("chart")}${e(dictNav.menuAdmin || "Administration")}</a>` : ""}<a href="/pair">${ico("tv")}${e(dictNav.menuPair || "Appairer un appareil")}</a>
+<form method="post" action="/logout">${csrfInput}<button type="submit">${ico("logout")}${e(dictNav.menuLogout || "Se déconnecter")}</button></form></div></details>`
     : "";
+
   const brandHref = "/";
   const brandBadge = ctx === "admin" ? `<span class="kind adm-b">ADMIN</span>` : "";
-  const themeBtn = `<button type="button" class="tbtn" id="theme-toggle" title="${e(loc.themeBtn || "Thème")}" aria-label="${e(loc.themeBtn || "Thème")}">${ico("moon")}<span class="tt-l">${e(loc.themeBtn || "Thème")}</span></button>`;
+  const themeLabels = loc.themeLabels || { auto: dictNav.themeAuto, light: dictNav.themeLight, dark: dictNav.themeDark };
+  const themeChange = loc.themeChange || dictNav.themeChange;
+  const themeBtnTitle = loc.themeBtn || dictNav.themeBtn;
+  const themeBtn = `<button type="button" class="tbtn" id="theme-toggle" title="${e(themeBtnTitle)}" aria-label="${e(themeBtnTitle)}">${ico("moon")}<span class="tt-l">${e(themeBtnTitle)}</span></button>`;
   const bnav = ctx === "user"
-    ? `<nav class="bnav" aria-label="Navigation mobile"${spy ? " data-spy" : ""}>${USER_NAV.map(([id, label, icon]) => `<a href="${spy ? "" : "/"}#${id}">${ico(icon)}<span>${e(label)}</span></a>`).join("")}</nav>`
+    ? `<nav class="bnav" aria-label="${e(dictNav.menuAria || "Navigation mobile")}"${spy ? " data-spy" : ""}>${userNavItems.map(([id, label, icon]) => `<a href="${spy ? "" : "/"}#${id}">${ico(icon)}<span>${e(label)}</span></a>`).join("")}</nav>`
     : "";
   const footer = `<footer class="ftr"><div class="ftr-in"><nav aria-label="${e(foot.navLabel || "Liens")}"><a href="${REPO_URL}" target="_blank" rel="noopener noreferrer">${ico("ext")}${e(foot.github)}</a><a href="${PRIVACY_URL}" target="_blank" rel="noopener noreferrer">${ico("shield")}${e(foot.privacy)}</a></nav>${foot.langs || ""}</div></footer>`;
-  const inner = `<a class="skip" href="#main">${e(loc.skip || "Aller au contenu")}</a>
+  const inner = `<a class="skip" href="#main">${e(loc.skip || dictNav.skip || "Aller au contenu")}</a>
 <header class="hdr"><div class="hdr-in"><a class="brand" href="${brandHref}">${LOGO}<span>Ultra TV</span>${brandBadge}</a>${nav}<div class="hdr-r">${themeBtn}${menu}</div></div></header>
 ${sub}<main id="main" class="page${width ? " " + width : ""}">${body}</main>${bnav}${footer}`;
-  return layout(title, inner, n, (spy ? `<script nonce="${n}">${SPY_JS}</script>` : "") + extra, camera, { ...loc, bodyClass: ctx === "user" ? "has-bnav" : "" });
+  return layout(title, inner, n, (spy ? `<script nonce="${n}">${SPY_JS}</script>` : "") + extra, camera, { ...loc, lang, dir, themeLabels, themeChange, bodyClass: ctx === "user" ? "has-bnav" : "" });
 }

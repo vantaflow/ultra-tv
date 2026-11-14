@@ -79,7 +79,7 @@ describe("page /envoyer : choix de la langue", () => {
     const { html, res } = await page("?c=k7q-2m9&l=es");
     for (const l of ENVOYER_LANGS) expect(html).toContain(`href="/envoyer?c=K7Q2M9&amp;l=${l}"`);
     expect(html).toMatch(/data-lang="es"[^>]*aria-current="true"/);
-    expect(html).toContain("Path=/envoyer; Max-Age=31536000; SameSite=Lax; Secure");
+    expect(html).toContain("Path=/; Max-Age=31536000; SameSite=Lax; Secure");
     expect(res.headers.get("vary")).toMatch(/Cookie/);
     expect(res.headers.get("vary")).toMatch(/Accept-Language/);
   });
@@ -118,12 +118,17 @@ describe("page /envoyer : choix de la langue", () => {
     }
   });
 
-  it("autres pages du Worker : toujours en français", async () => {
-    const res = await call("/login");
-    const html = await res.text();
-    expect(htmlTag(html).slice(1)).toEqual(["fr", "ltr"]);
-    expect(html).toContain("Aller au contenu");
-    expect(html).toContain("Thème : automatique");
+  it("autres pages du Worker : même résolution de langue (?l=, cookie, Accept-Language, anglais)", async () => {
+    const fr = await (await call("/login?l=fr")).text();
+    expect(htmlTag(fr).slice(1)).toEqual(["fr", "ltr"]);
+    expect(fr).toContain("Aller au contenu");
+    expect(fr).toContain("Thème : automatique");
+    const def = await (await call("/login")).text();
+    expect(htmlTag(def).slice(1)).toEqual(["en", "ltr"]);
+    const ar = await (await call("/login", { headers: { "accept-language": "ar-MA,fr;q=0.5" } })).text();
+    expect(htmlTag(ar).slice(1)).toEqual(["ar", "rtl"]);
+    const ck = await (await call("/login", { headers: { cookie: "utv-lang=es" } })).text();
+    expect(htmlTag(ck).slice(1)).toEqual(["es", "ltr"]);
   });
 });
 
