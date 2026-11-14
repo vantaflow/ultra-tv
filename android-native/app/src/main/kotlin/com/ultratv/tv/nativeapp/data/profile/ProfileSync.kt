@@ -27,6 +27,9 @@ class ProfileSyncLog @Inject constructor(@ApplicationContext ctx: Context) {
         sp.edit().putString("log", ProfileSyncLogic.logJson(m.values)).apply()
     }
     fun touch(name: String, from: String? = null) = set(name, System.currentTimeMillis(), true, from)
+    /** Langue de l'appareil reprise une fois par le profil courant (voir CloudSyncManager). */
+    fun langAdopted(): Boolean = sp.getBoolean("lang_adopted", false)
+    fun setLangAdopted() { sp.edit().putBoolean("lang_adopted", true).apply() }
     fun tombstone(name: String) = set(name, System.currentTimeMillis(), false)
 }
 

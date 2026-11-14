@@ -162,6 +162,18 @@ class CloudSyncManager @Inject constructor(
     /** Profils partagés entre les appareils du compte (nom, couleur, profil Enfants ; jamais le PIN). */
     private suspend fun syncProfilesLocked(base: String) {
         val dao = db.profileDao()
+        // Une fois par appareil : la langue choisie AVANT qu'elle appartienne au profil (réglage de l'appareil) devient celle
+        // du profil courant, pour qu'elle suive sur les autres appareils.
+        if (!profileLog.langAdopted()) {
+            val cur = profileRepo.current.value
+            val effective = prefs.flow.first().language
+            if (cur != null && effective.isNotBlank() && effective != "system" &&
+                dao.observePrefs(cur.id).first().none { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }) {
+                dao.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefEntity(cur.id, com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE, effective))
+                profileLog.touch(cur.name)
+            }
+            profileLog.setLangAdopted()
+        }
         val all = dao.observeAll().first()
         val langs = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }?.value?.let { p.id to it } }.toMap()
         val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs)
