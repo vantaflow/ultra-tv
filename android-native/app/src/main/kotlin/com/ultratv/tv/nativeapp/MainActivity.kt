@@ -508,7 +508,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                             onRetry = { first.retry(ui.providerId) },
                             onFixSource = { StartupNav.pendingRoute.value = Routes.SETTINGS; first.dismiss() },
                         )
-                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition, com.ultratv.tv.nativeapp.ui.simple.homeKindFor(prefs) == com.ultratv.tv.nativeapp.ui.simple.HomeKind.SIMPLE) }
+                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition, com.ultratv.tv.nativeapp.ui.simple.homeKindFor(prefs) == com.ultratv.tv.nativeapp.ui.simple.HomeKind.SIMPLE, com.ultratv.tv.nativeapp.ui.simple.SimpleSize.parse(prefs.simpleSize).scale) }
                     }
                 }
                 }
@@ -523,7 +523,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
 @androidx.tv.material3.ExperimentalTvMaterial3Api
 @Composable
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean) {
+private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean, simpleScale: Float = 1f) {
     val nav = rememberNavController()
     // Le lecteur reste sombre : état DÉRIVÉ des destinations visibles (écrit avant NavHost, donc
     // avant toute lecture des jetons par le lecteur ; aucun compteur à tenir à jour).
@@ -598,7 +598,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
                     profile = prof?.let { com.ultratv.tv.nativeapp.ui.mobile.ProfileChip(it.initial, it.color) },
                     onProfile = { profileVm.requestSwitch() },
                     banner = { com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) }) },
-                ) { NavGraph(nav, simpleHome) }
+                ) { ScaledForSimple(simpleHome, simpleScale) { NavGraph(nav, simpleHome) } }
             }
             com.ultratv.tv.nativeapp.ui.mobile.NavLayout.TV_RAIL -> Column(Modifier.fillMaxSize()) {
                 com.ultratv.tv.nativeapp.ui.common.SyncStatusBanner(onFixSource = { nav.navigate(Routes.SETTINGS) })
@@ -620,7 +620,7 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
                             // du bandeau), pas sur l'élément le plus proche géométriquement de l'entrée du menu (tuile « Films »).
                             .focusProperties { enter = { contentFocus.target() } }.focusGroup(),
                     ) {
-                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus) { NavGraph(nav, simpleHome) }
+                        androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.common.LocalContentFocusMemory provides contentFocus) { ScaledForSimple(simpleHome, simpleScale) { NavGraph(nav, simpleHome) } }
                     }
                     if (!fullscreen) SidebarNav(navController = nav)
                 }
@@ -841,4 +841,12 @@ private fun StartupLoading() {
             androidx.tv.material3.Text(com.ultratv.tv.nativeapp.i18n.LocalDs.current.loadingLabel, color = com.ultratv.tv.nativeapp.ui.design.Ux.Text2, fontSize = 24.spx)
         }
     }
+}
+
+/** Mode simple : toute l'interface simple suit la taille choisie (petite / normale / grande) ; mode complet inchangé. */
+@Composable
+private fun ScaledForSimple(simple: Boolean, scale: Float, content: @Composable () -> Unit) {
+    if (!simple || scale == 1f) { content(); return }
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale)) { content() }
 }

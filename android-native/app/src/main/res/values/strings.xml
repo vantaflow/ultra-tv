@@ -1651,4 +1651,8 @@
     <string name="cat_order_hint">▸ Order · Channels</string>
     <string name="back_hold_to_exit">Hold Back to close Ultra TV</string>
     <string name="back_again_to_exit">Press Back again to close Ultra TV</string>
+    <string name="simple_size">Display size</string>
+    <string name="simple_size_small">Small</string>
+    <string name="simple_size_normal">Normal</string>
+    <string name="simple_size_large">Large</string>
 </resources>

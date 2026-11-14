@@ -1,5 +1,7 @@
 package com.ultratv.tv.nativeapp.ui.simple
 
+import com.ultratv.tv.nativeapp.i18n.simpleSize
+import com.ultratv.tv.nativeapp.i18n.simpleSizeName
 import androidx.compose.foundation.layout.heightIn
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
@@ -67,6 +69,7 @@ fun SimpleSettingsScreen(
             Text(D.simpleFullHint, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, lineHeight = 40.spx, maxLines = 3)
             // Quelques réglages essentiels, sans passer par les réglages complets.
             SimpleSettingRow(D.language, D.langName(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(p.language)), Icons.Globe) { choice = "lang" }
+            SimpleSettingRow(D.simpleSize, D.simpleSizeName(SimpleSize.parse(p.simpleSize)), Icons.Monitor) { choice = "size" }
             SimpleSettingRow(D.textSizeLabel, D.textSizeName(com.ultratv.tv.nativeapp.ui.design.TextSize.parse(p.textSize)), Icons.Info) { choice = "text" }
             SimpleSettingRow(D.theme, com.ultratv.tv.nativeapp.ui.settings.themeLabel(D, p.theme), Icons.Monitor) { choice = "theme" }
             if (multiProfiles) SimpleSettingRow(S.switchProfile, profileName.orEmpty(), Icons.Account) { profiles.requestSwitch() }
@@ -75,6 +78,7 @@ fun SimpleSettingsScreen(
     }
     when (choice) {
         "lang" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.language, com.ultratv.tv.nativeapp.i18n.AppLang.entries.map { it.code to D.langName(it) }, p.language, { app.setLanguage(it); choice = "" }, { choice = "" })
+        "size" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.simpleSize, SimpleSize.entries.map { it to D.simpleSizeName(it) }, SimpleSize.parse(p.simpleSize), { app.setSimpleSize(it.key); choice = "" }, { choice = "" })
         "text" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.textSizeLabel, com.ultratv.tv.nativeapp.ui.design.TextSize.entries.map { it to D.textSizeName(it) }, com.ultratv.tv.nativeapp.ui.design.TextSize.parse(p.textSize), { app.setTextSize(it.key); choice = "" }, { choice = "" })
         "theme" -> com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(D.theme, listOf(com.ultratv.tv.nativeapp.data.prefs.AppTheme.AUTO, com.ultratv.tv.nativeapp.data.prefs.AppTheme.LIGHT, com.ultratv.tv.nativeapp.data.prefs.AppTheme.DARK).map { it to com.ultratv.tv.nativeapp.ui.settings.themeLabel(D, it) }, p.theme, { app.setTheme(it); choice = "" }, { choice = "" })
     }

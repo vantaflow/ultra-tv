@@ -142,6 +142,8 @@ data class UserPrefs(
     val accent: String = "red",
     /** Taille du texte : "normal" | "large" | "xlarge" (voir TextSize). */
     val textSize: String = "normal",
+    /** Taille de l'affichage du mode simple (petite / normale / grande) : propre à l'appareil (dépend de l'écran). */
+    val simpleSize: String = "normal",
     /** Animations : "auto" (profil de l'appareil) | "off" | "subtle" | "normal" (voir AnimationLevel). */
     val animations: String = "auto",
     /** Ordre des rangées de l'accueil (CSV de HomeBlock) ; vide = ordre par défaut. */
@@ -226,6 +228,7 @@ class UserPreferencesStore @Inject constructor(
         val includeUnknown = booleanPreferencesKey("include_unknown_lang")
         val accent = stringPreferencesKey("accent")
         val textSize = stringPreferencesKey("text_size")
+        val simpleSize = stringPreferencesKey("simple_size")
         val animations = stringPreferencesKey("animations")
         val homeOrder = stringPreferencesKey("home_order")
         val homeHidden = stringPreferencesKey("home_hidden")
@@ -286,7 +289,7 @@ class UserPreferencesStore @Inject constructor(
             syncMode = p[Keys.syncMode] ?: "auto", syncHour = p[Keys.syncHour] ?: 3, syncLive = p[Keys.syncLive] ?: true, syncEpg = p[Keys.syncEpg] ?: true,
             syncVod = p[Keys.syncVod] ?: true, syncSeries = p[Keys.syncSeries] ?: true, syncUnmeteredOnly = p[Keys.syncUnmetered] ?: true,
             languages = p[Keys.languages] ?: "", includeMulti = p[Keys.includeMulti] ?: true, preferredQuality = p[Keys.preferredQuality] ?: "auto", includeUnknownLang = p[Keys.includeUnknown] ?: true,
-            accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
+            accent = p[Keys.accent] ?: "red", textSize = p[Keys.textSize] ?: "normal", simpleSize = p[Keys.simpleSize] ?: "normal", animations = p[Keys.animations] ?: "auto",
             homeOrder = p[Keys.homeOrder] ?: "", homeHidden = p[Keys.homeHidden] ?: "", startScreen = p[Keys.startScreen] ?: "", lastScreen = p[Keys.lastScreen] ?: "",
             sportSection = p[Keys.sportSection] ?: false,
             catalogSource = p[Keys.catalogSource] ?: "provider", catalogLayout = p[Keys.catalogLayout] ?: "split",
@@ -342,6 +345,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setSyncUnmeteredOnly(v: Boolean) = update { it[Keys.syncUnmetered] = v }
     suspend fun setAccent(key: String) = update { it[Keys.accent] = key }
     suspend fun setTextSize(key: String) = update { it[Keys.textSize] = key }
+    suspend fun setSimpleSize(key: String) = update { it[Keys.simpleSize] = key }
     suspend fun setAnimations(key: String) = update { it[Keys.animations] = key }
     /** Ordre et rangées masquées de l'accueil, écrits ensemble (une seule émission du flux). */
     suspend fun setHomeLayout(orderCsv: String, hiddenCsv: String) = update { it[Keys.homeOrder] = orderCsv; it[Keys.homeHidden] = hiddenCsv }

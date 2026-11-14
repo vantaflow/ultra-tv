@@ -60,6 +60,7 @@ class AppViewModel @Inject constructor(
     fun setLocalLogosFolderUri(uri: String) = viewModelScope.launch { store.setLocalLogosFolderUri(uri) }
     fun setAccent(key: String) = viewModelScope.launch { store.setAccent(key) }
     fun setTextSize(key: String) = viewModelScope.launch { store.setTextSize(key) }
+    fun setSimpleSize(key: String) = viewModelScope.launch { store.setSimpleSize(key) }
     fun setAnimations(key: String) = viewModelScope.launch { store.setAnimations(key) }
     fun setHomeLayout(layout: com.ultratv.tv.nativeapp.ui.home.HomeLayout) = viewModelScope.launch { store.setHomeLayout(layout.orderCsv(), layout.hiddenCsv()) }
     fun setStartScreen(key: String) = viewModelScope.launch { store.setStartScreen(key) }
