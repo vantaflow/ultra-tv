@@ -104,7 +104,7 @@
     <string name="ds_pair_eyebrow">SINCRONIZAR PELA NUVEM</string>
     <string name="ds_pair_title">Adicione suas fontes pelo celular</string>
     <string name="ds_pair_step1">Abra %1$s</string>
-    <string name="ds_pair_step2">Entre na conta e toque em “Parear uma TV”</string>
+    <string name="ds_pair_step2">Entre na conta e toque em “Parear um dispositivo”</string>
     <string name="ds_pair_step3">Digite o código exibido aqui</string>
     <string name="ds_pair_new_code">Novo código</string>
     <string name="ds_pair_your_code">SEU CÓDIGO</string>
@@ -113,7 +113,7 @@
     <string name="ds_pair_device">Dispositivo: %1$s</string>
     <string name="ds_pair_failed">Falha no pareamento ou o código expirou. Tente um novo código.</string>
     <string name="ds_worker_url_title">Endereço do painel</string>
-    <string name="ds_worker_url_sub">O endereço seguro (https) usado para parear esta TV</string>
+    <string name="ds_worker_url_sub">O endereço seguro (https) usado para parear este dispositivo</string>
     <string name="ds_worker_url_field">URL do painel</string>
     <string name="ds_update_title">Atualização disponível · %1$s</string>
     <string name="ds_update_default_body">Uma nova versão está disponível. O download é verificado antes da instalação.</string>
@@ -419,7 +419,7 @@
     <string name="ds_cloud_sync">Sincronizar pela nuvem</string>
     <string name="ds_cloud_sync_hint">Mostra um código para inserir no painel</string>
     <string name="ds_paired">Pareada</string>
-    <string name="ds_unpair">Desparear esta TV</string>
+    <string name="ds_unpair">Desparear este dispositivo</string>
     <string name="ds_live_tv">Canais ao vivo</string>
     <string name="ds_every_hours">a cada %1$s h</string>
     <string name="ds_every_day">todos os dias</string>
@@ -698,9 +698,9 @@
 
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Controle no celular</string>
-    <string name="remote_remote_hint">Pesquise e controle a TV pelo celular, na mesma rede Wi-Fi</string>
+    <string name="remote_remote_hint">Pesquise e controle o dispositivo pelo celular, na mesma rede Wi-Fi</string>
     <string name="remote_remote_eyebrow">CONTROLE NO CELULAR</string>
-    <string name="remote_remote_headline">Pesquise e controle sua TV pelo celular</string>
+    <string name="remote_remote_headline">Pesquise e controle seu dispositivo pelo celular</string>
     <string name="remote_remote_step1">Conecte o celular à mesma rede Wi-Fi deste dispositivo</string>
     <string name="remote_remote_step2">Leia o QR code ou abra %1$s (o link contém uma chave privada)</string>
     <string name="remote_remote_step3">Pesquise, toque em um resultado para abri-lo aqui e use a barra de controle</string>
@@ -1298,7 +1298,7 @@
     <string name="str_pref_resume_hint">Reabre filmes/episódios no ponto em que você parou.</string>
     <string name="str_pref_auto_play_next">Reproduzir próximo episódio</string>
     <string name="str_pref_auto_play_next_hint">Reproduz automaticamente S0xE0y+1 ao fim de um episódio.</string>
-    <string name="str_pref_launch_at_boot">Abrir ao ligar a TV</string>
+    <string name="str_pref_launch_at_boot">Abrir ao ligar o dispositivo</string>
     <string name="str_pref_launch_at_boot_hint">Abre o Ultra TV automaticamente quando o aparelho termina de iniciar.</string>
     <string name="str_pref_auto_play_last">Reproduzir o último assistido ao abrir</string>
     <string name="str_pref_auto_play_last_hint">Retoma o último canal / filme / episódio quando o app inicia.</string>

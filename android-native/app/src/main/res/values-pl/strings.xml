@@ -102,7 +102,7 @@
     <string name="ds_pair_eyebrow">SYNCHRONIZACJA Z CHMURY</string>
     <string name="ds_pair_title">Dodaj źródła za pomocą telefonu</string>
     <string name="ds_pair_step1">Otwórz %1$s</string>
-    <string name="ds_pair_step2">Zaloguj się, potem wybierz „Sparuj telewizor”</string>
+    <string name="ds_pair_step2">Zaloguj się, potem wybierz „Sparuj urządzenie”</string>
     <string name="ds_pair_step3">Wpisz kod widoczny tutaj</string>
     <string name="ds_pair_new_code">Nowy kod</string>
     <string name="ds_pair_your_code">TWÓJ KOD</string>
@@ -111,7 +111,7 @@
     <string name="ds_pair_device">Urządzenie: %1$s</string>
     <string name="ds_pair_failed">Parowanie nie powiodło się lub kod wygasł. Spróbuj nowego kodu.</string>
     <string name="ds_worker_url_title">Adres panelu</string>
-    <string name="ds_worker_url_sub">Bezpieczny adres (https) służący do sparowania tego telewizora</string>
+    <string name="ds_worker_url_sub">Bezpieczny adres (https) służący do sparowania tego urządzenia</string>
     <string name="ds_worker_url_field">Adres URL panelu</string>
     <string name="ds_update_title">Dostępna aktualizacja · %1$s</string>
     <string name="ds_update_default_body">Dostępna jest nowa wersja. Pobrany plik jest weryfikowany przed instalacją.</string>
@@ -411,7 +411,7 @@
     <string name="ds_cloud_sync">Synchronizacja z chmury</string>
     <string name="ds_cloud_sync_hint">Wyświetla kod do wpisania w panelu</string>
     <string name="ds_paired">Sparowano</string>
-    <string name="ds_unpair">Rozłącz ten telewizor</string>
+    <string name="ds_unpair">Rozłącz to urządzenie</string>
     <string name="ds_live_tv">Kanały na żywo</string>
     <string name="ds_every_hours">co %1$s h</string>
     <string name="ds_every_day">codziennie</string>
@@ -680,9 +680,9 @@
     <string name="phone_phone_failed">Nie udało się utworzyć kodu lub wygasł. Spróbuj nowego kodu.</string>
     <string name="phone_phone_received">Źródło odebrane z telefonu</string>
     <string name="remote_remote_title">Pilot na telefonie</string>
-    <string name="remote_remote_hint">Wyszukuj i steruj telewizorem z telefonu, w tej samej sieci Wi-Fi</string>
+    <string name="remote_remote_hint">Wyszukuj i steruj urządzeniem z telefonu, w tej samej sieci Wi-Fi</string>
     <string name="remote_remote_eyebrow">PILOT NA TELEFONIE</string>
-    <string name="remote_remote_headline">Wyszukuj i steruj telewizorem z telefonu</string>
+    <string name="remote_remote_headline">Wyszukuj i steruj urządzeniem z telefonu</string>
     <string name="remote_remote_step1">Połącz telefon z tą samą siecią Wi-Fi co to urządzenie</string>
     <string name="remote_remote_step2">Zeskanuj kod QR lub otwórz %1$s (łącze zawiera prywatny klucz)</string>
     <string name="remote_remote_step3">Wyszukaj, dotknij wyniku, aby otworzyć go tutaj, i użyj paska pilota</string>
@@ -1246,7 +1246,7 @@
     <string name="str_pref_resume_hint">Otwiera filmy i odcinki w miejscu, w którym je przerwano.</string>
     <string name="str_pref_auto_play_next">Autoodtwarzanie następnego odcinka</string>
     <string name="str_pref_auto_play_next_hint">Automatycznie odtwarza następny odcinek po zakończeniu poprzedniego.</string>
-    <string name="str_pref_launch_at_boot">Uruchamiaj przy starcie telewizora</string>
+    <string name="str_pref_launch_at_boot">Uruchamiaj przy starcie urządzenia</string>
     <string name="str_pref_launch_at_boot_hint">Otwiera Ultra TV automatycznie po uruchomieniu dekodera.</string>
     <string name="str_pref_auto_play_last">Autoodtwarzanie ostatnio oglądanego przy starcie</string>
     <string name="str_pref_auto_play_last_hint">Wznawia ostatni kanał / film / odcinek po uruchomieniu aplikacji.</string>

@@ -42,7 +42,7 @@ describe("Permissions-Policy", () => {
   });
 });
 
-describe("bouton « Scanner le QR de la TV »", () => {
+describe("bouton « Scanner le QR de l’appareil »", () => {
   it("pageContientBoutonEtScriptAvecNonce", async () => {
     const acct = await newAccount();
     for (const path of ["/?l=fr", "/pair?l=fr"]) {
@@ -50,7 +50,7 @@ describe("bouton « Scanner le QR de la TV »", () => {
       const html = await res.text();
       const n = res.headers.get("content-security-policy").match(/script-src 'nonce-([^']+)'/)[1];
       expect(html).toContain('id="scan-btn"');
-      expect(html).toContain("Scanner le QR de la TV");
+      expect(html).toContain("Scanner le QR de l’appareil");
       expect(html).toContain('id="scanner"');
       expect(html).toContain("getUserMedia");
       expect(html).toContain("environment");

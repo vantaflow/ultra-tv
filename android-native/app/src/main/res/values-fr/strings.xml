@@ -100,7 +100,7 @@
     <string name="ds_pair_eyebrow">SYNCHRONISER DEPUIS LE CLOUD</string>
     <string name="ds_pair_title">Ajoutez vos sources depuis votre téléphone</string>
     <string name="ds_pair_step1">Ouvrez %1$s</string>
-    <string name="ds_pair_step2">Connectez-vous, puis « Appairer une TV »</string>
+    <string name="ds_pair_step2">Connectez-vous, puis « Appairer un appareil »</string>
     <string name="ds_pair_step3">Saisissez le code ci-contre</string>
     <string name="ds_pair_new_code">Nouveau code</string>
     <string name="ds_pair_your_code">VOTRE CODE</string>
@@ -109,7 +109,7 @@
     <string name="ds_pair_device">Appareil : %1$s</string>
     <string name="ds_pair_failed">L’appairage a échoué ou le code a expiré. Demandez un nouveau code.</string>
     <string name="ds_worker_url_title">Adresse du tableau de bord</string>
-    <string name="ds_worker_url_sub">L’adresse sécurisée (https) utilisée pour appairer cette TV</string>
+    <string name="ds_worker_url_sub">L’adresse sécurisée (https) utilisée pour appairer cet appareil</string>
     <string name="ds_worker_url_field">Adresse du tableau de bord</string>
     <string name="ds_update_title">Mise à jour disponible · %1$s</string>
     <string name="ds_update_default_body">Une nouvelle version est disponible. Le téléchargement est vérifié avant installation.</string>
@@ -415,7 +415,7 @@
     <string name="ds_cloud_sync">Synchroniser depuis le cloud</string>
     <string name="ds_cloud_sync_hint">Affiche un code à saisir sur le tableau de bord</string>
     <string name="ds_paired">Appairé</string>
-    <string name="ds_unpair">Dissocier cette TV</string>
+    <string name="ds_unpair">Dissocier cet appareil</string>
     <string name="ds_live_tv">Chaînes en direct</string>
     <string name="ds_every_hours">toutes les %1$s h</string>
     <string name="ds_every_day">chaque jour</string>
@@ -694,9 +694,9 @@
 
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Télécommande sur le téléphone</string>
-    <string name="remote_remote_hint">Rechercher et piloter la TV depuis votre téléphone, sur le même Wi-Fi</string>
+    <string name="remote_remote_hint">Rechercher et piloter l’appareil depuis votre téléphone, sur le même Wi-Fi</string>
     <string name="remote_remote_eyebrow">TÉLÉCOMMANDE SUR LE TÉLÉPHONE</string>
-    <string name="remote_remote_headline">Cherchez et pilotez votre TV depuis votre téléphone</string>
+    <string name="remote_remote_headline">Cherchez et pilotez votre appareil depuis votre téléphone</string>
     <string name="remote_remote_step1">Connectez votre téléphone au même Wi-Fi que cet appareil</string>
     <string name="remote_remote_step2">Scannez le QR code, ou ouvrez %1$s (le lien contient une clé privée)</string>
     <string name="remote_remote_step3">Cherchez, touchez un résultat pour l’ouvrir ici, puis utilisez la barre de télécommande</string>
@@ -1294,7 +1294,7 @@
     <string name="str_pref_resume_hint">Rouvre films et épisodes là où vous vous êtes arrêté.</string>
     <string name="str_pref_auto_play_next">Auto-lecture épisode suivant</string>
     <string name="str_pref_auto_play_next_hint">Lance S0xE0y+1 automatiquement à la fin d\'un épisode.</string>
-    <string name="str_pref_launch_at_boot">Lancer au démarrage de la TV</string>
+    <string name="str_pref_launch_at_boot">Lancer au démarrage de l’appareil</string>
     <string name="str_pref_launch_at_boot_hint">Ouvre Ultra TV automatiquement quand la box démarre.</string>
     <string name="str_pref_auto_play_last">Reprendre le dernier au démarrage</string>
     <string name="str_pref_auto_play_last_hint">Rejoue la dernière chaîne / film / épisode au lancement.</string>

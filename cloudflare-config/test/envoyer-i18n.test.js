@@ -45,7 +45,7 @@ describe("page /envoyer : choix de la langue", () => {
   it("sans indice : anglais ; lang et dir dans le HTML", async () => {
     const { html } = await page("?c=K7Q2M9");
     expect(htmlTag(html).slice(1)).toEqual(["en", "ltr"]);
-    expect(html).toContain("Send to my TV");
+    expect(html).toContain("Send to my device");
     expect(html).toContain("Show password");
   });
 
@@ -57,9 +57,9 @@ describe("page /envoyer : choix de la langue", () => {
       expect(html).toContain(`<h1>${ENVOYER_DICT[l].h1}</h1>`);
       expect(html).toContain(ENVOYER_DICT[l].note);
     }
-    expect((await page("?l=es")).html).toContain("Enviar a mi TV");
-    expect((await page("?l=ar")).html).toContain("إرسال إلى تلفازي");
-    expect((await page("?l=pl")).html).toContain("Wyślij na mój telewizor");
+    expect((await page("?l=es")).html).toContain("Enviar a mi dispositivo");
+    expect((await page("?l=ar")).html).toContain("إرسال إلى جهازي");
+    expect((await page("?l=pl")).html).toContain("Wyślij na moje urządzenie");
   });
 
   it("le paramètre l l'emporte sur le cookie et Accept-Language ; le cookie sur Accept-Language", async () => {

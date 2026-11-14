@@ -101,7 +101,7 @@
     <string name="ds_pair_eyebrow">المزامنة من السحابة</string>
     <string name="ds_pair_title">أضف مصادرك من هاتفك</string>
     <string name="ds_pair_step1">افتح %1$s</string>
-    <string name="ds_pair_step2">سجّل الدخول ثم «إقران تلفاز»</string>
+    <string name="ds_pair_step2">سجّل الدخول ثم «إقران جهاز»</string>
     <string name="ds_pair_step3">أدخل الرمز المعروض هنا</string>
     <string name="ds_pair_new_code">رمز جديد</string>
     <string name="ds_pair_your_code">رمزك</string>
@@ -110,7 +110,7 @@
     <string name="ds_pair_device">الجهاز: %1$s</string>
     <string name="ds_pair_failed">فشل الإقران أو انتهت صلاحية الرمز. اطلب رمزًا جديدًا.</string>
     <string name="ds_worker_url_title">عنوان لوحة التحكم</string>
-    <string name="ds_worker_url_sub">العنوان الآمن (https) المستخدم لإقران هذا التلفاز</string>
+    <string name="ds_worker_url_sub">العنوان الآمن (https) المستخدم لإقران هذا الجهاز</string>
     <string name="ds_worker_url_field">عنوان لوحة التحكم</string>
     <string name="ds_update_title">تحديث متاح · %1$s</string>
     <string name="ds_update_default_body">يتوفر إصدار جديد. يتم التحقق من التنزيل قبل التثبيت.</string>
@@ -430,7 +430,7 @@
     <string name="ds_cloud_sync">المزامنة من السحابة</string>
     <string name="ds_cloud_sync_hint">يعرض رمزًا لإدخاله في لوحة التحكم</string>
     <string name="ds_paired">مقترن</string>
-    <string name="ds_unpair">إلغاء اقتران هذا التلفاز</string>
+    <string name="ds_unpair">إلغاء اقتران هذا الجهاز</string>
     <string name="ds_live_tv">القنوات المباشرة</string>
     <string name="ds_every_hours">كل %1$s س</string>
     <string name="ds_every_day">كل يوم</string>
@@ -736,9 +736,9 @@
 
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">جهاز تحكم على الهاتف</string>
-    <string name="remote_remote_hint">ابحث وتحكّم بالتلفاز من هاتفك عبر شبكة Wi-Fi نفسها</string>
+    <string name="remote_remote_hint">ابحث وتحكّم بالجهاز من هاتفك عبر شبكة Wi-Fi نفسها</string>
     <string name="remote_remote_eyebrow">جهاز تحكم على الهاتف</string>
-    <string name="remote_remote_headline">ابحث وتحكّم بتلفازك من هاتفك</string>
+    <string name="remote_remote_headline">ابحث وتحكّم بجهازك من هاتفك</string>
     <string name="remote_remote_step1">صِل هاتفك بشبكة Wi-Fi نفسها التي يتصل بها هذا الجهاز</string>
     <string name="remote_remote_step2">امسح رمز QR، أو افتح %1$s (يحتوي الرابط على مفتاح خاص)</string>
     <string name="remote_remote_step3">ابحث، المس نتيجة لفتحها هنا، ثم استخدم شريط التحكم</string>
@@ -1336,7 +1336,7 @@
     <string name="str_pref_resume_hint">إعادة فتح الأفلام/الحلقات من حيث توقفت.</string>
     <string name="str_pref_auto_play_next">تشغيل تلقائي للحلقة التالية</string>
     <string name="str_pref_auto_play_next_hint">تشغيل S0xE0y+1 تلقائيًا عند انتهاء الحلقة.</string>
-    <string name="str_pref_launch_at_boot">التشغيل عند إقلاع التلفاز</string>
+    <string name="str_pref_launch_at_boot">التشغيل عند إقلاع الجهاز</string>
     <string name="str_pref_launch_at_boot_hint">فتح Ultra TV تلقائيًا عند انتهاء إقلاع الجهاز.</string>
     <string name="str_pref_auto_play_last">تشغيل آخر مشاهدة عند البدء</string>
     <string name="str_pref_auto_play_last_hint">استئناف آخر قناة / فيلم / حلقة عند تشغيل التطبيق.</string>

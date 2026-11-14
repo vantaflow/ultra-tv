@@ -8,6 +8,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - **Samsung TV (Tizen)** et **LG TV (webOS)** : paquets natifs `.wgt` et `.ipk` de la même application web (Tizen 5.5+ / webOS 6+, TV de 2020 et plus). Transposition des touches de la télécommande (Retour, lecture/pause, chaînes +/−, Exit), HLS natif en dernier recours sans proxy CORS, polyfills Chromium 76, workflow `tv.yml` (artefacts, publication sur tag `tv-v*`). Voir `docs/tv.md`.
 - Site ultratv.dpdns.org entièrement multilingue (anglais, français, espagnol, arabe, polonais) : connexion, inscription, tableau de bord, appairage, téléchargement ; sélecteur de langue en pied de page.
 
+### Modifié
+- « Appareil » au lieu de « TV » quand il s'agit de l'appareil (appairage, dissocier, liste des appareils), dans l'appli et sur le site : un téléphone ou une tablette n'est plus appelé TV.
+
 ## [1.3.35] — 2026-11-14 (Android)
 
 ### Ajouté

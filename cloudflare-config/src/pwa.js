@@ -35,7 +35,7 @@ export const MANIFEST = {
   ],
   shortcuts: [
     { name: "Associer un appareil", url: "/pair", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
-    { name: "Envoyer une source à ma TV", url: "/envoyer", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
+    { name: "Envoyer une source à mon appareil", url: "/envoyer", icons: [{ src: "/pwa/icon-192.png", sizes: "192x192", type: "image/png" }] },
   ],
 };
 

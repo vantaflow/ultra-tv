@@ -102,7 +102,7 @@
     <string name="ds_pair_eyebrow">SYNC FROM THE CLOUD</string>
     <string name="ds_pair_title">Add your sources from your phone</string>
     <string name="ds_pair_step1">Open %1$s</string>
-    <string name="ds_pair_step2">Sign in, then “Pair a TV”</string>
+    <string name="ds_pair_step2">Sign in, then “Pair a device”</string>
     <string name="ds_pair_step3">Enter the code shown here</string>
     <string name="ds_pair_new_code">New code</string>
     <string name="ds_pair_your_code">YOUR CODE</string>
@@ -111,7 +111,7 @@
     <string name="ds_pair_device">Device: %1$s</string>
     <string name="ds_pair_failed">Pairing failed or the code expired. Try a new code.</string>
     <string name="ds_worker_url_title">Dashboard address</string>
-    <string name="ds_worker_url_sub">The secure (https) address used to pair this TV</string>
+    <string name="ds_worker_url_sub">The secure (https) address used to pair this device</string>
     <string name="ds_worker_url_field">Dashboard URL</string>
     <string name="ds_update_title">Update available · %1$s</string>
     <string name="ds_update_default_body">A new version is available. The download is verified before installation.</string>
@@ -412,7 +412,7 @@
     <string name="ds_cloud_sync">Sync from the cloud</string>
     <string name="ds_cloud_sync_hint">Shows a code to enter on the dashboard</string>
     <string name="ds_paired">Paired</string>
-    <string name="ds_unpair">Unpair this TV</string>
+    <string name="ds_unpair">Unpair this device</string>
     <string name="ds_live_tv">Live channels</string>
     <string name="ds_every_hours">every %1$s h</string>
     <string name="ds_every_day">every day</string>
@@ -682,9 +682,9 @@
 
     <!-- i18n/RemoteStrings.kt -->
     <string name="remote_remote_title">Remote on your phone</string>
-    <string name="remote_remote_hint">Search and control the TV from your phone, on the same Wi-Fi</string>
+    <string name="remote_remote_hint">Search and control the device from your phone, on the same Wi-Fi</string>
     <string name="remote_remote_eyebrow">REMOTE ON YOUR PHONE</string>
-    <string name="remote_remote_headline">Search and control your TV from your phone</string>
+    <string name="remote_remote_headline">Search and control your device from your phone</string>
     <string name="remote_remote_step1">Connect your phone to the same Wi-Fi as this device</string>
     <string name="remote_remote_step2">Scan the QR code, or open %1$s (the link contains a private key)</string>
     <string name="remote_remote_step3">Search, tap a result to open it here, then use the remote bar</string>
@@ -1282,7 +1282,7 @@
     <string name="str_pref_resume_hint">Reopen movies/episodes at the position you left them.</string>
     <string name="str_pref_auto_play_next">Auto-play next episode</string>
     <string name="str_pref_auto_play_next_hint">Automatically play S0xE0y+1 when an episode ends.</string>
-    <string name="str_pref_launch_at_boot">Launch at TV boot</string>
+    <string name="str_pref_launch_at_boot">Launch at device boot</string>
     <string name="str_pref_launch_at_boot_hint">Open Ultra TV automatically when the box finishes booting.</string>
     <string name="str_pref_auto_play_last">Auto-play last watched on launch</string>
     <string name="str_pref_auto_play_last_hint">Resume the last channel / movie / episode when the app starts.</string>
