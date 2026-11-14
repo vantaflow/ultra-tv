@@ -1,4 +1,5 @@
 // Tableau de bord utilisateur (/) : vue d'ensemble, sources, appareils, intégrations, compte.
+import { KOFI_URL, LIBERAPAY_URL } from "../donate.js";
 import { escapeHtml as e } from "../http.js";
 import { displayUrl, maskMac, xtreamCredsOf } from "../store.js";
 import { ico, notice } from "../ui/components.js";
@@ -218,6 +219,8 @@ ${isPro ? `<div class="tile${nextLic && nextLic < Date.now() ? " bad" : nextLic 
 </div>
 ${gettingStarted}</section>
 
+<section class="panel" id="soutenir" aria-labelledby="h-support"><h2 id="h-support">Soutenir Ultra TV</h2><p class="sub">Ultra TV est gratuit, sans publicité, et le restera. Un don aide à payer les serveurs (synchronisation, guide, affiches) et le temps passé à l'améliorer. Carte bancaire ou PayPal ; aucune donnée bancaire ne passe par Ultra TV.</p>
+<div class="row"><a class="button" href="${e(KOFI_URL)}" target="_blank" rel="noopener noreferrer">♥ Faire un don sur Ko-fi</a><a class="button alt-btn" href="${e(LIBERAPAY_URL)}" target="_blank" rel="noopener noreferrer">Don régulier sur Liberapay</a></div></section>
 <div class="section-h" id="appareils"><div class="sh-t"><h2 id="h-dev">Appareils <span class="count">${devices.length}</span></h2><p class="muted small">Les TV qui lisent ta configuration.</p></div></div>
 <section class="panel" id="appairer" aria-labelledby="h-pair"><h2 id="h-pair">Appairer un appareil</h2><p class="sub">Relie une TV à ton compte en quelques secondes.</p>
 <ol class="steps"><li>Ouvre Ultra TV sur ta TV.</li><li>Va dans Réglages, puis Synchronisation cloud.</li><li>Saisis ici le code à 8 caractères affiché à l'écran.</li></ol>

@@ -71,3 +71,14 @@ describe("xtreamAccount", () => {
     expect(JSON.stringify(a)).not.toContain("p&ss");
   });
 });
+
+describe("tableau de bord : soutien", () => {
+  it("encart Ko-fi / Liberapay en simples liens (aucun script tiers)", async () => {
+    const { newAccount, call } = await import("./helpers.js");
+    const a = await newAccount();
+    const html = await (await call("/", { cookie: a.cookie, ip: a.ip })).text();
+    expect(html).toContain('href="https://ko-fi.com/ultratv"');
+    expect(html).toContain('href="https://liberapay.com/ultratv/"');
+    expect(html).not.toContain("ko-fi.com/cdn/scripts");
+  });
+});

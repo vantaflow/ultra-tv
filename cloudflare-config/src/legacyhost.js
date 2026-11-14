@@ -16,10 +16,11 @@ export const LEGACY_HOSTS = [LEGACY_HOST, API_HOST];
  *    téléchargements, retour Trakt, QR des applis installées) part sur la même page de la nouvelle adresse.
  *    302 pour GET/HEAD, 307 sinon (garde la méthode et le corps d'un formulaire).
  */
-export function legacyDecision(method, urlString) {
+export function legacyDecision(method, urlString, site = PRIMARY_HOST) {
   const url = new URL(urlString);
-  if (!LEGACY_HOSTS.includes(url.hostname)) return { kind: "serve" };
+  // Site principal choisi par la variable SITE_HOST (tant que le nouveau domaine n'est pas actif : tv.weedy reste le site).
+  if (url.hostname === site || !LEGACY_HOSTS.includes(url.hostname)) return { kind: "serve" };
   if (url.pathname.startsWith("/api/")) return { kind: "serve" };
   const status = method === "GET" || method === "HEAD" ? 302 : 307;
-  return { kind: "redirect", to: `https://${PRIMARY_HOST}${url.pathname}${url.search}`, status };
+  return { kind: "redirect", to: `https://${site}${url.pathname}${url.search}`, status };
 }

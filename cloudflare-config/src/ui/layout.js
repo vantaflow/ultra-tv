@@ -58,7 +58,7 @@ export const USER_NAV = [
 
 const PUBLIC_NAV = [["/envoyer", "Envoyer une source"], ["/apk", "Installer l'app"], ["/login", "Connexion"], ["/signup", "Créer un compte"]];
 
-const navLink = (href, label, icon, cur) => `<a href="${e(href)}"${cur ? ' aria-current="page"' : ""}>${icon ? ico(icon) : ""}<span>${e(label)}</span></a>`;
+const navLink = (href, label, icon, cur) => `<a href="${e(href)}" title="${e(label)}"${cur ? ' aria-current="page"' : ""}>${icon ? ico(icon) : ""}<span>${e(label)}</span></a>`;
 
 /**
  * Page complète dans le gabarit du site.

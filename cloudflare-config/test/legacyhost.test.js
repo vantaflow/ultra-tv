@@ -32,3 +32,10 @@ describe("tv.weedy.dpdns.org : adresse API, pages vers le site principal", () =>
     expect(legacyDecision("GET", `${API}/pair?code=ABCD2345`)).toEqual({ kind: "redirect", to: `${NEW}/pair?code=ABCD2345`, status: 302 });
   });
 });
+
+describe("SITE_HOST non défini : tv.weedy reste le site", () => {
+  it("aucune redirection de tv.weedy, workers.dev redirige vers tv.weedy", () => {
+    expect(legacyDecision("GET", "https://tv.weedy.dpdns.org/login", "tv.weedy.dpdns.org").kind).toBe("serve");
+    expect(legacyDecision("GET", "https://ultratv-config.khalilbenaz.workers.dev/login", "tv.weedy.dpdns.org")).toEqual({ kind: "redirect", to: "https://tv.weedy.dpdns.org/login", status: 302 });
+  });
+});

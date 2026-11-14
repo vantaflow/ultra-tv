@@ -50,7 +50,7 @@ import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envo
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
 import { createDonationLink, parseDonateAmount } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
-import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS } from "./legacyhost.js";
+import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS, API_HOST } from "./legacyhost.js";
 
 export { Guard };
 
@@ -143,7 +143,7 @@ async function route(req, env, ctx) {
   const m = req.method;
 
   // Ancienne adresse : les pages ouvertes dans un navigateur partent vers la nouvelle (l'API reste servie ici).
-  { const d = legacyDecision(m, req.url);
+  { const d = legacyDecision(m, req.url, env.SITE_HOST || API_HOST);
     if (d.kind === "redirect") return new Response(null, { status: d.status, headers: { location: d.to, "cache-control": "no-store" } }); }
 
   // Aucune origine tierce n'a besoin d'appeler ce Worker depuis un navigateur : pas de CORS.

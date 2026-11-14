@@ -10,9 +10,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Mode simple : écran Réglages avec « Revenir au mode complet » (code parental demandé s'il existe) et « Tous les réglages ».
 - Gérer les catégories : poignée d'ordre accessible à la télécommande (Droite puis OK, ▲ ▼), bouton « Trier de A à Z », et bouton « Chaînes » sur chaque catégorie du Direct pour masquer une ou plusieurs chaînes (retirées partout : liste, zapping, guide, recherche).
 - Synchronisés entre appareils : profils (créés, modifiés ou supprimés sur une TV, ils le sont sur les autres ; le code PIN reste local), ordre des catégories et chaînes masquées.
+- Tableau de bord : encart « Soutenir Ultra TV » (liens Ko-fi et Liberapay, sans script tiers).
 
 ### Corrigé
 - Gérer les catégories : le filtre se refermait aussitôt ouvert, impossible d'y taper ; réordonner depuis une liste filtrée mélangeait l'ordre des autres catégories.
+- Tableau de bord : menu du haut coupé (« Administration ») sur un écran moyen ou zoomé ; icônes seules quand la place manque.
 
 ### Modifié
 - Touche Retour : un appui court ne ferme plus jamais l'appli (à l'accueil, il rappelle « Maintenez Retour pour quitter ») ; un appui long la ferme depuis n'importe quel écran.

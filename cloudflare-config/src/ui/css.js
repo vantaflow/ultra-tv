@@ -88,6 +88,9 @@ p{margin:0}
 .langs{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--t-sm)}
 .langs a{color:var(--mut);font-weight:500;padding:6px 2px} .langs a[aria-current]{color:var(--fg);font-weight:700;text-decoration:underline}
 .bnav{display:none}
+/* Menu du haut trop large (écran moyen, zoom) : espacement resserré, puis icônes seules (le nom reste en infobulle et pour les lecteurs d'écran). */
+@media (max-width:1400px){.pnav a{padding:0 9px;gap:6px}}
+@media (min-width:761px) and (max-width:1180px){.pnav a span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}.pnav a{padding:0 11px}}
 @media (max-width:760px){
  .pnav.on-user,.pnav.on-admin{display:none}
  .hdr-in{gap:var(--sp-2)}
