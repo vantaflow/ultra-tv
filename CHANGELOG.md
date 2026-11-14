@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.34] — 2026-11-14 (Android)
+
 ### Ajouté
 - Mode simple › Réglages : taille de l'affichage (petite, normale, grande), propre à chaque appareil.
 
