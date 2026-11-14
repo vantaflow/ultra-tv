@@ -15,6 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Ordre des chaînes d'une catégorie réglable depuis Gérer les catégories › Chaînes (▲ ▼), et synchronisé entre appareils (par profil), comme le « Déplacer » du Direct.
+- Mode simple › Réglages : langue, taille du texte, thème et changement de profil.
 
 ## [1.3.27] — 2026-11-14 (Android)
 

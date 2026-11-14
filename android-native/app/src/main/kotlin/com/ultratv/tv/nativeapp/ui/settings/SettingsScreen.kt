@@ -409,7 +409,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             SwitchPrefRow(C.syncDisplayPrefs, up.syncDisplayPrefs, hint = C.syncDisplayPrefsHint) { panes.setSyncDisplayPrefs(it) }
             if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
         } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
-        PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
+        PrefRow(D.workerUrlTitle, hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
         if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { ctx.openInBrowser(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)) }
     }
     if (paired && connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
@@ -698,7 +698,7 @@ private fun timeFormatLabel(D: DesignStrings, f: com.ultratv.tv.nativeapp.ui.com
     com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.H24 -> D.timeFormat24
 }
 private fun qualityLabel(D: DesignStrings, q: String) = when (q) { "4k" -> "4K"; "fhd" -> "FHD"; "hd" -> "HD"; "sd" -> "SD"; else -> D.auto }
-private fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) {
+internal fun themeLabel(D: DesignStrings, t: AppTheme) = when (t) {
     AppTheme.LIGHT -> D.themeLight; AppTheme.AUTO -> D.themeAuto; AppTheme.DARK -> D.themeDark; AppTheme.OLED -> D.themeOled
     AppTheme.MIDNIGHT -> D.themeMidnight; AppTheme.FOREST -> D.themeForest; AppTheme.PLUM -> D.themePlum
     AppTheme.SAND -> D.themeSand; AppTheme.CONTRAST -> D.themeContrast
