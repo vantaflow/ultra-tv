@@ -330,7 +330,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). If the Worker has a ChariPay key (`CHARIPAY_API_KEY`), the `/donate` page also offers a donation in dirhams with a Moroccan card. No card details ever go through Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
 
 ## Help translate
 
@@ -381,7 +381,6 @@ wrangler secret put TMDB_READ_TOKEN                # TMDB v4 read token (rich de
 wrangler secret put TMDB_API_KEY                   # TMDB v3 key (fallback without a v4 token)
 wrangler secret put OPENSUBTITLES_API_KEY          # OpenSubtitles key (online subtitles)
 wrangler secret put ACCOUNT_RELAY_KEY              # optional: subscription relay outside Cloudflare (cloudflare-config/relay)
-wrangler secret put CHARIPAY_API_KEY               # optional: donations in dirhams via ChariPay (/donate page)
 npm test && wrangler deploy --dry-run
 ```
 

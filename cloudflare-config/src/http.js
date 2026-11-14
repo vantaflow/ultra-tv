@@ -59,8 +59,7 @@ export function html(body, n, status = 200, { camera = false } = {}) {
     "worker-src 'self'",
     // trakt.tv : « Connecter Trakt » est un formulaire POST redirigé vers la page d'autorisation Trakt (form-action
     // s'applique aussi aux redirections).
-    // charipay.ma : « Faire un don » est un formulaire POST redirigé vers la page de paiement ChariPay.
-    "form-action 'self' https://trakt.tv https://charipay.ma https://*.charipay.ma",
+    "form-action 'self' https://trakt.tv",
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join("; ");

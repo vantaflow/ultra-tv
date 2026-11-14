@@ -10,6 +10,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - « Appareil » au lieu de « TV » quand il s'agit de l'appareil (appairage, dissocier, liste des appareils), dans l'appli et sur le site : un téléphone ou une tablette n'est plus appelé TV.
+- Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.
 
 ## [1.3.35] — 2026-11-14 (Android)
 

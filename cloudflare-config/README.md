@@ -16,7 +16,7 @@ cloudflare-config/
 ├── src/pages.js      pages HTML (CSP à nonce)
 ├── src/store.js      comptes, appareils, validation des fournisseurs, réglages partagés
 ├── src/docs.js       stockage des documents (comptes, appareils, jetons, caches) dans D1, repli sur KV
-├── src/donate.js     page /donate (Ko-fi, Liberapay, ChariPay facultatif)
+├── src/donate.js     page /donate (liens Ko-fi et Liberapay)
 ├── migrations/       schéma D1 (télémétrie, activité, état partagé, kv_docs)
 ├── test/             113+ tests vitest (attaques rejouées, parcours, migration)
 └── scripts/e2e.sh    rejeu des attaques contre `wrangler dev`
@@ -86,7 +86,6 @@ wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (f
 wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
 wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
-wrangler secret put CHARIPAY_API_KEY      # facultatif : dons en dirhams via ChariPay sur /donate (Ko-fi et Liberapay n'en ont pas besoin)
 wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 
@@ -135,7 +134,7 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |
-| GET | `/donate`, `/donate/merci` | — | Dons : Ko-fi (<https://ko-fi.com/ultratv>), Liberapay (<https://liberapay.com/ultratv/>), et ChariPay si `CHARIPAY_API_KEY` est défini (montant en dirhams, lien de paiement à usage unique ; rien du donateur n'est gardé) |
+| GET | `/donate`, `/donate/merci` | — | Dons : Ko-fi (<https://ko-fi.com/ultratv>), Liberapay (<https://liberapay.com/ultratv/>) |
 | POST | `/api/device/profiles`, `/api/device/providers/:id/state` ; PUT `/api/device/providers/:id/prefs` | `Bearer` | Synchro des profils, de l'état partagé et des réglages (voir « Synchro multi-appareils ») |
 | POST | `/pair`, `/providers`, `/providers/:id/delete`, `/devices/:id/revoke`, `/password`, `/account/delete`, `/logout` | session + CSRF + Origin | Mutations |
 | POST | `/providers/:id/account` | session + CSRF | Abonnement du fournisseur (cache 10 min, limite propre 600/h) |

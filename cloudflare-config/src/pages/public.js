@@ -3,7 +3,7 @@ import { escapeHtml as e } from "../http.js";
 import { ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { SITE_DICT } from "../i18n/site.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
+import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const nextField = (next) => (next && next !== "/" ? `<input type="hidden" name="next" value="${e(next)}"/>` : "");
@@ -198,36 +198,15 @@ export function offlinePage(n, { lang = "fr", url = "/offline" } = {}) {
   });
 }
 
-/**
- * Page de dons (/donate) : montants proposés + montant libre, en dirhams ; [state] = "form" | "thanks",
- * [err] = "declined" | "upstream" | "invalid" ; [enabled] = clé ChariPay configurée.
- */
-export function donatePage(n, { lang = "en", enabled = false, err = null, state = "form" } = {}) {
+/** Page de dons (/donate) : liens Ko-fi et Liberapay. */
+export function donatePage(n, { lang = "en" } = {}) {
   if (!ENVOYER_LANGS.includes(lang)) lang = "en";
   const t = DONATE_DICT[lang];
   const c = ENVOYER_DICT[lang];
   const dir = ENVOYER_DIR[lang];
-  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`${state === "thanks" ? "/donate/merci" : "/donate"}?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
-  const msg = err && t[err] ? notice(err === "upstream" ? "info" : "err", t[err]) : "";
-  let body;
-  if (state === "thanks") {
-    body = `<div class="panel"><h1>${e(t.thanks)}</h1><p class="sub">${e(t.thanksSub)}</p>
-<div class="row"><a class="button block" href="https://github.com/vantaflow/ultra-tv">${e(t.github)}</a></div></div>`;
-  } else {
-    // Ko-fi (carte ou PayPal, tous pays) toujours proposé ; ChariPay (cartes marocaines, dirhams) quand la clé est là.
-    const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p><div class="row"><a class="button alt-btn block" href="${e(LIBERAPAY_URL)}" rel="noopener">${e(t.liberapay)}</a></div>`;
-    const presets = DONATE_PRESETS.map((a) => `<button class="alt-btn block" type="submit" name="amount" value="${a}">${a} MAD</button>`).join("");
-    body = enabled ? `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}${kofi}
-<form method="post" action="/donate?l=${lang}">
-<p class="hint">${e(t.orMad)} ${e(t.pick)}</p>
-<div class="apk-list">${presets}</div>
-<label for="custom">${e(t.other)}</label>
-<input id="custom" name="custom" dir="ltr" inputmode="numeric" pattern="[0-9]*" min="${DONATE_MIN}" max="${DONATE_MAX}" maxlength="5" autocomplete="off" placeholder="${DONATE_MIN} – ${DONATE_MAX}"/>
-<div class="row"><button class="block" type="submit">${e(t.give)}</button></div>
-</form>
-<div class="note">${ico("info")}<span>${e(t.secure)}</span></div></div>`
-      : `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}${kofi}</div>`;
-  }
+  const langLinks = ENVOYER_LANGS.map((l) => `<a href="${e(`/donate?l=${l}`)}" data-lang="${l}" lang="${l}" hreflang="${l}"${l === lang ? ` aria-current="true"` : ""}>${e(ENVOYER_LANG_NAMES[l])}</a>`).join("");
+  const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p><div class="row"><a class="button alt-btn block" href="${e(LIBERAPAY_URL)}" rel="noopener">${e(t.liberapay)}</a></div>`;
+  const body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${kofi}</div>`;
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
       foot: { github: c.footGithub, privacy: c.footPrivacy, navLabel: c.langLabel, langs: `<nav class="langs" aria-label="${e(c.langLabel)}">${langLinks}</nav>` } } });

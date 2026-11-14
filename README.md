@@ -334,7 +334,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Si le Worker a une clé ChariPay (`CHARIPAY_API_KEY`), la page `/donate` propose aussi un don en dirhams par carte marocaine. Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 
@@ -386,7 +386,6 @@ wrangler secret put TMDB_API_KEY                   # clé TMDB v3 (repli si pas 
 wrangler secret put OPENSUBTITLES_API_KEY          # clé OpenSubtitles (sous-titres en ligne)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
 wrangler secret put ACCOUNT_RELAY_KEY              # facultatif : relais d'abonnement hors Cloudflare (cloudflare-config/relay)
-wrangler secret put CHARIPAY_API_KEY               # facultatif : dons en dirhams via ChariPay (page /donate)
 npm test && wrangler deploy --dry-run
 ```
 

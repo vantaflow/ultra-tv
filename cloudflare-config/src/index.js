@@ -49,7 +49,6 @@ import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnounc
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { pickSiteLang, TOO_MANY_TEXT } from "./i18n/site.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
-import { createDonationLink, parseDonateAmount } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
 import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS, API_HOST } from "./legacyhost.js";
 
@@ -232,14 +231,11 @@ async function route(req, env, ctx) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
     return envoyerPage(nonce(), { code: normalizeEnvoiCode(url.searchParams.get("c")), lang });
   }
-  // Dons (ChariPay) : page publique, montant choisi → lien de paiement à usage unique créé côté serveur.
-  if (path === "/donate" || path === "/donate/merci") {
+  // Dons : page publique (liens Ko-fi et Liberapay). /donate/merci ne sert plus : 302 vers /donate pour les vieux liens.
+  if (path === "/donate/merci" && (m === "GET" || m === "HEAD")) return redirect("/donate");
+  if (path === "/donate" && (m === "GET" || m === "HEAD")) {
     const lang = pickEnvoyerLang({ param: url.searchParams.get("l"), cookie: langFromCookie(req.headers.get("cookie")), acceptLanguage: req.headers.get("accept-language") });
-    if (m === "GET" || m === "HEAD") {
-      const err = ["declined", "upstream", "invalid"].includes(url.searchParams.get("e")) ? url.searchParams.get("e") : null;
-      return donatePage(nonce(), { lang, enabled: Boolean(env.CHARIPAY_API_KEY), err, state: path === "/donate/merci" ? "thanks" : "form" });
-    }
-    if (path === "/donate" && m === "POST") return donateStart(req, env, url, lang);
+    return donatePage(nonce(), { lang });
   }
   if (path === "/login" && m === "GET") { const n = nonce(); return loginPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next")), { lang: siteLangOf(req, url), url: req.url }); }
   if (path === "/login" && m === "POST") return doLogin(req, env);
@@ -1592,19 +1588,4 @@ async function migrateLegacy(env, mac, rep) {
   await putAccount(env, acct);
   await env.CONFIG.delete(mac); // le clair disparaît seulement une fois la copie chiffrée écrite
   rep.migrated++;
-}
-
-/** Formulaire de don : montant validé, lien ChariPay créé (débit limité par IP), redirection vers la page de paiement. */
-async function donateStart(req, env, url, lang) {
-  if (!sameOrigin(req)) return new Response("Forbidden (origin)", { status: 403 });
-  const rl = await limited(env, `donate:ip:${clientIp(req)}`, 10, 600);
-  if (rl) return rl;
-  const parsed = await readForm(req, 1024);
-  if (parsed.error) return parsed.error;
-  const form = parsed.form;
-  const amount = parseDonateAmount(form.get("amount"), form.get("custom"));
-  if (!amount) return redirect(`/donate?e=invalid&l=${lang}`);
-  const r = await createDonationLink(env, amount, { origin: url.origin, lang });
-  if (r.error) return redirect(`/donate?e=upstream&l=${lang}`);
-  return new Response(null, { status: 303, headers: { location: r.url, "cache-control": "no-store" } });
 }
