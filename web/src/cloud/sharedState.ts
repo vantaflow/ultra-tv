@@ -11,7 +11,8 @@ import { currentTransport } from "@/net/transport";
 import { credsOf } from "@/sync/core";
 import { syncState, type SharedFav, type SharedHist } from "./client";
 
-export const DEFAULT_PROFILE_NAME = "Principal";
+import { DEFAULT_PROFILE_NAME } from "./profilesLogic";
+export { DEFAULT_PROFILE_NAME };
 const KIND_TO_WIRE: Record<Kind, string> = { live: "LIVE", movie: "MOVIE", series: "SERIES" };
 const WIRE_TO_KIND: Record<string, Kind> = { LIVE: "live", MOVIE: "movie", SERIES: "series" };
 const fk = (e: { p: string; k: string; r: string }) => `${e.p}|${e.k}|${e.r}`;

@@ -1,19 +1,33 @@
 // Préférences d'interface : petites, lues AVANT le premier rendu (pas de flash de thème ni de langue).
 import { create } from "zustand";
-import { detectLang, type Lang } from "@/i18n/lang";
+import { detectLang, LANGS, type Lang } from "@/i18n/lang";
 import type { DnsSettings } from "@/net/dns";
 import { clockText, parseTimeFormat, type TimeFormat } from "@/lib/clock";
 import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
-export interface Profile { id: string; name: string; color: string }
+/** `kids` et `lang` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
+export interface Profile { id: string; name: string; color: string; kids?: boolean; lang?: Lang }
+
+/** Langue effective : celle du profil courant si elle existe, sinon celle de l'appareil. */
+export function effectiveLang(profiles: Profile[], profileId: string, deviceLang: Lang): Lang {
+  const l = (profiles.find((p) => p.id === profileId) ?? profiles[0])?.lang;
+  return l && LANGS.some((x) => x.code === l) ? l : deviceLang;
+}
+
+/** Appelé après chaque changement de la liste des profils (journal de synchro) ; branché par cloud/profilesSync. */
+let profilesHook: ((before: Profile[], after: Profile[]) => void) | null = null;
+export const setProfilesHook = (h: typeof profilesHook) => { profilesHook = h; };
 
 export interface Prefs {
   theme: Theme;
   /** Identifiant de la couleur d'accent (voir lib/themes.ts) : mêmes clés qu'Android. */
   accent: AccentId;
+  /** Langue effective de l'interface (calculée : profil courant, sinon `deviceLang`). */
   lang: Lang;
+  /** Langue de l'appareil, utilisée par les profils sans langue propre. */
+  deviceLang: Lang;
   /** Format de l'heure : « auto » (langue / système), 12 h ou 24 h. Local à l'appareil : les réglages synchronisés ne contiennent que langues et catégories. */
   timeFormat: TimeFormat;
   activeSourceId: number | null;
@@ -53,7 +67,7 @@ export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B
 const KEY = "ultratv.prefs.v1";
 
 const defaults = (): Prefs => ({
-  theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), timeFormat: "auto", activeSourceId: null,
+  theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), deviceLang: detectLang(), timeFormat: "auto", activeSourceId: null,
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
@@ -67,6 +81,10 @@ function load(): Prefs {
     if (raw) {
       const v = { ...defaults(), ...JSON.parse(raw) } as Prefs;
       // Anciens réglages (accent en hexadécimal, valeur inconnue) migrés / repliés sur la valeur par défaut.
+      const saved = (JSON.parse(raw) as { deviceLang?: string }).deviceLang;
+      const stored = LANGS.find((l) => l.code === saved)?.code ?? LANGS.find((l) => l.code === v.lang)?.code ?? detectLang();
+      v.deviceLang = stored;
+      v.lang = effectiveLang(v.profiles, v.profileId, stored);
       v.accent = parseAccent(v.accent);
       v.theme = parseTheme(v.theme);
       v.timeFormat = parseTimeFormat(v.timeFormat);
@@ -82,7 +100,17 @@ interface PrefsStore extends Prefs { set: (p: Partial<Prefs>) => void }
 export const usePrefs = create<PrefsStore>((set, get) => ({
   ...load(),
   set: (p) => {
-    set(p);
+    const before = get();
+    const next: Partial<Prefs> = { ...p };
+    // Choisir une langue = la langue du profil courant (elle suit le profil, comme sur Android).
+    if (p.lang !== undefined) {
+      const pid = p.profileId ?? before.profileId;
+      next.profiles = (p.profiles ?? before.profiles).map((x) => (x.id === pid ? { ...x, lang: p.lang } : x));
+    }
+    const m = { ...before, ...next };
+    next.lang = effectiveLang(m.profiles, m.profileId, m.deviceLang);
+    set(next);
+    if (get().profiles !== before.profiles) profilesHook?.(before.profiles, get().profiles);
     const { set: _s, ...rest } = get();
     void _s;
     try { localStorage.setItem(KEY, JSON.stringify(rest)); } catch { /* ignoré */ }

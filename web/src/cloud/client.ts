@@ -283,6 +283,17 @@ export async function syncState(base: string, token: string, providerId: string,
   return { fav: Array.isArray(o.fav) ? o.fav : [], hist: Array.isArray(o.hist) ? o.hist : [] };
 }
 
+/** Échange la liste des profils (nom, couleur, enfants, langue ; jamais de PIN) ; renvoie la liste fusionnée, null si le Worker ne connaît pas la route. */
+export async function syncProfilesRemote(base: string, token: string, profiles: unknown[]): Promise<unknown[] | null> {
+  const r = await http({ url: `${base}/api/device/profiles`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json({ profiles }) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("sync-profiles", r.status);
+  const o = parse<{ profiles?: unknown }>(r);
+  return Array.isArray(o.profiles) ? o.profiles : [];
+}
+
 /** Renomme l'appareil courant dans le compte (le tableau de bord et les autres appareils le voient). */
 export async function renameDevice(base: string, token: string, name: string): Promise<void> {
   const r = await http({ url: `${base}/api/device`, method: "PATCH", headers: auth(token, { "content-type": "application/json" }), body: json({ name }) });

@@ -15,6 +15,7 @@ import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, se
 import { guideErrorForSave } from "@/lib/guideAddress";
 import { EXTRA_EPG_KEY } from "@/sync/epg";
 import type { TimeFormat } from "@/lib/clock";
+import { deleteProfileData } from "@/db/profileData";
 import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
 import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
@@ -592,7 +593,7 @@ function ProfilesPane() {
           <span className="avatar" style={{ background: pr.color }}>{(pr.name || t("profile.main")).slice(0, 1).toUpperCase()}</span>
           <span className="grow"><b>{pr.name || t("profile.main")}</b>{p.profileId === pr.id && <div className="meta">{t("set.active")}</div>}</span>
           {p.profileId !== pr.id && <button className="btn sm" onClick={() => p.set({ profileId: pr.id })}>{t("set.makeActive")}</button>}
-          {i > 0 && <button className="btn sm danger" aria-label={t("common.delete")} onClick={() => p.set({ profiles: p.profiles.filter((x) => x.id !== pr.id), profileId: p.profileId === pr.id ? p.profiles[0]!.id : p.profileId })}><Icon name="trash" size={16} /></button>}
+          {i > 0 && <button className="btn sm danger" aria-label={t("common.delete")} onClick={() => { void deleteProfileData(pr.id); p.set({ profiles: p.profiles.filter((x) => x.id !== pr.id), profileId: p.profileId === pr.id ? p.profiles[0]!.id : p.profileId }); }}><Icon name="trash" size={16} /></button>}
         </div>
       ))}
       <div style={{ display: "flex", gap: 10 }}>

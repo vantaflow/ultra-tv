@@ -18,6 +18,7 @@ import {
 } from "./client";
 import { reconcile } from "./reconcile";
 import { syncSourceState } from "./sharedState";
+import { onLocalProfilesChanged, syncProfiles } from "./profilesSync";
 import { setPosterFinder } from "@/lib/posterFallback";
 import { createBatcher, foreignHidden, fromPrefs, hiddenFromWire, planChOrder, shouldApply, toPrefs } from "./prefs";
 import { applyOrders, listOrders, setOrderListener } from "@/db/channelOrder";
@@ -158,7 +159,7 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     const now = Date.now();
     await setSetting(K.lastSync, now);
     patch({ lastSyncAt: now });
-    if (res.unchanged) return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true };
+    if (res.unchanged) { void syncProfilesCloud(); return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true }; }
     await setSetting(K.etag, res.etag);
     await setSetting(K.prefsBoot, true);
     const devs = res.config.devices;
@@ -383,6 +384,23 @@ export async function unshareSource(source: Source): Promise<boolean> {
   return true;
 }
 
+/** Profils (nom, couleur, langue) : échange avec le compte, en arrière-plan, n'échoue jamais. */
+export async function syncProfilesCloud(): Promise<void> {
+  const { worker, paired } = useCloud.getState();
+  if (!paired) return;
+  const token = await getToken();
+  if (!token) return;
+  try { await syncProfiles(worker, token); } catch { /* réessayé au prochain passage */ }
+}
+
+// Changement local de profils : envoi après un court délai (regroupe les modifications successives).
+export const PROFILES_PUSH_DELAY_MS = 3000;
+let profilesTimer: ReturnType<typeof setTimeout> | null = null;
+onLocalProfilesChanged(() => {
+  if (profilesTimer) clearTimeout(profilesTimer);
+  profilesTimer = setTimeout(() => { profilesTimer = null; void syncProfilesCloud(); }, PROFILES_PUSH_DELAY_MS);
+});
+
 let stateRunning: Promise<void> | null = null;
 /** Favoris, reprises et derniers vus de chaque source du compte (en arrière-plan, n'échoue jamais). */
 export function syncSharedState(): Promise<void> {
@@ -391,6 +409,8 @@ export function syncSharedState(): Promise<void> {
     if (!paired) return;
     const token = await getToken();
     if (!token) return;
+    // Profils d'abord : favoris et reprises sont rapprochés par nom de profil.
+    try { await syncProfiles(worker, token); } catch { /* réessayé au prochain passage */ }
     for (const s of await listSources()) {
       if (!s.cloudId) continue;
       try { await syncSourceState(worker, token, s); } catch { /* réessayé au prochain passage */ }

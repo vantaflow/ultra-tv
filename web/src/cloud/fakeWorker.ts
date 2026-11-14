@@ -3,6 +3,8 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import type { CloudProvider } from "./client";
 
+export interface FakeProfile { n: string; c: number; k: boolean; at: number; on: boolean; f?: string; l?: string }
+
 export interface FakeWorker {
   base: string;
   close: () => void;
@@ -23,13 +25,17 @@ export interface FakeWorker {
     putCount: number;
     lastPrefs?: unknown;
     hasRename: boolean;
+    /** Profils fusionnés (même règle que le Worker : par nom sans casse, le plus récent gagne). */
+    profiles: FakeProfile[];
+    lastProfilesBody?: unknown;
+    hasProfiles: boolean;
   };
 }
 
 export async function startFakeWorker(): Promise<FakeWorker> {
   const w: FakeWorker = {
     base: "", providers: [], version: 1, token: "tok-1", close: () => undefined, confirm: () => undefined,
-    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, putCount: 0, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
+    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, profiles: [], hasProfiles: true, putCount: 0, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
   };
   let confirmed = false;
   w.confirm = () => { confirmed = true; };
@@ -66,6 +72,26 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         if (me) me.name = body.name;
         w.version++;
         return send(200, { name: body.name });
+      }
+      if (url.pathname === "/api/device/profiles" && req.method === "POST") {
+        if (!bearer) return send(401);
+        if (!w.state.hasProfiles) return send(404);
+        w.state.lastProfilesBody = body;
+        if (!Array.isArray(body.profiles)) return send(400, { error: "profiles" });
+        const now = Date.now();
+        const byKey = new Map(w.state.profiles.map((p) => [p.n.toLowerCase(), p]));
+        for (const e of body.profiles as Record<string, unknown>[]) {
+          const n = typeof e?.n === "string" ? e.n.trim().slice(0, 24) : "";
+          const at = Number(e?.at);
+          if (!n || !Number.isFinite(at) || at <= 0) return send(400, { error: "profiles" });
+          const l = typeof e.l === "string" && /^(system|[a-z]{2}(-[A-Z]{2})?)$/.test(e.l) ? e.l : "";
+          const f = typeof e.f === "string" ? e.f.trim().slice(0, 24) : "";
+          const p: FakeProfile = { n, c: Number.isInteger(e.c) ? (e.c as number) : 0, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}) };
+          const o = byKey.get(n.toLowerCase());
+          if (!o || p.at > o.at) byKey.set(n.toLowerCase(), p);
+        }
+        w.state.profiles = [...byKey.values()].sort((a, b) => a.at - b.at);
+        return send(200, { profiles: w.state.profiles });
       }
       if (url.pathname === "/api/device/rotate" && req.method === "POST") return bearer ? send(200, { token: "tok-2", deviceId: "dev-1" }) : send(401);
       if (url.pathname === "/api/device/providers" && req.method === "POST") {
