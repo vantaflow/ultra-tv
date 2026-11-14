@@ -3,9 +3,8 @@ main = "src/index.js"
 # Adresse publique : domaine perso (workers.dev est bloqué sur certains réseaux et box) ; workers.dev reste actif
 # pour les appareils et liens existants.
 workers_dev = true
-routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }]
-# Site principal : ajouter { pattern = "ultratv.dpdns.org", custom_domain = true } et la variable SITE_HOST = "ultratv.dpdns.org"
-# une fois le domaine actif sur Cloudflare (sans SITE_HOST, tv.weedy.dpdns.org reste le site).
+# ultratv.dpdns.org : site principal ; tv.weedy.dpdns.org : adresse de l'API des applis (ses pages redirigent vers le site).
+routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }, { pattern = "ultratv.dpdns.org", custom_domain = true }]
 compatibility_date = "2025-09-01"
 
 # Namespace KV : comptes, appareils appairés, crashs et journaux.
@@ -55,6 +54,8 @@ new_sqlite_classes = ["Guard"]
 # Relais d'abonnement hors Cloudflare (relay/, projet Vercel utv-relay) : fournisseurs qui bloquent les serveurs
 # Cloudflare. Sans ACCOUNT_RELAY_KEY, il n'est jamais appelé.
 [vars]
+# Site principal (voir legacyhost.js) : sans cette variable, tv.weedy.dpdns.org reste le site.
+SITE_HOST = "ultratv.dpdns.org"
 ACCOUNT_RELAY_URL = "https://utv-relay.vercel.app/api/xtream"
 # Comptes ayant accès à /admin (liste séparée par des virgules).
 ADMIN_LOGINS = "khalilbenaz"
