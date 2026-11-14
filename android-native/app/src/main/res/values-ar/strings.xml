@@ -1712,4 +1712,5 @@
     <string name="cat_channel_hidden">مخفية</string>
     <string name="cat_order_hint">▸ الترتيب · القنوات</string>
     <string name="back_hold_to_exit">اضغط مطولًا على رجوع لإغلاق Ultra TV</string>
+    <string name="back_again_to_exit">اضغط رجوع مرة أخرى لإغلاق Ultra TV</string>
 </resources>

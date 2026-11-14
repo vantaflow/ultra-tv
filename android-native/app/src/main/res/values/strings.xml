@@ -1650,4 +1650,5 @@
     <string name="cat_channel_hidden">Hidden</string>
     <string name="cat_order_hint">▸ Order · Channels</string>
     <string name="back_hold_to_exit">Hold Back to close Ultra TV</string>
+    <string name="back_again_to_exit">Press Back again to close Ultra TV</string>
 </resources>

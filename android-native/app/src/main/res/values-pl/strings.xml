@@ -1604,4 +1604,5 @@
     <string name="cat_channel_hidden">Ukryty</string>
     <string name="cat_order_hint">▸ Kolejność · Kanały</string>
     <string name="back_hold_to_exit">Przytrzymaj Wstecz, aby zamknąć Ultra TV</string>
+    <string name="back_again_to_exit">Naciśnij ponownie Wstecz, aby zamknąć Ultra TV</string>
 </resources>

@@ -11,3 +11,11 @@ class BackHoldTest {
         assertTrue(BackHold.isLong(eventTime = 1_800, downTime = 1_000))
     }
 }
+
+class BackAgainTest {
+    @Test fun deuxAppuisRapproches_ferment() {
+        assertFalse(BackHold.isSecondPress(now = 5_000, lastPress = 0))
+        assertTrue(BackHold.isSecondPress(now = 5_000, lastPress = 3_500))
+        assertFalse(BackHold.isSecondPress(now = 9_000, lastPress = 3_500))
+    }
+}

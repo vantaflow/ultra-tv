@@ -9,4 +9,8 @@ object BackHold {
 
     /** Appui assez long pour quitter : touche encore enfoncée (répétitions) ou relâchée après [HOLD_MS]. */
     fun isLong(eventTime: Long, downTime: Long): Boolean = eventTime - downTime >= HOLD_MS
+
+    /** Téléphone / tablette (Retour = geste, pas d'appui long) : deux Retour en moins de [AGAIN_MS] à l'accueil ferment l'appli. */
+    const val AGAIN_MS = 2_000L
+    fun isSecondPress(now: Long, lastPress: Long): Boolean = lastPress > 0 && now - lastPress <= AGAIN_MS
 }

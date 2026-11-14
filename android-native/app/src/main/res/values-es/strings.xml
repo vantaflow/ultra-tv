@@ -1654,4 +1654,5 @@
     <string name="cat_channel_hidden">Oculto</string>
     <string name="cat_order_hint">▸ Orden · Canales</string>
     <string name="back_hold_to_exit">Mantén pulsado Atrás para cerrar Ultra TV</string>
+    <string name="back_again_to_exit">Pulsa Atrás de nuevo para cerrar Ultra TV</string>
 </resources>

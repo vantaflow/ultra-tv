@@ -164,11 +164,18 @@ class MainActivity : ComponentActivity() {
         // Dernier recours (enregistré AVANT la navigation et les dialogues, donc appelé seulement si aucun ne gère Retour) :
         // un appui court ne ferme plus l'appli, il rappelle comment la quitter (appui long).
         onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            private var lastPress = 0L
             override fun handleOnBackPressed() {
+                // Téléphone / tablette : le Retour est souvent un geste, impossible à maintenir → deux appuis rapprochés.
+                val tv = com.ultratv.tv.nativeapp.ui.common.isTelevision(this@MainActivity)
+                val now = android.os.SystemClock.uptimeMillis()
+                if (!tv && com.ultratv.tv.nativeapp.ui.common.BackHold.isSecondPress(now, lastPress)) { finish(); return }
+                lastPress = now
                 RemoteLog.info("keys", "back at root: stay")
                 lifecycleScope.launch {
                     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefsStore.get().flow.first().language }.getOrDefault(""))
-                    android.widget.Toast.makeText(this@MainActivity, com.ultratv.tv.nativeapp.i18n.I18n.string(lang, R.string.back_hold_to_exit), android.widget.Toast.LENGTH_SHORT).show()
+                    val msg = if (tv) R.string.back_hold_to_exit else R.string.back_again_to_exit
+                    android.widget.Toast.makeText(this@MainActivity, com.ultratv.tv.nativeapp.i18n.I18n.string(lang, msg), android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
         })

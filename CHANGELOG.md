@@ -14,6 +14,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Synchro : profils, favoris et reprises échangés à chaque synchro, même quand la configuration du compte n'a pas changé (un profil créé sur une autre TV n'apparaissait parfois jamais).
+- Téléphone et tablette : deux Retour rapprochés à l'accueil ferment l'appli (l'appui long ne marche pas avec le geste Retour) ; sur TV, appui long inchangé.
 
 ## [1.3.28] — 2026-11-14 (Android)
 
