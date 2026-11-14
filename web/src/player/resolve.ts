@@ -36,22 +36,28 @@ export interface PlayTarget {
 
 export interface Candidate { url: string; format: Format; label: string }
 
-export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean }): Candidate[] {
+export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean; nativeHls?: boolean }): Candidate[] {
   // Portail Stalker : le lien n'existe qu'au moment de jouer (voir stalkerCandidate, asynchrone).
   if (source.type === "stalker") return [];
   if (t.protectedStream) return [];
   const c = credsOf(source);
   const out: Candidate[] = [];
   const add = (url: string, format: Format, label: string) => { if (!out.some((o) => o.url === url)) out.push({ url, format, label }); };
+  // HLS natif (TV) : même adresse que le candidat hls.js, mais lue par la couche média de la TV
+  // (pas de CORS, pas de proxy). Dernier recours quand hls.js et mpegts.js butent sur CORS.
+  const addNative = (url: string) => { if (!out.some((o) => o.url === url && o.format === "hlsn")) out.push({ url, format: "hlsn", label: "HLS natif" }); };
   if (t.url) {
     const f = t.url.split("?")[0]!.toLowerCase();
-    add(t.url, f.endsWith(".m3u8") ? "hls" : f.endsWith(".ts") ? "ts" : t.kind === "live" ? "hls" : "native", "M3U");
+    const fmt = f.endsWith(".m3u8") ? "hls" : f.endsWith(".ts") ? "ts" : t.kind === "live" ? "hls" : "native";
+    add(t.url, fmt, "M3U");
+    if (opts.nativeHls && fmt === "hls") addNative(t.url);
     return out;
   }
   if (t.kind === "live") {
     if (t.replay) { add(timeshiftUrl(c, t.refId, t.replay.start, t.replay.minutes), "ts", "TS"); return out; }
     const order: Array<["m3u8" | "ts", Format]> = opts.liveFormat === "ts" ? [["ts", "ts"], ["m3u8", "hls"]] : [["m3u8", "hls"], ["ts", "ts"]];
     for (const [ext, fmt] of order) add(liveUrl(c, t.refId, ext), fmt, ext.toUpperCase());
+    if (opts.nativeHls) addNative(liveUrl(c, t.refId, "m3u8"));
     return out;
   }
   const exts = [t.ext || "mp4"];
@@ -62,6 +68,7 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
   // Dernier recours : beaucoup de panneaux Xtream servent aussi le VOD en HLS (remux/transcodage audio AAC),
   // seule voie quand le conteneur natif joue sans son (AC-3/DTS non décodables par Chromium).
   add(vod("m3u8"), "hls", "M3U8");
+  if (opts.nativeHls) addNative(vod("m3u8"));
   return out;
 }
 

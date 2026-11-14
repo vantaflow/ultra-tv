@@ -11,7 +11,8 @@ import { bestTrackIndex, trackLabel } from "./trackChoice";
 import { requestHeaders, wrapUrl, type Transport } from "@/net/transport";
 
 export type PlayState = "idle" | "loading" | "playing" | "paused" | "buffering" | "ended" | "error";
-export type Format = "hls" | "ts" | "native";
+/** "hlsn" = HLS natif : m3u8 lu par la couche média de l'appareil (TV Tizen/webOS), sans CORS ni proxy. */
+export type Format = "hls" | "ts" | "native" | "hlsn";
 
 export interface LoadArgs {
   url: string;
@@ -104,21 +105,30 @@ export class PlayerEngine {
     try {
       if (a.format === "hls") await this.loadHls(a, t, headers, my);
       else if (a.format === "ts") await this.loadTs(a, t, headers, my);
+      else if (a.format === "hlsn") this.loadNative(a, t, true);
       else this.loadNative(a, t);
     } catch {
       if (my === this.token) this.fail("load");
     }
   }
 
-  private loadNative(a: LoadArgs, t: Transport) {
-    this.engineName = "HTML5";
-    const v = this.video;
-    v.src = wrapUrl(t, a.url);
+  /** Reprise de lecture (startAt) commune aux lecteurs natifs (MP4/MKV/HLS natif). */
+  private applyStartAt(a: LoadArgs) {
     if (a.startAt && a.startAt > 1) {
+      const v = this.video;
       const seek = () => { v.currentTime = a.startAt!; v.removeEventListener("loadedmetadata", seek); this.pendingSeek = null; };
       this.pendingSeek = seek;
       v.addEventListener("loadedmetadata", seek);
     }
+  }
+
+  private loadNative(a: LoadArgs, t: Transport, rawHls = false) {
+    this.engineName = rawHls ? "HLS natif" : "HTML5";
+    const v = this.video;
+    // HLS natif : la couche média de la TV résout la playlist elle-même, en direct du fournisseur
+    // (le proxy CORS casserait les segments relatifs).
+    v.src = rawHls ? a.url : wrapUrl(t, a.url);
+    this.applyStartAt(a);
     void v.play().catch(() => undefined);
   }
 
@@ -126,7 +136,13 @@ export class PlayerEngine {
     const mod = await import("hls.js");
     if (my !== this.token) return;
     const HlsCtor = mod.default;
-    if (!HlsCtor.isSupported()) { this.loadNative({ ...a, format: "native" }, t); return; }
+    if (!HlsCtor.isSupported()) {
+      // Pas de MSE (improbable hors TV) : lecture native. Sur TV, le HLS natif lit le m3u8 en direct
+      // du fournisseur (le proxy casserait les segments relatifs) — sinon comportement historique.
+      const tv = (import.meta as unknown as { env?: { VITE_TV?: string } }).env?.VITE_TV === "1";
+      this.loadNative(a, t, tv);
+      return;
+    }
     const BaseLoader = HlsCtor.DefaultConfig.loader;
     const wrap = (u: string) => (t.mode === "electron" && u.startsWith(t.base) ? u : wrapUrl(t, u));
     class ProxyLoader extends BaseLoader {

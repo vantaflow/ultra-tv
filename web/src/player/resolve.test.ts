@@ -40,6 +40,28 @@ describe("candidates", () => {
     const c = candidates({ ...source, type: "m3u" }, { ...base, kind: "live", refId: 1, url: "http://x/a.m3u8" }, { liveFormat: "ts", preferMp4: true });
     expect(c).toEqual([{ url: "http://x/a.m3u8", format: "hls", label: "M3U" }]);
   });
+
+  it("TV (nativeHls) : HLS natif en dernier recours après hls.js et MPEG-TS", () => {
+    const c = candidates(source, { ...base, kind: "live", refId: 42 }, { liveFormat: "m3u8", preferMp4: true, nativeHls: true });
+    expect(c.map((x) => x.format)).toEqual(["hls", "ts", "hlsn"]);
+    expect(c[2]!.url).toBe(c[0]!.url);
+    expect(c[2]!.label).toBe("HLS natif");
+  });
+
+  it("TV : HLS natif sur l'URL M3U et sur le repli m3u8 des films, jamais sur la rediffusion (TS)", () => {
+    const m3u = candidates({ ...source, type: "m3u" }, { ...base, kind: "live", refId: 1, url: "http://x/a.m3u8" }, { liveFormat: "m3u8", preferMp4: true, nativeHls: true });
+    expect(m3u.map((x) => x.format)).toEqual(["hls", "hlsn"]);
+    const vod = candidates(source, { ...base, kind: "movie", refId: 7, ext: "mp4" }, { liveFormat: "m3u8", preferMp4: true, nativeHls: true });
+    expect(vod[vod.length - 1]!.format).toBe("hlsn");
+    const replay = candidates(source, { ...base, kind: "live", refId: 5, replay: { start: Date.UTC(2026, 0, 1, 20), minutes: 60 } }, { liveFormat: "m3u8", preferMp4: true, nativeHls: true });
+    expect(replay).toHaveLength(1);
+    expect(replay[0]!.format).toBe("ts");
+  });
+
+  it("hors TV : aucune liste changée", () => {
+    const t: PlayTarget = { ...base, kind: "live", refId: 42 };
+    expect(candidates(source, t, { liveFormat: "m3u8", preferMp4: true }).map((x) => x.format)).toEqual(["hls", "ts"]);
+  });
 });
 
 describe("formatFromUrl", () => {

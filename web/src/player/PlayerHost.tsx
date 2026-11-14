@@ -39,6 +39,7 @@ import { LiveReconnect } from "./reconnect";
 import { effectivePreferred } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { stalkerCandidate, candidates, type Candidate } from "./resolve";
+import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
@@ -264,7 +265,7 @@ export function PlayerHost() {
       }).catch(() => { if (!dead) { setError(true); setState("error"); } });
       return () => { dead = true; };
     }
-    const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4 });
+    const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4, nativeHls: isTv() });
     candRef.current = { list, i: 0 };
     silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
     setNoAudio(false);

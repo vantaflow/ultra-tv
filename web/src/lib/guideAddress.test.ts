@@ -1,5 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
+import { createRequire } from "node:module";
 import { gzipSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { checkGuideAddress, guideErrorKey, validateGuideAddress, verifyGuideAddress } from "./guideAddress";
@@ -13,6 +14,9 @@ describe("validateGuideAddress : forme", () => {
   it("tolère une query string ou un fragment après le chemin", () => {
     expect(validateGuideAddress("https://g.test/epg.xml.gz?token=abc&x=1").ok).toBe(true);
     expect(validateGuideAddress("http://g.test/epg.xml#haut").ok).toBe(true);
+  });
+  it("accepte un guide .xml.gz avec jeton en query, port, identifiants ou hôte IPv6 (cas Windows signalé)", () => {
+    for (const u of ["https://g.test/epg.xml.gz?token=x", "http://user:pw@g.test:8080/a/b/epg.xml.gz?token=x&y=2#f", "http://192.168.1.5/guide.XML.GZ?t=%20x", "http://[::1]:80/epg.xml.gz", "https://g.test/dir.v2/epg.xml.gz?next=/other.php"]) expect(validateGuideAddress(u).ok, u).toBe(true);
   });
   it("refuse ftp et les adresses sans schéma", () => {
     expect(problem("ftp://g.test/epg.xml")).toBe("scheme");
@@ -77,5 +81,35 @@ describe("checkGuideAddress : forme puis réseau", () => {
   it("adresse valable : null ; 404 : clé http avec le code", async () => {
     expect(await checkGuideAddress(direct, `${base}/ok.xml`)).toEqual({ key: null });
     expect(await checkGuideAddress(direct, `${base}/absent.xml`)).toEqual({ key: "guide.err.http", status: 404 });
+  });
+});
+
+describe("verifyGuideAddress via le vrai proxy Electron (transport « electron »)", () => {
+  const { createProxyServer } = createRequire(import.meta.url)("../../../electron/proxy.cjs") as { createProxyServer: (o: object) => { start(): Promise<{ base: string }>; stop(): void } };
+  let proxy: ReturnType<typeof createProxyServer>;
+  let up: http.Server;
+  let upBase = "";
+  let t: { mode: "electron"; base: string };
+  beforeAll(async () => {
+    up = http.createServer((req, res) => {
+      const path = (req.url ?? "").split("?")[0]!;
+      if (path === "/epg.xml.gz") { res.writeHead(200, { "content-type": "application/gzip" }); res.end(gzipSync(Buffer.from(XMLTV))); }
+      else if (path === "/ce.xml") { res.writeHead(200, { "content-type": "text/xml", "content-encoding": "gzip" }); res.end(gzipSync(Buffer.from(XMLTV))); }
+      else { res.writeHead(404); res.end(); }
+    });
+    await new Promise<void>((r) => up.listen(0, "127.0.0.1", r));
+    upBase = `http://127.0.0.1:${(up.address() as AddressInfo).port}`;
+    proxy = createProxyServer({ allowedOrigin: "app://ultratv", token: "tok", lookup: undefined });
+    t = { mode: "electron", base: (await proxy.start()).base };
+  });
+  afterAll(() => { proxy.stop(); up.close(); });
+  it("epg.xml.gz?token=x : accepté, téléchargé et décompressé", async () => {
+    expect(await checkGuideAddress(t, `${upBase}/epg.xml.gz?token=x`)).toEqual({ key: null });
+  });
+  it("Content-Encoding: gzip sur un .xml : accepté", async () => {
+    expect(await checkGuideAddress(t, `${upBase}/ce.xml`)).toEqual({ key: null });
+  });
+  it("404 relayé", async () => {
+    expect(await checkGuideAddress(t, `${upBase}/x.xml.gz`)).toEqual({ key: "guide.err.http", status: 404 });
   });
 });
