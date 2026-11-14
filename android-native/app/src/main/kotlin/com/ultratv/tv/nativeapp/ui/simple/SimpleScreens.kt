@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -153,7 +154,8 @@ fun SimpleCatalogScreen(kind: CatalogKind, onOpen: (Long) -> Unit, onBack: () ->
         var hasFocus by remember { mutableStateOf(false) }
         RequestInitialFocus(first, hasFocus = { hasFocus }, key = items.itemCount > 0)
         LazyVerticalGrid(
-            GridCells.Fixed(if (touch) 3 else 5),
+            // TV : colonnes adaptatives (5 en taille Grande, 6 en Moyenne, 7 en Petite) : le zoom du mode simple montre plus d'affiches.
+            if (touch) GridCells.Fixed(3) else GridCells.Adaptive(140.dp),
             Modifier.weight(1f).fillMaxWidth().onFocusChanged { hasFocus = it.hasFocus }.focusRestorer().focusGroup(),
             contentPadding = PaddingValues(top = 12.design, bottom = 24.design),
             horizontalArrangement = Arrangement.spacedBy(36.design), verticalArrangement = Arrangement.spacedBy(36.design),
