@@ -1653,6 +1653,6 @@
     <string name="back_again_to_exit">Press Back again to close Ultra TV</string>
     <string name="simple_size">Display size</string>
     <string name="simple_size_small">Small</string>
-    <string name="simple_size_normal">Standard</string>
+    <string name="simple_size_normal">Medium</string>
     <string name="simple_size_large">Large</string>
 </resources>

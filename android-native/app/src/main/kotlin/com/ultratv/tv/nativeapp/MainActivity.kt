@@ -1,5 +1,8 @@
 package com.ultratv.tv.nativeapp
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.wrapContentSize
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -843,10 +846,19 @@ private fun StartupLoading() {
     }
 }
 
-/** Mode simple : toute l'interface simple suit la taille choisie (petite / normale / grande) ; mode complet inchangé. */
+/**
+ * Mode simple : vrai zoom de tout l'écran simple (petite / moyenne / grande). L'écran est mis en page comme sur un écran
+ * plus grand (taille / échelle) puis réduit depuis le coin haut-gauche : tuiles, textes et marges rétrécissent ensemble
+ * (changer seulement la densité ne réduisait presque rien, les tuiles s'étirant pour remplir l'écran). Mode complet inchangé.
+ */
 @Composable
 private fun ScaledForSimple(simple: Boolean, scale: Float, content: @Composable () -> Unit) {
-    if (!simple || scale == 1f) { content(); return }
-    val d = androidx.compose.ui.platform.LocalDensity.current
-    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(d.density * scale, d.fontScale)) { content() }
+    if (!simple || scale >= 1f) { content(); return }
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        val w = maxWidth / scale; val h = maxHeight / scale
+        Box(
+            Modifier.wrapContentSize(androidx.compose.ui.AbsoluteAlignment.TopLeft, unbounded = true).requiredSize(w, h)
+                .graphicsLayer { scaleX = scale; scaleY = scale; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0f) },
+        ) { content() }
+    }
 }

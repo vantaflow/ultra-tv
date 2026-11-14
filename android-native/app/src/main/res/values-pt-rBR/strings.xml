@@ -1671,6 +1671,6 @@
     <string name="back_again_to_exit">Toque em Voltar de novo para fechar o Ultra TV</string>
     <string name="simple_size">Tamanho da exibição</string>
     <string name="simple_size_small">Pequeno</string>
-    <string name="simple_size_normal">Normal</string>
+    <string name="simple_size_normal">Médio</string>
     <string name="simple_size_large">Grande</string>
 </resources>

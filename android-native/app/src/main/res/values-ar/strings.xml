@@ -1715,6 +1715,6 @@
     <string name="back_again_to_exit">اضغط رجوع مرة أخرى لإغلاق Ultra TV</string>
     <string name="simple_size">حجم العرض</string>
     <string name="simple_size_small">صغير</string>
-    <string name="simple_size_normal">عادي</string>
+    <string name="simple_size_normal">متوسط</string>
     <string name="simple_size_large">كبير</string>
 </resources>
