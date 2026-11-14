@@ -14,6 +14,7 @@
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
   <a href="https://vantaflow.github.io/ultra-tv/en/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
   <a href="https://ko-fi.com/ultratv"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
+  <a href="https://liberapay.com/ultratv/"><img alt="Support on Liberapay" src="https://img.shields.io/liberapay/receives/ultratv.svg?logo=liberapay" /></a>
 </p>
 
 <p align="center">
@@ -312,7 +313,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 ## Support the project
 
-Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country), also reachable from the repository's "Sponsor" button, from <https://tv.weedy.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://tv.weedy.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
 
 ## Help translate
 
