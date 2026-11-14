@@ -7,6 +7,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Bureau : paquets plus légers (seules les langues de l'appli embarquées pour Chromium, compression maximale des installeurs).
 
+### Corrigé
+- Interface en arabe : « Chargement du catalogue… » sans fin ; les chiffres arabo-indiens se retrouvaient dans les requêtes et les dates construites par l'appli (régression de la 1.3.30). Chiffres latins pour les calculs internes, textes arabes inchangés.
+
 ## [1.3.31] — 2026-11-14 (Android)
 
 ### Corrigé

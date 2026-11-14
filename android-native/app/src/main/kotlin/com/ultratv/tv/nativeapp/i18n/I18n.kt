@@ -35,7 +35,11 @@ object I18n {
      * l'appli en français affichait des chiffres arabo-indiens. [AppLang.System] : on revient à la langue de l'appareil.
      */
     fun applyDefaultLocale(lang: AppLang) {
-        val target = if (lang == AppLang.System) deviceLocale else Locale.forLanguageTag(lang.code)
+        // Chiffres LATINS imposés (nu-latn) : la langue par défaut sert aussi aux adresses, requêtes et dates construites par
+        // le code (String.format, NumberFormat). En arabe, les chiffres arabo-indiens y rendaient la synchro impossible
+        // (« Chargement du catalogue… » sans fin). Les textes traduits gardent leurs propres chiffres (ressources).
+        val base = if (lang == AppLang.System) deviceLocale else Locale.forLanguageTag(lang.code)
+        val target = Locale.Builder().setLocale(base).setUnicodeLocaleKeyword("nu", "latn").build()
         if (Locale.getDefault() != target) Locale.setDefault(target)
     }
 
