@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Langue du profil : la langue choisie avant qu'elle appartienne au profil est reprise une fois par le profil courant, puis partagée (un profil en arabe sur une box s'affichait en français ailleurs).
+- Bureau › Catégories : les catégories actives s'affichent en premier, sans bouger quand on les active ou désactive.
 
 ## [bureau 1.2.61] — 2026-11-14
 

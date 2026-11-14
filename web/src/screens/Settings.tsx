@@ -411,12 +411,22 @@ function CategoriesPane() {
   // Filtre par texte seulement (nom brut ou nom affiché) : aucune déduction de langue, fiable quelle que soit la source.
   // Ordre choisi par l'utilisateur (`ord`, partagé entre appareils) : le même que celui des écrans Direct, Films et Séries.
   const sameKind = useMemo(() => all.filter((c) => c.kind === kind), [all, kind]);
-  const shown = useMemo(() => sameKind.filter((c) => !nq || catMatches(c.name, nq)), [sameKind, nq]);
+  // Actives d'abord, mais ordre FIGÉ : recalculé seulement si l'onglet, le filtre ou l'ordre réel (`ord`) change, jamais par
+  // une simple activation / désactivation (la ligne ne saute plus sous le curseur).
+  const pin = useRef<{ key: string; ids: number[] }>({ key: "", ids: [] });
+  const ordKey = `${kind}|${nq}|${sameKind.map((c) => c.id).join(",")}`;
+  if (pin.current.key !== ordKey) pin.current = { key: ordKey, ids: [...sameKind].sort((a, b) => b.enabled - a.enabled).map((c) => c.id!) };
+  const shown = useMemo(() => {
+    const idx = new Map(pin.current.ids.map((id, i) => [id, i]));
+    return sameKind.filter((c) => !nq || catMatches(c.name, nq)).sort((a, b) => (idx.get(a.id!) ?? 1e9) - (idx.get(b.id!) ?? 1e9));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sameKind, nq, ordKey]);
   const [chanCat, setChanCat] = useState<CategoryRow | null>(null);
   if (!source) return null;
   // Déplacer / trier n'a de sens que sur la liste complète du type (pas filtrée).
   const canMove = !nq;
-  const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(sameKind, c.id!, delta) && source.id != null) notePrefsChanged(source.id); };
+  // Déplacement dans la liste AFFICHÉE (actives d'abord) : la catégorie bouge d'un cran à l'écran.
+  const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(shown, c.id!, delta) && source.id != null) notePrefsChanged(source.id); };
   const sortAZ = async () => { if (await sortCategoriesAZ(sameKind) && source.id != null) notePrefsChanged(source.id); };
   const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
