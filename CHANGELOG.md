@@ -14,6 +14,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Gérer les catégories : le filtre se refermait aussitôt ouvert, impossible d'y taper ; réordonner depuis une liste filtrée mélangeait l'ordre des autres catégories.
 
+### Modifié
+- Touche Retour : un appui court ne ferme plus jamais l'appli (à l'accueil, il rappelle « Maintenez Retour pour quitter ») ; un appui long la ferme depuis n'importe quel écran.
+
 ## [1.3.26] — 2026-11-14 (Android)
 
 ### Corrigé

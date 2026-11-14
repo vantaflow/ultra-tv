@@ -161,6 +161,17 @@ class MainActivity : ComponentActivity() {
             runCatching { remindersScheduler.get().rescheduleAll() }
             runCatching { recordingScheduler.get().rearmAll() }
         }
+        // Dernier recours (enregistré AVANT la navigation et les dialogues, donc appelé seulement si aucun ne gère Retour) :
+        // un appui court ne ferme plus l'appli, il rappelle comment la quitter (appui long).
+        onBackPressedDispatcher.addCallback(this, object : androidx.activity.OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                RemoteLog.info("keys", "back at root: stay")
+                lifecycleScope.launch {
+                    val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(runCatching { prefsStore.get().flow.first().language }.getOrDefault(""))
+                    android.widget.Toast.makeText(this@MainActivity, com.ultratv.tv.nativeapp.i18n.I18n.string(lang, R.string.back_hold_to_exit), android.widget.Toast.LENGTH_SHORT).show()
+                }
+            }
+        })
         setContent { Root() }
         // Télécommande sur le téléphone : flèches / OK / Retour injectés DANS l'appli (aucune permission système).
         lifecycleScope.launch {
@@ -279,7 +290,22 @@ class MainActivity : ComponentActivity() {
     /** Touches Recherche et micro de la télécommande : ouvrent la Recherche par-dessus l'écran courant (Retour y revient). */
     private val keyGuard = com.ultratv.tv.nativeapp.ui.common.KeyGuard { RemoteLog.info("keys", it) }
 
+    /** Appui long sur Retour en cours : l'appli se ferme, le relâchement est avalé (pas de retour arrière en plus). */
+    private var backLongFired = false
+
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
+        if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK) {
+            val long = event.isLongPress || com.ultratv.tv.nativeapp.ui.common.BackHold.isLong(event.eventTime, event.downTime)
+            if (event.action == android.view.KeyEvent.ACTION_DOWN) {
+                if (event.repeatCount == 0) backLongFired = false
+                else if (!backLongFired && long) { backLongFired = true; RemoteLog.info("keys", "back long press: exit"); finish(); return true }
+                if (backLongFired) return true
+            } else if (event.action == android.view.KeyEvent.ACTION_UP) {
+                if (backLongFired) { backLongFired = false; return true }
+                // Télécommandes qui n'envoient pas de répétitions : la durée se lit au relâchement.
+                if (long) { RemoteLog.info("keys", "back long press (up): exit"); finish(); return true }
+            }
+        }
         if (event.action != android.view.KeyEvent.ACTION_MULTIPLE && keyGuard.shouldDrop(
                 event.keyCode, event.action == android.view.KeyEvent.ACTION_DOWN, event.repeatCount,
                 event.eventTime, android.os.SystemClock.uptimeMillis(), event.downTime,

@@ -1662,4 +1662,5 @@
     <string name="cat_channel_shown">Visible</string>
     <string name="cat_channel_hidden">Masquée</string>
     <string name="cat_order_hint">▸ Ordre · Chaînes</string>
+    <string name="back_hold_to_exit">Maintenez Retour pour quitter Ultra TV</string>
 </resources>
