@@ -13,6 +13,7 @@
  * Voir cloudflare-config/README.md pour le détail des routes et de la migration.
  */
 
+import { docs } from "./docs.js";
 import { JSQR_SOURCE } from "./jsqr-bundle.js";
 import { Guard } from "./guard.js";
 import { hashPassword, verifyPassword, randomToken, sha256Hex, timingSafeEqual, keysFromEnv, encryptJson, decryptJson } from "./crypto.js";
@@ -132,7 +133,7 @@ export default {
   },
   // Cron quotidien : purge des lignes de télémétrie D1 expirées (équivalent des anciens TTL de KV).
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil(purgeTelemetry(env));
+    ctx.waitUntil(Promise.all([purgeTelemetry(env), docs.purgeExpired(env)]));
   },
 };
 
@@ -328,7 +329,7 @@ async function route(req, env, ctx) {
     delete acct.osEnc;
     delete acct.os;
     await putAccount(env, acct);
-    await env.CONFIG.delete(osTokenKey(acct.login));
+    await docs.delete(env, osTokenKey(acct.login));
     return redirect("/?m=os_off#compte");
   }
   if (path === "/account/delete") return removeAccount(env, acct, form);
@@ -767,16 +768,11 @@ const LEGACY_LOGIN = /^([0-9a-f]{2}:){5}[0-9a-f]{2}$/;
  */
 async function adminAccounts(env) {
   const names = [];
-  let cursor;
-  do {
-    const page = await env.CONFIG.list({ prefix: "acct:", cursor });
-    names.push(...page.keys.map((k) => k.name));
-    cursor = page.list_complete ? undefined : page.cursor;
-  } while (cursor && names.length < 2000);
+  names.push(...(await docs.keys(env, "acct:", 2000)));
   const act = await deviceActivity(env);
   const rows = [];
   for (let i = 0; i < names.length; i += 50) {
-    const got = await Promise.all(names.slice(i, i + 50).map((n) => env.CONFIG.get(n)));
+    const got = await Promise.all(names.slice(i, i + 50).map((n) => docs.get(env, n)));
     for (const raw of got) {
       let a;
       try { a = JSON.parse(raw); } catch { continue; }
@@ -843,7 +839,7 @@ async function traktStart(env, acct, url) {
   const state = randomToken(24);
   const { verifier, challenge } = await pkcePair();
   // Le vérificateur ne quitte jamais le Worker ; l'état lie le retour de Trakt à CE compte (anti-CSRF du retour).
-  await env.CONFIG.put(traktStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: TRAKT_STATE_TTL_S });
+  await docs.put(env, traktStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: TRAKT_STATE_TTL_S });
   // Cookie lié au navigateur (Lax : renvoyé par la navigation de retour depuis trakt.tv) : un lien d'autorisation
   // fabriqué sur le compte d'un tiers et ouvert par la victime ne relie pas son Trakt au compte du tiers.
   return redirect(authorizeUrl(env.TRAKT_CLIENT_ID, traktRedirect(url), state, challenge), {
@@ -875,8 +871,8 @@ async function traktFinish(req, env, url) {
   if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) return traktDone("e=trakt");
   // Même navigateur que celui qui a lancé la connexion.
   if (!timingSafeEqual(readCookie(req, TRAKT_COOKIE) || "", state)) return traktDone("e=trakt");
-  const raw = await env.CONFIG.get(traktStateKey(state));
-  if (raw) await env.CONFIG.delete(traktStateKey(state));
+  const raw = await docs.get(env, traktStateKey(state));
+  if (raw) await docs.delete(env, traktStateKey(state));
   let st = null;
   try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
   // État expiré ou déjà utilisé, refus chez Trakt : rien n'est enregistré.
@@ -989,7 +985,7 @@ const traktDictKey = (login, lang) => `tdict:${login}:${lang}`;
 
 /** Oublie la bibliothèque en cache (et, au déliage, le dictionnaire des titres). */
 async function forgetTraktLibrary(env, login, all = false) {
-  await Promise.all([...LANGS].flatMap((l) => [env.CONFIG.delete(traktLibKey(login, l)), ...(all ? [env.CONFIG.delete(traktDictKey(login, l))] : [])]));
+  await Promise.all([...LANGS].flatMap((l) => [docs.delete(env, traktLibKey(login, l)), ...(all ? [docs.delete(env, traktDictKey(login, l))] : [])]));
 }
 
 // Bibliothèque Trakt pour l'appareil, gardée chiffrée en KV. Au-delà de 15 min, la version gardée est servie TOUT DE
@@ -1004,7 +1000,7 @@ async function deviceTraktLibrary(req, env, url, ctx) {
   if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
   const login = auth.acct.login;
   const lang = LANGS.has(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "en";
-  const cached = await env.CONFIG.get(traktLibKey(login, lang));
+  const cached = await docs.get(env, traktLibKey(login, lang));
   const v = cached ? await decryptJson(keysFromEnv(env), cached, login).catch(() => null) : null;
   // Ancien format (données seules) : traité comme périmé.
   const at = v && typeof v.at === "number" ? v.at : 0;
@@ -1033,13 +1029,13 @@ async function buildTraktLibrary(env, login, lang, redirectUri) {
     try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return { status: 502, body: { error: "upstream" } }; }
   }
   let known = {};
-  try { known = JSON.parse((await env.CONFIG.get(traktDictKey(login, lang))) || "{}") || {}; } catch { known = {}; }
+  try { known = JSON.parse((await docs.get(env, traktDictKey(login, lang))) || "{}") || {}; } catch { known = {}; }
   const dict = await enrichTitles(env, lib, known, lang);
   if (Object.keys(dict).length !== Object.keys(known).length) {
-    await env.CONFIG.put(traktDictKey(login, lang), JSON.stringify(dict), { expirationTtl: 90 * 86400 });
+    await docs.put(env, traktDictKey(login, lang), JSON.stringify(dict), { expirationTtl: 90 * 86400 });
   }
   const data = libraryForDevice(lib, dict, Date.now());
-  await env.CONFIG.put(traktLibKey(login, lang), await encryptJson(keys, { at: Date.now(), data }, login), { expirationTtl: TRAKT_LIB_KEEP_S });
+  await docs.put(env, traktLibKey(login, lang), await encryptJson(keys, { at: Date.now(), data }, login), { expirationTtl: TRAKT_LIB_KEEP_S });
   return { status: 200, body: data };
 }
 
@@ -1062,7 +1058,7 @@ async function linkOpenSubtitles(env, acct, form) {
   acct.osEnc = await encryptJson(keys, { username, password }, acct.login);
   acct.os = { user: username, level: r.level, allowed: r.allowed, vip: r.vip, at: Date.now() };
   await putAccount(env, acct);
-  await env.CONFIG.put(osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
+  await docs.put(env, osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
   return redirect("/?m=os#compte");
 }
 
@@ -1073,7 +1069,7 @@ function osSession(env, acct) {
   return {
     async get(force) {
       if (!force) {
-        const blob = await env.CONFIG.get(osTokenKey(acct.login));
+        const blob = await docs.get(env, osTokenKey(acct.login));
         if (blob) return decryptJson(keys, blob, acct.login);
       }
       // Reconnexion bornée : un mot de passe changé chez OpenSubtitles ne déclenche pas une connexion par téléchargement.
@@ -1081,7 +1077,7 @@ function osSession(env, acct) {
       const { username, password } = await decryptJson(keys, acct.osEnc, acct.login);
       const r = await osLogin(env, username, password);
       if (r.error) return null;
-      await env.CONFIG.put(osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
+      await docs.put(env, osTokenKey(acct.login), await encryptJson(keys, { token: r.token, base: r.base }, acct.login), { expirationTtl: OS_TOKEN_TTL_S });
       return { token: r.token, base: r.base };
     },
   };

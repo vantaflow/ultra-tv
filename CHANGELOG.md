@@ -16,6 +16,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Touche Retour : un appui court ne ferme plus jamais l'appli (à l'accueil, il rappelle « Maintenez Retour pour quitter ») ; un appui long la ferme depuis n'importe quel écran.
+- Serveur : comptes, appareils, jetons et caches stockés dans D1 au lieu de KV (100 fois plus d'écritures possibles en gratuit) ; migration automatique à la première utilisation de chaque compte.
 
 ## [1.3.26] — 2026-11-14 (Android)
 

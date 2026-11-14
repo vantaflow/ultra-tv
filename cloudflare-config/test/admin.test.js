@@ -98,7 +98,7 @@ describe("administration", () => {
   });
   it("pays de l'inscription gardé (code à 2 lettres), jamais l'adresse IP", async () => {
     const a = await newAccount();
-    const acct = JSON.parse(await env.CONFIG.get(`acct:${a.login}`));
+    const acct = await (await import("../src/store.js")).getAccount(env, a.login);
     expect(JSON.stringify(acct)).not.toContain(a.ip);
     expect(acct.country === null || /^[A-Z]{2}$/.test(acct.country)).toBe(true);
   });

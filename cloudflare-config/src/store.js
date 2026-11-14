@@ -4,6 +4,7 @@
 //   crash:*, event:*  télémétrie (TTL)
 // L'unicité d'un login est garantie par le Durable Object (claim), pas par KV.
 
+import { docs } from "./docs.js";
 import { touchDeviceSeen, forgetDeviceSeen, stateBlobGet, stateBlobPut, stateBlobDelete, forgetAccountD1, forgetDeviceActivity } from "./telemetry.js";
 import { encryptJson, decryptJson, keysFromEnv, sha256Hex, randomToken, timingSafeEqual } from "./crypto.js";
 
@@ -30,13 +31,13 @@ export const isMacLogin = (login) => MAC_RE.test(login);
 // ---- comptes ---------------------------------------------------------------
 
 export async function getAccount(env, login) {
-  const raw = await env.CONFIG.get(`acct:${login}`);
+  const raw = await docs.get(env, `acct:${login}`);
   if (!raw) return null;
   try { return JSON.parse(raw); } catch { return null; }
 }
 
 export async function putAccount(env, acct) {
-  await env.CONFIG.put(`acct:${acct.login}`, JSON.stringify(acct));
+  await docs.put(env, `acct:${acct.login}`, JSON.stringify(acct));
 }
 
 export async function loadProviders(env, acct) {
@@ -51,17 +52,17 @@ export async function saveProviders(env, acct, providers) {
 }
 
 export async function deleteAccount(env, acct) {
-  await Promise.all((acct.devices || []).map((d) => env.CONFIG.delete(`dev:${d.hash}`)));
+  await Promise.all((acct.devices || []).map((d) => docs.delete(env, `dev:${d.hash}`)));
   // État partagé (favoris, reprises) de chaque source du compte.
   const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
-  await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name)));
+  await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name))); // anciens états KV (rares, déjà migrés vers D1)
   await forgetAccountD1(env, acct.login, (acct.devices || []).map((d) => d.id));
-  await env.CONFIG.delete(`ostok:${acct.login}`);
+  await docs.delete(env, `ostok:${acct.login}`);
   // Bibliothèque et titres Trakt en cache.
-  const tl = await env.CONFIG.list({ prefix: `tlib:${acct.login}:` });
-  const td = await env.CONFIG.list({ prefix: `tdict:${acct.login}:` });
-  await Promise.all([...tl.keys, ...td.keys].map((k) => env.CONFIG.delete(k.name)));
-  await env.CONFIG.delete(`acct:${acct.login}`);
+  const tl = await docs.keys(env, `tlib:${acct.login}:`);
+  const td = await docs.keys(env, `tdict:${acct.login}:`);
+  await Promise.all([...tl, ...td].map((k) => docs.delete(env, k)));
+  await docs.delete(env, `acct:${acct.login}`);
   await guardStub(env, `acct:${acct.login}`).release();
 }
 
@@ -76,7 +77,7 @@ export function newDeviceToken() {
 export async function registerDevice(env, acct, { token, deviceId, name, label }) {
   const hash = await sha256Hex(token);
   const now = Date.now();
-  await env.CONFIG.put(`dev:${hash}`, JSON.stringify({ login: acct.login, deviceId, createdAt: now, seen: now }));
+  await docs.put(env, `dev:${hash}`, JSON.stringify({ login: acct.login, deviceId, createdAt: now, seen: now }));
   acct.devices = [...(acct.devices || []), { id: deviceId, hash, name, label, createdAt: now }];
   await putAccount(env, acct);
 }
@@ -85,7 +86,7 @@ export async function registerDevice(env, acct, { token, deviceId, name, label }
 export async function authDevice(env, token) {
   if (!token || !token.startsWith(DEVICE_TOKEN_PREFIX) || token.length > 128) return null;
   const hash = await sha256Hex(token);
-  const raw = await env.CONFIG.get(`dev:${hash}`);
+  const raw = await docs.get(env, `dev:${hash}`);
   if (!raw) return null;
   let rec; try { rec = JSON.parse(raw); } catch { return null; }
   const acct = await getAccount(env, rec.login);
@@ -101,7 +102,7 @@ export async function revokeDevice(env, acct, deviceId) {
   if (!d) return false;
   acct.devices = acct.devices.filter((x) => x.id !== deviceId);
   await putAccount(env, acct);
-  await env.CONFIG.delete(`dev:${d.hash}`);
+  await docs.delete(env, `dev:${d.hash}`);
   await forgetDeviceSeen(env, d.hash);
   await forgetDeviceActivity(env, d.id);
   return true;
@@ -110,10 +111,10 @@ export async function revokeDevice(env, acct, deviceId) {
 export async function rotateDevice(env, acct, device) {
   const token = newDeviceToken();
   const hash = await sha256Hex(token);
-  await env.CONFIG.put(`dev:${hash}`, JSON.stringify({ login: acct.login, deviceId: device.id, createdAt: Date.now(), seen: Date.now() }));
+  await docs.put(env, `dev:${hash}`, JSON.stringify({ login: acct.login, deviceId: device.id, createdAt: Date.now(), seen: Date.now() }));
   acct.devices = acct.devices.map((d) => (d.id === device.id ? { ...d, hash, rotatedAt: Date.now() } : d));
   await putAccount(env, acct);
-  await env.CONFIG.delete(`dev:${device.hash}`);
+  await docs.delete(env, `dev:${device.hash}`);
   await forgetDeviceSeen(env, device.hash);
   return token;
 }

@@ -57,9 +57,13 @@ describe("dégradation silencieuse", () => {
   const post = (e, path, token, ip, json) => worker.fetch(new Request(ORIGIN + path, {
     method: "POST", headers: { "cf-connecting-ip": ip, origin: ORIGIN, "content-type": "application/json", ...bearer(token) }, body: JSON.stringify(json),
   }), e);
-  const brokenDb = { prepare() { throw new Error("D1 indisponible"); }, batch() { throw new Error("D1 indisponible"); } };
+  // Les comptes et appareils sont dans D1 (kv_docs) : seule la TÉLÉMÉTRIE tombe en panne ici, les comptes restent lisibles.
+  const telemetryDown = (failBatch) => ({
+    prepare(sql) { if (/kv_docs/.test(sql)) return env.DB.prepare(sql); throw new Error("D1 indisponible"); },
+    batch(b) { if (failBatch) throw new Error("D1 indisponible"); return env.DB.batch(b); },
+  });
 
-  for (const [nom, db] of [["sans binding DB", undefined], ["D1 qui lève", brokenDb]]) {
+  for (const [nom, db] of [["tables de télémétrie indisponibles", telemetryDown(false)], ["D1 qui lève (télémétrie)", telemetryDown(true)]]) {
     it(`${nom} : événement, ping anonyme et authentification répondent normalement, sans écrire en KV`, async () => {
       const acct = await newAccount(); const dev = await pairDevice(acct);
       const e = { ...env, DB: db };

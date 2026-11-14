@@ -50,3 +50,24 @@ describe("écritures fréquentes hors KV", () => {
     expect(got.fav.map((e) => e.r)).toEqual(["7"]);
   });
 });
+
+describe("comptes et appareils dans D1 (quota KV)", () => {
+  it("inscription_et_appairage_neEcriventRienDansKv", async () => {
+    const before = (await env.CONFIG.list()).keys.length;
+    const acct = await newAccount();
+    await pairDevice(acct, "TV");
+    const after = (await env.CONFIG.list()).keys.map((k) => k.name);
+    expect(after.filter((k) => k.startsWith("acct:") || k.startsWith("dev:"))).toEqual(
+      after.filter((k) => k.startsWith("acct:") || k.startsWith("dev:")).filter((k) => !k.includes(acct.login)),
+    );
+    expect(after.length).toBe(before);
+    expect((await d1Rows("kv_docs")).some((r) => r.k === `acct:${acct.login}`)).toBe(true);
+  });
+
+  it("compteAncienDansKv_toujoursLu_puisRecopieDansD1", async () => {
+    const { getAccount } = await import("../src/store.js");
+    await env.CONFIG.put("acct:ancien-compte", JSON.stringify({ login: "ancien-compte", devices: [] }));
+    expect((await getAccount(env, "ancien-compte")).login).toBe("ancien-compte");
+    expect((await d1Rows("kv_docs")).some((r) => r.k === "acct:ancien-compte")).toBe(true);
+  });
+});

@@ -71,6 +71,9 @@ export async function allKv() {
     for (const k of r.keys) out[k.name] = await env.CONFIG.get(k.name);
     cursor = r.list_complete ? undefined : r.cursor;
   } while (cursor);
+  // Documents passés de KV à D1 (comptes, appareils, jetons, caches) : même contrôle de ce qui est stocké.
+  const rows = (await env.DB.prepare("SELECT k, v FROM kv_docs").all()).results;
+  for (const r of rows) out[r.k] = r.v;
   return out;
 }
 
