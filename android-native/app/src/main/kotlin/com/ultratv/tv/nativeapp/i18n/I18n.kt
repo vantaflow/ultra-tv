@@ -27,6 +27,18 @@ object I18n {
         objectCache.clear()
     }
 
+    /** Langue de l'appareil au lancement (avant tout changement de la langue par défaut). */
+    private val deviceLocale: Locale = Locale.getDefault()
+
+    /**
+     * Langue par défaut de Java = langue de l'APPLI (chiffres, heures, dates formatés par le code) : une box en arabe avec
+     * l'appli en français affichait des chiffres arabo-indiens. [AppLang.System] : on revient à la langue de l'appareil.
+     */
+    fun applyDefaultLocale(lang: AppLang) {
+        val target = if (lang == AppLang.System) deviceLocale else Locale.forLanguageTag(lang.code)
+        if (Locale.getDefault() != target) Locale.setDefault(target)
+    }
+
     /** Langue effective : [AppLang.System] suit la langue de l'appareil, l'anglais si elle n'est pas prise en charge. */
     fun resolve(lang: AppLang): AppLang {
         if (lang != AppLang.System) return lang

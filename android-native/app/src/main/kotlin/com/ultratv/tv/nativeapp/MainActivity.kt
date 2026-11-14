@@ -422,6 +422,8 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
     val prefs by vm.prefs.collectAsState()
     val ctxForDevice = androidx.compose.ui.platform.LocalContext.current
     val lang = com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(prefs.language)
+    // Chiffres et heures dans la langue de l'appli, pas celle de l'appareil (avant toute mise en forme de ce rendu).
+    androidx.compose.runtime.remember(lang) { com.ultratv.tv.nativeapp.i18n.I18n.applyDefaultLocale(lang); lang }
     val strings = com.ultratv.tv.nativeapp.i18n.stringsFor(lang)
     // « Système » résout la langue de l'appareil : un téléphone en arabe doit aussi passer en RTL.
     val resolvedLang = if (lang == com.ultratv.tv.nativeapp.i18n.AppLang.System &&

@@ -187,6 +187,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.zoneId = p.timeZone
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.timeFormat = p.timeFormat
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.langCode = p.language
+                com.ultratv.tv.nativeapp.i18n.I18n.applyDefaultLocale(com.ultratv.tv.nativeapp.i18n.AppLang.fromCode(p.language))
                 com.ultratv.tv.nativeapp.ui.common.EpgClock.system24 = android.text.format.DateFormat.is24HourFormat(this@UltraTvApp)
                 com.ultratv.tv.nativeapp.data.repo.LocalLogos.treeUri = p.localLogosFolderUri
             }
