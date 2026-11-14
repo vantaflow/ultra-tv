@@ -106,7 +106,7 @@ class LiveOrderTest {
     @Test
     fun categoriesReordonnees_saveOrder_recalculeLesRangs_ordreToujoursIdentique() = runBlocking {
         seed(stamp = true)
-        val manager = CategoryManager(db, cats, ch, db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx))
+        val manager = CategoryManager(db, cats, ch, db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx), com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx))
         manager.saveOrder(pid, "LIVE", listOf("film", "sport", "news", "kids", "docs", "off"))
         val legacy = legacyIds()
         assertEquals("f1", legacy.first())
@@ -119,7 +119,7 @@ class LiveOrderTest {
     @Test
     fun categorieDesactivee_puisReactivee_ordreIdentique() = runBlocking {
         seed(stamp = true)
-        val manager = CategoryManager(db, cats, ch, db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx))
+        val manager = CategoryManager(db, cats, ch, db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx), com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx))
         manager.setEnabled(pid, "LIVE", listOf("sport"), false)
         assertFalse(keysetIds().any { it.startsWith("s") })
         assertEquals(legacyIds(), keysetIds())

@@ -8,6 +8,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Dons réguliers via Liberapay (page /donate, bouton Sponsor, README et site).
 - Worker : ordre des catégories, chaînes masquées et profils (nom, couleur, profil Enfants, jamais le code PIN) partagés entre les appareils du compte ; un appareil plus ancien n'efface ni l'ordre ni les chaînes masquées.
 - Mode simple : écran Réglages avec « Revenir au mode complet » (code parental demandé s'il existe) et « Tous les réglages ».
+- Gérer les catégories : poignée d'ordre accessible à la télécommande (Droite puis OK, ▲ ▼), bouton « Trier de A à Z », et bouton « Chaînes » sur chaque catégorie du Direct pour masquer une ou plusieurs chaînes (retirées partout : liste, zapping, guide, recherche).
+
+### Corrigé
+- Gérer les catégories : le filtre se refermait aussitôt ouvert, impossible d'y taper ; réordonner depuis une liste filtrée mélangeait l'ordre des autres catégories.
 
 ## [1.3.26] — 2026-11-14 (Android)
 

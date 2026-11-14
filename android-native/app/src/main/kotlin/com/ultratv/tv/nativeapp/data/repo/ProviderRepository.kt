@@ -49,7 +49,15 @@ class ProviderRepository @Inject constructor(
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
+    private val hiddenChannels: com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore,
 ) {
+    /** Retire les chaînes masquées par l'utilisateur d'un lot à écrire (voir HiddenChannelsStore). */
+    private fun withoutHidden(rows: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
+        val pid = rows.firstOrNull()?.providerId ?: return rows
+        val h = hiddenChannels.ids(pid)
+        return if (h.isEmpty()) rows else rows.filter { it.remoteId !in h }
+    }
+
     private val adultRegex = Regex("xxx|adult|18\\+|porn|ero|adulte|للكبار", RegexOption.IGNORE_CASE)
 
     // Chunk size for bulk inserts. Room flushes the WAL on each call so very
@@ -126,7 +134,7 @@ class ProviderRepository @Inject constructor(
         categoryDao.upsertAll(cats)
         channelDao.deleteForProvider(pid)
         // Rang de catégorie lu APRÈS l'écriture des catégories : les non placées se départagent par leur nouvel id.
-        channelDao.upsertAll(LiveOrder.ranks(categoryDao.forProviderKind(pid, LiveOrder.KIND)).stamp(res.channels))
+        channelDao.upsertAll(LiveOrder.ranks(categoryDao.forProviderKind(pid, LiveOrder.KIND)).stamp(withoutHidden(res.channels)))
         return pid
     }
 
@@ -155,6 +163,7 @@ class ProviderRepository @Inject constructor(
             val channels = res.channels
                 .filter { it.categoryId == null || it.categoryId in enabledCats }
                 .map { c -> c.copy(lang = LanguageDetector.forItem(c.name, c.categoryId?.let { langByCat[it] }.orEmpty())) }
+                .let { withoutHidden(it) }
             // Suppression + réinsertion dans UNE transaction : atomique (jamais de catalogue vide
             // si on coupe au milieu) et une seule invalidation Room au lieu d'une par lot.
             db.withTransaction {
@@ -718,7 +727,7 @@ class ProviderRepository @Inject constructor(
         // Identifiant CONSERVÉ d'une synchro à l'autre : le guide est rattaché aux identifiants de chaînes ; les réécrire
         // (suppression + insertion) laissait tous les programmes orphelins jusqu'au guide de la nuit.
         // Rang de catégorie (ordre du Direct, voir LiveOrder) posé à l'insertion : aucune réécriture après coup.
-        { rows -> val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
+        { all -> val rows = withoutHidden(all); val keep = liveIds; channelDao.upsertAll(liveRanks.stamp(if (keep.isEmpty()) rows else rows.map { c -> keep[c.remoteId]?.let { c.copy(id = it) } ?: c })) },
     )
 
     /** remoteId → identifiant des chaînes AVANT la synchro en cours (voir [livePart]). */

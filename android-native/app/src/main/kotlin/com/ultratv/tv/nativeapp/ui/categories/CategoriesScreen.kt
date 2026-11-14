@@ -1,5 +1,17 @@
 package com.ultratv.tv.nativeapp.ui.categories
 
+import com.ultratv.tv.nativeapp.i18n.doneLabel
+import com.ultratv.tv.nativeapp.i18n.catSortAz
+import com.ultratv.tv.nativeapp.i18n.catChannels
+import com.ultratv.tv.nativeapp.i18n.catChannelsTitle
+import com.ultratv.tv.nativeapp.i18n.catChannelsHint
+import com.ultratv.tv.nativeapp.i18n.catChannelShown
+import com.ultratv.tv.nativeapp.i18n.catChannelHidden
+import com.ultratv.tv.nativeapp.i18n.catOrderHint
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.widthIn
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -127,7 +139,18 @@ class CategoriesViewModel @Inject constructor(
         markPending(ids, enabled)
         viewModelScope.launch { try { providerId()?.let { manager.setEnabled(it, kind.value, ids, enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
     }
-    fun saveOrder(ids: List<String>) { viewModelScope.launch { providerId()?.let { manager.saveOrder(it, kind.value, ids) } } }
+    private fun publish(p: Long) = com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(p)
+    /** Nouvel ordre de la liste AFFICHÉE (éventuellement filtrée) : fusionné dans l'ordre complet, puis partagé. */
+    fun saveOrder(ids: List<String>) { viewModelScope.launch { providerId()?.let { manager.saveOrderOf(it, kind.value, ids); publish(it) } } }
+    fun sortAz() { viewModelScope.launch { providerId()?.let { manager.sortAlphabetically(it, kind.value); publish(it) } } }
+
+    /** Chaînes masquées de la source affichée (identifiants du fournisseur). */
+    val hiddenIds: StateFlow<Set<String>> = pid.flatMapLatest { p -> if (p == null) flowOf(emptySet()) else manager.observeHidden(p).map { l -> l.mapTo(HashSet()) { it.id } } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+    suspend fun channelsOf(cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> = providerId()?.let { manager.channelsOf(it, cat) } ?: emptyList()
+    fun setChannelVisible(ch: com.ultratv.tv.nativeapp.data.prefs.HiddenChannel, visible: Boolean) {
+        viewModelScope.launch { providerId()?.let { if (visible) manager.showChannels(it, listOf(ch.id)) else manager.hideChannels(it, listOf(ch)); publish(it) } }
+    }
     val filterUnsupported: StateFlow<Boolean> = providerList.map { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.categoryFilter == 0 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }
 
@@ -147,6 +170,9 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
     var local by remember { mutableStateOf(rows) }
     val shown = if (moving != null) local else rows
     BackHandler(enabled = moving != null) { moving = null; local = rows }
+    // Dialogue « Chaînes de la catégorie » (Direct) : (identifiant, nom affiché).
+    var channelsOf by remember { mutableStateOf<Pair<String, String>?>(null) }
+    channelsOf?.let { (cat, label) -> CategoryChannelsDialog(vm, cat, label, D) { channelsOf = null } }
 
     if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         TouchCategories(
@@ -159,6 +185,7 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                 if (i >= 0 && i != j) local = local.toMutableList().also { l -> l.add(j, l.removeAt(i)) }
             },
             onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
+            onChannels = { id, label -> channelsOf = id to label },
         )
         return
     }
@@ -188,12 +215,17 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
             FilterField(q, { vm.query.value = it }, D.filterHint, Modifier.weight(1f))
             PillButton(D.enableAll, { vm.setAll(true) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
             PillButton(D.disableAll, { vm.setAll(false) }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
+            PillButton(D.catSortAz, { vm.sortAz() }, heightPx = 64, hPadPx = 26, fontPx = 20, weight = FontWeight.Bold, bg = Ux.Surface)
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.design)) {
             Text("${D.categoryCol} · ${shown.size}", color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1, modifier = Modifier.weight(1f))
             Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Text(D.activeCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1) }
-            Spacer(Modifier.width(12.design))
+            Spacer(Modifier.width(40.design))
             Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.orderCol, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = 1.4.sp, maxLines = 1) }
+            if (kind == "LIVE") {
+                Spacer(Modifier.width(12.design))
+                Box(Modifier.width(110.design), contentAlignment = Alignment.Center) { Text(D.catChannels, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1) }
+            }
         }
         val state = rememberLazyListState()
         val firstRow = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -220,13 +252,14 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                         }
                     },
                     onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
+                    onChannels = if (kind == "LIVE") ({ channelsOf = r.remoteId to r.label }) else null,
                 )
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Text(if (unsupported) D.noFilterSupport else D.categoriesFooter + " " + D.catHiddenNotLoaded, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 3, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Spacer(Modifier.width(24.design))
-            if (moving != null) Text(D.moveHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1) else Row(horizontalArrangement = Arrangement.spacedBy(28.design)) { KeyHint("OK", D.toggle); KeyHint("OK ▸", D.holdToReorder) }
+            if (moving != null) Text(D.moveHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1) else Row(horizontalArrangement = Arrangement.spacedBy(28.design), verticalAlignment = Alignment.CenterVertically) { KeyHint("OK", D.toggle); Text(D.catOrderHint, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1) }
         }
     }
 }
@@ -238,6 +271,9 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
 @Composable
 internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String, modifier: Modifier) {
     var editing by remember { mutableStateOf(false) }
+    // Le champ reçoit d'abord un « pas de focus » (avant requestFocus) : ne le refermer qu'après l'avoir eu, sinon la
+    // saisie se fermait aussitôt ouverte et le filtre restait impossible à remplir.
+    var hadFocus by remember(editing) { mutableStateOf(false) }
     val requester = remember { androidx.compose.ui.focus.FocusRequester() }
     LaunchedEffect(editing) { if (editing) runCatching { requester.requestFocus() } }
     val fm = androidx.compose.ui.platform.LocalFocusManager.current
@@ -254,7 +290,7 @@ internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String
                 textStyle = TextStyle(color = Ux.Text, fontFamily = Manrope, fontSize = 22.spx), cursorBrush = SolidColor(Ux.Accent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, autoCorrect = false),
                 keyboardActions = androidx.compose.foundation.text.KeyboardActions(onDone = { editing = false; fm.moveFocus(androidx.compose.ui.focus.FocusDirection.Down) }),
-                modifier = Modifier.fillMaxWidth().focusRequester(requester).leaveOnVerticalDpad().onFocusChanged { if (!it.isFocused && editing) editing = false },
+                modifier = Modifier.fillMaxWidth().focusRequester(requester).leaveOnVerticalDpad().onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && editing) editing = false },
                 decorationBox = { inner -> if (value.isEmpty()) Text(hint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1); inner() },
             )
         }
@@ -265,34 +301,93 @@ internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String
 @Composable
 private fun CategoryLine(
     r: CategoryRow, kind: String, rowModifier: Modifier = Modifier, isMoving0: Boolean? = null, isMoving: Boolean, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
-    onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit,
+    onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit, onChannels: (() -> Unit)? = null,
 ) {
     // Activée mais pas encore téléchargée : « Chargement… » plutôt que « 0 chaîne » (le contenu arrive après la synchro en cours).
     val count = if (r.enabled && r.count == 0) D.categoryLoading
         else r.count?.let { when (kind) { "LIVE" -> D.channelsOf(it); "MOVIE" -> D.moviesOf(it); else -> D.seriesOf(it) } }.orEmpty()
-    FocusSurface(
-        onClick = { if (isMoving) onConfirmMove() else onToggle() },
-        onLongClick = { if (!isMoving) onStartMove() },
-        shape = RoundedCornerShape(18.design),
-        bg = if (r.enabled) Ux.SurfaceDeep else Ux.Rail, ringWidth = 5.design, focusedScale = 1.0f,
-        modifier = rowModifier.fillMaxWidth().height(76.design).onPreviewKeyEvent { e ->
-            if (!isMoving || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-            when (e.key) { Key.DirectionUp -> { onMove(-1); true }; Key.DirectionDown -> { onMove(1); true }; else -> false }
-        },
-    ) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
-            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+    // Pendant un déplacement, ▲ ▼ déplacent la ligne (depuis la ligne ou depuis sa poignée).
+    val moveKeys = Modifier.onPreviewKeyEvent { e ->
+        if (!isMoving || e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        when (e.key) { Key.DirectionUp -> { onMove(-1); true }; Key.DirectionDown -> { onMove(1); true }; else -> false }
+    }
+    Row(Modifier.fillMaxWidth().height(76.design), horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+        FocusSurface(
+            onClick = { if (isMoving) onConfirmMove() else onToggle() },
+            onLongClick = { if (!isMoving) onStartMove() },
+            shape = RoundedCornerShape(18.design),
+            bg = if (r.enabled) Ux.SurfaceDeep else Ux.Rail, ringWidth = 5.design, focusedScale = 1.0f,
+            modifier = rowModifier.weight(1f).fillMaxHeight().then(moveKeys),
+        ) { f ->
+            Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
                     Text(r.label, color = if (f) Ux.TextOnLight else if (r.enabled) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
                         style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
                     Text(count, color = if (f) Ux.OnFocus2 else if (r.enabled) Ux.Text3 else Ux.Muted2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 }
+                Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Switch(r.enabled, inverted = f) }
             }
-            Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Switch(r.enabled, inverted = f) }
-            Spacer(Modifier.width(12.design))
-            Box(Modifier.width(110.design).clip(RoundedCornerShape(12.design)).then(if (isMoving) Modifier.background(Ux.Accent) else Modifier).padding(vertical = 8.design), contentAlignment = Alignment.Center) {
-                DIcon("M8 10l4-4 4 4M8 14l4 4 4-4", 26.design, if (isMoving) Color.White else if (f) Ux.OnFocus2 else Ux.Text3, strokeWidth = 2.2f)
+        }
+        // Poignée d'ordre : un vrai bouton (Droite puis OK), plus seulement l'appui long caché.
+        FocusSurface(
+            onClick = { if (isMoving) onConfirmMove() else onStartMove() }, shape = RoundedCornerShape(18.design),
+            bg = if (isMoving) Ux.Accent else Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+            modifier = Modifier.width(110.design).fillMaxHeight().then(moveKeys).semantics { contentDescription = D.orderCol },
+        ) { f ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DIcon(if (isMoving) "M5 12l5 5 9-10" else "M8 10l4-4 4 4M8 14l4 4 4-4", 28.design, if (isMoving) Color.White else if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.4f)
             }
+        }
+        if (onChannels != null) FocusSurface(
+            onClick = onChannels, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1.0f,
+            modifier = Modifier.width(110.design).fillMaxHeight().semantics { contentDescription = D.catChannels },
+        ) { f ->
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                DIcon("M4 6h16M4 12h16M4 18h10", 28.design, if (f) Ux.TextOnLight else Ux.Text2, strokeWidth = 2.4f)
+            }
+        }
+    }
+}
+
+/**
+ * Chaînes d'une catégorie du Direct : un interrupteur par chaîne (désactivée = masquée partout, sur tous les appareils).
+ * La liste comprend les chaînes déjà masquées de cette catégorie, pour pouvoir les réafficher.
+ */
+@Composable
+private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: String, D: com.ultratv.tv.nativeapp.i18n.DesignStrings, onClose: () -> Unit) {
+    var items by remember(cat) { mutableStateOf<List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>?>(null) }
+    LaunchedEffect(cat) { items = vm.channelsOf(cat) }
+    val hidden by vm.hiddenIds.collectAsState()
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
+    com.ultratv.tv.nativeapp.ui.common.ModalFocusScope(onBack = onClose, modifier = Modifier.background(Ux.Scrim)) {
+        Column(
+            Modifier.widthIn(min = if (touch) 0.design else 760.design, max = 1000.design).fillMaxWidth(if (touch) 0.94f else 1f).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(36.design),
+            verticalArrangement = Arrangement.spacedBy(14.design),
+        ) {
+            Text(D.catChannelsTitle(label), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 2)
+            Text(D.catChannelsHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3)
+            val list = items
+            val first = remember { androidx.compose.ui.focus.FocusRequester() }
+            var firstFocused by remember { mutableStateOf(false) }
+            com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus(first, hasFocus = { firstFocused }, key = list?.isNotEmpty() == true)
+            LazyColumn(Modifier.heightIn(max = 600.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
+                items(list.orEmpty(), key = { it.id }) { ch ->
+                    val visible = ch.id !in hidden
+                    FocusSurface(
+                        onClick = { vm.setChannelVisible(ch, !visible) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
+                        modifier = Modifier.fillMaxWidth().height(72.design).then(if (ch.id == list?.firstOrNull()?.id) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier),
+                    ) { f ->
+                        Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
+                            Text(ch.name, color = if (f) Ux.TextOnLight else if (visible) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                                style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
+                            Text(if (visible) D.catChannelShown else D.catChannelHidden, color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1)
+                            Spacer(Modifier.width(14.design))
+                            Switch(visible, inverted = f)
+                        }
+                    }
+                }
+            }
+            PillButton(D.doneLabel, onClose, heightPx = 64, hPadPx = 34, fontPx = 22, weight = FontWeight.Bold, bg = Ux.Cta)
         }
     }
 }
@@ -307,6 +402,7 @@ private fun TouchCategories(
     vm: CategoriesViewModel, kind: String, q: String, shown: List<CategoryRow>, tabs: Map<String, Int>, unsupported: Boolean, moving: String?,
     D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     onBack: () -> Unit, onKind: (String) -> Unit, onStartMove: (String) -> Unit, onMove: (String, Int) -> Unit, onConfirmMove: () -> Unit,
+    onChannels: (String, String) -> Unit = { _, _ -> },
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dpT, vertical = 12.dpT), verticalArrangement = Arrangement.spacedBy(12.dpT)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -324,8 +420,8 @@ private fun TouchCategories(
         }
         FilterField(q, { vm.query.value = it }, D.filterHint, Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dpT)) {
-            for ((label, on) in listOf(D.enableAll to true, D.disableAll to false)) {
-                Box(Modifier.weight(1f).heightIn44().clip(RoundedCornerShape(14.dpT)).background(Ux.Surface).border(1.dpT, Ux.Line, RoundedCornerShape(14.dpT)).clickableT { vm.setAll(on) }.padding(horizontal = 10.dpT, vertical = 8.dpT), contentAlignment = Alignment.Center) {
+            for ((label, act) in listOf<Pair<String, () -> Unit>>(D.enableAll to { vm.setAll(true) }, D.disableAll to { vm.setAll(false) }, D.catSortAz to { vm.sortAz() })) {
+                Box(Modifier.weight(1f).heightIn44().clip(RoundedCornerShape(14.dpT)).background(Ux.Surface).border(1.dpT, Ux.Line, RoundedCornerShape(14.dpT)).clickableT(act).padding(horizontal = 10.dpT, vertical = 8.dpT), contentAlignment = Alignment.Center) {
                     Text(label, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, lineHeight = 18.sp, maxLines = 2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
@@ -355,6 +451,9 @@ private fun TouchCategories(
                         Switch(r.enabled)
                         Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { if (moving == null) onStartMove(r.remoteId) }, contentAlignment = Alignment.Center) {
                             DIcon("M8 10l4-4 4 4M8 14l4 4 4-4", 20.dpT, Ux.Text3, strokeWidth = 2.2f)
+                        }
+                        if (kind == "LIVE") Box(Modifier.size44().clip(RoundedCornerShape(22.dpT)).clickableT { onChannels(r.remoteId, r.label) }, contentAlignment = Alignment.Center) {
+                            DIcon("M4 6h16M4 12h16M4 18h10", 20.dpT, Ux.Text3, strokeWidth = 2.2f)
                         }
                     }
                 }

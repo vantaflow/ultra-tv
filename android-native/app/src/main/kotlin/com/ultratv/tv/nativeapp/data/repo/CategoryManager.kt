@@ -35,6 +35,7 @@ class CategoryManager @Inject constructor(
     private val seriesDao: SeriesDao,
     private val sync: SyncCoordinator,
     private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
+    private val hidden: com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore,
 ) {
     fun observe(pid: Long, kind: String, query: String): Flow<List<CategoryRow>> {
         val counts: Flow<List<CategoryCount>> = when (kind) { "LIVE" -> channelDao.observeCategoryCounts(pid); "MOVIE" -> movieDao.observeCategoryCounts(pid); else -> seriesDao.observeCategoryCounts(pid) }
@@ -65,7 +66,61 @@ class CategoryManager @Inject constructor(
         if (kind == LiveOrder.KIND) LiveOrder.apply(channelDao, pid, LiveOrder.ranks(categoryDao.forProviderKind(pid, kind)))
     }
 
+    /**
+     * Enregistre un nouvel ordre pour une PARTIE des catégories (liste filtrée, cochées d'abord) : ces catégories
+     * reprennent les places qu'elles occupaient dans l'ordre complet, les autres ne bougent pas. Avant, enregistrer depuis
+     * une liste filtrée numérotait 1..n les seules catégories visibles et mélangeait tout le reste.
+     */
+    suspend fun saveOrderOf(pid: Long, kind: String, visibleOrder: List<String>) {
+        val full = categoryDao.orderedIds(pid, kind)
+        saveOrder(pid, kind, mergeOrder(full, visibleOrder))
+    }
+
+    /** Ordre alphabétique (nom affiché), pour tout le type. */
+    suspend fun sortAlphabetically(pid: Long, kind: String) {
+        val cats = categoryDao.forProviderKind(pid, kind)
+        saveOrder(pid, kind, cats.sortedBy { com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(it.name).lowercase() }.map { it.remoteId })
+    }
+
+    /** Ordre complet actuel (identifiants du fournisseur). */
+    suspend fun orderedIds(pid: Long, kind: String): List<String> = categoryDao.orderedIds(pid, kind)
+
+    // ── Chaînes masquées ────────────────────────────────────────────────────────────────────────
+
+    fun observeHidden(pid: Long) = hidden.observe(pid)
+    fun hiddenOf(pid: Long) = hidden.list(pid)
+
+    /** Chaînes d'une catégorie : présentes en base + masquées de cette catégorie (pour pouvoir les réafficher). */
+    suspend fun channelsOf(pid: Long, cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> =
+        channelDao.listInCategory(pid, cat).map { com.ultratv.tv.nativeapp.data.prefs.HiddenChannel(it.remoteId, it.categoryId, it.name) } +
+            hidden.list(pid).filter { it.cat == cat }
+
+    /** Masque des chaînes : retirées tout de suite de la base, ignorées par les prochaines synchros. */
+    suspend fun hideChannels(pid: Long, items: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>) {
+        if (items.isEmpty()) return
+        hidden.add(pid, items)
+        items.map { it.id }.chunked(500).forEach { channelDao.deleteByRemoteIds(pid, it) }
+    }
+
+    /** Réaffiche des chaînes : retirées de la liste, leurs catégories rechargées. */
+    suspend fun showChannels(pid: Long, ids: Collection<String>) {
+        if (ids.isEmpty()) return
+        val cats = hidden.list(pid).filter { it.id in ids }.mapNotNull { it.cat }.distinct()
+        hidden.remove(pid, ids)
+        if (cats.isNotEmpty()) sync.requestCategories(pid, "LIVE", cats)
+    }
+
     companion object {
+        /** Fusion d'un ordre partiel dans l'ordre complet : les places des catégories visibles leur sont réattribuées. Pur. */
+        fun mergeOrder(full: List<String>, visibleOrder: List<String>): List<String> {
+            val vis = visibleOrder.toSet()
+            val queue = ArrayDeque(visibleOrder.filter { it in full })
+            val out = full.map { id -> if (id in vis) queue.removeFirstOrNull() ?: id else id }.toMutableList()
+            // Catégories visibles inconnues de l'ordre complet (cas limite) : à la fin.
+            out += visibleOrder.filter { it !in full }
+            return out.distinct()
+        }
+
         /** Construit les lignes : filtre (nom, badge, langue), badge pays/qualité extrait par le parseur. Pur et testable. */
         fun rows(cats: List<CategoryEntity>, counts: List<CategoryCount>, query: String): List<CategoryRow> {
             val byId = counts.associate { it.categoryId to it.n }

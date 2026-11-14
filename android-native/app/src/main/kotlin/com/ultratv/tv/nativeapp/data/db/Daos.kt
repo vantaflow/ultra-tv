@@ -195,6 +195,14 @@ interface ChannelDao {
     @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId IN (:ids)")
     suspend fun deleteForCategories(pid: Long, ids: List<String>)
 
+    /** Chaînes masquées par l'utilisateur : retirées de la base (voir HiddenChannelsStore). */
+    @Query("DELETE FROM channel WHERE providerId = :pid AND remoteId IN (:ids)")
+    suspend fun deleteByRemoteIds(pid: Long, ids: List<String>)
+
+    /** Toutes les chaînes d'une catégorie (écran « Chaînes de la catégorie »), dans l'ordre du fournisseur. */
+    @Query("SELECT * FROM channel WHERE providerId = :pid AND categoryId = :cat ORDER BY num, id")
+    suspend fun listInCategory(pid: Long, cat: String): List<ChannelEntity>
+
     @Query("DELETE FROM channel WHERE providerId = :pid AND categoryId = :cat")
     suspend fun deleteForCategory(pid: Long, cat: String)
 
@@ -796,6 +804,9 @@ interface CategoryDao {
 
     @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind ORDER BY CASE WHEN position = 0 THEN 1 ELSE 0 END, position, id")
     fun observeOrdered(pid: Long, kind: String): Flow<List<CategoryEntity>>
+
+    @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind ORDER BY CASE WHEN position = 0 THEN 1 ELSE 0 END, position, id")
+    suspend fun orderedIds(pid: Long, kind: String): List<String>
 
     @Query("UPDATE category SET enabled = :enabled WHERE providerId = :pid AND kind = :kind AND remoteId IN (:ids)")
     suspend fun setEnabled(pid: Long, kind: String, ids: List<String>, enabled: Boolean)

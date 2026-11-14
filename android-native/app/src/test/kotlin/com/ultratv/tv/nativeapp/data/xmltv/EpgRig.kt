@@ -60,6 +60,7 @@ class EpgRig(
             syncStatus = bus, xmltv = parserFactory(ok), epgDao = db.epgDao(), db = db, prefs = prefs,
             adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = limitsStore,
             langDisabled = com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx),
+            hiddenChannels = com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx),
             stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),
         )
         providerId = runBlocking {

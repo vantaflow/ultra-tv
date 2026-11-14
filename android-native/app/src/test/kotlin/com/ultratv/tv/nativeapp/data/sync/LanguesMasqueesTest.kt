@@ -71,12 +71,12 @@ class LanguesMasqueesTest {
             providerDao = providerDao, channelDao = db.channelDao(), movieDao = db.movieDao(), seriesDao = db.seriesDao(),
             episodeDao = db.episodeDao(), categoryDao = db.categoryDao(), xtream = XtreamClient(ok), m3u = M3uParser(ok), parental = ParentalStore(ctx),
             syncStatus = SyncStatusBus(), xmltv = XmltvParser(ok), epgDao = db.epgDao(), db = db, prefs = prefs,
-            adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = ProviderLimitsStore(ctx), langDisabled = store,
+            adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = ProviderLimitsStore(ctx), langDisabled = store, hiddenChannels = com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx),
             stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),
         )
         val id = runBlocking { db.providerDao().upsert(ProviderEntity(name = "fictif", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "test", password = "test", active = true)) }
         val manager = LanguageManager(db, providerDao, db.categoryDao(), db.channelDao(), db.movieDao(), db.seriesDao(), prefs, store, SyncCoordinator(ctx))
-        val categories = CategoryManager(db, db.categoryDao(), db.channelDao(), db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), store)
+        val categories = CategoryManager(db, db.categoryDao(), db.channelDao(), db.movieDao(), db.seriesDao(), SyncCoordinator(ctx), store, com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx))
         return Rig(db, repo, id, prefs, manager, categories, store)
     }
 

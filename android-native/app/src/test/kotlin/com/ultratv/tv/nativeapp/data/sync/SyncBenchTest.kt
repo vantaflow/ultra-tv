@@ -71,6 +71,7 @@ class SyncBenchTest {
             syncStatus = SyncStatusBus(), xmltv = parser, epgDao = db.epgDao(), db = db, prefs = UserPreferencesStore(ctx, profiles),
             adaptive = AdaptiveProfile(ctx, NetworkMonitor(ctx)), limits = ProviderLimitsStore(ctx),
             langDisabled = com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore(ctx),
+            hiddenChannels = com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore(ctx),
             stalker = StalkerClient(ok, StalkerEndpointStore.inMemory()),
         )
         val provider = ProviderEntity(name = "fictif", kind = "XTREAM", baseUrl = "http://serveur-fictif.invalid", username = "test", password = "test", active = true)
