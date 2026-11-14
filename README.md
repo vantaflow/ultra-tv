@@ -32,11 +32,22 @@
 | Appareil | Lien |
 |---|---|
 | **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5189921`** |
+| **TV Samsung** (Tizen 5.5+, modèles 2020+) | [.wgt non signé](https://github.com/vantaflow/ultra-tv/releases) — installation développeur, [voir la procédure](docs/tv.md) |
+| **TV LG** (webOS 6+, modèles 2021+) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — mode développeur, [voir la procédure](docs/tv.md) |
 | **Windows** (x64) | [Installeur .exe](https://ultratv.dpdns.org/download/windows) |
 | **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv.dpdns.org/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+ : `sudo apt install libfuse2` si l'AppImage ne démarre pas |
 
 Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'est nécessaire.
+
+### TV Samsung et LG
+
+La même application existe en paquets natifs pour les téléviseurs connectés : **widget Tizen**
+(`.wgt`, Samsung, Tizen 5.5+ / modèles 2020+) et **application webOS** (`.ipk`, LG, webOS 6+ /
+modèles 2021+). Les deux sont pilotées à la télécommande (Retour, lecture/pause, chaînes +/−,
+Exit) et lisent le HLS **nativement** sans proxy quand le fournisseur le permet. Installation
+développeur (certificats Samsung / mode développeur LG) et publication boutiques : voir
+[docs/tv.md](docs/tv.md).
 
 
 Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **portails Stalker / Ministra** par adresse MAC). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.

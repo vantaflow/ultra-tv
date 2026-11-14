@@ -1,0 +1,15 @@
+{
+  "id": "com.ultratv.app",
+  "version": "1.3.34",
+  "vendor": "vantaflow",
+  "type": "web",
+  "main": "index.html",
+  "title": "Ultra TV",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "bgImage": "bgImage.png",
+  "splashBackground": "splashBackground.png",
+  "uiRevision": 2,
+  "disableBackHistoryAPI": true,
+  "requiredACG": []
+}

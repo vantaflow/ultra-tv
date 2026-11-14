@@ -9,7 +9,7 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 
 ### En préparation
 
-**TV Samsung (Tizen) et LG (webOS)** — faisable, déjà bien avancé.
+**TV Samsung (Tizen) et LG (webOS)** — paquets prêts (`tizen/`, `webos/`, [docs/tv.md](docs/tv.md)), pas encore testés sur un vrai téléviseur.
 - Les deux systèmes font tourner une application web dans un Chromium intégré au téléviseur : on réutilise l'application web/bureau existante (React), empaquetée en `.wgt` (Samsung) et `.ipk` (LG). Pas de réécriture.
 - Cibles réalistes : Samsung 2020+ (Tizen 5.5 à 8) et LG 2021+ (webOS 6+). Les modèles plus anciens (Chromium 38 à 66) sont trop limités.
 - Lecture : HLS et MPEG-TS via les lecteurs web (hls.js, mpegts.js) ou le lecteur natif HLS du téléviseur. Le DNS personnalisé, le proxy local et l'enregistrement du bureau ne sont pas disponibles sur ces TV.
@@ -36,7 +36,7 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 
 ### In preparation
 
-**Samsung (Tizen) and LG (webOS) TVs** — feasible, already well under way.
+**Samsung (Tizen) and LG (webOS) TVs** — packages ready (`tizen/`, `webos/`, [docs/tv.md](docs/tv.md)), not yet tested on a real TV.
 - Both run a web app inside the TV's built-in Chromium: the existing web/desktop app (React) is reused and packaged as `.wgt` (Samsung) and `.ipk` (LG). No rewrite.
 - Realistic targets: Samsung 2020+ (Tizen 5.5 to 8) and LG 2021+ (webOS 6+). Older models (Chromium 38 to 66) are too limited.
 - Playback: HLS and MPEG-TS through web players (hls.js, mpegts.js) or the TV's native HLS player. Custom DNS, the local proxy and desktop recording are not available on these TVs.

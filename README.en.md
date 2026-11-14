@@ -32,11 +32,21 @@
 | Device | Link |
 |---|---|
 | **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+) | See « Which APK? » below · on a box: Downloader app, code **`5189921`** |
+| **Samsung TVs** (Tizen 5.5+, 2020 models and later) | [Unsigned .wgt](https://github.com/vantaflow/ultra-tv/releases) — developer install, [see the guide](docs/tv.md) |
+| **LG TVs** (webOS 6+, 2021 models and later) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — developer mode, [see the guide](docs/tv.md) |
 | **Windows** (x64) | [.exe installer](https://ultratv.dpdns.org/download/windows) |
 | **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv.dpdns.org/download/mac) |
 | **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+: `sudo apt install libfuse2` if the AppImage doesn't start |
 
 Automatic updates afterwards, on every platform. No account needed.
+
+### Samsung and LG TVs
+
+The same app ships as native packages for smart TVs: a **Tizen widget** (`.wgt`, Samsung, Tizen
+5.5+ / 2020 models and later) and a **webOS app** (`.ipk`, LG, webOS 6+ / 2021 models and later).
+Both are remote-first (Back, play/pause, channel ±, Exit) and play HLS **natively** without a
+CORS proxy whenever the provider allows it. Developer install (Samsung certificates / LG
+developer mode) and store publishing: see [docs/tv.md](docs/tv.md).
 
 
 Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.

@@ -1,0 +1,134 @@
+name: TV
+
+# Paquets TV : Samsung (Tizen, .wgt) et LG (webOS, .ipk). Déclenchée sur push/PR (artefacts de
+# vérification) et sur tag `tv-vX.Y.Z` (= VERSION à la racine) pour la publication GitHub Releases.
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "tv-v*"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tv-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  tizen:
+    name: Samsung TV (.wgt Tizen)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tizen
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci --prefix ../web
+
+      - name: Package (unsigned .wgt)
+        run: node scripts/build.mjs
+
+      # Sans CLI Tizen Studio, le .wgt est un zip non signé : il sert de binaire de vérification
+      # (et de base pour la signature locale, voir tizen/README.md).
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tv-tizen
+          path: tizen/dist/*.wgt
+          if-no-files-found: error
+          retention-days: 14
+
+  webos:
+    name: LG TV (.ipk webOS)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: webos
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install web dependencies
+        run: npm ci --prefix ../web
+
+      - name: Package (.ipk via ares-package)
+        run: node scripts/build.mjs
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tv-webos
+          path: webos/dist/*.ipk
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish release
+    needs: [tizen, webos]
+    # Uniquement sur tag (pas de matrix ici).
+    if: startsWith(github.ref, 'refs/tags/tv-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Le tag « tv-v1.3.34 » doit être la version de VERSION à la racine (une seule source).
+      - name: Verify tag matches VERSION
+        run: |
+          TAG="${GITHUB_REF_NAME#tv-}"
+          EXPECTED="v$(cat VERSION)"
+          echo "tag=$TAG expected=$EXPECTED"
+          if [ "$TAG" != "$EXPECTED" ]; then
+            echo "::error::Tag '$GITHUB_REF_NAME' does not match VERSION file ('v$(cat VERSION)'). Bump VERSION and retag."
+            exit 1
+          fi
+
+      - name: Download artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: tv-*
+          merge-multiple: true
+          path: dist
+
+      - name: List files
+        run: ls -la dist
+
+      # `gh` plutôt qu'une action tierce. Publiée directement mais jamais « Latest » : la dernière
+      # release reste celle d'Android (même règle que desktop-release.yml).
+      - name: Create or update release
+        run: |
+          shopt -s nullglob
+          files=(dist/*)
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${files[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$GITHUB_REF_NAME" --draft=false --latest=false --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "${files[@]}" \
+              --latest=false \
+              --title "Ultra TV TV ${GITHUB_REF_NAME#tv-v} (Samsung, LG)" \
+              --generate-notes \
+              --repo "$GITHUB_REPOSITORY"
+          fi
