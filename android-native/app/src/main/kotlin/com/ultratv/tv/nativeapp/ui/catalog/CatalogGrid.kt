@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
@@ -626,10 +627,11 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, modifier: 
     FocusSurface(
         onClick = onClick, shape = RoundedCornerShape(16.design), bg = if (selected) Ux.Surface2 else androidx.compose.ui.graphics.Color.Transparent,
         focusedScale = 1.02f, ringWidth = 0.dp, focusedBg = Ux.Cta,
-        modifier = modifier.fillMaxWidth().height(68.design),
+        // Hauteur minimale : un nom de catégorie long passe sur 2 lignes au lieu d'être coupé par « … ».
+        modifier = modifier.fillMaxWidth().heightIn(min = 68.design),
     ) { f ->
-        Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
-            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = if (selected || f) FontWeight.Bold else FontWeight.SemiBold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth().heightIn(min = 68.design).padding(horizontal = 24.design, vertical = 10.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = if (selected || f) FontWeight.Bold else FontWeight.SemiBold, fontSize = 26.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             Text(count.toString(), color = if (f) Ux.TextOnLight else Ux.Text3, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1)
         }
     }

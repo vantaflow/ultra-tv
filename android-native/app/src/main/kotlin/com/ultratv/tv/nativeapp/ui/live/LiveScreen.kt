@@ -359,15 +359,16 @@ private fun CategoryRow(label: String, count: Int, selected: Boolean, locked: Bo
         onClick = onClick, shape = RoundedCornerShape(16.design),
         bg = if (selected) Ux.Surface2 else Color.Transparent,
         ringWidth = 5.design,
-        modifier = Modifier.fillMaxWidth().height(64.designT).onFocusChanged { if (it.isFocused) onFocus() },
+        // Hauteur minimale : un nom de catégorie long passe sur 2 lignes au lieu d'être coupé par « … ».
+        modifier = Modifier.fillMaxWidth().heightIn(min = 64.designT).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.designT).height(androidx.compose.foundation.layout.IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
             if (selected && !f) Box(Modifier.width(4.design).fillMaxHeight().background(Ux.Accent)) else Spacer(Modifier.width(4.design))
-            Row(Modifier.weight(1f).padding(horizontal = 16.design), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).padding(horizontal = 16.design, vertical = 8.design), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     (if (locked) "🔒 " else "") + label,
                     color = if (f) Ux.TextOnLight else if (selected) Ux.Text else Ux.Text2,
-                    fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, lineHeight = 30.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                     style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content),
                 )
                 Spacer(Modifier.width(8.design))
