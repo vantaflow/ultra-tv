@@ -1,6 +1,6 @@
 // Plateforme TV : détection, transposition des touches et polyfills.
 import { describe, expect, it } from "vitest";
-import { ensureTvCompat, isTyping, tvKey, tvKindOf } from "./tv";
+import { ensureTvCompat, isTyping, registerTizenKeys, TIZEN_KEYS, tvKey, tvKindOf } from "./tv";
 
 describe("tvKindOf", () => {
   it("reconnaît Tizen (Samsung) et webOS (LG, Web0S avec un zéro)", () => {
@@ -74,5 +74,23 @@ describe("ensureTvCompat", () => {
     ensureTvCompat();
     const id = globalThis.crypto.randomUUID();
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+});
+
+describe("registerTizenKeys", () => {
+  it("enregistre les touches média auprès de Tizen et ignore celles absentes du modèle", () => {
+    const seen: string[] = [];
+    const g = { tizen: { tvinputdevice: { registerKey: (k: string) => { if (k === "Exit") throw new Error("absente"); seen.push(k); } } } };
+    expect(registerTizenKeys(g)).toBe(TIZEN_KEYS.length - 1);
+    expect(seen).toContain("MediaPlayPause");
+    expect(seen).toContain("ChannelUp");
+  });
+
+  it("ne fait rien hors Tizen", () => {
+    expect(registerTizenKeys({})).toBe(0);
+  });
+
+  it("Pause seule (19) bascule lecture/pause", () => {
+    expect(tvKey({ keyCode: 19 }, false)).toBe(" ");
   });
 });

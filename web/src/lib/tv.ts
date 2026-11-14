@@ -27,8 +27,22 @@ export function isTyping(el: EventTarget | null): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || t.isContentEditable === true;
 }
 
+/** Touches que Tizen ne livre qu'après tvinputdevice.registerKey (Retour et flèches le sont toujours). */
+export const TIZEN_KEYS = ["MediaPlayPause", "MediaPlay", "MediaPause", "MediaStop", "MediaRewind", "MediaFastForward", "ChannelUp", "ChannelDown", "Exit"] as const;
+
+/** Enregistre les touches média auprès de Tizen (privilège tv.inputdevice). Sans effet ailleurs ; une touche absente du modèle est ignorée. */
+export function registerTizenKeys(g: unknown = globalThis): number {
+  const dev = (g as { tizen?: { tvinputdevice?: { registerKey?: (k: string) => void } } }).tizen?.tvinputdevice;
+  if (!dev?.registerKey) return 0;
+  let n = 0;
+  for (const k of TIZEN_KEYS) {
+    try { dev.registerKey(k); n++; } catch { /* touche absente sur ce modèle */ }
+  }
+  return n;
+}
+
 /** Codes DVB partagés par les deux plateformes : rembobinage, stop, lecture, avance, chaîne +/−, lecture/pause (10252). */
-const MEDIA: Record<number, string> = { 412: "ArrowLeft", 413: "Escape", 415: " ", 417: "ArrowRight", 427: "ArrowUp", 428: "ArrowDown", 10252: " " };
+const MEDIA: Record<number, string> = { 19: " ", 412: "ArrowLeft", 413: "Escape", 415: " ", 417: "ArrowRight", 427: "ArrowUp", 428: "ArrowDown", 10252: " " };
 /** Retour : 10009 (Return, Tizen) et 461 (webOS) ; Exit : 10182 (Tizen). */
 const BACK_CODES = new Set([10009, 461]);
 const EXIT_CODES = new Set([10182]);
@@ -77,6 +91,7 @@ function dispatchKey(orig: KeyboardEvent, key: string) {
  */
 export function installTvKeys(): () => void {
   if (!isTv()) return () => undefined;
+  registerTizenKeys();
   const onKey = (ev: KeyboardEvent) => {
     const mapped = tvKey(ev, isTyping(ev.target));
     if (!mapped) return;
