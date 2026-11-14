@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.32] — 2026-11-14 (Android)
+
 ### Modifié
 - Bureau : paquets plus légers (seules les langues de l'appli embarquées pour Chromium, compression maximale des installeurs).
 
