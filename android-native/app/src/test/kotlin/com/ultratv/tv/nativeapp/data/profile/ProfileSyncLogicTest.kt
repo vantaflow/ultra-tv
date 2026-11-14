@@ -39,3 +39,12 @@ class ProfileSyncLogicTest {
         assertEquals(list, ProfileSyncLogic.parse(ProfileSyncLogic.toJson(list)))
     }
 }
+
+@RunWith(RobolectricTestRunner::class)
+class ProfileRenameSyncTest {
+    @Test fun renommeAilleurs_renommeIci_sansSupprimer() {
+        val local = listOf(ProfileEntity(id = 1, name = "Principal", color = 1, initial = "P", createdAt = 100), ProfileEntity(id = 2, name = "Papa", color = 3, initial = "P", createdAt = 100))
+        val remote = listOf(SharedProfile("Principal", 1, false, 100), SharedProfile("Papa 2", 3, false, 500, true, from = "Papa"), SharedProfile("Papa", 0, false, 500, false))
+        assertEquals(listOf(Action.Rename(2, SharedProfile("Papa 2", 3, false, 500, true, "Papa"))), ProfileSyncLogic.plan(local, emptyMap(), remote))
+    }
+}

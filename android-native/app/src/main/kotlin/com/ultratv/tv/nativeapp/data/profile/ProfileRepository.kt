@@ -97,8 +97,8 @@ class ProfileRepository(
     suspend fun rename(id: Long, name: String) {
         val n = ProfileRules.cleanName(name).ifBlank { return }
         val p = dao.byId(id) ?: return
-        if (ProfileSyncLogic.key(p.name) != ProfileSyncLogic.key(n)) log?.tombstone(p.name)
-        log?.touch(n)
+        if (ProfileSyncLogic.key(p.name) != ProfileSyncLogic.key(n)) { log?.tombstone(p.name); log?.touch(n, from = p.name) }
+        else log?.touch(n)
         dao.update(p.copy(name = n, initial = ProfileRules.initialOf(n)))
     }
 
@@ -165,5 +165,9 @@ suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileS
         }
         is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let { dao.update(it.copy(color = a.p.c, isKids = a.p.k)); log.set(a.p.n, a.p.at, true) }
         is ProfileSyncLogic.Action.Delete -> if (delete(a.id)) log.set(a.p.n, a.p.at, false)
+        is ProfileSyncLogic.Action.Rename -> dao.byId(a.id)?.let { old ->
+            dao.update(old.copy(name = a.p.n, initial = ProfileRules.initialOf(a.p.n), color = a.p.c, isKids = a.p.k))
+            log.set(old.name, a.p.at, false); log.set(a.p.n, a.p.at, true, a.p.from)
+        }
     }
 }
