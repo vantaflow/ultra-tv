@@ -1701,4 +1701,14 @@
     <string name="support_title">ادعم Ultra TV</string>
     <string name="support_sub">مجاني وبلا إعلانات: يساعد التبرع في دفع تكاليف الخوادم.</string>
     <string name="support_scan">امسح رمز QR بهاتفك للتبرع عبر Ko-fi (بطاقة أو PayPal).</string>
+    <string name="simple_back_full">العودة إلى الوضع الكامل</string>
+    <string name="simple_all_settings">كل الإعدادات</string>
+    <string name="simple_full_hint">يعرض الوضع الكامل كل الأقسام: الدليل والرياضة والفئات والتسجيلات…</string>
+    <string name="cat_sort_az">ترتيب من أ إلى ي</string>
+    <string name="cat_channels">القنوات</string>
+    <string name="cat_channels_title">قنوات «%1$s»</string>
+    <string name="cat_channels_hint">عطّل قناة لإخفائها في كل مكان وعلى كل أجهزتك. أعد تفعيلها لإظهارها من جديد.</string>
+    <string name="cat_channel_shown">ظاهرة</string>
+    <string name="cat_channel_hidden">مخفية</string>
+    <string name="cat_order_hint">▸ الترتيب · القنوات</string>
 </resources>

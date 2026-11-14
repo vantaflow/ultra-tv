@@ -755,7 +755,15 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
             )
         }
-        screen(Routes.SETTINGS) { SettingsScreen(onNavigate = { route -> nav.navigate(route) }) }
+        screen(Routes.SETTINGS) {
+            // Mode simple : ses propres réglages (revenir au mode complet, ou ouvrir tous les réglages).
+            if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleSettingsScreen(
+                onAllSettings = { nav.navigate(Routes.SETTINGS_ALL) },
+                onLeftSimple = { nav.navigate(Routes.HOME) { popUpTo(Routes.HOME) { inclusive = true } } },
+                onBack = { nav.popBackStack() },
+            ) else SettingsScreen(onNavigate = { route -> nav.navigate(route) })
+        }
+        screen(Routes.SETTINGS_ALL) { SettingsScreen(onNavigate = { route -> nav.navigate(route) }) }
         composable(
             route = Routes.PLAYER,
             arguments = listOf(

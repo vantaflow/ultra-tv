@@ -1657,4 +1657,14 @@
     <string name="support_title">Apoiar o Ultra TV</string>
     <string name="support_sub">Grátis e sem anúncios: uma doação ajuda a pagar os servidores.</string>
     <string name="support_scan">Escaneie o QR code com o celular para doar no Ko-fi (cartão ou PayPal).</string>
+    <string name="simple_back_full">Voltar ao modo completo</string>
+    <string name="simple_all_settings">Todas as configurações</string>
+    <string name="simple_full_hint">O modo completo mostra todas as seções: guia, esportes, categorias, gravações…</string>
+    <string name="cat_sort_az">Ordenar de A a Z</string>
+    <string name="cat_channels">Canais</string>
+    <string name="cat_channels_title">Canais de “%1$s”</string>
+    <string name="cat_channels_hint">Desative um canal para ocultá-lo em todos os lugares, em todos os seus dispositivos. Reative-o para mostrá-lo de novo.</string>
+    <string name="cat_channel_shown">Visível</string>
+    <string name="cat_channel_hidden">Oculto</string>
+    <string name="cat_order_hint">▸ Ordem · Canais</string>
 </resources>

@@ -201,7 +201,8 @@ class SimpleHomeLogicTest {
         assertTrue(SimpleHome.railHidden(true, Routes.HOME))
         assertTrue(SimpleHome.railHidden(true, Routes.MOVIES))       // écrans simples : sans menu latéral
         assertTrue(SimpleHome.railHidden(true, Routes.SEARCH))
-        assertFalse(SimpleHome.railHidden(true, Routes.SETTINGS))
+        assertTrue(SimpleHome.railHidden(true, Routes.SETTINGS))      // Réglages du mode simple : écran simple
+        assertFalse(SimpleHome.railHidden(true, Routes.SETTINGS_ALL)) // « Tous les réglages » : menu latéral
         assertTrue(SimpleHome.railHidden(true, Routes.SIMPLE_CHANNELS))
         assertFalse(SimpleHome.railHidden(false, Routes.HOME))
         assertFalse(SimpleHome.railHidden(true, null))

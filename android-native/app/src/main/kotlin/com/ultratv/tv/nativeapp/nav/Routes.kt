@@ -13,6 +13,8 @@ object Routes {
     /** Rubrique Sport (facultative, Réglages › Affichage) : direct, à venir et chaînes de sport tirés du guide de la source. */
     const val SPORT = "sport"
     const val SETTINGS = "settings"
+    /** Réglages complets ouverts depuis le mode simple (sinon « settings » y affiche les réglages simples). */
+    const val SETTINGS_ALL = "settings/all"
     const val DOWNLOADS = "downloads"
     const val RECORDINGS = "recordings"
     /** Mode simple : liste de chaînes à gros caractères (favoris d'abord), ouverte par la tuile « Télé en direct ». */

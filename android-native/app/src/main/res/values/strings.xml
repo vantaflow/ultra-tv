@@ -1639,4 +1639,14 @@
     <string name="support_title">Support Ultra TV</string>
     <string name="support_sub">Free and ad-free: a donation helps pay for the servers.</string>
     <string name="support_scan">Scan the QR code with your phone to donate on Ko-fi (card or PayPal).</string>
+    <string name="simple_back_full">Back to full mode</string>
+    <string name="simple_all_settings">All settings</string>
+    <string name="simple_full_hint">Full mode shows every section: guide, sport, categories, recordings…</string>
+    <string name="cat_sort_az">Sort A → Z</string>
+    <string name="cat_channels">Channels</string>
+    <string name="cat_channels_title">Channels of “%1$s”</string>
+    <string name="cat_channels_hint">Turn a channel off to hide it everywhere, on all your devices. Turn it back on to show it again.</string>
+    <string name="cat_channel_shown">Shown</string>
+    <string name="cat_channel_hidden">Hidden</string>
+    <string name="cat_order_hint">▸ Order · Channels</string>
 </resources>

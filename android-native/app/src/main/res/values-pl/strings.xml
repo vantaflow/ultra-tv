@@ -1593,4 +1593,14 @@
     <string name="support_title">Wesprzyj Ultra TV</string>
     <string name="support_sub">Darmowe i bez reklam: darowizna pomaga opłacić serwery.</string>
     <string name="support_scan">Zeskanuj kod QR telefonem, aby wesprzeć przez Ko-fi (karta lub PayPal).</string>
+    <string name="simple_back_full">Wróć do pełnego trybu</string>
+    <string name="simple_all_settings">Wszystkie ustawienia</string>
+    <string name="simple_full_hint">Pełny tryb pokazuje wszystkie sekcje: przewodnik, sport, kategorie, nagrania…</string>
+    <string name="cat_sort_az">Sortuj od A do Z</string>
+    <string name="cat_channels">Kanały</string>
+    <string name="cat_channels_title">Kanały „%1$s”</string>
+    <string name="cat_channels_hint">Wyłącz kanał, aby ukryć go wszędzie, na wszystkich urządzeniach. Włącz go ponownie, aby go przywrócić.</string>
+    <string name="cat_channel_shown">Widoczny</string>
+    <string name="cat_channel_hidden">Ukryty</string>
+    <string name="cat_order_hint">▸ Kolejność · Kanały</string>
 </resources>

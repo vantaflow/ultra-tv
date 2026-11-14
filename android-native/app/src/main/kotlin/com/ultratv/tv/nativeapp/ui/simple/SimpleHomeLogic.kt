@@ -110,7 +110,7 @@ object SimpleHome {
     fun railHidden(simple: Boolean, route: String?): Boolean = simple && route in SIMPLE_ROUTES
 
     /** Écrans qui ont leur équivalent simple (sans menu latéral : chacun a son bouton retour et Retour y ramène). */
-    private val SIMPLE_ROUTES = setOf(Routes.HOME, Routes.SIMPLE_CHANNELS, Routes.MOVIES, Routes.SERIES, Routes.MOVIE_DETAIL, Routes.SERIES_DETAIL, Routes.FAVORITES, Routes.SEARCH)
+    private val SIMPLE_ROUTES = setOf(Routes.HOME, Routes.SIMPLE_CHANNELS, Routes.MOVIES, Routes.SERIES, Routes.MOVIE_DETAIL, Routes.SERIES_DETAIL, Routes.FAVORITES, Routes.SEARCH, Routes.SETTINGS)
 
     /**
      * La sortie du mode simple demande le code parental SI un code existe (sans code : libre, comme partout ailleurs).
