@@ -11,6 +11,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Ajouté
 - Page de dons (/donate) : montant au choix en dirhams, paiement par carte sur la page sécurisée de ChariPay ; aucune donnée bancaire ne passe par Ultra TV.
 
+### Modifié
+- Page de dons : Ko-fi (carte ou PayPal, depuis n'importe quel pays) proposé en premier ; ChariPay (cartes marocaines) en complément quand il sera ouvert.
+
 ## [1.3.25] — 2026-11-13 (Android)
 
 ### Modifié

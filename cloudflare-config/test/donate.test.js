@@ -56,12 +56,16 @@ describe("dons : pages", () => {
     expect(h).toContain('action="/donate?l=fr"');
     const off = await donatePage("n1", { lang: "ar", enabled: false }).text();
     expect(off).not.toContain("<form");
+    expect(off).toContain('href="https://ko-fi.com/ultratv"');
+    expect(h).toContain('href="https://ko-fi.com/ultratv"');
     expect(off).toContain('dir="rtl"');
   });
   it("route : GET sans clé = page fermée ; POST d'une autre origine refusé ; montant invalide renvoyé", async () => {
     const g = await call("/donate?l=en", { ip: freshIp() });
     expect(g.status).toBe(200);
-    expect(await g.text()).toContain("not open yet");
+    const gh = await g.text();
+    expect(gh).toContain("Donate on Ko-fi");
+    expect(gh).not.toContain("<form");
     expect((await call("/donate", { method: "POST", ip: freshIp(), origin: "https://evil.example", form: { amount: "50" } })).status).toBe(403);
     const bad = await call("/donate?l=en", { method: "POST", ip: freshIp(), form: { custom: "3" } });
     expect(bad.headers.get("location")).toBe("/donate?e=invalid&l=en");

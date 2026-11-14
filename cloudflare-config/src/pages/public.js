@@ -2,7 +2,7 @@
 import { escapeHtml as e } from "../http.js";
 import { ENVOYER_COOKIE, ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
+import { DONATE_DICT, KOFI_URL, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const AUTH_ERR = {
@@ -178,19 +178,20 @@ export function donatePage(n, { lang = "en", enabled = false, err = null, state 
   if (state === "thanks") {
     body = `<div class="panel"><h1>${e(t.thanks)}</h1><p class="sub">${e(t.thanksSub)}</p>
 <div class="row"><a class="button block" href="https://github.com/vantaflow/ultra-tv">${e(t.github)}</a></div></div>`;
-  } else if (!enabled) {
-    body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${notice("info", t.off)}</div>`;
   } else {
-    const presets = DONATE_PRESETS.map((a, i) => `<button class="${i === 1 ? "" : "alt-btn "}block" type="submit" name="amount" value="${a}"${i === 1 ? " autofocus" : ""}>${a} MAD</button>`).join("");
-    body = `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}
+    // Ko-fi (carte ou PayPal, tous pays) toujours proposé ; ChariPay (cartes marocaines, dirhams) quand la clé est là.
+    const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p>`;
+    const presets = DONATE_PRESETS.map((a) => `<button class="alt-btn block" type="submit" name="amount" value="${a}">${a} MAD</button>`).join("");
+    body = enabled ? `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}${kofi}
 <form method="post" action="/donate?l=${lang}">
-<p class="hint">${e(t.pick)}</p>
+<p class="hint">${e(t.orMad)} ${e(t.pick)}</p>
 <div class="apk-list">${presets}</div>
 <label for="custom">${e(t.other)}</label>
 <input id="custom" name="custom" dir="ltr" inputmode="numeric" pattern="[0-9]*" min="${DONATE_MIN}" max="${DONATE_MAX}" maxlength="5" autocomplete="off" placeholder="${DONATE_MIN} – ${DONATE_MAX}"/>
 <div class="row"><button class="block" type="submit">${e(t.give)}</button></div>
 </form>
-<div class="note">${ico("info")}<span>${e(t.secure)}</span></div></div>`;
+<div class="note">${ico("info")}<span>${e(t.secure)}</span></div></div>`
+      : `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}${kofi}</div>`;
   }
   const res = shell(n, { title: t.title, ctx: "public", width: "narrow", body,
     loc: { lang, dir, skip: c.skip, themeBtn: c.themeBtn, themeLabels: { auto: c.themeAuto, light: c.themeLight, dark: c.themeDark }, themeChange: c.themeChange,
