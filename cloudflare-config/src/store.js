@@ -521,6 +521,17 @@ export function parsePrefs(body, now = Date.now()) {
       chOrder.push({ p, s: sc, k: [...new Set(c.k)] });
     }
   }
+  // Catégories masquées par profil (facultatif) : [{ p: nom du profil, k: live|movie|series, ids: [...] }].
+  let pHidden;
+  if (body.pHidden !== undefined && body.pHidden !== null) {
+    if (!Array.isArray(body.pHidden) || body.pHidden.length > PREFS_MAX_CHORDER) return { error: "pHidden" };
+    pHidden = [];
+    for (const c of body.pHidden) {
+      const p = c && typeof c === "object" && typeof c.p === "string" ? cleanLine(c.p, 24) : "";
+      if (!p || !PREFS_KINDS.includes(c.k) || !Array.isArray(c.ids) || c.ids.length > PREFS_MAX_IDS || !c.ids.every((x) => cleanId(x))) return { error: "pHidden" };
+      pHidden.push({ p, k: c.k, ids: [...new Set(c.ids)] });
+    }
+  }
   const updatedAt = Number(body.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
@@ -528,6 +539,7 @@ export function parsePrefs(body, now = Date.now()) {
   if (order) prefs.order = order;
   if (hidden) prefs.hidden = hidden;
   if (chOrder) prefs.chOrder = chOrder;
+  if (pHidden) prefs.pHidden = pHidden;
   return { prefs };
 }
 
@@ -621,7 +633,9 @@ export function parseProfiles(body, now = Date.now()) {
     if (!n || !Number.isFinite(at) || at <= 0) return { error: "profiles" };
     const c = Number.isInteger(e.c) && e.c >= -2147483648 && e.c <= 4294967295 ? e.c : 0;
     const f = typeof e.f === "string" ? cleanLine(e.f, 24) : "";
-    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}) });
+    // Langue de l'interface du profil (code AppLang : « fr », « pt-BR », « system »…).
+    const l = typeof e.l === "string" && /^(system|[a-z]{2}(-[A-Z]{2})?)$/.test(e.l) ? e.l : "";
+    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}) });
   }
   return { profiles: out };
 }

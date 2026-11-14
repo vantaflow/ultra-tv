@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Bureau : ordre des catégories, ordre des chaînes (par profil) et chaînes masquées partagés avec les autres appareils ; Réglages › Catégories : ▲ ▼, « Trier de A à Z » et « Chaînes » (masquer, réordonner). Les réglages venus d'appareils que le bureau ne sait pas lire sont conservés et renvoyés tels quels.
+- Worker : langue de l'interface des profils et catégories masquées par profil partagées entre appareils.
 
 ## [1.3.28] — 2026-11-14 (Android)
 

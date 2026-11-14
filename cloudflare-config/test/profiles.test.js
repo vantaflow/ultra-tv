@@ -43,3 +43,11 @@ describe("renommage partagé", () => {
     expect(r.profiles.find((p) => p.n === "Papa 2").f).toBe("Papa");
   });
 });
+
+describe("langue du profil partagée", () => {
+  it("transmise si valide, ignorée sinon", () => {
+    expect(parseProfiles({ profiles: [{ n: "Papa", at: 5, l: "fr" }] }).profiles[0].l).toBe("fr");
+    expect(parseProfiles({ profiles: [{ n: "Papa", at: 5, l: "pt-BR" }] }).profiles[0].l).toBe("pt-BR");
+    expect(parseProfiles({ profiles: [{ n: "Papa", at: 5, l: "<script>" }] }).profiles[0].l).toBeUndefined();
+  });
+});

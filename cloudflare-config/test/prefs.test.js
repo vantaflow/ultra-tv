@@ -124,3 +124,14 @@ describe("ordre des chaînes partagé", () => {
     expect(parsePrefs(prefs(1, { chOrder: [{ p: "P", s: "1", k: [1] }] })).error).toBe("chOrder");
   });
 });
+
+describe("catégories masquées par profil", () => {
+  it("transmises, gardées si absentes, refusées si invalides", async () => {
+    const { tv, mac, id } = await setup();
+    const pHidden = [{ p: "Enfants", k: "live", ids: ["12", "13"] }];
+    expect((await putPrefs(mac, id, prefs(3000, { pHidden }))).status).toBe(200);
+    await putPrefs(tv, id, prefs(4000));
+    expect((await cfg(mac)).providers[0].prefs.pHidden).toEqual(pHidden);
+    expect(parsePrefs(prefs(1, { pHidden: [{ p: "A", k: "radio", ids: [] }] })).error).toBe("pHidden");
+  });
+});

@@ -1243,6 +1243,7 @@ async function devicePutPrefs(req, env, id) {
     if (next.order === undefined && cur?.order) next.order = cur.order;
     if (next.hidden === undefined && cur?.hidden) next.hidden = cur.hidden;
     if (next.chOrder === undefined && cur?.chOrder) next.chOrder = cur.chOrder;
+    if (next.pHidden === undefined && cur?.pHidden) next.pHidden = cur.pHidden;
     providers[i] = { ...providers[i], prefs: next };
     await saveProviders(env, acct, providers);
     await putAccount(env, acct);
