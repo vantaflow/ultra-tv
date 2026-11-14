@@ -23,9 +23,11 @@ class ProfileRepository(
     private val dao: ProfileDao,
     private val state: ProfileStateStore,
     scope: CoroutineScope,
+    /** Journal pour la synchro entre appareils (absent dans les tests). */
+    private val log: ProfileSyncLog? = null,
 ) {
-    @Inject constructor(dao: ProfileDao, state: ProfileStateStore) :
-        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default))
+    @Inject constructor(dao: ProfileDao, state: ProfileStateStore, log: ProfileSyncLog) :
+        this(dao, state, CoroutineScope(SupervisorJob() + Dispatchers.Default), log)
 
     val profiles: StateFlow<List<ProfileEntity>> =
         dao.observeAll().stateIn(scope, SharingStarted.Eagerly, emptyList())
@@ -83,6 +85,7 @@ class ProfileRepository(
     suspend fun create(name: String, color: Int, isKids: Boolean = false, pin: String? = null): Long? {
         if (!ProfileRules.canAdd(dao.count())) return null
         val n = ProfileRules.cleanName(name).ifBlank { return null }
+        log?.touch(n)
         return dao.insert(
             ProfileEntity(
                 name = n, color = color, initial = ProfileRules.initialOf(n), isKids = isKids,
@@ -94,11 +97,13 @@ class ProfileRepository(
     suspend fun rename(id: Long, name: String) {
         val n = ProfileRules.cleanName(name).ifBlank { return }
         val p = dao.byId(id) ?: return
+        if (ProfileSyncLogic.key(p.name) != ProfileSyncLogic.key(n)) log?.tombstone(p.name)
+        log?.touch(n)
         dao.update(p.copy(name = n, initial = ProfileRules.initialOf(n)))
     }
 
-    suspend fun setColor(id: Long, color: Int) { dao.byId(id)?.let { dao.update(it.copy(color = color)) } }
-    suspend fun setKids(id: Long, kids: Boolean) { dao.byId(id)?.let { dao.update(it.copy(isKids = kids)) } }
+    suspend fun setColor(id: Long, color: Int) { dao.byId(id)?.let { log?.touch(it.name); dao.update(it.copy(color = color)) } }
+    suspend fun setKids(id: Long, kids: Boolean) { dao.byId(id)?.let { log?.touch(it.name); dao.update(it.copy(isKids = kids)) } }
 
     /** PIN du profil ; null ou vide = retire la protection. */
     suspend fun setPin(id: Long, pin: String?) {
@@ -110,6 +115,7 @@ class ProfileRepository(
     /** Supprime un profil et ses données. Refuse (false) pour le dernier profil. */
     suspend fun delete(id: Long): Boolean {
         if (!ProfileRules.canDelete(dao.count())) return false
+        dao.byId(id)?.let { log?.tombstone(it.name) }
         dao.deleteFavoritesOf(id); dao.deleteHistoryOf(id); dao.deletePrefsOf(id); dao.deleteHiddenOf(id); dao.deleteChannelOrderOf(id)
         dao.deleteProfile(id)
         val remaining = dao.observeAllOnce()
@@ -148,4 +154,16 @@ class ProfileScope @Inject constructor(private val repo: ProfileRepository) {
     val idNow: Long get() = repo.currentIdNow
     val prefs: Flow<ProfilePrefs> get() = repo.currentPrefs
     fun <T> flow(block: (profileId: Long) -> Flow<T>): Flow<T> = repo.currentId.flatMapLatest(block)
+}
+
+/** Accès pour la synchro (création / mise à jour reçues d'un autre appareil, sans réécrire le journal à la date du jour). */
+suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileSyncLog, actions: List<ProfileSyncLogic.Action>) {
+    for (a in actions) when (a) {
+        is ProfileSyncLogic.Action.Create -> if (ProfileRules.canAdd(dao.count())) {
+            dao.insert(ProfileEntity(name = a.p.n, color = a.p.c, initial = ProfileRules.initialOf(a.p.n), isKids = a.p.k))
+            log.set(a.p.n, a.p.at, true)
+        }
+        is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let { dao.update(it.copy(color = a.p.c, isKids = a.p.k)); log.set(a.p.n, a.p.at, true) }
+        is ProfileSyncLogic.Action.Delete -> if (delete(a.id)) log.set(a.p.n, a.p.at, false)
+    }
 }

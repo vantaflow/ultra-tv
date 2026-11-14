@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.config
 
+import com.ultratv.tv.nativeapp.data.profile.applySharedProfiles
 import com.ultratv.tv.nativeapp.data.db.UltraDb
 import com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore
 import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
@@ -56,6 +57,8 @@ class CloudSyncManager @Inject constructor(
     private val categories: com.ultratv.tv.nativeapp.data.repo.CategoryManager,
     private val languages: com.ultratv.tv.nativeapp.data.repo.LanguageManager,
     private val statusBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
+    private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
+    private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(CloudSyncState(lastSyncAt = links.lastSyncAt, devices = links.devices(), selfId = links.selfId()))
@@ -140,12 +143,25 @@ class CloudSyncManager @Inject constructor(
         if (!tokens.isPaired) return
         val base = workerBase() ?: return
         stateMutex.withLock {
+            // Profils d'abord : les favoris et l'historique reçus sont rattachés au NOM du profil.
+            runCatching { syncProfilesLocked(base) }
+                .onFailure { android.util.Log.w("UltraCloud", "profiles failed: ${it.javaClass.simpleName}") }
             for (p in repo.observeProviders().first()) {
                 val cid = links.cloudIdOf(p.id) ?: continue
                 runCatching { syncStateOf(base, p.id, cid) }
                     .onFailure { android.util.Log.w("UltraCloud", "shared state failed: ${it.javaClass.simpleName}") }
             }
         }
+    }
+
+    /** Profils partagés entre les appareils du compte (nom, couleur, profil Enfants ; jamais le PIN). */
+    private suspend fun syncProfilesLocked(base: String) {
+        val dao = db.profileDao()
+        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(dao.observeAll().first(), profileLog.all())
+        val raw = source.withToken(base) { t -> client.syncProfiles(base, t, com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)) } ?: return
+        val remote = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.parse(raw)
+        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote)
+        if (actions.isNotEmpty()) with(profileRepo) { applySharedProfiles(dao, profileLog, actions) }
     }
 
     private suspend fun syncStateOf(base: String, pid: Long, cid: String) {
@@ -210,7 +226,7 @@ class CloudSyncManager @Inject constructor(
         watchingState = true
         stateScope.launch {
             // 60 s de calme : pendant une lecture la position est enregistrée toutes les 30 s, on n'envoie qu'après.
-            kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L })
+            kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L }, db.profileDao().observeAll().map { 1L })
                 .debounce(60_000).collect { syncSharedState() }
         }
         // Changements venus des autres appareils : toutes les 10 min, seulement quand l'appli est affichée (box en veille :
@@ -262,7 +278,8 @@ class CloudSyncManager @Inject constructor(
         val selected = p.languages.split(',').map { it.trim().lowercase() }.filter { it.isNotBlank() }.toSet()
         val dao = db.categoryDao()
         val disabled = DisplayPrefs.KINDS.keys.associateWith { k -> dao.disabledIds(localId, k).toSet() }
-        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled)
+        val order = DisplayPrefs.KINDS.keys.associateWith { k -> dao.orderedIds(localId, k) }
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId))
     }
 
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
@@ -305,6 +322,26 @@ class CloudSyncManager @Inject constructor(
             val wasOff = dao.disabledIds(localId, kind).toSet()
             categories.setEnabled(localId, kind, all.filter { it in off && it !in wasOff }, false)
             categories.setEnabled(localId, kind, all.filter { it !in off && it in wasOff }, true)
+        }
+        // Ordre des catégories (seulement s'il a été transmis) : les catégories connues reprennent l'ordre reçu, les
+        // autres (absentes de l'appareil qui l'a envoyé) gardent leur place relative, à la suite.
+        remote.order?.let { ord ->
+            for ((kind, key) in DisplayPrefs.KINDS) {
+                val wanted = ord[key].orEmpty()
+                if (wanted.isEmpty()) continue
+                val cur = dao.orderedIds(localId, kind)
+                if (cur.isEmpty()) continue
+                val known = cur.toSet()
+                val next = (wanted.filter { it in known } + cur.filter { it !in wanted.toSet() }).distinct()
+                if (next != cur) categories.saveOrder(localId, kind, next)
+            }
+        }
+        // Chaînes masquées (seulement si transmises) : masquer les nouvelles, réafficher celles qui ne le sont plus.
+        remote.hidden?.let { want ->
+            val have = categories.hiddenOf(localId)
+            val wantIds = want.map { it.id }.toSet(); val haveIds = have.map { it.id }.toSet()
+            categories.hideChannels(localId, want.filter { it.id !in haveIds })
+            categories.showChannels(localId, haveIds - wantIds)
         }
         if (incomplete) { links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote)); return }
         links.setPrefs(cloudId, remote.updatedAt, DisplayPrefs.fingerprint(DisplayPrefs.toCloud(localPrefs(localId), 0)))

@@ -9,6 +9,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Worker : ordre des catégories, chaînes masquées et profils (nom, couleur, profil Enfants, jamais le code PIN) partagés entre les appareils du compte ; un appareil plus ancien n'efface ni l'ordre ni les chaînes masquées.
 - Mode simple : écran Réglages avec « Revenir au mode complet » (code parental demandé s'il existe) et « Tous les réglages ».
 - Gérer les catégories : poignée d'ordre accessible à la télécommande (Droite puis OK, ▲ ▼), bouton « Trier de A à Z », et bouton « Chaînes » sur chaque catégorie du Direct pour masquer une ou plusieurs chaînes (retirées partout : liste, zapping, guide, recherche).
+- Synchronisés entre appareils : profils (créés, modifiés ou supprimés sur une TV, ils le sont sur les autres ; le code PIN reste local), ordre des catégories et chaînes masquées.
 
 ### Corrigé
 - Gérer les catégories : le filtre se refermait aussitôt ouvert, impossible d'y taper ; réordonner depuis une liste filtrée mélangeait l'ordre des autres catégories.

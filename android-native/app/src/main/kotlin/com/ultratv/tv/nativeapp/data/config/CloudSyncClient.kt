@@ -137,6 +137,17 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
+    /** Profils du compte : envoie ceux de l'appareil, reçoit la liste fusionnée (JSON brut). */
+    suspend fun syncProfiles(base: String, token: String, body: String): String? = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url("$base/api/device/profiles").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            if (r.code == 404) return@use null
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while syncing profiles")
+            r.body?.string()
+        }
+    }
+
     /** Retire cet appareil de la source (`everywhere` = la supprime du compte). 404 = déjà retirée. */
     suspend fun delete(base: String, token: String, cloudId: String, everywhere: Boolean = false) = withContext(Dispatchers.IO) {
         require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }
