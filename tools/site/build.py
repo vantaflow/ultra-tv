@@ -24,11 +24,11 @@ ALT = {
 }
 PAGES = {
  "fr": dict(out="index.html", ROOT="", LANG="fr", ALT="en", ALTCODE="EN", ALTHREF="en/", ALTLABEL="English version", OGLOC="fr_FR",
-            CANON="https://vantaflow.github.io/ultra-tv/", i=0, THEMELABEL="Thème clair ou sombre",
+            CANON="https://vantaflow.github.io/ultra-tv/", i=0, THEMELABEL="Thème clair ou sombre", KOFI="Me soutenir",
             TITLE="Ultra TV — lecteur IPTV pour TV, smartphone, tablette et ordinateur",
             DESC="Ultra TV est un lecteur IPTV pour Android TV, smartphone, tablette, Windows et macOS : Xtream Codes, M3U, guide, replay, timeshift, deux moteurs de lecture, synchronisation cloud, réglages automatiques."),
  "en": dict(out="en/index.html", ROOT="../", LANG="en", ALT="fr", ALTCODE="FR", ALTHREF="../", ALTLABEL="Version française", OGLOC="en_US",
-            CANON="https://vantaflow.github.io/ultra-tv/en/", i=1, THEMELABEL="Light or dark theme",
+            CANON="https://vantaflow.github.io/ultra-tv/en/", i=1, THEMELABEL="Light or dark theme", KOFI="Support me",
             TITLE="Ultra TV — IPTV player for TV, smartphone, tablet and desktop",
             DESC="Ultra TV is an IPTV player for Android TV, smartphone, tablet, Windows and macOS: Xtream Codes, M3U, guide, replay, timeshift, two playback engines, cloud sync, automatic tuning."),
 }
@@ -37,7 +37,7 @@ for lang, P in PAGES.items():
     h = tpl
     h = re.sub(r'<span lang="fr">(.*?)</span><span lang="en">(.*?)</span>', lambda m: m.group(1 + P["i"]), h, flags=re.S)
     h = re.sub(r"\{\{ALT:(\w+)\}\}", lambda m: ALT[m.group(1)][P["i"]].replace('"', "&quot;"), h)
-    for k in ("ROOT", "LANG", "ALTCODE", "ALTHREF", "ALTLABEL", "ALT", "OGLOC", "CANON", "THEMELABEL", "TITLE", "DESC"):
+    for k in ("KOFI", "ROOT", "LANG", "ALTCODE", "ALTHREF", "ALTLABEL", "ALT", "OGLOC", "CANON", "THEMELABEL", "TITLE", "DESC"):
         h = h.replace("{{%s}}" % k, P[k])
     assert "{{" not in h, re.findall(r"\{\{[^}]*\}\}", h)[:3]
     out = os.path.join(SITE, P["out"]); os.makedirs(os.path.dirname(out), exist_ok=True)
