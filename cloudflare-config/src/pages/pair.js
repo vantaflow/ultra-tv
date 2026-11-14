@@ -1,6 +1,7 @@
 // Appairage : saisie du code TV (8 cases), scan du QR, page /pair.
 import { escapeHtml as e } from "../http.js";
 import { parsePairQr } from "../qr.js";
+import { PRIMARY_HOST, LEGACY_HOSTS } from "../legacyhost.js";
 import { ico, notice } from "../ui/components.js";
 import { shell } from "../ui/layout.js";
 
@@ -24,6 +25,7 @@ export const PAIR_JS = `(function(){var box=document.getElementById('codecells')
 export const SCAN_JS = `(function(){var nonce=document.currentScript&&document.currentScript.nonce||'';
  var btn=document.getElementById('scan-btn'),dlg=document.getElementById('scanner');
  var parse=${parsePairQr.toString()};
+ var ORIGINS=[location.origin].concat(${JSON.stringify([PRIMARY_HOST, ...LEGACY_HOSTS].map((h) => `https://${h}`))});
  var imp=document.getElementById('scan-file-btn'),file=document.getElementById('scan-file'),fmsg=document.getElementById('scan-file-msg');
  if(!btn||!dlg)return;
  var cam=!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
@@ -44,7 +46,7 @@ export const SCAN_JS = `(function(){var nonce=document.currentScript&&document.c
   var r=window.jsQR(ctx.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'dontInvert'});return Promise.resolve(r?r.data:null);}
  function tick(){if(!running)return;
   decode().then(function(text){if(!running)return;
-   if(text){var code=parse(text,location.origin);
+   if(text){var code=parse(text,ORIGINS);
     if(code){found(code);return;}
     say(BAD,true);}
    timer=setTimeout(tick,125);},function(){if(running)timer=setTimeout(tick,250);});}
@@ -76,7 +78,7 @@ export const SCAN_JS = `(function(){var nonce=document.currentScript&&document.c
      var r=window.jsQR(x.getImageData(0,0,w,h).data,w,h,{inversionAttempts:'attemptBoth'});return r?r.data:null;});});
   }).then(function(text){
    if(!text){fsay('Aucun QR trouv\u00e9 dans cette image. Recadre-le ou saisis le code.',true);return;}
-   var code=parse(text,location.origin);
+   var code=parse(text,ORIGINS);
    if(!code){fsay(BAD,true);return;}
    fsay('Code lu : '+code.slice(0,4)+'-'+code.slice(4)+'. V\u00e9rifie-le puis appuie sur Appairer.');found(code);
   },function(){fsay('Image illisible. Saisis le code \u00e0 la main.',true);});}

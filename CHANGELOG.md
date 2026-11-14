@@ -17,6 +17,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Touche Retour : un appui court ne ferme plus jamais l'appli (à l'accueil, il rappelle « Maintenez Retour pour quitter ») ; un appui long la ferme depuis n'importe quel écran.
 - Serveur : comptes, appareils, jetons et caches stockés dans D1 au lieu de KV (100 fois plus d'écritures possibles en gratuit) ; migration automatique à la première utilisation de chaque compte.
+- Site principal sur ultratv.dpdns.org ; tv.weedy.dpdns.org reste l'adresse de l'API des applis (pages redirigées vers le site principal), comme l'ancienne adresse workers.dev ; QR d'appairage des TV acceptés quelle que soit l'adresse affichée.
 
 ## [1.3.26] — 2026-11-14 (Android)
 

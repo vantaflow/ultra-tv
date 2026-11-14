@@ -116,3 +116,11 @@ describe("scripts du tableau de bord", () => {
     }
   });
 });
+
+describe("parsePairQr : QR d'une TV affichant l'adresse de l'API", () => {
+  it("accepte une liste d'adresses connues, refuse les autres", () => {
+    const list = ["https://ultratv.dpdns.org", "https://tv.weedy.dpdns.org"];
+    expect(parsePairQr("https://tv.weedy.dpdns.org/pair?code=ABCDEFGH", list)).toBe("ABCDEFGH");
+    expect(parsePairQr("https://evil.example/pair?code=ABCDEFGH", list)).toBeNull();
+  });
+});

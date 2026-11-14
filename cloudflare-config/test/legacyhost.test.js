@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { legacyDecision } from "../src/legacyhost.js";
 
 const OLD = "https://ultratv-config.khalilbenaz.workers.dev";
-const NEW = "https://tv.weedy.dpdns.org";
+const NEW = "https://ultratv.dpdns.org";
+const API = "https://tv.weedy.dpdns.org";
 
 describe("ancienne adresse workers.dev", () => {
   it("API des applis installées : servie", () => {
@@ -20,5 +21,14 @@ describe("ancienne adresse workers.dev", () => {
   it("nouvelle adresse et tests : servis normalement", () => {
     expect(legacyDecision("GET", `${NEW}/login`).kind).toBe("serve");
     expect(legacyDecision("GET", "https://config.test/login").kind).toBe("serve");
+  });
+});
+
+describe("tv.weedy.dpdns.org : adresse API, pages vers le site principal", () => {
+  it("API servie (applis installées), pages redirigées", () => {
+    expect(legacyDecision("POST", `${API}/api/pair/start`).kind).toBe("serve");
+    expect(legacyDecision("GET", `${API}/api/config`).kind).toBe("serve");
+    expect(legacyDecision("GET", `${API}/donate?l=fr`)).toEqual({ kind: "redirect", to: `${NEW}/donate?l=fr`, status: 302 });
+    expect(legacyDecision("GET", `${API}/pair?code=ABCD2345`)).toEqual({ kind: "redirect", to: `${NEW}/pair?code=ABCD2345`, status: 302 });
   });
 });

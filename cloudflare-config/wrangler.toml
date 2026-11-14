@@ -3,7 +3,7 @@ main = "src/index.js"
 # Adresse publique : domaine perso (workers.dev est bloqué sur certains réseaux et box) ; workers.dev reste actif
 # pour les appareils et liens existants.
 workers_dev = true
-routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }]
+routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }, { pattern = "ultratv.dpdns.org", custom_domain = true }]
 compatibility_date = "2025-09-01"
 
 # Namespace KV : comptes, appareils appairés, crashs et journaux.

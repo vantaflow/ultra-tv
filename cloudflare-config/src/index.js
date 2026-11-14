@@ -50,7 +50,7 @@ import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envo
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
 import { createDonationLink, parseDonateAmount } from "./donate.js";
 import { pwaResponse } from "./pwa.js";
-import { legacyDecision, PRIMARY_HOST, LEGACY_HOST } from "./legacyhost.js";
+import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS } from "./legacyhost.js";
 
 export { Guard };
 
@@ -827,7 +827,7 @@ function adminCsv(rows) {
 // Sur le domaine public comme sur l'ancien, Trakt revient donc sur l'ancienne adresse, qui renvoie aussitôt vers le
 // domaine public (voir la route /trakt/callback) où vit le cookie de liaison au navigateur. Ailleurs (tests, dev) :
 // l'origine de la requête.
-const traktRedirect = (url) => (url.hostname === PRIMARY_HOST || url.hostname === LEGACY_HOST)
+const traktRedirect = (url) => (url.hostname === PRIMARY_HOST || LEGACY_HOSTS.includes(url.hostname))
   ? `https://${LEGACY_HOST}/trakt/callback`
   : `${url.origin}/trakt/callback`;
 const traktStateKey = (state) => `traktst:${state}`;
