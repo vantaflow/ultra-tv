@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.29] — 2026-11-14 (Android)
+
 ### Ajouté
 - Worker : langue de l'interface des profils et catégories masquées par profil partagées entre appareils.
 - Profils : la langue de l'interface appartient au profil et suit sur tous les appareils.
