@@ -5,6 +5,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
+
+## [bureau 1.2.61] — 2026-11-14
+
+### Ajouté
 - Bureau : synchro des profils avec les autres appareils (création, renommage, suppression, couleur, langue de l'interface du profil ; jamais de code PIN).
 
 ## [1.3.29] — 2026-11-14 (Android)
