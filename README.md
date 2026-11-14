@@ -20,7 +20,7 @@
 <p align="center">
   <a href="README.en.md">🇬🇧 English version</a> ·
   <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
-  <a href="https://tv.weedy.dpdns.org/download/android">Télécharger l'APK</a> ·
+  <a href="https://ultratv.dpdns.org/download/android">Télécharger l'APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
@@ -32,9 +32,9 @@
 | Appareil | Lien |
 |---|---|
 | **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5189921`** |
-| **Windows** (x64) | [Installeur .exe](https://tv.weedy.dpdns.org/download/windows) |
-| **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://tv.weedy.dpdns.org/download/mac) |
-| **Linux** (x86_64) | [AppImage](https://tv.weedy.dpdns.org/download/linux) · [.deb](https://tv.weedy.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://tv.weedy.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+ : `sudo apt install libfuse2` si l'AppImage ne démarre pas |
+| **Windows** (x64) | [Installeur .exe](https://ultratv.dpdns.org/download/windows) |
+| **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv.dpdns.org/download/mac) |
+| **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+ : `sudo apt install libfuse2` si l'AppImage ne démarre pas |
 
 Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'est nécessaire.
 
@@ -135,7 +135,7 @@ Toutes les captures du bureau (données synthétiques, FR et EN) : [`docs/screen
 
 ### Tableau de bord cloud
 
-Gérez appareils et sources depuis un navigateur : **<https://tv.weedy.dpdns.org>** (l'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active ; les applis basculent d'elle-même si l'une est bloquée sur votre réseau).
+Gérez appareils et sources depuis un navigateur : **<https://ultratv.dpdns.org>** (l'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active ; les applis basculent d'elle-même si l'une est bloquée sur votre réseau).
 
 <p align="center">
   <img src="docs/screenshots/cloud/devices.png" alt="Appareils appairés" width="48%" />
@@ -173,7 +173,7 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 | Android (TV, smartphone, tablette) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (par défaut), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32 bits), ou l'universel [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) ; fichiers versionnés `UltraTV-<version>-<abi>.apk` avec leur profil précompilé `.dm`, plus `SHA256SUMS.txt` |
 | macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
 | Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
-| Tableau de bord cloud | <https://tv.weedy.dpdns.org> (aucune installation) |
+| Tableau de bord cloud | <https://ultratv.dpdns.org> (aucune installation) |
 
 Tout est sur la page [Releases](https://github.com/vantaflow/ultra-tv/releases) (les fichiers bureau portent les tags `desktop-v…`).
 
@@ -206,11 +206,11 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 
 | Votre appareil | APK | Lien court (à taper dans Downloader) |
 |---|---|---|
-| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 67 Mo), recommandé | [`tv.weedy.dpdns.org/download/android-arm64`](https://tv.weedy.dpdns.org/download/android-arm64) |
-| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`tv.weedy.dpdns.org/download/android-32`](https://tv.weedy.dpdns.org/download/android-32) |
-| Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`tv.weedy.dpdns.org/download/android-universal`](https://tv.weedy.dpdns.org/download/android-universal) |
+| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 67 Mo), recommandé | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 52 Mo) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| Vous ne savez pas | Universel (≈ 227 Mo), dernier recours | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
-`tv.weedy.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+`ultratv.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
 
 ### Installation impossible (« problème de package »)
 
@@ -222,7 +222,7 @@ Une adresse du type `…/get.php?username=…&password=…` collée comme lien M
 
 ## Synchronisation cloud
 
-Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depuis un navigateur : **<https://tv.weedy.dpdns.org>** (l'adresse est aussi affichée, avec un QR code, dans l'application : Réglages › Sources).
+Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depuis un navigateur : **<https://ultratv.dpdns.org>** (l'adresse est aussi affichée, avec un QR code, dans l'application : Réglages › Sources).
 
 1. Créez un compte sur le tableau de bord et ajoutez vos sources.
 2. Dans le tableau de bord, choisissez **Appairer une TV**.
@@ -319,7 +319,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://tv.weedy.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 

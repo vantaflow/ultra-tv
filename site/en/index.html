@@ -42,7 +42,7 @@
     <h1>All your TV in one app.</h1>
     <p>Ultra TV is a native IPTV player designed for the remote: channels, movies, series, programme guide, replay and live pause. It tunes itself to your device and network.</p>
     <div class="cta">
-      <a class="btn" href="https://tv.weedy.dpdns.org/download/android">⬇ Download the APK</a>
+      <a class="btn" href="https://ultratv.dpdns.org/download/android">⬇ Download the APK</a>
       <a class="btn alt" href="https://github.com/vantaflow/ultra-tv/releases/latest">Release notes <span data-version>1.2.0</span></a>
     </div>
     <p class="meta">Free and open source (MIT). Ultra TV provides no content: bring your own subscription.</p>
@@ -151,7 +151,7 @@
   <div class="feature" id="tableau-de-bord">
     <div>
       <h3>Cloud dashboard</h3>
-      <p>Manage your devices and sources from a browser: <strong>tv.weedy.dpdns.org</strong>. Pair a device with a code, rename or revoke it.</p>
+      <p>Manage your devices and sources from a browser: <strong>ultratv.dpdns.org</strong>. Pair a device with a code, rename or revoke it.</p>
     </div>
     <picture><source srcset="../img/en/cloud-devices.webp" type="image/webp"><img class="shot" width="880" height="707" loading="lazy" src="../img/en/cloud-devices.png" alt="Cloud dashboard: devices and sources"></picture>
   </div>
@@ -172,16 +172,16 @@
       <p>Android 9 or newer (TV, smartphone, tablet). Pick the 64-bit build (arm64) for most recent boxes and phones, the 32-bit build (armv7) for a Chromecast with Google TV HD or an older box, and the universal one if you are not sure. If the install fails, take the 32-bit version.</p>
       <table style="width:100%;border-collapse:collapse;font-size:.95rem">
         <tr><th align="left">Your device</th><th align="left">APK</th></tr>
-        <tr><td>Recent Fire TV Stick, Shield, 64-bit boxes and phones</td><td><a class="btn" href="https://tv.weedy.dpdns.org/download/android-arm64">⬇ arm64 (recommended)</a><br><code>…/download/android-arm64</code></td></tr>
-        <tr><td><strong>Chromecast with Google TV (HD)</strong>, older 32-bit boxes</td><td><a class="btn" href="https://tv.weedy.dpdns.org/download/android-32">⬇ 32-bit</a><br><code>…/download/android-32</code></td></tr>
-        <tr><td>You do not know</td><td><a class="btn" href="https://tv.weedy.dpdns.org/download/android-universal">⬇ Universal (last resort)</a><br><code>…/download/android-universal</code></td></tr>
+        <tr><td>Recent Fire TV Stick, Shield, 64-bit boxes and phones</td><td><a class="btn" href="https://ultratv.dpdns.org/download/android-arm64">⬇ arm64 (recommended)</a><br><code>…/download/android-arm64</code></td></tr>
+        <tr><td><strong>Chromecast with Google TV (HD)</strong>, older 32-bit boxes</td><td><a class="btn" href="https://ultratv.dpdns.org/download/android-32">⬇ 32-bit</a><br><code>…/download/android-32</code></td></tr>
+        <tr><td>You do not know</td><td><a class="btn" href="https://ultratv.dpdns.org/download/android-universal">⬇ Universal (last resort)</a><br><code>…/download/android-universal</code></td></tr>
       </table>
       <p class="meta">Versioned files <code>UltraTV-&lt;version&gt;-&lt;abi&gt;.apk</code> on the <a href="https://github.com/vantaflow/ultra-tv/releases/latest">release page</a>. SHA-256 included.</p>
     </div>
     <div class="card">
       <h3>Windows and macOS</h3>
       <p>Windows: <code>.exe</code> installer (x64). macOS: <code>.dmg</code> disk image (Apple Silicon and Intel). Published with the <code>desktop-v…</code> releases; automatic updates afterwards.</p>
-      <p><a class="btn" href="https://tv.weedy.dpdns.org/download/windows">⬇ Windows (.exe)</a> <a class="btn" href="https://tv.weedy.dpdns.org/download/mac">⬇ Mac (.dmg)</a></p>
+      <p><a class="btn" href="https://ultratv.dpdns.org/download/windows">⬇ Windows (.exe)</a> <a class="btn" href="https://ultratv.dpdns.org/download/mac">⬇ Mac (.dmg)</a></p>
     </div>
     <div class="card">
       <h3>Downloader</h3>
@@ -191,7 +191,7 @@
     <div class="card">
       <h3>Cloud dashboard</h3>
       <p>Nothing to install: open the address in a browser.</p>
-      <p><a class="btn" href="https://tv.weedy.dpdns.org" rel="noopener">tv.weedy.dpdns.org</a></p>
+      <p><a class="btn" href="https://ultratv.dpdns.org" rel="noopener">ultratv.dpdns.org</a></p>
     </div>
   </div>
 </section>
@@ -219,14 +219,14 @@
 <pre><code>adb connect IP_DE_LA_BOX:5555
 adb install -r UltraTV.apk</code></pre>
   <h3 style="margin-top:28px" id="cloud">Cloud sync</h3>
-  <p>To avoid typing credentials with a remote, manage your sources from a browser at <strong>tv.weedy.dpdns.org</strong> (the address is also shown with a QR code in the app, Settings › Sources).</p>
+  <p>To avoid typing credentials with a remote, manage your sources from a browser at <strong>ultratv.dpdns.org</strong> (the address is also shown with a QR code in the app, Settings › Sources).</p>
   <ol class="steps">
     <li>Create an account on the dashboard and add your sources.</li>
     <li>Choose “Pair a TV”.</li>
     <li>On the box: “From the cloud” (wizard) or Settings › Sources › Sync from the cloud. Enter the 8-character code shown on the TV into the dashboard.</li>
   </ol>
   <p>Your credentials are encrypted on the server side; the box gets its own token, revocable from the dashboard. You can also deploy your own Worker (instructions and secrets to define are in the repository, no value is published).</p>
-  <p class="cta"><a class="btn" href="https://tv.weedy.dpdns.org" rel="noopener">Open the dashboard</a></p>
+  <p class="cta"><a class="btn" href="https://ultratv.dpdns.org" rel="noopener">Open the dashboard</a></p>
 </section>
 
 <section id="soutenir">
