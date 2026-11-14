@@ -54,4 +54,9 @@ interface ChannelOrderDao {
 
     @Query("DELETE FROM channel_order WHERE profileId = :profileId")
     suspend fun deleteForProfile(profileId: Long)
+
+    /** Tout l'ordre personnel d'une source (tous profils) : partagé entre appareils avec les réglages d'affichage. */
+    @Query("SELECT * FROM channel_order WHERE providerId = :pid ORDER BY profileId, scope, position")
+    suspend fun allForProvider(pid: Long): List<ChannelOrderEntity>
+
 }

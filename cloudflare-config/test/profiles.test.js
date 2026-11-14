@@ -33,3 +33,13 @@ describe("profils partagés", () => {
     expect(mergeProfiles([], [{ n: "Vieux", c: 0, k: false, at: 1, on: false }], 1e13)).toEqual([]);
   });
 });
+
+describe("renommage partagé", () => {
+  it("l'ancien nom est transmis (f) avec le nouveau", async () => {
+    const acct = await newAccount();
+    const tv = await pairDevice(acct, "TV");
+    const t = Date.now() - 5000;
+    const r = await (await sync(tv, [{ n: "Papa 2", c: 1, at: t, f: "Papa" }, { n: "Papa", c: 1, at: t, on: false }])).json();
+    expect(r.profiles.find((p) => p.n === "Papa 2").f).toBe("Papa");
+  });
+});

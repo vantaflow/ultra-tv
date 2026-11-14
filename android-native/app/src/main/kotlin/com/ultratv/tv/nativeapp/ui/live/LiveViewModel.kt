@@ -170,7 +170,7 @@ class LiveViewModel @Inject constructor(
     }
 
     /** OK : garde le nouvel ordre. */
-    fun commitMove() { viewModelScope.launch { moveLock.withLock { _move.value = null } } }
+    fun commitMove() { viewModelScope.launch { moveLock.withLock { _move.value = null }; com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(movePid) } }
 
     /** Retour : remet l'ordre d'avant le déplacement. */
     fun cancelMove() {
@@ -188,7 +188,7 @@ class LiveViewModel @Inject constructor(
         val scope = selectedCategory.value
         if (scope == CATEGORY_ALL) return
         val id = providers.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id } ?: return
-        viewModelScope.launch { channelOrder.reset(id, scope) }
+        viewModelScope.launch { channelOrder.reset(id, scope); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(id) }
     }
 
     /** Source « Tout » en cours (pagination par clé) : invalidée À LA MAIN, voir [allInvalidations]. */

@@ -112,3 +112,15 @@ describe("ordre des catégories et chaînes masquées", () => {
     expect(ok.prefs.order).toBeUndefined();
   });
 });
+
+describe("ordre des chaînes partagé", () => {
+  it("transmis, gardé si un appareil ancien ne l'envoie pas, refusé si invalide", async () => {
+    const { tv, mac, id } = await setup();
+    const chOrder = [{ p: "Principal", s: "12", k: ["501", "500"] }, { p: "Enfants", s: "__fav__", k: ["9"] }];
+    expect((await putPrefs(mac, id, prefs(3000, { chOrder }))).status).toBe(200);
+    await putPrefs(tv, id, prefs(4000));
+    expect((await cfg(mac)).providers[0].prefs.chOrder).toEqual(chOrder);
+    expect(parsePrefs(prefs(1, { chOrder: [{ p: "", s: "1", k: [] }] })).error).toBe("chOrder");
+    expect(parsePrefs(prefs(1, { chOrder: [{ p: "P", s: "1", k: [1] }] })).error).toBe("chOrder");
+  });
+});

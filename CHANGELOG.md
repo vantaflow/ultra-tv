@@ -10,6 +10,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Box en arabe avec l'appli dans une autre langue : les chiffres (nombres de chaînes, compteurs, heures) s'affichaient en chiffres arabo-indiens ; ils suivent maintenant la langue choisie dans l'appli.
+- Gérer les catégories : la catégorie en cours de déplacement est mise en évidence et affiche sa place (« 12 / 878 ») ; la liste la garde à l'écran.
+
+### Ajouté
+- Ordre des chaînes d'une catégorie réglable depuis Gérer les catégories › Chaînes (▲ ▼), et synchronisé entre appareils (par profil), comme le « Déplacer » du Direct.
 
 ## [1.3.27] — 2026-11-14 (Android)
 

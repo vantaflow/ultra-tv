@@ -279,7 +279,10 @@ class CloudSyncManager @Inject constructor(
         val dao = db.categoryDao()
         val disabled = DisplayPrefs.KINDS.keys.associateWith { k -> dao.disabledIds(localId, k).toSet() }
         val order = DisplayPrefs.KINDS.keys.associateWith { k -> dao.orderedIds(localId, k) }
-        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId))
+        val names = db.profileDao().observeAll().first().associate { it.id to it.name.trim() }
+        val chOrder = db.channelOrderDao().allForProvider(localId).groupBy { it.profileId to it.scope }
+            .mapNotNull { (key, rows) -> names[key.first]?.let { n -> ChannelOrderShare(n, key.second, rows.sortedBy { it.position }.map { it.remoteId }) } }
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId), chOrder)
     }
 
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
@@ -342,6 +345,20 @@ class CloudSyncManager @Inject constructor(
             val wantIds = want.map { it.id }.toSet(); val haveIds = have.map { it.id }.toSet()
             categories.hideChannels(localId, want.filter { it.id !in haveIds })
             categories.showChannels(localId, haveIds - wantIds)
+        }
+        // Ordre personnel des chaînes (seulement s'il a été transmis) : profils rattachés par NOM ; listes absentes = ordre naturel.
+        remote.chOrder?.let { want ->
+            val ids = db.profileDao().observeAll().first().associate { it.name.trim().lowercase() to it.id }
+            val od = db.channelOrderDao()
+            val have = od.allForProvider(localId).groupBy { it.profileId to it.scope }
+            val wanted = want.mapNotNull { c -> ids[c.p.trim().lowercase()]?.let { pid -> (pid to c.s) to c.k } }.toMap()
+            for ((key, _) in have) if (key !in wanted) od.clear(key.first, localId, key.second)
+            for ((key, keys) in wanted) {
+                val cur = have[key]?.sortedBy { it.position }?.map { it.remoteId }
+                if (cur == keys) continue
+                od.clear(key.first, localId, key.second)
+                od.upsertAll(keys.mapIndexed { i, k -> com.ultratv.tv.nativeapp.data.db.ChannelOrderEntity(key.first, localId, key.second, k, i + 1) })
+            }
         }
         if (incomplete) { links.setPendingPrefs(cloudId, DisplayPrefs.toJson(remote)); return }
         links.setPrefs(cloudId, remote.updatedAt, DisplayPrefs.fingerprint(DisplayPrefs.toCloud(localPrefs(localId), 0)))

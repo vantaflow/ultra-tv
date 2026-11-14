@@ -456,6 +456,7 @@ export const isSupportedKind = (p) => KINDS.includes(p.kind);
 export const PREFS_MAX_IDS = 5000;
 export const PREFS_KINDS = ["live", "movie", "series"];
 export const PREFS_MAX_HIDDEN = 3000;
+export const PREFS_MAX_CHORDER = 400;
 // eslint-disable-next-line no-control-regex
 const cleanId = (x) => (typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x) ? x : null);
 
@@ -508,12 +509,25 @@ export function parsePrefs(body, now = Date.now()) {
       hidden.push({ i, c: h.c == null ? null : cleanId(h.c), n: typeof h.n === "string" ? cleanLine(h.n, 120) : "" });
     }
   }
+  // Ordre personnel des chaînes (facultatif) : [{ p: nom du profil, s: liste (catégorie ou favoris), k: [identifiants] }].
+  let chOrder;
+  if (body.chOrder !== undefined && body.chOrder !== null) {
+    if (!Array.isArray(body.chOrder) || body.chOrder.length > PREFS_MAX_CHORDER) return { error: "chOrder" };
+    chOrder = [];
+    for (const c of body.chOrder) {
+      const p = c && typeof c === "object" && typeof c.p === "string" ? cleanLine(c.p, 24) : "";
+      const sc = c && cleanId(c.s);
+      if (!p || !sc || !Array.isArray(c.k) || c.k.length > PREFS_MAX_IDS || !c.k.every((x) => cleanId(x))) return { error: "chOrder" };
+      chOrder.push({ p, s: sc, k: [...new Set(c.k)] });
+    }
+  }
   const updatedAt = Number(body.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
   const prefs = { langs, disabled, updatedAt: Math.min(Math.floor(updatedAt), now + 60_000) };
   if (order) prefs.order = order;
   if (hidden) prefs.hidden = hidden;
+  if (chOrder) prefs.chOrder = chOrder;
   return { prefs };
 }
 
@@ -606,7 +620,8 @@ export function parseProfiles(body, now = Date.now()) {
     const at = Number(e.at);
     if (!n || !Number.isFinite(at) || at <= 0) return { error: "profiles" };
     const c = Number.isInteger(e.c) && e.c >= -2147483648 && e.c <= 4294967295 ? e.c : 0;
-    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false });
+    const f = typeof e.f === "string" ? cleanLine(e.f, 24) : "";
+    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}) });
   }
   return { profiles: out };
 }

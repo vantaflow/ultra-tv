@@ -101,6 +101,7 @@ import javax.inject.Inject
 class CategoriesViewModel @Inject constructor(
     providers: ProviderRepository,
     private val manager: CategoryManager,
+    private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
 ) : ViewModel() {
     val kind = MutableStateFlow("LIVE")
     val query = MutableStateFlow("")
@@ -147,7 +148,22 @@ class CategoriesViewModel @Inject constructor(
     /** Chaînes masquées de la source affichée (identifiants du fournisseur). */
     val hiddenIds: StateFlow<Set<String>> = pid.flatMapLatest { p -> if (p == null) flowOf(emptySet()) else manager.observeHidden(p).map { l -> l.mapTo(HashSet()) { it.id } } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
-    suspend fun channelsOf(cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> = providerId()?.let { manager.channelsOf(it, cat) } ?: emptyList()
+    /** Chaînes de la catégorie dans l'ordre AFFICHÉ (ordre personnel du profil), puis les masquées. */
+    suspend fun channelsOf(cat: String): List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> {
+        val pid = providerId() ?: return emptyList()
+        val all = manager.channelsOf(pid, cat)
+        val rank = channelOrder.orderedKeys(pid, cat).withIndex().associate { (i, k) -> k to i }
+        return all.sortedBy { rank[it.id] ?: Int.MAX_VALUE }
+    }
+
+    /** Monte / descend une chaîne dans sa catégorie (ordre personnel du profil, partagé entre appareils). */
+    fun moveChannel(cat: String, ordered: List<String>, key: String, delta: Int) {
+        viewModelScope.launch {
+            val pid = providerId() ?: return@launch
+            val next = com.ultratv.tv.nativeapp.data.repo.ChannelOrder.move(ordered, key, delta)
+            if (next != ordered) { channelOrder.save(pid, cat, next); publish(pid) }
+        }
+    }
     fun setChannelVisible(ch: com.ultratv.tv.nativeapp.data.prefs.HiddenChannel, visible: Boolean) {
         viewModelScope.launch { providerId()?.let { if (visible) manager.showChannels(it, listOf(ch.id)) else manager.hideChannels(it, listOf(ch)); publish(it) } }
     }
@@ -247,12 +263,13 @@ fun CategoriesScreen(onBack: () -> Unit = {}, vm: CategoriesViewModel = hiltView
                             // mise en page que le nouvel ordre (pas d'image intermédiaire sans la ligne), une ligne de marge.
                             val first = state.firstVisibleItemIndex
                             val last = state.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: first
-                            if (j <= first) state.requestScrollToItem((j - 1).coerceAtLeast(0))
-                            else if (j >= last) state.requestScrollToItem((first + (j - last) + 1).coerceAtMost(local.lastIndex))
+                            if (j <= first + 1) state.requestScrollToItem((j - 2).coerceAtLeast(0))
+                            else if (j >= last - 1) state.requestScrollToItem((first + (j - last) + 2).coerceAtMost(local.lastIndex))
                         }
                     },
                     onConfirmMove = { vm.saveOrder(local.map { it.remoteId }); moving = null },
                     onChannels = if (kind == "LIVE") ({ channelsOf = r.remoteId to r.label }) else null,
+                    movePos = if (moving == r.remoteId) "${local.indexOfFirst { it.remoteId == r.remoteId } + 1} / ${local.size}" else null,
                 )
             }
         }
@@ -302,6 +319,7 @@ internal fun FilterField(value: String, onChange: (String) -> Unit, hint: String
 private fun CategoryLine(
     r: CategoryRow, kind: String, rowModifier: Modifier = Modifier, isMoving0: Boolean? = null, isMoving: Boolean, D: com.ultratv.tv.nativeapp.i18n.DesignStrings,
     onToggle: () -> Unit, onStartMove: () -> Unit, onMove: (Int) -> Unit, onConfirmMove: () -> Unit, onChannels: (() -> Unit)? = null,
+    movePos: String? = null,
 ) {
     // Activée mais pas encore téléchargée : « Chargement… » plutôt que « 0 chaîne » (le contenu arrive après la synchro en cours).
     val count = if (r.enabled && r.count == 0) D.categoryLoading
@@ -316,8 +334,9 @@ private fun CategoryLine(
             onClick = { if (isMoving) onConfirmMove() else onToggle() },
             onLongClick = { if (!isMoving) onStartMove() },
             shape = RoundedCornerShape(18.design),
-            bg = if (r.enabled) Ux.SurfaceDeep else Ux.Rail, ringWidth = 5.design, focusedScale = 1.0f,
-            modifier = rowModifier.weight(1f).fillMaxHeight().then(moveKeys),
+            bg = if (isMoving) Ux.Accent.copy(alpha = 0.22f) else if (r.enabled) Ux.SurfaceDeep else Ux.Rail, ringWidth = 5.design, focusedScale = 1.0f,
+            // Ligne en cours de déplacement : bordure d'accent bien visible, même quand le focus est sur sa poignée.
+            modifier = rowModifier.weight(1f).fillMaxHeight().then(if (isMoving) Modifier.border(4.design, Ux.Accent, RoundedCornerShape(18.design)) else Modifier).then(moveKeys),
         ) { f ->
             Row(Modifier.fillMaxSize().padding(horizontal = 28.design), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
@@ -325,6 +344,8 @@ private fun CategoryLine(
                         style = TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
                     Text(count, color = if (f) Ux.OnFocus2 else if (r.enabled) Ux.Text3 else Ux.Muted2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
                 }
+                // Place pendant le déplacement : « 12 / 878 ».
+                if (isMoving && movePos != null) Text(movePos, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, modifier = Modifier.padding(end = 16.design))
                 Box(Modifier.width(180.design), contentAlignment = Alignment.Center) { Switch(r.enabled, inverted = f) }
             }
         }
@@ -367,15 +388,37 @@ private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: 
             Text(D.catChannelsTitle(label), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 34.spx, maxLines = 2)
             Text(D.catChannelsHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, maxLines = 3)
             val list = items
+            val arrowFocus = remember(cat) { mutableMapOf<String, Pair<androidx.compose.ui.focus.FocusRequester, androidx.compose.ui.focus.FocusRequester>>() }
+            var refocus by remember { mutableStateOf<Pair<String, Int>?>(null) }
+            LaunchedEffect(refocus) {
+                val (id, which) = refocus ?: return@LaunchedEffect
+                arrowFocus[id]?.let { runCatching { (if (which == 1) it.first else it.second).requestFocus() } }
+                refocus = null
+            }
             val first = remember { androidx.compose.ui.focus.FocusRequester() }
             var firstFocused by remember { mutableStateOf(false) }
             com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus(first, hasFocus = { firstFocused }, key = list?.isNotEmpty() == true)
             LazyColumn(Modifier.heightIn(max = 600.design), verticalArrangement = Arrangement.spacedBy(8.design)) {
                 items(list.orEmpty(), key = { it.id }) { ch ->
                     val visible = ch.id !in hidden
+                    val idx = list.orEmpty().indexOf(ch)
+                    // Chaînes présentes (non masquées) : ▲ ▼ changent leur place dans la catégorie.
+                    val orderable = list.orEmpty().filter { it.id !in hidden }
+                    val pos = orderable.indexOf(ch)
+                    val reqs = arrowFocus.getOrPut(ch.id) { androidx.compose.ui.focus.FocusRequester() to androidx.compose.ui.focus.FocusRequester() }
+                    fun move(delta: Int) {
+                        val keys = orderable.map { it.id }
+                        val next = com.ultratv.tv.nativeapp.data.repo.ChannelOrder.move(keys, ch.id, delta)
+                        if (next == keys) return
+                        vm.moveChannel(cat, keys, ch.id, delta)
+                        val byId = list.orEmpty().associateBy { it.id }
+                        items = next.mapNotNull { byId[it] } + list.orEmpty().filter { it.id in hidden }
+                        refocus = ch.id to (if (delta < 0) 1 else 2)
+                    }
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.design), verticalAlignment = Alignment.CenterVertically) {
                     FocusSurface(
                         onClick = { vm.setChannelVisible(ch, !visible) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
-                        modifier = Modifier.fillMaxWidth().height(72.design).then(if (ch.id == list?.firstOrNull()?.id) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier),
+                        modifier = Modifier.weight(1f).height(72.design).then(if (idx == 0) Modifier.focusRequester(first).onFocusChanged { firstFocused = it.isFocused } else Modifier),
                     ) { f ->
                         Row(Modifier.fillMaxSize().padding(horizontal = 24.design), verticalAlignment = Alignment.CenterVertically) {
                             Text(ch.name, color = if (f) Ux.TextOnLight else if (visible) Ux.Text else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
@@ -384,6 +427,14 @@ private fun CategoryChannelsDialog(vm: CategoriesViewModel, cat: String, label: 
                             Spacer(Modifier.width(14.design))
                             Switch(visible, inverted = f)
                         }
+                    }
+                    for ((which, icon, delta) in listOf(Triple(1, "M6 15l6-6 6 6", -1), Triple(2, "M6 9l6 6 6-6", 1))) {
+                        val enabled = visible && (if (delta < 0) pos > 0 else pos in 0 until orderable.lastIndex)
+                        FocusSurface(
+                            onClick = { if (enabled) move(delta) }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
+                            modifier = Modifier.size(72.design).focusRequester(if (which == 1) reqs.first else reqs.second),
+                        ) { f -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { DIcon(icon, 28.design, when { f -> Ux.TextOnLight; enabled -> Ux.Text; else -> Ux.Muted2 }, strokeWidth = 2.6f) } }
+                    }
                     }
                 }
             }
