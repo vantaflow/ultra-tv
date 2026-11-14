@@ -248,6 +248,7 @@ class MainActivity : ComponentActivity() {
         com.ultratv.tv.nativeapp.ui.common.DebugConnectivity.forceOffline = intent.getBooleanExtra("debug_offline", false)
         if (intent.hasExtra("debug_rub")) StartupNav.debugRub.value = intent.getIntExtra("debug_rub", 0)
         // Mesures (debug) : moteur (auto|exo|vlc), décodage (auto|hw|sw) et préréglage de tampon.
+        if (intent.hasExtra("debug_simple")) intent.getBooleanExtra("debug_simple", false).let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setSimpleMode(v) } }
         intent.getStringExtra("debug_lang")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setLanguage(v) } }
         intent.getStringExtra("debug_engine")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setPlayerEngine(v) } }
         intent.getStringExtra("debug_decoder")?.let { v -> lifecycleScope.launch(Dispatchers.IO) { prefsStore.get().setDecoderMode(v) } }
