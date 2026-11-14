@@ -90,7 +90,7 @@ export function shell(n, { title, body, ctx = "public", active = "", spy = false
     : "";
   const brandHref = "/";
   const brandBadge = ctx === "admin" ? `<span class="kind adm-b">ADMIN</span>` : "";
-  const themeBtn = `<button type="button" class="tbtn" id="theme-toggle">${ico("moon")}<span class="tt-l">${e(loc.themeBtn || "Thème")}</span></button>`;
+  const themeBtn = `<button type="button" class="tbtn" id="theme-toggle" title="${e(loc.themeBtn || "Thème")}" aria-label="${e(loc.themeBtn || "Thème")}">${ico("moon")}<span class="tt-l">${e(loc.themeBtn || "Thème")}</span></button>`;
   const bnav = ctx === "user"
     ? `<nav class="bnav" aria-label="Navigation mobile"${spy ? " data-spy" : ""}>${USER_NAV.map(([id, label, icon]) => `<a href="${spy ? "" : "/"}#${id}">${ico(icon)}<span>${e(label)}</span></a>`).join("")}</nav>`
     : "";
