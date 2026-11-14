@@ -19,7 +19,10 @@ import {
 import { reconcile } from "./reconcile";
 import { syncSourceState } from "./sharedState";
 import { setPosterFinder } from "@/lib/posterFallback";
-import { createBatcher, fromPrefs, shouldApply, toPrefs } from "./prefs";
+import { createBatcher, foreignHidden, fromPrefs, hiddenFromWire, planChOrder, shouldApply, toPrefs } from "./prefs";
+import { applyOrders, listOrders, setOrderListener } from "@/db/channelOrder";
+import { listHidden, removeHiddenFromCatalog, replaceHidden } from "@/db/hidden";
+import { DEFAULT_PROFILE_NAME } from "./sharedState";
 
 const K = {
   worker: "cloud.worker", token: "cloud.token", deviceId: "cloud.deviceId", tokenAt: "cloud.tokenAt", etag: "cloud.etag",
@@ -206,6 +209,8 @@ export async function applyProviders(remote: CloudProvider[], awaitSync = false)
 
 // ---------------- Réglages d'affichage partagés (langues + catégories désactivées) ----------------
 
+/** Entrées reçues que le bureau ne sait pas interpréter, gardées pour être renvoyées telles quelles (le Worker remplace `hidden` et `chOrder`). */
+const foreignKey = (cloudId: string, f: "hidden" | "chOrder") => `cloud.foreign.${f}.${cloudId}`;
 const prefsAtKey = (cloudId: string) => `cloud.prefsAt.${cloudId}`;
 export const getPrefsAt = (cloudId: string) => getSetting<number>(prefsAtKey(cloudId), 0);
 const PUBLISH_DELAY_MS = 1500;
@@ -231,15 +236,40 @@ async function resyncAfterPrefs(ids: number[]): Promise<void> {
   for (const id of ids) await relaunchSync(id);
 }
 
+/** Profils locaux avec leur nom partagé (le profil sans nom = « Principal », comme pour les favoris). */
+const sharedProfiles = () => usePrefs.getState().profiles.map((p) => ({ id: p.id, name: p.name.trim() || DEFAULT_PROFILE_NAME }));
+
+/** Ordre personnel des chaînes de la source, par NOM de profil (les profils supprimés ici sont ignorés). */
+async function localChOrder(sourceId: number) {
+  const names = new Map(sharedProfiles().map((p) => [p.id, p.name]));
+  return (await listOrders(sourceId)).filter((o) => names.has(o.profile)).map((o) => ({ profile: names.get(o.profile)!, scope: o.scope, ids: o.ids }));
+}
+
 /** Applique des réglages reçus à une source (sans jamais republier). Retourne true si le catalogue chargé doit être relu. */
-async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolean> {
+export async function applyPrefsTo(s: Source, prefs: CloudPrefs): Promise<boolean> {
   const cats = await catsOf(s.cid);
   if (!cats.length) return false; // catalogue pas encore là : réessayé après la première synchro
   const plan = fromPrefs(prefs, cats);
-  if (plan.changes.length) await db.categories.bulkUpdate(plan.changes.map((c) => ({ key: c.id, changes: { enabled: c.enabled } })));
+  const ups = new Map<number, { enabled?: 0 | 1; ord?: number }>();
+  for (const c of plan.changes) ups.set(c.id, { ...ups.get(c.id), enabled: c.enabled });
+  for (const o of plan.ords) ups.set(o.id, { ...ups.get(o.id), ord: o.ord });
+  if (ups.size) await db.categories.bulkUpdate([...ups].map(([key, changes]) => ({ key, changes })));
+  let reshow = false;
+  // Champs facultatifs : absents = appareil plus ancien, on ne touche à rien.
+  if (prefs.hidden) {
+    await setSetting(foreignKey(s.cloudId!, "hidden"), foreignHidden(prefs.hidden));
+    reshow = (await replaceHidden(s.id!, hiddenFromWire(prefs.hidden))) > 0;
+    const removed = await removeHiddenFromCatalog(s.cid, s.id!);
+    if (removed) { const cur = await getSource(s.id!); if (cur) await db.sources.update(s.id!, { counts: { ...cur.counts, live: Math.max(0, cur.counts.live - removed) } }); }
+  }
+  if (prefs.chOrder) {
+    const p = planChOrder(prefs.chOrder, sharedProfiles(), await listOrders(s.id!));
+    await applyOrders(s.id!, p.put, p.remove);
+    await setSetting(foreignKey(s.cloudId!, "chOrder"), p.foreign);
+  }
   await saveSource({ ...(await getSource(s.id!) ?? s), langs: plan.langs });
   await setSetting(prefsAtKey(s.cloudId!), prefs.updatedAt);
-  return plan.changes.length > 0;
+  return plan.changes.length > 0 || reshow;
 }
 
 /** Réception : pour chaque source liée dont les réglages du compte sont plus récents que ceux appliqués ici. */
@@ -272,7 +302,8 @@ export async function publishPrefs(sourceId: number): Promise<PublishOutcome> {
   const token = await getToken();
   if (!token) return "skipped";
   try {
-    const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now());
+    const prefs = toPrefs(s.langs, await catsOf(s.cid), Date.now(), { hidden: await listHidden(s.id!), chOrder: await localChOrder(s.id!),
+      keepHidden: await getSetting(foreignKey(s.cloudId, "hidden"), []), keepChOrder: await getSetting(foreignKey(s.cloudId, "chOrder"), []) });
     const r = await putPrefs(st.worker, token, s.cloudId, prefs);
     if (r.status === "ok") { await setSetting(prefsAtKey(s.cloudId), prefs.updatedAt); return "sent"; }
     if (r.status === "stale") {
@@ -290,12 +321,15 @@ const batcher = createBatcher<number>(PUBLISH_DELAY_MS, (ids) => {
   for (const id of ids) pendingPublish.delete(id);
   for (const id of ids) void publishPrefs(id).catch(() => undefined);
 });
-/** À appeler quand l'utilisateur change les langues ou les catégories d'une source : un seul envoi après 1,5 s de calme. */
+/** À appeler quand l'utilisateur change les langues, les catégories (état, ordre), les chaînes masquées ou leur ordre : un seul envoi après 1,5 s de calme. */
 export function notePrefsChanged(sourceId: number): void {
   if (!useCloud.getState().prefsSync) return;
   pendingPublish.add(sourceId);
   batcher.note(sourceId);
 }
+
+// L'ordre personnel des chaînes (écrans Direct et Favoris) déclenche la publication comme les autres réglages.
+setOrderListener(notePrefsChanged);
 
 export type ShareTarget = "all" | string[];
 

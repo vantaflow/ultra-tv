@@ -167,6 +167,18 @@ export interface ChannelOrderRow {
   updatedAt: number;
 }
 
+/** Chaîne masquée par l'utilisateur pour une source (n'apparaît plus nulle part ; partagée entre appareils). */
+export interface HiddenChannelRow {
+  key: string;
+  /** Identifiant réel de la source (et non la génération de catalogue). */
+  sourceId: number;
+  /** Identifiant de flux de la chaîne chez le fournisseur. */
+  streamId: number;
+  /** Identifiant de sa catégorie chez le fournisseur (null = inconnue). */
+  catExt: string | null;
+  name: string;
+}
+
 export interface HistoryRow {
   key: string;
   profile: string;

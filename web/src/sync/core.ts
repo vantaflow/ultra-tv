@@ -3,6 +3,8 @@
 // Lecture en flux (net/json.ts) + écriture par lots dans IndexedDB.
 
 import { clearCatalog, db, nextCid, purgeOrphanGenerations, setGenerationPending } from "@/db/db";
+import { removeHiddenFromCatalog } from "@/db/hidden";
+import { mergeCategoryOrder } from "@/lib/categoryOrder";
 import type { CategoryRow, ChannelRow, Kind, MovieRow, SeriesRow, Source, SyncProgress } from "@/db/types";
 import { parseChannelName } from "@/lib/channelName";
 import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
@@ -197,6 +199,9 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
       await clearCatalog(cid).catch(() => undefined);
       throw e;
     }
+    // Réglages de l'utilisateur à reporter sur la nouvelle génération : ordre des catégories, chaînes masquées.
+    if (oldCid) await carryCategoryOrder(oldCid, cid);
+    counts.live = Math.max(0, counts.live - await removeHiddenFromCatalog(cid, source.id!));
     await db.sources.update(source.id!, { cid, counts, lastSyncAt: Date.now(), state: "ready", error: undefined });
     if (oldCid) await clearCatalog(oldCid);
   } finally {
@@ -204,6 +209,20 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
   }
   report("done", 1, true);
   return counts;
+}
+
+/** L'ordre des catégories choisi sur l'ancienne génération est reporté sur la nouvelle (les catégories nouvelles passent à la suite). */
+async function carryCategoryOrder(oldCid: number, cid: number): Promise<void> {
+  const inOrder = async (g: number, kind: Kind) => (await db.categories.where("[sourceId+kind]").equals([g, kind]).sortBy("ord"));
+  for (const kind of ["live", "movie", "series"] as const) {
+    const cur = await inOrder(cid, kind);
+    if (!cur.length) continue;
+    const old = (await inOrder(oldCid, kind)).map((c) => c.extId);
+    const byExt = new Map(cur.map((c) => [c.extId, c]));
+    const ups: { key: number; changes: { ord: number } }[] = [];
+    mergeCategoryOrder(cur.map((c) => c.extId), old).forEach((ext, i) => { const c = byExt.get(ext)!; if (c.ord !== i) ups.push({ key: c.id!, changes: { ord: i } }); });
+    if (ups.length) await db.categories.bulkUpdate(ups);
+  }
 }
 
 /** Vrai si la génération n'a plus aucune catégorie (catalogue local perdu). */

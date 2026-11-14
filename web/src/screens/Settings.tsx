@@ -4,8 +4,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { db, getSetting, setSetting } from "@/db/db";
 import { deleteSource, saveSource } from "@/db/sources";
-import { categoriesOf } from "@/db/queries";
-import type { CategoryRow, Kind, Source } from "@/db/types";
+import { categoriesOf, channelsCol } from "@/db/queries";
+import { getOrder, saveOrder } from "@/db/channelOrder";
+import { addHidden, listHidden, removeHidden, removeHiddenFromCatalog } from "@/db/hidden";
+import { mergeOrder, moveBy } from "@/lib/channelOrder";
+import type { CategoryRow, ChannelRow, HiddenChannelRow, Kind, Source } from "@/db/types";
 import { LANGS, useT, type Key, type Lang } from "@/i18n";
 import { normText } from "@/lib/text";
 import { bridge, currentTransport, defaultProxy, getProxySetting, isElectron, setProxySetting } from "@/net/transport";
@@ -18,7 +21,7 @@ import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
-import { setCategoriesEnabled } from "@/db/categoryActions";
+import { moveCategory, setCategoriesEnabled, sortCategoriesAZ } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
 import type { GuideCol } from "@/lib/guideCol";
 import { readAutoUpdate, writeAutoUpdate } from "@/net/autoUpdate";
@@ -405,9 +408,15 @@ function CategoriesPane() {
   const pending = initial.current ? all.filter((c) => initial.current!.get(c.id!) !== c.enabled).length : 0;
   const nq = normText(q);
   // Filtre par texte seulement (nom brut ou nom affiché) : aucune déduction de langue, fiable quelle que soit la source.
-  // Cochées d'abord (ordre du fournisseur conservé dans chaque groupe), sur tous les appareils.
-  const shown = useMemo(() => all.filter((c) => c.kind === kind && (!nq || catMatches(c.name, nq))).sort((a, b) => b.enabled - a.enabled), [all, kind, nq]);
+  // Ordre choisi par l'utilisateur (`ord`, partagé entre appareils) : le même que celui des écrans Direct, Films et Séries.
+  const sameKind = useMemo(() => all.filter((c) => c.kind === kind), [all, kind]);
+  const shown = useMemo(() => sameKind.filter((c) => !nq || catMatches(c.name, nq)), [sameKind, nq]);
+  const [chanCat, setChanCat] = useState<CategoryRow | null>(null);
   if (!source) return null;
+  // Déplacer / trier n'a de sens que sur la liste complète du type (pas filtrée).
+  const canMove = !nq;
+  const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(sameKind, c.id!, delta) && source.id != null) notePrefsChanged(source.id); };
+  const sortAZ = async () => { if (await sortCategoriesAZ(sameKind) && source.id != null) notePrefsChanged(source.id); };
   const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
   return (
@@ -424,14 +433,19 @@ function CategoriesPane() {
         </div>
         <button className="btn sm" onClick={() => void setMany(shown, 1)}>{t("set.catsEnableAll")} ({shown.length})</button>
         <button className="btn sm" onClick={() => void setMany(shown, 0)}>{t("set.catsDisableAll")} ({shown.length})</button>
+        <button className="btn sm" disabled={!canMove} onClick={() => void sortAZ()}>{t("set.catsSort")}</button>
       </div>
       <div style={{ height: "min(28rem, 50vh)", display: "flex", flexDirection: "column", minHeight: 0 }}>
         <VList rows={arrayRows(shown)} rowH={52} className="vlist" label={t("common.categories")}
           render={(c) => c && (
-            <div className="cat-row">
+            <div className="cat-row ed">
               <span className="ellipsis"><b style={{ fontWeight: 600 }}>{c.label}</b> <span className="muted mono" style={{ fontSize: "0.75rem" }}>{c.count || ""}</span></span>
+              <span className="cat-tools">
+                <button className="btn sm" disabled={!canMove} aria-label={`${t("cor.up")} : ${c.label}`} onClick={() => void move(c, -1)}>▲</button>
+                <button className="btn sm" disabled={!canMove} aria-label={`${t("cor.down")} : ${c.label}`} onClick={() => void move(c, 1)}>▼</button>
+                {kind === "live" && <button className="btn sm" aria-label={`${t("set.catsChannels")} : ${c.label}`} onClick={() => setChanCat(c)}>{t("set.catsChannels")}</button>}
+              </span>
               <span><Switch on={!!c.enabled} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
-              <span />
             </div>
           )} />
       </div>
@@ -440,7 +454,72 @@ function CategoriesPane() {
         {pending > 0 && <span className="muted">{t("set.catsPending", { count: pending })}</span>}
         {sync.running && sync.progress && <span className="muted mono">{Math.round(sync.progress.ratio * 100)} %</span>}
       </div>
+      {chanCat && <ChannelsModal source={source} cat={chanCat} onClose={() => setChanCat(null)} />}
     </>
+  );
+}
+
+type ChanItem = { streamId: number; name: string; hidden: boolean };
+
+/** Chaînes d'une catégorie du Direct : visibilité (masquer = retirée partout) et ordre personnel du profil courant. */
+function ChannelsModal({ source, cat, onClose }: { source: Source; cat: CategoryRow; onClose: () => void }) {
+  const t = useT();
+  const profile = usePrefs((p) => p.profileId);
+  const sync = useSync();
+  const reshown = useRef(false);
+  const sid = source.id!;
+  const data = useLiveQuery(async () => {
+    const rows: ChannelRow[] = await channelsCol(source.cid, cat.extId).filter((c) => !c.sep).toArray();
+    const order = await getOrder(profile, sid, cat.extId);
+    const hid: HiddenChannelRow[] = (await listHidden(sid)).filter((h) => h.catExt === cat.extId);
+    const shown: ChanItem[] = mergeOrder(rows, order, (c) => c.streamId).map((c) => ({ streamId: c.streamId, name: c.display || c.name, hidden: false }));
+    return [...shown, ...hid.map((h) => ({ streamId: h.streamId, name: h.name, hidden: true }))];
+  }, [source.cid, cat.extId, profile, sid]);
+  // Chaînes réaffichées : absentes du catalogue jusqu'à la prochaine synchro, on les garde dans la liste (case « Visible »).
+  const [back, setBack] = useState<ChanItem[]>([]);
+  const list = data ? [...data, ...back.filter((b) => !data.some((d) => d.streamId === b.streamId))] : [];
+  const visibleIds = list.filter((c) => !c.hidden && !back.some((b) => b.streamId === c.streamId)).map((c) => c.streamId);
+  const move = async (id: number, delta: number) => {
+    const next = moveBy(visibleIds, id, delta);
+    if (next !== visibleIds) await saveOrder(profile, sid, cat.extId, next); // notifie la publication
+  };
+  const setVisible = async (c: ChanItem, on: boolean) => {
+    if (on) {
+      await removeHidden(sid, [c.streamId]);
+      reshown.current = true; // elle revient à la prochaine synchro de la source
+      setBack((b) => [...b.filter((x) => x.streamId !== c.streamId), { ...c, hidden: false }]);
+    } else {
+      setBack((b) => b.filter((x) => x.streamId !== c.streamId));
+      await addHidden(sid, [{ streamId: c.streamId, catExt: cat.extId, name: c.name }]);
+      const removed = await removeHiddenFromCatalog(source.cid, sid);
+      const cur = await db.sources.get(sid);
+      if (removed && cur) await db.sources.update(sid, { counts: { ...cur.counts, live: Math.max(0, cur.counts.live - removed) } });
+    }
+    notePrefsChanged(sid);
+  };
+  const close = () => {
+    onClose();
+    if (reshown.current && !sync.running) void sync.start(source, { preserveFlags: true, silent: true });
+  };
+  return (
+    <Modal title={t("set.chTitle", { name: cat.label })} onClose={close} wide foot={<button className="btn primary" onClick={close}>{t("common.close")}</button>}>
+      <p className="muted">{t("set.chHint")}</p>
+      <div style={{ height: "min(26rem, 50vh)", display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {data && !list.length ? <p className="muted">{t("set.chEmpty")}</p> : (
+          <VList rows={arrayRows(list)} rowH={52} className="vlist" label={t("set.catsChannels")}
+            render={(c) => c && (
+              <div className="cat-row ed">
+                <span className="ellipsis" style={c.hidden ? { opacity: 0.6 } : undefined}>{c.name}</span>
+                <span className="cat-tools">
+                  <button className="btn sm" disabled={c.hidden || !visibleIds.includes(c.streamId)} aria-label={`${t("cor.up")} : ${c.name}`} onClick={() => void move(c.streamId, -1)}>▲</button>
+                  <button className="btn sm" disabled={c.hidden || !visibleIds.includes(c.streamId)} aria-label={`${t("cor.down")} : ${c.name}`} onClick={() => void move(c.streamId, 1)}>▼</button>
+                </span>
+                <span><Switch on={!c.hidden} label={`${c.name} : ${c.hidden ? t("set.chHidden") : t("set.chVisible")}`} onChange={(v) => void setVisible(c, v)} /></span>
+              </div>
+            )} />
+        )}
+      </div>
+    </Modal>
   );
 }
 

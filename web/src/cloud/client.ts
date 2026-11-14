@@ -156,7 +156,18 @@ export interface CloudProvider {
   prefs?: CloudPrefs | null;
 }
 /** Langues en minuscules (« fr », « other », « multi ») ; null = toutes. `disabled` : identifiants de catégorie du fournisseur. */
-export interface CloudPrefs { langs: string[] | null; disabled: { live: string[]; movie: string[]; series: string[] }; updatedAt: number; by?: string }
+export interface CloudPrefs {
+  langs: string[] | null;
+  disabled: { live: string[]; movie: string[]; series: string[] };
+  /** Facultatif (anciens appareils : absent = on ne touche à rien) : identifiants de catégorie dans l'ordre affiché, par type. */
+  order?: { live: string[]; movie: string[]; series: string[] };
+  /** Facultatif : chaînes masquées (i = identifiant de flux, c = catégorie, n = nom). */
+  hidden?: { i: string; c: string | null; n: string }[];
+  /** Facultatif : ordre personnel des chaînes (p = nom du profil, s = catégorie ou « __fav__ », k = identifiants de flux). */
+  chOrder?: { p: string; s: string; k: string[] }[];
+  updatedAt: number;
+  by?: string;
+}
 export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
 export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
 

@@ -4,6 +4,8 @@ import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db/db";
 import { emptySource } from "@/db/sources";
+import { addHidden } from "@/db/hidden";
+import { categoriesOf } from "@/db/queries";
 import { detectLanguages, runSync } from "./core";
 
 const cats = [
@@ -139,5 +141,32 @@ describe("synchronisation Xtream", () => {
     expect(after.counts).toEqual({ live: 0, movie: 0, series: 0 });
     // Aucune génération résiduelle : la marque « en cours » est retirée.
     expect((await db.settings.get("cid.pending"))?.value).toEqual([]);
+  });
+});
+
+describe("réglages de l'utilisateur reportés sur la nouvelle génération", () => {
+  it("ordre des catégories conservé ; chaîne masquée retirée du catalogue (effectifs corrigés)", async () => {
+    await db.hiddenChannels.clear();
+    await db.sources.put({ ...src() });
+    await runSync({ source: src(), transport: { mode: "direct" }, onProgress: () => undefined });
+    const cur = (await db.sources.get(1))!;
+    // L'utilisateur inverse l'ordre des catégories du Direct et masque « Sport 1 ».
+    const order = ["3", "2", "1"];
+    for (const [i, ext] of order.entries()) {
+      const c = await db.categories.where("[sourceId+kind+extId]").equals([cur.cid, "live", ext]).first();
+      await db.categories.update(c!.id!, { ord: i });
+    }
+    await addHidden(1, [{ streamId: 11, catExt: "1", name: "FR: Sport 1 FHD" }]);
+    const before = (await categoriesOf(cur.cid, "live")).find((c) => c.extId === "1")!.count;
+    const counts = await runSync({ source: cur, transport: { mode: "direct" }, onProgress: () => undefined, preserveFlags: true });
+    const after = (await db.sources.get(1))!;
+    expect((await categoriesOf(after.cid, "live")).map((c) => c.extId)).toEqual(order);
+    const ids = (await db.channels.where("[sourceId+ord]").between([after.cid, -1], [after.cid, Infinity]).toArray()).map((c) => c.streamId);
+    expect(ids).not.toContain(11);
+    expect(ids).toContain(12);
+    expect(counts.live).toBe(2);
+    expect(after.counts.live).toBe(2);
+    expect((await categoriesOf(after.cid, "live")).find((c) => c.extId === "1")!.count).toBe(before - 1);
+    await db.hiddenChannels.clear();
   });
 });
