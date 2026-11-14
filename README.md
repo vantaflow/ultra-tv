@@ -13,6 +13,7 @@
   <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
   <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
   <a href="https://vantaflow.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
+  <a href="https://ko-fi.com/ultratv"><img alt="Soutenir sur Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
 </p>
 
 <p align="center">
@@ -314,7 +315,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 ## Soutenir le projet
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://tv.weedy.dpdns.org/donate> (bouton « Sponsor » du dépôt). Paiement par carte sur la page sécurisée de ChariPay ; aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays), aussi accessible par le bouton « Sponsor » du dépôt et par <https://tv.weedy.dpdns.org/donate>. Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 

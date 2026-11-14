@@ -1,2 +1,3 @@
-# Bouton « Sponsor » du dépôt : page de dons (paiement par carte via ChariPay, en dirhams).
+# Bouton « Sponsor » du dépôt : Ko-fi (carte ou PayPal, tous pays) et page de dons du projet.
+ko_fi: ultratv
 custom: ["https://tv.weedy.dpdns.org/donate"]
