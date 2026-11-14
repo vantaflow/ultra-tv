@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Accueil : bandeau « À la une » bloqué sur « Chargement du catalogue… » pour un profil qui masque beaucoup de catégories (la sélection pioche maintenant dans un lot plus large).
+
 ## [1.3.32] — 2026-11-14 (Android)
 
 ### Modifié

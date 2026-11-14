@@ -202,8 +202,10 @@ class HomeViewModel @Inject constructor(
         if (id == null) flowOf(emptyList())
         // Pendant la synchro, les tables changent sans arrêt : au plus une relecture par seconde.
         else combine(
-            catalog.heroSeriesList(id, HERO_POOL).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES") { it.categoryId },
-            catalog.heroMovieList(id, HERO_CANDIDATES).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE") { it.categoryId },
+            // Lot large puis filtré par profil : un profil qui masque beaucoup de catégories gardait sinon un bandeau vide
+            // (« Chargement du catalogue… » sans fin).
+            catalog.heroSeriesList(id, HERO_POOL * 40).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "SERIES") { it.categoryId }.map { it.take(HERO_POOL) },
+            catalog.heroMovieList(id, HERO_CANDIDATES * 20).atMostEvery(1_000).snapshotWhile(syncing).visibleFor(id, "MOVIE") { it.categoryId }.map { it.take(HERO_CANDIDATES) },
         ) { ss, ms -> ss to ms }
             .flatMapLatest { (ss, ms) -> heroFlow(ss, ms, pool) }
     }.distinctUntilChanged().flowOn(kotlinx.coroutines.Dispatchers.Default) // méta formatée hors fil principal
