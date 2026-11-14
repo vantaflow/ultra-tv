@@ -4,12 +4,16 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
-### Corrigé
-- Langue du profil : la langue choisie avant qu'elle appartienne au profil est reprise une fois par le profil courant, puis partagée (un profil en arabe sur une box s'affichait en français ailleurs).
-- Bureau › Catégories : les catégories actives s'affichent en premier, sans bouger quand on les active ou désactive.
+## [1.3.30] — 2026-11-14 (Android)
 
-### Ajouté
+### Modifié
+- Langue du profil : la langue choisie avant qu'elle appartienne au profil est reprise une fois par le profil courant, puis partagée (un profil en arabe sur une box s'affichait en français ailleurs).
 - Changer de profil relance la synchro : catégories, langue et réglages du profil faits sur un autre appareil s'appliquent aussitôt.
+
+## [bureau 1.2.62] — 2026-11-14
+
+### Modifié
+- Bureau › Catégories : les catégories actives s'affichent en premier, sans bouger quand on les active ou désactive.
 - Bureau : catégories propres à chaque profil (comme sur TV), partagées avec les autres appareils ; Direct, Films, Séries, Guide, recherche et accueil n'affichent que celles du profil.
 
 ## [bureau 1.2.61] — 2026-11-14
