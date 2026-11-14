@@ -5,12 +5,18 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
-- **Samsung TV (Tizen)** et **LG TV (webOS)** : paquets natifs `.wgt` et `.ipk` de la même application web (Samsung Tizen 5.5+, modèles 2020+ ; LG webOS 6+, modèles 2021+). Transposition des touches de la télécommande (Retour, lecture/pause, chaînes +/−, Exit ; touches média enregistrées auprès de Tizen, Retour livré à l’appli sur webOS), HLS natif en dernier recours sans proxy CORS, polyfills Chromium 76, workflow `tv.yml` (artefacts, publication sur tag `tv-v*`). Voir `docs/tv.md`.
 - Site ultratv.dpdns.org entièrement multilingue (anglais, français, espagnol, arabe, polonais) : connexion, inscription, tableau de bord, appairage, téléchargement ; sélecteur de langue en pied de page.
 
 ### Modifié
-- « Appareil » au lieu de « TV » quand il s'agit de l'appareil (appairage, dissocier, liste des appareils), dans l'appli et sur le site : un téléphone ou une tablette n'est plus appelé TV.
 - Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.
+
+## [1.3.36] — 2026-11-14 (Android, TV Samsung / LG)
+
+### Ajouté
+- **Samsung TV (Tizen)** et **LG TV (webOS)** : paquets natifs `.wgt` et `.ipk` de la même application web (Samsung Tizen 5.5+, modèles 2020+ ; LG webOS 6+, modèles 2021+). Transposition des touches de la télécommande (Retour, lecture/pause, chaînes +/−, Exit ; touches média enregistrées auprès de Tizen, Retour livré à l’appli sur webOS), HLS natif en dernier recours sans proxy CORS, polyfills Chromium 76, workflow `tv.yml` (artefacts, publication sur tag `tv-v*`). Voir `docs/tv.md`.
+
+### Modifié
+- « Appareil » au lieu de « TV » quand il s'agit de l'appareil (appairage, dissocier, liste des appareils), dans l'appli et sur le site : un téléphone ou une tablette n'est plus appelé TV.
 
 ## [1.3.35] — 2026-11-14 (Android)
 
