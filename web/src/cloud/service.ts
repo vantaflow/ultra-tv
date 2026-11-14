@@ -161,7 +161,7 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     const now = Date.now();
     await setSetting(K.lastSync, now);
     patch({ lastSyncAt: now });
-    if (res.unchanged) { void syncProfilesCloud(); return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true }; }
+    if (res.unchanged) { void syncSharedState(); return { added: 0, updated: 0, removed: 0, skipped: 0, unchanged: true }; }
     await setSetting(K.etag, res.etag);
     await setSetting(K.prefsBoot, true);
     const devs = res.config.devices;
@@ -444,11 +444,13 @@ export function startCloudSchedule(): () => void {
   const tick = () => { if (useCloud.getState().paired) void syncCloud().catch(() => undefined); };
   tick();
   timer = setInterval(tick, SYNC_EVERY_MS);
-  // Favoris et reprises : plus souvent que le reste (changent pendant l'usage), sans relire la configuration.
-  stateTimer = setInterval(() => { void syncSharedState(); }, 5 * 60_000);
-  // Retour sur la fenêtre (après avoir utilisé la TV, par exemple) : échange immédiat, au plus une fois par minute.
+  // Réglages faits sur une autre TV (catégories, profils, langue), favoris et reprises : toutes les 2 min fenêtre visible.
+  // Configuration relue avec son ETag (réponse 304 légère si rien n'a changé) ; l'état partagé suit dans la même synchro.
+  const light = () => { if (useCloud.getState().paired && document.visibilityState === "visible") void syncCloud().catch(() => undefined); };
+  stateTimer = setInterval(light, 2 * 60_000);
+  // Retour sur la fenêtre (après avoir utilisé la TV, par exemple) : synchro immédiate, au plus une fois par minute.
   let lastFocus = 0;
-  const onFocus = () => { if (Date.now() - lastFocus > 60_000) { lastFocus = Date.now(); void syncSharedState(); } };
+  const onFocus = () => { if (Date.now() - lastFocus > 60_000) { lastFocus = Date.now(); light(); } };
   window.addEventListener("focus", onFocus);
   return () => {
     if (timer) clearInterval(timer); timer = null; if (stateTimer) clearInterval(stateTimer); stateTimer = null;
