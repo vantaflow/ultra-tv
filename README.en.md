@@ -22,7 +22,8 @@
   <a href="https://vantaflow.github.io/ultra-tv/en/">Website</a> ·
   <a href="https://ultratv.dpdns.org/download/android">Download the APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
-  <a href="CHANGELOG.md">Changelog (French)</a>
+  <a href="CHANGELOG.md">Changelog (French)</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
 ---
@@ -83,7 +84,7 @@ The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/f
 - **IMDb / Rotten Tomatoes ratings** on detail pages (OMDb through the Worker), **actor and director pages** (their titles found in your playlist).
 - **Home**: rotating “Featured” banner, a **“New episodes”** row (favourite or in-progress series with an episode out or due within 7 days), “Because you watched…” and “Top rated movies / series” rows; movie and series **filters** (sort, minimum rating, decade); **typo-tolerant search** (“brekin bad” → Breaking Bad).
 - **Custom guide**: an **XMLTV guide address** (`http://` or `https://`, ending in `.xml` or `.xml.gz`, a query string is fine). Two uses. (1) **Additional guide**: Settings › Synchronization › Additional guide › *Custom address…* (read only for channels still without a programme). (2) **Guide of this source**: Settings › Sources › (the source's menu) › *Guide of this source*, in **replace** mode (only this address is read) or **complete** mode (the provider's guide first, then this address for channels without a programme); handy for an M3U playlist without `url-tvg` and for a Stalker portal, which has no XMLTV guide of its own (channels matched by `epgChannelId`, otherwise by name). The address is **checked before it is saved** (network request, gzip detected, a `<tv` tag is required; clear message if unreachable, HTTP code or not an XMLTV guide). Enter it with the remote, from your phone (the `/envoyer` page, *XMLTV guide* type, for the additional guide) or on desktop (Settings › Synchronization, and a source's *Advanced options*).
-- **Synced across devices** (cloud account): profiles (name, colour, kids profile; the PIN stays on each device), active categories and their order, hidden channels, favourites, history and resume points.
+- **Synced across devices** (cloud account): profiles (name, colour or avatar, kids profile, interface language; the PIN stays on each device), categories visible per profile and their order, channel order, hidden channels, favourites, history and resume points. Changes coming from other devices are checked every 2 min while the app is open, and right away when you switch profile.
 - **Send from your phone, no account**: the TV shows a QR code and a code; type the playlist (Xtream, M3U or Stalker) on your phone or computer (the Worker's `/envoyer` page) and the TV adds and syncs it. No more typing with the remote.
 - **Phone remote and search** (Settings › Sources): the box serves a page on the local network (QR code) to search movies, series and channels and control playback; off by default, protected by a key.
 - **Simple mode**: six large tiles (Live TV, Resume, Movies, Series, Favorites, Search), per profile.
@@ -133,7 +134,7 @@ Side rail, list and details side by side.
 
 ### Windows and macOS
 
-The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)). On the web, only the management dashboard is offered (no player). Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen. **Sport, reminders and recordings**: Sport section, “Remind me” (system notification) and “Record” (.ts file in Videos/Ultra TV, the app must stay open) from the guide and Sport, “Recorded” screen; **Episodes** button in the series player (E key).
+The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)). On the web, only the management dashboard is offered (no player). Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases; cloud sync every 2 min while the window is visible. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen. **Sport, reminders and recordings**: Sport section, “Remind me” (system notification) and “Record” (.ts file in Videos/Ultra TV, the app must stay open) from the guide and Sport, “Recorded” screen; **Episodes** button in the series player (E key).
 
 <p align="center">
   <img src="docs/screenshots/desktop/en/06-direct.png" alt="Live TV on desktop" width="48%" />
@@ -144,7 +145,7 @@ All desktop screenshots (synthetic data, FR and EN): [`docs/screenshots/desktop/
 
 ### Cloud dashboard
 
-Manage devices and sources from a browser: **<https://ultratv.dpdns.org>** (the old address `ultratv-config.khalilbenaz.workers.dev` still works; the apps switch automatically if one is blocked on your network).
+Manage devices and sources from a browser: **<https://ultratv.dpdns.org>** (the site is available in English, French, Spanish, Arabic and Polish). `tv.weedy.dpdns.org` serves the apps' API; its pages redirect to the site. The old address `ultratv-config.khalilbenaz.workers.dev` still works; the apps switch automatically if one is blocked on your network.
 
 <p align="center">
   <img src="docs/screenshots/cloud/devices.png" alt="Paired devices" width="48%" />
@@ -169,7 +170,8 @@ Pair in one scan: the TV shows a QR, the phone camera opens the pairing page wit
 - **Same provider everywhere**: a provider added in the dashboard is received by every device on the account.
 - **Device-only source**: a source added on a device stays private to it until you share it.
 - **Sharing chosen per device**: source by source, tick the receiving devices (in the app: Settings › Sources › *Share this source*; or in the dashboard).
-- **Shared categories**: enabling or disabling a category on one device applies to the others (latest change wins).
+- **Shared categories**: enabling, disabling or reordering a category on one device applies to the others, per profile (latest change wins). The same goes for channel order and hidden channels.
+- **Shared profiles**: name, colour or avatar, kids profile and interface language follow the account; never the PIN.
 - **Shared favourites, resume points and recently watched**: a movie started on the TV resumes at the same spot on the Mac; a favourite added or removed is everywhere. Per account source, profiles matched by name.
 - Account changes are serialized on the Worker (Durable Object lock): two devices writing at once do not overwrite each other.
 
@@ -236,9 +238,9 @@ To avoid typing credentials with a remote, manage your sources from a browser: *
 3. On the box: **From the cloud** (Source step of the wizard) or Settings › Sources › *Sync from the cloud*. An 8-character code is displayed; enter it in the dashboard.
 4. The box imports the configuration, then syncs.
 
-The device receives a random 256-bit token (hashed on the server, encrypted in the Keystore, revocable). **Revoked device** (lost, lent, sold): at its next check (back to the app, within 10 min at most), it removes the sources received from the cloud, forgets the pairing and says so; sources added by hand on the device stay. Your credentials are **encrypted on the server side** (AES-256-GCM). The label shown for the box ("UTV-XXXXXX") is only a name, never a key.
+The device receives a random 256-bit token (hashed on the server, encrypted in the Keystore, revocable). **Revoked device** (lost, lent, sold): at its next check (back to the app, or every 2 min while the app is open), it removes the sources received from the cloud, forgets the pairing and says so; sources added by hand on the device stay. Your credentials are **encrypted on the server side** (AES-256-GCM). The label shown for the box ("UTV-XXXXXX") is only a name, never a key.
 
-**Self-hosting.** You can deploy your own Worker (see [Cloudflare Worker](#cloudflare-worker)): create the KV namespaces, set the `SESSION_SECRET`, `PROVIDER_ENC_KEY` and `OPS_TOKEN` secrets (no value is published here), then `wrangler deploy`; in the app, Settings › Sources › *Dashboard address* then points to yours.
+**Self-hosting.** You can deploy your own Worker (see [Cloudflare Worker](#cloudflare-worker)): create the D1 database `ultratv-telemetry` (`wrangler d1 create`, then `wrangler d1 migrations apply`, migrations in `cloudflare-config/migrations`): it holds the main storage (accounts, devices, tokens, telemetry). KV is now only a fallback and a gradual-migration source, but the Worker still binds it (`wrangler kv namespace create CONFIG`). Set the required secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` and `OPS_TOKEN` (no value is published here; without them the Worker answers 500), then `wrangler deploy`; in the app, Settings › Sources › *Dashboard address* then points to yours.
 
 ## Security
 
@@ -276,7 +278,7 @@ Logs and crash reports are scrubbed (`username`, `password`, `token`… paramete
 | Team badges (TheSportsDB) | Sport section enabled, **paired** device | Worker `/api/sports/team` | team name as written in the guide | **No** |
 | Images (posters, logos, backdrops, badges) | on display | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | image request sent directly from the device, nothing else transmitted | **No** |
 | Online subtitles | only on *Search online*, paired device | Worker `/api/subtitles` | title, languages, year | **No** |
-| Cloud sync | paired: at launch, every 6 h; favourites and history ≈ 60 s after a change then every 10 min | Worker | device token, version, edition; display settings; favourites and history per profile (title, poster address, position, duration) | **No** (unpairing stops it) |
+| Cloud sync | paired: at launch, every 6 h; app open: every 2 min and on profile switch; favourites and history ≈ 60 s after a change | Worker | device token, version, edition; display settings; profiles (name, colour or avatar, kids profile, interface language; never the PIN); categories visible per profile, category and channel order, hidden channels; favourites and history per profile (title, poster address, position, duration) | **No** (unpairing stops it) |
 | Trakt | while playing a movie/episode, paired device | Worker `/api/device/trakt` | action, progress, title, year, TMDB ids, season, episode | **No** |
 | DNS | only if you pick a DNS other than the system one (Settings › Playback) | Google, Cloudflare, Quad9 or yours | domain names | No |
 
@@ -284,12 +286,14 @@ Images supplied by your source are loaded directly from the addresses it gives.
 
 ### Windows and macOS
 
-No crash report, remote log or alerts. **Anonymous count** (same rule as Android): at most once per 20 h, **unpaired** device only, to the Worker `/api/anon/ping`; it sends a random install ID kept on the device, the version and the system (`windows`, `macos` or `linux`). It turns off in Settings › About › *Anonymous telemetry* (on by default): nothing is sent any more and the ID is erased. Other sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync, Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
+No crash report, remote log or alerts. **Anonymous count** (same rule as Android): at most once per 20 h, **unpaired** device only, to the Worker `/api/anon/ping`; it sends a random install ID kept on the device, the version and the system (`windows`, `macos` or `linux`). It turns off in Settings › About › *Anonymous telemetry* (on by default): nothing is sent any more and the ID is erased. Other sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync (every 2 min while the window is visible), Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
 
 ### What the Worker keeps
 
 - **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
 - **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
+- **Shared settings and profiles**: visible categories, category and channel order, hidden channels; profiles (name, colour or avatar, kids profile, interface language, never the PIN); until deleted.
+- **Where**: in the Worker's D1 database; KV is only a fallback for data not yet migrated.
 - **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
 - **Anonymous count**: hash of the install ID, dates, version, app in use (Android TV, Android mobile, Windows, macOS, Linux), device model (Android), country, number of sources sent from the web; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
@@ -326,7 +330,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). If the Worker has a ChariPay key (`CHARIPAY_API_KEY`), the `/donate` page also offers a donation in dirhams with a Moroccan card. No card details ever go through Ultra TV.
 
 ## Help translate
 
@@ -367,7 +371,9 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 
 ```bash
 cd cloudflare-config && npm ci
-wrangler kv namespace create CONFIG                # paste the ids into wrangler.toml
+wrangler d1 create ultratv-telemetry               # paste the database_id into wrangler.toml
+wrangler d1 migrations apply ultratv-telemetry --remote   # migrations in cloudflare-config/migrations
+wrangler kv namespace create CONFIG                # fallback and gradual migration; paste the id into wrangler.toml
 wrangler secret put SESSION_SECRET                 # >= 32 random characters
 wrangler secret put PROVIDER_ENC_KEY               # AES-256 key, base64
 wrangler secret put OPS_TOKEN                      # password for /crashes and /logs
@@ -375,10 +381,11 @@ wrangler secret put TMDB_READ_TOKEN                # TMDB v4 read token (rich de
 wrangler secret put TMDB_API_KEY                   # TMDB v3 key (fallback without a v4 token)
 wrangler secret put OPENSUBTITLES_API_KEY          # OpenSubtitles key (online subtitles)
 wrangler secret put ACCOUNT_RELAY_KEY              # optional: subscription relay outside Cloudflare (cloudflare-config/relay)
+wrangler secret put CHARIPAY_API_KEY               # optional: donations in dirhams via ChariPay (/donate page)
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
+TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. Ko-fi and Liberapay need no secret. The `SITE_HOST` variable (`wrangler.toml`) names the main site address: the old addresses redirect their pages to it, except `/api/*`. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
 
 ## Known limitations
 

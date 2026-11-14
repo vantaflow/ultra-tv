@@ -22,7 +22,8 @@
   <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
   <a href="https://ultratv.dpdns.org/download/android">Télécharger l'APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
-  <a href="CHANGELOG.md">Changelog</a>
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="ROADMAP.md">Feuille de route</a>
 </p>
 
 ---
@@ -85,7 +86,7 @@ Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/
 - **Notes IMDb / Rotten Tomatoes** sur les fiches (OMDb via le Worker), **pages acteurs et réalisateurs** (leurs titres présents dans la playlist).
 - **Accueil** : « À la une » qui défile, rangée **« Nouveaux épisodes »** (séries favorites ou en cours dont un épisode est sorti ou sort dans les 7 jours), rangées « Parce que vous avez regardé… », « Films / Séries les mieux notés » ; **filtres** Films / Séries (tri, note minimale, période) ; **recherche tolérante aux fautes**.
 - **Guide personnalisé** : une **adresse de guide XMLTV** (`http://` ou `https://`, finissant par `.xml` ou `.xml.gz`, query string tolérée). Deux usages. (1) **Guide complémentaire** : Réglages › Synchronisation › Guide complémentaire › *Adresse personnalisée…* (lu seulement pour les chaînes restées sans programme). (2) **Guide de cette source** : Réglages › Sources › (menu de la source) › *Guide de cette source*, avec le mode **remplacer** (seule cette adresse est lue) ou **compléter** (guide du fournisseur d'abord, puis cette adresse pour les chaînes sans programme) ; utile pour une playlist M3U sans `url-tvg` et pour un portail Stalker, qui n'a pas de guide XMLTV propre (chaînes rattachées par `epgChannelId`, sinon par nom). L'adresse est **vérifiée avant l'enregistrement** (requête réseau, gzip détecté, balise `<tv` obligatoire ; message clair si injoignable, code HTTP ou pas un guide XMLTV). Saisie à la télécommande, depuis le téléphone (page `/envoyer`, type *Guide XMLTV*, pour le guide complémentaire) ou sur le bureau (Réglages › Synchronisation, et *Options avancées* d'une source).
-- **Synchronisés entre appareils** (compte cloud) : profils (nom, couleur, profil Enfants ; le code PIN reste sur chaque appareil), catégories actives et leur ordre, chaînes masquées, favoris, historique et reprises.
+- **Synchronisés entre appareils** (compte cloud) : profils (nom, couleur ou avatar, profil Enfants, langue de l'interface ; le code PIN reste sur chaque appareil), catégories visibles par profil et leur ordre, ordre des chaînes, chaînes masquées, favoris, historique et reprises. Les changements venus des autres appareils sont vérifiés toutes les 2 min appli ouverte, et aussitôt au changement de profil.
 - **Envoi depuis le téléphone, sans compte** : la TV affiche un QR code et un code ; la playlist (Xtream, M3U ou Stalker) se saisit sur le téléphone ou l'ordinateur (page `/envoyer` du Worker), puis la TV l'ajoute et la synchronise. Plus besoin de tout taper à la télécommande.
 - **Télécommande et recherche sur le téléphone** (Réglages › Sources) : la box sert une page sur le réseau local (QR code) pour chercher un film, une série ou une chaîne et piloter la lecture ; désactivée par défaut, protégée par une clé.
 - **Mode simple** : six grandes tuiles (Télé en direct, Reprendre, Films, Séries, Favoris, Rechercher), réglable par profil.
@@ -135,7 +136,7 @@ Menu latéral, liste et fiche côte à côte.
 
 ### Windows et macOS
 
-Le même design sur ordinateur : l'application web de [`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)). Sur le web, seul le tableau de bord de gestion est proposé (pas de lecteur). Xtream Codes et M3U (lien ou fichier) ; catalogue gardé en local (IndexedDB), identifiants chiffrés avec le trousseau du système, lecture directe (aucun proxy distant), mise à jour automatique via les Releases GitHub. **Recherche** : bouton rond sous le logo, raccourci `Ctrl/Cmd + K` ou `/` depuis n'importe quel écran. **Sport, rappels et enregistrements** : rubrique Sport, « Me rappeler » (notification système) et « Enregistrer » (fichier .ts dans Vidéos/Ultra TV, l'application doit rester ouverte) depuis le guide et Sport, écran « Enregistrés » ; bouton **Épisodes** dans le lecteur des séries (touche E). **Son AC-3 / DTS** : converti automatiquement en AAC par ffmpeg (embarqué sous Windows ; sur macOS, installez-le avec `brew install ffmpeg`).
+Le même design sur ordinateur : l'application web de [`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)). Sur le web, seul le tableau de bord de gestion est proposé (pas de lecteur). Xtream Codes et M3U (lien ou fichier) ; catalogue gardé en local (IndexedDB), identifiants chiffrés avec le trousseau du système, lecture directe (aucun proxy distant), mise à jour automatique via les Releases GitHub ; synchro cloud toutes les 2 min fenêtre visible. **Recherche** : bouton rond sous le logo, raccourci `Ctrl/Cmd + K` ou `/` depuis n'importe quel écran. **Sport, rappels et enregistrements** : rubrique Sport, « Me rappeler » (notification système) et « Enregistrer » (fichier .ts dans Vidéos/Ultra TV, l'application doit rester ouverte) depuis le guide et Sport, écran « Enregistrés » ; bouton **Épisodes** dans le lecteur des séries (touche E). **Son AC-3 / DTS** : converti automatiquement en AAC par ffmpeg (embarqué sous Windows ; sur macOS, installez-le avec `brew install ffmpeg`).
 
 <p align="center">
   <img src="docs/screenshots/desktop/fr/06-direct.png" alt="Direct sur le bureau" width="48%" />
@@ -146,7 +147,7 @@ Toutes les captures du bureau (données synthétiques, FR et EN) : [`docs/screen
 
 ### Tableau de bord cloud
 
-Gérez appareils et sources depuis un navigateur : **<https://ultratv.dpdns.org>** (l'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active ; les applis basculent d'elle-même si l'une est bloquée sur votre réseau).
+Gérez appareils et sources depuis un navigateur : **<https://ultratv.dpdns.org>** (le site existe en anglais, français, espagnol, arabe et polonais). `tv.weedy.dpdns.org` sert l'API des applis ; ses pages redirigent vers le site. L'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active ; les applis basculent d'elle-même si l'une est bloquée sur votre réseau.
 
 <p align="center">
   <img src="docs/screenshots/cloud/devices.png" alt="Appareils appairés" width="48%" />
@@ -173,7 +174,8 @@ Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvr
 - **Même fournisseur partout** : un fournisseur ajouté dans le tableau de bord est reçu par tous les appareils du compte.
 - **Source propre à un appareil** : une source ajoutée sur un appareil lui reste privée tant que vous ne la partagez pas.
 - **Partage choisi par appareil** : source par source, vous cochez les appareils destinataires (dans l'application : Réglages › Sources › *Partager cette source* ; ou dans le tableau de bord).
-- **Catégories partagées** : activer, désactiver une catégorie sur un appareil s'applique aux autres (la modification la plus récente gagne).
+- **Catégories partagées** : activer, désactiver, réordonner une catégorie sur un appareil s'applique aux autres, par profil (la modification la plus récente gagne). Il en va de même pour l'ordre des chaînes et les chaînes masquées.
+- **Profils partagés** : nom, couleur ou avatar, profil Enfants et langue de l'interface suivent le compte ; jamais le code PIN.
 - **Favoris, reprises et derniers vus partagés** : un film commencé sur la TV reprend au même endroit sur le Mac ; un favori ajouté ou retiré l'est partout. Par source du compte, profils rapprochés par leur nom.
 - Les modifications d'un compte sont sérialisées côté Worker (verrou Durable Object) : deux appareils qui écrivent en même temps ne s'écrasent pas.
 
@@ -240,9 +242,9 @@ Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depui
 3. Sur la box : **Depuis le cloud** (écran Source de l'assistant) ou Réglages › Sources › *Synchroniser depuis le cloud*. Un code à 8 caractères s'affiche ; saisissez-le dans le tableau de bord.
 4. La box importe la configuration puis synchronise.
 
-L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore, révocable). **Appareil révoqué** depuis le tableau de bord (perdu, prêté, vendu) : dès sa vérification suivante (retour sur l'appli, au plus 10 min), il retire les sources reçues du cloud, oublie l'appairage et l'indique ; les sources ajoutées à la main sur l'appareil restent. Vos identifiants sont **chiffrés côté serveur** (AES-256-GCM). L'étiquette affichée pour la box (« UTV-XXXXXX ») n'est qu'un nom, jamais une clé.
+L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore, révocable). **Appareil révoqué** depuis le tableau de bord (perdu, prêté, vendu) : dès sa vérification suivante (retour sur l'appli, ou toutes les 2 min appli ouverte), il retire les sources reçues du cloud, oublie l'appairage et l'indique ; les sources ajoutées à la main sur l'appareil restent. Vos identifiants sont **chiffrés côté serveur** (AES-256-GCM). L'étiquette affichée pour la box (« UTV-XXXXXX ») n'est qu'un nom, jamais une clé.
 
-**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez les espaces KV, définissez les secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
+**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez la base D1 `ultratv-telemetry` (`wrangler d1 create`, puis `wrangler d1 migrations apply`, migrations dans `cloudflare-config/migrations`) : elle porte le stockage principal (comptes, appareils, jetons, télémétrie). KV ne sert plus que de repli et de migration progressive, mais le Worker le lie encore (`wrangler kv namespace create CONFIG`). Définissez les secrets obligatoires `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée ; sans eux le Worker répond 500), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
 
 ## Sécurité
 
@@ -280,7 +282,7 @@ Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `pa
 | Écussons des équipes (TheSportsDB) | rubrique Sport activée, appareil **appairé** | Worker `/api/sports/team` | nom d'équipe tel qu'écrit dans le guide | **Non** |
 | Images (affiches, logos, fonds, écussons) | à l'affichage | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | requête d'image directe depuis l'appareil, rien d'autre transmis | **Non** |
 | Sous-titres en ligne | seulement sur *Rechercher en ligne*, appareil appairé | Worker `/api/subtitles` | titre, langues, année | **Non** |
-| Synchro cloud | appairé : au lancement, toutes les 6 h ; favoris et historique ≈ 60 s après un changement puis toutes les 10 min | Worker | jeton d'appareil, version, édition ; réglages d'affichage ; favoris et historique par profil (titre, adresse de l'affiche, position, durée) | **Non** (dissocier l'appareil l'arrête) |
+| Synchro cloud | appairé : au lancement, toutes les 6 h ; appli ouverte : toutes les 2 min et au changement de profil ; favoris et historique ≈ 60 s après un changement | Worker | jeton d'appareil, version, édition ; réglages d'affichage ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface ; jamais le code PIN) ; catégories visibles par profil, ordre des catégories et des chaînes, chaînes masquées ; favoris et historique par profil (titre, adresse de l'affiche, position, durée) | **Non** (dissocier l'appareil l'arrête) |
 | Trakt | pendant la lecture d'un film ou épisode, appareil appairé | Worker `/api/device/trakt` | action, progression, titre, année, identifiants TMDB, saison, épisode | **Non** |
 | DNS | seulement si vous choisissez un DNS autre que celui du système (Réglages › Lecture) | Google, Cloudflare, Quad9 ou le vôtre | noms de domaine | Non |
 
@@ -288,12 +290,14 @@ Les images fournies par votre source sont chargées directement depuis les adres
 
 ### Windows et macOS
 
-Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme** (même règle qu'Android) : au plus une fois par 20 h, appareil **non appairé** seulement, vers le Worker `/api/anon/ping` ; part un identifiant d'installation aléatoire gardé sur l'appareil, la version et le système (`windows`, `macos` ou `linux`). Il se coupe dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut) : plus rien ne part et l'identifiant est effacé. Autres envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud, Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
+Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme** (même règle qu'Android) : au plus une fois par 20 h, appareil **non appairé** seulement, vers le Worker `/api/anon/ping` ; part un identifiant d'installation aléatoire gardé sur l'appareil, la version et le système (`windows`, `macos` ou `linux`). Il se coupe dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut) : plus rien ne part et l'identifiant est effacé. Autres envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud (toutes les 2 min fenêtre visible), Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
 
 ### Ce que le Worker conserve
 
 - **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
 - **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
+- **Réglages partagés et profils** : catégories visibles, ordre des catégories et des chaînes, chaînes masquées ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface, jamais le code PIN) ; jusqu'à suppression.
+- **Où** : dans la base D1 du Worker ; KV ne sert plus que de repli pour les données pas encore migrées.
 - **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
 - **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, application utilisée (Android TV, Android mobile, Windows, macOS, Linux), modèle de l'appareil (Android), pays, nombre de sources envoyées depuis le web ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
@@ -330,7 +334,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Si le Worker a une clé ChariPay (`CHARIPAY_API_KEY`), la page `/donate` propose aussi un don en dirhams par carte marocaine. Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 
@@ -371,7 +375,9 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 
 ```bash
 cd cloudflare-config && npm ci
-wrangler kv namespace create CONFIG                # coller les ids dans wrangler.toml
+wrangler d1 create ultratv-telemetry               # coller le database_id dans wrangler.toml
+wrangler d1 migrations apply ultratv-telemetry --remote   # migrations dans cloudflare-config/migrations
+wrangler kv namespace create CONFIG                # repli et migration progressive ; coller l'id dans wrangler.toml
 wrangler secret put SESSION_SECRET                 # >= 32 caractères aléatoires
 wrangler secret put PROVIDER_ENC_KEY               # clé AES-256 en base64
 wrangler secret put OPS_TOKEN                      # mot de passe de /crashes et /logs
@@ -380,10 +386,11 @@ wrangler secret put TMDB_API_KEY                   # clé TMDB v3 (repli si pas 
 wrangler secret put OPENSUBTITLES_API_KEY          # clé OpenSubtitles (sous-titres en ligne)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
 wrangler secret put ACCOUNT_RELAY_KEY              # facultatif : relais d'abonnement hors Cloudflare (cloudflare-config/relay)
+wrangler secret put CHARIPAY_API_KEY               # facultatif : dons en dirhams via ChariPay (page /donate)
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
+TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Ko-fi et Liberapay ne demandent aucun secret. La variable `SITE_HOST` (`wrangler.toml`) désigne l'adresse du site principal : les anciennes adresses redirigent leurs pages vers elle, sauf `/api/*`. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
 
 ## Limites connues
 
