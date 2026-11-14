@@ -65,13 +65,45 @@ const CRASH_MAX_BODY = 48 * 1024;
 
 /** Renvoie une réponse 429 si la limite est dépassée, sinon null. */
 async function limited(env, key, limit, windowSec, asJson = false) {
-  const r = await guardStub(env, key).hit(limit, windowSec);
-  return r.ok ? null : tooMany(r.retryAfter, asJson);
+  // Routes à fort trafic (fenêtre ≤ 10 min : appareils, synchro, TMDB…) : limiteur natif de Cloudflare, sans Durable
+  // Object (le palier gratuit des DO plafonne à 100 000 requêtes par jour, et chaque appel d'appareil en coûtait deux).
+  const native = nativeLimiter(env, limit, windowSec, asJson);
+  if (native) {
+    try {
+      const { success } = await native.limit({ key });
+      return success ? null : tooMany(60, asJson);
+    } catch { return null; } // limiteur indisponible : on laisse passer plutôt que de couper le service
+  }
+  try {
+    const r = await guardStub(env, key).hit(limit, windowSec);
+    return r.ok ? null : tooMany(r.retryAfter, asJson);
+  } catch (e) {
+    console.error("limiteur DO indisponible", e?.message);
+    return null; // quota DO épuisé ou panne : le service reste disponible
+  }
+}
+
+/**
+ * Limiteur natif pour une limite « limit par windowSec », ramenée à la minute (période imposée : 60 s).
+ * Paliers RL_10 / RL_30 / RL_60 (wrangler.toml) : le plus petit qui couvre la limite. Routes des appareils (JSON)
+ * et fenêtres ≤ 10 min seulement ; connexion et inscription du site (rares, sensibles) : null → Durable Object, compteur exact.
+ */
+export function nativeLimiter(env, limit, windowSec, asJson = false) {
+  if (windowSec > 600 && !asJson) return null;
+  // Marge ×2 : la période de 60 s est plus courte que la fenêtre d'origine, les rafales légitimes doivent passer.
+  const perMin = (2 * limit * 60) / windowSec;
+  const tier = perMin <= 10 ? env.RL_10 : perMin <= 30 ? env.RL_30 : env.RL_60;
+  return tier && typeof tier.limit === "function" ? tier : null;
 }
 
 async function lockedOut(env, key, asJson = false) {
-  const s = await guardStub(env, key).lockState();
-  return s.locked ? tooMany(s.retryAfter, asJson) : null;
+  try {
+    const s = await guardStub(env, key).lockState();
+    return s.locked ? tooMany(s.retryAfter, asJson) : null;
+  } catch (e) {
+    console.error("verrou DO indisponible", e?.message);
+    return null;
+  }
 }
 
 const LOGIN_LOCK = { threshold: 5, baseSec: 60, capSec: 900 };   // par compte
@@ -88,17 +120,24 @@ const SECRET_LOCK = { threshold: 5, baseSec: 60, capSec: 3600 }; // OPS / ADMIN
 async function withAccountLock(env, login, fn) {
   const stub = guardStub(env, `mut:${login}`);
   let token = null;
-  for (let i = 0; i < 60 && !token; i++) {
-    const r = await stub.lockAcquire(10_000);
+  let unlocked = false;
+  for (let i = 0; i < 60 && !token && !unlocked; i++) {
+    let r;
+    try { r = await stub.lockAcquire(10_000); } catch (e) {
+      // Durable Object indisponible (quota gratuit épuisé, panne) : on écrit sans verrou plutôt que de couper la synchro.
+      // Seul risque : deux écritures du même compte à la même milliseconde, l'une écrase l'autre.
+      console.error("verrou de compte indisponible", e?.message);
+      unlocked = true; break;
+    }
     if (r.ok) token = r.token; else await new Promise((res) => setTimeout(res, 40 + Math.random() * 80));
   }
-  if (!token) return json({ error: "busy" }, 503, { "retry-after": "2" });
+  if (!token && !unlocked) return json({ error: "busy" }, 503, { "retry-after": "2" });
   try {
     const acct = await getAccount(env, login);
     if (!acct) return json({ error: "gone" }, 404);
     return await fn(acct);
   } finally {
-    await stub.lockRelease(token);
+    if (token) await stub.lockRelease(token).catch(() => undefined);
   }
 }
 
@@ -1115,7 +1154,7 @@ async function deviceAuth(req, env) {
   const auth = await authDevice(env, token);
   if (!auth) {
     // Un jeton présenté mais faux compte comme un échec (anti-devinette) ; l'absence de jeton non.
-    if (token) await guardStub(env, `lock:ip:${clientIp(req)}`).lockFail({ threshold: 20, baseSec: 60, capSec: 3600 });
+    if (token) await guardStub(env, `lock:ip:${clientIp(req)}`).lockFail({ threshold: 20, baseSec: 60, capSec: 3600 }).catch(() => undefined);
     return { res: json({ error: "unauthorized" }, 401, { "www-authenticate": 'Bearer realm="ultratv"' }) };
   }
   return { auth };
@@ -1135,7 +1174,9 @@ async function noteEdition(req, env, auth) {
   const version = appVersionOf(req.headers.get("x-ultra-version"));
   if (version && auth.device.version !== version) patch.version = version;
   if (!Object.keys(patch).length) return;
-  await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, patch));
+  // Information secondaire : un échec ici ne doit jamais empêcher l'appareil de recevoir sa configuration.
+  try { await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, patch)); }
+  catch (e) { console.error("noteEdition", e?.message); }
 }
 
 /**

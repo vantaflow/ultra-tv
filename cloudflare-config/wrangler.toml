@@ -35,6 +35,22 @@ crons = ["17 3 * * *"]
 name = "GUARD"
 class_name = "Guard"
 
+# Limiteurs de débit natifs (gratuits, sans Durable Object) pour les routes à fort trafic ; voir nativeLimiter (src/index.js).
+[[ratelimits]]
+name = "RL_10"
+namespace_id = "1010"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_30"
+namespace_id = "1030"
+simple = { limit = 30, period = 60 }
+
+[[ratelimits]]
+name = "RL_60"
+namespace_id = "1060"
+simple = { limit = 60, period = 60 }
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Guard"]
