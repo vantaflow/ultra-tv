@@ -161,10 +161,11 @@ fun SimpleCatalogScreen(kind: CatalogKind, onOpen: (Long) -> Unit, onBack: () ->
             items(items.itemCount, key = { i -> items.getOrNull(i)?.id ?: "p$i" }) { i ->
                 val it = items.getOrNull(i) ?: return@items
                 FocusSurface(onClick = { onOpen(it.id) }, shape = RoundedCornerShape(28.design), bg = androidx.compose.ui.graphics.Color.Transparent, focusedBg = androidx.compose.ui.graphics.Color.Transparent, ringWidth = 8.design, focusedScale = 1.03f, modifier = if (i == 0) Modifier.focusRequester(first) else Modifier) { _ ->
-                    Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
+                    // Marge sous l'affiche : l'anneau de sélection (8) et l'arrondi ne rognent plus le titre ni l'année.
+                    Column(Modifier.padding(bottom = 14.design), verticalArrangement = Arrangement.spacedBy(14.design)) {
                         PosterImage(it.poster, it.title, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 28, year = it.year)
-                        Text(it.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 32.spx, lineHeight = 38.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        it.year?.let { y -> Text("$y", color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 1) }
+                        Text(it.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 32.spx, lineHeight = 38.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 16.design))
+                        it.year?.let { y -> Text("$y", color = Ux.Text2, fontFamily = Manrope, fontSize = 26.spx, maxLines = 1, modifier = Modifier.padding(horizontal = 16.design)) }
                     }
                 }
             }
