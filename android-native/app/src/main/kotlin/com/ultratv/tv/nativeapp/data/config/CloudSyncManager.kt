@@ -253,9 +253,9 @@ class CloudSyncManager @Inject constructor(
             kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L }, db.profileDao().observeAll().map { 1L })
                 .debounce(60_000).collect { syncSharedState() }
         }
-        // Changements venus des autres appareils : toutes les 10 min, seulement quand l'appli est affichée (box en veille :
+        // Changements venus des autres appareils (Mac, autre box) : toutes les 2 min (réponse 304 légère si rien n'a changé), seulement quand l'appli est affichée (box en veille :
         // plus de requête réseau toutes les 10 min ; le travail périodique de 6 h et le retour sur l'appli suffisent).
-        stateScope.launch { while (true) { kotlinx.coroutines.delay(10 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) { syncSharedState(); runCatching { syncOnForeground() } } } }
+        stateScope.launch { while (true) { kotlinx.coroutines.delay(2 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) runCatching { syncOnForeground() } } }
     }
 
     private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
@@ -552,7 +552,7 @@ class CloudSyncManager @Inject constructor(
     @Volatile private var lastForegroundCheck = 0L
     suspend fun syncOnForeground() {
         val now = System.currentTimeMillis()
-        if (now - lastForegroundCheck < 2 * 60_000L) return
+        if (now - lastForegroundCheck < 90_000L) return
         lastForegroundCheck = now
         sync()
     }
