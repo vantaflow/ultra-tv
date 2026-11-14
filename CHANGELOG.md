@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Réglages faits sur un autre appareil (Mac, autre TV) : la box les vérifie toutes les 2 min appli ouverte (avant : jusqu'à 10 min, ou au changement de profil).
+- Accueil : les rangées (nouveautés, Top, chaînes, À la une) n'affichent que les catégories du profil courant.
 
 ## [1.3.30] — 2026-11-14 (Android)
 
