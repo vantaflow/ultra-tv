@@ -117,8 +117,8 @@
     <string name="ds_update_default_body">Dostępna jest nowa wersja. Pobrany plik jest weryfikowany przed instalacją.</string>
     <string name="ds_update_whats_new">Co nowego</string>
     <string name="ds_update_failed">Nie udało się zainstalować aktualizacji. Spróbuj ponownie później.</string>
-    <string name="ds_update_signature_mismatch">Ta wersja jest podpisana nowym kluczem: Android odrzuci ją jako aktualizację. Odinstaluj Ultra TV jednorazowo, a następnie zainstaluj najnowszą wersję (tv.weedy.dpdns.org/apk ; Downloader: kod 5189921). Kolejne aktualizacje będą instalowane normalnie.</string>
-    <string name="ds_update_launched">Otwarto instalator Androida. Jeśli zgłosi konflikt, odinstaluj Ultra TV, a następnie zainstaluj najnowszą wersję (tv.weedy.dpdns.org/apk ; Downloader: kod 5189921).</string>
+    <string name="ds_update_signature_mismatch">Ta wersja jest podpisana nowym kluczem: Android odrzuci ją jako aktualizację. Odinstaluj Ultra TV jednorazowo, a następnie zainstaluj najnowszą wersję (ultratv.dpdns.org/apk ; Downloader: kod 5189921). Kolejne aktualizacje będą instalowane normalnie.</string>
+    <string name="ds_update_launched">Otwarto instalator Androida. Jeśli zgłosi konflikt, odinstaluj Ultra TV, a następnie zainstaluj najnowszą wersję (ultratv.dpdns.org/apk ; Downloader: kod 5189921).</string>
     <string name="ds_offline_title">Brak połączenia z internetem</string>
     <string name="ds_offline_body">Ulubione, wczytany już przewodnik i nagrania pozostają dostępne. Telewizja na żywo wznowi się, gdy tylko wróci sieć.</string>
     <string name="ds_offline_banner">Brak połączenia z internetem — zapisane treści pozostają dostępne.</string>

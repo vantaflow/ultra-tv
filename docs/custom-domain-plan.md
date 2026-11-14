@@ -1,6 +1,6 @@
 # Plan : nom de domaine personnalisé pour le Worker
 
-Statut : **fait.** Domaine retenu : `tv.weedy.dpdns.org` (Custom Domain du Worker, `workers.dev` reste actif). Repli automatique dans l'appli Android et le bureau ; à faire côté propriétaire : ajouter `https://tv.weedy.dpdns.org/trakt/callback` sur trakt.tv. Contexte d'origine : Retour utilisateur (P2) : certaines box et certains réseaux bloquent `*.workers.dev`. L'appli affiche alors « Cloud injoignable » : appairage, envoi depuis le téléphone, synchro, alertes, TMDB et Trakt ne passent plus. Constaté sur une box de test.
+Statut : **fait.** (Depuis le 14/11/2026 : site sur `ultratv.dpdns.org`, `tv.weedy.dpdns.org` garde l'API.) Domaine retenu : `tv.weedy.dpdns.org` (Custom Domain du Worker, `workers.dev` reste actif). Repli automatique dans l'appli Android et le bureau ; à faire côté propriétaire : ajouter `https://tv.weedy.dpdns.org/trakt/callback` sur trakt.tv. Contexte d'origine : Retour utilisateur (P2) : certaines box et certains réseaux bloquent `*.workers.dev`. L'appli affiche alors « Cloud injoignable » : appairage, envoi depuis le téléphone, synchro, alertes, TMDB et Trakt ne passent plus. Constaté sur une box de test.
 
 ## Ce qui existe déjà
 

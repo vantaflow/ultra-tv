@@ -4,7 +4,7 @@ import { useT } from "@/i18n";
 import { bridge } from "@/net/transport";
 import { usePrefs } from "@/state/prefs";
 import { Icon } from "@/ui/Icon";
-import { RateLimitedError, groupPairingCode, runPairing } from "@/cloud/client";
+import { RateLimitedError, groupPairingCode, runPairing, siteHost } from "@/cloud/client";
 import { defaultDeviceName, saveDeviceName, storeToken, syncCloud, useCloud, type SyncSummary } from "@/cloud/service";
 
 export function PairingView({ onDone, onCancel }: { onDone: (s: SyncSummary) => void; onCancel: () => void }) {
@@ -45,7 +45,7 @@ export function PairingView({ onDone, onCancel }: { onDone: (s: SyncSummary) => 
     return () => clearInterval(iv);
   }, [code]);
 
-  const host = worker.replace(/^https?:\/\//, "");
+  const host = siteHost(worker);
   const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   return (
     <main style={{ maxWidth: "70rem" }} lang={lang}>

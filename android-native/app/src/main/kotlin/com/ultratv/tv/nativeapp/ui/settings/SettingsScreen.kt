@@ -394,7 +394,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
     GroupLabel(D.cloudSync)
     SettingsCard {
-        if (paired) PrefRow(D.paired, D.unpair, hint = hostOnly(workerBase)) { vm.unpair() }
+        if (paired) PrefRow(D.paired, D.unpair, hint = hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase))) { vm.unpair() }
         else PrefRow(D.cloudSync, "", hint = D.cloudSyncHint) { vm.startPairing() }
         if (paired) {
             val minutes = if (cloud.lastSyncAt > 0) (System.currentTimeMillis() - cloud.lastSyncAt) / 60_000 else -1L
@@ -410,16 +410,16 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             if (cloud.devices.isNotEmpty()) PrefRow(C.accountDevices, "", hint = cloud.devices.joinToString(" · ") { com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(it) }) { }
         } else PrefRow(D.cloudSyncImport, "", hint = null) { vm.syncFromCloud() }
         PrefRow(D.workerUrlTitle, hostOnly(workerBase).substringAfter("://")) { dialog = OpenDialog.WORKER_URL }
-        if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(workerBase).substringAfter("://")) { ctx.openInBrowser(workerBase) }
+        if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) PrefRow(com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.openDashboard, "", hint = hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://")) { ctx.openInBrowser(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)) }
     }
     if (paired && connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
     // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
     if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
-            com.ultratv.tv.nativeapp.ui.design.QrCode(workerBase.trimEnd('/'), 132.design)
+            com.ultratv.tv.nativeapp.ui.design.QrCode(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase).trimEnd('/'), 132.design)
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(D.dashboardTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1)
-                Text(hostOnly(workerBase).substringAfter("://"), color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://"), color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(D.dashboardScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
             }
         }

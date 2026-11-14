@@ -82,7 +82,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                 Column(Modifier.responsiveWidth(760), verticalArrangement = Arrangement.spacedBy(if (touch) 20.dp else 40.design)) {
                     Text(D.pairEyebrow, color = Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, letterSpacing = TextUnit(3f, TextUnitType.Sp), maxLines = 1)
                     Text(D.pairTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = if (touch) 28.sp else 64.spx, lineHeight = if (touch) 32.sp else 67.spx, maxLines = 3)
-                    val host = (state as? PairingUi.ShowCode)?.workerBase?.let { hostOnly(it).substringAfter("://") }.orEmpty()
+                    val host = (state as? PairingUi.ShowCode)?.workerBase?.let { hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(it)).substringAfter("://") }.orEmpty()
                     if (touch && host.isNotEmpty()) {
                         // Téléphone / tablette : on est déjà sur l'appareil, donc un bouton plutôt qu'un QR.
                         val Mo = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
@@ -97,7 +97,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                             // Le QR mène directement à la confirmation d'appairage avec le code pré-rempli :
                             // on scanne, on se connecte si besoin, on confirme — rien à recopier.
                             val sc = state as PairingUi.ShowCode
-                            QrCode(pairingUrl(sc.workerBase, sc.code), 160.design)
+                            QrCode(pairingUrl(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(sc.workerBase), sc.code), 160.design)
                             Text(D.pairScanAuto, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 3, modifier = Modifier.width(300.design))
                         }
                         Step(2, D.pairStep2)

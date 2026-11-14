@@ -514,3 +514,10 @@ export async function sportsTeamGet(base: string, token: string, name: string): 
   if (r.status < 200 || r.status >= 300) throw new CloudError("sports", r.status);
   return parse<unknown>(r);
 }
+
+/** Adresse du site à AFFICHER (tableau de bord) pour une adresse d'API : nos hôtes → ultratv.dpdns.org ; un Worker
+ *  auto-hébergé garde la sienne. */
+export function siteHost(worker: string): string {
+  const host = worker.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
+  return host === "tv.weedy.dpdns.org" || host === "ultratv-config.khalilbenaz.workers.dev" ? "ultratv.dpdns.org" : host;
+}

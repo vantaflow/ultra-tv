@@ -156,3 +156,12 @@ describe("adresse du Worker : défaut et repli", () => {
     resetFallbackMemory();
   });
 });
+
+import { siteHost } from "./client";
+describe("siteHost", () => {
+  it("nos adresses d'API affichent le site, un Worker auto-hébergé garde la sienne", () => {
+    expect(siteHost("https://tv.weedy.dpdns.org")).toBe("ultratv.dpdns.org");
+    expect(siteHost("https://ultratv-config.khalilbenaz.workers.dev/")).toBe("ultratv.dpdns.org");
+    expect(siteHost("https://mon-worker.example")).toBe("mon-worker.example");
+  });
+});

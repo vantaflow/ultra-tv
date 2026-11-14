@@ -12,6 +12,15 @@ import java.io.IOException
 object WorkerFallbackLogic {
     const val PRIMARY_HOST = "tv.weedy.dpdns.org"
     const val LEGACY_HOST = "ultratv-config.khalilbenaz.workers.dev"
+    /** Site (tableau de bord, appairage par QR) : distinct de l'adresse de l'API, qui reste [PRIMARY_HOST]. */
+    const val SITE_HOST = "ultratv.dpdns.org"
+
+    /** Adresse du site à AFFICHER (et à mettre dans le QR) pour une adresse d'API : nos deux hôtes → le site ; un Worker
+     *  auto-hébergé garde la sienne. */
+    fun siteBase(workerBase: String): String {
+        val host = runCatching { java.net.URI(workerBase.trim()).host?.lowercase() }.getOrNull()
+        return if (host == PRIMARY_HOST || host == LEGACY_HOST) "https://$SITE_HOST" else workerBase
+    }
 
     /** Dernier hôte qui a répondu (mémoire du processus) ; null = aucun encore. */
     @Volatile var lastWorking: String? = null

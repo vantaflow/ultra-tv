@@ -47,3 +47,11 @@ class WorkerUrlTest {
         assertEquals(newUrl, WorkerUrl.resolve(newUrl, newUrl))
     }
 }
+
+class SiteBaseTest {
+    @org.junit.Test fun nosAdressesApi_affichentLeSite_autoHebergeInchange() {
+        org.junit.Assert.assertEquals("https://ultratv.dpdns.org", WorkerFallbackLogic.siteBase("https://tv.weedy.dpdns.org"))
+        org.junit.Assert.assertEquals("https://ultratv.dpdns.org", WorkerFallbackLogic.siteBase("https://ultratv-config.khalilbenaz.workers.dev/"))
+        org.junit.Assert.assertEquals("https://mon-worker.example", WorkerFallbackLogic.siteBase("https://mon-worker.example"))
+    }
+}
