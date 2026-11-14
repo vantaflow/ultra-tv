@@ -5,7 +5,6 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Ajouté
-- Bureau : ordre des catégories, ordre des chaînes (par profil) et chaînes masquées partagés avec les autres appareils ; Réglages › Catégories : ▲ ▼, « Trier de A à Z » et « Chaînes » (masquer, réordonner). Les réglages venus d'appareils que le bureau ne sait pas lire sont conservés et renvoyés tels quels.
 - Worker : langue de l'interface des profils et catégories masquées par profil partagées entre appareils.
 - Profils : la langue de l'interface appartient au profil et suit sur tous les appareils.
 
@@ -15,6 +14,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Synchro : profils, favoris et reprises échangés à chaque synchro, même quand la configuration du compte n'a pas changé (un profil créé sur une autre TV n'apparaissait parfois jamais).
 - Téléphone et tablette : deux Retour rapprochés à l'accueil ferment l'appli (l'appui long ne marche pas avec le geste Retour) ; sur TV, appui long inchangé.
+
+## [bureau 1.2.60] — 2026-11-14
+
+### Ajouté
+- Bureau : ordre des catégories, ordre des chaînes (par profil) et chaînes masquées partagés avec les autres appareils ; Réglages › Catégories : ▲ ▼, « Trier de A à Z » et « Chaînes » (masquer, réordonner). Les réglages venus d'appareils que le bureau ne sait pas lire sont conservés et renvoyés tels quels.
+- Bureau : adresse du site ultratv.dpdns.org affichée à l'appairage.
 
 ## [1.3.28] — 2026-11-14 (Android)
 
