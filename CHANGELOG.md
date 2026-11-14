@@ -7,9 +7,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Télécommande : en revenant du menu latéral (Droite), le focus retourne sur l'élément qu'on avait quitté (ex. « Regarder » du bandeau) au lieu de l'élément le plus proche du menu.
 - Appairage : « error: internal » quand le quota quotidien d'écritures du serveur était atteint ; la dernière activité des appareils et l'état partagé (favoris, reprise) ne consomment plus ce quota.
+- Films, Séries et Direct : un nom de catégorie long passe sur deux lignes au lieu d'être coupé par « … ».
+- Mode simple : le titre de l'affiche sélectionnée n'est plus rogné par l'anneau de sélection.
 
 ### Ajouté
 - Page de dons (/donate) : montant au choix en dirhams, paiement par carte sur la page sécurisée de ChariPay ; aucune donnée bancaire ne passe par Ultra TV.
+- Réglages › À propos › « Soutenir Ultra TV » : QR code Ko-fi sur TV (carte ou PayPal), ouverture de la page Ko-fi sur téléphone.
 
 ### Modifié
 - Page de dons : Ko-fi (carte ou PayPal, depuis n'importe quel pays) proposé en premier ; ChariPay (cartes marocaines) en complément quand il sera ouvert.
