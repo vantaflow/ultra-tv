@@ -14,7 +14,7 @@ catégories, langue de l'interface, profils, à propos), assistant de première 
 des langues et écran de première synchronisation.
 
 Thèmes clair, sombre ou automatique, couleur d'accent, interface en français, anglais, espagnol et
-arabe (RTL). Polices Sora et Manrope **auto-hébergées** (aucune requête vers un CDN).
+arabe (RTL), plus le polonais et le portugais du Brésil (langues communautaires). Polices Sora et Manrope **auto-hébergées** (aucune requête vers un CDN).
 
 ## Raccourcis
 
@@ -57,7 +57,7 @@ dans un navigateur, il faut un proxy CORS (`../cloudflare`, `../vercel-proxy`, `
 ## Compte cloud (application de bureau)
 
 Même fournisseur sur tous les appareils via le Worker `cloudflare-config` (par défaut
-`https://tv.weedy.dpdns.org`, modifiable dans Réglages › Cloud). Protocole
+`https://tv.weedy.dpdns.org`, adresse de l'API, modifiable dans Réglages › Cloud ; le site est `https://ultratv.dpdns.org`). Protocole
 identique à celui de l'application Android (`CloudPairingClient.kt`) :
 
 * **Appairage** : `POST /api/pair/start` donne un code à 8 caractères ; l'utilisateur le saisit sur le
@@ -67,6 +67,7 @@ identique à celui de l'application Android (`CloudPairingClient.kt`) :
   `If-None-Match`), puis fusion avec les sources locales — ajout, modification (nouvelle synchro du
   catalogue si les identifiants changent), retrait (`src/cloud/reconcile.ts`). La clé de fusion est
   l'identifiant du fournisseur côté Worker. Rotation du jeton après 90 jours.
+* **Synchro légère toutes les 2 min** (fenêtre visible, et au retour sur la fenêtre) : profils (nom, couleur, enfants, langue de l'interface ; jamais de code PIN, `POST /api/device/profiles`), catégories propres à chaque profil, ordre des catégories et des chaînes, chaînes masquées (`PUT /api/device/providers/<id>/prefs`), favoris et reprises (`…/state`). Un réglage fait sur une TV s'applique donc au bureau, et inversement.
 * **Partage** d'une source locale (« Partager cette source ») : `POST /api/device/providers` avec
   `shareWith: "all" | [idsAppareils]` ; les sources locales restent privées tant qu'elles ne sont pas
   partagées. Option masquée si le Worker répond 404. Renommage de l'appareil : `PATCH /api/device`.

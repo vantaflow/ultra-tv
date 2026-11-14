@@ -6,7 +6,7 @@ Ultra TV is a self-hosted IPTV client. The deployment is single-user (your
 TV box + your Cloudflare Worker), so the primary threats are:
 
 1. **Credential leakage** — IPTV provider credentials shouldn't escape the
-   device or the worker's KV.
+   device or the worker's storage (D1; KV only as a fallback).
 2. **Brute force** — neither the local PIN nor the worker's account password
    should be cheaply guessable.
 3. **Supply chain** — a malicious update shouldn't be installable over a
@@ -15,7 +15,7 @@ TV box + your Cloudflare Worker), so the primary threats are:
 ## Already in place
 
 - **Network security config** pins TLS for `github.com`,
-  `api.github.com`, `githubusercontent.com` and `*.khalilbenaz.workers.dev` and `weedy.dpdns.org`,
+  `api.github.com`, `githubusercontent.com`, `*.khalilbenaz.workers.dev` and `*.weedy.dpdns.org` (the Worker's API address; the site itself is `ultratv.dpdns.org`),
   so the update channel and telemetry endpoints can't be downgraded.
 - **Backup encryption** (AES-GCM + PBKDF2-SHA256, 120 k iterations, 256-bit
   key) — opt-in via a password field in Settings. Plain exports are still

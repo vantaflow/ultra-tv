@@ -14,7 +14,10 @@ cloudflare-config/
 ├── src/sanitize.js   nettoyage des identifiants dans les journaux
 ├── src/http.js       en-têtes de sécurité, cookies signés, CSRF, lecture bornée
 ├── src/pages.js      pages HTML (CSP à nonce)
-├── src/store.js      comptes, appareils, validation des fournisseurs
+├── src/store.js      comptes, appareils, validation des fournisseurs, réglages partagés
+├── src/docs.js       stockage des documents (comptes, appareils, jetons, caches) dans D1, repli sur KV
+├── src/donate.js     page /donate (Ko-fi, Liberapay, ChariPay facultatif)
+├── migrations/       schéma D1 (télémétrie, activité, état partagé, kv_docs)
 ├── test/             113+ tests vitest (attaques rejouées, parcours, migration)
 └── scripts/e2e.sh    rejeu des attaques contre `wrangler dev`
 ```
@@ -24,10 +27,10 @@ cloudflare-config/
 | Menace | Contre-mesure |
 |---|---|
 | Lire la config d'autrui en devinant une MAC | La MAC n'est plus une clé. Lecture = jeton d'appareil de 256 bits (`Authorization: Bearer`) ; `GET /api/config/:mac` répond `410`. |
-| Fuite de la base KV | Identifiants des fournisseurs chiffrés AES-256-GCM (clé dans un secret Wrangler, AAD = compte) ; mots de passe PBKDF2 ; jetons d'appareil stockés hachés (SHA-256). |
+| Fuite de la base (D1, KV) | Identifiants des fournisseurs chiffrés AES-256-GCM (clé dans un secret Wrangler, AAD = compte) ; mots de passe PBKDF2 ; jetons d'appareil stockés hachés (SHA-256). |
 | Force brute du mot de passe | PBKDF2-SHA256 100 000 itérations + sel ; limite par IP et par compte ; verrouillage progressif 60 s, doublé à chaque échec, plafonné (15 min compte, 1 h IP). Compteurs dans un Durable Object (cohérence forte). |
 | Squatter le compte d'une MAC | Plus de compte « par MAC » : on s'inscrit avec un identifiant et un mot de passe ; l'appareil se lie par code. Un ancien compte-MAC non migré ne peut pas être inscrit par un tiers. |
-| Voler le jeton d'un appareil | Révocation depuis le tableau de bord (effet immédiat sur le Worker, jusqu'à ~60 s ailleurs : cache KV), rotation `POST /api/device/rotate`, effacement automatique côté app si 401. |
+| Voler le jeton d'un appareil | Révocation depuis le tableau de bord (effet immédiat sur le Worker, jusqu'à ~60 s ailleurs : cache), rotation `POST /api/device/rotate`, effacement automatique côté app si 401. |
 | XSS / clickjacking | CSP `default-src 'none'` + nonce (aucun `unsafe-inline`), échappement systématique, `X-Frame-Options: DENY`, pas d'attribut `on*=` ni `style=`. |
 | CSRF | Jeton lié à la session (HMAC) + contrôle de l'en-tête `Origin` + cookie `__Host-` `SameSite=Strict`. Aucun CORS ouvert. |
 | Lire les crashs/logs d'autrui | `/crashes` et `/logs` : secret serveur `OPS_TOKEN` (Basic ou Bearer), jamais en query string, jamais dans l'APK, verrouillage par IP. |
@@ -46,6 +49,16 @@ Un appareil ne reçoit, ne modifie et ne supprime QUE les fournisseurs qui lui s
 | `DELETE /api/device/providers/<id>` | Retire l'appareil de l'affectation (supprime la source si plus personne) ; `?all=1` la supprime du compte. |
 | `PATCH /api/device` (ou `POST /api/device/self`) | `{name}` : renomme l'appareil. |
 
+**Réglages partagés entre appareils** (tous chiffrés, liés au compte) :
+
+| Route (jeton d'appareil) | Rôle |
+|---|---|
+| `POST /api/device/profiles` | Profils du compte : nom, couleur, enfants, langue de l'interface ; fusion renvoyée à l'appareil. Jamais de code PIN. |
+| `PUT /api/device/providers/<id>/prefs` | Réglages d'une source : langues, catégories désactivées par profil, `order` (ordre des catégories), `chOrder` (ordre des chaînes), `hidden` et `pHidden` (chaînes masquées). Le plus récent gagne, un envoi plus ancien répond `409`. |
+| `POST /api/device/providers/<id>/state` | Favoris, reprises et derniers vus de la source (table D1 `shared_state`). |
+
+Les applis vérifient ces changements toutes les 2 min (appli ouverte) et au changement de profil.
+
 Tableau de bord : matrice fournisseurs × appareils (cases + « Tous »), appareils renommables, origine et date de chaque fournisseur. Révoquer un appareil le retire des listes explicites.
 Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de passe, rotation) sont sérialisées par un verrou Durable Object `mut:<login>` ; le compte est relu SOUS le verrou et `version` n'est incrémentée que dans ce critique (aucune écriture perdue entre appareils et tableau de bord). Portail Stalker (`kind: STALKER`) : `mac` est obligatoire et normalisé (`00:1A:79:XX:XX:XX`), `username` / `password` facultatifs ; la MAC est envoyée aux appareils mais jamais réaffichée en entier sur le tableau de bord (masquée), aucun lien IPTV n'est proposé et l'abonnement se lit dans l'application. Pour les autres types, `mac` est ignoré.
 
@@ -55,12 +68,13 @@ Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de 
 cd cloudflare-config
 npm ci
 
-# 1) Namespace KV (coller les ids dans wrangler.toml)
+# 1) Namespace KV (coller les ids dans wrangler.toml) : ne sert plus qu'au repli et à la migration vers D1
 wrangler kv namespace create CONFIG
 wrangler kv namespace create CONFIG --preview
 
-# 1 bis) Base D1 de télémétrie (journaux, crashs, relevés anonymes, « vu » des appareils : sortis de KV pour rester
-#    sous son quota gratuit de 1 000 écritures/jour). Coller le database_id dans wrangler.toml, puis appliquer la migration.
+# 1 bis) Base D1 (comptes, appareils, jetons et caches dans la table kv_docs ; télémétrie, activité des appareils et état
+#    partagé : sortis de KV pour rester sous son quota gratuit de 1 000 écritures/jour). Coller le database_id dans
+#    wrangler.toml, puis appliquer les migrations (0001 à 0004).
 wrangler d1 create ultratv-telemetry
 wrangler d1 migrations apply ultratv-telemetry --remote
 
@@ -72,6 +86,7 @@ wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (f
 wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
 wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
+wrangler secret put CHARIPAY_API_KEY      # facultatif : dons en dirhams via ChariPay sur /donate (Ko-fi et Liberapay n'en ont pas besoin)
 wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
 wrangler secret put ADMIN_TOKEN        # >= 32 caractères, uniquement pour la migration (à supprimer ensuite)
 
@@ -80,6 +95,8 @@ npm test
 wrangler deploy --dry-run              # validation seule
 wrangler deploy                        # déploiement réel (le Durable Object `Guard` est créé par la migration v1)
 ```
+
+Variable `SITE_HOST` (`wrangler.toml`, `ultratv.dpdns.org`) : adresse du site. Les pages HTML demandées sur une autre adresse (API `tv.weedy.dpdns.org`, `workers.dev`) y sont redirigées ; l'API reste servie partout. Le site est en cinq langues (anglais, français, espagnol, arabe, polonais).
 
 Le Worker **échoue fermé** : sans `SESSION_SECRET` (≥ 32 car.), `PROVIDER_ENC_KEY` valide (32 octets) ou
 `OPS_TOKEN`, il répond 500 générique plutôt que de se rabattre sur une valeur par défaut.
@@ -118,9 +135,11 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | POST | `/api/admin/migrate` | Bearer `ADMIN_TOKEN` | Migration de l'ancien format (voir ci-dessous) |
 | GET/POST | `/login`, `/signup` | — | Comptes |
 | GET | `/` | session | Tableau de bord |
+| GET | `/donate`, `/donate/merci` | — | Dons : Ko-fi (<https://ko-fi.com/ultratv>), Liberapay (<https://liberapay.com/ultratv/>), et ChariPay si `CHARIPAY_API_KEY` est défini (montant en dirhams, lien de paiement à usage unique ; rien du donateur n'est gardé) |
+| POST | `/api/device/profiles`, `/api/device/providers/:id/state` ; PUT `/api/device/providers/:id/prefs` | `Bearer` | Synchro des profils, de l'état partagé et des réglages (voir « Synchro multi-appareils ») |
 | POST | `/pair`, `/providers`, `/providers/:id/delete`, `/devices/:id/revoke`, `/password`, `/account/delete`, `/logout` | session + CSRF + Origin | Mutations |
 | POST | `/providers/:id/account` | session + CSRF | Abonnement du fournisseur (cache 10 min, limite propre 600/h) |
-| POST | `/subtitles/link`, `/subtitles/unlink` | session + CSRF | Compte OpenSubtitles du client (chiffré ; jeton 20 h en KV) |
+| POST | `/subtitles/link`, `/subtitles/unlink` | session + CSRF | Compte OpenSubtitles du client (chiffré ; jeton 20 h, stocké comme les autres documents) |
 | POST | `/trakt/connect`, `/trakt/disconnect` | session + CSRF | Connexion Trakt (OAuth PKCE, état lié au compte, 10 min) |
 | GET | `/trakt/callback` | session | Retour de Trakt : jetons chiffrés dans le compte |
 | POST | `/api/device/trakt/scrobble` | `Bearer` | L'appareil signale sa lecture ; le Worker relaie à Trakt |
@@ -202,7 +221,8 @@ OPS_TOKEN=… ADMIN_TOKEN=… ./scripts/e2e.sh
   limitation de débit et les verrouillages.
 - Le verrouillage par compte permet à un tiers de bloquer temporairement la connexion d'un compte dont il
   connaît l'identifiant (15 min maximum). Compromis assumé face à la force brute.
-- KV est éventuellement cohérent : une révocation peut mettre jusqu'à ~60 s à se propager hors du point de
-  présence qui l'a reçue.
+- Les caches de lecture (jetons d'appareil, KV de repli) sont éventuellement cohérents : une révocation peut mettre
+  jusqu'à ~60 s à se propager hors du point de présence qui l'a reçue.
+- D1 indisponible : le Worker retombe sur KV (lecture et écriture) et le service continue.
 - Le jeton d'appareil transite en clair dans le Durable Object entre la saisie du code et la remise à la TV
   (au plus 10 minutes, supprimé à la remise).
