@@ -59,6 +59,7 @@ class CloudSyncManager @Inject constructor(
     private val statusBus: com.ultratv.tv.nativeapp.data.repo.SyncStatusBus,
     private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
+    private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
 ) {
     private val mutex = Mutex()
     private val _state = MutableStateFlow(CloudSyncState(lastSyncAt = links.lastSyncAt, devices = links.devices(), selfId = links.selfId()))
@@ -103,6 +104,10 @@ class CloudSyncManager @Inject constructor(
             val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force) null else links.etag()) }
             if (fetched.notModified) {
                 links.lastSyncAt = System.currentTimeMillis()
+                // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange
+                // quand même (avant : seulement 60 s après un changement local ou toutes les 10 min, donc parfois jamais
+                // pendant qu'on regarde une chaîne).
+                stateScope.launch { syncSharedState() }
                 _state.value = _state.value.copy(syncing = false, lastSyncAt = links.lastSyncAt, added = 0, updated = 0, removed = 0)
                 return Result.Done
             }
@@ -157,10 +162,12 @@ class CloudSyncManager @Inject constructor(
     /** Profils partagés entre les appareils du compte (nom, couleur, profil Enfants ; jamais le PIN). */
     private suspend fun syncProfilesLocked(base: String) {
         val dao = db.profileDao()
-        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(dao.observeAll().first(), profileLog.all())
+        val all = dao.observeAll().first()
+        val langs = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }?.value?.let { p.id to it } }.toMap()
+        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs)
         val raw = source.withToken(base) { t -> client.syncProfiles(base, t, com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)) } ?: return
         val remote = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.parse(raw)
-        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote)
+        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs)
         if (actions.isNotEmpty()) with(profileRepo) { applySharedProfiles(dao, profileLog, actions) }
     }
 
@@ -282,7 +289,12 @@ class CloudSyncManager @Inject constructor(
         val names = db.profileDao().observeAll().first().associate { it.id to it.name.trim() }
         val chOrder = db.channelOrderDao().allForProvider(localId).groupBy { it.profileId to it.scope }
             .mapNotNull { (key, rows) -> names[key.first]?.let { n -> ChannelOrderShare(n, key.second, rows.sortedBy { it.position }.map { it.remoteId }) } }
-        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId), chOrder)
+        val wire = DisplayPrefs.KINDS
+        val pHidden = profileCats.hiddenByProfile(localId).flatMap { (prof, byKind) ->
+            val n = names[prof] ?: return@flatMap emptyList()
+            byKind.mapNotNull { (k, ids) -> wire[k]?.let { ProfileHiddenShare(n, it, ids.sorted()) } }
+        }
+        return LocalDisplayPrefs(selected, p.includeMulti, p.includeUnknownLang, disabled, order, categories.hiddenOf(localId), chOrder, pHidden)
     }
 
     /** Applique les réglages cloud plus récents que ceux déjà appliqués/publiés (source par source). */
@@ -345,6 +357,16 @@ class CloudSyncManager @Inject constructor(
             val wantIds = want.map { it.id }.toSet(); val haveIds = have.map { it.id }.toSet()
             categories.hideChannels(localId, want.filter { it.id !in haveIds })
             categories.showChannels(localId, haveIds - wantIds)
+        }
+        // Catégories masquées par profil (seulement si transmises) : profils rattachés par NOM.
+        remote.pHidden?.let { want ->
+            val ids = db.profileDao().observeAll().first().associate { it.name.trim().lowercase() to it.id }
+            val back = DisplayPrefs.KINDS.entries.associate { (k, w) -> w to k }
+            val byProfile = want.groupBy { it.p.trim().lowercase() }
+            for ((name, pid) in ids) {
+                val entries = byProfile[name].orEmpty()
+                profileCats.replaceHidden(pid, localId, entries.mapNotNull { e -> back[e.k]?.let { it to e.ids } }.groupBy({ it.first }, { it.second }).mapValues { (_, l) -> l.flatten() })
+            }
         }
         // Ordre personnel des chaînes (seulement s'il a été transmis) : profils rattachés par NOM ; listes absentes = ordre naturel.
         remote.chOrder?.let { want ->

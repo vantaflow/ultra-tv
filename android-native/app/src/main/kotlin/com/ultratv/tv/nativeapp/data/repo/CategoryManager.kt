@@ -130,8 +130,19 @@ class CategoryManager @Inject constructor(
                 val badge = parsed.badge ?: when (parsed.quality) { ChannelNameParser.Q_4K -> "4K"; ChannelNameParser.Q_FHD -> "FHD"; else -> c.lang.uppercase().takeIf { it.isNotEmpty() && it != LanguageDetector.MULTI } }
                 CategoryRow(c.remoteId, com.ultratv.tv.nativeapp.ui.common.prettyCategoryName(c.name), badge, if (c.enabled) byId[c.remoteId] ?: 0 else null, c.enabled, c.lang, c.locked)
             }.filter { r -> q.isEmpty() || matches(r.label, q) || r.badge?.lowercase() == q || r.lang == q }
-                // Cochées d'abord (ordre conservé dans chaque groupe), comme sur le bureau.
-                .sortedByDescending { it.enabled }
+                // (Tri « actives d'abord » appliqué par l'écran, FIGÉ : voir [pinEnabledFirst].)
+        }
+
+        /** Ordre « actives d'abord » (ordre réel conservé dans chaque groupe) : identifiants à figer. */
+        fun pinEnabledFirst(list: List<CategoryRow>): List<String> = list.sortedByDescending { it.enabled }.map { it.remoteId }
+
+        /**
+         * Applique un ordre figé [pin] : activer / désactiver une catégorie ne la déplace plus (la sélection reste où elle
+         * est). Inconnues du pin (nouvelles) : à la fin, dans leur ordre.
+         */
+        fun applyPin(list: List<CategoryRow>, pin: List<String>): List<CategoryRow> {
+            val idx = pin.withIndex().associate { (i, k) -> k to i }
+            return list.withIndex().sortedBy { (i, r) -> idx[r.remoteId] ?: (pin.size + i) }.map { it.value }
         }
 
         /** Filtre court (« FR », « AR », « 4K ») = mot entier : « FR » ne doit pas ramener « AFRICA ». Sinon, sous-chaîne. */

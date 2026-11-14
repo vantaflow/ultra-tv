@@ -19,7 +19,12 @@ data class CloudPrefs(
     val hidden: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel>? = null,
     /** Ordre personnel des chaînes : par profil (NOM) et liste (catégorie ou favoris) ; `null` = non transmis. */
     val chOrder: List<ChannelOrderShare>? = null,
+    /** Catégories masquées PAR PROFIL (nom) : type (clé du protocole) → identifiants ; `null` = non transmis. */
+    val pHidden: List<ProfileHiddenShare>? = null,
 )
+
+/** Catégories masquées d'un profil [p] (nom) pour le type [k] (live / movie / series). */
+data class ProfileHiddenShare(val p: String, val k: String, val ids: List<String>)
 
 /** Ordre des chaînes d'une liste pour un profil, partagé entre appareils : [p] nom du profil, [s] liste, [k] identifiants dans l'ordre. */
 data class ChannelOrderShare(val p: String, val s: String, val k: List<String>)
@@ -34,6 +39,7 @@ data class LocalDisplayPrefs(
     val order: Map<String, List<String>> = emptyMap(),
     val hidden: List<com.ultratv.tv.nativeapp.data.prefs.HiddenChannel> = emptyList(),
     val chOrder: List<ChannelOrderShare> = emptyList(),
+    val pHidden: List<ProfileHiddenShare> = emptyList(),
 )
 
 object DisplayPrefs {
@@ -70,6 +76,7 @@ object DisplayPrefs {
         order = KINDS.entries.associate { (k, c) -> c to (p.order[k] ?: emptyList()) },
         hidden = p.hidden.sortedBy { it.id },
         chOrder = p.chOrder.sortedWith(compareBy({ it.p }, { it.s })),
+        pHidden = p.pHidden.sortedWith(compareBy({ it.p }, { it.k })),
     )
 
     /** Empreinte stable de l'état (sans l'horodatage) : évite de republier ce qu'on vient d'appliquer ou d'envoyer. */
@@ -80,7 +87,8 @@ object DisplayPrefs {
         val ord = KINDS.values.joinToString("|") { k -> k + ":" + (p.order?.get(k) ?: emptyList()).joinToString(",") }
         val hid = (p.hidden ?: emptyList()).map { it.id }.sorted().joinToString(",")
         val cho = (p.chOrder ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.s + ":" + it.k.joinToString(",") }
-        return "$langs#$dis#$ord#$hid#$cho".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length)
+        val phi = (p.pHidden ?: emptyList()).joinToString("|") { it.p.lowercase() + "/" + it.k + ":" + it.ids.sorted().joinToString(",") }
+        return "$langs#$dis#$ord#$hid#$cho#$phi".hashCode().toString(16) + ":" + (langs.length + dis.length + ord.length + hid.length + cho.length + phi.length)
     }
 
     fun tooLarge(p: CloudPrefs): Boolean = p.disabled.values.any { it.size > MAX_IDS } || (p.order?.values?.any { it.size > MAX_IDS } ?: false) || (p.hidden?.size ?: 0) > MAX_IDS
@@ -92,6 +100,7 @@ object DisplayPrefs {
         p.order?.let { o -> put("order", JSONObject().apply { KINDS.values.forEach { k -> put(k, JSONArray(o[k] ?: emptyList<String>())) } }) }
         p.hidden?.let { h -> put("hidden", JSONArray(com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore.toJson(h))) }
         p.chOrder?.let { l -> put("chOrder", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("s", c.s).put("k", JSONArray(c.k))) } }) }
+        p.pHidden?.let { l -> put("pHidden", JSONArray().apply { l.forEach { c -> put(JSONObject().put("p", c.p).put("k", c.k).put("ids", JSONArray(c.ids))) } }) }
     }.toString()
 
     fun parse(o: JSONObject?): CloudPrefs? {
@@ -110,7 +119,14 @@ object DisplayPrefs {
                 ChannelOrderShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, c.optString("s").takeIf { it.isNotEmpty() } ?: return@mapNotNull null, k)
             }
         }
-        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder)
+        val pHidden = o.optJSONArray("pHidden")?.let { a ->
+            (0 until a.length()).mapNotNull { i ->
+                val c = a.optJSONObject(i) ?: return@mapNotNull null
+                val ids = c.optJSONArray("ids")?.let { ia -> (0 until ia.length()).map { ia.optString(it) }.filter { it.isNotEmpty() } } ?: return@mapNotNull null
+                ProfileHiddenShare(c.optString("p").takeIf { it.isNotBlank() } ?: return@mapNotNull null, c.optString("k").takeIf { it in KINDS.values } ?: return@mapNotNull null, ids)
+            }
+        }
+        return CloudPrefs(langs, disabled, updatedAt, order, hidden, chOrder, pHidden)
     }
 }
 

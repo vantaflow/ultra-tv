@@ -9,6 +9,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Worker : langue de l'interface des profils et catégories masquées par profil partagées entre appareils.
 - Profils : la langue de l'interface appartient au profil et suit sur tous les appareils.
 
+### Modifié
+- Gérer les catégories : les catégories sont propres à chaque profil (une catégorie masquée par tous les profils n'est plus téléchargée) et synchronisées ; activer / désactiver ne déplace plus la sélection.
+
+### Corrigé
+- Synchro : profils, favoris et reprises échangés à chaque synchro, même quand la configuration du compte n'a pas changé (un profil créé sur une autre TV n'apparaissait parfois jamais).
+
 ## [1.3.28] — 2026-11-14 (Android)
 
 ### Modifié

@@ -102,6 +102,8 @@ class CategoriesViewModel @Inject constructor(
     providers: ProviderRepository,
     private val manager: CategoryManager,
     private val channelOrder: com.ultratv.tv.nativeapp.data.repo.ChannelOrderRepository,
+    private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
+    private val hiddenStore: com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore,
 ) : ViewModel() {
     val kind = MutableStateFlow("LIVE")
     val query = MutableStateFlow("")
@@ -111,12 +113,35 @@ class CategoriesViewModel @Inject constructor(
     /** Bascules en cours d'écriture : affichées tout de suite (box lente, base occupée par une synchro). */
     private val pending = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
+    /** Catégories téléchargées de la source (identifiants), pour savoir quoi activer / désactiver côté source. */
+    @Volatile private var downloaded: Set<String> = emptySet()
+
     val rows: StateFlow<List<CategoryRow>> = combine(
         combine(pid, kind, query.debounce(150)) { p, k, q -> Triple(p, k, q) }
-            .flatMapLatest { (p, k, q) -> if (p == null) flowOf(emptyList()) else manager.observe(p, k, q) },
+            .flatMapLatest { (p, k, q) ->
+                if (p == null) flowOf(Triple<Long?, String, List<CategoryRow>>(null, k, emptyList()))
+                else manager.observe(p, k, q).map { l -> Triple<Long?, String, List<CategoryRow>>(p, k, l) }
+            }
+            .combine(hiddenStore.hidden) { t, hidden ->
+                val (p, k, list) = t
+                downloaded = list.filter { it.enabled }.mapTo(HashSet()) { it.remoteId }
+                // Affichée = téléchargée ET non masquée par le profil courant.
+                if (p == null) list else list.map { r -> if (r.enabled && profileCats.key(k, p, r.remoteId) in hidden) r.copy(enabled = false, count = null) else r }
+            },
         pending,
     ) { list, over -> if (over.isEmpty()) list else list.map { r -> over[r.remoteId]?.let { e -> r.copy(enabled = e, count = if (e) r.count ?: 0 else null) } ?: r } }
+        .map { stable(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    // Ordre affiché figé (« actives d'abord » calculé une fois) : recalculé seulement si l'onglet, le filtre ou l'ordre RÉEL
+    // (positions) change — jamais par une simple activation / désactivation.
+    private var pinKey: Any? = null
+    private var pin: List<String> = emptyList()
+    private fun stable(list: List<CategoryRow>): List<CategoryRow> {
+        val key = Triple(kind.value, query.value, list.map { it.remoteId })
+        if (key != pinKey) { pin = CategoryManager.pinEnabledFirst(list); pinKey = key }
+        return CategoryManager.applyPin(list, pin)
+    }
 
     private fun markPending(ids: List<String>, enabled: Boolean) { pending.value = pending.value + ids.associateWith { enabled } }
     private fun clearPending(ids: List<String>) { pending.value = pending.value - ids.toSet() }
@@ -128,17 +153,18 @@ class CategoriesViewModel @Inject constructor(
 
     private suspend fun providerId(): Long? = providerList.value.let { ps -> (ps.firstOrNull { it.active } ?: ps.firstOrNull())?.id }
 
+    /** Afficher / masquer pour le PROFIL COURANT (le téléchargement suit : voir ProfileCategories). */
     fun toggle(r: CategoryRow) {
         val ids = listOf(r.remoteId); val v = !r.enabled
         markPending(ids, v)
-        viewModelScope.launch { try { providerId()?.let { manager.setEnabled(it, kind.value, ids, v); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
+        viewModelScope.launch { try { providerId()?.let { profileCats.setVisible(it, kind.value, ids, v, downloaded); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
     }
     /** « Tout activer » / « Tout désactiver » : s'applique au résultat FILTRÉ (ex. filtrer « AR » puis tout désactiver). */
     fun setAll(enabled: Boolean) {
         val ids = rows.value.filter { it.enabled != enabled }.map { it.remoteId }
         if (ids.isEmpty()) return
         markPending(ids, enabled)
-        viewModelScope.launch { try { providerId()?.let { manager.setEnabled(it, kind.value, ids, enabled); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
+        viewModelScope.launch { try { providerId()?.let { profileCats.setVisible(it, kind.value, ids, enabled, downloaded); com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(it) } } finally { clearPending(ids) } }
     }
     private fun publish(p: Long) = com.ultratv.tv.nativeapp.data.config.DisplayPrefsEvents.changed(p)
     /** Nouvel ordre de la liste AFFICHÉE (éventuellement filtrée) : fusionné dans l'ordre complet, puis partagé. */

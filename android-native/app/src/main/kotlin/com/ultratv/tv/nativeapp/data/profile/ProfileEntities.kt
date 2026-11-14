@@ -100,6 +100,10 @@ interface ProfileDao {
     @Query("DELETE FROM profile_hidden_category WHERE profileId = :profileId")
     suspend fun clearHidden(profileId: Long)
 
+    /** Toutes les catégories masquées, tous profils (catégories par profil, partagées entre appareils). */
+    @Query("SELECT * FROM profile_hidden_category")
+    suspend fun allHidden(): List<ProfileHiddenCategoryEntity>
+
     // ── Nettoyage à la suppression d'un profil ──
     @Query("DELETE FROM profile_pref WHERE profileId = :id")
     suspend fun deletePrefsOf(id: Long)

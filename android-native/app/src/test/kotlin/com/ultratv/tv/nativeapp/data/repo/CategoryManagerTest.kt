@@ -18,5 +18,14 @@ class CategoryManagerTest {
     @Test fun filtre_parBadgeEtLangue() { assertEquals(listOf("1"), CategoryManager.rows(cats, counts, "FR").map { it.remoteId }); assertEquals(listOf("2"), CategoryManager.rows(cats, counts, "ar").map { it.remoteId }) }
     @Test fun filtreCourt_motEntier() { assertEquals(true, CategoryManager.matches("FR| SPORT", "fr")); assertEquals(false, CategoryManager.matches("AFRICA SPORT", "fr")); assertEquals(true, CategoryManager.matches("AFRICA SPORT", "afric")) }
     @Test fun filtre_vide_toutAfficher() = assertEquals(4, CategoryManager.rows(cats, counts, "  ").size)
-    @Test fun cocheesDabord_ordreConserve() = assertEquals(listOf("1", "2", "4", "3"), CategoryManager.rows(cats, counts, "").map { it.remoteId })
+    @Test fun cocheesDabord_ordreConserve() = assertEquals(listOf("1", "2", "4", "3"), CategoryManager.pinEnabledFirst(CategoryManager.rows(cats, counts, "")))
+
+    @Test fun ordreFige_basculerNeDeplacePas() {
+        val rows = CategoryManager.rows(cats, counts, "")
+        val pin = CategoryManager.pinEnabledFirst(rows)
+        assertEquals(listOf("1", "2", "4", "3"), pin) // actives d'abord à l'ouverture
+        // On désactive « 2 » : il garde sa place.
+        val after = rows.map { if (it.remoteId == "2") it.copy(enabled = false, count = null) else it }
+        assertEquals(listOf("1", "2", "4", "3"), CategoryManager.applyPin(after, pin).map { it.remoteId })
+    }
 }
