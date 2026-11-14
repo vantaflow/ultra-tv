@@ -1,5 +1,6 @@
 package com.ultratv.tv.nativeapp.data.config
 
+import kotlinx.coroutines.flow.drop
 import com.ultratv.tv.nativeapp.data.profile.applySharedProfiles
 import com.ultratv.tv.nativeapp.data.db.UltraDb
 import com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore
@@ -243,6 +244,10 @@ class CloudSyncManager @Inject constructor(
     fun watchSharedState() {
         if (watchingState) return
         watchingState = true
+        // Changement de profil : synchro aussitôt (catégories, langue et réglages du profil réglés sur un autre appareil).
+        stateScope.launch {
+            profileRepo.currentId.drop(1).collect { runCatching { sync() }; syncSharedState() }
+        }
         stateScope.launch {
             // 60 s de calme : pendant une lecture la position est enregistrée toutes les 30 s, on n'envoie qu'après.
             kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L }, db.profileDao().observeAll().map { 1L })
