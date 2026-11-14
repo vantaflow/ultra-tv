@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Dons réguliers via Liberapay (page /donate, bouton Sponsor, README et site).
+- Worker : ordre des catégories, chaînes masquées et profils (nom, couleur, profil Enfants, jamais le code PIN) partagés entre les appareils du compte ; un appareil plus ancien n'efface ni l'ordre ni les chaînes masquées.
 
 ## [1.3.26] — 2026-11-14 (Android)
 

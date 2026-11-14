@@ -454,6 +454,9 @@ export const isSupportedKind = (p) => KINDS.includes(p.kind);
 /** Plafonds des réglages partagés d'une source (une source réelle compte ~1 000 catégories par type). */
 export const PREFS_MAX_IDS = 5000;
 export const PREFS_KINDS = ["live", "movie", "series"];
+export const PREFS_MAX_HIDDEN = 3000;
+// eslint-disable-next-line no-control-regex
+const cleanId = (x) => (typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x) ? x : null);
 
 /**
  * Réglages d'affichage partagés d'une source, envoyés par un appareil :
@@ -477,10 +480,40 @@ export function parsePrefs(body, now = Date.now()) {
     if (!a.every((x) => typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x))) return { error: `disabled.${k}` };
     disabled[k] = [...new Set(a)];
   }
+  // Ordre des catégories par type (facultatif : absent = un appareil plus ancien, l'ordre actuel est gardé).
+  let order;
+  if (body.order !== undefined && body.order !== null) {
+    const o = body.order;
+    if (typeof o !== "object" || Array.isArray(o)) return { error: "order" };
+    order = {};
+    for (const k of PREFS_KINDS) {
+      const a = o[k] ?? [];
+      // eslint-disable-next-line no-control-regex
+      if (!Array.isArray(a) || a.length > PREFS_MAX_IDS || !a.every((x) => typeof x === "string" && x.length > 0 && x.length <= 128 && !/[\u0000-\u001f\u007f]/.test(x))) return { error: `order.${k}` };
+      order[k] = [...new Set(a)];
+    }
+  }
+  // Chaînes masquées (facultatif) : { i: identifiant du fournisseur, c: catégorie, n: nom }.
+  let hidden;
+  if (body.hidden !== undefined && body.hidden !== null) {
+    if (!Array.isArray(body.hidden) || body.hidden.length > PREFS_MAX_HIDDEN) return { error: "hidden" };
+    hidden = [];
+    const seen = new Set();
+    for (const h of body.hidden) {
+      const i = h && typeof h === "object" ? cleanId(h.i) : null;
+      if (!i) return { error: "hidden" };
+      if (seen.has(i)) continue;
+      seen.add(i);
+      hidden.push({ i, c: h.c == null ? null : cleanId(h.c), n: typeof h.n === "string" ? cleanLine(h.n, 120) : "" });
+    }
+  }
   const updatedAt = Number(body.updatedAt);
   if (!Number.isFinite(updatedAt) || updatedAt <= 0) return { error: "updatedAt" };
   // Horloge d'appareil en avance : plafonnée, sinon ses réglages gagneraient pour toujours.
-  return { prefs: { langs, disabled, updatedAt: Math.min(Math.floor(updatedAt), now + 60_000) } };
+  const prefs = { langs, disabled, updatedAt: Math.min(Math.floor(updatedAt), now + 60_000) };
+  if (order) prefs.order = order;
+  if (hidden) prefs.hidden = hidden;
+  return { prefs };
 }
 
 // ---- état partagé d'une source : favoris, positions de reprise, derniers vus -----------------------
@@ -555,4 +588,35 @@ export async function deleteState(env, login, pid) {
   const k = stateKvKey(login, pid);
   await stateBlobDelete(env, k);
   await env.CONFIG.delete(k);
+}
+
+// ---- profils partagés entre les appareils du compte (nom, couleur, profil Enfants ; jamais de code PIN) ------------
+
+export const PROFILES_MAX = 40;
+const PROFILE_TOMB_TTL_MS = 180 * 24 * 3600 * 1000;
+
+/** Entrées de profils envoyées par un appareil : { n: nom, c: couleur ARGB, k: enfants, at: ms, on: false = supprimé }. */
+export function parseProfiles(body, now = Date.now()) {
+  if (!body || typeof body !== "object" || !Array.isArray(body.profiles) || body.profiles.length > PROFILES_MAX) return { error: "profiles" };
+  const out = [];
+  for (const e of body.profiles) {
+    if (!e || typeof e !== "object") return { error: "profiles" };
+    const n = typeof e.n === "string" ? cleanLine(e.n, 24) : "";
+    const at = Number(e.at);
+    if (!n || !Number.isFinite(at) || at <= 0) return { error: "profiles" };
+    const c = Number.isInteger(e.c) && e.c >= -2147483648 && e.c <= 4294967295 ? e.c : 0;
+    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false });
+  }
+  return { profiles: out };
+}
+
+/** Fusion par nom (sans casse) : la modification la plus récente gagne ; tombes anciennes oubliées. */
+export function mergeProfiles(cur, incoming, now = Date.now()) {
+  const byKey = new Map((cur || []).map((p) => [p.n.toLowerCase(), p]));
+  for (const p of incoming) {
+    const k = p.n.toLowerCase();
+    const o = byKey.get(k);
+    if (!o || p.at > o.at) byKey.set(k, p);
+  }
+  return [...byKey.values()].filter((p) => p.on || now - p.at < PROFILE_TOMB_TTL_MS).sort((a, b) => a.at - b.at).slice(-PROFILES_MAX * 2);
 }

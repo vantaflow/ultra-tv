@@ -25,7 +25,7 @@ import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
   isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
-  MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState,
+  MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
@@ -164,6 +164,7 @@ async function route(req, env, ctx) {
   if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
   const prefsProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/prefs$/);
   if (prefsProv && m === "PUT") return devicePutPrefs(req, env, prefsProv[1]);
+  if (path === "/api/device/profiles" && m === "POST") return deviceSyncProfiles(req, env);
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
@@ -1218,7 +1219,7 @@ async function devicePutProvider(req, env) {
   });
 }
 
-const PREFS_BODY_MAX = 192 * 1024;
+const PREFS_BODY_MAX = 512 * 1024;
 
 /**
  * Publie les réglages d'affichage partagés d'une source (langues, catégories désactivées).
@@ -1241,7 +1242,11 @@ async function devicePutPrefs(req, env, id) {
     if (i < 0 || !isVisibleTo(providers[i], auth.device.id)) return json({ error: "not_found" }, 404);
     const cur = providers[i].prefs;
     if (cur && cur.updatedAt > r.prefs.updatedAt) return json({ error: "stale", prefs: cur }, 409);
-    providers[i] = { ...providers[i], prefs: { ...r.prefs, by: auth.device.id } };
+    // Ordre et chaînes masquées non envoyés (appareil d'une version plus ancienne) : on garde ceux du compte.
+    const next = { ...r.prefs, by: auth.device.id };
+    if (next.order === undefined && cur?.order) next.order = cur.order;
+    if (next.hidden === undefined && cur?.hidden) next.hidden = cur.hidden;
+    providers[i] = { ...providers[i], prefs: next };
     await saveProviders(env, acct, providers);
     await putAccount(env, acct);
     return json({ version: acct.cfgVersion, prefs: providers[i].prefs });
@@ -1249,6 +1254,26 @@ async function devicePutPrefs(req, env, id) {
 }
 
 const STATE_BODY_MAX = 512 * 1024;
+
+/** Profils du compte : l'appareil envoie les siens (et ses suppressions), reçoit la liste fusionnée. */
+async function deviceSyncProfiles(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pprof:ip:${clientIp(req)}`, 240, 600, true))
+    || (await limited(env, `pprof:dev:${auth.device.id}`, 60, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, 32 * 1024);
+  if (body.error) return body.error;
+  const r = parseProfiles(body.value);
+  if (r.error) return json({ error: "invalid", field: r.error }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+    const merged = mergeProfiles(acct.profiles, r.profiles);
+    // Écriture seulement si quelque chose a changé (quota d'écritures KV).
+    if (JSON.stringify(merged) !== JSON.stringify(acct.profiles || [])) { acct.profiles = merged; await putAccount(env, acct); }
+    return json({ profiles: merged });
+  });
+}
 
 /**
  * Favoris, positions de reprise et derniers vus d'une source, partagés entre les appareils du compte.

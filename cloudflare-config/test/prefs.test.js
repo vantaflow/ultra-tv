@@ -83,3 +83,32 @@ describe("parsePrefs", () => {
     expect(parsePrefs({ langs: null, disabled: { live: many }, updatedAt: 1 }).error).toBe("disabled.live");
   });
 });
+
+describe("ordre des catégories et chaînes masquées", () => {
+  it("ordre_et_chainesMasquees_partages", async () => {
+    const { tv, mac, id } = await setup();
+    const r = await putPrefs(mac, id, prefs(3000, { order: { live: ["13", "12"], movie: [], series: [] }, hidden: [{ i: "501", c: "12", n: "Chaîne test" }] }));
+    expect(r.status).toBe(200);
+    const p = (await cfg(tv)).providers[0].prefs;
+    expect(p.order.live).toEqual(["13", "12"]);
+    expect(p.hidden).toEqual([{ i: "501", c: "12", n: "Chaîne test" }]);
+  });
+  it("appareilAncien_sansOrdre_neLEffacePas", async () => {
+    const { tv, mac, id } = await setup();
+    await putPrefs(mac, id, prefs(3000, { order: { live: ["13", "12"] }, hidden: [{ i: "501", c: "12", n: "x" }] }));
+    expect((await putPrefs(tv, id, prefs(4000))).status).toBe(200);
+    const p = (await cfg(mac)).providers[0].prefs;
+    expect(p.order.live).toEqual(["13", "12"]);
+    expect(p.hidden.map((h) => h.i)).toEqual(["501"]);
+    expect(p.updatedAt).toBe(4000);
+  });
+  it("parsePrefs_refuseLesValeursInvalides", () => {
+    expect(parsePrefs(prefs(1, { order: [] })).error).toBe("order");
+    expect(parsePrefs(prefs(1, { order: { live: [1] } })).error).toBe("order.live");
+    expect(parsePrefs(prefs(1, { hidden: [{ c: "1" }] })).error).toBe("hidden");
+    expect(parsePrefs(prefs(1, { hidden: "x" })).error).toBe("hidden");
+    const ok = parsePrefs(prefs(1, { hidden: [{ i: "5", n: "a\u0007b" }, { i: "5", n: "dup" }] }));
+    expect(ok.prefs.hidden).toHaveLength(1);
+    expect(ok.prefs.order).toBeUndefined();
+  });
+});
