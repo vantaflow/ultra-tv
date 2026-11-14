@@ -824,6 +824,8 @@ private fun AboutPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, app:
     var msg by remember { mutableStateOf<String?>(null) }
     PaneTitle(D.rubAbout, D.setDescAbout)
     SettingsCard {
+        // Dons (Ko-fi) : en tête de la rubrique, discret (une ligne comme les autres).
+        SupportRow(D)
         PrefRow(D.version, com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME) { }
         PrefRow(D.checkUpdates, msg.orEmpty()) {
             scope.launch {

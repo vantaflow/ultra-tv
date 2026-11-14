@@ -312,7 +312,7 @@ On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, mi
 
 ## Support the project
 
-Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country), also reachable from the repository's "Sponsor" button and from <https://tv.weedy.dpdns.org/donate>. No card details ever go through Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country), also reachable from the repository's "Sponsor" button, from <https://tv.weedy.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
 
 ## Help translate
 

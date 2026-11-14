@@ -1649,4 +1649,7 @@
     <string name="ds_rec_single_connection">Connexion unique : le fournisseur peut refuser l\'enregistrement ou couper la lecture.</string>
     <string name="shortcuts_title">Raccourcis</string>
     <string name="shortcuts_hint">Rubriques de la barre du bas. Touchez-en une pour la changer, ▲ ▼ pour la déplacer.</string>
+    <string name="support_title">Soutenir Ultra TV</string>
+    <string name="support_sub">Gratuit et sans pub : un don aide à payer les serveurs.</string>
+    <string name="support_scan">Scannez le QR code avec votre téléphone pour faire un don sur Ko-fi (carte ou PayPal).</string>
 </resources>

@@ -1654,4 +1654,7 @@
     <string name="ds_rec_single_connection">Conexão única: o provedor pode recusar a gravação ou interromper a reprodução.</string>
     <string name="shortcuts_title">Atalhos</string>
     <string name="shortcuts_hint">Seções da barra inferior. Toque em uma para trocar, ▲ ▼ para mover.</string>
+    <string name="support_title">Apoiar o Ultra TV</string>
+    <string name="support_sub">Grátis e sem anúncios: uma doação ajuda a pagar os servidores.</string>
+    <string name="support_scan">Escaneie o QR code com o celular para doar no Ko-fi (cartão ou PayPal).</string>
 </resources>

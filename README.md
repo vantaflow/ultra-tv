@@ -315,7 +315,7 @@ Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/van
 
 ## Soutenir le projet
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays), aussi accessible par le bouton « Sponsor » du dépôt et par <https://tv.weedy.dpdns.org/donate>. Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays), aussi accessible par le bouton « Sponsor » du dépôt, par <https://tv.weedy.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
 
 ## Aider à traduire
 

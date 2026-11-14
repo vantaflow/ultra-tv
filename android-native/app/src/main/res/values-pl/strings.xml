@@ -1590,4 +1590,7 @@
     <string name="ds_rec_single_connection">Jedno połączenie: dostawca może odrzucić nagrywanie lub przerwać odtwarzanie.</string>
     <string name="shortcuts_title">Skróty</string>
     <string name="shortcuts_hint">Sekcje dolnego paska. Dotknij, aby zmienić, ▲ ▼, aby przesunąć.</string>
+    <string name="support_title">Wesprzyj Ultra TV</string>
+    <string name="support_sub">Darmowe i bez reklam: darowizna pomaga opłacić serwery.</string>
+    <string name="support_scan">Zeskanuj kod QR telefonem, aby wesprzeć przez Ko-fi (karta lub PayPal).</string>
 </resources>

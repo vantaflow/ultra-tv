@@ -1636,4 +1636,7 @@
     <string name="ds_rec_single_connection">Single connection: the provider may refuse the recording or stop playback.</string>
     <string name="shortcuts_title">Shortcuts</string>
     <string name="shortcuts_hint">Sections of the bottom bar. Tap one to change it, ▲ ▼ to move it.</string>
+    <string name="support_title">Support Ultra TV</string>
+    <string name="support_sub">Free and ad-free: a donation helps pay for the servers.</string>
+    <string name="support_scan">Scan the QR code with your phone to donate on Ko-fi (card or PayPal).</string>
 </resources>
