@@ -39,6 +39,8 @@
     "copyright": "Ultra TV",
     "artifactName": "UltraTV-${version}-${os}-${arch}.${ext}",
     "asar": true,
+    "compression": "maximum",
+    "electronLanguages": ["en", "en-US", "fr", "es", "ar", "pl", "pt-BR", "pt"],
     "files": [
       "main.cjs",
       "preload.cjs",
