@@ -395,6 +395,8 @@
     <string name="ds_home_screen">الرئيسية</string>
     <string name="ds_logos_folder">شعارات القنوات المحلية</string>
     <string name="ds_choose_folder">اختيار مجلد</string>
+    <string name="ds_choose_folder_unavailable">اختيار المجلد غير متاح على هذا الجهاز</string>
+    <string name="ds_file_picker_unavailable">منتقي الملفات غير متاح على هذا الجهاز: استخدم رابطًا أو المزامنة السحابية</string>
     <string name="ds_player_row">المشغل</string>
     <string name="ds_decoding_row">فك الترميز</string>
     <string name="ds_buffer_row">ذاكرة التخزين المؤقت</string>

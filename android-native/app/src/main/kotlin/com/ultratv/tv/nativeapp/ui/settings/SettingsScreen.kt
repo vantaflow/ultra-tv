@@ -20,6 +20,7 @@ import com.ultratv.tv.nativeapp.i18n.remoteTitle
 import com.ultratv.tv.nativeapp.i18n.phoneReceived
 import com.ultratv.tv.nativeapp.i18n.stalkerFailed
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
+import com.ultratv.tv.nativeapp.ui.common.launchOrToast
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -432,15 +433,15 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
     GroupLabel(D.backup)
     SettingsCard {
-        PrefRow(D.exportBackup, "") { vm.prepareBackup(S.toastBackupReady, password = backupPwd.takeIf { it.isNotEmpty() }); saveBackup.launch("ultra-tv-backup-${System.currentTimeMillis()}.json") }
-        PrefRow(D.importBackup, "") { loadBackup.launch(arrayOf("application/json", "*/*")) }
+        PrefRow(D.exportBackup, "") { vm.prepareBackup(S.toastBackupReady, password = backupPwd.takeIf { it.isNotEmpty() }); saveBackup.launchOrToast("ultra-tv-backup-${System.currentTimeMillis()}.json", D.filePickerUnavailable) }
+        PrefRow(D.importBackup, "") { loadBackup.launchOrToast(arrayOf("application/json", "*/*"), D.filePickerUnavailable) }
     }
 
     when (dialog) {
         OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
             // « Depuis le téléphone » : pour TV et box seulement (sur un téléphone, on est déjà sur l'appareil qui saisirait).
             + (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) emptyList() else listOf(OpenDialog.PHONE to D.cardPhone)), null,
-            onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launch(arrayOf("*/*")) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
+            onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launchOrToast(arrayOf("*/*"), D.filePickerUnavailable) } else dialog = k }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
         OpenDialog.REMOTE -> PhoneRemoteDialog(hiltViewModel(), onClose = { dialog = OpenDialog.NONE })
         OpenDialog.PHONE -> { dialog = OpenDialog.NONE; vm.startWebSend(phoneReceived, stalkerFailed) }
@@ -652,7 +653,9 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
         PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
         PrefRow(D.timeFormat, timeFormatLabel(D, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat))) { choice = "tf" }
-        PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) { pickLogos.launch(null) }
+        PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) {
+            pickLogos.launchOrToast(null, D.chooseFolderUnavailable)
+        }
     }
     // Personnalisation : accent, taille du texte, rangées de l'accueil.
     GroupLabel(D.personalization)

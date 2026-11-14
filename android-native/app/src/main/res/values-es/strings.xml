@@ -372,6 +372,8 @@
     <string name="ds_home_screen">Inicio</string>
     <string name="ds_logos_folder">Logotipos locales</string>
     <string name="ds_choose_folder">Elegir carpeta</string>
+    <string name="ds_choose_folder_unavailable">La selección de carpetas no está disponible en este dispositivo</string>
+    <string name="ds_file_picker_unavailable">El selector de archivos no está disponible en este dispositivo: usa un enlace o la sincronización en la nube</string>
     <string name="ds_player_row">Reproductor</string>
     <string name="ds_decoding_row">Decodificación</string>
     <string name="ds_buffer_row">Memoria de búfer</string>

@@ -377,6 +377,8 @@
     <string name="ds_home_screen">Home</string>
     <string name="ds_logos_folder">Local channel logos</string>
     <string name="ds_choose_folder">Choose a folder</string>
+    <string name="ds_choose_folder_unavailable">Folder selection is not available on this device</string>
+    <string name="ds_file_picker_unavailable">The file picker is not available on this device: use a link or cloud sync instead</string>
     <string name="ds_player_row">Player</string>
     <string name="ds_decoding_row">Decoding</string>
     <string name="ds_buffer_row">Buffer memory</string>

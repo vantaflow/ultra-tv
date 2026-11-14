@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.onboarding
 
 import com.ultratv.tv.nativeapp.data.repo.atMostEvery
 import com.ultratv.tv.nativeapp.ui.common.responsiveWidth
+import com.ultratv.tv.nativeapp.ui.common.launchOrToast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -455,6 +456,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
         settingsVm.startPairing()
     }
 
+    val filePickerUnavailable = com.ultratv.tv.nativeapp.i18n.LocalDs.current.filePickerUnavailable
     val pickFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch {
@@ -482,7 +484,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
                 SourceOption.XTREAM -> TouchSourceCard(Icons.Monitor, W.cardXtream, W.cardXtreamDesc) { form = Form.Xtream }
                 SourceOption.STALKER -> TouchSourceCard(Icons.Monitor, D.kindStalker, D.formSubStalker) { form = Form.Stalker }
                 SourceOption.M3U_URL -> TouchSourceCard(Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc) { form = Form.M3uUrl }
-                SourceOption.M3U_FILE -> TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launch(arrayOf("*/*")) }
+                SourceOption.M3U_FILE -> TouchSourceCard(Icons.File, W.cardM3uFile, W.cardM3uFileDesc) { pickFile.launchOrToast(arrayOf("*/*"), filePickerUnavailable) }
                 SourceOption.CLOUD -> TouchSourceCard(Icons.Globe, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud, D.cloudSyncHint) { startCloud() }
                 SourceOption.PHONE -> TouchSourceCard(Icons.Globe, D.cardPhone, D.cardPhoneDesc) { startPhone() }
             }
@@ -508,7 +510,7 @@ private fun SourceStep(W: WizardStrings, onAdded: () -> Unit, onXtreamAdded: (Lo
                             SourceOption.XTREAM -> SourceCard(m, Icons.Monitor, W.cardXtream, W.cardXtreamDesc, first) { form = Form.Xtream }
                             SourceOption.STALKER -> SourceCard(m, Icons.Monitor, D.kindStalker, D.formSubStalker, first) { form = Form.Stalker }
                             SourceOption.M3U_URL -> SourceCard(m, Icons.Link, W.cardM3uUrl, W.cardM3uUrlDesc, first) { form = Form.M3uUrl }
-                            SourceOption.M3U_FILE -> SourceCard(m, Icons.File, W.cardM3uFile, W.cardM3uFileDesc, first) { pickFile.launch(arrayOf("*/*")) }
+                            SourceOption.M3U_FILE -> SourceCard(m, Icons.File, W.cardM3uFile, W.cardM3uFileDesc, first) { pickFile.launchOrToast(arrayOf("*/*"), filePickerUnavailable) }
                             SourceOption.CLOUD -> SourceCard(m, Icons.Link, D.cardCloud, D.cardCloudDesc, first) { startCloud() }
                             SourceOption.PHONE -> SourceCard(m, Icons.Globe, D.cardPhone, D.cardPhoneDesc, first) { startPhone() }
                         }

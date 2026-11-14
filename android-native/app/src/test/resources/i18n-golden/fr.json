@@ -168,6 +168,8 @@
   "DesignStrings.getChannelsWord()": "Chaînes",
   "DesignStrings.getCheckUpdates()": "Rechercher une mise à jour",
   "DesignStrings.getChooseFolder()": "Choisir un dossier",
+  "DesignStrings.getChooseFolderUnavailable()": "La s\u00e9lection de dossier n\u2019est pas disponible sur cet appareil",
+  "DesignStrings.getFilePickerUnavailable()": "Le s\u00e9lecteur de fichiers n\u2019est pas disponible sur cet appareil : passez par un lien ou par la synchronisation cloud",
   "DesignStrings.getClose()": "Fermer",
   "DesignStrings.getCloudSync()": "Synchroniser depuis le cloud",
   "DesignStrings.getCloudSyncHint()": "Affiche un code à saisir sur le tableau de bord",

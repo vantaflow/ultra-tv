@@ -384,6 +384,8 @@
     <string name="ds_home_screen">Início</string>
     <string name="ds_logos_folder">Logos de canais locais</string>
     <string name="ds_choose_folder">Escolher uma pasta</string>
+    <string name="ds_choose_folder_unavailable">A seleção de pastas não está disponível neste dispositivo</string>
+    <string name="ds_file_picker_unavailable">O seletor de arquivos não está disponível neste dispositivo: use um link ou a sincronização na nuvem</string>
     <string name="ds_player_row">Player</string>
     <string name="ds_decoding_row">Decodificação</string>
     <string name="ds_buffer_row">Memória do buffer</string>

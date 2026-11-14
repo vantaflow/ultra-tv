@@ -427,6 +427,8 @@ class DesignStrings(val lang: AppLang) {
     val homeScreen get() = tx(R.string.ds_home_screen)
     val logosFolder get() = tx(R.string.ds_logos_folder)
     val chooseFolder get() = tx(R.string.ds_choose_folder)
+    val chooseFolderUnavailable get() = tx(R.string.ds_choose_folder_unavailable)
+    val filePickerUnavailable get() = tx(R.string.ds_file_picker_unavailable)
     val playerRow get() = tx(R.string.ds_player_row)
     val decodingRow get() = tx(R.string.ds_decoding_row)
     val bufferRow get() = tx(R.string.ds_buffer_row)

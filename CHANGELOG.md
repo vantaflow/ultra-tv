@@ -12,6 +12,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Tailles des APK à jour sur la page /apk et dans le README (arm64 ≈ 36 Mo, 32 bits ≈ 34 Mo, universel ≈ 58 Mo, au lieu de 67, 52 et 227 Mo).
+- Plantage sur les box sans appli « Fichiers » (sélecteur système absent) en choisissant le dossier de logos, une sauvegarde à exporter ou importer, ou un fichier M3U : un message s'affiche à la place.
 
 ## [1.3.36] — 2026-11-14 (Android, TV Samsung / LG)
 

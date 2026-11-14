@@ -168,6 +168,8 @@
   "DesignStrings.getChannelsWord()": "Channels",
   "DesignStrings.getCheckUpdates()": "Check for updates",
   "DesignStrings.getChooseFolder()": "Choose a folder",
+  "DesignStrings.getChooseFolderUnavailable()": "Folder selection is not available on this device",
+  "DesignStrings.getFilePickerUnavailable()": "The file picker is not available on this device: use a link or cloud sync instead",
   "DesignStrings.getClose()": "Close",
   "DesignStrings.getCloudSync()": "Sync from the cloud",
   "DesignStrings.getCloudSyncHint()": "Shows a code to enter on the dashboard",

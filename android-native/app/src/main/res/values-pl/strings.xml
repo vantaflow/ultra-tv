@@ -376,6 +376,8 @@
     <string name="ds_home_screen">Start</string>
     <string name="ds_logos_folder">Lokalne logo kanałów</string>
     <string name="ds_choose_folder">Wybierz folder</string>
+    <string name="ds_choose_folder_unavailable">Wybór folderu nie jest dostępny na tym urządzeniu</string>
+    <string name="ds_file_picker_unavailable">Wybór plików nie jest dostępny na tym urządzeniu: użyj linku lub synchronizacji w chmurze</string>
     <string name="ds_player_row">Odtwarzacz</string>
     <string name="ds_decoding_row">Dekodowanie</string>
     <string name="ds_buffer_row">Pamięć bufora</string>

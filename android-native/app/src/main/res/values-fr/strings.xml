@@ -380,6 +380,8 @@
     <string name="ds_home_screen">Accueil</string>
     <string name="ds_logos_folder">Logos de chaînes locaux</string>
     <string name="ds_choose_folder">Choisir un dossier</string>
+    <string name="ds_choose_folder_unavailable">La sélection de dossier n’est pas disponible sur cet appareil</string>
+    <string name="ds_file_picker_unavailable">Le sélecteur de fichiers n’est pas disponible sur cet appareil : passez par un lien ou par la synchronisation cloud</string>
     <string name="ds_player_row">Lecteur</string>
     <string name="ds_decoding_row">Décodage</string>
     <string name="ds_buffer_row">Mémoire tampon</string>

@@ -168,6 +168,8 @@
   "DesignStrings.getChannelsWord()": "Canales",
   "DesignStrings.getCheckUpdates()": "Buscar actualizaciones",
   "DesignStrings.getChooseFolder()": "Elegir carpeta",
+  "DesignStrings.getChooseFolderUnavailable()": "La selecci\u00f3n de carpetas no est\u00e1 disponible en este dispositivo",
+  "DesignStrings.getFilePickerUnavailable()": "El selector de archivos no est\u00e1 disponible en este dispositivo: usa un enlace o la sincronizaci\u00f3n en la nube",
   "DesignStrings.getClose()": "Cerrar",
   "DesignStrings.getCloudSync()": "Sincronizar desde la nube",
   "DesignStrings.getCloudSyncHint()": "Muestra un código para el panel",
