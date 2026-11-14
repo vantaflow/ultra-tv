@@ -35,6 +35,8 @@ data class SessionState(
     val isProtected: Boolean = false,
     /** Type HDR détecté par le moteur pour le flux en cours (« hdr10 », « hlg », « dv ») ; null = SDR ou pas encore connu. */
     val hdr: String? = null,
+    /** Remise en mémoire tampon en cours (après la première image) : sert à proposer « Recharger ». */
+    val buffering: Boolean = false,
 )
 
 /**
@@ -290,6 +292,13 @@ class PlaybackSession(
     /** « Réessayer » / retour sur l'appli : tout repart de zéro (sinon, compteur à 8 = écran d'erreur à la 1re coupure). */
     fun retry() { tried = mutableSetOf(); sameRetries = 0; reconnects = 0; everPlayed = false; launch(combo) }
 
+    /** « Recharger » pendant une mise en mémoire tampon : relance le même flux (VOD : à la position courante, direct : même chaîne). */
+    fun reload() {
+        engine?.let { if (!isLive && it.positionMs > 0) resumeMs = it.positionMs }
+        _state.value = _state.value.copy(buffering = false)
+        retry()
+    }
+
     /** Changement manuel (pilule « Lecteur ») : on le mémorise tout de suite pour cette chaîne. */
     fun switchTo(c0: Combo) {
         val c = PlaybackPlanner.manualCombo(c0, isProtected)   // flux protégé : le choix VLC est ignoré
@@ -375,11 +384,12 @@ class PlaybackSession(
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {
         when (ev) {
             EngineEvent.Buffering -> if (firstFrame) {
+                if (!_state.value.buffering) _state.value = _state.value.copy(buffering = true)
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
                 if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
@@ -398,7 +408,7 @@ class PlaybackSession(
                     delay(10_000)
                     if (engine === e && hdrKind == null) com.ultratv.tv.nativeapp.RemoteLog.warn("play", "hdr named but not signalled engine=${combo.engine.name} surface=${if (textureNow) "texture" else "surface"} ${e.colorDebug() ?: "-"}")
                 }
-                _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true)
+                _state.value = _state.value.copy(phase = Phase.PLAYING, error = null, hasPicture = true, buffering = false)
                 armBlackPictureCheck(e)
                 // La combinaison est retenue pour la chaîne si elle a demandé un repli ou un choix manuel et tient 5 s.
                 rememberJob?.cancel()

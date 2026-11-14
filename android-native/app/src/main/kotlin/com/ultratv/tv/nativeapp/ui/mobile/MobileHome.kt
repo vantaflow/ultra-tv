@@ -102,7 +102,7 @@ data class MobileHomeState(
 @Composable
 fun MobileTopBar(profileInitial: String, profileColor: Int, onSearch: () -> Unit, onProfile: () -> Unit) {
     val M = LocalMobileStrings.current
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LogoMark(68)
             Row {
@@ -180,7 +180,7 @@ fun MobileHomeScreen(
                     HomeSectionId.SHORTCUTS -> MobileShortcuts(rows.shortcuts, onShortcut)
                     HomeSectionId.RESUME -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(D.continueWatching, null, {})
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                             items(rows.resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
@@ -196,7 +196,7 @@ fun MobileHomeScreen(
                         rows.traktLists.getOrNull(id.traktListIndex)?.let { l -> TraktPosterRow(D.traktListRow(l.name), l.cards, wide, openPoster) }
                     HomeSectionId.CHANNELS -> Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
                         SectionHeader(if (rows.showingFavorites) D.favoriteChannels else D.directTitle, M.seeAll, if (rows.showingFavorites) onGoFavorites else onGoLive)
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
                             items(rows.channels.distinctBy { it.channel.id }, key = { it.channel.id }, contentType = { "channel" }) { c -> FavChannelCard(c) { playChannel(c.channel) } }
                         }
                     }
@@ -214,7 +214,7 @@ private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boole
     val w = if (wide) 150.dp else 110.dp
     Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
         SectionHeader(title, null, {})
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
             items(cards, key = { it.key }, contentType = { "poster" }) { p ->
                 com.ultratv.tv.nativeapp.ui.catalog.PosterCell(p.item, Modifier.width(w), kind = p.kind, imageWidth = w) { onOpen(p) }
             }
@@ -224,7 +224,7 @@ private fun TraktPosterRow(title: String, cards: List<PosterCardUi>, wide: Boole
 
 @Composable
 fun SectionHeader(title: String, action: String?, onAction: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
         Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
         if (action != null) Text(action, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1,
             modifier = Modifier.clip(RoundedCornerShape(8.dp)).clickable(onClick = onAction).padding(horizontal = 8.dp, vertical = 14.dp))
@@ -240,7 +240,7 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (He
     // Taille de décodage : largeur de la fenêtre moins les marges (le cadre n'est jamais plus large).
     val widthDp = (com.ultratv.tv.nativeapp.ui.common.LocalUiWidthDp.current - 40f).coerceAtLeast(1f).dp
     val size = androidx.compose.ui.unit.DpSize(widthDp, heightDp)
-    Box(Modifier.padding(horizontal = 20.dp).fillMaxWidth().height(heightDp).clip(shape).background(Ux.Tone).clickable(onClickLabel = D.watch) { onOpen(h) }) {
+    Box(Modifier.padding(horizontal = 12.dp).fillMaxWidth().height(heightDp).clip(shape).background(Ux.Tone).clickable(onClickLabel = D.watch) { onOpen(h) }) {
         if (h.backdrop != null) BackdropImage(h.backdrop, Modifier.fillMaxSize(), decodeSize = size)
         else PosterImage(h.poster, h.title, Modifier.align(Alignment.CenterEnd).fillMaxSize(), radius = 0, kind = if (h.kind == HeroItem.Kind.SERIES) com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.TV else com.ultratv.tv.nativeapp.data.tmdb.TmdbKind.MOVIE, decodeSize = size)
         Column(
@@ -262,7 +262,7 @@ private fun MobileHero(h: HeroItem, D: DesignStrings, wide: Boolean, onOpen: (He
 @Composable
 private fun MobileNotice(title: String, hint: String?, action: String?, onAction: () -> Unit, percent: (() -> Int?)? = null, secondary: Pair<String, () -> Unit>? = null) {
     Column(
-        Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ux.SurfaceDeep).padding(24.dp),
+        Modifier.padding(horizontal = 12.dp).fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(Ux.SurfaceDeep).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 22.sp)
@@ -403,7 +403,7 @@ fun MobileDetailFrame(backdrop: String?, poster: String?, title: String, onBack:
                     com.ultratv.tv.nativeapp.ui.movies.DetailVisual(backdrop, poster, title)
                     Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(0.5f to Color.Transparent, 1f to Ux.Bg)))
                 }
-                Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 24.dp).offset(y = (-56).dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { content() }
+                Column(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 24.dp).offset(y = (-56).dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { content() }
             }
         }
         MobileBackButton(onBack, Modifier.align(Alignment.TopStart).padding(start = 12.dp, top = 8.dp).windowInsetsPadding(WindowInsets.statusBars))
@@ -416,7 +416,7 @@ fun MobileDetailFrame(backdrop: String?, poster: String?, title: String, onBack:
 private fun MobileShortcuts(items: List<ShortcutUi>, onSelect: (ShortcutId) -> Unit) {
     val D = LocalDs.current
     val S = LocalStrings.current
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 20.dp)) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), contentPadding = PaddingValues(horizontal = 12.dp)) {
         items(items, key = { it.id }, contentType = { "shortcut" }) { sc ->
             val (title, sub) = remember(sc.id, sc.count, D, S) {
                 val n = sc.count ?: 0

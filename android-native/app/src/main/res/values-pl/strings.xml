@@ -1609,4 +1609,8 @@
     <string name="simple_size_small">Mały</string>
     <string name="simple_size_normal">Średni</string>
     <string name="simple_size_large">Duży</string>
+    <string name="stream_info_resolution">Rozdzielczość</string>
+    <string name="stream_info_bitrate">Przepływność</string>
+    <string name="stream_info_reload">Przeładuj</string>
+    <string name="stream_info_title">Strumień</string>
 </resources>

@@ -1668,4 +1668,8 @@
     <string name="simple_size_small">Petite</string>
     <string name="simple_size_normal">Moyenne</string>
     <string name="simple_size_large">Grande</string>
+    <string name="stream_info_resolution">Résolution</string>
+    <string name="stream_info_bitrate">Débit</string>
+    <string name="stream_info_reload">Recharger</string>
+    <string name="stream_info_title">Flux</string>
 </resources>

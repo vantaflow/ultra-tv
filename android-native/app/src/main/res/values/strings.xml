@@ -1655,4 +1655,8 @@
     <string name="simple_size_small">Small</string>
     <string name="simple_size_normal">Medium</string>
     <string name="simple_size_large">Large</string>
+    <string name="stream_info_resolution">Resolution</string>
+    <string name="stream_info_bitrate">Bitrate</string>
+    <string name="stream_info_reload">Reload</string>
+    <string name="stream_info_title">Stream</string>
 </resources>

@@ -361,7 +361,7 @@ fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val heroMode = !touch && !split && chipsOrNull != null && lp != null && chips.isNotEmpty() && selected == null && !filter.narrows
     com.ultratv.tv.nativeapp.ui.mobile.TouchRefresh {
     if (heroMode) CatalogHeroHost(vm, kind, chips, filter, detecting, progress, onOpen) else Column(
-        Modifier.fillMaxSize().then(if (touch) Modifier.padding(start = 20.dp, end = 20.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)),
+        Modifier.fillMaxSize().then(if (touch) Modifier.padding(start = 12.dp, end = 12.dp, top = 8.dp) else Modifier.padding(start = 72.design, end = 96.design, top = 54.design)),
         verticalArrangement = Arrangement.spacedBy(if (touch) 12.dp else if (split) 20.design else 32.design),
     ) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {

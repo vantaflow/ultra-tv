@@ -354,7 +354,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         val counters = player.videoDecoderCounters
         val hw = v?.sampleMimeType?.let { true }
         return EngineStats(
-            resolution = v?.let { "${it.width}×${it.height}" }, videoCodec = v?.sampleMimeType?.substringAfter('/'),
+            resolution = (v?.takeIf { it.width > 0 && it.height > 0 }?.let { "${it.width}×${it.height}" } ?: player.videoSize.takeIf { it.width > 0 && it.height > 0 }?.let { "${it.width}×${it.height}" }), videoCodec = v?.sampleMimeType?.substringAfter('/'),
             frameRate = v?.frameRate?.takeIf { it > 0 }, videoBitrateKbps = v?.bitrate?.takeIf { it > 0 }?.div(1000),
             audioCodec = a?.sampleMimeType?.substringAfter('/'), audioChannels = a?.channelCount?.takeIf { it > 0 },
             bufferedSeconds = ((player.bufferedPosition - player.currentPosition).coerceAtLeast(0) / 1000).toInt(),

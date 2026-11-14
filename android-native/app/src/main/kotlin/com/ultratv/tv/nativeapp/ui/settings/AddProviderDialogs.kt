@@ -37,6 +37,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.unit.sp
@@ -122,9 +123,12 @@ fun AddProviderDialog(
         if (touch) {
             // Tactile : en-tête et champs DÉFILENT, les boutons restent épinglés en bas, au-dessus du clavier système (imePadding via les insets).
             CompositionLocalProvider(LocalSubmitAttempted provides attempted, LocalFormSubmit provides submit) {
+            // Cause du « tout est bloqué » : les insets (barres + clavier) étaient appliqués DANS la carte, sans jamais la
+            // remonter ; le clavier recouvrait le champ actif. Ici le conteneur plein écran absorbe safeDrawing (clavier compris,
+            // imePadding), la carte se recentre dans l'espace restant et son contenu défile.
+            Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing).imePadding(), contentAlignment = Alignment.Center) {
             Column(
                 modifier = Modifier
-                    .windowInsetsPadding(WindowInsets.safeDrawing)
                     .padding(vertical = 8.dp)
                     .fillMaxWidth(0.94f).widthIn(max = 560.dp)
                     .clip(RoundedCornerShape(24.dp))
@@ -160,6 +164,7 @@ fun AddProviderDialog(
                         }
                     }
                 }
+            }
             }
             }
         } else {
@@ -322,7 +327,8 @@ fun FormField(
     }
     val shownError = error ?: if (required && value.isBlank() && !focused && (touched || attempted)) D.fieldRequired else null
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design), modifier = Modifier.fillMaxWidth()) {
+    // bringIntoView porte sur label + champ (et non sur le seul champ) : le libellé reste visible clavier ouvert.
+    Column(verticalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 10.design), modifier = Modifier.fillMaxWidth().bringIntoViewRequester(bring)) {
         Text(label, color = if (focused) Ux.Text else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = if (touch) 13.sp else 22.spx)
         Box(
             Modifier
@@ -368,7 +374,6 @@ fun FormField(
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
                     .modalFocusMemory(focusRequester)
-                    .bringIntoViewRequester(bring)
                     .onPreviewKeyEvent { ev ->
                         // OK sur le champ : le clavier va s'ouvrir (la touche n'est pas consommée).
                         if (ev.type == KeyEventType.KeyDown && (ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter))
@@ -426,7 +431,7 @@ fun XtreamDialog(onDismiss: () -> Unit, onSubmit: (name: String, url: String, us
         FormField(S.fieldServerUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
             placeholder = "http://serveur:port", autoFocus = true, required = true,
             error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
-        FormField(S.fieldUsername, user, { user = it }, required = true, testTag = "field-user")
+        FormField(S.fieldUsername, user, { user = it }, required = true, placeholder = S.fieldUsername, testTag = "field-user")
         FormField(S.fieldPassword, pass, { pass = it }, password = true, last = true, required = true, placeholder = "••••••••", testTag = "field-pass")
     }
 }

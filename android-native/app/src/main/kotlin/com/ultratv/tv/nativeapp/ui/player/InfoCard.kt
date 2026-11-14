@@ -26,6 +26,9 @@ import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
 import com.ultratv.tv.nativeapp.ui.common.design
+import com.ultratv.tv.nativeapp.i18n.streamInfoBitrate
+import com.ultratv.tv.nativeapp.i18n.streamInfoResolution
+import com.ultratv.tv.nativeapp.i18n.streamInfoTitle
 import com.ultratv.tv.nativeapp.ui.design.Manrope
 import com.ultratv.tv.nativeapp.ui.design.PillButton
 import com.ultratv.tv.nativeapp.ui.design.Sora
@@ -37,11 +40,15 @@ import com.ultratv.tv.nativeapp.ui.design.spx
  * durée, résumé. Les données viennent de la base locale, lues UNE fois à l'ouverture (hors fil principal). Retour la ferme.
  */
 @Composable
-internal fun InfoCard(vm: PlayerViewModel, isLive: Boolean, title: String, durMs: Long, X: PlayerExtraStrings, thenLabel: String, onClose: () -> Unit) {
+internal fun InfoCard(vm: PlayerViewModel, session: com.ultratv.tv.nativeapp.ui.player.engine.PlaybackSession, isLive: Boolean, title: String, durMs: Long, X: PlayerExtraStrings, thenLabel: String, onClose: () -> Unit) {
     val nowProg by vm.nowProgramme.collectAsState()
     var upcoming by remember { mutableStateOf<List<EpgEntity>>(emptyList()) }
     var facts by remember { mutableStateOf<VodFacts?>(null) }
     LaunchedEffect(Unit) { if (isLive) upcoming = vm.upcoming(2) else facts = vm.vodFacts() }
+    // Résolution et débit RÉELS du flux en cours (lus sur le moteur : Media3 videoFormat/videoSize, LibVLC piste vidéo/statistiques).
+    var stats by remember { mutableStateOf(session.engine?.stats()) }
+    LaunchedEffect(Unit) { while (true) { stats = session.engine?.stats(); kotlinx.coroutines.delay(1_000) } }
+    val D = com.ultratv.tv.nativeapp.i18n.LocalDs.current
     val close = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { close.requestFocus() } }
     ModalFocusScope(onBack = onClose, modifier = Modifier.background(Color(0xCC000000)), contentAlignment = Alignment.Center) {
@@ -69,6 +76,13 @@ internal fun InfoCard(vm: PlayerViewModel, isLive: Boolean, title: String, durMs
                 val meta = listOfNotNull(facts?.year?.toString(), ProgrammeInfo.durationLabel(durMs), facts?.genre?.takeIf { it.isNotBlank() }).joinToString(" · ")
                 if (meta.isNotEmpty()) Text(meta, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 facts?.plot?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 8, overflow = TextOverflow.Ellipsis) }
+            }
+            val resLabel = StreamInfoFormat.resolutionFromLabel(stats?.resolution)
+            val brLabel = StreamInfoFormat.bitrate(stats?.videoBitrateKbps)
+            Column(Modifier.padding(top = 8.design), verticalArrangement = Arrangement.spacedBy(4.design)) {
+                Text(D.streamInfoTitle, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1)
+                Text("${D.streamInfoResolution} : ${resLabel ?: "—"}", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1)
+                Text("${D.streamInfoBitrate} : ${brLabel ?: "—"}", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 24.spx, maxLines = 1)
             }
             PillButton(X.close, onClose, modifier = Modifier.padding(top = 12.design).focusRequester(close))
         }

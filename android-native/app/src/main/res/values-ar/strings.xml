@@ -1717,4 +1717,8 @@
     <string name="simple_size_small">صغير</string>
     <string name="simple_size_normal">متوسط</string>
     <string name="simple_size_large">كبير</string>
+    <string name="stream_info_resolution">الدقة</string>
+    <string name="stream_info_bitrate">معدل البت</string>
+    <string name="stream_info_reload">إعادة التحميل</string>
+    <string name="stream_info_title">البث</string>
 </resources>

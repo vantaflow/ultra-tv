@@ -1347,6 +1347,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                             onPinch = { sc -> val next = com.ultratv.tv.nativeapp.ui.mobile.aspectAfterPinch(aspect, sc); if (next != aspect) { aspect = next; hud = com.ultratv.tv.nativeapp.ui.mobile.GestureHud.Aspect(next) } },
                         )
                         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
+                        BufferingReload(session, D, rootFocus)
                         if (state.phase == Phase.ERROR) ErrorPanel(
                             kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
                             onRetry = { session.retry() }, onNext = { scope.launch { vm.zap(true)?.let { currentUrl = it } } }, onClose = leave,
@@ -1388,6 +1389,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
 
         // Chargement : visuel de la chaîne avec anneau de progression.
         if (state.phase == Phase.LOADING) LoadingVisual(item?.poster, item?.title ?: title)
+        BufferingReload(session, D, rootFocus)
         if (state.phase == Phase.ERROR) ErrorPanel(
             kind = state.error ?: PlayErrorKind.UNKNOWN, canNext = isLive, D = D,
             onRetry = { session.retry() },
@@ -1463,7 +1465,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                 vm.recordLive(o.minutes, if (o.kind == LiveRecordOption.Kind.MANUAL) Dr.recManual else S.recordingQueuedTemplate.format(hm(o.endMs)), Dr.recSingleConnection)
             }, { recordChoice = null })
         }
-        if (infoOpen) InfoCard(vm, isLive, item?.title ?: title, dur, X, X.thenWord, onClose = { infoOpen = false })
+        if (infoOpen) InfoCard(vm, session, isLive, item?.title ?: title, dur, X, X.thenWord, onClose = { infoOpen = false })
         pinPending?.let { pp ->
             com.ultratv.tv.nativeapp.ui.parental.PinPromptDialog(
                 title = pp.channel.title,

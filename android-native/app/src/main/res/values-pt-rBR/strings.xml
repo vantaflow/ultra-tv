@@ -1673,4 +1673,8 @@
     <string name="simple_size_small">Pequeno</string>
     <string name="simple_size_normal">Médio</string>
     <string name="simple_size_large">Grande</string>
+    <string name="stream_info_resolution">Resolução</string>
+    <string name="stream_info_bitrate">Taxa de bits</string>
+    <string name="stream_info_reload">Recarregar</string>
+    <string name="stream_info_title">Transmissão</string>
 </resources>
