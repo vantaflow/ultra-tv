@@ -7,16 +7,12 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 
 ## Français
 
-### En préparation
+### Disponible, non testé
 
-**TV Samsung (Tizen) et LG (webOS)** — paquets prêts (`tizen/`, `webos/`, [docs/tv.md](docs/tv.md)), pas encore testés sur un vrai téléviseur.
-- Les deux systèmes font tourner une application web dans un Chromium intégré au téléviseur : on réutilise l'application web/bureau existante (React), empaquetée en `.wgt` (Samsung) et `.ipk` (LG). Pas de réécriture.
-- Cibles réalistes : Samsung 2020+ (Tizen 5.5 à 8) et LG 2021+ (webOS 6+). Les modèles plus anciens (Chromium 38 à 66) sont trop limités.
-- Lecture : HLS et MPEG-TS via les lecteurs web (hls.js, mpegts.js) ou le lecteur natif HLS du téléviseur. Le DNS personnalisé, le proxy local et l'enregistrement du bureau ne sont pas disponibles sur ces TV.
-- Le vrai frein est la **distribution**, pas la technique :
-  - installation manuelle : mode développeur obligatoire (Samsung : certificat lié au téléviseur ; LG : session développeur à renouveler toutes les 50 h) — réservé aux utilisateurs avancés ;
-  - boutiques officielles (Samsung Seller Office, LG Seller Lounge) : compte éditeur et validation à chaque version ; d'autres lecteurs IPTV « sans contenu » y sont acceptés, donc envisageable.
-- Reste à faire : tests sur de vrais téléviseurs (télécommande, lecture, performances), puis choix du mode de distribution.
+**TV Samsung (Tizen) et LG (webOS)** — paquets publiés sur [GitHub](https://github.com/vantaflow/ultra-tv/releases) (`.wgt` Samsung, `.ipk` LG), procédure dans [docs/tv.md](docs/tv.md).
+- Même application que la version bureau, pilotée à la télécommande. Samsung 2020+ (Tizen 5.5+), LG 2021+ (webOS 6+).
+- Pas encore testés sur un vrai téléviseur : les retours sont les bienvenus.
+- Pas disponibles dans les boutiques Samsung et LG : installation en mode développeur (Samsung : certificat lié au téléviseur ; LG : session développeur à renouveler toutes les 50 h).
 
 ### À l'étude
 
@@ -45,16 +41,12 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 
 ## English
 
-### In preparation
+### Available, untested
 
-**Samsung (Tizen) and LG (webOS) TVs** — packages ready (`tizen/`, `webos/`, [docs/tv.md](docs/tv.md)), not yet tested on a real TV.
-- Both run a web app inside the TV's built-in Chromium: the existing web/desktop app (React) is reused and packaged as `.wgt` (Samsung) and `.ipk` (LG). No rewrite.
-- Realistic targets: Samsung 2020+ (Tizen 5.5 to 8) and LG 2021+ (webOS 6+). Older models (Chromium 38 to 66) are too limited.
-- Playback: HLS and MPEG-TS through web players (hls.js, mpegts.js) or the TV's native HLS player. Custom DNS, the local proxy and desktop recording are not available on these TVs.
-- The real hurdle is **distribution**, not technology:
-  - manual install: developer mode required (Samsung: certificate tied to the TV; LG: developer session to renew every 50 h) — for advanced users only;
-  - official stores (Samsung Seller Office, LG Seller Lounge): publisher account and review for every release; other "no content" IPTV players are accepted there, so it is an option.
-- Next: testing on real TVs (remote, playback, performance), then choosing how to distribute.
+**Samsung (Tizen) and LG (webOS) TVs** — packages published on [GitHub](https://github.com/vantaflow/ultra-tv/releases) (`.wgt` for Samsung, `.ipk` for LG), install guide in [docs/tv.md](docs/tv.md).
+- Same app as the desktop version, driven by the remote. Samsung 2020+ (Tizen 5.5+), LG 2021+ (webOS 6+).
+- Not yet tested on a real TV: feedback is welcome.
+- Not in the Samsung or LG stores: developer-mode install (Samsung: certificate tied to the TV; LG: developer session to renew every 50 h).
 
 ### Being studied
 
