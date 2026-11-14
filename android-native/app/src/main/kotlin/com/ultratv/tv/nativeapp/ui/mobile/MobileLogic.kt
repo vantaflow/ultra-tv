@@ -77,6 +77,15 @@ fun withBottomTab(tabs: List<String>, slot: Int, route: String): List<String> {
     return out
 }
 
+/** Déplace le raccourci [slot] de [delta] places (▲ = -1, ▼ = +1) ; sans effet en bout de liste. */
+fun moveBottomTab(tabs: List<String>, slot: Int, delta: Int): List<String> {
+    val to = slot + delta
+    if (slot !in tabs.indices || to !in tabs.indices) return tabs
+    val out = tabs.toMutableList()
+    out[slot] = tabs[to]; out[to] = tabs[slot]
+    return out
+}
+
 /** Rubrique d'origine d'une route (fiche film → Films, lecteur → Direct…). */
 fun bottomTabRootOf(route: String?): String = when {
     route == null -> Routes.HOME

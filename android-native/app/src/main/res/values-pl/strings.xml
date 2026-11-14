@@ -1588,4 +1588,6 @@
     <string name="ds_rec_for">Przez %1$s</string>
     <string name="ds_rec_manual">Do ręcznego zatrzymania (maks. 8 h)</string>
     <string name="ds_rec_single_connection">Jedno połączenie: dostawca może odrzucić nagrywanie lub przerwać odtwarzanie.</string>
+    <string name="shortcuts_title">Skróty</string>
+    <string name="shortcuts_hint">Sekcje dolnego paska. Dotknij, aby zmienić, ▲ ▼, aby przesunąć.</string>
 </resources>

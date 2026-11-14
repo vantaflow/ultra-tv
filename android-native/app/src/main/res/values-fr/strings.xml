@@ -1647,4 +1647,6 @@
     <string name="ds_rec_for">Pendant %1$s</string>
     <string name="ds_rec_manual">Jusqu\'à l\'arrêt manuel (8 h max)</string>
     <string name="ds_rec_single_connection">Connexion unique : le fournisseur peut refuser l\'enregistrement ou couper la lecture.</string>
+    <string name="shortcuts_title">Raccourcis</string>
+    <string name="shortcuts_hint">Rubriques de la barre du bas. Touchez-en une pour la changer, ▲ ▼ pour la déplacer.</string>
 </resources>

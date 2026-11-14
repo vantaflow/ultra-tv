@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.shortcutsHint
+import com.ultratv.tv.nativeapp.i18n.shortcutsTitle
 import com.ultratv.tv.nativeapp.i18n.accentColor
 import com.ultratv.tv.nativeapp.i18n.accentName
 import com.ultratv.tv.nativeapp.i18n.doneLabel
@@ -163,5 +165,72 @@ private fun MoveButton(icon: String, label: String, enabled: Boolean, modifier: 
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             DIcon(icon, 30.design, when { f -> Ux.TextOnLight; enabled -> Ux.Text; else -> Ux.Muted2 }, strokeWidth = 2.8f)
         }
+    }
+}
+
+/**
+ * Raccourcis de la barre du bas (téléphone) : une ligne par raccourci (OK / toucher = choisir la rubrique), puis ▲ et ▼
+ * pour changer l'ordre. Chaque modification est enregistrée tout de suite ; le focus suit le raccourci déplacé.
+ */
+@Composable
+internal fun ShortcutsDialog(tabs: List<String>, sportOn: Boolean, onSave: (List<String>) -> Unit, onDismiss: () -> Unit) {
+    val D = LocalDs.current
+    var order by remember { mutableStateOf(tabs) }
+    var picking by remember { mutableStateOf(-1) }
+    val focus = remember { List(com.ultratv.tv.nativeapp.ui.mobile.BOTTOM_TAB_SLOTS) { Triple(FocusRequester(), FocusRequester(), FocusRequester()) } }
+    var refocus by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    LaunchedEffect(refocus) {
+        val (slot, which) = refocus ?: return@LaunchedEffect
+        val t = focus.getOrNull(slot) ?: return@LaunchedEffect
+        runCatching { (when (which) { 0 -> t.first; 1 -> t.second; else -> t.third }).requestFocus() }
+        refocus = null
+    }
+    LaunchedEffect(Unit) { runCatching { focus.first().first.requestFocus() } }
+    fun update(l: List<String>) { order = l; onSave(l) }
+
+    ModalFocusScope(onBack = onDismiss, modifier = Modifier.background(Ux.Scrim)) {
+        Column(
+            Modifier.widthIn(min = 640.design, max = 980.design).clip(RoundedCornerShape(28.design)).background(Ux.SurfaceDeep).padding(40.design),
+            verticalArrangement = Arrangement.spacedBy(12.design),
+        ) {
+            Text(D.shortcutsTitle, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 36.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(D.shortcutsHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 3, modifier = Modifier.padding(bottom = 6.design))
+            order.forEachIndexed { i, route ->
+                val (main, up, down) = focus[i]
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
+                    FocusSurface(
+                        onClick = { picking = i }, shape = RoundedCornerShape(16.design), bg = Ux.Surface, ringWidth = 5.design, focusedScale = 1f,
+                        modifier = Modifier.weight(1f).height(68.designT).focusRequester(main),
+                    ) { f ->
+                        Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically) {
+                            Text("${i + 1}", color = if (f) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, modifier = Modifier.width(44.design))
+                            Text(
+                                com.ultratv.tv.nativeapp.ui.mobile.bottomTabLabel(route), color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope,
+                                fontWeight = FontWeight.SemiBold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                            )
+                            DIcon("M9 6l6 6-6 6", 26.design, if (f) Ux.TextOnLight else Ux.Text3, strokeWidth = 2.6f)
+                        }
+                    }
+                    MoveButton(UP, D.moveUp, enabled = i > 0, modifier = Modifier.focusRequester(up)) {
+                        update(com.ultratv.tv.nativeapp.ui.mobile.moveBottomTab(order, i, -1)); refocus = (i - 1) to 1
+                    }
+                    MoveButton(DOWN, D.moveDown, enabled = i < order.lastIndex, modifier = Modifier.focusRequester(down)) {
+                        update(com.ultratv.tv.nativeapp.ui.mobile.moveBottomTab(order, i, 1)); refocus = (i + 1) to 2
+                    }
+                }
+            }
+            Row(Modifier.padding(top = 8.design), horizontalArrangement = Arrangement.spacedBy(16.design)) {
+                PillButton(D.doneLabel, onDismiss, heightPx = 64, hPadPx = 34, fontPx = 22, weight = FontWeight.Bold, bg = Ux.Cta)
+                PillButton(D.resetDefault, { update(com.ultratv.tv.nativeapp.ui.mobile.DEFAULT_BOTTOM_TABS) }, heightPx = 64, hPadPx = 30, fontPx = 22)
+            }
+        }
+    }
+    if (picking >= 0) {
+        val slot = picking
+        val options = com.ultratv.tv.nativeapp.ui.mobile.BOTTOM_TAB_CHOICES.filter { sportOn || it != com.ultratv.tv.nativeapp.nav.Routes.SPORT }
+            .map { it to com.ultratv.tv.nativeapp.ui.mobile.bottomTabLabel(it) }
+        com.ultratv.tv.nativeapp.ui.design.ChoiceDialog("${D.shortcutsTitle} · ${slot + 1}", options, order.getOrNull(slot), {
+            update(com.ultratv.tv.nativeapp.ui.mobile.withBottomTab(order, slot, it)); picking = -1; refocus = slot to 0
+        }, { picking = -1 })
     }
 }

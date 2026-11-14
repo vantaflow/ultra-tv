@@ -17,6 +17,15 @@ class BottomTabsTest {
         assertEquals(tabs, bottomTabRoutes(tabs.joinToString(","), sportOn = false))
     }
 
+    @Test fun deplacer_raccourci() {
+        assertEquals(listOf(Routes.GUIDE, Routes.LIVE, Routes.MOVIES), moveBottomTab(DEFAULT_BOTTOM_TABS, 1, -1))
+        assertEquals(listOf(Routes.LIVE, Routes.MOVIES, Routes.GUIDE), moveBottomTab(DEFAULT_BOTTOM_TABS, 1, 1))
+        // Bouts de liste : rien ne bouge.
+        assertEquals(DEFAULT_BOTTOM_TABS, moveBottomTab(DEFAULT_BOTTOM_TABS, 0, -1))
+        assertEquals(DEFAULT_BOTTOM_TABS, moveBottomTab(DEFAULT_BOTTOM_TABS, 2, 1))
+        assertEquals(DEFAULT_BOTTOM_TABS, moveBottomTab(DEFAULT_BOTTOM_TABS, 5, -1))
+    }
+
     @Test fun rubriqueDejaPresente_echange() {
         assertEquals(listOf(Routes.MOVIES, Routes.GUIDE, Routes.LIVE), withBottomTab(DEFAULT_BOTTOM_TABS, 0, Routes.MOVIES))
     }

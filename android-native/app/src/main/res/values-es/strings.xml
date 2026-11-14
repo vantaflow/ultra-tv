@@ -1638,4 +1638,6 @@
     <string name="ds_rec_for">Durante %1$s</string>
     <string name="ds_rec_manual">Hasta que lo detenga (máx. 8 h)</string>
     <string name="ds_rec_single_connection">Conexión única: el proveedor puede rechazar la grabación o cortar la reproducción.</string>
+    <string name="shortcuts_title">Accesos directos</string>
+    <string name="shortcuts_hint">Secciones de la barra inferior. Toca una para cambiarla, ▲ ▼ para moverla.</string>
 </resources>

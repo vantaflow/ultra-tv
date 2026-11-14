@@ -1652,4 +1652,6 @@
     <string name="ds_rec_for">Por %1$s</string>
     <string name="ds_rec_manual">Até eu parar (máx. 8 h)</string>
     <string name="ds_rec_single_connection">Conexão única: o provedor pode recusar a gravação ou interromper a reprodução.</string>
+    <string name="shortcuts_title">Atalhos</string>
+    <string name="shortcuts_hint">Seções da barra inferior. Toque em uma para trocar, ▲ ▼ para mover.</string>
 </resources>

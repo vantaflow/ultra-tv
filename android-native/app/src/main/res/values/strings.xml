@@ -1634,4 +1634,6 @@
     <string name="ds_rec_for">For %1$s</string>
     <string name="ds_rec_manual">Until I stop it (8 h max)</string>
     <string name="ds_rec_single_connection">Single connection: the provider may refuse the recording or stop playback.</string>
+    <string name="shortcuts_title">Shortcuts</string>
+    <string name="shortcuts_hint">Sections of the bottom bar. Tap one to change it, ▲ ▼ to move it.</string>
 </resources>

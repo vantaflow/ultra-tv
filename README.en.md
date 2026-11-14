@@ -101,7 +101,7 @@ The original app, driven by the remote (see the screenshots above and [Features]
 
 ### Android smartphone
 
-Touch interface: bottom navigation bar, lists and grids by finger, gesture player with picture-in-picture; forms sit above the keyboard.
+Touch interface: bottom navigation bar (pick its sections and their order: Settings › Display › Shortcuts), lists and grids by finger, gesture player with picture-in-picture; forms sit above the keyboard.
 
 <p align="center">
   <img src="docs/screenshots/phone/en/home.png" alt="Home on smartphone" width="23%" />

@@ -1696,4 +1696,6 @@
     <string name="ds_rec_for">لمدة %1$s</string>
     <string name="ds_rec_manual">حتى الإيقاف اليدوي (8 ساعات كحد أقصى)</string>
     <string name="ds_rec_single_connection">اتصال واحد فقط: قد يرفض المزوّد التسجيل أو يوقف التشغيل.</string>
+    <string name="shortcuts_title">الاختصارات</string>
+    <string name="shortcuts_hint">أقسام الشريط السفلي. المس قسمًا لتغييره، و▲ ▼ لنقله.</string>
 </resources>

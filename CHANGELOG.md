@@ -13,6 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Page de dons : Ko-fi (carte ou PayPal, depuis n'importe quel pays) proposé en premier ; ChariPay (cartes marocaines) en complément quand il sera ouvert.
+- Téléphone : « Raccourcis » (Réglages › Affichage) remplace les trois lignes « Barre du bas · Onglet 2/3/4 » : un seul écran pour choisir les rubriques de la barre du bas et les ranger dans l'ordre voulu (▲ ▼), avec Réinitialiser.
 
 ## [1.3.25] — 2026-11-13 (Android)
 

@@ -102,7 +102,7 @@ L'application d'origine, pilotée à la télécommande (voir les captures ci-des
 
 ### Smartphone Android
 
-Interface tactile : barre de navigation en bas, listes et grilles au doigt, lecteur à gestes avec image dans l'image ; les formulaires se calent au-dessus du clavier.
+Interface tactile : barre de navigation en bas (rubriques au choix et dans l'ordre voulu : Réglages › Affichage › Raccourcis), listes et grilles au doigt, lecteur à gestes avec image dans l'image ; les formulaires se calent au-dessus du clavier.
 
 <p align="center">
   <img src="docs/screenshots/phone/fr/home.png" alt="Accueil sur smartphone" width="23%" />
