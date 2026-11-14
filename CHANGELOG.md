@@ -10,6 +10,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Changer de profil relance la synchro : catégories, langue et réglages du profil faits sur un autre appareil s'appliquent aussitôt.
+- Bureau : catégories propres à chaque profil (comme sur TV), partagées avec les autres appareils ; Direct, Films, Séries, Guide, recherche et accueil n'affichent que celles du profil.
 
 ## [bureau 1.2.61] — 2026-11-14
 

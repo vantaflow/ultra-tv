@@ -39,6 +39,7 @@ export async function deleteSource(id: number): Promise<void> {
   await db.favorites.where("addedAt").above(-1).filter((f) => f.sourceId === id).delete();
   await db.history.where("updatedAt").above(-1).filter((h) => h.sourceId === id).delete();
   await db.hiddenChannels.where("sourceId").equals(id).delete();
+  await db.profileHidden.where("sourceId").equals(id).delete();
   await db.sources.delete(id);
 }
 

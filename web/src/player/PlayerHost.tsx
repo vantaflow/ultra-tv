@@ -15,7 +15,7 @@ import { db } from "@/db/db";
 import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
-import { useCategories, useFavorites } from "@/hooks/data";
+import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
 import { useT } from "@/i18n";
 import { fmtClock, fmtDuration } from "@/lib/text";
 import { COMMIT_MS, fmtDelta, press as scrubPressState, release as scrubRelease, type ScrubState } from "@/lib/seekScrub";
@@ -1223,6 +1223,7 @@ function ChannelsPanel({ cid, cat, onZap }: { cid: number; cat: string | null; o
   const effCat = catSel !== undefined ? catSel : (cat === FAVORITES_SCOPE ? null : cat) ?? cur?.channel?.catExt ?? null;
   const profile = usePrefs((s) => s.profileId);
   const cats = useCategories(source, "live");
+  const hid = useHiddenCats(source, "live");
   useEffect(() => {
     if (tab === "fav") {
       void orderedList(profile, (source?.id ?? 0), cid, FAVORITES_SCOPE).then((r) => setRows(r ?? []));

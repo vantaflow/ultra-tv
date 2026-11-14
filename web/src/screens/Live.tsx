@@ -3,9 +3,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { getOrder, resetOrder, saveOrder } from "@/db/channelOrder";
-import { channelsCol, searchByWords, toggleFavorite } from "@/db/queries";
+import { channelsCol, notInHidden, searchByWords, toggleFavorite } from "@/db/queries";
 import type { ChannelRow, Source } from "@/db/types";
-import { useCategories, useFavorites } from "@/hooks/data";
+import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useElementSize, useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
@@ -59,7 +59,13 @@ function LiveInner({ source }: { source: Source }) {
   const favs = useFavorites(source, "live");
   const [root, size] = useElementSize<HTMLDivElement>();
   const wide = size.w >= 1400;
-  const cat = prefs.liveCat[String(source.id)] ?? "";
+  const hid = useHiddenCats(source, "live");
+  const nh = useMemo(() => notInHidden<ChannelRow>(hid), [hid]);
+  // Catégorie mémorisée masquée par le profil courant : retour à « Tout ».
+  const rawCat = prefs.liveCat[String(source.id)] ?? "";
+  const cat = hid.has(rawCat) ? "" : rawCat;
+  // « Tout » : sans les chaînes des catégories masquées par le profil courant.
+  const colOf = useCallback((c: string | null) => { const col = channelsCol(source.cid, c); return c == null && nh ? col.filter(nh) : col; }, [source.cid, nh]);
   const setCat = (c: string) => prefs.set({ liveCat: { ...prefs.liveCat, [String(source.id)]: c } });
   const [filter, setFilter] = useState("");
   const dq = useDebounced(filter, 200);
@@ -79,8 +85,8 @@ function LiveInner({ source }: { source: Source }) {
   /** Chaînes de la liste dans l'ordre de la source (sans séparateurs de section). */
   const loadNatural = useCallback(async (): Promise<ChannelRow[]> => {
     if (scope === FAVORITES_SCOPE) return (await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((r): r is ChannelRow => !!r);
-    return channelsCol(source.cid, cat || null).filter((c) => !c.sep).limit(20000).toArray();
-  }, [scope, favs, source.cid, cat]);
+    return colOf(cat || null).filter((c) => !c.sep).limit(20000).toArray();
+  }, [scope, favs, source.cid, cat, colOf]);
 
   // Mode tableau (favoris, filtre texte, liste réordonnée) ou mode paginé (catalogue entier / catégorie).
   const arrayMode = cat === FAV || filtering || (!!scope && !!order) || !!mv;
@@ -92,11 +98,11 @@ function LiveInner({ source }: { source: Source }) {
       return nq ? merged.filter((r) => r.norm.includes(nq)) : merged;
     }
     // Toutes les chaînes : index par mot (au plus 3000, remis dans l'ordre du fournisseur) ; une catégorie : balayage borné par l'index.
-    if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep)).sort((a, b) => a.ord - b.ord);
-    return channelsCol(source.cid, cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
-  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural]);
+    if (nq && !cat) return (await searchByWords(db.channels, source.cid, nq, 3000, (c) => !c.sep && (!nh || nh(c)))).sort((a, b) => a.ord - b.ord);
+    return colOf(cat || null).filter((c) => !c.sep && c.norm.includes(nq)).limit(3000).toArray();
+  }, [arrayMode, cat, dq, source.cid, order, scope, loadNatural, colOf, nh]);
   const view = useMemo(() => (mv ? mv.ids.map((i) => mv.rows.get(i)).filter((r): r is ChannelRow => !!r) : arr ?? []), [mv, arr]);
-  const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : channelsCol(source.cid, cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode], 120);
+  const paged = usePagedQuery<ChannelRow>(() => (arrayMode ? null : colOf(cat || null)), [source.cid, source.lastSyncAt, cat, arrayMode, colOf], 120);
   const rows: Rows<ChannelRow> = useMemo(() => (arrayMode ? arrayRows(view) : paged), [arrayMode, view, paged]);
   const count = rows.count;
 
@@ -197,7 +203,7 @@ function LiveInner({ source }: { source: Source }) {
   const catLabel = cat === FAV ? t("common.favorites") : cat === "" ? t("common.all") : cats?.find((c) => c.extId === cat)?.label ?? "";
   const extra = useMemo(() => [{ id: FAV, label: t("common.favorites"), n: favs.length }, { id: "", label: t("common.all"), n: source.counts.live }], [favs.length, source.counts.live, t]);
   const pickCat = (c: string) => { setCat(c); setPop(false); };
-  const sections = useLiveQuery(async () => (arrayMode ? 0 : await channelsCol(source.cid, cat || null).filter((c) => !!c.sep).count()), [source.cid, cat, arrayMode]) ?? 0;
+  const sections = useLiveQuery(async () => (arrayMode ? 0 : await colOf(cat || null).filter((c) => !!c.sep).count()), [source.cid, cat, arrayMode, colOf]) ?? 0;
 
   if (source.state === "syncing" && !source.cid) return <StateCard icon="refresh" title={t("sync.title")} body={t("sync.lead")} />;
 

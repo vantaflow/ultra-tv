@@ -12,6 +12,7 @@ vi.mock("@/net/secrets", () => ({
 }));
 
 import { db } from "@/db/db";
+import { usePrefs } from "@/state/prefs";
 import { emptySource, listSources, saveSource } from "@/db/sources";
 import { syncSource } from "@/sync/client";
 import { setCloudHttp } from "./client";
@@ -125,5 +126,62 @@ describe("réception", () => {
     expect(await applyRemotePrefs(remote(900))).toEqual([]);
     expect((await enabledOf())["live:10"]).toBe(1);
     expect(useCloud.getState().prefsSync).toBe(false);
+  });
+});
+
+describe("catégories masquées par profil (pHidden)", () => {
+  const setProfiles = (names: string[]) => usePrefs.setState({ profiles: names.map((n, i) => ({ id: i === 0 ? "main" : `p${i}`, name: i === 0 ? "" : n, color: "#fff" })), profileId: "main" });
+  beforeEach(async () => { await db.profileHidden.clear(); await db.settings.delete(`cloud.foreign.pHidden.${ID}`); });
+
+  it("envoie une entrée par profil et par type ; le profil sans nom = « Principal »", async () => {
+    setProfiles(["", "Kids"]);
+    await db.profileHidden.bulkPut([
+      { key: "main:" + sid + ":live", profile: "main", sourceId: sid, kind: "live", ids: ["10"] },
+      { key: "p1:" + sid + ":series", profile: "p1", sourceId: sid, kind: "series", ids: ["30"] },
+    ]);
+    expect(await publishPrefs(sid)).toBe("sent");
+    expect((w.providers[0]!.prefs as { pHidden?: unknown }).pHidden).toEqual([{ p: "Principal", k: "live", ids: ["10"] }, { p: "Kids", k: "series", ids: ["30"] }]);
+  });
+
+  it("reçoit : remplace par nom sans casse, efface les profils sans entrée, renvoie les profils inconnus", async () => {
+    setProfiles(["", "Kids"]);
+    await db.profileHidden.put({ key: "main:" + sid + ":live", profile: "main", sourceId: sid, kind: "live", ids: ["11"] }); // à effacer
+    const prefs = { langs: null, disabled: { live: [], movie: [], series: [] }, updatedAt: 800, by: "d2",
+      pHidden: [{ p: "kids", k: "movie" as const, ids: ["20"] }, { p: "Salon", k: "live" as const, ids: ["10"] }] };
+    w.providers[0]!.prefs = prefs;
+    expect(await applyRemotePrefs([w.providers[0]!])).toEqual([]);
+    const rows = await db.profileHidden.toArray();
+    expect(rows.map((r) => [r.profile, r.kind, r.ids])).toEqual([["p1", "movie", ["20"]]]);
+    // Publication suivante : l'entrée du profil inconnu (« Salon ») repart telle quelle.
+    await db.profileHidden.put({ key: "main:" + sid + ":series", profile: "main", sourceId: sid, kind: "series", ids: ["30"] });
+    expect(await publishPrefs(sid)).toBe("sent");
+    const sent = (w.providers[0]!.prefs as { pHidden: { p: string; k: string; ids: string[] }[] }).pHidden;
+    expect(sent).toEqual(expect.arrayContaining([{ p: "Principal", k: "series", ids: ["30"] }, { p: "Kids", k: "movie", ids: ["20"] }, { p: "Salon", k: "live", ids: ["10"] }]));
+    expect(sent).toHaveLength(3);
+  });
+
+  it("champ absent (appareil plus ancien) : rien n'est touché", async () => {
+    setProfiles(["", "Kids"]);
+    await db.profileHidden.put({ key: "main:" + sid + ":live", profile: "main", sourceId: sid, kind: "live", ids: ["11"] });
+    w.providers[0]!.prefs = { langs: null, disabled: { live: [], movie: [], series: [] }, updatedAt: 800, by: "d2" };
+    await applyRemotePrefs([w.providers[0]!]);
+    expect((await db.profileHidden.toArray()).length).toBe(1);
+  });
+
+  it("bout en bout : masquer dans Réglages publie, un autre appareil le retrouve ; disabled global conservé", async () => {
+    setProfiles(["", "Kids"]);
+    const { setCategoriesVisible } = await import("@/db/profileCategories");
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const live10 = (await db.categories.toArray()).filter((c) => c.extId === "10");
+    await setCategoriesVisible(sid, "main", ["main", "p1"], "live", live10, false); // listener -> notePrefsChanged
+    vi.advanceTimersByTime(1600);
+    vi.useRealTimers();
+    await wait(() => w.state.putCount > 0);
+    expect(w.providers[0]!.prefs).toMatchObject({ disabled: { live: [] }, pHidden: [{ p: "Principal", k: "live", ids: ["10"] }] });
+    // Autre appareil : même compte, profils locaux différents.
+    await db.profileHidden.clear();
+    await db.settings.delete(`cloud.prefsAt.${ID}`);
+    expect(await applyRemotePrefs([w.providers[0]!])).toEqual([]);
+    expect((await db.profileHidden.toArray()).map((r) => [r.profile, r.ids])).toEqual([["main", ["10"]]]);
   });
 });

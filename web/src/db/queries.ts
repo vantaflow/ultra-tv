@@ -2,6 +2,7 @@ import { liveQuery } from "dexie";
 import type { Table } from "dexie";
 import { searchTokens } from "@/lib/text";
 import { fuzzyPrefixes, fuzzyRank } from "@/lib/fuzzy";
+import { isShown } from "@/lib/profileCategories";
 import { db } from "./db";
 import type { CategoryRow, ChannelRow, FavoriteRow, HistoryRow, Kind, MovieRow, ProgramRow, SeriesRow } from "./types";
 
@@ -38,9 +39,13 @@ export const seriesCol = (cid: number, cat: string | null, sort: VodSort) => vod
 export const categoriesOf = (cid: number, kind: Kind): Promise<CategoryRow[]> =>
   db.categories.where("[sourceId+kind]").equals([cid, kind]).sortBy("ord");
 
-/** Catégories affichées (activées et non vides) d'une génération de catalogue : requête des écrans Direct, Films et Séries. */
-export const visibleCategories = async (cid: number, kind: Kind): Promise<CategoryRow[]> =>
-  cid ? (await categoriesOf(cid, kind)).filter((c) => c.enabled && c.count > 0) : [];
+/** Catégories affichées (téléchargées, non vides et non masquées par le profil courant : [hidden]) d'une génération de catalogue : requête des écrans Direct, Films et Séries. */
+export const visibleCategories = async (cid: number, kind: Kind, hidden: ReadonlySet<string> = new Set()): Promise<CategoryRow[]> =>
+  cid ? (await categoriesOf(cid, kind)).filter((c) => isShown(c, hidden) && c.count > 0) : [];
+
+/** Filtre de lignes : écarte celles dont la catégorie est masquée par le profil courant (null = rien à filtrer, ensemble vide). */
+export const notInHidden = <T extends { catExt: string }>(hidden: ReadonlySet<string> | undefined) =>
+  hidden && hidden.size ? (r: T) => !hidden.has(r.catExt) : null;
 
 export const LEGACY_SCAN_LIMIT = 2000;
 

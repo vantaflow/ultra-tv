@@ -70,6 +70,7 @@ describe("ouverture d'une base du bureau 1.2.38", () => {
     // Tables ajoutées par les versions 4 et 5 du schéma : présentes et vides après la mise à niveau.
     expect(await db.channelOrder.count()).toBe(0);
     expect(await db.hiddenChannels.count()).toBe(0);
+    expect(await db.profileHidden.count()).toBe(0); // v6
     expect((await db.settings.get("epg.extra"))?.value).toBe("https://g.test/epg.xml");
     // Index de recherche ajouté par la mise à niveau.
     expect((await db.movies.toArray()).every((m) => Array.isArray(m.words))).toBe(true);

@@ -1,9 +1,10 @@
-// Réglages d'affichage partagés (langues, catégories désactivées et leur ordre, chaînes masquées, ordre des chaînes) : conversions pures, règle « le plus récent gagne »,
+// Réglages d'affichage partagés (langues, catégories désactivées et leur ordre, catégories masquées par profil, chaînes masquées, ordre des chaînes) : conversions pures, règle « le plus récent gagne »,
 // et regroupement des envois (anti-rebond). Aucune E/S ici.
 
 import { OTHER_LANG, canonicalLang, protocolLang } from "@/lib/categoryLang";
 import { mergeCategoryOrder } from "@/lib/categoryOrder";
 import type { CategoryRow, Kind } from "@/db/types";
+import { pHiddenToWire, type PHiddenLocal, type PHiddenWire } from "@/lib/profileCategories";
 import type { CloudPrefs } from "./client";
 
 export const MAX_IDS = 5000;
@@ -104,7 +105,7 @@ export function planChOrder(
   return { put: [...put.values()], remove, foreign };
 }
 
-export interface PrefsExtra { hidden?: HiddenLocal[]; chOrder?: ChOrderLocal[]; keepHidden?: HiddenWire[]; keepChOrder?: ChOrderWire[] }
+export interface PrefsExtra { hidden?: HiddenLocal[]; chOrder?: ChOrderLocal[]; pHidden?: PHiddenLocal[]; keepHidden?: HiddenWire[]; keepChOrder?: ChOrderWire[]; keepPHidden?: PHiddenWire[] }
 
 /** Local -> prefs à publier. `order` : catégories de chaque type triées comme affichées (`ord`). */
 export function toPrefs(langs: string[] | null, cats: CatLike[], updatedAt: number, extra: PrefsExtra = {}): Omit<CloudPrefs, "by"> {
@@ -122,6 +123,7 @@ export function toPrefs(langs: string[] | null, cats: CatLike[], updatedAt: numb
   const out: Omit<CloudPrefs, "by"> = { langs: langs == null ? null : [...new Set(langs.map(langToWire))].sort(), disabled, order, updatedAt };
   if (extra.hidden) out.hidden = hiddenToWire(extra.hidden, extra.keepHidden);
   if (extra.chOrder) out.chOrder = chOrderToWire(extra.chOrder, extra.keepChOrder);
+  if (extra.pHidden) out.pHidden = pHiddenToWire(extra.pHidden, extra.keepPHidden, MAX_CHORDER, MAX_IDS, MAX_PROFILE_NAME);
   return out;
 }
 

@@ -16,13 +16,15 @@ import { guideErrorForSave } from "@/lib/guideAddress";
 import { EXTRA_EPG_KEY } from "@/sync/epg";
 import type { TimeFormat } from "@/lib/clock";
 import { deleteProfileData } from "@/db/profileData";
+import { setCategoriesVisible } from "@/db/profileCategories";
+import { isShown } from "@/lib/profileCategories";
 import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
 import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
 import { useSync } from "@/state/sync";
 import { useUi } from "@/state/ui";
 import { syncSourceEpg, testSource } from "@/sync/client";
-import { moveCategory, setCategoriesEnabled, sortCategoriesAZ } from "@/db/categoryActions";
+import { moveCategory, sortCategoriesAZ } from "@/db/categoryActions";
 import { Modal, Seg, Switch } from "@/ui/common";
 import type { GuideCol } from "@/lib/guideCol";
 import { readAutoUpdate, writeAutoUpdate } from "@/net/autoUpdate";
@@ -404,6 +406,12 @@ function CategoriesPane() {
   const [kind, setKind] = useState<Kind>("live");
   const [q, setQ] = useState("");
   const all = useLiveQuery(async () => (source?.cid ? (await db.categories.where("[sourceId+kind]").between([source.cid, ""], [source.cid, "￿"]).toArray()).sort((a, b) => a.ord - b.ord) : []), [source?.cid]) ?? [];
+  // Affichée = téléchargée ET non masquée par le profil courant (l'interrupteur n'agit que pour ce profil).
+  const profile = usePrefs((p) => p.profileId);
+  const profileIds = usePrefs((p) => p.profiles).map((x) => x.id);
+  const hiddenRows = useLiveQuery(async () => (source?.id ? (await db.profileHidden.where("sourceId").equals(source.id).toArray()).filter((r) => r.profile === profile) : []), [source?.id, profile]) ?? [];
+  const hiddenOf = useMemo(() => new Map(hiddenRows.map((r) => [r.kind, new Set(r.ids)])), [hiddenRows]);
+  const shownOf = (c: CategoryRow) => isShown(c, hiddenOf.get(c.kind) ?? new Set());
   const initial = useRef<Map<number, 0 | 1> | null>(null);
   if (initial.current == null && all.length) initial.current = new Map(all.map((c) => [c.id!, c.enabled]));
   const pending = initial.current ? all.filter((c) => initial.current!.get(c.id!) !== c.enabled).length : 0;
@@ -415,7 +423,7 @@ function CategoriesPane() {
   // une simple activation / désactivation (la ligne ne saute plus sous le curseur).
   const pin = useRef<{ key: string; ids: number[] }>({ key: "", ids: [] });
   const ordKey = `${kind}|${nq}|${sameKind.map((c) => c.id).join(",")}`;
-  if (pin.current.key !== ordKey) pin.current = { key: ordKey, ids: [...sameKind].sort((a, b) => b.enabled - a.enabled).map((c) => c.id!) };
+  if (pin.current.key !== ordKey) pin.current = { key: ordKey, ids: [...sameKind].sort((a, b) => +shownOf(b) - +shownOf(a)).map((c) => c.id!) };
   const shown = useMemo(() => {
     const idx = new Map(pin.current.ids.map((id, i) => [id, i]));
     return sameKind.filter((c) => !nq || catMatches(c.name, nq)).sort((a, b) => (idx.get(a.id!) ?? 1e9) - (idx.get(b.id!) ?? 1e9));
@@ -428,7 +436,8 @@ function CategoriesPane() {
   // Déplacement dans la liste AFFICHÉE (actives d'abord) : la catégorie bouge d'un cran à l'écran.
   const move = async (c: CategoryRow, delta: number) => { if (await moveCategory(shown, c.id!, delta) && source.id != null) notePrefsChanged(source.id); };
   const sortAZ = async () => { if (await sortCategoriesAZ(sameKind) && source.id != null) notePrefsChanged(source.id); };
-  const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (await setCategoriesEnabled(rows, v) && source.id != null) notePrefsChanged(source.id); };
+  // Affiche / masque pour le profil courant ; le téléchargement suit (voir lib/profileCategories). La publication est déclenchée par l'écriture.
+  const setMany = async (rows: CategoryRow[], v: 0 | 1) => { if (source.id != null) await setCategoriesVisible(source.id, profile, profileIds, kind, rows, !!v); };
   const counts = { live: all.filter((c) => c.kind === "live").length, movie: all.filter((c) => c.kind === "movie").length, series: all.filter((c) => c.kind === "series").length };
   return (
     <>
@@ -456,7 +465,7 @@ function CategoriesPane() {
                 <button className="btn sm" disabled={!canMove} aria-label={`${t("cor.down")} : ${c.label}`} onClick={() => void move(c, 1)}>▼</button>
                 {kind === "live" && <button className="btn sm" aria-label={`${t("set.catsChannels")} : ${c.label}`} onClick={() => setChanCat(c)}>{t("set.catsChannels")}</button>}
               </span>
-              <span><Switch on={!!c.enabled} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
+              <span><Switch on={shownOf(c)} label={c.label} onChange={(v) => void setMany([c], v ? 1 : 0)} /></span>
             </div>
           )} />
       </div>

@@ -165,6 +165,8 @@ export interface CloudPrefs {
   hidden?: { i: string; c: string | null; n: string }[];
   /** Facultatif : ordre personnel des chaînes (p = nom du profil, s = catégorie ou « __fav__ », k = identifiants de flux). */
   chOrder?: { p: string; s: string; k: string[] }[];
+  /** Facultatif : catégories masquées par profil (p = nom du profil, k = type, ids = identifiants de catégorie du fournisseur). */
+  pHidden?: { p: string; k: "live" | "movie" | "series"; ids: string[] }[];
   updatedAt: number;
   by?: string;
 }

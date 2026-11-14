@@ -4,7 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "@/db/db";
 import { channelsCol, programsFor } from "@/db/queries";
 import type { ChannelRow, ProgramRow, Source } from "@/db/types";
-import { useCategories, useFavorites } from "@/hooks/data";
+import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
 import { usePlayer } from "@/player/store";
@@ -140,6 +140,7 @@ function Inner({ source }: { source: Source }) {
   const t = useT();
   const prefs = usePrefs();
   const cats = useCategories(source, "live");
+  const hid = useHiddenCats(source, "live");
   const favs = useFavorites(source, "live");
   const now = useNow(30_000);
   const [day, setDay] = useState(0);
@@ -158,13 +159,15 @@ function Inner({ source }: { source: Source }) {
   const to = from + HOURS * 3600_000;
 
   // Catégorie par défaut : favoris s'il y en a, sinon première catégorie du direct.
-  const effCat = cat ?? (favs.length ? "__fav" : "");
+  // Catégorie choisie puis masquée par le profil courant : retour à « Tout ».
+  const effCat = cat != null && hid.has(cat) ? "" : cat ?? (favs.length ? "__fav" : "");
   const chansQ = useLiveQuery(async () => {
     if (!source.cid) return [];
     // Tri par numéro de chaîne croissant partout (Tout, catégories, Favoris), puis plafond d'affichage.
     if (effCat === "__fav") return sortGuideChannels((await Promise.all(favs.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c && !!c.epg));
-    return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg).toArray()).slice(0, GUIDE_MAX_CHANNELS);
-  }, [source.cid, effCat, favs.length]);
+    // « Tout » : sans les chaînes des catégories masquées par le profil courant.
+    return sortGuideChannels(await channelsCol(source.cid, effCat || null).filter((c) => !c.sep && !!c.epg && (!!effCat || !hid.has(c.catExt))).toArray()).slice(0, GUIDE_MAX_CHANNELS);
+  }, [source.cid, effCat, favs.length, hid]);
   const chans = chansQ ?? NO_CHANS;
 
   const v = useVirtualizer({ count: chans.length, getScrollElement: () => scroller.current, estimateSize: () => 72, overscan: 6 });

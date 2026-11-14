@@ -155,6 +155,16 @@ export interface FavoriteRow {
 }
 
 /** Ordre personnel des chaînes d'une liste (catégorie du fournisseur ou favoris) pour un profil ; local à cet appareil. */
+/** Catégories masquées par un profil, pour une source et un type (identifiants de catégorie du fournisseur). */
+export interface ProfileHiddenRow {
+  key: string;
+  profile: string;
+  /** Identifiant réel de la source (et non la génération de catalogue). */
+  sourceId: number;
+  kind: Kind;
+  ids: string[];
+}
+
 export interface ChannelOrderRow {
   key: string;
   profile: string;

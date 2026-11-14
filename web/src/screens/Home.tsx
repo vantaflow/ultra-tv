@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { channelsCol, historyOf } from "@/db/queries";
 import type { ChannelRow, HistoryRow, SeriesRow, Source } from "@/db/types";
-import { useFavorites } from "@/hooks/data";
+import { useFavorites, useHiddenCats } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
@@ -183,9 +183,13 @@ function HomeInner({ source }: { source: Source }) {
   const nav = useNavigate();
   const { profileId, lang, sportSection } = usePrefs();
   const favs = useFavorites(source, "live");
+  // Catégories masquées par le profil courant : exclues des rangées de la page d'accueil.
+  const hLive = useHiddenCats(source, "live");
+  const hMovie = useHiddenCats(source, "movie");
+  const hSeries = useHiddenCats(source, "series");
   const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id]) ?? [];
   const favChans = useLiveQuery(async () => (await Promise.all(favs.slice(0, 12).map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c), [favs, source.cid]) ?? [];
-  const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep).first()), [favChans, source.cid]);
+  const featured = useLiveQuery(async () => favChans[0] ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt)).first()) ?? (await channelsCol(source.cid, null).filter((c) => !c.sep && !hLive.has(c.catExt)).first()), [favChans, source.cid, hLive]);
   const nn = useNowNext(source, featured?.epg, featured?.streamId);
   const trakt = useTraktRows(source);
   const favSeries = useFavorites(source, "series");
@@ -193,11 +197,11 @@ function HomeInner({ source }: { source: Source }) {
   const newEps = useNewEpisodes(source, seriesHist, favSeries);
   const seen = useIsWatchedMovie();
   const openTrakt = (r: TraktRow) => nav(r.kind === "movie" ? `/movie/${r.ref}` : `/serie/${r.ref}`);
-  const movies = useLiveQuery(() => db.movies.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
-  const series = useLiveQuery(() => db.series.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().limit(24).toArray(), [source.cid]) ?? [];
+  const movies = useLiveQuery(() => db.movies.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().filter((m) => !hMovie.has(m.catExt)).limit(24).toArray(), [source.cid, hMovie]) ?? [];
+  const series = useLiveQuery(() => db.series.where("[sourceId+added]").between([source.cid, -1], [source.cid, Infinity]).reverse().filter((m) => !hSeries.has(m.catExt)).limit(24).toArray(), [source.cid, hSeries]) ?? [];
   // Mieux notés : note du fournisseur (index [sourceId+rating]), affiche obligatoire.
-  const topMovies = useLiveQuery(() => db.movies.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).limit(20).toArray(), [source.cid]) ?? [];
-  const topSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).limit(20).toArray(), [source.cid]) ?? [];
+  const topMovies = useLiveQuery(() => db.movies.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster && !hMovie.has(m.catExt)).limit(20).toArray(), [source.cid, hMovie]) ?? [];
+  const topSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster && !hSeries.has(m.catExt)).limit(20).toArray(), [source.cid, hSeries]) ?? [];
   // « Parce que vous avez regardé X » : dernier film de l'historique, puis les mieux notés de la même catégorie.
   const because = useLiveQuery(async () => {
     const last = (await historyOf(profileId, source.id!)).find((h) => h.kind === "movie");
@@ -205,12 +209,12 @@ function HomeInner({ source }: { source: Source }) {
     const seed = await db.movies.where("[sourceId+streamId]").equals([source.cid, last.refId]).first();
     if (!seed) return null;
     const list = await db.movies.where("[sourceId+catExt+rating]").between([source.cid, seed.catExt, 0], [source.cid, seed.catExt, Infinity]).reverse()
-      .filter((m) => m.streamId !== seed.streamId && !!m.poster).limit(20).toArray();
+      .filter((m) => m.streamId !== seed.streamId && !!m.poster && !hMovie.has(m.catExt)).limit(20).toArray();
     return { title: seed.title, list };
-  }, [profileId, source.id, source.cid]);
+  }, [profileId, source.id, source.cid, hMovie]);
 
   // « À la une » qui défile : la chaîne mise en avant, puis les séries les mieux notées avec image paysage.
-  const heroSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((x) => !!x.backdrop).limit(5).toArray(), [source.cid]) ?? [];
+  const heroSeries = useLiveQuery(() => db.series.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((x) => !!x.backdrop && !hSeries.has(x.catExt)).limit(5).toArray(), [source.cid, hSeries]) ?? [];
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroPaused, setHeroPaused] = useState(false);
   const animations = usePrefs((p) => p.animations);
@@ -227,9 +231,9 @@ function HomeInner({ source }: { source: Source }) {
   const greet = t(hour < 12 ? "home.greetMorning" : hour < 18 ? "home.greetAfternoon" : "home.greetEvening");
   const liveRow = useLiveQuery(async () => {
     if (favChans.length >= 5) return favChans.slice(0, 5);
-    const extra = await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg).limit(8).toArray();
+    const extra = await channelsCol(source.cid, null).filter((c) => !c.sep && !!c.epg && !hLive.has(c.catExt)).limit(8).toArray();
     return [...favChans, ...extra.filter((c) => !favChans.some((f) => f.streamId === c.streamId))].slice(0, 5);
-  }, [favChans, source.cid]) ?? [];
+  }, [favChans, source.cid, hLive]) ?? [];
   const shortcuts: { to: string; icon: "live" | "guide" | "movies" | "series" | "heart"; label: string; sub: string }[] = [
     { to: "/live", icon: "live", label: t("nav.live"), sub: t("common.channelsCount", { count: source.counts.live }) },
     { to: "/guide", icon: "guide", label: t("nav.guide"), sub: t("home.tonight") },

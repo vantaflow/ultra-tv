@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
 import { searchByWords, searchFuzzy } from "@/db/queries";
+import { useHiddenCats } from "@/hooks/data";
 import type { ChannelRow, MovieRow, ProgramRow, SeriesRow, Source } from "@/db/types";
 import { useDebounced } from "@/hooks/misc";
 import { useT, type Key } from "@/i18n";
@@ -62,6 +63,10 @@ function Inner({ source }: { source: Source }) {
   const [tab, setTab] = useState<Tab>("all");
   const [sort, setSort] = useState<SearchSort>("relevance");
   const input = useRef<HTMLInputElement>(null);
+  // Catégories masquées par le profil courant : leurs chaînes, films et séries ne sortent pas de la recherche.
+  const hLive = useHiddenCats(source, "live");
+  const hMovie = useHiddenCats(source, "movie");
+  const hSeries = useHiddenCats(source, "series");
   useEffect(() => { input.current?.focus(); }, []);
   useEffect(() => { setTab("all"); }, [dq]);
 
@@ -72,21 +77,23 @@ function Inner({ source }: { source: Source }) {
     let dead = false;
     setBusy(true);
     void Promise.all([
-      searchByWords(db.channels, source.cid, nq, LIMIT, (c) => !c.sep),
-      searchByWords(db.movies, source.cid, nq, LIMIT),
-      searchByWords(db.series, source.cid, nq, LIMIT),
+      searchByWords(db.channels, source.cid, nq, LIMIT, (c) => !c.sep && !hLive.has(c.catExt)),
+      searchByWords(db.movies, source.cid, nq, LIMIT, hMovie.size ? (m) => !hMovie.has(m.catExt) : undefined),
+      searchByWords(db.series, source.cid, nq, LIMIT, hSeries.size ? (m) => !hSeries.has(m.catExt) : undefined),
       searchPrograms(source.cid, nq).catch(() => []),
     ]).then(async ([channels, movies, series, programs]) => {
       // Aucun film ni série : repli tolérant aux fautes de frappe (« brekin bad » → Breaking Bad).
       let fuzzy = false;
       if (!movies.length && !series.length && nq.trim().length >= 4) {
         [movies, series] = await Promise.all([searchFuzzy(db.movies, source.cid, nq, 30), searchFuzzy(db.series, source.cid, nq, 30)]);
+        movies = movies.filter((m) => !hMovie.has(m.catExt));
+        series = series.filter((m) => !hSeries.has(m.catExt));
         fuzzy = movies.length + series.length > 0;
       }
       if (!dead) { setRes({ q: dq, channels, movies: dedupeByTitle(movies), series: dedupeByTitle(series), programs, fuzzy }); setBusy(false); }
     }).catch(() => { if (!dead) setBusy(false); });
     return () => { dead = true; };
-  }, [dq, source.cid]);
+  }, [dq, source.cid, hLive, hMovie, hSeries]);
 
   // Tri : sur la saisie qui a produit les résultats. Repli tolérant : l'ordre de ressemblance est gardé.
   const view = useMemo(() => {

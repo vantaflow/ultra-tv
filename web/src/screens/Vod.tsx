@@ -2,10 +2,10 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "@/db/db";
-import { historyOf, moviesCol, searchByWords, seriesCol, type VodSort } from "@/db/queries";
+import { historyOf, moviesCol, notInHidden, searchByWords, seriesCol, type VodSort } from "@/db/queries";
 import { filterActive, matchesFilter, NO_FILTER, PERIODS, RATINGS, type VodFilter } from "@/lib/vodFilter";
 import type { CategoryRow, MovieRow, SeriesRow, Source } from "@/db/types";
-import { useCategories, useFavorites } from "@/hooks/data";
+import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
 import { useDebounced } from "@/hooks/misc";
 import { usePagedQuery } from "@/hooks/paged";
 import { useT } from "@/i18n";
@@ -42,7 +42,11 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const seen = useIsWatchedMovie();
   const favSet = useMemo(() => new Set(favs.map((f) => f.refId)), [favs]);
   const key = `${source.id}:${kind}`;
-  const cat = prefs.liveCat[key] ?? "";
+  const hid = useHiddenCats(source, kind);
+  const nh = useMemo(() => notInHidden<Item>(hid), [hid]);
+  // Catégorie mémorisée masquée par le profil courant : retour à « Tout ».
+  const rawCat = prefs.liveCat[key] ?? "";
+  const cat = hid.has(rawCat) ? "" : rawCat;
   const [sort, setSort] = useState<VodSort>("recent");
   const [filter, setFilter] = useState("");
   const [pop, setPop] = useState(false);
@@ -56,7 +60,9 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
   const eSort: VodSort = sort === "title" && !titleOk ? "recent" : sort;
   const make = () => {
     const col = (kind === "movie" ? moviesCol(source.cid, cat || null, eSort) : seriesCol(source.cid, cat || null, eSort)) as import("dexie").Collection<Item, unknown>;
-    return narrowed ? col.filter((r) => matchesFilter(r, vf)) : col;
+    // « Tout » : sans les titres des catégories masquées par le profil courant.
+    const base = cat === "" && nh ? col.filter(nh) : col;
+    return narrowed ? base.filter((r) => matchesFilter(r, vf)) : base;
   };
   // Filtre texte = mode tableau. Dans « Tout » : index par mot (200 résultats, retriés selon le tri choisi) ;
   // dans une catégorie : balayage de la catégorie seule (déjà bornée par l'index).
@@ -66,12 +72,12 @@ function VodInner({ source, kind }: { source: Source; kind: "movie" | "series" }
     const q = normText(dq.trim());
     if (q && cat === "") {
       const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
-      return sortHits(await searchByWords(table, source.cid, q, 200, narrowed ? (r) => matchesFilter(r, vf) : undefined), eSort);
+      return sortHits(await searchByWords(table, source.cid, q, 200, narrowed || nh ? (r) => (!nh || nh(r)) && (!narrowed || matchesFilter(r, vf)) : undefined), eSort);
     }
     if (eSort === "title") return sortHits(await (q ? make().filter((r) => r.norm.includes(q)) : make()).toArray(), "title");
     return (q ? make().filter((r) => r.norm.includes(q)) : make()).limit(2000).toArray();
-  }, [arrayMode, dq, cat, eSort, source.cid, kind, vf]);
-  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, source.lastSyncAt, cat, eSort, kind, arrayMode, vf], 96);
+  }, [arrayMode, dq, cat, eSort, source.cid, kind, vf, nh]);
+  const paged = usePagedQuery<Item>(() => (arrayMode ? null : make()), [source.cid, source.lastSyncAt, cat, eSort, kind, arrayMode, vf, nh], 96);
   const rows: Rows<Item> = useMemo(() => (arrayMode ? arrayRows(arr ?? []) : paged), [arrayMode, arr, paged]);
 
   const idOf = (r: Item) => (kind === "movie" ? (r as MovieRow).streamId : (r as SeriesRow).seriesId);
@@ -252,10 +258,11 @@ function CategoryRowView({ source, kind, cat, favSet, sort, onSeeAll, onOpen }: 
 function VodTop({ source, kind, onOpen }: { source: Source; kind: "movie" | "series"; onOpen: (id: number) => void }) {
   const t = useT();
   const { profileId } = usePrefs();
+  const hid = useHiddenCats(source, kind);
   const best = useLiveQuery(async () => {
     const table = (kind === "movie" ? db.movies : db.series) as unknown as import("dexie").Table<Item, number>;
-    return table.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster).first();
-  }, [source.cid, kind]);
+    return table.where("[sourceId+rating]").between([source.cid, 0.01], [source.cid, 10], true, true).reverse().filter((m) => !!m.poster && !hid.has(m.catExt)).first();
+  }, [source.cid, kind, hid]);
   const hist = useLiveQuery(async () => (await historyOf(profileId, source.id!)).filter((h) => (kind === "movie" ? h.kind === "movie" : h.kind === "series") && h.dur > 0 && h.pos / h.dur < 0.95).slice(0, 12), [profileId, source.id, kind]) ?? [];
   const id = best ? (kind === "movie" ? (best as MovieRow).streamId : (best as SeriesRow).seriesId) : 0;
   const backdrop = best && kind === "series" ? (best as SeriesRow).backdrop : null;
