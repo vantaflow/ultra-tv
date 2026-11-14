@@ -239,7 +239,7 @@ class CloudSyncManager @Inject constructor(
     private val stateScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     @Volatile private var watchingState = false
 
-    /** Au démarrage : échange 60 s après chaque changement local de favoris ou d'historique, et toutes les 10 min. */
+    /** Au démarrage : échange 60 s après chaque changement local de favoris ou d'historique, et toutes les 2 min tant que l’appli est au premier plan. */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     fun watchSharedState() {
         if (watchingState) return
