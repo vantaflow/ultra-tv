@@ -310,7 +310,11 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setLastSyncAt(ms: Long) = update { it[Keys.lastSyncAt] = ms }
     suspend fun setWorkerBase(url: String) = update { it[Keys.workerBase] = url.trim() }
     suspend fun markOnboardingSeen() = update { it[Keys.seenOnboarding] = true }
-    suspend fun setLanguage(code: String) = update { it[Keys.language] = code }
+    /** Langue de l'interface : celle du PROFIL (partagée entre appareils) ; la valeur de l'appareil sert aux profils sans choix. */
+    suspend fun setLanguage(code: String) {
+        update { it[Keys.language] = code }
+        profiles.putPref(com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE, code)
+    }
     suspend fun setTimeZone(id: String) = update { it[Keys.timeZone] = id }
     suspend fun setBottomTabs(routes: List<String>) = update { it[Keys.bottomTabs] = routes.joinToString(",") }
     suspend fun setTimeFormat(key: String) = update { it[Keys.timeFormat] = com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(key).key }

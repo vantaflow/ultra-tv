@@ -124,7 +124,11 @@ class ProfileRepository(
     }
 
     // ── Préférences et catégories masquées du profil courant ──
-    suspend fun putPref(key: String, value: String) = dao.putPref(ProfilePrefEntity(currentIdNow, key, value))
+    suspend fun putPref(key: String, value: String) {
+        dao.putPref(ProfilePrefEntity(currentIdNow, key, value))
+        // Langue du profil : partagée entre appareils (le profil est marqué modifié pour que ce choix gagne ailleurs).
+        if (key == ProfilePrefs.UI_LANGUAGE) current.value?.let { log?.touch(it.name) }
+    }
     suspend fun clearPref(key: String) = dao.removePref(currentIdNow, key)
 
     /** Profils en mode simple (pour la liste de Réglages › Profils). */
@@ -160,13 +164,19 @@ class ProfileScope @Inject constructor(private val repo: ProfileRepository) {
 suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileSyncLog, actions: List<ProfileSyncLogic.Action>) {
     for (a in actions) when (a) {
         is ProfileSyncLogic.Action.Create -> if (ProfileRules.canAdd(dao.count())) {
-            dao.insert(ProfileEntity(name = a.p.n, color = a.p.c, initial = ProfileRules.initialOf(a.p.n), isKids = a.p.k))
+            val id = dao.insert(ProfileEntity(name = a.p.n, color = a.p.c, initial = ProfileRules.initialOf(a.p.n), isKids = a.p.k))
+            a.p.l?.let { dao.putPref(ProfilePrefEntity(id, ProfilePrefs.UI_LANGUAGE, it)) }
             log.set(a.p.n, a.p.at, true)
         }
-        is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let { dao.update(it.copy(color = a.p.c, isKids = a.p.k)); log.set(a.p.n, a.p.at, true) }
+        is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let {
+            dao.update(it.copy(color = a.p.c, isKids = a.p.k))
+            a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
+            log.set(a.p.n, a.p.at, true)
+        }
         is ProfileSyncLogic.Action.Delete -> if (delete(a.id)) log.set(a.p.n, a.p.at, false)
         is ProfileSyncLogic.Action.Rename -> dao.byId(a.id)?.let { old ->
             dao.update(old.copy(name = a.p.n, initial = ProfileRules.initialOf(a.p.n), color = a.p.c, isKids = a.p.k))
+            a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
             log.set(old.name, a.p.at, false); log.set(a.p.n, a.p.at, true, a.p.from)
         }
     }

@@ -48,3 +48,15 @@ class ProfileRenameSyncTest {
         assertEquals(listOf(Action.Rename(2, SharedProfile("Papa 2", 3, false, 500, true, "Papa"))), ProfileSyncLogic.plan(local, emptyMap(), remote))
     }
 }
+
+@RunWith(RobolectricTestRunner::class)
+class ProfileLanguageSyncTest {
+    @Test fun langueChoisieAilleurs_appliqueeIci() {
+        val local = listOf(ProfileEntity(id = 1, name = "Principal", color = 1, initial = "P", createdAt = 100))
+        val remote = listOf(SharedProfile("Principal", 1, false, 500, l = "fr"))
+        assertEquals(listOf(Action.Update(1, SharedProfile("Principal", 1, false, 500, l = "fr"))), ProfileSyncLogic.plan(local, emptyMap(), remote, mapOf(1L to "ar")))
+        // Même langue : rien à faire.
+        assertTrue(ProfileSyncLogic.plan(local, emptyMap(), remote, mapOf(1L to "fr")).isEmpty())
+        assertEquals("fr", ProfileSyncLogic.parse(ProfileSyncLogic.toJson(remote)).first().l)
+    }
+}

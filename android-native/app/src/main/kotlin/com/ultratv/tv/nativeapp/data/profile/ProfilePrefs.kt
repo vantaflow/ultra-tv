@@ -28,6 +28,8 @@ data class ProfilePrefs(
     val simpleMode: Boolean? = null,
     /** Dernier groupe de chaînes choisi dans le Guide TV (identifiant de catégorie du Direct, « __all__ », « __fav__ »). Pas une préférence globale : jamais appliqué à [UserPrefs]. */
     val guideGroup: String? = null,
+    /** Langue de l'interface du profil (code AppLang) ; null = langue de l'appareil. Partagée entre appareils. */
+    val uiLanguage: String? = null,
 ) {
     /** Applique les surcharges du profil sur les préférences globales. [isKids] force le contrôle parental. */
     fun applyTo(base: UserPrefs, isKids: Boolean = false): UserPrefs = base.copy(
@@ -44,6 +46,7 @@ data class ProfilePrefs(
         includeMulti = includeMulti ?: base.includeMulti,
         includeUnknownLang = includeUnknownLang ?: base.includeUnknownLang,
         simpleMode = simpleMode ?: base.simpleMode,
+        language = uiLanguage ?: base.language,
     )
 
     companion object {
@@ -61,6 +64,7 @@ data class ProfilePrefs(
         const val INCLUDE_UNKNOWN = "include_unknown"
         const val SIMPLE_MODE = "simple_mode"
         const val GUIDE_GROUP = "guide_group"
+        const val UI_LANGUAGE = "ui_language"
 
         fun fromMap(m: Map<String, String>) = ProfilePrefs(
             theme = m[THEME]?.let { AppTheme.parse(it) },
@@ -77,6 +81,7 @@ data class ProfilePrefs(
             includeUnknownLang = m[INCLUDE_UNKNOWN]?.toBooleanStrictOrNull(),
             simpleMode = m[SIMPLE_MODE]?.toBooleanStrictOrNull(),
             guideGroup = m[GUIDE_GROUP]?.takeIf { it.isNotEmpty() },
+            uiLanguage = m[UI_LANGUAGE]?.takeIf { it.isNotEmpty() },
         )
     }
 }
