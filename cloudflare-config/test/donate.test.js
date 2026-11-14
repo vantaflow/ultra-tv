@@ -57,6 +57,7 @@ describe("dons : pages", () => {
     const off = await donatePage("n1", { lang: "ar", enabled: false }).text();
     expect(off).not.toContain("<form");
     expect(off).toContain('href="https://ko-fi.com/ultratv"');
+    expect(off).toContain('href="https://liberapay.com/ultratv/"');
     expect(h).toContain('href="https://ko-fi.com/ultratv"');
     expect(off).toContain('dir="rtl"');
   });

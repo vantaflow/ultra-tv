@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Dons réguliers via Liberapay (page /donate, bouton Sponsor, README et site).
+
 ## [1.3.26] — 2026-11-14 (Android)
 
 ### Corrigé

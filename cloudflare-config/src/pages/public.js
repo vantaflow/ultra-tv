@@ -2,7 +2,7 @@
 import { escapeHtml as e } from "../http.js";
 import { ENVOYER_COOKIE, ENVOYER_DICT, ENVOYER_DIR, ENVOYER_LANGS, ENVOYER_LANG_NAMES } from "../i18n/envoyer.js";
 import { ico, jsonForScript, notice } from "../ui/components.js";
-import { DONATE_DICT, KOFI_URL, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
+import { DONATE_DICT, KOFI_URL, LIBERAPAY_URL, DONATE_PRESETS, DONATE_MIN, DONATE_MAX } from "../donate.js";
 import { shell } from "../ui/layout.js";
 
 const AUTH_ERR = {
@@ -180,7 +180,7 @@ export function donatePage(n, { lang = "en", enabled = false, err = null, state 
 <div class="row"><a class="button block" href="https://github.com/vantaflow/ultra-tv">${e(t.github)}</a></div></div>`;
   } else {
     // Ko-fi (carte ou PayPal, tous pays) toujours proposé ; ChariPay (cartes marocaines, dirhams) quand la clé est là.
-    const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p>`;
+    const kofi = `<div class="row"><a class="button block" href="${e(KOFI_URL)}" rel="noopener" autofocus>${e(t.kofi)}</a></div><p class="hint">${e(t.kofiNote)}</p><div class="row"><a class="button alt-btn block" href="${e(LIBERAPAY_URL)}" rel="noopener">${e(t.liberapay)}</a></div>`;
     const presets = DONATE_PRESETS.map((a) => `<button class="alt-btn block" type="submit" name="amount" value="${a}">${a} MAD</button>`).join("");
     body = enabled ? `<div class="panel"><h1>${e(t.title)}</h1><p class="sub">${e(t.sub)}</p>${msg}${kofi}
 <form method="post" action="/donate?l=${lang}">

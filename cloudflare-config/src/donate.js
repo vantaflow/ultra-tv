@@ -6,6 +6,8 @@
 export const CHARIPAY_API = "https://api-psp.charipay.ma";
 /** Dons depuis n'importe quel pays (carte ou PayPal), toujours proposés. */
 export const KOFI_URL = "https://ko-fi.com/ultratv";
+/** Dons récurrents (chaque semaine, mois ou année). */
+export const LIBERAPAY_URL = "https://liberapay.com/ultratv/";
 export const DONATE_PRESETS = [20, 50, 100, 200];
 export const DONATE_MIN = 10;
 export const DONATE_MAX = 5000;
@@ -67,7 +69,7 @@ export async function createDonationLink(env, amount, { origin, lang = "en", fet
 
 export const DONATE_DICT = {
   fr: {
-    kofi: "Donner via Ko-fi", kofiNote: "Carte bancaire ou PayPal, depuis n'importe quel pays.", orMad: "Ou par carte marocaine, en dirhams :",
+    liberapay: "Don régulier via Liberapay", kofi: "Donner via Ko-fi", kofiNote: "Carte bancaire ou PayPal, depuis n'importe quel pays.", orMad: "Ou par carte marocaine, en dirhams :",
     title: "Soutenir Ultra TV", sub: "Ultra TV est gratuit, sans publicité et le restera. Un don aide à payer les serveurs et le temps passé à l'améliorer.",
     pick: "Montant (dirhams)", other: "Autre montant", give: "Faire un don", secure: "Paiement par carte sur la page sécurisée de ChariPay. Aucune donnée bancaire ne passe par Ultra TV.",
     declined: "Le paiement n'a pas abouti. Vous pouvez réessayer.", upstream: "Le service de paiement ne répond pas. Réessayez dans un moment.",
@@ -75,7 +77,7 @@ export const DONATE_DICT = {
     back: "Retour", github: "Code source (GitHub)",
   },
   en: {
-    kofi: "Donate on Ko-fi", kofiNote: "Card or PayPal, from any country.", orMad: "Or with a Moroccan card, in dirhams:",
+    liberapay: "Recurring donation on Liberapay", kofi: "Donate on Ko-fi", kofiNote: "Card or PayPal, from any country.", orMad: "Or with a Moroccan card, in dirhams:",
     title: "Support Ultra TV", sub: "Ultra TV is free and ad-free, and will stay that way. A donation helps pay for the servers and the time spent improving it.",
     pick: "Amount (Moroccan dirhams, MAD)", other: "Other amount", give: "Donate", secure: "Card payment on ChariPay's secure page. No card details ever go through Ultra TV.",
     declined: "The payment did not go through. You can try again.", upstream: "The payment service is not responding. Please try again in a moment.",
@@ -83,7 +85,7 @@ export const DONATE_DICT = {
     back: "Back", github: "Source code (GitHub)",
   },
   es: {
-    kofi: "Donar en Ko-fi", kofiNote: "Tarjeta o PayPal, desde cualquier país.", orMad: "O con tarjeta marroquí, en dírhams:",
+    liberapay: "Donación periódica en Liberapay", kofi: "Donar en Ko-fi", kofiNote: "Tarjeta o PayPal, desde cualquier país.", orMad: "O con tarjeta marroquí, en dírhams:",
     title: "Apoyar Ultra TV", sub: "Ultra TV es gratis, sin anuncios, y lo seguirá siendo. Una donación ayuda a pagar los servidores y el tiempo dedicado a mejorarlo.",
     pick: "Importe (dírhams marroquíes, MAD)", other: "Otro importe", give: "Donar", secure: "Pago con tarjeta en la página segura de ChariPay. Ningún dato bancario pasa por Ultra TV.",
     declined: "El pago no se completó. Puedes intentarlo de nuevo.", upstream: "El servicio de pago no responde. Inténtalo de nuevo en un momento.",
@@ -91,7 +93,7 @@ export const DONATE_DICT = {
     back: "Volver", github: "Código fuente (GitHub)",
   },
   ar: {
-    kofi: "تبرّع عبر Ko-fi", kofiNote: "بطاقة بنكية أو PayPal، من أي بلد.", orMad: "أو ببطاقة مغربية، بالدرهم:",
+    liberapay: "تبرّع دوري عبر Liberapay", kofi: "تبرّع عبر Ko-fi", kofiNote: "بطاقة بنكية أو PayPal، من أي بلد.", orMad: "أو ببطاقة مغربية، بالدرهم:",
     title: "ادعم Ultra TV", sub: "Ultra TV مجاني وبلا إعلانات وسيبقى كذلك. يساعد تبرعك في دفع تكاليف الخوادم والوقت المخصص لتحسينه.",
     pick: "المبلغ (بالدرهم المغربي)", other: "مبلغ آخر", give: "تبرّع", secure: "الدفع بالبطاقة على صفحة ChariPay الآمنة. لا تمر أي بيانات بنكية عبر Ultra TV.",
     declined: "لم تتم عملية الدفع. يمكنك المحاولة مرة أخرى.", upstream: "خدمة الدفع لا تستجيب. حاول مرة أخرى بعد قليل.",
@@ -99,7 +101,7 @@ export const DONATE_DICT = {
     back: "رجوع", github: "الشيفرة المصدرية (GitHub)",
   },
   pl: {
-    kofi: "Wesprzyj przez Ko-fi", kofiNote: "Karta lub PayPal, z dowolnego kraju.", orMad: "Lub kartą marokańską, w dirhamach:",
+    liberapay: "Stała darowizna przez Liberapay", kofi: "Wesprzyj przez Ko-fi", kofiNote: "Karta lub PayPal, z dowolnego kraju.", orMad: "Lub kartą marokańską, w dirhamach:",
     title: "Wesprzyj Ultra TV", sub: "Ultra TV jest darmowe, bez reklam i takie pozostanie. Darowizna pomaga opłacić serwery i czas poświęcony na rozwój.",
     pick: "Kwota (dirham marokański, MAD)", other: "Inna kwota", give: "Przekaż darowiznę", secure: "Płatność kartą na bezpiecznej stronie ChariPay. Żadne dane karty nie przechodzą przez Ultra TV.",
     declined: "Płatność nie powiodła się. Możesz spróbować ponownie.", upstream: "Usługa płatności nie odpowiada. Spróbuj ponownie za chwilę.",
