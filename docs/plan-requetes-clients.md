@@ -60,8 +60,19 @@ dans `pairStart` / `envoiStart`, `src/index.js`), jusqu'à 10 min : jusqu'à 200
 - Passer `interval` à **5 s** (code saisi en général en moins d'une minute : 2 s d'attente en plus au pire).
 - Gain attendu : ≈ 5 % du total, immédiat pour toutes les versions installées.
 
+## 4. Recherches TMDB par vignette — Android TV / Android
+
+Observé le 15/11 : un appareil lance une recherche `/api/tmdb/search/movie` **par vignette affichée** en faisant défiler
+une catégorie VOD (rafales de 60+ par minute, limitées en 429). Sur des catalogues dont les titres ne sont pas des films
+référencés (packs, dates, numéros), aucune ne trouve de résultat.
+- Mémoriser les recherches **sans résultat** (titre normalisé → « rien », 30 jours) et ne plus les relancer.
+- Ne chercher que les vignettes **arrêtées à l'écran** (anti-rebond 500 ms au défilement), 4 recherches en parallèle au plus.
+- Ne pas chercher les titres qui ne ressemblent pas à un film : moins de 3 lettres, seulement des chiffres ou une date.
+- Respecter `retry-after` sur un 429 (pause des recherches au lieu de continuer la rafale).
+
 ## Ordre conseillé
 
 1. Point 3 (Worker, sans risque).
 2. Route `/api/events` côté Worker, puis client Android (point 1).
 3. Synchro adaptative Android et bureau dans la même version (point 2).
+4. Recherches TMDB économes (point 4), dans la même version Android que le point 1.
