@@ -28,4 +28,19 @@ class CategoryManagerTest {
         val after = rows.map { if (it.remoteId == "2") it.copy(enabled = false, count = null) else it }
         assertEquals(listOf("1", "2", "4", "3"), CategoryManager.applyPin(after, pin).map { it.remoteId })
     }
+
+    private fun row(id: String) = CategoryManager.rows(cats, counts, "").first().copy(remoteId = id)
+
+    @Test fun applyPin_doublonsEtNouvelles_rienNestPerdu() {
+        val rows = listOf("a", "b", "a", "c").map { row(it) }
+        val out = CategoryManager.applyPin(rows, listOf("c", "a"))
+        assertEquals(listOf("c", "a", "b", "a"), out.map { it.remoteId })
+        assertEquals(rows.size, out.size)
+    }
+
+    @Test fun applyPin_grandeListe_ordreDuPin() {
+        val rows = (0 until 5000).map { row(it.toString()) }
+        val pin = (0 until 5000).reversed().map { it.toString() }
+        assertEquals(pin, CategoryManager.applyPin(rows, pin).map { it.remoteId })
+    }
 }

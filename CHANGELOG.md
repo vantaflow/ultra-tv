@@ -19,6 +19,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Synchro : la configuration n'était jamais renvoyée en « inchangée » (304) à cause de l'ETag faible ajouté par la compression de Cloudflare ; chaque appareil la retéléchargeait entièrement toutes les 2 minutes.
 - Administration : la page /admin répondait « internal » depuis le passage à Turso (une requête par compte dépassait la limite de 50 sous-requêtes du Worker) ; lectures et suppressions groupées.
 - Worker : recherches TMDB en série refusées (429) depuis le limiteur natif ; marge élargie pour retrouver les rafales permises auparavant.
+- Android : manque de mémoire possible sur les TV à petit tas (128 Mo) en gérant les catégories ; l'appli demande désormais un tas élargi et l'ordre des catégories est appliqué sans allocation par comparaison.
 
 ## [1.3.37] — 2026-11-14 (Android)
 

@@ -141,8 +141,20 @@ class CategoryManager @Inject constructor(
          * est). Inconnues du pin (nouvelles) : à la fin, dans leur ordre.
          */
         fun applyPin(list: List<CategoryRow>, pin: List<String>): List<CategoryRow> {
-            val idx = pin.withIndex().associate { (i, k) -> k to i }
-            return list.withIndex().sortedBy { (i, r) -> idx[r.remoteId] ?: (pin.size + i) }.map { it.value }
+            // Placement direct (sans tri ni objet par comparaison) : un tri avec rang « boxé » a déclenché un manque
+            // de mémoire sur une TV à 128 Mo de tas. Rang = position dans le pin, sinon pin.size + position réelle.
+            val idx = HashMap<String, Int>(pin.size * 2)
+            pin.forEachIndexed { i, k -> idx.putIfAbsent(k, i) }
+            val slots = arrayOfNulls<CategoryRow>(pin.size + list.size)
+            var overflow: MutableList<CategoryRow>? = null
+            list.forEachIndexed { i, r ->
+                val rank = idx[r.remoteId] ?: (pin.size + i)
+                if (slots[rank] == null) slots[rank] = r else (overflow ?: ArrayList<CategoryRow>().also { overflow = it }).add(r)
+            }
+            val out = ArrayList<CategoryRow>(list.size)
+            for (r in slots) if (r != null) out.add(r)
+            overflow?.let { out.addAll(it) } // identifiant en double dans la liste : gardé, à la fin
+            return out
         }
 
         /** Filtre court (« FR », « AR », « 4K ») = mot entier : « FR » ne doit pas ramener « AFRICA ». Sinon, sous-chaîne. */

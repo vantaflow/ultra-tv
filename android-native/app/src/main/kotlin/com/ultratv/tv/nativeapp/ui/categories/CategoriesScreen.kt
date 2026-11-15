@@ -130,6 +130,7 @@ class CategoriesViewModel @Inject constructor(
             },
         pending,
     ) { list, over -> if (over.isEmpty()) list else list.map { r -> over[r.remoteId]?.let { e -> r.copy(enabled = e, count = if (e) r.count ?: 0 else null) } ?: r } }
+        .distinctUntilChanged()
         .map { stable(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
@@ -138,7 +139,10 @@ class CategoriesViewModel @Inject constructor(
     private var pinKey: Any? = null
     private var pin: List<String> = emptyList()
     private fun stable(list: List<CategoryRow>): List<CategoryRow> {
-        val key = Triple(kind.value, query.value, list.map { it.remoteId })
+        // Clé sans copie de la liste : empreinte des identifiants (ordre compris) plutôt qu'une liste de chaînes par émission.
+        var h = list.size
+        for (r in list) h = 31 * h + r.remoteId.hashCode()
+        val key = Triple(kind.value, query.value, h)
         if (key != pinKey) { pin = CategoryManager.pinEnabledFirst(list); pinKey = key }
         return CategoryManager.applyPin(list, pin)
     }
