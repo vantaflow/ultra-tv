@@ -115,3 +115,11 @@ Rien n'est codé : liste pour les prochaines versions (une issue GitHub par poin
 15. **AFR et calcul des images par seconde** : détection plus fiable de la fréquence réelle avant le changement de mode.
 
 Déjà fait : **débit dans la fiche d'infos du lecteur** (avec la résolution réelle, depuis la 1.3.35).
+
+## Robustesse
+
+16. **Bonne gestion du manque de mémoire sur les TV** (tas de 128 Mo sur certaines TV 2K). Déjà fait pour la prochaine
+    version : `largeHeap` et ordre des catégories sans allocation. Reste : réagir à `onTrimMemory` (vider caches
+    d'images, de guide et de catalogue, aperçu vidéo), dimensionner les caches selon `memoryClass` / `isLowRamDevice`,
+    paginer les très grands catalogues au lieu de les garder en mémoire, joindre la mémoire disponible aux plantages,
+    tester avec un tas de 128 Mo et une grosse playlist.
