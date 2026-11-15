@@ -5,11 +5,15 @@
   "scripts": {
     "test": "vitest run",
     "dev": "wrangler dev",
-    "check": "wrangler deploy --dry-run --outdir .wrangler/dry-run"
+    "check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
+    "test:turso": "UTV_TURSO_SIM=1 vitest run"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.23.0",
     "vitest": "^4.1.12",
     "wrangler": "^4.158.0"
+  },
+  "dependencies": {
+    "@tursodatabase/serverless": "1.4.1"
   }
 }

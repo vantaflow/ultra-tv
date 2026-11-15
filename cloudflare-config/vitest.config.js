@@ -1,4 +1,7 @@
 import { defineConfig } from "vitest/config";
+
+// Mode Turso simulé (`npm run test:turso`) : même suite, stockage passé par l'adaptateur Turso (src/turso.js).
+const turso = process.env.UTV_TURSO_SIM === "1";
 import { cloudflareTest, readD1Migrations } from "@cloudflare/vitest-pool-workers";
 
 // Migrations D1 appliquées à la base locale (miniflare) avant les tests, voir test/setup.js.
@@ -12,6 +15,8 @@ export default defineConfig({
       miniflare: {
         bindings: {
           TEST_MIGRATIONS: migrations,
+          TELEMETRY_FILTER: "off",
+          ...(turso ? { STORAGE_MODE: "turso", TURSO_URL: "libsql://simule.test", TURSO_AUTH_TOKEN: "simule" } : {}),
           SESSION_SECRET: "test-session-secret-0123456789abcdef0123456789",
           PROVIDER_ENC_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
           OPS_TOKEN: "test-ops-token-0123456789abcdef0123456789",
@@ -21,5 +26,5 @@ export default defineConfig({
       },
     }),
   ],
-  test: { setupFiles: ["./test/setup.js"], include: ["test/**/*.test.js"], testTimeout: 30000 },
+  test: { setupFiles: turso ? ["./test/setup.js", "./test/setup-turso.js"] : ["./test/setup.js"], include: ["test/**/*.test.js"], testTimeout: 30000 },
 });

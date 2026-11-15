@@ -40,8 +40,30 @@ export async function purgeTelemetry(env, now = Date.now()) {
 
 export const maybePurge = (env) => (Math.random() < PURGE_PROBABILITY ? purgeTelemetry(env) : undefined);
 
+// ---- tri de la télémétrie (quota d'écritures réservé aux comptes, appareils, favoris et reprises) ----
+
+/** Une ligne d'info ou de debug sur INFO_SAMPLE est gardée ; avertissements, erreurs et plantages toujours. */
+export const INFO_SAMPLE = 10;
+const DEDUP_MS = 30 * 60_000;
+const recent = new Map(); // par isolat : même appareil, même étiquette, même message → une seule ligne par 30 min
+
+/** Garde-t-on cette entrée ? [rand] et [now] injectables pour les tests. */
+export function keepEvent(kind, entry, rand = Math.random, now = Date.now()) {
+  if (kind === "crash") return true;
+  const key = `${entry?.deviceId || entry?.mac || ""}|${entry?.tag || ""}|${String(entry?.message || "").slice(0, 120)}`;
+  const last = recent.get(key);
+  if (last && now - last < DEDUP_MS) return false;
+  const level = String(entry?.level || "info").toLowerCase();
+  const important = level === "warn" || level === "warning" || level === "error" || level === "fatal";
+  if (!important && rand() >= 1 / INFO_SAMPLE) return false;
+  if (recent.size > 2000) recent.clear();
+  recent.set(key, now);
+  return true;
+}
+
 /** Enregistre un journal ou un plantage ([entry] = objet construit par `ingest`). */
 export async function recordEvent(env, kind, entry) {
+  if (env?.TELEMETRY_FILTER !== "off" && !keepEvent(kind, entry)) return;
   await safe(env, (db) => db.prepare(
     "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
   ).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null, entry.versionCode ?? null, entry.device ?? null,

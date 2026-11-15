@@ -52,6 +52,7 @@ import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, o
 import { pwaResponse } from "./pwa.js";
 import { legacyDecision, PRIMARY_HOST, LEGACY_HOST, LEGACY_HOSTS, API_HOST } from "./legacyhost.js";
 
+import { withStorage } from "./turso.js";
 export { Guard };
 
 const PAIR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 32 symboles, sans I/O/0/1
@@ -176,7 +177,8 @@ function localize429(req, res) {
 }
 
 export default {
-  async fetch(req, env, ctx) {
+  async fetch(req, rawEnv, ctx) {
+    const env = withStorage(rawEnv);
     try {
       return withSecurityHeaders(localize429(req, await route(req, env, ctx)));
     } catch (err) {
@@ -185,7 +187,8 @@ export default {
     }
   },
   // Cron quotidien : purge des lignes de télémétrie D1 expirées (équivalent des anciens TTL de KV).
-  async scheduled(_event, env, ctx) {
+  async scheduled(_event, rawEnv, ctx) {
+    const env = withStorage(rawEnv);
     ctx.waitUntil(Promise.all([purgeTelemetry(env), docs.purgeExpired(env)]));
   },
 };
