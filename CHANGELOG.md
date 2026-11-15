@@ -10,12 +10,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Modifié
 - Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.
 - Worker : tout le stockage (comptes, appareils, synchro, télémétrie) passe de Cloudflare D1 + KV à Turso (région Francfort), sans perte : double écriture, copie et vérification à zéro écart avant la bascule. Les lignes de télémétrie d'info sont échantillonnées (1 sur 10) et dédoublonnées ; erreurs et plantages toujours gardés.
+- Site : icônes, polices, manifeste, service worker et lecteur de QR servis comme fichiers statiques par Cloudflare, sans passer par le Worker (hors quota de requêtes).
 
 ### Corrigé
 - Tailles des APK à jour sur la page /apk et dans le README (arm64 ≈ 36 Mo, 32 bits ≈ 34 Mo, universel ≈ 58 Mo, au lieu de 67, 52 et 227 Mo).
 - Worker : panne générale (erreurs 500 sur la synchro, la configuration, les fiches et le guide) quand le quota gratuit quotidien des Durable Objects était épuisé. La limitation de débit des appareils passe par le limiteur natif de Cloudflare, et un Durable Object indisponible ne bloque plus les requêtes.
 - Worker : plus d'appel Durable Object à chaque requête d'appareil (vérification de blocage IP) ; seuls les jetons faux sont comptés, par le limiteur natif.
 - Synchro : la configuration n'était jamais renvoyée en « inchangée » (304) à cause de l'ETag faible ajouté par la compression de Cloudflare ; chaque appareil la retéléchargeait entièrement toutes les 2 minutes.
+- Administration : la page /admin répondait « internal » depuis le passage à Turso (une requête par compte dépassait la limite de 50 sous-requêtes du Worker) ; lectures et suppressions groupées.
 
 ## [1.3.37] — 2026-11-14 (Android)
 
