@@ -46,6 +46,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -53,10 +54,10 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
- * Alertes de l'administrateur : lues au lancement, au retour au premier plan, puis toutes les 5 minutes tant que
- * l'application est visible. Les écrans ne bloquent pas la réception car l'hôte vit à la racine de la navigation.
- * montrées une à une (voir [AnnouncementPlan.next]). Chaque affichage, fermeture et usage du bouton d'action est
- * compté une fois par appareil (statistiques du tableau de bord).
+ * Admin announcements are fetched at launch, on foreground entry, and every five minutes while the app is visible.
+ * The host lives at the navigation root so pending messages are not tied to an individual screen.
+ * Announcements are shown one at a time (see [AnnouncementPlan.next]); display, dismissal and action statistics
+ * are counted once per device.
  */
 @HiltViewModel
 class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRepository) : ViewModel() {
