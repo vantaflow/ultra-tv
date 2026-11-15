@@ -123,3 +123,13 @@ Déjà fait : **débit dans la fiche d'infos du lecteur** (avec la résolution r
     d'images, de guide et de catalogue, aperçu vidéo), dimensionner les caches selon `memoryClass` / `isLowRamDevice`,
     paginer les très grands catalogues au lieu de les garder en mémoire, joindre la mémoire disponible aux plantages,
     tester avec un tas de 128 Mo et une grosse playlist.
+
+## À faire ensuite
+
+17. **Publier la 1.3.38** (Android) : correctif du manque de mémoire en Algérie (`largeHeap`, ordre des catégories sans
+    allocation, c547d6bb), déjà testé (1 932 tests).
+18. **Sauvegarde Turso → D1 chaque nuit (GitHub Actions)** : `scripts/turso-migrate.mjs` dans l'autre sens, en
+    différentiel ; alerte (issue) au-delà de 70 % du quota mensuel Turso ; aucune donnée dans les journaux.
+    Prérequis : secrets GitHub `CLOUDFLARE_API_TOKEN` (D1 : modifier, créé par le propriétaire) et `TURSO_AUTH_TOKEN`.
+    Bascule si Turso est plein : manuelle (dernier rattrapage Turso → D1, liaisons D1 / KV remises,
+    `STORAGE_MODE = "d1"`, déploiement), jamais automatique (deux bases divergentes).
