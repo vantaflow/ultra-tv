@@ -13,6 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Tailles des APK à jour sur la page /apk et dans le README (arm64 ≈ 36 Mo, 32 bits ≈ 34 Mo, universel ≈ 58 Mo, au lieu de 67, 52 et 227 Mo).
 - Worker : panne générale (erreurs 500 sur la synchro, la configuration, les fiches et le guide) quand le quota gratuit quotidien des Durable Objects était épuisé. La limitation de débit des appareils passe par le limiteur natif de Cloudflare, et un Durable Object indisponible ne bloque plus les requêtes.
+- Worker : plus d'appel Durable Object à chaque requête d'appareil (vérification de blocage IP) ; seuls les jetons faux sont comptés, par le limiteur natif.
 
 ## [1.3.37] — 2026-11-14 (Android)
 

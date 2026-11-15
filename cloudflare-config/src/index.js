@@ -1149,12 +1149,14 @@ async function removeAccount(env, acct, form) {
 
 async function deviceAuth(req, env) {
   const token = parseBearer(req);
-  const lock = await lockedOut(env, `lock:ip:${clientIp(req)}`, true);
-  if (lock) return { res: lock };
+  // Pas de Durable Object sur le chemin normal (un appel par requête d'appareil épuisait le quota gratuit) : un jeton de
+  // 256 bits ne se devine pas ; seuls les jetons faux sont comptés, par le limiteur natif (20 par minute et par IP).
   const auth = await authDevice(env, token);
   if (!auth) {
-    // Un jeton présenté mais faux compte comme un échec (anti-devinette) ; l'absence de jeton non.
-    if (token) await guardStub(env, `lock:ip:${clientIp(req)}`).lockFail({ threshold: 20, baseSec: 60, capSec: 3600 }).catch(() => undefined);
+    if (token) {
+      const rl = await limited(env, `authfail:ip:${clientIp(req)}`, 20, 60, true);
+      if (rl) return { res: rl };
+    }
     return { res: json({ error: "unauthorized" }, 401, { "www-authenticate": 'Bearer realm="ultratv"' }) };
   }
   return { auth };
