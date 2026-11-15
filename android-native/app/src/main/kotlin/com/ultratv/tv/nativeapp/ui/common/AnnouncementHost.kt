@@ -47,7 +47,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -81,7 +80,7 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
         // Re-check immediately when the activity returns to the foreground instead of waiting
         // for the next periodic tick. The StateFlow emits the current visibility on collection.
         viewModelScope.launch {
-            AppForeground.state.distinctUntilChanged().collect { visible ->
+            AppForeground.state.collect { visible ->
                 if (visible) refresh()
             }
         }
