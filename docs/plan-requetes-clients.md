@@ -76,3 +76,42 @@ référencés (packs, dates, numéros), aucune ne trouve de résultat.
 2. Route `/api/events` côté Worker, puis client Android (point 1).
 3. Synchro adaptative Android et bureau dans la même version (point 2).
 4. Recherches TMDB économes (point 4), dans la même version Android que le point 1.
+
+---
+
+# Retours utilisateurs et améliorations (15/11/2026)
+
+Rien n'est codé : liste pour les prochaines versions (une issue GitHub par point).
+
+## Bugs
+
+1. **Recherche Films / Séries : catégories désactivées visibles.** Toutes les catégories désactivées (dont adultes),
+   la recherche de droite dans Films ou Séries montre quand même leurs titres. La recherche doit filtrer par
+   catégories visibles du profil (téléchargées ET non masquées), comme les grilles.
+2. **Qualité très basse (240p-360p) sur tous les flux.** Probablement la sélection de piste adaptative HLS
+   (ExoPlayer démarre bas et ne remonte pas, ou plafond de taille d'écran mal détecté). Vérifier la sélection de piste
+   (taille de la vue, débit estimé initial), proposer « Qualité : auto / maximale ».
+3. **Suppression d'une source incohérente entre appareils.** Supprimée sur un appareil : elle revient (la synchro la
+   restaure) ou reste sur les autres. Supprimée depuis le tableau de bord : elle reste sur l'appareil. Il faut une
+   suppression propagée (tombe côté Worker, appliquée par tous les appareils à la synchro suivante).
+4. **Affectation des playlists aux appareils.** L'affectation existe dans l'appli mais ne fonctionne pas, et manque au
+   tableau de bord : choisir quels appareils reçoivent quelle playlist (une playlist sur plusieurs appareils).
+5. **Réglages : position de défilement gardée d'un volet à l'autre.** Défiler en bas d'« Affichage » puis ouvrir
+   « Lecture » arrive au même endroit ; chaque volet doit repartir en haut (ou garder sa propre position).
+6. **Fire TV Stick : appli absente de « Vos applis » après installation.** Bannière et LEANBACK_LAUNCHER sont
+   présents : vérifier sur un vrai Fire TV (liste « Voir tout », icône carrée de lanceur, `amazon.hardware.fire_tv`).
+
+## Fonctions
+
+7. **Exporter les chaînes favorites en M3U** (fichier ou lien), depuis l'appli et le tableau de bord.
+8. **Plusieurs playlists affichées en même temps** dans l'appli (catalogue fusionné, source indiquée).
+9. **Playlist par profil** sur un même appareil (chaque profil choisit sa ou ses sources).
+10. **Intégration Simkl** (suivi, comme Trakt).
+11. **Nouvelles langues** : roumain, norvégien bokmål, tchèque, finnois, danois, grec, thaï, vietnamien.
+12. **Lecture « tunnelisée » (Tunneled Playback)** en option dans Réglages › Lecture (décodage tunnel, utile sur
+    certaines box pour la synchro audio / vidéo et le 4K).
+13. **Métadonnées MediaSession** (titre, chaîne, image, durée) : affichées par le système, commandes Google / Fire TV.
+14. **Rattrapage façon Kodi PVR** (catch-up : programme passé lancé depuis le guide, timeshift des flux compatibles).
+15. **AFR et calcul des images par seconde** : détection plus fiable de la fréquence réelle avant le changement de mode.
+
+Déjà fait : **débit dans la fiche d'infos du lecteur** (avec la résolution réelle, depuis la 1.3.35).
