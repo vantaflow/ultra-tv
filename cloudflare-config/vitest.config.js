@@ -13,6 +13,9 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.toml" },
       miniflare: {
+        // Bases locales des tests (les liaisons de production D1 / KV ont quitté wrangler.toml : stockage Turso).
+        d1Databases: ["DB"],
+        kvNamespaces: ["CONFIG"],
         bindings: {
           TEST_MIGRATIONS: migrations,
           TELEMETRY_FILTER: "off",

@@ -244,7 +244,7 @@ Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depui
 
 L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore, révocable). **Appareil révoqué** depuis le tableau de bord (perdu, prêté, vendu) : dès sa vérification suivante (retour sur l'appli, ou toutes les 2 min appli ouverte), il retire les sources reçues du cloud, oublie l'appairage et l'indique ; les sources ajoutées à la main sur l'appareil restent. Vos identifiants sont **chiffrés côté serveur** (AES-256-GCM). L'étiquette affichée pour la box (« UTV-XXXXXX ») n'est qu'un nom, jamais une clé.
 
-**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez la base D1 `ultratv-telemetry` (`wrangler d1 create`, puis `wrangler d1 migrations apply`, migrations dans `cloudflare-config/migrations`) : elle porte le stockage principal (comptes, appareils, jetons, télémétrie). KV ne sert plus que de repli et de migration progressive, mais le Worker le lie encore (`wrangler kv namespace create CONFIG`). Définissez les secrets obligatoires `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée ; sans eux le Worker répond 500), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
+**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez une base [Turso](https://turso.tech) (offre gratuite), appliquez le schéma (`node scripts/turso-migrate.mjs schema` dans `cloudflare-config`), renseignez `TURSO_URL` dans `wrangler.toml` et le secret `TURSO_AUTH_TOKEN` : elle porte tout le stockage (comptes, appareils, jetons, synchro, télémétrie). Sans Turso, `STORAGE_MODE = "d1"` utilise une base D1 et un espace KV de Cloudflare (blocs à remettre dans `wrangler.toml`). Définissez les secrets obligatoires `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée ; sans eux le Worker répond 500), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
 
 ## Sécurité
 
@@ -297,7 +297,7 @@ Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme*
 - **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
 - **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
 - **Réglages partagés et profils** : catégories visibles, ordre des catégories et des chaînes, chaînes masquées ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface, jamais le code PIN) ; jusqu'à suppression.
-- **Où** : dans la base D1 du Worker ; KV ne sert plus que de repli pour les données pas encore migrées.
+- **Où** : dans la base Turso du Worker (région Francfort) ; l'ancienne base D1 et l'espace KV de Cloudflare sont conservés en secours, sans plus être écrits.
 - **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
 - **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, application utilisée (Android TV, Android mobile, Windows, macOS, Linux), modèle de l'appareil (Android), pays, nombre de sources envoyées depuis le web ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
 - **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
@@ -375,9 +375,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 
 ```bash
 cd cloudflare-config && npm ci
-wrangler d1 create ultratv-telemetry               # coller le database_id dans wrangler.toml
-wrangler d1 migrations apply ultratv-telemetry --remote   # migrations dans cloudflare-config/migrations
-wrangler kv namespace create CONFIG                # repli et migration progressive ; coller l'id dans wrangler.toml
+TURSO_URL=libsql://… TURSO_AUTH_TOKEN=… node scripts/turso-migrate.mjs schema   # base Turso ; TURSO_URL dans wrangler.toml
+wrangler secret put TURSO_AUTH_TOKEN               # jeton de la base Turso
 wrangler secret put SESSION_SECRET                 # >= 32 caractères aléatoires
 wrangler secret put PROVIDER_ENC_KEY               # clé AES-256 en base64
 wrangler secret put OPS_TOKEN                      # mot de passe de /crashes et /logs

@@ -1203,6 +1203,17 @@ async function deviceLicense(req, env) {
   });
 }
 
+/**
+ * If-None-Match correspond-il à l'ETag ? Forme faible acceptée : en compressant la réponse (Brotli), Cloudflare
+ * transforme "v2" en W/"v2", que l'appareil renvoie tel quel (sans cela, jamais de 304 : configuration complète
+ * retéléchargée à chaque synchro).
+ */
+export function etagMatches(header, etag) {
+  if (!header) return false;
+  const norm = (t) => t.trim().replace(/^W\//, "");
+  return header.split(",").some((t) => t.trim() === "*" || norm(t) === norm(etag));
+}
+
 async function deviceConfig(req, env) {
   const { auth, res } = await deviceAuth(req, env);
   if (res) return res;
@@ -1213,7 +1224,7 @@ async function deviceConfig(req, env) {
   const version = auth.acct.cfgVersion || 0;
   const etag = `"v${version}"`;
   // Synchro incrémentale : rien n'a changé depuis la version connue de l'appareil.
-  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
+  if (etagMatches(req.headers.get("if-none-match"), etag)) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
   // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
   const providers = (await loadProviders(env, auth.acct)).filter((p) => isSupportedKind(p) && isVisibleTo(p, auth.device.id));
   const act = await deviceActivity(env, (auth.acct.devices || []).map((d) => d.id));

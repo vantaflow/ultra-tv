@@ -15,7 +15,9 @@ cloudflare-config/
 ├── src/http.js       en-têtes de sécurité, cookies signés, CSRF, lecture bornée
 ├── src/pages.js      pages HTML (CSP à nonce)
 ├── src/store.js      comptes, appareils, validation des fournisseurs, réglages partagés
-├── src/docs.js       stockage des documents (comptes, appareils, jetons, caches) dans D1, repli sur KV
+├── src/turso.js      stockage Turso présenté avec les interfaces D1 et KV (STORAGE_MODE : d1 / tee / turso)
+├── src/docs.js       stockage des documents (comptes, appareils, jetons, caches), table kv_docs
+├── scripts/turso-migrate.mjs  migration D1 + KV → Turso (schema / sync / verify) ; scripts/e2e-prod.mjs : parcours complet en production
 ├── src/donate.js     page /donate (liens Ko-fi et Liberapay)
 ├── migrations/       schéma D1 (télémétrie, activité, état partagé, kv_docs)
 ├── test/             113+ tests vitest (attaques rejouées, parcours, migration)
@@ -68,15 +70,12 @@ Toutes les mutations d'un compte (fournisseurs, affectations, appareils, mot de 
 cd cloudflare-config
 npm ci
 
-# 1) Namespace KV (coller les ids dans wrangler.toml) : ne sert plus qu'au repli et à la migration vers D1
-wrangler kv namespace create CONFIG
-wrangler kv namespace create CONFIG --preview
-
-# 1 bis) Base D1 (comptes, appareils, jetons et caches dans la table kv_docs ; télémétrie, activité des appareils et état
-#    partagé : sortis de KV pour rester sous son quota gratuit de 1 000 écritures/jour). Coller le database_id dans
-#    wrangler.toml, puis appliquer les migrations (0001 à 0004).
-wrangler d1 create ultratv-telemetry
-wrangler d1 migrations apply ultratv-telemetry --remote
+# 1) Base Turso (offre gratuite, région européenne) : tout le stockage (STORAGE_MODE = "turso" dans wrangler.toml).
+#    Schéma = migrations/ (0001 à 0004) + table kv_store (remplace KV). TURSO_URL dans wrangler.toml, jeton en secret.
+TURSO_URL=libsql://… TURSO_AUTH_TOKEN=… node scripts/turso-migrate.mjs schema
+wrangler secret put TURSO_AUTH_TOKEN
+#    Sans Turso : STORAGE_MODE = "d1", remettre les blocs [[d1_databases]] / [[kv_namespaces]] (wrangler d1 create,
+#    wrangler d1 migrations apply --remote, wrangler kv namespace create CONFIG).
 
 # 2) Secrets (JAMAIS dans un fichier versionné)
 wrangler secret put SESSION_SECRET     # >= 32 caractères aléatoires : openssl rand -base64 48
@@ -222,6 +221,7 @@ OPS_TOKEN=… ADMIN_TOKEN=… ./scripts/e2e.sh
   connaît l'identifiant (15 min maximum). Compromis assumé face à la force brute.
 - Les caches de lecture (jetons d'appareil, KV de repli) sont éventuellement cohérents : une révocation peut mettre
   jusqu'à ~60 s à se propager hors du point de présence qui l'a reçue.
-- D1 indisponible : le Worker retombe sur KV (lecture et écriture) et le service continue.
+- Turso indisponible : les écritures de télémétrie sont perdues sans erreur, les requêtes de compte échouent (500) ;
+  retour arrière possible vers D1 + KV (conservés intacts) en remettant leurs liaisons et STORAGE_MODE = "d1".
 - Le jeton d'appareil transite en clair dans le Durable Object entre la saisie du code et la remise à la TV
   (au plus 10 minutes, supprimé à la remise).

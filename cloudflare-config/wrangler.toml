@@ -9,20 +9,15 @@ compatibility_date = "2025-09-01"
 
 # Namespace KV : comptes, appareils appairés, crashs et journaux.
 #   wrangler kv namespace create CONFIG   (+ --preview pour `wrangler dev`)
-[[kv_namespaces]]
-binding = "CONFIG"
-id = "4d450f36e3e34ddf9520e53bf6c241ea"
-preview_id = "a7c413bdf3814be3a894470cbbcbf74e"
+# Stockage : Turso (STORAGE_MODE = "turso", src/turso.js). Anciennes liaisons retirées le 15/11/2026 après validation
+# de bout en bout ; la base D1 « ultratv-telemetry » (96cdcf98-68e4-4d34-8dda-5a76ae93f459) et l'espace KV CONFIG
+# (4d450f36e3e34ddf9520e53bf6c241ea) sont CONSERVÉS chez Cloudflare, intacts, en secours. Retour arrière : remettre ces
+# deux blocs (git) et STORAGE_MODE = "d1", puis node scripts/turso-migrate.mjs pour recopier Turso → D1 si besoin.
 
 # Base D1 : télémétrie (journaux, plantages, relevés anonymes) et dernière activité des appareils. Sortis de KV pour
 # rester sous son quota gratuit de 1 000 écritures par jour (erreur 10048).
 #   wrangler d1 create ultratv-telemetry   (puis coller le database_id ci-dessous)
 #   wrangler d1 migrations apply ultratv-telemetry --remote
-[[d1_databases]]
-binding = "DB"
-database_name = "ultratv-telemetry"
-database_id = "96cdcf98-68e4-4d34-8dda-5a76ae93f459"
-migrations_dir = "migrations"
 
 # Purge quotidienne des lignes de télémétrie expirées (journaux 7 j, plantages 30 j, relevés anonymes 180 j).
 [triggers]
@@ -72,6 +67,9 @@ new_sqlite_classes = ["Guard"]
 [vars]
 # Site principal (voir legacyhost.js) : sans cette variable, tv.weedy.dpdns.org reste le site.
 SITE_HOST = "ultratv.dpdns.org"
+# Stockage (src/turso.js) : "d1" = D1 + KV ; "tee" = D1 + KV vérité, écritures recopiées dans Turso ; "turso" = Turso seul.
+STORAGE_MODE = "turso"
+TURSO_URL = "libsql://ultratv-vantaflow.aws-eu-central-1.turso.io"
 ACCOUNT_RELAY_URL = "https://utv-relay.vercel.app/api/xtream"
 # Comptes ayant accès à /admin (liste séparée par des virgules).
 ADMIN_LOGINS = "khalilbenaz"

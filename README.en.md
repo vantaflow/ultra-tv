@@ -240,7 +240,7 @@ To avoid typing credentials with a remote, manage your sources from a browser: *
 
 The device receives a random 256-bit token (hashed on the server, encrypted in the Keystore, revocable). **Revoked device** (lost, lent, sold): at its next check (back to the app, or every 2 min while the app is open), it removes the sources received from the cloud, forgets the pairing and says so; sources added by hand on the device stay. Your credentials are **encrypted on the server side** (AES-256-GCM). The label shown for the box ("UTV-XXXXXX") is only a name, never a key.
 
-**Self-hosting.** You can deploy your own Worker (see [Cloudflare Worker](#cloudflare-worker)): create the D1 database `ultratv-telemetry` (`wrangler d1 create`, then `wrangler d1 migrations apply`, migrations in `cloudflare-config/migrations`): it holds the main storage (accounts, devices, tokens, telemetry). KV is now only a fallback and a gradual-migration source, but the Worker still binds it (`wrangler kv namespace create CONFIG`). Set the required secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` and `OPS_TOKEN` (no value is published here; without them the Worker answers 500), then `wrangler deploy`; in the app, Settings › Sources › *Dashboard address* then points to yours.
+**Self-hosting.** You can deploy your own Worker (see [Cloudflare Worker](#cloudflare-worker)): create a [Turso](https://turso.tech) database (free plan), apply the schema (`node scripts/turso-migrate.mjs schema` in `cloudflare-config`), set `TURSO_URL` in `wrangler.toml` and the `TURSO_AUTH_TOKEN` secret: it holds all storage (accounts, devices, tokens, sync, telemetry). Without Turso, `STORAGE_MODE = "d1"` uses a Cloudflare D1 database and KV namespace (blocks to put back in `wrangler.toml`). Set the required secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` and `OPS_TOKEN` (no value is published here; without them the Worker answers 500), then `wrangler deploy`; in the app, Settings › Sources › *Dashboard address* then points to yours.
 
 ## Security
 
@@ -293,7 +293,7 @@ No crash report, remote log or alerts. **Anonymous count** (same rule as Android
 - **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
 - **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
 - **Shared settings and profiles**: visible categories, category and channel order, hidden channels; profiles (name, colour or avatar, kids profile, interface language, never the PIN); until deleted.
-- **Where**: in the Worker's D1 database; KV is only a fallback for data not yet migrated.
+- **Where**: in the Worker's Turso database (Frankfurt region); the former Cloudflare D1 database and KV namespace are kept as a backup and no longer written.
 - **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
 - **Anonymous count**: hash of the install ID, dates, version, app in use (Android TV, Android mobile, Windows, macOS, Linux), device model (Android), country, number of sources sent from the web; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
 - **Send from phone**: 15 min at most. **Pairing code**: 10 min.
@@ -371,9 +371,8 @@ export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
 
 ```bash
 cd cloudflare-config && npm ci
-wrangler d1 create ultratv-telemetry               # paste the database_id into wrangler.toml
-wrangler d1 migrations apply ultratv-telemetry --remote   # migrations in cloudflare-config/migrations
-wrangler kv namespace create CONFIG                # fallback and gradual migration; paste the id into wrangler.toml
+TURSO_URL=libsql://… TURSO_AUTH_TOKEN=… node scripts/turso-migrate.mjs schema   # Turso database; TURSO_URL in wrangler.toml
+wrangler secret put TURSO_AUTH_TOKEN               # Turso database token
 wrangler secret put SESSION_SECRET                 # >= 32 random characters
 wrangler secret put PROVIDER_ENC_KEY               # AES-256 key, base64
 wrangler secret put OPS_TOKEN                      # password for /crashes and /logs

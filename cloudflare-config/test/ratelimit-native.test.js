@@ -21,3 +21,14 @@ describe("nativeLimiter", () => {
     expect(nativeLimiter({}, 60, 600, true)).toBeNull();
   });
 });
+
+import { etagMatches } from "../src/index.js";
+describe("etagMatches", () => {
+  it("accepte la forme forte, la forme faible (compression Cloudflare) et les listes", () => {
+    expect(etagMatches('"v2"', '"v2"')).toBe(true);
+    expect(etagMatches('W/"v2"', '"v2"')).toBe(true);
+    expect(etagMatches('"v1", W/"v2"', '"v2"')).toBe(true);
+    expect(etagMatches('W/"v1"', '"v2"')).toBe(false);
+    expect(etagMatches(null, '"v2"')).toBe(false);
+  });
+});

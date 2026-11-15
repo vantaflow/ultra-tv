@@ -123,6 +123,7 @@ async function diffKv(apply) {
     const cur = have.get(r.k);
     if (cur && cur.v === r.v && (cur.exp ?? null) === r.exp && (cur.meta ?? null) === r.meta) continue;
     cur ? upd++ : add++;
+    if (process.env.VERBOSE && add + upd <= 15) console.log(cur ? "maj" : "ajout", r.k, r.exp ? new Date(r.exp).toISOString() : "");
     steps.push({ sql: "INSERT OR REPLACE INTO kv_store (k, v, exp, meta) VALUES (?, ?, ?, ?)", args: [r.k, r.v, r.exp, r.meta] });
   }
   for (const k of have.keys()) if (!want.has(k)) { del++; steps.push({ sql: "DELETE FROM kv_store WHERE k = ?", args: [k] }); }
