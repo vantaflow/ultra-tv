@@ -85,6 +85,22 @@ export class TursoKV {
       .bind(k, val, exp, opts.metadata === undefined ? null : JSON.stringify(opts.metadata)).run();
   }
   async delete(k) { await this.db.prepare("DELETE FROM kv_store WHERE k = ?").bind(k).run(); }
+  /** Plusieurs clés en UNE requête (le Worker gratuit est limité à 50 sous-requêtes, et chaque requête Turso en est une). */
+  async getMany(keys) {
+    const out = new Map();
+    for (let i = 0; i < keys.length; i += 100) {
+      const part = keys.slice(i, i + 100);
+      const { results } = await this.db.prepare(`SELECT k, v, exp FROM kv_store WHERE k IN (${part.map(() => "?").join(",")})`).bind(...part).all();
+      for (const r of results) if (!r.exp || r.exp > this.now()) out.set(r.k, r.v);
+    }
+    return out;
+  }
+  async deleteMany(keys) {
+    for (let i = 0; i < keys.length; i += 100) {
+      const part = keys.slice(i, i + 100);
+      if (part.length) await this.db.prepare(`DELETE FROM kv_store WHERE k IN (${part.map(() => "?").join(",")})`).bind(...part).run();
+    }
+  }
   /** Comme KV : clés triées, `cursor` = dernière clé de la page précédente, 1 000 clés au plus par page. */
   async list({ prefix = "", cursor, limit = 1000 } = {}) {
     const lim = Math.min(Math.max(1, limit), 1000);

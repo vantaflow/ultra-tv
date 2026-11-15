@@ -42,6 +42,35 @@ export const docs = {
     await d1(env, (db) => db.prepare("DELETE FROM kv_docs WHERE k = ?").bind(k).run());
     if ((await env.CONFIG.get(k)) !== null) await env.CONFIG.delete(k);
   },
+  /**
+   * Plusieurs documents en une requête par tranche de 100 (au lieu d'une par clé) : Map clé → valeur (absentes omises).
+   * Indispensable avec Turso : chaque requête est une sous-requête, plafonnée à 50 par appel du Worker gratuit.
+   */
+  async getMany(env, keys) {
+    const out = new Map();
+    const now = Date.now();
+    for (let i = 0; i < keys.length; i += 100) {
+      const part = keys.slice(i, i + 100);
+      const rows = await d1(env, (db) => db.prepare(`SELECT k, v, exp FROM kv_docs WHERE k IN (${part.map(() => "?").join(",")})`).bind(...part).all());
+      for (const r of rows?.results || []) if (!r.exp || r.exp >= now) out.set(r.k, r.v);
+    }
+    const missing = keys.filter((k) => !out.has(k));
+    if (missing.length) {
+      if (typeof env.CONFIG.getMany === "function") for (const [k, v] of await env.CONFIG.getMany(missing)) out.set(k, v);
+      else for (const k of missing) { const v = await env.CONFIG.get(k); if (v !== null) out.set(k, v); }
+    }
+    return out;
+  },
+  /** Supprime plusieurs documents (une requête par tranche de 100 ; KV : seulement les clés encore présentes). */
+  async deleteMany(env, keys) {
+    if (!keys.length) return;
+    for (let i = 0; i < keys.length; i += 100) {
+      const part = keys.slice(i, i + 100);
+      await d1(env, (db) => db.prepare(`DELETE FROM kv_docs WHERE k IN (${part.map(() => "?").join(",")})`).bind(...part).run());
+    }
+    if (typeof env.CONFIG.deleteMany === "function") await env.CONFIG.deleteMany(keys);
+    else for (const k of keys) if ((await env.CONFIG.get(k)) !== null) await env.CONFIG.delete(k);
+  },
   /** Clés d'un préfixe (D1 + KV pas encore migré), sans doublon ; `max` borne le résultat. */
   async keys(env, prefix, max = 5000) {
     const out = new Set();

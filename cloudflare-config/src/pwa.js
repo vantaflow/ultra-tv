@@ -10,7 +10,7 @@ import { ICON_192, ICON_512, APPLE_TOUCH_ICON } from "./pwa-assets/icons.js";
 export const PWA_CACHE = "utv-pwa-v1";
 export const OFFLINE_PATH = "/offline";
 
-const ICONS = {
+export const ICONS = {
   "/pwa/icon-192.png": ICON_192,
   "/pwa/icon-512.png": ICON_512,
   "/apple-touch-icon.png": APPLE_TOUCH_ICON,

@@ -7,6 +7,11 @@ workers_dev = true
 routes = [{ pattern = "tv.weedy.dpdns.org", custom_domain = true }, { pattern = "ultratv.dpdns.org", custom_domain = true }]
 compatibility_date = "2025-09-01"
 
+# Fichiers fixes (manifeste, service worker, icônes, polices, jsQR) servis par Workers Static Assets : gratuits et
+# hors quota de requêtes Worker. Générés depuis src/ par scripts/build-assets.mjs (contrôlé avant les tests).
+[assets]
+directory = "./public"
+
 # Namespace KV : comptes, appareils appairés, crashs et journaux.
 #   wrangler kv namespace create CONFIG   (+ --preview pour `wrangler dev`)
 # Stockage : Turso (STORAGE_MODE = "turso", src/turso.js). Anciennes liaisons retirées le 15/11/2026 après validation

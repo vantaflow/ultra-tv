@@ -6,7 +6,9 @@
     "test": "vitest run",
     "dev": "wrangler dev",
     "check": "wrangler deploy --dry-run --outdir .wrangler/dry-run",
-    "test:turso": "UTV_TURSO_SIM=1 vitest run"
+    "test:turso": "UTV_TURSO_SIM=1 vitest run",
+    "pretest": "node scripts/build-assets.mjs --check",
+    "build:assets": "node scripts/build-assets.mjs"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.23.0",

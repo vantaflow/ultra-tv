@@ -52,16 +52,17 @@ export async function saveProviders(env, acct, providers) {
 }
 
 export async function deleteAccount(env, acct) {
-  await Promise.all((acct.devices || []).map((d) => docs.delete(env, `dev:${d.hash}`)));
+  await docs.deleteMany(env, (acct.devices || []).map((d) => `dev:${d.hash}`));
   // État partagé (favoris, reprises) de chaque source du compte.
   const st = await env.CONFIG.list({ prefix: `st:${acct.login}:` });
-  await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name))); // anciens états KV (rares, déjà migrés vers D1)
+  if (typeof env.CONFIG.deleteMany === "function") await env.CONFIG.deleteMany(st.keys.map((k) => k.name));
+  else await Promise.all(st.keys.map((k) => env.CONFIG.delete(k.name))); // anciens états KV (rares, déjà migrés vers D1)
   await forgetAccountD1(env, acct.login, (acct.devices || []).map((d) => d.id));
   await docs.delete(env, `ostok:${acct.login}`);
   // Bibliothèque et titres Trakt en cache.
   const tl = await docs.keys(env, `tlib:${acct.login}:`);
   const td = await docs.keys(env, `tdict:${acct.login}:`);
-  await Promise.all([...tl, ...td].map((k) => docs.delete(env, k)));
+  await docs.deleteMany(env, [...tl, ...td]);
   await docs.delete(env, `acct:${acct.login}`);
   await guardStub(env, `acct:${acct.login}`).release();
 }

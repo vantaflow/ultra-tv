@@ -825,7 +825,9 @@ async function adminAccounts(env) {
   const act = await deviceActivity(env);
   const rows = [];
   for (let i = 0; i < names.length; i += 50) {
-    const got = await Promise.all(names.slice(i, i + 50).map((n) => docs.get(env, n)));
+    const part = names.slice(i, i + 50);
+    const many = await docs.getMany(env, part);
+    const got = part.map((n) => many.get(n) ?? null);
     for (const raw of got) {
       let a;
       try { a = JSON.parse(raw); } catch { continue; }
