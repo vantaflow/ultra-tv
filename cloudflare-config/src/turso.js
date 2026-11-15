@@ -34,7 +34,7 @@ class TursoStatement {
   constructor(db, sql, args = []) { this.db = db; this.sql = sql; this.args = args; }
   bind(...args) { return new TursoStatement(this.db, this.sql, args); }
   get step() { return { sql: this.sql, args: this.args }; }
-  async exec() { const [r] = await this.db.conn.batch([this.step]); return resultOf(r); }
+  async exec() { this.db.queries++; const [r] = await this.db.conn.batch([this.step]); return resultOf(r); }
   async all() { return this.exec(); }
   async run() { return this.exec(); }
   async first(col) {
@@ -47,14 +47,16 @@ class TursoStatement {
 
 /** Base Turso avec l'interface de D1 : prepare/bind/first/all/run/raw et batch (atomique, une seule requête HTTP). */
 export class TursoD1 {
-  constructor(conn) { this.conn = conn; }
+  /** `queries` : requêtes HTTP envoyées à Turso pendant cet appel du Worker (plafond gratuit : 50 sous-requêtes). */
+  constructor(conn) { this.conn = conn; this.queries = 0; }
   prepare(sql) { return new TursoStatement(this, sql); }
   async batch(stmts) {
     if (!stmts.length) return [];
+    this.queries++;
     const res = await this.conn.batch(stmts.map((s) => s.step), "immediate");
     return res.map(resultOf);
   }
-  async exec(sql) { await this.conn.exec(sql); return { count: 1 }; }
+  async exec(sql) { this.queries++; await this.conn.exec(sql); return { count: 1 }; }
 }
 
 const decode = (v, type) => {

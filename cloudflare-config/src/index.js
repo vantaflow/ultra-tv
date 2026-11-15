@@ -180,7 +180,11 @@ export default {
   async fetch(req, rawEnv, ctx) {
     const env = withStorage(rawEnv);
     try {
-      return withSecurityHeaders(localize429(req, await route(req, env, ctx)));
+      const res = withSecurityHeaders(localize429(req, await route(req, env, ctx)));
+      // Alerte avant le plafond de 50 sous-requêtes du Worker gratuit (chaque requête Turso en est une).
+      const q = env.DB?.queries ?? env.DB?.m?.queries ?? 0;
+      if (q > 30) console.warn("requêtes Turso nombreuses", q, new URL(req.url).pathname);
+      return res;
     } catch (err) {
       console.error("erreur:", err instanceof ConfigError ? `configuration: ${err.message}` : err?.message);
       return withSecurityHeaders(json({ error: err instanceof ConfigError ? "server_misconfigured" : "internal" }, 500));
