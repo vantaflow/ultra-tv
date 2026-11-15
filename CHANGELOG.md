@@ -18,6 +18,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Worker : plus d'appel Durable Object à chaque requête d'appareil (vérification de blocage IP) ; seuls les jetons faux sont comptés, par le limiteur natif.
 - Synchro : la configuration n'était jamais renvoyée en « inchangée » (304) à cause de l'ETag faible ajouté par la compression de Cloudflare ; chaque appareil la retéléchargeait entièrement toutes les 2 minutes.
 - Administration : la page /admin répondait « internal » depuis le passage à Turso (une requête par compte dépassait la limite de 50 sous-requêtes du Worker) ; lectures et suppressions groupées.
+- Worker : recherches TMDB en série refusées (429) depuis le limiteur natif ; marge élargie pour retrouver les rafales permises auparavant.
 
 ## [1.3.37] — 2026-11-14 (Android)
 

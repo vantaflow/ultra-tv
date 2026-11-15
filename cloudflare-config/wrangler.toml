@@ -51,6 +51,11 @@ name = "RL_60"
 namespace_id = "1060"
 simple = { limit = 60, period = 60 }
 
+[[ratelimits]]
+name = "RL_120"
+namespace_id = "1120"
+simple = { limit = 120, period = 60 }
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Guard"]

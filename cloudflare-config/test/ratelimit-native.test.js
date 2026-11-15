@@ -2,16 +2,14 @@ import { describe, expect, it } from "vitest";
 import { nativeLimiter } from "../src/index.js";
 
 const rl = (n) => ({ n, limit: async () => ({ success: true }) });
-const env = { RL_10: rl(10), RL_30: rl(30), RL_60: rl(60) };
+const env = { RL_10: rl(10), RL_30: rl(30), RL_60: rl(60), RL_120: rl(120) };
 
 describe("nativeLimiter", () => {
-  it("choisit le plus petit palier qui couvre la limite ramenée à la minute", () => {
-    expect(nativeLimiter(env, 60, 600, true).n).toBe(30);   // 6 / min, marge ×2
-    expect(nativeLimiter(env, 150, 600, true).n).toBe(30);  // 15 / min, marge ×2
-    expect(nativeLimiter(env, 300, 600, true).n).toBe(60);  // 30 / min, marge ×2
-    expect(nativeLimiter(env, 600, 600, true).n).toBe(60);
-    expect(nativeLimiter(env, 60, 3600, true).n).toBe(10);  // télémétrie : plancher 10 / min (rafale au démarrage)
-    expect(nativeLimiter(env, 120, 3600, true).n).toBe(10); // 2 / min, marge ×2
+  it("choisit le plus petit palier qui couvre la limite ramenée à la minute (marge ×4)", () => {
+    expect(nativeLimiter(env, 60, 600, true).n).toBe(30);    // 6 / min → 24
+    expect(nativeLimiter(env, 120, 600, true).n).toBe(60);   // 12 / min → 48 (TMDB par appareil)
+    expect(nativeLimiter(env, 300, 600, true).n).toBe(120);  // 30 / min → 120 (TMDB par IP)
+    expect(nativeLimiter(env, 60, 3600, true).n).toBe(10);   // télémétrie : 1 / min → 4, plancher 10
   });
   it("garde le Durable Object pour la connexion / l'inscription du site (fenêtre longue, HTML)", () => {
     expect(nativeLimiter(env, 5, 3600, false)).toBeNull();

@@ -86,14 +86,15 @@ async function limited(env, key, limit, windowSec, asJson = false) {
 
 /**
  * Limiteur natif pour une limite « limit par windowSec », ramenée à la minute (période imposée : 60 s).
- * Paliers RL_10 / RL_30 / RL_60 (wrangler.toml) : le plus petit qui couvre la limite. Routes des appareils (JSON)
+ * Paliers RL_10 / RL_30 / RL_60 / RL_120 (wrangler.toml) : le plus petit qui couvre la limite. Routes des appareils (JSON)
  * et fenêtres ≤ 10 min seulement ; connexion et inscription du site (rares, sensibles) : null → Durable Object, compteur exact.
  */
 export function nativeLimiter(env, limit, windowSec, asJson = false) {
   if (windowSec > 600 && !asJson) return null;
-  // Marge ×2 : la période de 60 s est plus courte que la fenêtre d'origine, les rafales légitimes doivent passer.
-  const perMin = (2 * limit * 60) / windowSec;
-  const tier = perMin <= 10 ? env.RL_10 : perMin <= 30 ? env.RL_30 : env.RL_60;
+  // Marge ×4 : la période de 60 s est bien plus courte que la fenêtre d'origine (10 min, 1 h) ; les rafales légitimes
+  // (recherche TMDB en série, ouverture de l'appli) doivent passer comme avec l'ancien compteur sur fenêtre longue.
+  const perMin = (4 * limit * 60) / windowSec;
+  const tier = perMin <= 10 ? env.RL_10 : perMin <= 30 ? env.RL_30 : perMin <= 60 ? env.RL_60 : env.RL_120;
   return tier && typeof tier.limit === "function" ? tier : null;
 }
 
