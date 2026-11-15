@@ -44,5 +44,10 @@ object InputClock {
 
 /** Application affichée à l'écran (MainActivity onStart / onStop) : les tâches périodiques « confort » s'y limitent. */
 object AppForeground {
-    @Volatile var visible: Boolean = false
+    private val _state = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val state: kotlinx.coroutines.flow.StateFlow<Boolean> = _state
+
+    var visible: Boolean
+        get() = _state.value
+        set(value) { _state.value = value }
 }

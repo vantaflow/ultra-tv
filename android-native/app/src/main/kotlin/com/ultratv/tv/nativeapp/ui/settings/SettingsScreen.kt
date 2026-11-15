@@ -205,12 +205,16 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
                     }
                 }
             }
-        } else Column(Modifier.fillMaxSize()) {
+        } else {
+            val mobilePaneScroll = rememberScrollState()
+            androidx.compose.runtime.LaunchedEffect(rub) { mobilePaneScroll.scrollTo(0) }
+            Column(Modifier.fillMaxSize()) {
             Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 com.ultratv.tv.nativeapp.ui.mobile.IconCircle(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.a11yBack, Ux.Surface, Ux.Text, { showPane = false })
                 Text(labels[rub], color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 20.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { pane() }
+            Column(Modifier.weight(1f).verticalScroll(mobilePaneScroll).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) { pane() }
+            }
         }
         return
     }
@@ -272,6 +276,7 @@ internal fun SettingsTvLayout(
         // ligne en face de la rubrique (« Numéros de chaînes » depuis « Affichage », titre du volet sorti de l'écran).
         val firstSlot = remember(selected) { com.ultratv.tv.nativeapp.ui.common.FirstFocusSlot() }
         val paneScroll = rememberScrollState()
+        androidx.compose.runtime.LaunchedEffect(selected) { paneScroll.scrollTo(0) }
         val paneScope = rememberCoroutineScope()
         Column(
             Modifier.weight(1f).fillMaxHeight()

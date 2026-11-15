@@ -46,11 +46,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
- * Alertes de l'administrateur : lues au lancement puis toutes les 15 minutes tant que l'appli est au premier plan,
+ * Alertes de l'administrateur : lues au lancement, au retour au premier plan, puis toutes les 5 minutes tant que
+ * l'application est visible. Les écrans ne bloquent pas la réception car l'hôte vit à la racine de la navigation.
  * montrées une à une (voir [AnnouncementPlan.next]). Chaque affichage, fermeture et usage du bouton d'action est
  * compté une fois par appareil (statistiques du tableau de bord).
  */
@@ -65,20 +69,34 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
     private var audience = "tv"
     private var started = false
     private var shownId: String? = null
+    private val refreshMutex = Mutex()
+    private var lastRefreshAt = 0L
 
     fun start(touch: Boolean) {
         if (started) return
         started = true
         audience = if (touch) "mobile" else "tv"
+
+        // Re-check immediately when the activity returns to the foreground instead of waiting
+        // for the next periodic tick. The StateFlow emits the current visibility on collection.
+        viewModelScope.launch {
+            AppForeground.state.distinctUntilChanged().collect { visible ->
+                if (visible) refresh()
+            }
+        }
+        // Bounded fallback polling for announcements posted while the app remains open.
         viewModelScope.launch {
             while (true) {
-                if (AppForeground.visible) refresh()
                 delay(POLL_MS)
+                if (AppForeground.visible) refresh()
             }
         }
     }
 
-    private suspend fun refresh() {
+    private suspend fun refresh() = refreshMutex.withLock {
+        val now = System.currentTimeMillis()
+        if (now - lastRefreshAt < MIN_REFRESH_INTERVAL_MS) return@withLock
+        lastRefreshAt = now
         val got = repo.fetch(audience)
         if (got != null) {
             items = got
@@ -118,7 +136,8 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
     fun history(): List<ReceivedAnnouncement> = repo.history()
 
     companion object {
-        const val POLL_MS = 15 * 60_000L
+        const val POLL_MS = 5 * 60_000L
+        const val MIN_REFRESH_INTERVAL_MS = 30_000L
         const val BANNER_MS = 15_000L
         /** Alertes urgentes déjà montrées depuis le lancement du processus (réaffichées au lancement suivant). */
         private val shownThisLaunch = mutableSetOf<String>()

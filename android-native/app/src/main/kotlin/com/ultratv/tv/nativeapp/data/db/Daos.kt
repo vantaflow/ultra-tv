@@ -585,12 +585,26 @@ interface MovieDao {
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<MovieEntity>
 
+    /** Search only visible categories for the active profile (plus provider-enabled categories). */
+    @Query("""
+        SELECT m.* FROM movie m
+        WHERE m.id IN (SELECT docid FROM movie_fts WHERE movie_fts MATCH :match)
+          AND m.providerId = :pid
+          AND (m.categoryId IS NULL OR m.categoryId NOT IN (:excludedCategoryIds))
+        LIMIT :limit
+    """)
+    suspend fun searchFtsExcludingCategories(pid: Long, match: String, limit: Int, excludedCategoryIds: List<String>): List<MovieEntity>
+
+
     /**
      * Titres qui COMMENCENT par la saisie (« :prefix » se termine par %, jokers de la saisie échappés par « \\ »).
      * Complète la recherche plein texte quand un mot courant sature son plafond : le titre exact n'y était pas forcément.
      */
     @Query("SELECT * FROM movie WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<MovieEntity>
+    @Query("SELECT * FROM movie WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' AND (categoryId IS NULL OR categoryId NOT IN (:excludedCategoryIds)) LIMIT :limit")
+    suspend fun titlePrefixExcludingCategories(pid: Long, prefix: String, limit: Int, excludedCategoryIds: List<String>): List<MovieEntity>
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<MovieEntity>)
@@ -729,12 +743,26 @@ interface SeriesDao {
     """)
     suspend fun searchFts(pid: Long, match: String, limit: Int): List<SeriesEntity>
 
+    /** Search only visible categories for the active profile (plus provider-enabled categories). */
+    @Query("""
+        SELECT s.* FROM series s
+        WHERE s.id IN (SELECT docid FROM series_fts WHERE series_fts MATCH :match)
+          AND s.providerId = :pid
+          AND (s.categoryId IS NULL OR s.categoryId NOT IN (:excludedCategoryIds))
+        LIMIT :limit
+    """)
+    suspend fun searchFtsExcludingCategories(pid: Long, match: String, limit: Int, excludedCategoryIds: List<String>): List<SeriesEntity>
+
+
     /**
      * Titres qui COMMENCENT par la saisie (« :prefix » se termine par %, jokers de la saisie échappés par « \\ »).
      * Complète la recherche plein texte quand un mot courant sature son plafond : le titre exact n'y était pas forcément.
      */
     @Query("SELECT * FROM series WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' LIMIT :limit")
     suspend fun titlePrefix(pid: Long, prefix: String, limit: Int): List<SeriesEntity>
+    @Query("SELECT * FROM series WHERE providerId = :pid AND title LIKE :prefix ESCAPE '\\' AND (categoryId IS NULL OR categoryId NOT IN (:excludedCategoryIds)) LIMIT :limit")
+    suspend fun titlePrefixExcludingCategories(pid: Long, prefix: String, limit: Int, excludedCategoryIds: List<String>): List<SeriesEntity>
+
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertAll(items: List<SeriesEntity>)
