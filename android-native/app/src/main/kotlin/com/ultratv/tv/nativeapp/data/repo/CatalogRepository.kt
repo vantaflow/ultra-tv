@@ -23,6 +23,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -220,16 +221,32 @@ class CatalogRepository @Inject constructor(
         val match = FtsQuery.of(query) ?: return SearchResults()
         val wantMovies = only == null || only == "movie"
         val wantSeries = only == null || only == "series"
+        val excludedMovies = if (wantMovies) excludedCategoryIds(pid, "MOVIE") else emptyList()
+        val excludedSeries = if (wantSeries) excludedCategoryIds(pid, "SERIES") else emptyList()
         val cap = limit * 3
-        val rawMovies = if (wantMovies) movieDao.searchFts(pid, match, cap) else emptyList()
-        val rawSeries = if (wantSeries) seriesDao.searchFts(pid, match, cap) else emptyList()
+        val rawMovies = when {
+            !wantMovies -> emptyList()
+            excludedMovies.isEmpty() -> movieDao.searchFts(pid, match, cap)
+            else -> movieDao.searchFtsExcludingCategories(pid, match, cap, excludedMovies)
+        }
+        val rawSeries = when {
+            !wantSeries -> emptyList()
+            excludedSeries.isEmpty() -> seriesDao.searchFts(pid, match, cap)
+            else -> seriesDao.searchFtsExcludingCategories(pid, match, cap, excludedSeries)
+        }
         // Mot courant : la recherche plein texte rend ses lignes dans l'ordre de la table et s'arrête au plafond, le titre
         // cherché pouvait être au-delà. On ajoute alors, en tête, les titres qui commencent par la saisie.
         val prefix = query.trim().takeIf { it.length >= 2 }?.let { likePrefix(it) }
         // Index vide (déclencheurs perdus, reconstruction pas encore faite) : même recherche par début de titre, sans l'index —
         // avant, la recherche ne rendait alors plus rien du tout.
-        val mHead = if (wantMovies && prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
-        val sHead = if (wantSeries && prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT) else emptyList()
+        val mHead = if (wantMovies && prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) {
+            if (excludedMovies.isEmpty()) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT)
+            else movieDao.titlePrefixExcludingCategories(pid, prefix, PREFIX_LIMIT, excludedMovies)
+        } else emptyList()
+        val sHead = if (wantSeries && prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) {
+            if (excludedSeries.isEmpty()) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT)
+            else seriesDao.titlePrefixExcludingCategories(pid, prefix, PREFIX_LIMIT, excludedSeries)
+        } else emptyList()
         var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
         var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
         // Aucun film ni série : repli tolérant aux fautes de frappe (candidats par début de mot, classés par ressemblance).
@@ -237,8 +254,16 @@ class CatalogRepository @Inject constructor(
         if (movies.isEmpty() && series.isEmpty() && query.trim().length >= 4) {
             FuzzySearch.candidateMatch(query)?.let { loose ->
                 fuzzy = true
-                if (wantMovies) movies = SearchDedup.movies(FuzzySearch.rank(query, movieDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
-                if (wantSeries) series = SearchDedup.series(FuzzySearch.rank(query, seriesDao.searchFts(pid, loose, FUZZY_POOL), { it.title }, limit * 3)).take(limit)
+                if (wantMovies) {
+                    val candidates = if (excludedMovies.isEmpty()) movieDao.searchFts(pid, loose, FUZZY_POOL)
+                    else movieDao.searchFtsExcludingCategories(pid, loose, FUZZY_POOL, excludedMovies)
+                    movies = SearchDedup.movies(FuzzySearch.rank(query, candidates, { it.title }, limit * 3)).take(limit)
+                }
+                if (wantSeries) {
+                    val candidates = if (excludedSeries.isEmpty()) seriesDao.searchFts(pid, loose, FUZZY_POOL)
+                    else seriesDao.searchFtsExcludingCategories(pid, loose, FUZZY_POOL, excludedSeries)
+                    series = SearchDedup.series(FuzzySearch.rank(query, candidates, { it.title }, limit * 3)).take(limit)
+                }
             }
         }
         return SearchResults(
@@ -250,6 +275,14 @@ class CatalogRepository @Inject constructor(
             fuzzy = fuzzy && (movies.isNotEmpty() || series.isNotEmpty()),
         )
     }
+
+    private suspend fun excludedCategoryIds(pid: Long, kind: String): List<String> =
+        CategorySearchVisibility.excludedRemoteIds(
+            kind = kind,
+            providerId = pid,
+            profileHiddenKeys = profiles.hiddenCategoryKeys.first(),
+            disabledRemoteIds = categoryDao.disabledIds(pid, kind),
+        )
 
     suspend fun searchPrograms(pid: Long, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
