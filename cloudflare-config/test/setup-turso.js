@@ -15,5 +15,5 @@ __setTursoConnect(() => ({
       lastInsertRowid: r.meta?.last_row_id ?? null,
     }));
   },
-  async sequence(sql) { await env.DB.exec(sql); },
+  async exec(sql) { await env.DB.exec(sql); },
 }));

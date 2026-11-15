@@ -51,10 +51,10 @@ export class TursoD1 {
   prepare(sql) { return new TursoStatement(this, sql); }
   async batch(stmts) {
     if (!stmts.length) return [];
-    const res = await this.conn.batch(stmts.map((s) => s.step), "write");
+    const res = await this.conn.batch(stmts.map((s) => s.step), "immediate");
     return res.map(resultOf);
   }
-  async exec(sql) { await this.conn.sequence(sql); return { count: 1 }; }
+  async exec(sql) { await this.conn.exec(sql); return { count: 1 }; }
 }
 
 const decode = (v, type) => {
