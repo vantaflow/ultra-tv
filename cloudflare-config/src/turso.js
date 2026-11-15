@@ -97,6 +97,8 @@ export class TursoKV {
     }
     return out;
   }
+  /** Supprime les clés expirées (KV le faisait seul ; ici, cron quotidien). */
+  async purgeExpired() { await this.db.prepare("DELETE FROM kv_store WHERE exp IS NOT NULL AND exp <= ?").bind(this.now()).run(); }
   async deleteMany(keys) {
     for (let i = 0; i < keys.length; i += 100) {
       const part = keys.slice(i, i + 100);

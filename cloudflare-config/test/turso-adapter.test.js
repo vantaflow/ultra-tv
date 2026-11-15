@@ -38,6 +38,15 @@ describe("adaptateur Turso", () => {
     expect(await kv.get("json-absent", "json")).toBeNull();
   });
 
+  it("KV : purge des clés expirées", async () => {
+    await kv.put("exp:1", "x", { expirationTtl: 10 });
+    await kv.put("exp:2", "y");
+    now += 11_000;
+    await kv.purgeExpired();
+    expect(await env.DB.prepare("SELECT count(*) AS n FROM kv_store WHERE k = 'exp:1'").first("n")).toBe(0);
+    expect(await kv.get("exp:2")).toBe("y");
+  });
+
   it("D1 : first(colonne), run (changes) et batch atomique", async () => {
     await db.prepare("CREATE TABLE IF NOT EXISTS t_ad (id INTEGER PRIMARY KEY, v TEXT)").run();
     const r = await db.prepare("INSERT INTO t_ad (v) VALUES (?)").bind("x").run();

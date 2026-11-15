@@ -194,7 +194,7 @@ export default {
   // Cron quotidien : purge des lignes de télémétrie D1 expirées (équivalent des anciens TTL de KV).
   async scheduled(_event, rawEnv, ctx) {
     const env = withStorage(rawEnv);
-    ctx.waitUntil(Promise.all([purgeTelemetry(env), docs.purgeExpired(env)]));
+    ctx.waitUntil(Promise.all([purgeTelemetry(env), docs.purgeExpired(env), typeof env.CONFIG?.purgeExpired === "function" ? env.CONFIG.purgeExpired() : null]));
   },
 };
 
@@ -1622,7 +1622,9 @@ async function adminMigrate(req, env, url) {
   if (!env.ADMIN_TOKEN) return new Response("Not found", { status: 404 });
   const c = await checkSecret(req, env, env.ADMIN_TOKEN, "admin");
   if (c.res) return c.res;
-  const limit = Math.max(1, Math.min(1000, parseInt(url.searchParams.get("limit") || "500", 10) || 500));
+  // Turso : chaque clé coûte 1 à 3 sous-requêtes (plafond 50 par appel du Worker gratuit) → pages de 15 par défaut.
+  const def = env.STORAGE === "turso" ? 15 : 500;
+  const limit = Math.max(1, Math.min(env.STORAGE === "turso" ? 15 : 1000, parseInt(url.searchParams.get("limit") || String(def), 10) || def));
   const page = await env.CONFIG.list({ cursor: url.searchParams.get("cursor") || undefined, limit });
   const rep = { migrated: 0, purgedUnprotected: 0, purgedLogs: 0, purgedLocks: 0, conflicts: 0, skipped: 0 };
   for (const { name } of page.keys) {
