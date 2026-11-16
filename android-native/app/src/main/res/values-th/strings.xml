@@ -1693,4 +1693,6 @@
     <string name="pex_diag_copied">คัดลอกรายงานแล้ว (ซ่อนข้อมูลเข้าสู่ระบบ)</string>
     <string name="prof_sources">แหล่งที่มา</string>
     <string name="prof_sources_all">ทุกแหล่งที่มา</string>
+    <string name="prof_search_all">ค้นหาในทุกแหล่งที่มา</string>
+    <string name="prof_search_all_hint">ผลลัพธ์จากทุกแหล่งที่มาที่แสดง พร้อมระบุแหล่งที่มาในแต่ละรายการ</string>
 </resources>

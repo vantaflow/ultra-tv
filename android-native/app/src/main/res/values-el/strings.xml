@@ -1712,4 +1712,6 @@
     <string name="pex_diag_copied">Η αναφορά αντιγράφηκε (τα στοιχεία κρύφτηκαν)</string>
     <string name="prof_sources">Πηγές</string>
     <string name="prof_sources_all">Όλες οι πηγές</string>
+    <string name="prof_search_all">Αναζήτηση σε όλες τις πηγές</string>
+    <string name="prof_search_all_hint">Αποτελέσματα από όλες τις ορατές πηγές, με την πηγή σε καθένα</string>
 </resources>

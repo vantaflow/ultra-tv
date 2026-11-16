@@ -57,6 +57,9 @@ class ProfileRepository(
     /** Sources visibles du profil courant (null = toutes). */
     val currentSources: Flow<List<String>?> = currentPrefs.map { it.sources }.distinctUntilChanged()
 
+    /** Recherche dans toutes les sources visibles du profil courant. */
+    val currentSearchAll: Flow<Boolean> = currentPrefs.map { it.searchAllSources == true }.distinctUntilChanged()
+
     val startupMode: Flow<StartupMode> = state.startupMode
 
     private val chosenThisSession = MutableStateFlow(false)
@@ -147,6 +150,8 @@ class ProfileRepository(
         if (clean == null) dao.removePref(profileId, ProfilePrefs.SOURCES)
         else dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SOURCES, ProfileSourcesRules.encode(clean)))
     }
+
+    suspend fun setSearchAll(on: Boolean) = putPref(ProfilePrefs.SEARCH_ALL, on.toString())
 
     suspend fun sourcesOf(profileId: Long): List<String>? =
         dao.observePrefs(profileId).first().firstOrNull { it.key == ProfilePrefs.SOURCES }?.value?.let(ProfileSourcesRules::decode)

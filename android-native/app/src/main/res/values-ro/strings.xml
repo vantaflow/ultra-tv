@@ -1730,4 +1730,6 @@
     <string name="pex_diag_copied">Raport copiat (datele de acces ascunse)</string>
     <string name="prof_sources">Surse</string>
     <string name="prof_sources_all">Toate sursele</string>
+    <string name="prof_search_all">Caută în toate sursele</string>
+    <string name="prof_search_all_hint">Rezultate din toate sursele vizibile, cu sursa indicată la fiecare</string>
 </resources>

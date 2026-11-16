@@ -1711,4 +1711,6 @@
     <string name="pex_diag_copied">Report copied (credentials hidden)</string>
     <string name="prof_sources">Sources</string>
     <string name="prof_sources_all">All sources</string>
+    <string name="prof_search_all">Search all sources</string>
+    <string name="prof_search_all_hint">Results from every visible source, with the source shown on each one</string>
 </resources>

@@ -1657,4 +1657,6 @@
     <string name="pex_diag_copied">Raportti kopioitu (tunnukset piilotettu)</string>
     <string name="prof_sources">Lähteet</string>
     <string name="prof_sources_all">Kaikki lähteet</string>
+    <string name="prof_search_all">Hae kaikista lähteistä</string>
+    <string name="prof_search_all_hint">Tulokset kaikista näkyvistä lähteistä, lähde näkyy jokaisessa</string>
 </resources>

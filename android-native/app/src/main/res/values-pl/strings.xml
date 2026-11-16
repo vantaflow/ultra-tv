@@ -1665,4 +1665,6 @@
     <string name="pex_diag_copied">Skopiowano raport (dane logowania ukryte)</string>
     <string name="prof_sources">Źródła</string>
     <string name="prof_sources_all">Wszystkie źródła</string>
+    <string name="prof_search_all">Szukaj we wszystkich źródłach</string>
+    <string name="prof_search_all_hint">Wyniki ze wszystkich widocznych źródeł, ze wskazaniem źródła przy każdym</string>
 </resources>

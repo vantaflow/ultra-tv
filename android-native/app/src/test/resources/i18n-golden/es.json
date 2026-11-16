@@ -1750,5 +1750,7 @@
   "SimpleStrings.getHoldRemove()": "Mantener: quitar",
   "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Elija d\u00f3nde se abre la app: Inicio, una secci\u00f3n o la \u00faltima pantalla usada (fichas, reproductor, b\u00fasqueda y ajustes nunca se restauran).",
   "ProfileStrings.getSources()": "Fuentes",
-  "ProfileStrings.getSourcesAll()": "Todas las fuentes"
+  "ProfileStrings.getSourcesAll()": "Todas las fuentes",
+  "ProfileStrings.getSearchAllSources()": "Buscar en todas las fuentes",
+  "ProfileStrings.getSearchAllSourcesHint()": "Resultados de todas las fuentes visibles, con la fuente indicada en cada uno"
 }

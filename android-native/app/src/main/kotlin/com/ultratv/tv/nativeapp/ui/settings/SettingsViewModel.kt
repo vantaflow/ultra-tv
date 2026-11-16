@@ -54,7 +54,13 @@ class SettingsViewModel @Inject constructor(
     private val guideChecker: com.ultratv.tv.nativeapp.data.xmltv.GuideChecker,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
     private val profileSources: com.ultratv.tv.nativeapp.data.profile.ProfileSources,
+    private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
+
+    /** « Toutes les sources » pour la recherche du profil courant. */
+    val searchAllSources: StateFlow<Boolean> = profileRepo.currentSearchAll.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+    fun setSearchAllSources(on: Boolean) { viewModelScope.launch { profileRepo.setSearchAll(on) } }
+
 
     // ---- « Guide de cette source » (adresse EPG propre à une source) ----
 

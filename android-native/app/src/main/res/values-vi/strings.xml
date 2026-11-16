@@ -1693,4 +1693,6 @@
     <string name="pex_diag_copied">Đã sao chép báo cáo (đã ẩn thông tin đăng nhập)</string>
     <string name="prof_sources">Nguồn</string>
     <string name="prof_sources_all">Tất cả nguồn</string>
+    <string name="prof_search_all">Tìm trong tất cả nguồn</string>
+    <string name="prof_search_all_hint">Kết quả từ mọi nguồn hiển thị, kèm tên nguồn trên từng mục</string>
 </resources>

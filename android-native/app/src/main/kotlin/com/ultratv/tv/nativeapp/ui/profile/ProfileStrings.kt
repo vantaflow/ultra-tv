@@ -44,5 +44,7 @@ class ProfileStrings(private val lang: AppLang) {
     val kidsNeedPin get() = tx(R.string.prof_kids_need_pin)
     val sources get() = tx(R.string.prof_sources)
     val sourcesAll get() = tx(R.string.prof_sources_all)
+    val searchAllSources get() = tx(R.string.prof_search_all)
+    val searchAllSourcesHint get() = tx(R.string.prof_search_all_hint)
     val colorNames get() = I18n.stringArray(lang, R.array.prof_color_names)
 }

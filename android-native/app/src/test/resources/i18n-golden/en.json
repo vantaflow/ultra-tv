@@ -1750,5 +1750,7 @@
   "SimpleStrings.getHoldRemove()": "Hold: remove",
   "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choose where the app opens: Home, a section, or the last screen you were on (details, player, search and settings are never restored).",
   "ProfileStrings.getSources()": "Sources",
-  "ProfileStrings.getSourcesAll()": "All sources"
+  "ProfileStrings.getSourcesAll()": "All sources",
+  "ProfileStrings.getSearchAllSources()": "Search all sources",
+  "ProfileStrings.getSearchAllSourcesHint()": "Results from every visible source, with the source shown on each one"
 }

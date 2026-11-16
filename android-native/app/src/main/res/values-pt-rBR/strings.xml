@@ -1729,4 +1729,6 @@
     <string name="pex_diag_copied">Relatório copiado (credenciais ocultas)</string>
     <string name="prof_sources">Fontes</string>
     <string name="prof_sources_all">Todas as fontes</string>
+    <string name="prof_search_all">Pesquisar em todas as fontes</string>
+    <string name="prof_search_all_hint">Resultados de todas as fontes visíveis, com a fonte indicada em cada um</string>
 </resources>

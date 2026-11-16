@@ -1712,4 +1712,6 @@
     <string name="pex_diag_copied">Rapport kopieret (loginoplysninger skjult)</string>
     <string name="prof_sources">Kilder</string>
     <string name="prof_sources_all">Alle kilder</string>
+    <string name="prof_search_all">Søg i alle kilder</string>
+    <string name="prof_search_all_hint">Resultater fra alle synlige kilder med kilden vist på hvert</string>
 </resources>

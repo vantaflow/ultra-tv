@@ -46,6 +46,14 @@ object ProfileSourcesRules {
     }
 }
 
+/** Pastille courte d'une source (mode « Toutes les sources ») : son nom, tronqué à 8 caractères. */
+object SourceBadge {
+    fun of(name: String): String {
+        val n = name.trim().ifEmpty { "?" }
+        return if (n.length <= 8) n else n.take(7).trimEnd() + "\u2026"
+    }
+}
+
 /**
  * Applique le choix de sources du profil courant : au changement de profil (ou de choix), la source active devient
  * la première source visible si l'active actuelle ne l'est pas. Le catalogue affiché suit donc le profil.

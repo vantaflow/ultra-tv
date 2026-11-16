@@ -1693,4 +1693,6 @@
     <string name="pex_diag_copied">Zpráva zkopírována (přihlašovací údaje skryty)</string>
     <string name="prof_sources">Zdroje</string>
     <string name="prof_sources_all">Všechny zdroje</string>
+    <string name="prof_search_all">Hledat ve všech zdrojích</string>
+    <string name="prof_search_all_hint">Výsledky ze všech viditelných zdrojů, u každého je uveden zdroj</string>
 </resources>
