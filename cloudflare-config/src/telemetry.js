@@ -55,7 +55,8 @@ export function keepEvent(kind, entry, rand = Math.random, now = Date.now()) {
   if (last && now - last < DEDUP_MS) return false;
   const level = String(entry?.level || "info").toLowerCase();
   const important = level === "warn" || level === "warning" || level === "error" || level === "fatal";
-  if (!important && rand() >= 1 / INFO_SAMPLE) return false;
+  // `sampled` : ligne d'info déjà échantillonnée (1 sur 10) par le client dans un lot : on ne tire pas une seconde fois.
+  if (!important && !entry?.sampled && rand() >= 1 / INFO_SAMPLE) return false;
   if (recent.size > 2000) recent.clear();
   recent.set(key, now);
   return true;
@@ -68,6 +69,17 @@ export async function recordEvent(env, kind, entry) {
     "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
   ).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null, entry.versionCode ?? null, entry.device ?? null,
     entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null, entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null).run());
+  await maybePurge(env);
+}
+
+/** Enregistre un lot de journaux : tri `keepEvent`, puis UNE écriture groupée (un seul batch). */
+export async function recordEvents(env, kind, entries) {
+  const kept = env?.TELEMETRY_FILTER !== "off" ? entries.filter((e) => keepEvent(kind, e)) : entries;
+  if (!kept.length) return;
+  await safe(env, (db) => db.batch(kept.map((entry) => db.prepare(
+    "INSERT INTO events (kind, ts, device_id, mac, version, version_code, device, acct, country, level, tag, message, android_sdk, stack) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+  ).bind(kind, entry.ts, entry.deviceId ?? null, entry.mac ?? null, entry.version ?? null, entry.versionCode ?? null, entry.device ?? null,
+    entry.acct ?? null, entry.country ?? null, entry.level ?? null, entry.tag ?? null, entry.message ?? null, entry.androidSdk ?? null, entry.stack ?? null))));
   await maybePurge(env);
 }
 
