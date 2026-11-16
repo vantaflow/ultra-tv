@@ -16,6 +16,7 @@ import { transportFetch, type Transport } from "@/net/transport";
 import type { Table } from "dexie";
 import { StalkerClient, absoluteUrl, normalizeMac, stalkerLink, unpackCreds, type StalkerCategory, type StalkerItem } from "@/net/stalker";
 import { StalkerSyncLog, type SyncType } from "@/net/stalkerLog";
+import { MediaClient, imageUrl, isMediaType, mediaLink, numericId } from "@/net/mediaServer";
 import {
   handshake, xtreamArray, xtreamStream,
   type XtreamCategory, type XtreamCreds, type XtreamLive, type XtreamSeries, type XtreamVod,
@@ -41,6 +42,11 @@ export function stalkerOf(t: Transport, s: Source, signal?: AbortSignal, log?: S
     endpoint: s.stalkerApi || null, signal, log,
     onEndpoint: (api) => { s.stalkerApi = api; if (s.id != null) void db.sources.update(s.id, { stalkerApi: api }).catch(() => undefined); },
   });
+}
+
+/** Client d'un serveur Jellyfin / Emby (connexion paresseuse : identifiant + mot de passe, ou clé API si l'identifiant est vide). */
+export function mediaOf(t: Transport, s: Source, signal?: AbortSignal): MediaClient {
+  return new MediaClient(t, { server: s.server, username: s.username, password: s.password }, signal);
 }
 
 function mapCategories(kind: Kind, sourceId: number, list: XtreamCategory[], langs: string[] | null): CategoryRow[] {
@@ -93,6 +99,10 @@ export async function testConnection(t: Transport, s: Source, signal?: AbortSign
   if (s.type === "m3u") {
     const head = (await readM3u(t, s, signal)).slice(0, 200);
     if (!head.includes("#EXTM3U") && !head.includes("#EXTINF")) throw new Error("not-m3u");
+    return { ok: true as const, expDate: null, maxConnections: 1 };
+  }
+  if (isMediaType(s.type)) {
+    await mediaOf(t, s, signal).probe();
     return { ok: true as const, expDate: null, maxConnections: 1 };
   }
   if (s.type === "stalker") {
@@ -189,6 +199,7 @@ export async function runSync({ source, transport: t, onProgress, signal, preser
     try {
       if (source.type === "m3u") await syncM3u(ctx, t, signal);
       else if (source.type === "stalker") await syncStalker(ctx, t, signal);
+      else if (isMediaType(source.type)) await syncMedia(ctx, t, signal);
       else await syncXtream(ctx, t, signal);
       assertNotAborted(signal);
     } catch (e) {
@@ -646,6 +657,51 @@ async function syncStalker(ctx: Ctx, t: Transport, signal?: AbortSignal) {
   report("movie", 1, true);
   report("series", 1, true);
   await flushCategoryCounts(ctx, cats, catIds, catCount, ["live", "movie", "series"]);
+}
+
+/**
+ * Serveur Jellyfin / Emby : chaque bibliothèque de films ou de séries devient une catégorie ; ses éléments sont indexés dans le
+ * catalogue local (comme une source VOD : recherche, favoris, affiches). Ni direct ni guide. Les lignes ne gardent que
+ * l'identifiant du serveur dans un lien interne `media:…` (jamais d'adresse de lecture ni de jeton).
+ */
+async function syncMedia(ctx: Ctx, t: Transport, signal?: AbortSignal) {
+  const { source, cid: sourceId, counts, report, flags } = ctx;
+  const mc = mediaOf(t, source, signal);
+  const libs = await mc.libraries();
+  const cats: CategoryRow[] = libs.map((l, i) => ({
+    sourceId, kind: l.type === "movies" ? "movie" : "series", extId: l.id, name: l.name, label: prettyCategoryName(l.name), badge: null,
+    count: 0, enabled: 1, adult: 0, ord: i,
+  } satisfies CategoryRow));
+  if (flags) for (const cat of cats) { const f = flags.get(`${cat.kind}:${cat.extId}`); if (f !== undefined) cat.enabled = f; }
+  const catIds = await db.categories.bulkAdd(cats, { allKeys: true });
+  const catCount: Record<string, number> = {};
+  assertNotAborted(signal);
+
+  const wanted = cats.filter((c) => c.enabled);
+  let movieOrd = 0, serOrd = 0, done = 0;
+  report("movie", 0, true);
+  for (const cat of wanted) {
+    assertNotAborted(signal);
+    const isMovie = cat.kind === "movie";
+    const items = await mc.items(cat.extId, isMovie ? "Movie" : "Series");
+    const movies: MovieRow[] = [];
+    const series: SeriesRow[] = [];
+    for (const it of items) {
+      const ct = cleanTitle(it.name);
+      const common = { sourceId, catExt: cat.extId, name: it.name, title: ct.title, norm: normText(ct.title), words: wordKeys(sourceId, normText(ct.title)), year: it.year ?? ct.year, poster: it.primaryTag ? imageUrl(mc.base, it.id, "Primary", it.primaryTag) : null, rating: Math.min(10, it.rating ?? 0), added: it.added, url: mediaLink(it.id) };
+      if (isMovie) movies.push({ ...common, ord: movieOrd++, streamId: numericId(it.id), ext: it.container ?? "" });
+      else series.push({ ...common, ord: serOrd++, seriesId: numericId(it.id), portalId: it.id, backdrop: it.backdropTag ? imageUrl(mc.base, it.id, "Backdrop", it.backdropTag, 1280) : null, plot: it.overview?.slice(0, 600) ?? null });
+      const k = `${cat.kind}:${cat.extId}`;
+      catCount[k] = (catCount[k] ?? 0) + 1;
+    }
+    for (let i = 0; i < movies.length; i += 5000) await db.movies.bulkAdd(movies.slice(i, i + 5000));
+    for (let i = 0; i < series.length; i += 5000) await db.series.bulkAdd(series.slice(i, i + 5000));
+    counts.movie = movieOrd; counts.series = serOrd;
+    report("movie", Math.min(0.99, ++done / Math.max(1, wanted.length)));
+  }
+  report("movie", 1, true);
+  report("series", 1, true);
+  await flushCategoryCounts(ctx, cats, catIds, catCount, ["movie", "series"]);
 }
 
 async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transport, signal?: AbortSignal) {

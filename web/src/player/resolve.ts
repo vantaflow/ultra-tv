@@ -3,6 +3,7 @@ import type { Source } from "@/db/types";
 import { credsOf, stalkerOf } from "@/sync/core";
 import { db } from "@/db/db";
 import { isStalkerLink, parseStalkerLink, stalkerLink, type StalkerClient } from "@/net/stalker";
+import { MediaClient, isMediaLink, numericId, parseMediaLink, resumeSeconds } from "@/net/mediaServer";
 import { currentTransport } from "@/net/transport";
 import { episodeUrl, liveUrl, movieUrl, timeshiftUrl } from "@/net/xtream";
 import type { Format } from "./engine";
@@ -38,7 +39,7 @@ export interface Candidate { url: string; format: Format; label: string }
 
 export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean; nativeHls?: boolean }): Candidate[] {
   // Portail Stalker : le lien n'existe qu'au moment de jouer (voir stalkerCandidate, asynchrone).
-  if (source.type === "stalker") return [];
+  if (source.type === "stalker" || source.type === "jellyfin" || source.type === "emby") return [];
   if (t.protectedStream) return [];
   const c = credsOf(source);
   const out: Candidate[] = [];
@@ -113,4 +114,55 @@ export function stalkerFormat(url: string, kind: PlayKind): Format {
   if (path.endsWith(".m3u8") || /[?&]extension=m3u8/i.test(url)) return "hls";
   if (path.endsWith(".ts") || /[?&]extension=ts/i.test(url)) return "ts";
   return kind === "live" ? "ts" : "native";
+}
+
+// ---------------------------------------------------------------- serveur Jellyfin / Emby
+
+const mediaClients = new Map<string, MediaClient>();
+
+/** Client gardé par source (la connexion est réutilisée d'un titre à l'autre). */
+export async function mediaClientFor(source: Source): Promise<MediaClient> {
+  const key = `${source.id}|${source.server}|${source.username}|${source.password}`;
+  let c = mediaClients.get(key);
+  if (!c) { c = new MediaClient(await currentTransport(), { server: source.server, username: source.username, password: source.password }); mediaClients.set(key, c); }
+  return c;
+}
+
+/** Identifiant sur le serveur de l'élément à jouer : lien de la cible, sinon relu dans le catalogue (film) ou dans la fiche de la série (épisode). */
+export async function mediaItemIdOf(source: Source, t: PlayTarget): Promise<string | null> {
+  if (isMediaLink(t.url)) return parseMediaLink(t.url);
+  if (t.kind === "movie") {
+    const url = (await db.movies.where("[sourceId+streamId]").equals([t.cid, t.refId]).first())?.url;
+    return url ? parseMediaLink(url) : null;
+  }
+  if (t.kind !== "episode" || t.seriesId == null) return null;
+  const info = (await db.details.get(`series:${t.sourceId}:${t.seriesId}`))?.json as { media?: Array<{ id: number; url: string }> } | undefined;
+  const hit = info?.media?.find((e) => e.id === t.refId)?.url;
+  if (hit) return parseMediaLink(hit);
+  // Fiche absente (reprise depuis l'historique) : épisodes relus sur le serveur.
+  const row = await db.series.where("[sourceId+seriesId]").equals([t.cid, t.seriesId]).first();
+  if (!row?.portalId) return null;
+  const eps = await (await mediaClientFor(source)).episodes(row.portalId);
+  return eps.find((e) => numericId(e.id) === t.refId)?.id ?? null;
+}
+
+export interface MediaPlay {
+  candidates: Candidate[];
+  /** Reprise (secondes) : position du serveur d'abord, sinon position locale. */
+  resumeAt?: number;
+}
+
+/** Lecture d'un élément du serveur : directe, puis HLS (le serveur remuxe ou transcode) ; reprise lue sur le serveur. */
+export async function mediaPlayback(source: Source, t: PlayTarget): Promise<MediaPlay | null> {
+  const id = await mediaItemIdOf(source, t);
+  if (!id) return null;
+  const { urls, item } = await (await mediaClientFor(source)).playback(id);
+  const resume = resumeSeconds(item, t.startAt);
+  return {
+    candidates: [
+      { url: urls.direct, format: "native", label: (item?.container ?? "direct").toUpperCase() },
+      { url: urls.hls, format: "hls", label: "HLS" },
+    ],
+    resumeAt: resume && resume > 20 ? resume : undefined,
+  };
 }

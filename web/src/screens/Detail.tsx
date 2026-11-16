@@ -12,7 +12,8 @@ import { currentTransport } from "@/net/transport";
 import { seriesInfo, vodInfo, type SeriesInfo, type VodInfo } from "@/net/xtream";
 import { usePlayer } from "@/player/store";
 import { movieTarget } from "@/player/targets";
-import { stalkerClientFor } from "@/player/resolve";
+import { mediaClientFor, stalkerClientFor } from "@/player/resolve";
+import { isMediaType, parseMediaLink, seriesInfoOf, vodInfoOf } from "@/net/mediaServer";
 import { SERIES_PREFIX, parseStalkerLink, type StalkerEpisode } from "@/net/stalker";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
@@ -47,6 +48,25 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
     (async () => {
       const hit = await db.details.get(key);
       if (hit && !dead) setState({ info: hit.json as T, error: false });
+      // Serveur Jellyfin / Emby : fiche relue à chaque ouverture (elle porte la position de reprise du serveur).
+      if (isMediaType(source.type)) {
+        try {
+          const mc = await mediaClientFor(source);
+          let json: object = {};
+          if (kind === "vod") {
+            const url = (await db.movies.where("[sourceId+streamId]").equals([source.cid, id]).first())?.url;
+            const itemId = url ? parseMediaLink(url) : null;
+            const it = itemId ? await mc.item(itemId) : null;
+            if (it) json = vodInfoOf(it);
+          } else {
+            const portalId = (await db.series.where("[sourceId+seriesId]").equals([source.cid, id]).first())?.portalId;
+            if (portalId) json = seriesInfoOf(await mc.episodes(portalId), mc.base);
+          }
+          await db.details.put({ key, json, fetchedAt: Date.now() });
+          if (!dead) setState({ info: json as T, error: false });
+        } catch { if (!dead && !hit) setState({ info: null, error: true }); }
+        return;
+      }
       if (hit && Date.now() - hit.fetchedAt < WEEK) return;
       if (source.type === "stalker") {
         // Portail Stalker : pas de fiche détaillée ; épisodes lus sur le portail (saisons, ou tableau `series`).
@@ -129,7 +149,9 @@ function MovieInner({ source }: { source: Source }) {
   const plot = presentable(i?.plot ?? i?.description);
   const isFav = favs.some((f) => f.refId === sid);
   const dur = i?.duration_secs ? fmtDuration(toNum(i.duration_secs)) : presentable(i?.duration);
-  const resume = hist && hist.pos > 20 ? hist.pos : 0;
+  // Serveur Jellyfin / Emby : la position enregistrée sur le serveur prime sur l'historique local.
+  const serverResume = (info as { resumePos?: number } | null)?.resumePos ?? 0;
+  const resume = serverResume > 20 ? serverResume : hist && hist.pos > 20 ? hist.pos : 0;
   const m: MovieRow = movie;
   const play = (startAt?: number) => usePlayer.getState().open(movieTarget(source, { streamId: m.streamId, title: m.title, poster: m.poster, ext: m.ext, url: m.url }, startAt), "full");
   // Fond : celui de la fiche, sinon le fond Fanart, sinon l'image du fournisseur.

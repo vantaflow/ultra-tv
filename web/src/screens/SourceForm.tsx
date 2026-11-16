@@ -8,7 +8,7 @@ import { currentTransport } from "@/net/transport";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
 import { formatMacTyping, packCreds, unpackCreds } from "@/net/stalker";
 
-export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker";
+export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker" | "jellyfin" | "emby";
 
 export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
   kind: SourceKind; value: Source; onChange: (s: Source) => void; fileInfo?: string; onPickFile?: (f: File) => void;
@@ -38,6 +38,23 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
             <label htmlFor="f-pass">{t("src.password")}</label>
             <input id="f-pass" className="input" type="password" value={value.password} autoComplete="off" onChange={(e) => set({ password: e.target.value })} />
           </div>
+        </>
+      )}
+      {(kind === "jellyfin" || kind === "emby") && (
+        <>
+          <div className="field full">
+            <label htmlFor="f-server">{t("src.server")}</label>
+            <input id="f-server" className="input" value={value.server} placeholder="http://192.168.1.10:8096" autoCapitalize="off" spellCheck={false} onChange={(e) => set({ server: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor="f-user">{t("src.username")}</label>
+            <input id="f-user" className="input" value={value.username} autoComplete="off" spellCheck={false} onChange={(e) => set({ username: e.target.value })} />
+          </div>
+          <div className="field">
+            <label htmlFor="f-pass">{t("src.password")}</label>
+            <input id="f-pass" className="input" type="password" value={value.password} autoComplete="off" onChange={(e) => set({ password: e.target.value })} />
+          </div>
+          <span className="muted full">{t("src.mediaHint")}</span>
         </>
       )}
       {kind === "stalker" && (() => {

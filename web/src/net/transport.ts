@@ -123,6 +123,8 @@ export interface ReqOptions {
    * ignoré par le navigateur).
    */
   headers?: Record<string, string>;
+  /** POST JSON (serveurs Jellyfin / Emby : connexion, rapports de lecture) ; GET par défaut. Relayé par le proxy Electron et le mode direct. */
+  post?: string;
 }
 
 /** En-têtes supplémentaires relayés par le proxy Electron / Cloudflare (liste fermée). */
@@ -176,7 +178,9 @@ export async function transportFetch(t: Transport, url: string, o: ReqOptions = 
   // Sans délai, un fournisseur qui n'envoie plus rien figeait la synchro indéfiniment (modes direct et proxy distant).
   const idle = idleSignal(o.signal, IDLE_TIMEOUT_MS);
   try {
-    const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers: requestHeaders(t, o) });
+    const headers = requestHeaders(t, o);
+    if (o.post !== undefined) headers["Content-Type"] = "application/json";
+    const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers, ...(o.post !== undefined ? { method: "POST", body: o.post } : {}) });
     if (!res.ok) { idle.stop(); throw new HttpError(res.status); }
     if (!res.body) { idle.stop(); return res; }
     // Corps en flux : le délai est réarmé à chaque morceau reçu (un gros fichier lent n'est pas coupé, un flux muet l'est).
