@@ -57,9 +57,9 @@ export function html(body, n, status = 200, { camera = false } = {}) {
     // Application installable : manifeste et service worker servis par le Worker lui-même.
     "manifest-src 'self'",
     "worker-src 'self'",
-    // trakt.tv : « Connecter Trakt » est un formulaire POST redirigé vers la page d'autorisation Trakt (form-action
+    // trakt.tv, simkl.com : « Connecter Trakt / Simkl » sont des formulaires POST redirigés vers leur page d'autorisation (form-action
     // s'applique aussi aux redirections).
-    "form-action 'self' https://trakt.tv",
+    "form-action 'self' https://trakt.tv https://simkl.com",
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join("; ");
