@@ -639,7 +639,7 @@ export async function deleteState(env, login, pid) {
 export const PROFILES_MAX = 40;
 const PROFILE_TOMB_TTL_MS = 180 * 24 * 3600 * 1000;
 
-/** Entrées de profils envoyées par un appareil : { n: nom, c: couleur ARGB, k: enfants, at: ms, on: false = supprimé }. */
+/** Entrées de profils envoyées par un appareil : { n: nom, c: couleur ARGB, k: enfants, at: ms, on: false = supprimé, s: noms des sources visibles }. */
 export function parseProfiles(body, now = Date.now()) {
   if (!body || typeof body !== "object" || !Array.isArray(body.profiles) || body.profiles.length > PROFILES_MAX) return { error: "profiles" };
   const out = [];
@@ -652,7 +652,9 @@ export function parseProfiles(body, now = Date.now()) {
     const f = typeof e.f === "string" ? cleanLine(e.f, 24) : "";
     // Langue de l'interface du profil (code AppLang : « fr », « pt-BR », « system »…).
     const l = typeof e.l === "string" && /^(system|[a-z]{2}(-[A-Z]{2})?)$/.test(e.l) ? e.l : "";
-    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}) });
+    // Sources visibles du profil (noms de sources, 12 au plus) : facultatif, absent = toutes les sources. Les anciennes versions l'ignorent.
+    const s = Array.isArray(e.s) ? [...new Set(e.s.filter((x) => typeof x === "string").map((x) => cleanLine(x, 40)).filter(Boolean))].slice(0, 12) : [];
+    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}), ...(s.length ? { s } : {}) });
   }
   return { profiles: out };
 }
