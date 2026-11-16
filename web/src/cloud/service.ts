@@ -17,6 +17,7 @@ import {
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
+import { cadence, pushGate } from "./cadence";
 import { syncSourceState } from "./sharedState";
 import { onLocalProfilesChanged, syncProfiles } from "./profilesSync";
 import { setPosterFinder } from "@/lib/posterFallback";
@@ -110,6 +111,7 @@ export async function storeToken(token: string, deviceId: string): Promise<void>
 export async function unpair(): Promise<void> {
   await db.settings.bulkDelete([K.token, K.deviceId, K.tokenAt, K.etag, K.lastSync, K.devices]);
   for (const s of await listSources()) if (s.cloudId) await saveSource({ ...s, cloudId: undefined, cloudOrigin: undefined, cloudShared: undefined, cloudOriginName: undefined });
+  pushGate.reset();
   patch({ paired: false, deviceId: "", lastSyncAt: 0, devices: 0 });
 }
 
@@ -172,11 +174,13 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     if (me) { await saveDeviceName(me.name, false); if (me.id) { await setSetting(K.deviceId, me.id); patch({ deviceId: me.id }); } }
     else if (res.config.deviceName) await saveDeviceName(res.config.deviceName, false);
     const summary = await applyProviders(res.config.providers, !!awaitSync);
+    if (summary.added + summary.updated + summary.removed > 0) cadence.noteChange(); // reçu d'un autre appareil
     void syncSharedState();
     return summary;
   } catch (e) {
     if (e instanceof TokenRejectedError) {
       await db.settings.bulkDelete([K.token, K.etag]);
+      pushGate.reset();
       patch({ paired: false, error: "token-rejected" });
     } else patch({ error: e instanceof RateLimitedError ? "rate-limited" : "network" });
     throw e;
@@ -341,6 +345,7 @@ const batcher = createBatcher<number>(PUBLISH_DELAY_MS, (ids) => {
 export function notePrefsChanged(sourceId: number): void {
   if (!useCloud.getState().prefsSync) return;
   pendingPublish.add(sourceId);
+  cadence.noteChange();
   batcher.note(sourceId);
 }
 
@@ -414,6 +419,7 @@ export async function syncProfilesCloud(): Promise<void> {
 export const PROFILES_PUSH_DELAY_MS = 3000;
 let profilesTimer: ReturnType<typeof setTimeout> | null = null;
 onLocalProfilesChanged(() => {
+  cadence.noteChange();
   if (profilesTimer) clearTimeout(profilesTimer);
   profilesTimer = setTimeout(() => { profilesTimer = null; void syncProfilesCloud(); }, PROFILES_PUSH_DELAY_MS);
 });
@@ -444,16 +450,28 @@ export function startCloudSchedule(): () => void {
   const tick = () => { if (useCloud.getState().paired) void syncCloud().catch(() => undefined); };
   tick();
   timer = setInterval(tick, SYNC_EVERY_MS);
-  // Réglages faits sur une autre TV (catégories, profils, langue), favoris et reprises : toutes les 2 min fenêtre visible.
-  // Configuration relue avec son ETag (réponse 304 légère si rien n'a changé) ; l'état partagé suit dans la même synchro.
-  const light = () => { if (useCloud.getState().paired && document.visibilityState === "visible") void syncCloud().catch(() => undefined); };
-  stateTimer = setInterval(light, 2 * 60_000);
+  // Réglages faits sur une autre TV (catégories, profils, langue), favoris et reprises : cadence adaptative, fenêtre visible
+  // (2 min pendant 10 min après un changement, local ou reçu, puis 10 min). Configuration relue avec son ETag (304 léger
+  // si rien n'a changé) ; l'état partagé suit dans la même synchro, mais seulement si son contenu a changé (voir pushGate).
+  let lastLight = 0;
+  const light = () => {
+    if (!useCloud.getState().paired || document.visibilityState !== "visible") return;
+    lastLight = Date.now();
+    void syncCloud().catch(() => undefined);
+  };
+  // Tic toutes les 30 s (sans réseau) : la synchro part quand le délai de la cadence est écoulé.
+  stateTimer = setInterval(() => { if (cadence.periodicDue(Date.now(), lastLight)) light(); }, 30_000);
+  // Changements locaux de favoris et de reprises : cadence rapide (l'envoi suit au prochain tic).
+  const noteLocal = () => { cadence.noteChange(); };
+  db.favorites.hook("creating", noteLocal); db.favorites.hook("deleting", noteLocal);
+  db.history.hook("creating", noteLocal); db.history.hook("updating", noteLocal);
   // Retour sur la fenêtre (après avoir utilisé la TV, par exemple) : synchro immédiate, au plus une fois par minute.
-  let lastFocus = 0;
-  const onFocus = () => { if (Date.now() - lastFocus > 60_000) { lastFocus = Date.now(); light(); } };
+  const onFocus = () => { if (cadence.foregroundDue(Date.now(), lastLight)) light(); };
   window.addEventListener("focus", onFocus);
   return () => {
     if (timer) clearInterval(timer); timer = null; if (stateTimer) clearInterval(stateTimer); stateTimer = null;
     window.removeEventListener("focus", onFocus);
+    db.favorites.hook("creating").unsubscribe(noteLocal); db.favorites.hook("deleting").unsubscribe(noteLocal);
+    db.history.hook("creating").unsubscribe(noteLocal); db.history.hook("updating").unsubscribe(noteLocal);
   };
 }

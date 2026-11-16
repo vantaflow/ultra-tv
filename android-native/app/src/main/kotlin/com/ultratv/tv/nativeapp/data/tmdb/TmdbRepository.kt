@@ -41,16 +41,21 @@ class TmdbHttpApi @Inject constructor(
     private val prefs: UserPreferencesStore,
 ) : TmdbApi {
     private val http = okHttp.newBuilder().followRedirects(false).followSslRedirects(false).build()
+    /** Pause commune à toutes les requêtes TMDB après un 429 (Retry-After respecté, plus de rafale). */
+    private val rateLimit = TmdbRateLimit()
 
     override fun isEnabled() = tokens.isPaired
 
     private suspend fun get(pathAndQuery: String): String? = withContext(Dispatchers.IO) {
         val token = tokens.token() ?: return@withContext null
         val base = WorkerUrl.normalize(WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), BuildConfig.DEBUG) ?: return@withContext null
+        // Pause en cours après un 429 : aucune requête (même erreur qu'un 429, rien n'est mémorisé).
+        rateLimit.remainingMs().let { if (it > 0) throw TmdbRateLimitedException((it + 999) / 1000) }
         val req = Request.Builder().url("$base/api/tmdb/$pathAndQuery").header("Authorization", "Bearer $token").get().build()
         http.newCall(req).execute().use { r ->
             when {
                 r.code == 404 -> null
+                r.code == 429 -> throw TmdbRateLimitedException(rateLimit.onRateLimited(r.header("Retry-After")))
                 r.isSuccessful -> r.body?.string()
                 else -> throw java.io.IOException("TMDB proxy HTTP ${r.code}")   // 401/429/5xx : on garde le cache
             }

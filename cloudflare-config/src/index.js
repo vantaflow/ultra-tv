@@ -34,7 +34,7 @@ import { ratingsProxy } from "./ratings.js";
 import { fanartProxy, tvmazeProxy, sportsTeamProxy } from "./extmeta.js";
 import { subtitlesSearch, subtitlesDownload, osLogin } from "./subtitles.js";
 import { sanitizeText } from "./sanitize.js";
-import { recordEvent, anonTouch as anonTouchD1, purgeTelemetry, touchDeviceActivity, deviceActivity, withActivity, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
+import { recordEvent, recordEvents, anonTouch as anonTouchD1, purgeTelemetry, touchDeviceActivity, deviceActivity, withActivity, platformOf, modelOf, ANON_PLATFORMS } from "./telemetry.js";
 import { anonQuery, eventsQuery, parseListParams, paginate, sortRows, filterAccounts, filterDevices, flattenDevices, countBy, ANON_SORTS, EVENT_SORTS, ACCOUNT_SORTS, DEVICE_SORTS, DAY_MS } from "./admin.js";
 import { queryAnon, anonFacets, anonOverview, countEvents, queryEvents, eventFacets } from "./telemetryq.js";
 import { overviewPage, accountsPage, anonPage, devicesPage, eventsAdminPage, alertsPage } from "./adminui.js";
@@ -60,6 +60,9 @@ const PAIR_TTL_S = 600;
 const MIN_PASSWORD = 10;
 
 const EVENT_MAX_BODY = 8 * 1024;
+/** Lot de journaux (`/api/events`) : 50 entrées et 32 Ko au plus. */
+const EVENTS_BATCH_MAX = 50;
+const EVENTS_BATCH_MAX_BODY = 32 * 1024;
 const CRASH_MAX_BODY = 48 * 1024;
 
 // ---- limitation de débit ------------------------------------------------------
@@ -250,6 +253,7 @@ async function route(req, env, ctx) {
   }
   { const sm = path.match(/^\/api\/announcements\/([0-9a-f]{8,32})\/stat$/); if (sm && m === "POST") return announcementStat(req, env, sm[1]); }
   if (path === "/api/event" && m === "POST") return ingest(req, env, "event");
+  if (path === "/api/events" && m === "POST") return ingestBatch(req, env);
   if (path === "/api/crash" && m === "POST") return ingest(req, env, "crash");
   // Ancienne lecture anonyme par MAC : supprimée (la MAC n'est pas un secret).
   if (/^\/api\/config\//.test(path)) {
@@ -556,7 +560,7 @@ async function pairStart(req, env) {
   for (let i = 0; i < 5; i++) {
     const code = newPairCode();
     const r = await guardStub(env, `pair:${code}`).pairInit({ secretHash, label, ttlSec: PAIR_TTL_S });
-    if (r.ok) return json({ code: formatCode(code), pollSecret, expiresIn: PAIR_TTL_S, interval: 3 });
+    if (r.ok) return json({ code: formatCode(code), pollSecret, expiresIn: PAIR_TTL_S, interval: 5 });
   }
   return json({ error: "unavailable" }, 503);
 }
@@ -620,7 +624,7 @@ async function envoiStart(req, env) {
   for (let i = 0; i < 5; i++) {
     const code = newEnvoiCode();
     const r = await guardStub(env, `envoi:${code}`).envoiInit({ secretHash, installHash, ttlSec: ENVOI_TTL_S });
-    if (r.ok) return json({ code, secret, expiresIn: ENVOI_TTL_S, interval: 3 });
+    if (r.ok) return json({ code, secret, expiresIn: ENVOI_TTL_S, interval: 5 });
   }
   return json({ error: "unavailable" }, 503);
 }
@@ -1505,10 +1509,52 @@ async function ingest(req, env, kind) {
   }
   const entry = isCrash
     ? { ...base, androidSdk: int(b.androidSdk), stack: sanitizeText(b.stack, 32 * 1024) }
-    : { ...base, level: LEVELS.includes(b.level) ? b.level : "info", tag: sanitizeText(b.tag, 32) || "app", message: sanitizeText(b.message, 4000) };
+    : cleanEvent(base, b);
   // D1 (pas KV : une écriture par événement épuisait le quota gratuit) ; conservation 7 jours, 30 jours pour les crashs.
   await recordEvent(env, kind, entry);
   return json({ ok: true });
+}
+
+/** Journal nettoyé (mêmes bornes que `/api/event`) à partir d'un objet reçu. */
+const cleanEvent = (base, b) => ({
+  ...base, level: LEVELS.includes(b.level) ? b.level : "info", tag: sanitizeText(b.tag, 32) || "app", message: sanitizeText(b.message, 4000),
+});
+
+/**
+ * Lot de journaux : `POST /api/events` { events: [{ level, tag, message, ts? }, …] } (50 entrées, 32 Ko).
+ * Même authentification, même limitation, même nettoyage et même tri (`keepEvent`) que `/api/event`, mais une seule
+ * requête HTTP et une seule écriture groupée (un batch = une sous-requête de stockage, plafond de 50 par appel).
+ */
+async function ingestBatch(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `ing:ip:${clientIp(req)}`, 300, 3600, true))
+    || (await limited(env, `ing:events:${auth.device.id}`, 120, 3600, true));
+  if (rl) return rl;
+  const body = await readJson(req, EVENTS_BATCH_MAX_BODY);
+  if (body.error) return body.error;
+  const b = body.value;
+  if (!b || !Array.isArray(b.events)) return json({ error: "invalid" }, 400);
+  if (b.events.length > EVENTS_BATCH_MAX) return json({ error: "too_many" }, 413);
+  const now = Date.now();
+  const base = {
+    v: 2, ts: now, deviceId: auth.device.id,
+    mac: sanitizeText(b.mac, 32) || null,
+    version: sanitizeText(b.version, 32) || null, versionCode: int(b.versionCode),
+    device: sanitizeText(b.device, 128) || null,
+    acct: await opsAccountId(env, auth.acct.login), country: countryOf(req),
+  };
+  const ver = appVersionOf(b.version);
+  if (ver && auth.device.version !== ver) {
+    await withAccountLock(env, auth.acct.login, (acct) => setDeviceInfo(env, acct, auth.device.id, { version: ver })).catch(() => {});
+  }
+  const entries = b.events.filter((e) => e && typeof e === "object").map((e) => {
+    // Horodatage de la ligne côté appareil accepté s'il est plausible (ni futur, ni plus vieux d'une heure).
+    const ts = Number.isFinite(e.ts) && e.ts <= now && e.ts > now - 3600_000 ? Math.trunc(e.ts) : now;
+    return { ...cleanEvent({ ...base, ts }, e), sampled: e.sampled === true };
+  });
+  await recordEvents(env, "event", entries);
+  return json({ ok: true, accepted: entries.length });
 }
 
 // ---- tableaux de bord crashs / journaux (secret serveur) -----------------------

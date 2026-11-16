@@ -140,26 +140,94 @@ object RemoteLog {
         }
     }
 
-    /** Ship a non-fatal log/event. Returns immediately; HTTP happens off-thread. */
+    // ── Journaux par lots (quota Worker : une requête pour tout un lot au lieu d'une par ligne) ──
+
+    private val queue = LogQueue()
+    private val queueLock = Any()
+    private var flushJob: kotlinx.coroutines.Job? = null
+    /** Faux dès que le Worker répond 404 à /api/events (ancien Worker auto-hébergé) : retour à /api/event, ligne par ligne. */
+    @Volatile private var batchSupported = true
+
+    /**
+     * Met un journal non fatal en file. Rien n'est envoyé tout de suite : envoi groupé toutes les 5 min, dans les 60 s
+     * après une erreur, au passage en arrière-plan ([flushNow]) ou quand 50 lignes sont en attente. Les lignes d'info
+     * sont échantillonnées ici (1 sur 10).
+     */
     fun event(tag: String, message: String, level: String = "info") {
-        val ctx = contextInfo ?: return
+        contextInfo ?: return
         if (!telemetryEnabled) return
-        val safeMessage = sanitize(message)
-        scope.launch {
-            runCatching {
-                val body = JSONObject().apply {
-                    put("level", level)
-                    put("tag", tag)
-                    put("message", safeMessage)
-                    put("mac", ctx.mac)
-                    put("version", ctx.versionName)
-                    put("versionCode", ctx.versionCode)
-                    put("device", ctx.device)
-                }.toString()
-                val req = authedRequest("/api/event", body) ?: return@runCatching
-                eventClient.newCall(req).execute().close()
+        if (!queue.accept(level)) return
+        val line = LogQueue.Line(
+            ts = System.currentTimeMillis(), level = level, tag = tag,
+            message = sanitize(message).take(LogQueue.MAX_MESSAGE), sampled = !queue.isImportant(level),
+        )
+        synchronized(queueLock) {
+            if (queue.add(line, line.ts)) scope.launch { flushQueue() } else rescheduleLocked(line.ts)
+        }
+    }
+
+    /** (Re)programme l'envoi à l'échéance de la file ; à appeler sous [queueLock]. */
+    private fun rescheduleLocked(now: Long) {
+        val delay = queue.nextFlushDelay(now) ?: return
+        flushJob?.cancel()
+        flushJob = scope.launch { kotlinx.coroutines.delay(delay); flushQueue() }
+    }
+
+    /** Envoie ce qui est en attente (passage en arrière-plan : MainActivity.onStop). Revient aussitôt. */
+    fun flushNow() { scope.launch { flushQueue() } }
+
+    /** Vide la file par un seul POST /api/events (plusieurs si les lignes sont très longues). Appelé hors thread principal. */
+    private fun flushQueue() {
+        val ctx = contextInfo ?: return
+        val taken = synchronized(queueLock) { flushJob?.cancel(); flushJob = null; queue.drain() }
+        if (taken.isEmpty()) return
+        if (!telemetryEnabled) return
+        val failed = mutableListOf<LogQueue.Line>()
+        for (chunk in LogQueue.chunks(taken)) {
+            val ok = runCatching { sendChunk(ctx, chunk) }.getOrDefault(false)
+            if (!ok) failed += chunk
+        }
+        if (failed.isNotEmpty()) synchronized(queueLock) {
+            val now = System.currentTimeMillis()
+            queue.restore(failed, now)
+            rescheduleLocked(now)
+        }
+    }
+
+    /** Vrai si le lot est traité (envoyé, ou refusé définitivement) ; faux s'il faut réessayer plus tard. */
+    private fun sendChunk(ctx: ContextInfo, chunk: List<LogQueue.Line>): Boolean {
+        if (batchSupported) {
+            val events = org.json.JSONArray()
+            for (l in chunk) events.put(JSONObject().apply {
+                put("ts", l.ts); put("level", l.level); put("tag", l.tag); put("message", l.message)
+                if (l.sampled) put("sampled", true)
+            })
+            val body = JSONObject().apply {
+                put("mac", ctx.mac); put("version", ctx.versionName); put("versionCode", ctx.versionCode); put("device", ctx.device)
+                put("events", events)
+            }.toString()
+            val req = authedRequest("/api/events", body) ?: return true // pas appairé : comme avant, rien n'est envoyé
+            eventClient.newCall(req).execute().use { r ->
+                when {
+                    r.isSuccessful -> return true
+                    r.code == 404 -> batchSupported = false // ancien Worker : repli ci-dessous
+                    r.code == 429 || r.code >= 500 -> return false
+                    else -> return true // refus définitif (jeton révoqué, lot trop gros) : inutile de réessayer
+                }
             }
         }
+        // Repli : /api/event, une requête par ligne (ancien Worker auto-hébergé).
+        var ok = true
+        for (l in chunk) {
+            val body = JSONObject().apply {
+                put("level", l.level); put("tag", l.tag); put("message", l.message)
+                put("mac", ctx.mac); put("version", ctx.versionName); put("versionCode", ctx.versionCode); put("device", ctx.device)
+            }.toString()
+            val req = authedRequest("/api/event", body) ?: return true
+            val code = eventClient.newCall(req).execute().use { it.code }
+            if (code == 429 || code >= 500) { ok = false; break }
+        }
+        return ok
     }
 
     fun info(tag: String, message: String) = event(tag, message, "info")

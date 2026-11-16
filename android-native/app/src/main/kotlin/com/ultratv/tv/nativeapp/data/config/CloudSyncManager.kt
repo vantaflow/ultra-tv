@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -63,6 +64,9 @@ class CloudSyncManager @Inject constructor(
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
 ) {
     private val mutex = Mutex()
+    /** Cadence adaptative (2 min après un changement, puis 10 min) et empreintes de ce qui a déjà été envoyé. */
+    private val cadence = SyncCadence()
+    private val pushGate = SyncPushGate()
     private val _state = MutableStateFlow(CloudSyncState(lastSyncAt = links.lastSyncAt, devices = links.devices(), selfId = links.selfId()))
     val state: StateFlow<CloudSyncState> = _state.asStateFlow()
 
@@ -115,6 +119,8 @@ class CloudSyncManager @Inject constructor(
             val cfg = CloudSyncLogic.parseConfig(fetched.body)
             links.saveDevices(cfg.selfId, cfg.devices)
             val summary = apply(cfg)
+            // Configuration reçue d'un autre appareil : cadence rapide pendant 10 min.
+            if (summary.added + summary.updated + summary.removed > 0 || summary.pending.isNotEmpty()) cadence.noteChange()
             links.setEtag(fetched.etag)
             links.lastSyncAt = System.currentTimeMillis()
             stateScope.launch { syncSharedState() }
@@ -150,18 +156,21 @@ class CloudSyncManager @Inject constructor(
         val base = workerBase() ?: return
         stateMutex.withLock {
             // Profils d'abord : les favoris et l'historique reçus sont rattachés au NOM du profil.
-            runCatching { syncProfilesLocked(base) }
+            var received = false
+            runCatching { if (syncProfilesLocked(base)) received = true }
                 .onFailure { android.util.Log.w("UltraCloud", "profiles failed: ${it.javaClass.simpleName}") }
             for (p in repo.observeProviders().first()) {
                 val cid = links.cloudIdOf(p.id) ?: continue
-                runCatching { syncStateOf(base, p.id, cid) }
+                runCatching { if (syncStateOf(base, p.id, cid)) received = true }
                     .onFailure { android.util.Log.w("UltraCloud", "shared state failed: ${it.javaClass.simpleName}") }
             }
+            // Changement venu d'un autre appareil : on reste en cadence rapide.
+            if (received) cadence.noteChange()
         }
     }
 
     /** Profils partagés entre les appareils du compte (nom, couleur, profil Enfants ; jamais le PIN). */
-    private suspend fun syncProfilesLocked(base: String) {
+    private suspend fun syncProfilesLocked(base: String): Boolean {
         val dao = db.profileDao()
         // Une fois par appareil : la langue choisie AVANT qu'elle appartienne au profil (réglage de l'appareil) devient celle
         // du profil courant, pour qu'elle suive sur les autres appareils.
@@ -178,13 +187,20 @@ class CloudSyncManager @Inject constructor(
         val all = dao.observeAll().first()
         val langs = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }?.value?.let { p.id to it } }.toMap()
         val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs)
-        val raw = source.withToken(base) { t -> client.syncProfiles(base, t, com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)) } ?: return
+        val body = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)
+        // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
+        val print = SyncPushGate.print(body)
+        if (!pushGate.shouldExchange("profiles", print, System.currentTimeMillis())) return false
+        val raw = source.withToken(base) { t -> client.syncProfiles(base, t, body) } ?: return false
+        pushGate.markSent("profiles", print, System.currentTimeMillis())
         val remote = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.parse(raw)
         val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs)
         if (actions.isNotEmpty()) with(profileRepo) { applySharedProfiles(dao, profileLog, actions) }
+        return actions.isNotEmpty()
     }
 
-    private suspend fun syncStateOf(base: String, pid: Long, cid: String) {
+    /** Échange l'état d'une source ; renvoie vrai si des changements venus d'un autre appareil ont été appliqués. */
+    private suspend fun syncStateOf(base: String, pid: Long, cid: String): Boolean {
         val profiles = db.profileDao().observeAll().first().ifEmpty { listOf(com.ultratv.tv.nativeapp.data.profile.ProfileEntity(id = 1, name = "Principal", color = 0, initial = "P")) }
         val nameOf = profiles.associate { it.id to it.name.trim() }
         val idOf = profiles.associate { it.name.trim().lowercase() to it.id }
@@ -203,12 +219,18 @@ class CloudSyncManager @Inject constructor(
             .put("fav", SharedStateLogic.favsToJson(updated.values))
             .put("hist", org.json.JSONArray().apply { hist.forEach { put(SharedStateLogic.histToJson(it)) } })
             .toString()
-        val raw = source.withToken(base) { t -> client.syncState(base, t, cid, body) } ?: return
+        // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
+        val print = SyncPushGate.print(body)
+        if (!pushGate.shouldExchange("state:$cid", print, now)) return false
+        val raw = source.withToken(base) { t -> client.syncState(base, t, cid, body) } ?: return false
+        pushGate.markSent("state:$cid", print, System.currentTimeMillis())
+        var received = false
         val res = org.json.JSONObject(raw)
         val remoteFavs = SharedStateLogic.parseFavs(res.optJSONArray("fav"))
         // Favoris distants plus récents : appliqués aux profils du même nom.
         for (e in SharedStateLogic.remoteFavChanges(updated, remoteFavs)) {
             val prof = idOf[e.p.lowercase()] ?: continue
+            received = true
             if (e.on) db.favoriteDao().add(com.ultratv.tv.nativeapp.data.db.FavoriteEntity(pid, e.k, e.r, prof))
             else db.favoriteDao().remove(prof, pid, e.k, e.r)
         }
@@ -219,6 +241,7 @@ class CloudSyncManager @Inject constructor(
             val prof = idOf[e.p.lowercase()] ?: continue
             val local = db.watchHistoryDao().get(prof, pid, e.k, e.r)
             if (local != null && local.watchedAt >= e.at) continue
+            received = true
             val url = local?.streamUrl ?: when (e.k) {
                 "LIVE" -> db.channelDao().byRemoteId(pid, e.r)?.streamUrl
                 "MOVIE" -> db.movieDao().byRemoteId(pid, e.r)?.streamUrl
@@ -234,12 +257,16 @@ class CloudSyncManager @Inject constructor(
         }
         // Les lignes reçues ne doivent pas être renvoyées : le repère avance au plus récent vu.
         links.setStateHistSince(cid, maxAt)
+        return received
     }
 
     private val stateScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     @Volatile private var watchingState = false
 
-    /** Au démarrage : échange 60 s après chaque changement local de favoris ou d'historique, et toutes les 2 min tant que l’appli est au premier plan. */
+    /**
+     * Au démarrage : échange 60 s après chaque changement local de favoris ou d'historique, puis une synchro périodique
+     * adaptative tant que l'appli est au premier plan (2 min pendant 10 min après un changement, sinon 10 min).
+     */
     @OptIn(kotlinx.coroutines.FlowPreview::class)
     fun watchSharedState() {
         if (watchingState) return
@@ -251,11 +278,18 @@ class CloudSyncManager @Inject constructor(
         stateScope.launch {
             // 60 s de calme : pendant une lecture la position est enregistrée toutes les 30 s, on n'envoie qu'après.
             kotlinx.coroutines.flow.merge(db.favoriteDao().observeAll().map { 0L }, db.watchHistoryDao().observeLatestAt().map { it ?: 0L }, db.profileDao().observeAll().map { 1L })
+                .onEach { cadence.noteChange() } // changement local : cadence rapide pendant 10 min
                 .debounce(60_000).collect { syncSharedState() }
         }
         // Changements venus des autres appareils (Mac, autre box) : toutes les 2 min (réponse 304 légère si rien n'a changé), seulement quand l'appli est affichée (box en veille :
         // plus de requête réseau toutes les 10 min ; le travail périodique de 6 h et le retour sur l'appli suffisent).
-        stateScope.launch { while (true) { kotlinx.coroutines.delay(2 * 60_000L); if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible) runCatching { syncOnForeground() } } }
+        // Tic toutes les 30 s (sans réseau) : la synchro part quand le délai de la cadence adaptative est écoulé.
+        stateScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                if (com.ultratv.tv.nativeapp.ui.common.AppForeground.visible && cadence.periodicDue(System.currentTimeMillis(), lastForegroundCheck)) runCatching { syncOnForeground() }
+            }
+        }
     }
 
     private val prefsScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
@@ -287,7 +321,7 @@ class CloudSyncManager @Inject constructor(
             }
         }
         prefsScope.launch {
-            DisplayPrefsEvents.changes.debounce(1_500).collect { pid ->
+            DisplayPrefsEvents.changes.onEach { cadence.noteChange() }.debounce(1_500).collect { pid ->
                 val id = if (pid == DisplayPrefsEvents.ACTIVE) repo.firstActiveId() else pid
                 if (id != null) publishPrefs(id)
             }
@@ -543,22 +577,23 @@ class CloudSyncManager @Inject constructor(
         linked.forEach { runCatching { removeLocal(it) } }
         tokens.clear()
         links.clearAll()
+        pushGate.reset()
         _state.value = CloudSyncState(revoked = true, removed = linked.size)
         CloudRevoked.flag.value = true
         com.ultratv.tv.nativeapp.RemoteLog.warn("cloud", "device revoked: ${linked.size} cloud source(s) removed")
     }
 
-    /** Vérification au retour au premier plan : au plus une toutes les 2 min (révocation vue sans attendre 6 h). */
+    /** Vérification au retour au premier plan : au plus une par minute (révocation vue sans attendre 6 h). */
     @Volatile private var lastForegroundCheck = 0L
     suspend fun syncOnForeground() {
         val now = System.currentTimeMillis()
-        if (now - lastForegroundCheck < 90_000L) return
+        if (!cadence.foregroundDue(now, lastForegroundCheck)) return
         lastForegroundCheck = now
         sync()
     }
 
     /** À appeler après un dé-appairage ou un changement de Worker : les liens ne valent plus rien. */
-    fun forget() { links.clearAll(); _state.value = CloudSyncState() }
+    fun forget() { links.clearAll(); pushGate.reset(); _state.value = CloudSyncState() }
 }
 
 /** Révocation constatée pendant ce lancement : l'interface affiche le message une fois. */

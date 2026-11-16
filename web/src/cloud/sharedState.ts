@@ -10,6 +10,7 @@ import { seriesInfo, vodInfo, type SeriesInfo } from "@/net/xtream";
 import { currentTransport } from "@/net/transport";
 import { credsOf } from "@/sync/core";
 import { syncState, type SharedFav, type SharedHist } from "./client";
+import { cadence, fingerprint, pushGate } from "./cadence";
 
 import { DEFAULT_PROFILE_NAME } from "./profilesLogic";
 export { DEFAULT_PROFILE_NAME };
@@ -60,8 +61,14 @@ export async function syncSourceState(worker: string, token: string, s: Source):
   const hist: SharedHist[] = (await db.history.where("updatedAt").above(since).filter((h) => h.sourceId === sid).toArray()).map((h) => h.kind === "series"
     ? { p: nameOf(h.profile), k: "EPISODE", r: String(h.epId ?? h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: String(h.seriesId ?? h.refId) }
     : { p: nameOf(h.profile), k: KIND_TO_WIRE[h.kind], r: String(h.refId), t: h.title, img: h.image, pos: Math.round(h.pos * 1000), dur: Math.round(h.dur * 1000), at: h.updatedAt, par: null });
-  const res = await syncState(worker, token, s.cloudId, { fav: [...updated.values()], hist });
+  const body = { fav: [...updated.values()], hist };
+  // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
+  const gateKey = `state:${s.cloudId}`; const print = fingerprint(JSON.stringify(body));
+  if (!pushGate.shouldExchange(gateKey, print)) return;
+  const res = await syncState(worker, token, s.cloudId, body);
   if (!res) return;
+  pushGate.markSent(gateKey, print);
+  let received = false;
   // Favoris distants plus récents, appliqués au profil du même nom (nom/image pris dans le catalogue local).
   // Non appliqués (profil inconnu, élément introuvable) : pas enregistrés comme connus, donc réessayés au prochain échange.
   const pending = new Set<string>();
@@ -69,6 +76,7 @@ export async function syncSourceState(worker: string, token: string, s: Source):
     const kind = WIRE_TO_KIND[e.k]; const profile = idOf(e.p); const refId = Number(e.r);
     if (!kind || !profile || !Number.isFinite(refId)) { pending.add(fk(e)); continue; }
     const key = favKey(profile, sid, kind, refId);
+    received = true;
     if (!e.on) { await db.favorites.delete(key); continue; }
     const meta = await catalogMeta(s, kind, refId);
     if (meta) await db.favorites.put({ key, profile, sourceId: sid, kind, refId, name: meta.name, image: meta.image, addedAt: e.at } satisfies FavoriteRow);
@@ -88,8 +96,10 @@ export async function syncSourceState(worker: string, token: string, s: Source):
     if (cur && cur.updatedAt >= e.at) continue;
     await db.history.put(row);
     maxAt = Math.max(maxAt, e.at);
+    received = true;
   }
   await setSetting(kHist, maxAt);
+  if (received) cadence.noteChange(); // changements venus d'un autre appareil : cadence rapide
 }
 
 async function catalogMeta(s: Source, kind: Kind, refId: number): Promise<{ name: string; image: string | null } | null> {

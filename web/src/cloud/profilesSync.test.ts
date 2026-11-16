@@ -6,24 +6,28 @@ import { setCloudHttp } from "./client";
 import { startFakeWorker, type FakeWorker } from "./fakeWorker";
 import { resetProfileLog } from "./profilesSync";
 import { syncProfiles } from "./profilesSync";
+import { pushGate } from "./cadence";
 import { hexToArgb } from "./profilesLogic";
 
 let w: FakeWorker;
+let hits = 0;
 beforeAll(async () => {
   w = await startFakeWorker();
   setCloudHttp(async (r) => {
+    hits++;
     const res = await fetch(r.url, { method: r.method ?? "GET", headers: r.headers, body: r.body || undefined, redirect: "manual" });
     return { status: res.status, text: await res.text(), retryAfter: res.headers.get("retry-after") ?? "", etag: res.headers.get("etag") ?? "" };
   });
 });
 afterAll(() => { w.close(); setCloudHttp(null); });
 beforeEach(async () => {
-  resetProfileLog();
+  resetProfileLog(); pushGate.reset();
   w.state.profiles = [];
   usePrefs.setState({ profiles: [{ id: "main", name: "", color: "#D91E2B" }], profileId: "main", deviceLang: "en", lang: "en" });
   await db.favorites.clear(); await db.history.clear(); await db.channelOrder.clear();
 });
-const sync = () => syncProfiles(w.base, w.token);
+// Contenu local inchangé : non renvoyé avant 10 min ; ces tests simulent donc l échange de rafraîchissement.
+const sync = () => { pushGate.reset(); return syncProfiles(w.base, w.token); };
 const names = () => usePrefs.getState().profiles.map((p) => p.name);
 
 describe("synchro des profils avec le faux Worker", () => {
@@ -104,5 +108,15 @@ describe("synchro des profils avec le faux Worker", () => {
     w.state.hasProfiles = false;
     expect(await sync()).toBe(false);
     w.state.hasProfiles = true;
+  });
+
+  it("contenu inchangé : pas renvoyé ; un changement local repart aussitôt", async () => {
+    await syncProfiles(w.base, w.token);
+    const n = hits;
+    await syncProfiles(w.base, w.token);
+    expect(hits).toBe(n); // rien à pousser
+    usePrefs.getState().set({ profiles: [...usePrefs.getState().profiles, { id: "p9", name: "Nouveau", color: "#3B82F6" }] });
+    await syncProfiles(w.base, w.token);
+    expect(hits).toBeGreaterThan(n);
   });
 });

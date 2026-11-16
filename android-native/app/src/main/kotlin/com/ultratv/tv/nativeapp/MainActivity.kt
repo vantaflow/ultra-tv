@@ -126,6 +126,8 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         com.ultratv.tv.nativeapp.ui.common.AppForeground.visible = false
         com.ultratv.tv.nativeapp.perf.PerfTelemetry.setTracking(false)
+        // Passage en arrière-plan : les journaux en attente partent en un seul envoi groupé.
+        RemoteLog.flushNow()
         // Télécommande sur le téléphone : le serveur local s'arrête quand l'appli quitte le premier plan.
         lifecycleScope.launch(Dispatchers.IO) { runCatching { phoneRemote.get().onForeground(false) } }
     }
