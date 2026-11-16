@@ -412,6 +412,29 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Ajoute un serveur Jellyfin / Emby : connexion vérifiée d'abord (sans quoi rien n'est enregistré et [failedText] est affiché),
+     * puis premier index des bibliothèques. Jamais proposé au partage cloud : le jeton reste sur cet appareil.
+     */
+    fun addMediaServerAndSync(kind: String, name: String, server: String, user: String, password: String, apiKey: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _syncing.value = true
+            try {
+                val id = repo.addMediaServer(kind, name, server, user, password, apiKey)
+                makeDefaultIfNone(id)
+                sync.request(id, force = true)
+                onDone(true)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err(failedText)
+                onDone(false)
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
     /** Télémétrie de la première synchro d'une source Stalker : début, fin, type d'erreur (jamais d'identifiants). */
     private fun watchStalkerSync(id: Long) {
         viewModelScope.launch {

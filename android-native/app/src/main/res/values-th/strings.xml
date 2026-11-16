@@ -500,6 +500,14 @@
     <string name="dsb1_field_portal_password">รหัสผ่านพอร์ทัล (ไม่บังคับ)</string>
     <string name="dsb1_stalker_checking">กำลังเชื่อมต่อกับพอร์ทัล…</string>
     <string name="dsb1_stalker_failed">พอร์ทัลปฏิเสธการเชื่อมต่อ ตรวจสอบที่อยู่และที่อยู่ MAC</string>
+    <string name="dsb1_ms_sub">เซิร์ฟเวอร์สื่อส่วนตัวของคุณ: คลังภาพยนตร์และซีรีส์ของเซิร์ฟเวอร์จะกลายเป็นแหล่งเนื้อหา</string>
+    <string name="dsb1_ms_url">ที่อยู่เซิร์ฟเวอร์</string>
+    <string name="dsb1_ms_user">ชื่อผู้ใช้</string>
+    <string name="dsb1_ms_pass">รหัสผ่าน</string>
+    <string name="dsb1_ms_key">คีย์ API (แทนรหัสผ่าน)</string>
+    <string name="dsb1_ms_checking">กำลังเชื่อมต่อกับเซิร์ฟเวอร์…</string>
+    <string name="dsb1_ms_failed">เชื่อมต่อกับเซิร์ฟเวอร์ไม่ได้ ตรวจสอบที่อยู่ ชื่อผู้ใช้ และรหัสผ่าน</string>
+    <string name="dsb1_ms_hint">เล่นโดยตรง และความคืบหน้าของคุณจะถูกบันทึกบนเซิร์ฟเวอร์ ข้อมูลเข้าสู่ระบบยังคงเข้ารหัสอยู่บนอุปกรณ์นี้</string>
     <string name="dsb1_type_movie">ภาพยนตร์</string>
     <string name="dsb1_type_series">ซีรีส์</string>
     <string name="dsb1_director_label">ผู้กำกับ</string>

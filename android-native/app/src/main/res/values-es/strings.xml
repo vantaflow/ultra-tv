@@ -504,6 +504,14 @@
     <string name="dsb1_field_portal_password">Contraseña del portal (opcional)</string>
     <string name="dsb1_stalker_checking">Conectando con el portal…</string>
     <string name="dsb1_stalker_failed">El portal rechazó la conexión. Comprueba la dirección y la dirección MAC.</string>
+    <string name="dsb1_ms_sub">Tu servidor multimedia personal: sus bibliotecas de películas y series se convierten en una fuente</string>
+    <string name="dsb1_ms_url">Dirección del servidor</string>
+    <string name="dsb1_ms_user">Nombre de usuario</string>
+    <string name="dsb1_ms_pass">Contraseña</string>
+    <string name="dsb1_ms_key">Clave API (en lugar de la contraseña)</string>
+    <string name="dsb1_ms_checking">Conectando con el servidor…</string>
+    <string name="dsb1_ms_failed">No se pudo conectar con el servidor. Revisa la dirección, el nombre de usuario y la contraseña.</string>
+    <string name="dsb1_ms_hint">La reproducción es directa y tu progreso se guarda en el servidor. Las credenciales permanecen cifradas en este dispositivo.</string>
     <string name="dsb1_type_movie">PELÍCULA</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Dirigida por</string>

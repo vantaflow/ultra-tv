@@ -505,6 +505,14 @@
     <string name="dsb1_field_portal_password">Hasło do portalu (opcjonalnie)</string>
     <string name="dsb1_stalker_checking">Łączenie z portalem…</string>
     <string name="dsb1_stalker_failed">Portal odrzucił połączenie. Sprawdź adres i adres MAC.</string>
+    <string name="dsb1_ms_sub">Twój osobisty serwer multimediów: jego biblioteki filmów i seriali stają się źródłem</string>
+    <string name="dsb1_ms_url">Adres serwera</string>
+    <string name="dsb1_ms_user">Nazwa użytkownika</string>
+    <string name="dsb1_ms_pass">Hasło</string>
+    <string name="dsb1_ms_key">Klucz API (zamiast hasła)</string>
+    <string name="dsb1_ms_checking">Łączenie z serwerem…</string>
+    <string name="dsb1_ms_failed">Nie udało się połączyć z serwerem. Sprawdź adres, nazwę użytkownika i hasło.</string>
+    <string name="dsb1_ms_hint">Odtwarzanie jest bezpośrednie, a Twój postęp zapisuje się na serwerze. Dane logowania pozostają zaszyfrowane na tym urządzeniu.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIAL</string>
     <string name="dsb1_director_label">Reżyser</string>

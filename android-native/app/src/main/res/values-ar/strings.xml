@@ -530,6 +530,14 @@
     <string name="dsb1_field_portal_password">كلمة مرور البوابة (اختياري)</string>
     <string name="dsb1_stalker_checking">جارٍ الاتصال بالبوابة…</string>
     <string name="dsb1_stalker_failed">رفضت البوابة الاتصال. تحقّق من العنوان وعنوان MAC.</string>
+    <string name="dsb1_ms_sub">خادم الوسائط الشخصي لديك: تصبح مكتبات الأفلام والمسلسلات فيه مصدرًا</string>
+    <string name="dsb1_ms_url">عنوان الخادم</string>
+    <string name="dsb1_ms_user">اسم المستخدم</string>
+    <string name="dsb1_ms_pass">كلمة المرور</string>
+    <string name="dsb1_ms_key">مفتاح API (بدلًا من كلمة المرور)</string>
+    <string name="dsb1_ms_checking">جارٍ الاتصال بالخادم…</string>
+    <string name="dsb1_ms_failed">تعذّر الاتصال بالخادم. تحقّق من العنوان واسم المستخدم وكلمة المرور.</string>
+    <string name="dsb1_ms_hint">التشغيل مباشر ويُحفظ تقدّمك على الخادم. تبقى بيانات الدخول مشفّرة على هذا الجهاز.</string>
     <string name="dsb1_type_movie">فيلم</string>
     <string name="dsb1_type_series">مسلسل</string>
     <string name="dsb1_director_label">إخراج</string>

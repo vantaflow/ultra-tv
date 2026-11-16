@@ -512,6 +512,14 @@
     <string name="dsb1_field_portal_password">Mot de passe du portail (facultatif)</string>
     <string name="dsb1_stalker_checking">Connexion au portail…</string>
     <string name="dsb1_stalker_failed">Le portail a refusé la connexion. Vérifiez l’adresse et l’adresse MAC.</string>
+    <string name="dsb1_ms_sub">Votre serveur multimédia personnel : ses bibliothèques de films et de séries deviennent une source</string>
+    <string name="dsb1_ms_url">Adresse du serveur</string>
+    <string name="dsb1_ms_user">Nom d’utilisateur</string>
+    <string name="dsb1_ms_pass">Mot de passe</string>
+    <string name="dsb1_ms_key">Clé API (à la place du mot de passe)</string>
+    <string name="dsb1_ms_checking">Connexion au serveur…</string>
+    <string name="dsb1_ms_failed">Connexion impossible. Vérifiez l’adresse, le nom d’utilisateur et le mot de passe.</string>
+    <string name="dsb1_ms_hint">La lecture est directe et votre progression est enregistrée sur le serveur. Les identifiants restent chiffrés sur cet appareil.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SÉRIE</string>
     <string name="dsb1_director_label">Réalisateur</string>

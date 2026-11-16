@@ -69,6 +69,16 @@ val DesignStrings.fieldPortalPassword get() = tx(R.string.dsb1_field_portal_pass
 val DesignStrings.stalkerChecking get() = tx(R.string.dsb1_stalker_checking)
 val DesignStrings.stalkerFailed get() = tx(R.string.dsb1_stalker_failed)
 
+// Serveurs multimédias personnels (Jellyfin / Emby) : « Jellyfin » et « Emby » sont des noms propres, jamais traduits
+val DesignStrings.formSubMediaServer get() = tx(R.string.dsb1_ms_sub)
+val DesignStrings.fieldMediaUrl get() = tx(R.string.dsb1_ms_url)
+val DesignStrings.fieldMediaUser get() = tx(R.string.dsb1_ms_user)
+val DesignStrings.fieldMediaPass get() = tx(R.string.dsb1_ms_pass)
+val DesignStrings.fieldMediaKey get() = tx(R.string.dsb1_ms_key)
+val DesignStrings.mediaChecking get() = tx(R.string.dsb1_ms_checking)
+val DesignStrings.mediaFailed get() = tx(R.string.dsb1_ms_failed)
+val DesignStrings.mediaHint get() = tx(R.string.dsb1_ms_hint)
+
 // Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
 val DesignStrings.typeMovie get() = tx(R.string.dsb1_type_movie)
 val DesignStrings.typeSeries get() = tx(R.string.dsb1_type_series)

@@ -517,6 +517,14 @@
     <string name="dsb1_field_portal_password">Parolă portal (opțională)</string>
     <string name="dsb1_stalker_checking">Se conectează la portal…</string>
     <string name="dsb1_stalker_failed">Portalul a refuzat conexiunea. Verifică adresa și adresa MAC.</string>
+    <string name="dsb1_ms_sub">Serverul tău media personal: bibliotecile lui de filme și seriale devin o sursă</string>
+    <string name="dsb1_ms_url">Adresa serverului</string>
+    <string name="dsb1_ms_user">Nume de utilizator</string>
+    <string name="dsb1_ms_pass">Parolă</string>
+    <string name="dsb1_ms_key">Cheie API (în loc de parolă)</string>
+    <string name="dsb1_ms_checking">Se conectează la server…</string>
+    <string name="dsb1_ms_failed">Nu s-a putut face conexiunea la server. Verifică adresa, numele de utilizator și parola.</string>
+    <string name="dsb1_ms_hint">Redarea este directă, iar progresul tău este salvat pe server. Datele de autentificare rămân criptate pe acest dispozitiv.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIAL</string>
     <string name="dsb1_director_label">Regizor</string>

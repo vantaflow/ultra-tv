@@ -67,6 +67,13 @@ import com.ultratv.tv.nativeapp.ui.design.Text
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.fieldMac
+import com.ultratv.tv.nativeapp.i18n.fieldMediaKey
+import com.ultratv.tv.nativeapp.i18n.fieldMediaPass
+import com.ultratv.tv.nativeapp.i18n.fieldMediaUrl
+import com.ultratv.tv.nativeapp.i18n.fieldMediaUser
+import com.ultratv.tv.nativeapp.i18n.formSubMediaServer
+import com.ultratv.tv.nativeapp.i18n.mediaChecking
+import com.ultratv.tv.nativeapp.i18n.mediaHint
 import com.ultratv.tv.nativeapp.i18n.fieldPortalLogin
 import com.ultratv.tv.nativeapp.i18n.fieldPortalPassword
 import com.ultratv.tv.nativeapp.i18n.fieldPortalUrl
@@ -514,5 +521,42 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
         Text(D.macHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 2)
         FormField(D.fieldPortalLogin, login, { login = it }, testTag = "field-login")
         FormField(D.fieldPortalPassword, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
+    }
+}
+
+/**
+ * Serveur Jellyfin ou Emby ([title] = nom propre du serveur) : adresse, identifiant et mot de passe — ou clé API seule. Le dialogue
+ * reste ouvert pendant la connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
+ */
+@Composable
+fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, server: String, user: String, pass: String, apiKey: String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var user by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    var key by remember { mutableStateOf("") }
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val urlOk = url.isBlank() || com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null
+    // Identifiant + mot de passe, ou clé API seule.
+    val credsOk = key.isNotBlank() || (user.isNotBlank() && pass.isNotBlank())
+    AddProviderDialog(
+        title = title,
+        subtitle = D.formSubMediaServer,
+        icon = Icons.Monitor,
+        onDismiss = onDismiss,
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), user.trim(), pass, key.trim()) },
+        canSubmit = com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null && credsOk && !busy,
+        submitLabel = if (busy) D.mediaChecking else null,
+        onBack = onBack,
+    ) {
+        FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
+        FormField(D.fieldMediaUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
+            placeholder = "http://192.168.1.10:8096", autoFocus = true, required = true,
+            error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
+        FormField(D.fieldMediaUser, user, { user = it }, testTag = "field-user")
+        FormField(D.fieldMediaPass, pass, { pass = it }, password = true, placeholder = "••••••••", testTag = "field-pass")
+        FormField(D.fieldMediaKey, key, { key = it }, password = true, last = true, testTag = "field-key")
+        Text(D.mediaHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }

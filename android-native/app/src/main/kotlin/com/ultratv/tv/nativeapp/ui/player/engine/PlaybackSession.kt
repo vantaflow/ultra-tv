@@ -253,7 +253,7 @@ class PlaybackSession(
         val protectedNow = isProtected
         val next0 = PlaybackPlanner.initial(s.engine, s.decoder, if (protectedNow) null else channelKey?.let { memory.combo(it) }, protectedNow)
         // Stalker : VLC (LibVLC 3.x) ne sait pas envoyer le cookie `mac` (aucune option) → ExoPlayer, sauf VLC imposé par l'utilisateur.
-        val next = if (isStalkerUrl && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
+        val next = if (needsOpener && s.engine != EngineChoice.VLC && next0.engine == EngineKind.VLC) Combo(EngineKind.EXO, next0.decoder) else next0
         props?.let(drmPrecheck)?.let { bad ->
             // Appareil sans le système demandé ou propriétés incomplètes : erreur claire, AUCUN moteur (et jamais VLC).
             watchdog?.cancel(); blackJob?.cancel(); rememberJob?.cancel(); eventsJob?.cancel(); adaptJob?.cancel(); startupJob?.cancel()
@@ -287,6 +287,9 @@ class PlaybackSession(
 
     private val isStalkerUrl get() = StalkerLink.isStalker(url)
 
+    /** Adresse à résoudre avant ouverture : portail Stalker (lien frais) ou serveur Jellyfin / Emby (adresse directe + jeton en en-tête). */
+    private val needsOpener get() = isStalkerUrl || com.ultratv.tv.nativeapp.data.mediaserver.MediaLink.isMedia(url)
+
     /** (Re)lance ou arrête la boucle de présence selon l'adresse courante. */
     private fun syncPresence() {
         presenceJob?.cancel(); presenceJob = null
@@ -306,13 +309,15 @@ class PlaybackSession(
      * comme une erreur de lecture), l'adresse telle quelle sinon. Null = échec déjà traité.
      */
     private suspend fun openNow(reconnecting: Boolean = false): StreamOpen? {
-        if (!isStalkerUrl) return StreamOpen(url)
+        if (!needsOpener) return StreamOpen(url)
         return try {
             // Jamais d'adresse stalker:// au moteur (il ne sait pas l'ouvrir → « problème réseau ») : un opener qui la rend telle quelle est un échec.
             opener(url).also { if (StalkerLink.isStalker(it.url)) throw com.ultratv.tv.nativeapp.data.stalker.StalkerLinkException("unresolved") }
         } catch (c: kotlinx.coroutines.CancellationException) { throw c } catch (t: Throwable) {
-            android.util.Log.i("UltraPlay", StalkerPlayLog.openFailed(t))
-            com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.openFailed(t))
+            if (isStalkerUrl) {
+                android.util.Log.i("UltraPlay", StalkerPlayLog.openFailed(t))
+                com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", StalkerPlayLog.openFailed(t))
+            }
             if (reconnecting) reconnectJob = null   // sinon onError → reconnectLive croit la reconnexion en cours et ne fait rien
             onError(
                 when {
@@ -371,7 +376,7 @@ class PlaybackSession(
         // Box basse : on libère les images en mémoire avant que le décodeur ne réclame la sienne.
         if (s.lowRam) runCatching { coil3.SingletonImageLoader.get(ctx).memoryCache?.clear() }
         // Adresse stalker:// : le lien (à usage unique) est demandé à CHAQUE lancement de moteur, avant sa création.
-        if (pre == null && isStalkerUrl) openJob = scope.launch { openNow()?.let { launchEngine(c, s, buffer, it) } }
+        if (pre == null && needsOpener) openJob = scope.launch { openNow()?.let { launchEngine(c, s, buffer, it) } }
         else launchEngine(c, s, buffer, pre ?: StreamOpen(url))
     }
 
@@ -552,7 +557,7 @@ class PlaybackSession(
     private fun fallbackAfter(kind: PlayErrorKind): Combo? {
         if (!PlaybackPlanner.shouldFallBack(kind, isProtected)) return null
         val choice = settings().engine
-        val skipVlc = if (isStalkerUrl && choice != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
+        val skipVlc = if (needsOpener && choice != EngineChoice.VLC) setOf(Combo(EngineKind.VLC, DecoderMode.AUTO), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
         val skipSame = if (kind == PlayErrorKind.START_TIMEOUT) setOf(Combo(EngineKind.EXO, DecoderMode.SOFTWARE), Combo(EngineKind.VLC, DecoderMode.SOFTWARE)) else emptySet()
         return PlaybackPlanner.next(choice, tried + skipVlc + skipSame, isProtected, hdr = hdrKind != null)
     }

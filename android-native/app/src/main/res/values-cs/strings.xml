@@ -519,6 +519,14 @@
     <string name="dsb1_field_portal_password">Heslo k portálu (volitelné)</string>
     <string name="dsb1_stalker_checking">Připojování k portálu…</string>
     <string name="dsb1_stalker_failed">Portál připojení odmítl. Zkontrolujte adresu a MAC adresu.</string>
+    <string name="dsb1_ms_sub">Váš osobní mediální server: jeho knihovny filmů a seriálů se stanou zdrojem</string>
+    <string name="dsb1_ms_url">Adresa serveru</string>
+    <string name="dsb1_ms_user">Uživatelské jméno</string>
+    <string name="dsb1_ms_pass">Heslo</string>
+    <string name="dsb1_ms_key">Klíč API (místo hesla)</string>
+    <string name="dsb1_ms_checking">Připojování k serveru…</string>
+    <string name="dsb1_ms_failed">K serveru se nepodařilo připojit. Zkontrolujte adresu, uživatelské jméno a heslo.</string>
+    <string name="dsb1_ms_hint">Přehrávání je přímé a váš postup se ukládá na server. Přihlašovací údaje zůstávají v tomto zařízení šifrované.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIÁL</string>
     <string name="dsb1_director_label">Režie</string>

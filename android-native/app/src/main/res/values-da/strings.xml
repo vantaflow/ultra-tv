@@ -509,6 +509,14 @@
     <string name="dsb1_field_portal_password">Portaladgangskode (valgfrit)</string>
     <string name="dsb1_stalker_checking">Forbinder til portalen…</string>
     <string name="dsb1_stalker_failed">Portalen afviste forbindelsen. Kontrollér adressen og MAC-adressen.</string>
+    <string name="dsb1_ms_sub">Din personlige medieserver: dens film- og serie-biblioteker bliver en kilde</string>
+    <string name="dsb1_ms_url">Serveradresse</string>
+    <string name="dsb1_ms_user">Brugernavn</string>
+    <string name="dsb1_ms_pass">Adgangskode</string>
+    <string name="dsb1_ms_key">API-nøgle (i stedet for adgangskoden)</string>
+    <string name="dsb1_ms_checking">Opretter forbindelse til serveren…</string>
+    <string name="dsb1_ms_failed">Kunne ikke oprette forbindelse til serveren. Kontrollér adressen, brugernavnet og adgangskoden.</string>
+    <string name="dsb1_ms_hint">Afspilning er direkte, og din fremgang gemmes på serveren. Loginoplysninger forbliver krypteret på denne enhed.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Instruktør</string>

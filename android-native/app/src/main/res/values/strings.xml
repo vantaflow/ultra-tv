@@ -508,6 +508,14 @@
     <string name="dsb1_field_portal_password">Portal password (optional)</string>
     <string name="dsb1_stalker_checking">Connecting to the portal…</string>
     <string name="dsb1_stalker_failed">The portal refused the connection. Check the address and the MAC address.</string>
+    <string name="dsb1_ms_sub">Your personal media server: its Movies and Series libraries become a source</string>
+    <string name="dsb1_ms_url">Server address</string>
+    <string name="dsb1_ms_user">User name</string>
+    <string name="dsb1_ms_pass">Password</string>
+    <string name="dsb1_ms_key">API key (instead of the password)</string>
+    <string name="dsb1_ms_checking">Connecting to the server…</string>
+    <string name="dsb1_ms_failed">Could not connect to the server. Check the address, the user name and the password.</string>
+    <string name="dsb1_ms_hint">Playback is direct and your progress is saved on the server. Credentials stay encrypted on this device.</string>
     <string name="dsb1_type_movie">MOVIE</string>
     <string name="dsb1_type_series">SERIES</string>
     <string name="dsb1_director_label">Director</string>

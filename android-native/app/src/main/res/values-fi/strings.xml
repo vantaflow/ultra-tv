@@ -503,6 +503,14 @@
     <string name="dsb1_field_portal_password">Portaalin salasana (valinnainen)</string>
     <string name="dsb1_stalker_checking">Yhdistetään portaaliin…</string>
     <string name="dsb1_stalker_failed">Portaali hylkäsi yhteyden. Tarkista osoite ja MAC-osoite.</string>
+    <string name="dsb1_ms_sub">Oma mediapalvelimesi: sen elokuva- ja sarjakirjastoista tulee lähde</string>
+    <string name="dsb1_ms_url">Palvelimen osoite</string>
+    <string name="dsb1_ms_user">Käyttäjätunnus</string>
+    <string name="dsb1_ms_pass">Salasana</string>
+    <string name="dsb1_ms_key">API-avain (salasanan sijaan)</string>
+    <string name="dsb1_ms_checking">Yhdistetään palvelimeen…</string>
+    <string name="dsb1_ms_failed">Palvelimeen ei saatu yhteyttä. Tarkista osoite, käyttäjätunnus ja salasana.</string>
+    <string name="dsb1_ms_hint">Toisto on suoraa, ja katselun edistyminen tallentuu palvelimelle. Tunnukset pysyvät salattuina tällä laitteella.</string>
     <string name="dsb1_type_movie">ELOKUVA</string>
     <string name="dsb1_type_series">SARJA</string>
     <string name="dsb1_director_label">Ohjaaja</string>

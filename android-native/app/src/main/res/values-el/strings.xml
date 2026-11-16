@@ -509,6 +509,14 @@
     <string name="dsb1_field_portal_password">Κωδικός πύλης (προαιρετικό)</string>
     <string name="dsb1_stalker_checking">Σύνδεση στην πύλη…</string>
     <string name="dsb1_stalker_failed">Η πύλη απέρριψε τη σύνδεση. Ελέγξτε τη διεύθυνση και τη διεύθυνση MAC.</string>
+    <string name="dsb1_ms_sub">Ο προσωπικός σας διακομιστής πολυμέσων: οι βιβλιοθήκες ταινιών και σειρών του γίνονται πηγή</string>
+    <string name="dsb1_ms_url">Διεύθυνση διακομιστή</string>
+    <string name="dsb1_ms_user">Όνομα χρήστη</string>
+    <string name="dsb1_ms_pass">Κωδικός πρόσβασης</string>
+    <string name="dsb1_ms_key">Κλειδί API (αντί για τον κωδικό)</string>
+    <string name="dsb1_ms_checking">Σύνδεση με τον διακομιστή…</string>
+    <string name="dsb1_ms_failed">Δεν ήταν δυνατή η σύνδεση με τον διακομιστή. Ελέγξτε τη διεύθυνση, το όνομα χρήστη και τον κωδικό.</string>
+    <string name="dsb1_ms_hint">Η αναπαραγωγή είναι άμεση και η πρόοδός σας αποθηκεύεται στον διακομιστή. Τα διαπιστευτήρια παραμένουν κρυπτογραφημένα σε αυτή τη συσκευή.</string>
     <string name="dsb1_type_movie">ΤΑΙΝΙΑ</string>
     <string name="dsb1_type_series">ΣΕΙΡΑ</string>
     <string name="dsb1_director_label">Σκηνοθέτης</string>

@@ -1,6 +1,8 @@
 package com.ultratv.tv.nativeapp.data.stalker
 
 import com.ultratv.tv.nativeapp.data.db.ProviderDao
+import com.ultratv.tv.nativeapp.data.mediaserver.MediaLink
+import com.ultratv.tv.nativeapp.data.mediaserver.MediaServer
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.EntryPoint
@@ -33,8 +35,10 @@ data class StreamOpen(val url: String, val headers: Map<String, String> = emptyM
 class DefaultStreamUrlResolver @Inject constructor(
     private val providers: ProviderDao,
     private val stalker: StalkerClient,
+    private val media: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient = com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient(okhttp3.OkHttpClient(), { "ultra-tv" }),
 ) : StreamUrlResolver {
     override suspend fun resolve(url: String): String {
+        if (MediaLink.isMedia(url)) return open(url).url
         val link = StalkerLink.parse(url) ?: return url
         // Source supprimée ou autre type : jamais l'adresse stalker:// elle-même (le lecteur ne sait pas l'ouvrir).
         val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
@@ -48,6 +52,13 @@ class DefaultStreamUrlResolver @Inject constructor(
     }
 
     override suspend fun open(url: String): StreamOpen {
+        // Serveur Jellyfin / Emby : adresse de lecture directe reconstruite ici ; le jeton part dans un en-tête, jamais dans l'adresse.
+        if (MediaLink.isMedia(url)) {
+            val link = MediaLink.parse(url) ?: throw StalkerLinkException("provider_missing")
+            val p = providers.byId(link.providerId)?.takeIf { MediaServer.isMediaKind(it.kind) } ?: throw StalkerLinkException("provider_missing")
+            val (playUrl, headers) = media.openUrl(p, link.itemId)
+            return StreamOpen(playUrl, headers)
+        }
         val link = StalkerLink.parse(url) ?: return StreamOpen(url)
         val p = providers.byId(link.providerId)?.takeIf { it.kind == "STALKER" } ?: throw StalkerLinkException("provider_missing")
         val play = stalker.openLink(p, link.type, link.cmd, link.series, link.chId)
@@ -82,7 +93,7 @@ object StreamUrls {
 
     /** Ouverture d'un flux pour le lecteur : lien frais + en-têtes (Stalker). Lève en cas d'échec — l'appelant journalise et classe. */
     suspend fun open(context: android.content.Context, url: String): StreamOpen {
-        if (!StalkerLink.isStalker(url)) return StreamOpen(url)
+        if (!StalkerLink.isStalker(url) && !MediaLink.isMedia(url)) return StreamOpen(url)
         return EntryPointAccessors.fromApplication(context.applicationContext, StreamUrlEntryPoint::class.java).streamUrlResolver().open(url)
     }
 

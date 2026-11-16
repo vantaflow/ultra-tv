@@ -500,6 +500,14 @@
     <string name="dsb1_field_portal_password">Mật khẩu cổng (tùy chọn)</string>
     <string name="dsb1_stalker_checking">Đang kết nối với cổng…</string>
     <string name="dsb1_stalker_failed">Cổng đã từ chối kết nối. Hãy kiểm tra địa chỉ và địa chỉ MAC.</string>
+    <string name="dsb1_ms_sub">Máy chủ phương tiện cá nhân của bạn: các thư viện phim và loạt phim của nó trở thành một nguồn</string>
+    <string name="dsb1_ms_url">Địa chỉ máy chủ</string>
+    <string name="dsb1_ms_user">Tên người dùng</string>
+    <string name="dsb1_ms_pass">Mật khẩu</string>
+    <string name="dsb1_ms_key">Khóa API (thay cho mật khẩu)</string>
+    <string name="dsb1_ms_checking">Đang kết nối với máy chủ…</string>
+    <string name="dsb1_ms_failed">Không thể kết nối với máy chủ. Hãy kiểm tra địa chỉ, tên người dùng và mật khẩu.</string>
+    <string name="dsb1_ms_hint">Phát trực tiếp và tiến độ xem của bạn được lưu trên máy chủ. Thông tin đăng nhập luôn được mã hóa trên thiết bị này.</string>
     <string name="dsb1_type_movie">PHIM</string>
     <string name="dsb1_type_series">SERIES</string>
     <string name="dsb1_director_label">Đạo diễn</string>
