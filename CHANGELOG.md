@@ -6,9 +6,21 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Direct (TV) : liste des chaînes, le nom prend toute la largeur libre (« CANAL+ Cinema » ne passe plus sur deux lignes) et le programme en cours n'affiche que son heure de début, pour laisser la place au titre.
+- Casque Bluetooth : suivant / précédent changent de chaîne ou d'épisode ; son déclaré en flux média ; pause quand le casque est coupé.
+- Le réglage « Numéros de chaîne » est respecté partout (listes, guide, favoris, sport, lecteur), sur téléphone comme sur TV.
+- Mode simple (TV) : grandes icônes centrées dans les tuiles (elles paraissaient vides) et symboles des touches dessinés au lieu de glyphes absents de certaines polices.
 
 ### Ajouté
 - Tableau de bord, alertes : traductions par langue (13 langues de l'appli) ; chaque appareil reçoit l'alerte dans sa langue, l'anglais sert de texte par défaut.
+- Service de suivi au choix : Trakt ou Simkl (Réglages › Service de suivi, Android et bureau ; liaison depuis le tableau de bord). Simkl apparaît quand le serveur est configuré pour lui.
+- « Disponible de ta liste » : quand un titre de ta watchlist apparaît dans ta playlist, une rangée de l'accueil et une notification te préviennent (comparaison faite sur l'appareil).
+- Sport : « Aussi sur » regroupe les chaînes du guide qui diffusent le même match (équipes, compétition, horaire), avec qualité et langue (Android et bureau).
+- Lecteur Android : « Diagnostic du flux » dans Statistiques (Bon / Moyen / Mauvais avec cause probable) et « Copier le rapport » sans identifiants.
+
+### Modifié
+- Android : les grilles ne gardent en mémoire qu'une fenêtre du catalogue (gros catalogues) et le zapping depuis « Tout » ne charge plus tous les identifiants de chaînes.
+- Direct sur téléphone : un toucher en plein écran n'affiche qu'une barre minimale ; pistes, sous-titres, guide et chaînes récentes derrière « Plus ».
+- Mode simple : l'entrée « Télé » ouvre la liste des chaînes ; « Ouvrir sur » est respecté au démarrage ; option masquée sur téléphone et tablette.
 
 ## [1.3.39] — 2026-11-16 (Android) · Bureau 1.2.64 · Worker
 

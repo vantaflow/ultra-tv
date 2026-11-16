@@ -224,14 +224,16 @@ private fun ResumeCard(S: SimpleStrings, D: com.ultratv.tv.nativeapp.i18n.Design
 }
 
 /**
- * Grande tuile : icône en haut à gauche, libellé 48 px et aide 28 px en bas. Au focus : fond clair / texte foncé, anneau
- * accent de 10 px (FocusSurface) — lisible à 3 mètres.
+ * Grande tuile : grande icône centrée dans l'espace libre (petite icône en coin = tuile qui paraissait vide sur TV),
+ * libellé et aide en bas. Au focus : fond clair / texte foncé, anneau accent de 10 px (FocusSurface) — lisible à 3 mètres.
  */
 @Composable
 private fun BigTile(label: String, hint: String, iconPath: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(36.design), bg = Ux.Surface2, ringWidth = 10.design, focusedScale = 1.03f, modifier = modifier) { f ->
-        Column(Modifier.fillMaxSize().padding(horizontal = 32.design, vertical = 30.design), verticalArrangement = Arrangement.SpaceBetween) {
-            DIcon(iconPath, 72.design, if (f) Ux.TextOnLight else Ux.Text, strokeWidth = 2.0f)
+        Column(Modifier.fillMaxSize().padding(horizontal = 32.design, vertical = 30.design)) {
+            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                DIcon(iconPath, 140.design, if (f) Ux.TextOnLight else Ux.Accent, strokeWidth = 1.6f)
+            }
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
                 Text(label, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 40.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(hint, color = if (f) Ux.OnFocus2 else Ux.Text2, fontFamily = Manrope, fontSize = 25.spx, lineHeight = 31.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
