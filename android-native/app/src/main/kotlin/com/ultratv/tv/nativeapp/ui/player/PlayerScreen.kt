@@ -928,6 +928,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         activity?.window?.let { w -> if (keep) w.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
         onDispose { activity?.window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
     }
+    // Session média système (Google TV / Fire TV / touches média) : titre, chaîne ou série, image, durée et commandes
+    // lecture / pause / avance / retour. Reflète le moteur en cours (Media3 ou VLC) ; sans session, la lecture est inchangée.
+    val mediaSession = remember { com.ultratv.tv.nativeapp.ui.player.PlayerMediaSession.create(context, { session.engine }, { session.state.value.phase }) }
+    DisposableEffect(mediaSession) { onDispose { mediaSession?.release() } }
+    val nowPlaying = remember(item, title, nowProg?.title) {
+        MediaSessionLogic.nowPlaying(item?.kind, item?.title, title, nowProg?.title, item?.poster)
+    }
+    LaunchedEffect(mediaSession, nowPlaying) { mediaSession?.setNowPlaying(nowPlaying) }
+    LaunchedEffect(mediaSession, playing, state.phase, state.combo) { mediaSession?.refresh() }
+    LaunchedEffect(mediaSession) { while (mediaSession != null) { delay(2_000); mediaSession.refresh() } }
     LaunchedEffect(aspect) { session.engine?.setAspect(aspect) }
     LaunchedEffect(speed) { session.engine?.setSpeed(speed) }
     LaunchedEffect(state.combo, state.phase) { session.engine?.setAspect(aspect) }
