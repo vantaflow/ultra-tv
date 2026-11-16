@@ -57,7 +57,7 @@ function licenseLine(lic, now = Date.now(), lang = "fr") {
   return `<div class="acct card-meta mt10${cls}">${e(t.prefix)}${parts.join(" · ")}${stale}${contact ? `<br/>${contact}` : ""}</div>`;
 }
 
-export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, lang = "fr", url = "/" }) {
+export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false, lang = "fr", url = "/", simkl = false, traktOn = true }) {
   const dict = SITE_DICT[lang] || SITE_DICT.fr;
   const dMsg = dict.dashMsg;
   const t = dict.dash;
@@ -241,6 +241,10 @@ ${listbar("prov-list", cJs.searchSrcPh)}
 ${traktPanel(acct.trakt, csrfInput, lang)}
 ${osPanel(acct.os, csrfInput, lang)}
 </div>
+<div class="two">
+${trackingPanel(acct, csrfInput, lang, simkl, traktOn)}
+${simkl ? simklPanel(acct.simkl, csrfInput, lang) : ""}
+</div>
 
 <div class="section-h" id="securite"><div class="sh-t"><h2>${e(t.sec.title)}</h2><p class="muted small">${e(t.sec.sub)}</p></div></div>
 <div class="two">
@@ -254,6 +258,32 @@ ${osPanel(acct.os, csrfInput, lang)}
 <label for="dpw">${e(dict.login.passLabel)}</label><input id="dpw" name="password" type="password" required autocomplete="current-password"/>
 <div class="row"><button class="danger" type="submit">${e(t.sec.delBtn)}</button></div></form></section>
 </div>` });
+}
+
+/** Service de suivi au choix : Trakt, Simkl (seulement s'il est configuré) ou aucun ; vaut pour tous les appareils. */
+function trackingPanel(acct, csrfInput, lang, simkl, traktOn) {
+  const t = (SITE_DICT[lang] || SITE_DICT.fr).dash.integ;
+  const cur = acct.tracking === "none" || acct.tracking === "simkl" || acct.tracking === "trakt"
+    ? acct.tracking : (acct.traktEnc ? "trakt" : acct.simklEnc ? "simkl" : "none");
+  const opts = [...(traktOn ? [["trakt", "Trakt"]] : []), ...(simkl ? [["simkl", "Simkl"]] : []), ["none", t.trackNone]];
+  return `<section class="panel" aria-labelledby="h-track"><h2 id="h-track">${e(t.trackTitle)}</h2>
+<p class="muted small mt6">${e(t.trackDesc)}</p>
+<form method="post" action="/tracking/service">${csrfInput}
+<label for="trk" class="mt0">${e(t.trackTitle)}</label><select id="trk" name="service">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${e(l)}</option>`).join("")}</select>
+<div class="row"><button type="submit">${e(t.trackSave)}</button></div></form></section>`;
+}
+
+/** Simkl (facultatif, affiché seulement si l'application Simkl est configurée sur le Worker). */
+function simklPanel(sObj, csrfInput, lang = "fr") {
+  const t = (SITE_DICT[lang] || SITE_DICT.fr).dash.integ;
+  const linked = sObj && !sObj.revoked;
+  return `<section class="panel" aria-labelledby="h-simkl"><h2 id="h-simkl">${e(t.simklTitle)} <span class="hint">${e(t.traktOptional)}</span></h2>
+${linked ? `<p class="mt6">${t.simklConnected(sObj.user)}</p>
+<p class="muted small mt6">${e(t.simklDescConnected)}</p>
+<form method="post" action="/simkl/disconnect">${csrfInput}<div class="row"><button class="secondary" type="submit">${e(t.simklDisconnect)}</button></div></form>`
+    : `<p class="muted small mt6">${sObj && sObj.revoked ? e(t.simklRevokedMsg) : ""}${e(t.simklDescConnect)}</p>
+<form method="post" action="/simkl/connect">${csrfInput}<div class="row"><button type="submit">${e(t.simklConnect)}</button></div></form>
+<p class="secure">${ico("lock")}<span>${e(t.simklSecure)}</span></p>`}</section>`;
 }
 
 /** Trakt (facultatif) : connexion OAuth depuis l'espace client ; les appareils n'ont rien à configurer. */

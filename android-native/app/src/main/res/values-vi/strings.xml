@@ -767,6 +767,11 @@
     <string name="trakt_trakt_auto_watched_hint">Tắt: khi kết thúc sẽ lưu thành tạm dừng trên Trakt</string>
     <string name="trakt_trakt_lists_home">Danh sách Trakt trên trang chủ</string>
     <string name="trakt_trakt_lists_home_hint">Tối đa 5 hàng, chỉ các tựa có trong danh sách phát của bạn</string>
+    <string name="trakt_tracking_title">Dịch vụ theo dõi</string>
+    <string name="trakt_tracking_none">Không</string>
+    <string name="trakt_tracking_hint">Hãy liên kết Trakt hoặc Simkl từ trang tài khoản của bạn trên trang web trước</string>
+    <string name="trakt_tracking_not_linked">%1$s chưa được liên kết: hãy liên kết từ trang tài khoản của bạn</string>
+    <string name="trakt_tracking_unsupported">Dịch vụ này không thể xóa một tựa khỏi danh sách</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Phim · Danh mục</string>

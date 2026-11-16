@@ -1,14 +1,16 @@
 // Gestes Trakt des fiches (watchlist, vu / non vu, note, saison / épisodes) et section des réglages.
 // Rien ne s'affiche si le compte n'est pas lié à Trakt.
 
-import { useState } from "react";
-import type { TraktWriteResult } from "@/cloud/client";
+import { useEffect, useState } from "react";
+import { setTrackingService, trackingStatus, type TraktWriteResult, type TrackingStatus } from "@/cloud/client";
+import { getToken, useCloud } from "@/cloud/service";
 import { useT } from "@/i18n";
 import { useUi } from "@/state/ui";
 import { Switch } from "@/ui/common";
 import { Icon } from "@/ui/Icon";
 import { rate, setEpisodesWatched, setMovieWatched, setWatchlist, type TraktWork } from "./actions";
-import { useTraktLibrary } from "./library";
+import { refreshTraktLibrary, useTraktLibrary } from "./library";
+import { trackerName, useTrackerT } from "./tracker";
 import { inWatchlist, ratingFor, type EpRef } from "./progress";
 import { useTraktPrefs } from "./prefs";
 import { watchedEpisodes } from "./availability";
@@ -25,6 +27,7 @@ function useRunner(t: T) {
       if (r === "unmatched") useUi.getState().toast(t("trakt.unmatched"));
       else if (r === "not-linked") useUi.getState().toast(t("trakt.notLinked"));
       else if (r === "failed") useUi.getState().toast(t("trakt.failed"));
+      else if (r === "unsupported") useUi.getState().toast(t("trakt.unsupported"));
     } finally { setBusy(false); }
   };
   return { busy, run };
@@ -43,7 +46,7 @@ function RatingSelect({ work, current, t, disabled, onRate }: { work: TraktWork;
 
 /** Fiche film : watchlist, vu / non vu, note. */
 export function TraktMovieActions({ title, year, tmdb, seen }: { title: string; year: number | null; tmdb?: number; seen: boolean }) {
-  const t = useT();
+  const t = useTrackerT();
   const lib = useTraktLibrary((s) => s.lib);
   const { busy, run } = useRunner(t);
   if (!lib) return null;
@@ -65,7 +68,7 @@ export function TraktMovieActions({ title, year, tmdb, seen }: { title: string; 
 
 /** Fiche série : watchlist, note, saison affichée vue / non vue, et épisodes de cette saison un à un. */
 export function TraktSeriesActions({ title, year, tmdb, season, episodes }: { title: string; year: number | null; tmdb?: number; season: number | null; episodes: EpRef[] }) {
-  const t = useT();
+  const t = useTrackerT();
   const lib = useTraktLibrary((s) => s.lib);
   const watched = useTraktLibrary((s) => s.watched);
   const { busy, run } = useRunner(t);
@@ -110,8 +113,66 @@ export function TraktSeriesActions({ title, year, tmdb, season, episodes }: { ti
 }
 
 /** Section Trakt des réglages (lecture) : marquer vu à la fin, listes personnelles de l'accueil. */
-export function TraktSettings({ Pref }: { Pref: (p: { label: string; desc?: string; children: React.ReactNode }) => React.JSX.Element }) {
+export function TraktSettings({ Pref }: { Pref: PrefComponent }) {
+  const t = useTrackerT();
+  const lib = useTraktLibrary((s) => s.lib);
+  return (
+    <>
+      <TrackingSetting Pref={Pref} />
+      {lib && <TraktSettingsBody Pref={Pref} t={t} />}
+    </>
+  );
+}
+
+type PrefComponent = (p: { label: string; desc?: string; children: React.ReactNode }) => React.JSX.Element;
+
+/** Réglage « Service de suivi » (Trakt / Simkl / aucun) : visible dès que le Worker propose un service (appareil appairé). */
+function TrackingSetting({ Pref }: { Pref: PrefComponent }) {
   const t = useT();
+  const paired = useCloud((s) => s.paired);
+  const worker = useCloud((s) => s.worker);
+  const [st, setSt] = useState<TrackingStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!paired) { setSt(null); return; }
+    let live = true;
+    void (async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const s = await trackingStatus(worker, token);
+        if (live) setSt(s);
+      } catch { /* hors ligne / 401 : réglage masqué */ }
+    })();
+    return () => { live = false; };
+  }, [paired, worker]);
+  if (!st || !st.available.length) return null;
+  const choose = async (v: "trakt" | "simkl" | "none") => {
+    setBusy(true);
+    try {
+      const token = await getToken();
+      const s = token ? await setTrackingService(worker, token, v) : null;
+      if (!s) { useUi.getState().toast(t("trakt.failed")); return; }
+      setSt(s);
+      // La bibliothèque affichée est celle du nouveau service : relue tout de suite (vide si « aucun »).
+      await refreshTraktLibrary(true);
+      if (v !== "none" && !s.linked[v]) useUi.getState().toast(t("trakt.serviceNotLinked", { name: trackerName(v) }));
+    } finally { setBusy(false); }
+  };
+  return (
+    <>
+      <h3 style={{ marginTop: "1.5rem" }}>{t("settings.trackingTitle")}</h3>
+      <Pref label={t("settings.trackingTitle")} desc={t("settings.trackingHint")}>
+        <select className="btn" aria-label={t("settings.trackingTitle")} disabled={busy} value={st.choice} onChange={(e) => void choose(e.target.value as "trakt" | "simkl" | "none")}>
+          {st.available.map((s) => <option key={s} value={s}>{trackerName(s)}</option>)}
+          <option value="none">{t("settings.trackingNone")}</option>
+        </select>
+      </Pref>
+    </>
+  );
+}
+
+function TraktSettingsBody({ Pref, t }: { Pref: PrefComponent; t: ReturnType<typeof useT> }) {
   const lib = useTraktLibrary((s) => s.lib);
   const p = useTraktPrefs();
   if (!lib) return null;

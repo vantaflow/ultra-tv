@@ -837,6 +837,11 @@
     <string name="trakt_trakt_auto_watched_hint">عند الإيقاف: تُحفظ النهاية كإيقاف مؤقت على Trakt</string>
     <string name="trakt_trakt_lists_home">قوائم Trakt في الرئيسية</string>
     <string name="trakt_trakt_lists_home_hint">حتى 5 صفوف، فقط العناوين المتوفرة في قائمتك</string>
+    <string name="trakt_tracking_title">خدمة التتبع</string>
+    <string name="trakt_tracking_none">بدون</string>
+    <string name="trakt_tracking_hint">اربط Trakt أو Simkl أولًا من صفحة حسابك على الموقع</string>
+    <string name="trakt_tracking_not_linked">%1$s غير مرتبط بعد: اربطه من صفحة حسابك</string>
+    <string name="trakt_tracking_unsupported">لا تستطيع هذه الخدمة إزالة عنوان من قائمة المشاهدة</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">الأفلام · الفئات</string>

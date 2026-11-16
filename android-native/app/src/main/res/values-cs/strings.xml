@@ -792,6 +792,11 @@
     <string name="trakt_trakt_auto_watched_hint">Vyp.: konec se na Trakt uloží jako pozastavení</string>
     <string name="trakt_trakt_lists_home">Seznamy Trakt na domovské obrazovce</string>
     <string name="trakt_trakt_lists_home_hint">Až 5 řádků, jen tituly dostupné ve vašem playlistu</string>
+    <string name="trakt_tracking_title">Služba sledování</string>
+    <string name="trakt_tracking_none">Žádná</string>
+    <string name="trakt_tracking_hint">Nejprve propojte Trakt nebo Simkl na stránce svého účtu na webu</string>
+    <string name="trakt_tracking_not_linked">%1$s zatím není propojen: propojte jej na stránce svého účtu</string>
+    <string name="trakt_tracking_unsupported">Tato služba nemůže odebrat titul ze seznamu</string>
     <string name="cat_catalog_categories_title_1">Filmy · Kategorie</string>
     <string name="cat_catalog_categories_title_2">Seriály · Kategorie</string>
     <string name="cat_categories_count">%1$s kategorií</string>

@@ -44,6 +44,11 @@ import {
   parseWatchlist, parseHistory, parseRating, traktWriteRequest, sendSync,
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
+import {
+  SIMKL_STATE_TTL_S, simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklUsername, fetchSimklLibrary,
+  simklWriteRequest, simklScrobbleBody, simklSend,
+} from "./simkl.js";
+import { TRACKING_CHOICES, activeTracker, trackingStatus } from "./tracking.js";
 import { fontResponse } from "./fonts.js";
 import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
@@ -235,11 +240,15 @@ async function route(req, env, ctx) {
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
-  if (path === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
-  if (path === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url, ctx);
-  if (path === "/api/device/trakt/watchlist" && m === "POST") return deviceTraktWrite(req, env, "watchlist");
-  if (path === "/api/device/trakt/history" && m === "POST") return deviceTraktWrite(req, env, "history");
-  if (path === "/api/device/trakt/rating" && m === "POST") return deviceTraktWrite(req, env, "rating");
+  // Suivi (Trakt ou Simkl, au choix du compte) : /api/device/tracking/* est l'interface commune, /api/device/trakt/*
+  // reste servi à l'identique pour les applications existantes.
+  const trk = path.replace(/^\/api\/device\/tracking\//, "/api/device/trakt/");
+  if (path === "/api/device/tracking" && (m === "GET" || m === "POST")) return deviceTracking(req, env, m);
+  if (trk === "/api/device/trakt/scrobble" && m === "POST") return deviceTraktScrobble(req, env);
+  if (trk === "/api/device/trakt/library" && m === "GET") return deviceTraktLibrary(req, env, url, ctx);
+  if (trk === "/api/device/trakt/watchlist" && m === "POST") return deviceTraktWrite(req, env, "watchlist");
+  if (trk === "/api/device/trakt/history" && m === "POST") return deviceTraktWrite(req, env, "history");
+  if (trk === "/api/device/trakt/rating" && m === "POST") return deviceTraktWrite(req, env, "rating");
   if ((path === "/api/device/self" && m === "POST") || (path === "/api/device" && (m === "PATCH" || m === "POST"))) return deviceRename(req, env);
   if ((path === "/api/subtitles/search" || path === "/api/subtitles/download") && m === "GET") return deviceSubtitles(req, env, path.endsWith("/search"), url);
   if (path.startsWith("/api/tmdb/") && m === "GET") return deviceTmdb(req, env, path.slice("/api/tmdb/".length), url);
@@ -298,13 +307,14 @@ async function route(req, env, ctx) {
   // Retour de Trakt : AVANT la session. Le cookie de session est SameSite=Strict, donc absent d'une navigation venue
   // de trakt.tv ; le retour est authentifié par l'état à usage unique ET le cookie SameSite=Lax posé au départ.
   if (path === "/trakt/callback" && m === "GET") return traktFinish(req, env, url);
+  if (path === "/simkl/callback" && m === "GET") return simklFinish(req, env, url);
 
   // ---- tableau de bord (session) ----
   const sess = await currentSession(req, env);
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect"].includes(path)
+  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
@@ -333,7 +343,7 @@ async function route(req, env, ctx) {
     const n = nonce();
     const providers = await loadProviders(env, sess.acct);
     const admin = isAdmin(env, sess.acct);
-    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, lang: siteLangOf(req, url), url: req.url });
+    return dashboardPage(n, { acct: sess.acct, providers, csrf: sess.csrf, err: url.searchParams.get("e"), ok: url.searchParams.get("m"), admin, lang: siteLangOf(req, url), url: req.url, simkl: simklEnabled(env), traktOn: !!env.TRAKT_CLIENT_ID });
   }
 
   // Mutations : Origin + jeton CSRF + débit par compte.
@@ -378,6 +388,22 @@ async function route(req, env, ctx) {
   if (path === "/password") return changePassword(env, acct, form, req);
   if (path === "/subtitles/link") return linkOpenSubtitles(env, acct, form);
   if (path === "/trakt/connect") return traktStart(env, acct, url);
+  if (path === "/simkl/connect") return simklStart(env, acct, url);
+  if (path === "/simkl/disconnect") {
+    delete acct.simklEnc;
+    delete acct.simkl;
+    await putAccount(env, acct);
+    await forgetTraktLibrary(env, acct.login);
+    return redirect("/?m=simkl_off#compte");
+  }
+  if (path === "/tracking/service") {
+    const choice = String(form.get("service") || "");
+    if (!TRACKING_CHOICES.includes(choice) || (choice === "simkl" && !simklEnabled(env))) return redirect("/?e=tracking#compte");
+    acct.tracking = choice;
+    await putAccount(env, acct);
+    await forgetTraktLibrary(env, acct.login);
+    return redirect("/?m=tracking_saved#compte");
+  }
   if (path === "/trakt/disconnect") {
     if (acct.traktEnc && env.TRAKT_CLIENT_ID) {
       const t = await decryptJson(keysFromEnv(env), acct.traktEnc, acct.login).catch(() => null);
@@ -864,7 +890,7 @@ async function adminAccounts(env) {
         devices,
         lastSeen: Math.max(0, ...devices.map((d) => d.lastSeen)),
         sources: Boolean(a.providersEnc),
-        trakt: a.traktEnc ? (a.trakt && a.trakt.user) || "oui" : "",
+        trakt: a.traktEnc ? (a.trakt && a.trakt.user) || "oui" : a.simklEnc ? `simkl:${(a.simkl && a.simkl.user) || "oui"}` : "",
         opensubtitles: (a.os && a.os.user) || "",
       });
     }
@@ -921,14 +947,14 @@ const TRAKT_COOKIE = "utv_trakt";
  * Fin du parcours Trakt : page relais qui renvoie au tableau de bord par une navigation INTERNE au site (le cookie
  * de session Strict est alors renvoyé ; une redirection 302 dans la chaîne venue de trakt.tv ne le serait pas).
  */
-function traktDone(query) {
+function traktDone(query, cookie = TRAKT_COOKIE, cpath = "/trakt") {
   const to = `/?${query}#compte`;
   return new Response(`<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${to}"><title>Ultra TV</title><p><a href="${to}">Retour au tableau de bord</a></p>`, {
     headers: {
       "content-type": "text/html; charset=utf-8", "cache-control": "no-store",
       "content-security-policy": "default-src 'none'; base-uri 'none'; frame-ancestors 'none'",
       "x-content-type-options": "nosniff", "referrer-policy": "no-referrer",
-      "set-cookie": `${TRAKT_COOKIE}=; Path=/trakt; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
+      "set-cookie": `${cookie}=; Path=${cpath}; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
     },
   });
 }
@@ -954,6 +980,93 @@ async function traktFinish(req, env, url) {
     acct.trakt = { user, at: Date.now() };
     await putAccount(env, acct);
     return traktDone("m=trakt");
+  });
+}
+
+// ---- Simkl (facultatif, au choix avec Trakt) ------------------------------------
+// Même parcours que Trakt (état à usage unique + cookie Lax lié au navigateur), mais sans PKCE : Simkl exige le secret
+// client, gardé dans le Worker. Les jetons Simkl n'expirent pas : chiffrés dans le compte, jamais renouvelés.
+const SIMKL_COOKIE = "utv_simkl";
+const simklStateKey = (state) => `simklst:${state}`;
+const simklRedirect = (url) => (url.hostname === PRIMARY_HOST || LEGACY_HOSTS.includes(url.hostname))
+  ? `https://${PRIMARY_HOST}/simkl/callback`
+  : `${url.origin}/simkl/callback`;
+const simklDone = (query) => traktDone(query, SIMKL_COOKIE, "/simkl");
+
+async function simklStart(env, acct, url) {
+  if (!simklEnabled(env)) return redirect("/?e=simkl_na#compte");
+  const rl = await limited(env, `simklink:${acct.login}`, 10, 3600);
+  if (rl) return rl;
+  const state = randomToken(24);
+  await docs.put(env, simklStateKey(state), JSON.stringify({ login: acct.login }), { expirationTtl: SIMKL_STATE_TTL_S });
+  return redirect(simklAuthorizeUrl(env.SIMKL_CLIENT_ID, simklRedirect(url), state), {
+    "set-cookie": `${SIMKL_COOKIE}=${state}; Path=/simkl; HttpOnly; Secure; SameSite=Lax; Max-Age=${SIMKL_STATE_TTL_S}`,
+  });
+}
+
+async function simklFinish(req, env, url) {
+  const state = url.searchParams.get("state") || "";
+  const code = url.searchParams.get("code") || "";
+  if (!/^[A-Za-z0-9_-]{16,64}$/.test(state)) return simklDone("e=simkl");
+  if (!timingSafeEqual(readCookie(req, SIMKL_COOKIE) || "", state)) return simklDone("e=simkl");
+  const raw = await docs.get(env, simklStateKey(state));
+  if (raw) await docs.delete(env, simklStateKey(state));
+  let st = null;
+  try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
+  if (!st || typeof st.login !== "string" || !code || code.length > 512 || !simklEnabled(env)) return simklDone("e=simkl");
+  const t = await simklExchangeCode(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, simklRedirect(url), code);
+  if (t.error) return simklDone("e=simkl");
+  const user = await simklUsername(env.SIMKL_CLIENT_ID, t.access);
+  return withAccountLock(env, st.login, async (acct) => {
+    if (!acct) return simklDone("e=simkl");
+    acct.simklEnc = await encryptJson(keysFromEnv(env), { access: t.access }, acct.login);
+    acct.simkl = { user, at: Date.now() };
+    // Simkl vient d'être relié : si rien n'était choisi, c'est lui qui devient le service de suivi.
+    if (!acct.tracking && !acct.traktEnc) acct.tracking = "simkl";
+    await putAccount(env, acct);
+    await forgetTraktLibrary(env, acct.login);
+    return simklDone("m=simkl");
+  });
+}
+
+/** Jeton d'accès Simkl du compte, ou null (non relié). */
+async function simklAccess(env, login) {
+  const acct = await getAccount(env, login);
+  if (!acct || !acct.simklEnc) return null;
+  const t = await decryptJson(keysFromEnv(env), acct.simklEnc, login).catch(() => null);
+  return t && typeof t.access === "string" ? t.access : null;
+}
+
+/** Simkl refuse le jeton (révoqué chez Simkl) : on l'oublie, l'espace client propose de reconnecter. */
+async function simklRevoked(env, login) {
+  await withAccountLock(env, login, async (acct) => {
+    if (!acct || !acct.simklEnc) return;
+    delete acct.simklEnc;
+    acct.simkl = { ...(acct.simkl || {}), revoked: true };
+    await putAccount(env, acct);
+  });
+}
+
+/**
+ * GET/POST /api/device/tracking : service de suivi choisi, services proposés et reliés. POST {service: trakt|simkl|none}
+ * change le choix (la liaison elle-même se fait depuis le tableau de bord, par OAuth).
+ */
+async function deviceTracking(req, env, method) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = await limited(env, `tracking:dev:${auth.device.id}`, 60, 600, true);
+  if (rl) return rl;
+  if (method === "GET") return json(trackingStatus(env, auth.acct));
+  const body = await readJson(req, 1024);
+  if (body.error) return body.error;
+  const choice = body.value && body.value.service;
+  if (!TRACKING_CHOICES.includes(choice) || (choice === "simkl" && !simklEnabled(env))) return json({ error: "invalid", field: "service" }, 400);
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+    acct.tracking = choice;
+    await putAccount(env, acct);
+    await forgetTraktLibrary(env, acct.login);
+    return json(trackingStatus(env, acct));
   });
 }
 
@@ -995,8 +1108,19 @@ async function deviceTraktScrobble(req, env) {
   if (body.error) return body.error;
   const s = parseScrobble(body.value);
   if (!s) return json({ error: "invalid" }, 400);
-  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const svc = activeTracker(env, auth.acct);
+  if (!svc) return json({ linked: false });
   const tmdb = s.tmdb || (await resolveTmdb(env, s.kind === "movie" ? "movie" : "tv", s.title, s.year));
+  if (svc === "simkl") {
+    const payload = simklScrobbleBody(s, tmdb);
+    if (!payload) return json({ linked: true, matched: false });
+    const access = await simklAccess(env, auth.acct.login);
+    if (!access) return json({ linked: false });
+    const r = await simklSend(env.SIMKL_CLIENT_ID, access, `/scrobble/${s.action}`, payload);
+    if (r === "unauthorized") { await simklRevoked(env, auth.acct.login); return json({ linked: false }); }
+    if (r === "ok" && s.action === "stop" && s.progress >= 80) await forgetTraktLibrary(env, auth.acct.login);
+    return json({ linked: true, matched: r !== "unmatched", ok: r === "ok" });
+  }
   const payload = traktScrobbleBody(s, tmdb);
   if (!payload) { console.log(JSON.stringify({ trakt: "scrobble", unmatched: s.kind })); return json({ linked: true, matched: false }); }
   const redirectUri = traktRedirect(new URL(req.url));
@@ -1030,9 +1154,22 @@ async function deviceTraktWrite(req, env, kind) {
   if (body.error) return body.error;
   const p = TRAKT_PARSERS[kind](body.value);
   if (!p) return json({ error: "invalid" }, 400);
-  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const svc = activeTracker(env, auth.acct);
+  if (!svc) return json({ linked: false });
   const tmdb = p.tmdb || (await resolveTmdb(env, p.type === "movie" ? "movie" : "tv", p.title, p.year));
   if (!tmdb) { console.log(JSON.stringify({ trakt: kind, unmatched: p.type })); return json({ linked: true, matched: false, ok: false }); }
+  if (svc === "simkl") {
+    const req2 = simklWriteRequest(kind, p, tmdb);
+    // Simkl n'a pas de retrait de la watchlist : réponse explicite plutôt qu'un faux succès.
+    if (!req2) return json({ linked: true, matched: true, ok: false, error: "unsupported", tmdb });
+    const access = await simklAccess(env, auth.acct.login);
+    if (!access) return json({ linked: false });
+    const r = await simklSend(env.SIMKL_CLIENT_ID, access, req2.path, req2.body);
+    if (r === "unauthorized") { await simklRevoked(env, auth.acct.login); return json({ linked: false }); }
+    if (r === "ok") await forgetTraktLibrary(env, auth.acct.login);
+    if (r === "upstream") return json({ linked: true, matched: true, ok: false, error: "upstream" }, 502);
+    return json({ linked: true, matched: r !== "unmatched", ok: r === "ok", tmdb });
+  }
   const { path, body: payload } = traktWriteRequest(kind, p, tmdb);
   const redirectUri = traktRedirect(new URL(req.url));
   let access = await traktAccess(env, auth.acct.login, redirectUri);
@@ -1065,36 +1202,47 @@ async function deviceTraktLibrary(req, env, url, ctx) {
   if (res) return res;
   const rl = await limited(env, `traktlib:dev:${auth.device.id}`, 30, 600, true);
   if (rl) return rl;
-  if (!env.TRAKT_CLIENT_ID || !auth.acct.traktEnc) return json({ linked: false });
+  const svc = activeTracker(env, auth.acct);
+  if (!svc) return json({ linked: false });
   const login = auth.acct.login;
   const lang = LANGS.has(url.searchParams.get("lang")) ? url.searchParams.get("lang") : "en";
   const cached = await docs.get(env, traktLibKey(login, lang));
   const v = cached ? await decryptJson(keysFromEnv(env), cached, login).catch(() => null) : null;
   // Ancien format (données seules) : traité comme périmé.
   const at = v && typeof v.at === "number" ? v.at : 0;
-  const data = v && v.data ? v.data : null;
+  // Un cache fait pour l'autre service (changement de choix) est ignoré.
+  const data = v && v.data && (v.svc || "trakt") === svc ? v.data : null;
   if (data && Date.now() - at < LIB_TTL_S * 1000) return json(data);
   if (data && ctx && typeof ctx.waitUntil === "function") {
-    ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url)).catch(() => {}));
+    ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url), svc).catch(() => {}));
     return json(data);
   }
-  const fresh = await buildTraktLibrary(env, login, lang, traktRedirect(url));
+  const fresh = await buildTraktLibrary(env, login, lang, traktRedirect(url), svc);
   return json(fresh.body, fresh.status);
 }
 
 /** Relit Trakt, complète les titres, garde le résultat (chiffré) → { status, body }. */
-async function buildTraktLibrary(env, login, lang, redirectUri) {
+async function buildTraktLibrary(env, login, lang, redirectUri, svc = "trakt") {
   const keys = keysFromEnv(env);
-  let access = await traktAccess(env, login, redirectUri);
-  if (!access) return { status: 200, body: { linked: false } };
   let lib;
-  try {
-    lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access);
-  } catch (e) {
-    if (!e.unauthorized) return { status: 502, body: { error: "upstream" } };
-    access = await traktAccess(env, login, redirectUri, true);
+  if (svc === "simkl") {
+    const access = await simklAccess(env, login);
     if (!access) return { status: 200, body: { linked: false } };
-    try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return { status: 502, body: { error: "upstream" } }; }
+    try { lib = await fetchSimklLibrary(env.SIMKL_CLIENT_ID, access); } catch (e) {
+      if (e.unauthorized) { await simklRevoked(env, login); return { status: 200, body: { linked: false } }; }
+      return { status: 502, body: { error: "upstream" } };
+    }
+  } else {
+    let access = await traktAccess(env, login, redirectUri);
+    if (!access) return { status: 200, body: { linked: false } };
+    try {
+      lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access);
+    } catch (e) {
+      if (!e.unauthorized) return { status: 502, body: { error: "upstream" } };
+      access = await traktAccess(env, login, redirectUri, true);
+      if (!access) return { status: 200, body: { linked: false } };
+      try { lib = await fetchTraktLibrary(env.TRAKT_CLIENT_ID, access); } catch { return { status: 502, body: { error: "upstream" } }; }
+    }
   }
   let known = {};
   try { known = JSON.parse((await docs.get(env, traktDictKey(login, lang))) || "{}") || {}; } catch { known = {}; }
@@ -1102,8 +1250,8 @@ async function buildTraktLibrary(env, login, lang, redirectUri) {
   if (Object.keys(dict).length !== Object.keys(known).length) {
     await docs.put(env, traktDictKey(login, lang), JSON.stringify(dict), { expirationTtl: 90 * 86400 });
   }
-  const data = libraryForDevice(lib, dict, Date.now());
-  await docs.put(env, traktLibKey(login, lang), await encryptJson(keys, { at: Date.now(), data }, login), { expirationTtl: TRAKT_LIB_KEEP_S });
+  const data = { ...libraryForDevice(lib, dict, Date.now()), service: svc };
+  await docs.put(env, traktLibKey(login, lang), await encryptJson(keys, { at: Date.now(), data, svc }, login), { expirationTtl: TRAKT_LIB_KEEP_S });
   return { status: 200, body: data };
 }
 

@@ -40,6 +40,8 @@ class TraktLibrary(
     val ratedShows: List<TraktRated> = emptyList(),
     val lists: List<TraktUserList> = emptyList(),
     val playback: List<TraktPlayback> = emptyList(),
+    /** Service de suivi dont vient cette bibliothèque (« trakt » ou « simkl », voir [TrackingService]). */
+    val service: String = TrackingService.TRAKT,
 ) {
     // Clé de rapprochement → années des films vus (une clé peut couvrir un remake : on compare l'année).
     private val movieIndex: Map<String, List<Int?>> by lazy {
@@ -131,7 +133,7 @@ class TraktLibrary(
         watchedShows: List<TraktWatchedShow> = this.watchedShows,
         ratedMovies: List<TraktRated> = this.ratedMovies,
         ratedShows: List<TraktRated> = this.ratedShows,
-    ) = TraktLibrary(linked, updatedAt, watchlist, recommendations, watchedMovies, watchedShows, trending, popular, ratedMovies, ratedShows, lists, playback)
+    ) = TraktLibrary(linked, updatedAt, watchlist, recommendations, watchedMovies, watchedShows, trending, popular, ratedMovies, ratedShows, lists, playback, service)
 
     companion object {
         val EMPTY = TraktLibrary(false, 0L, emptyList(), emptyList(), emptyList(), emptyList())
@@ -231,6 +233,7 @@ class TraktLibrary(
                 ratedShows = rated(ratings?.optJSONArray("shows")),
                 lists = lists(o.optJSONArray("lists")),
                 playback = playback(o.optJSONArray("playback")),
+                service = if (o.optString("service") == TrackingService.SIMKL) TrackingService.SIMKL else TrackingService.TRAKT,
             )
         }
     }

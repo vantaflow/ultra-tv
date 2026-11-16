@@ -70,6 +70,11 @@ import com.ultratv.tv.nativeapp.i18n.traktSeasonUnwatched
 import com.ultratv.tv.nativeapp.i18n.traktSeasonWatched
 import com.ultratv.tv.nativeapp.i18n.traktSettings
 import com.ultratv.tv.nativeapp.i18n.traktUnmatched
+import com.ultratv.tv.nativeapp.i18n.trackingHint
+import com.ultratv.tv.nativeapp.i18n.trackingNone
+import com.ultratv.tv.nativeapp.i18n.trackingNotLinked
+import com.ultratv.tv.nativeapp.i18n.trackingTitle
+import com.ultratv.tv.nativeapp.i18n.trackingUnsupported
 import com.ultratv.tv.nativeapp.i18n.traktWatched
 import com.ultratv.tv.nativeapp.i18n.traktYourRating
 import com.ultratv.tv.nativeapp.ui.common.ModalFocusScope
@@ -92,6 +97,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -151,6 +157,7 @@ class TraktActionsViewModel @Inject constructor(
                     TraktWriteResult.UNMATCHED -> Toaster.err(D.traktUnmatched)
                     TraktWriteResult.NOT_LINKED -> Toaster.err(D.traktNotLinked)
                     TraktWriteResult.FAILED -> Toaster.err(D.traktFailed)
+                    TraktWriteResult.UNSUPPORTED -> Toaster.err(D.trackingUnsupported)
                 }
             } finally { _busy.value = false }
         }
@@ -305,4 +312,69 @@ fun TraktSettingsSection(vm: TraktSettingsViewModel = hiltViewModel()) {
             }
         }
     }
+}
+
+// ───────────────────────── Service de suivi (Trakt / Simkl / aucun) ─────────────────────────
+
+/** Choix du service de suivi du compte : lu et changé auprès du Worker (la liaison se fait sur la page du compte). */
+@HiltViewModel
+class TrackingServiceViewModel @Inject constructor(
+    private val client: com.ultratv.tv.nativeapp.data.config.CloudSyncClient,
+    private val tokens: com.ultratv.tv.nativeapp.data.config.DeviceTokenStore,
+    private val prefs: com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore,
+    private val repo: TraktLibraryRepository,
+) : ViewModel() {
+    private val _status = MutableStateFlow<com.ultratv.tv.nativeapp.data.trakt.TrackingStatus?>(null)
+    val status: StateFlow<com.ultratv.tv.nativeapp.data.trakt.TrackingStatus?> = _status.asStateFlow()
+
+    init { load() }
+
+    private suspend fun base(): String? =
+        com.ultratv.tv.nativeapp.data.config.WorkerUrl.normalize(
+            com.ultratv.tv.nativeapp.data.config.WorkerUrl.resolve(prefs.flow.first().workerBaseUrl), com.ultratv.tv.nativeapp.BuildConfig.DEBUG,
+        )
+
+    fun load() {
+        viewModelScope.launch {
+            val t = tokens.token() ?: return@launch
+            val b = base() ?: return@launch
+            _status.value = client.trackingStatus(b, t)
+        }
+    }
+
+    fun choose(service: String, D: DesignStrings) {
+        viewModelScope.launch {
+            val t = tokens.token() ?: return@launch
+            val b = base() ?: return@launch
+            val st = client.setTracking(b, t, service)
+            if (st == null) { Toaster.err(D.traktFailed); return@launch }
+            _status.value = st
+            // La bibliothèque affichée est celle du nouveau service : relue tout de suite (vide si « aucun »).
+            val p = prefs.flow.first()
+            repo.refreshIfStale(TraktLibraryRepository.langParam(p.language, java.util.Locale.getDefault().language), force = true)
+            if (service != com.ultratv.tv.nativeapp.data.trakt.TrackingService.NONE && !st.isLinked(service)) {
+                Toaster.err(D.trackingNotLinked(com.ultratv.tv.nativeapp.data.trakt.TrackingService.displayName(service)))
+            }
+        }
+    }
+}
+
+/** Réglage « Service de suivi » : visible dès qu'un service est proposé par le Worker (appareil appairé). */
+@Composable
+fun TrackingServiceSection(vm: TrackingServiceViewModel = hiltViewModel()) {
+    val st by vm.status.collectAsState()
+    val s = st ?: return
+    if (s.available.isEmpty()) return
+    val D = LocalDs.current
+    var pick by remember { mutableStateOf(false) }
+    val options = s.available.map { it to com.ultratv.tv.nativeapp.data.trakt.TrackingService.displayName(it) } +
+        (com.ultratv.tv.nativeapp.data.trakt.TrackingService.NONE to D.trackingNone)
+    val current = options.firstOrNull { it.first == s.choice }?.second ?: D.trackingNone
+    Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+        GroupLabel(D.trackingTitle)
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            com.ultratv.tv.nativeapp.ui.design.PrefRow(D.trackingTitle, current, hint = D.trackingHint) { pick = true }
+        }
+    }
+    if (pick) ChoiceDialog(D.trackingTitle, options, s.choice, { vm.choose(it, D); pick = false }, { pick = false })
 }

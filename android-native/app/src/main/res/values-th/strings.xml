@@ -767,6 +767,11 @@
     <string name="trakt_trakt_auto_watched_hint">ปิด: เมื่อจบจะบันทึกเป็นการหยุดชั่วคราวบน Trakt</string>
     <string name="trakt_trakt_lists_home">รายการ Trakt บนหน้าแรก</string>
     <string name="trakt_trakt_lists_home_hint">สูงสุด 5 แถว เฉพาะรายการที่มีในเพลย์ลิสต์ของคุณ</string>
+    <string name="trakt_tracking_title">บริการติดตาม</string>
+    <string name="trakt_tracking_none">ไม่มี</string>
+    <string name="trakt_tracking_hint">เชื่อมต่อ Trakt หรือ Simkl จากหน้าบัญชีของคุณบนเว็บไซต์ก่อน</string>
+    <string name="trakt_tracking_not_linked">%1$s ยังไม่ได้เชื่อมต่อ: เชื่อมต่อจากหน้าบัญชีของคุณ</string>
+    <string name="trakt_tracking_unsupported">บริการนี้ไม่สามารถลบรายการออกจากรายการที่อยากดูได้</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">ภาพยนตร์ · หมวดหมู่</string>

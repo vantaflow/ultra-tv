@@ -5,6 +5,7 @@ import com.ultratv.tv.nativeapp.ui.design.AccentChoice
 import com.ultratv.tv.nativeapp.ui.design.TextSize
 import com.ultratv.tv.nativeapp.ui.home.HomeBlock
 import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.data.trakt.forTracker
 
 /**
  * Libellés de la personnalisation (accent, taille du texte, rangées de l'accueil, écran d'ouverture) et de l'en-tête
@@ -48,7 +49,7 @@ val DesignStrings.moveUp get() = tx(R.string.perso_move_up)
 val DesignStrings.moveDown get() = tx(R.string.perso_move_down)
 val DesignStrings.resetDefault get() = tx(R.string.perso_reset_default)
 val DesignStrings.doneLabel get() = tx(R.string.perso_done_label)
-val DesignStrings.traktListsRow get() = tx(R.string.perso_trakt_lists_row)
+val DesignStrings.traktListsRow get() = tx(R.string.perso_trakt_lists_row).forTracker()
 
 fun DesignStrings.accentName(a: AccentChoice): String = when (a) {
     AccentChoice.RED -> tx(R.string.perso_accent_name_red)

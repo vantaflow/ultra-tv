@@ -24,6 +24,8 @@ export default defineConfig({
           PROVIDER_ENC_KEY: "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
           OPS_TOKEN: "test-ops-token-0123456789abcdef0123456789",
           TMDB_API_KEY: "test-tmdb-key-not-real",
+          SIMKL_CLIENT_ID: "test-simkl-id-not-real",
+          SIMKL_CLIENT_SECRET: "test-simkl-secret-not-real",
           ADMIN_TOKEN: "test-admin-token-0123456789abcdef0123456789",
         },
       },

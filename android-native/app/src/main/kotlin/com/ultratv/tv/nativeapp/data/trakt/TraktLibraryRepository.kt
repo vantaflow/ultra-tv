@@ -103,6 +103,7 @@ class TraktLibraryRepository(
                 val lib = TraktLibrary.parse(o.getString("body"))
                 if (!lib.linked) return
                 _library.value = lib
+                TrackingService.active = lib.service
                 lastOkAt = o.optLong("savedAt", 0L).takeIf { it in 1..clock() } ?: 0L
                 lastLang = o.optString("lang", "").takeIf { it.isNotEmpty() }
             } catch (e: CancellationException) {
@@ -132,6 +133,7 @@ class TraktLibraryRepository(
                 val lib = body?.let { TraktLibrary.parse(it) }
                 if (lib == null) { lastFailAt = now; return }
                 _library.value = lib
+                if (lib.linked) TrackingService.active = lib.service
                 lastOkAt = now; lastLang = lang
                 withContext(Dispatchers.IO) {
                     if (lib.linked) store.writeLibrary(JSONObject().put("savedAt", now).put("lang", lang).put("body", body).toString())
