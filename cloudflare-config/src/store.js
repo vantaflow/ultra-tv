@@ -639,6 +639,49 @@ export async function deleteState(env, login, pid) {
 export const PROFILES_MAX = 40;
 const PROFILE_TOMB_TTL_MS = 180 * 24 * 3600 * 1000;
 
+/**
+ * Horaires de visionnage / temps d'écran d'un profil (champ facultatif `t`) : « L90;1=480-1200,1260-1380;2=;… »
+ * (L = limite quotidienne en minutes ; « jour=début-fin,… » en minutes depuis minuit, jour 1 = lundi … 7 = dimanche ;
+ * jour sans plage = interdit toute la journée). Renvoie le texte nettoyé (ré-encodé), « » = règles retirées, null = invalide.
+ */
+export function cleanScreenTime(t) {
+  if (typeof t !== "string" || t.length > 400) return null;
+  if (!t.trim()) return "";
+  let limit = null;
+  const days = new Map();
+  for (const seg of t.split(";")) {
+    const s = seg.trim();
+    if (s.startsWith("L")) {
+      const n = /^L(\d{1,4})$/.exec(s);
+      if (!n) return null;
+      const v = Number(n[1]);
+      if (v >= 1 && v <= 1440) limit = v;
+      continue;
+    }
+    const m = /^([1-7])=(.*)$/.exec(s);
+    if (!m) return null;
+    const wins = [];
+    for (const w of m[2].split(",")) {
+      if (!w) continue;
+      const p = /^(\d{1,4})-(\d{1,4})$/.exec(w);
+      if (!p) return null;
+      const a = Number(p[1]), b = Number(p[2]);
+      if (a >= 0 && a <= 1439 && b >= 1 && b <= 1440 && b > a) wins.push([a, b]);
+    }
+    wins.sort((x, y) => x[0] - y[0]);
+    const merged = [];
+    for (const w of wins) {
+      const last = merged[merged.length - 1];
+      if (last && w[0] <= last[1]) last[1] = Math.max(last[1], w[1]); else merged.push([w[0], w[1]]);
+    }
+    days.set(Number(m[1]), merged.slice(0, 4));
+  }
+  const parts = [];
+  if (limit !== null) parts.push(`L${limit}`);
+  for (let d = 1; d <= 7; d++) if (days.has(d)) parts.push(`${d}=${days.get(d).map((w) => `${w[0]}-${w[1]}`).join(",")}`);
+  return parts.join(";");
+}
+
 /** Entrées de profils envoyées par un appareil : { n: nom, c: couleur ARGB, k: enfants, at: ms, on: false = supprimé }. */
 export function parseProfiles(body, now = Date.now()) {
   if (!body || typeof body !== "object" || !Array.isArray(body.profiles) || body.profiles.length > PROFILES_MAX) return { error: "profiles" };
@@ -652,7 +695,10 @@ export function parseProfiles(body, now = Date.now()) {
     const f = typeof e.f === "string" ? cleanLine(e.f, 24) : "";
     // Langue de l'interface du profil (code AppLang : « fr », « pt-BR », « system »…).
     const l = typeof e.l === "string" && /^(system|[a-z]{2}(-[A-Z]{2})?)$/.test(e.l) ? e.l : "";
-    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}) });
+    // Temps d'écran : absent = ancienne version (on ne touche à rien) ; « » = règles retirées ; sinon texte nettoyé.
+    const t = e.t === undefined ? null : cleanScreenTime(e.t);
+    if (e.t !== undefined && t === null) return { error: "profiles" };
+    out.push({ n, c, k: e.k === true, at: Math.min(Math.floor(at), now + 60_000), on: e.on !== false, ...(f ? { f } : {}), ...(l ? { l } : {}), ...(t !== null ? { t } : {}) });
   }
   return { profiles: out };
 }
@@ -663,7 +709,10 @@ export function mergeProfiles(cur, incoming, now = Date.now()) {
   for (const p of incoming) {
     const k = p.n.toLowerCase();
     const o = byKey.get(k);
-    if (!o || p.at > o.at) byKey.set(k, p);
+    if (!o || p.at > o.at) {
+      // Une ancienne version n'envoie pas `t` : elle ne doit pas effacer les règles de temps d'écran déjà partagées.
+      byKey.set(k, p.t === undefined && o && o.t !== undefined && p.on ? { ...p, t: o.t } : p);
+    }
   }
   return [...byKey.values()].filter((p) => p.on || now - p.at < PROFILE_TOMB_TTL_MS).sort((a, b) => a.at - b.at).slice(-PROFILES_MAX * 2);
 }
