@@ -4,11 +4,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.40] — 2026-11-16 (Android) · Bureau 1.2.65 · Worker
+
 ### Corrigé
 - Direct (TV) : liste des chaînes, le nom prend toute la largeur libre (« CANAL+ Cinema » ne passe plus sur deux lignes) et le programme en cours n'affiche que son heure de début, pour laisser la place au titre.
 - Casque Bluetooth : suivant / précédent changent de chaîne ou d'épisode ; son déclaré en flux média ; pause quand le casque est coupé.
 - Le réglage « Numéros de chaîne » est respecté partout (listes, guide, favoris, sport, lecteur), sur téléphone comme sur TV.
 - Mode simple (TV) : grandes icônes centrées dans les tuiles (elles paraissaient vides) et symboles des touches dessinés au lieu de glyphes absents de certaines polices.
+- Bureau : en VOD, le panneau Pistes liste les pistes audio et les sous-titres du fichier (MP4/MKV, audio AC-3/DTS converti compris) ; changer de piste audio ou activer un sous-titre passe par l'ffmpeg embarqué.
 
 ### Ajouté
 - Tableau de bord, alertes : traductions par langue (13 langues de l'appli) ; chaque appareil reçoit l'alerte dans sa langue, l'anglais sert de texte par défaut.
@@ -16,6 +19,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - « Disponible de ta liste » : quand un titre de ta watchlist apparaît dans ta playlist, une rangée de l'accueil et une notification te préviennent (comparaison faite sur l'appareil).
 - Sport : « Aussi sur » regroupe les chaînes du guide qui diffusent le même match (équipes, compétition, horaire), avec qualité et langue (Android et bureau).
 - Lecteur Android : « Diagnostic du flux » dans Statistiques (Bon / Moyen / Mauvais avec cause probable) et « Copier le rapport » sans identifiants.
+- Rattrapage façon Kodi PVR (Android) : en replay, barre −10 s / +10 s, −1 min / +1 min, programme précédent / suivant, heure réelle, bouton « Direct » ; « Reculer de 5 min » sur un direct à archive ; formats M3U catchup (default, append, shift, flussonic, xc) ; heure Xtream dans le fuseau du serveur.
+- Reprise d'un appareil à l'autre : « Envoyer vers… » dans le lecteur, et « Reprendre sur cet appareil ? » sur l'appareil choisi, à la même position (Android et bureau).
+- Profils : chaque profil choisit les sources qu'il voit, et la source active suit le profil ; synchronisé entre appareils (Android et bureau).
+- Recherche dans toutes les sources visibles du profil, avec la source indiquée sur chaque résultat (option dans Réglages › Sources).
+- Horaires de visionnage et temps d'écran quotidien par profil (plages par jour, limite en minutes, écran de blocage, déverrouillage par code parental, avertissement 5 min avant) ; code parental ajouté au bureau.
+- Simkl : connexion par le nouveau système Simkl (jetons renouvelés automatiquement).
+- Android 7.1 et 8 (Fire TV Stick sous Fire OS 6) : l'appli s'installe désormais ; APK 32 bits dédié « android7 », choisi automatiquement par la mise à jour intégrée.
 
 ### Modifié
 - Android : les grilles ne gardent en mémoire qu'une fenêtre du catalogue (gros catalogues) et le zapping depuis « Tout » ne charge plus tous les identifiants de chaînes.
