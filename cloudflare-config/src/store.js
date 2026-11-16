@@ -667,3 +667,62 @@ export function mergeProfiles(cur, incoming, now = Date.now()) {
   }
   return [...byKey.values()].filter((p) => p.on || now - p.at < PROFILE_TOMB_TTL_MS).sort((a, b) => a.at - b.at).slice(-PROFILES_MAX * 2);
 }
+
+
+// ---- reprise de la lecture d'un appareil à l'autre (« Envoyer vers… ») -----------------------------------------
+// File COURTE par appareil cible (3 demandes, 2 min), écrite par l'émetteur, lue par la cible pendant sa synchro
+// (en-tête de GET /api/config : aucune interrogation de plus). Jamais d'URL de flux ni d'identifiants d'abonnement :
+// seulement des références (source du compte, type, identifiant dans le catalogue, position) que la cible résout
+// dans SON catalogue.
+
+export const HANDOFF_TTL_MS = 120_000;
+export const HANDOFF_MAX = 3;
+export const HANDOFF_KINDS = new Set(["live", "movie", "episode"]);
+const handoffKey = (login, deviceId) => `ho:${login}:${deviceId}`;
+
+/** Corps de POST /api/device/handoff : { to, ref: { src, t, id, par?, pos, n } } → demande nettoyée, ou { error }. */
+export function parseHandoff(body, now = Date.now()) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return { error: "body" };
+  const to = typeof body.to === "string" && /^[0-9a-f]{8,64}$/.test(body.to) ? body.to : null;
+  if (!to) return { error: "to" };
+  const r = body.ref;
+  if (!r || typeof r !== "object" || Array.isArray(r)) return { error: "ref" };
+  const src = typeof r.src === "string" && /^[0-9a-f]{8}$/.test(r.src) ? r.src : null;
+  if (!src) return { error: "src" };
+  if (typeof r.t !== "string" || !HANDOFF_KINDS.has(r.t)) return { error: "t" };
+  const id = str(r.id, 128);
+  if (!id) return { error: "id" };
+  const par = r.par === undefined || r.par === null ? null : str(r.par, 128);
+  if (r.par !== undefined && r.par !== null && !par) return { error: "par" };
+  const pos = r.t === "live" ? 0 : (int(r.pos) ?? 0);
+  const n = typeof r.n === "string" ? r.n.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 100) : "";
+  return { to, item: { i: randomToken(6), s: src, t: r.t, r: id, ...(par ? { p: par } : {}), o: Math.min(pos, 48 * 3600_000), n, a: now } };
+}
+
+/** Demandes encore valables (non expirées), les plus récentes d'abord, au plus HANDOFF_MAX. */
+export function liveHandoffs(list, now = Date.now()) {
+  return (Array.isArray(list) ? list : []).filter((x) => x && Number.isFinite(x.a) && now - x.a < HANDOFF_TTL_MS && now - x.a >= -60_000)
+    .sort((a, b) => b.a - a.a).slice(0, HANDOFF_MAX);
+}
+
+export async function loadHandoffs(env, login, deviceId, now = Date.now()) {
+  const raw = await env.CONFIG.get(handoffKey(login, deviceId));
+  if (!raw) return [];
+  try { return liveHandoffs(JSON.parse(raw), now); } catch { return []; }
+}
+
+/** Ajoute une demande à la file de l'appareil cible (2 sous-requêtes de stockage : lecture + écriture, TTL 2 min). */
+export async function pushHandoff(env, login, to, item, now = Date.now()) {
+  const next = liveHandoffs([item, ...(await loadHandoffs(env, login, to, now))], now);
+  await env.CONFIG.put(handoffKey(login, to), JSON.stringify(next), { expirationTtl: Math.ceil(HANDOFF_TTL_MS / 1000) });
+  return next.length;
+}
+
+/** En-tête x-utv-handoff : JSON UTF-8 en base64url (les titres peuvent contenir des accents). Vide = rien à reprendre. */
+export function handoffHeader(items, fromNames = {}) {
+  if (!items.length) return "";
+  const json = JSON.stringify(items.map((x) => ({ ...x, f: fromNames[x.f] || x.f })));
+  let bin = "";
+  for (const b of new TextEncoder().encode(json)) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
