@@ -1,0 +1,155 @@
+package com.ultratv.tv.nativeapp.ui.sport
+
+import androidx.compose.runtime.Immutable
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.ultratv.tv.nativeapp.data.profile.ProfileRepository
+import com.ultratv.tv.nativeapp.data.sport.League
+import com.ultratv.tv.nativeapp.data.sport.LeagueLogic
+import com.ultratv.tv.nativeapp.data.sport.LeagueMatch
+import com.ultratv.tv.nativeapp.data.sport.LeaguePrefs
+import com.ultratv.tv.nativeapp.data.sport.LeagueRepository
+import com.ultratv.tv.nativeapp.data.sport.LeagueResult
+import com.ultratv.tv.nativeapp.data.sport.MatchSheet
+import com.ultratv.tv.nativeapp.data.sport.MatchState
+import com.ultratv.tv.nativeapp.data.sport.StandingRow
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+/** Onglets d'une ligue. */
+enum class LeagueTab { RESULTS, FIXTURES, TABLE }
+
+enum class LeagueStatus { LOADING, OK, UNAVAILABLE, NOT_PAIRED }
+
+/** Feuille de match ouverte : chargement, puis contenu (null = indisponible). */
+@Immutable
+data class SheetState(val match: LeagueMatch, val loading: Boolean = true, val sheet: MatchSheet? = null)
+
+@Immutable
+data class LeaguesState(
+    val prefs: LeaguePrefs = LeaguePrefs.DEFAULT,
+    val noSpoiler: Boolean = false,
+    val selected: String? = null,
+    val tab: LeagueTab = LeagueTab.RESULTS,
+    val status: LeagueStatus = LeagueStatus.LOADING,
+    val stale: Boolean = false,
+    val matches: List<LeagueMatch> = emptyList(),
+    val table: List<StandingRow>? = null,
+    val revealed: Set<String> = emptySet(),
+    val revealedTables: Set<String> = emptySet(),
+) {
+    val visible: List<League> get() = prefs.visible()
+}
+
+/**
+ * Espace « Compétitions » : une ligue à la fois (donc quelques appels seulement, tous mémorisés par le dépôt). Le direct
+ * n'est relu qu'à la minute, seulement tant que l'écran est affiché ET qu'un match de la ligue est (ou va être) en cours.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+@HiltViewModel
+class LeaguesViewModel @Inject constructor(
+    private val repo: LeagueRepository,
+    private val profiles: ProfileRepository,
+) : ViewModel() {
+    private val selected = MutableStateFlow<String?>(null)
+    private val tab = MutableStateFlow(LeagueTab.RESULTS)
+    private val revealed = MutableStateFlow(emptySet<String>())
+    private val revealedTables = MutableStateFlow(emptySet<String>())
+
+    private val prefs = profiles.currentSportLeagues.map { LeaguePrefs.decode(it) }.distinctUntilChanged()
+    private val noSpoiler = profiles.currentSportNoSpoiler
+
+    /** Ligue réellement affichée : le choix s'il est visible, sinon la première visible. */
+    private val effective = combine(prefs, selected) { p, s -> p to (s?.takeIf { k -> p.visible().any { it.key == k } } ?: p.visible().firstOrNull()?.key) }
+        .distinctUntilChanged()
+
+    private data class Data(val status: LeagueStatus, val stale: Boolean, val matches: List<LeagueMatch>)
+
+    private val data: StateFlow<Pair<String?, Data>> = effective.flatMapLatest { (_, key) ->
+        if (key == null) kotlinx.coroutines.flow.flowOf<Pair<String?, Data>>(null to Data(LeagueStatus.OK, false, emptyList()))
+        else flow<Pair<String?, Data>> {
+            emit(key to Data(LeagueStatus.LOADING, false, emptyList()))
+            var schedule: List<LeagueMatch> = emptyList()
+            var live: List<LeagueMatch> = emptyList()
+            var status = LeagueStatus.OK
+            var stale = false
+            while (true) {
+                val now = System.currentTimeMillis()
+                when (val s = repo.schedule(key, now)) {
+                    is LeagueResult.Ok -> { schedule = s.value; stale = s.stale; status = LeagueStatus.OK }
+                    LeagueResult.NotPaired -> status = LeagueStatus.NOT_PAIRED
+                    LeagueResult.Unavailable -> status = if (schedule.isEmpty()) LeagueStatus.UNAVAILABLE else status
+                }
+                if (status == LeagueStatus.OK && LeagueLogic.mayBeLive(schedule + live, now)) {
+                    (repo.live(key, now) as? LeagueResult.Ok)?.let { live = it.value }
+                } else if (status == LeagueStatus.OK) live = emptyList()
+                emit(key to Data(status, stale, LeagueLogic.merge(schedule, live)))
+                if (status != LeagueStatus.OK) { delay(RETRY_MS); continue }
+                delay(if (LeagueLogic.mayBeLive(schedule + live, System.currentTimeMillis())) LeagueRepository.LIVE_MS else IDLE_MS)
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to Data(LeagueStatus.LOADING, false, emptyList()))
+
+    /** Classement : lu seulement quand l'onglet est ouvert (et, sans spoiler, une fois affiché). */
+    private val table = combine(effective, tab, noSpoiler, revealedTables) { e, t, ns, rt -> Triple(e.second, t, ns to rt) }
+        .distinctUntilChanged()
+        .flatMapLatest { (key, t, spoiler) ->
+            flow {
+                if (key == null || t != LeagueTab.TABLE || (spoiler.first && key !in spoiler.second)) { emit(key to null); return@flow }
+                emit(key to null)
+                emit(key to (repo.table(key) as? LeagueResult.Ok)?.value)
+            }
+        }
+
+    val state: StateFlow<LeaguesState> = combine(prefs, noSpoiler, data, tab, table) { p, ns, d, t, tb ->
+        LeaguesState(p, ns, d.first, t, d.second.status, d.second.stale, d.second.matches, tb.second.takeIf { tb.first == d.first })
+    }.combine(revealed) { s, r -> s.copy(revealed = r) }
+        .combine(revealedTables) { s, r -> s.copy(revealedTables = r) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LeaguesState())
+
+    private val _sheet = MutableStateFlow<SheetState?>(null)
+    val sheet: StateFlow<SheetState?> = _sheet
+
+    fun select(key: String) { selected.value = key; tab.value = LeagueTab.RESULTS }
+    fun selectTab(t: LeagueTab) { tab.value = t }
+
+    fun reveal(id: String) = revealed.update { it + id }
+    fun revealTable(key: String) = revealedTables.update { it + key }
+    /** « Afficher les résultats » : révèle les scores de tous les matchs de la ligue affichée. */
+    fun revealAll(matches: List<LeagueMatch>) = revealed.update { it + matches.map { m -> m.id } }
+
+    fun setNoSpoiler(on: Boolean) {
+        viewModelScope.launch { profiles.setSportNoSpoiler(on) }
+        if (on) { revealed.value = emptySet(); revealedTables.value = emptySet() }
+    }
+
+    fun move(key: String, delta: Int) { viewModelScope.launch { profiles.setSportLeagues(state.value.prefs.moved(key, delta).encode()) } }
+    fun setHidden(key: String, hide: Boolean) { viewModelScope.launch { profiles.setSportLeagues(state.value.prefs.withHidden(key, hide).encode()) } }
+
+    fun openMatch(m: LeagueMatch) {
+        _sheet.value = SheetState(m)
+        viewModelScope.launch {
+            val r = repo.sheet(m.id, finished = m.state == MatchState.POST)
+            _sheet.update { cur -> if (cur?.match?.id == m.id) cur.copy(loading = false, sheet = (r as? LeagueResult.Ok)?.value) else cur }
+        }
+    }
+    fun closeMatch() { _sheet.value = null }
+
+    private companion object {
+        const val IDLE_MS = 10 * 60_000L
+        const val RETRY_MS = 60_000L
+    }
+}

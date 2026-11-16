@@ -1735,4 +1735,33 @@
     <string name="prof_sources_all">ทุกแหล่งที่มา</string>
     <string name="prof_search_all">ค้นหาในทุกแหล่งที่มา</string>
     <string name="prof_search_all_hint">ผลลัพธ์จากทุกแหล่งที่มาที่แสดง พร้อมระบุแหล่งที่มาในแต่ละรายการ</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">ผังรายการทีวี</string>
+    <string name="sport_mode_leagues">การแข่งขัน</string>
+    <string name="sport_lg_live">สด</string>
+    <string name="sport_lg_results">ผลการแข่งขัน</string>
+    <string name="sport_lg_fixtures">นัดที่จะมาถึง</string>
+    <string name="sport_lg_table">ตารางคะแนน</string>
+    <string name="sport_lg_empty">ยังไม่มีแมตช์ให้แสดง</string>
+    <string name="sport_lg_unavailable">ยังไม่สามารถดูผลคะแนนได้ในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่</string>
+    <string name="sport_lg_not_paired">จับคู่อุปกรณ์นี้กับบัญชีของคุณเพื่อดูผลคะแนนและตารางคะแนน</string>
+    <string name="sport_lg_stale">กำลังแสดงข้อมูลล่าสุดที่ทราบ</string>
+    <string name="sport_lg_customize">ปรับแต่งลีก</string>
+    <string name="sport_lg_done">เสร็จสิ้น</string>
+    <string name="sport_lg_hide">ซ่อน</string>
+    <string name="sport_lg_show">แสดง</string>
+    <string name="sport_nospoiler_label">โหมดไม่สปอยล์</string>
+    <string name="sport_nospoiler_hint">ซ่อนผลคะแนนและตารางคะแนนจนกว่าคุณจะเลือกแสดง บันทึกแยกตามโปรไฟล์</string>
+    <string name="sport_spoiler_hidden">ซ่อนคะแนนอยู่</string>
+    <string name="sport_spoiler_show_all">แสดงผลการแข่งขัน</string>
+    <string name="sport_spoiler_show_score">แสดงคะแนน</string>
+    <string name="sport_match_key_moments">ช่วงเวลาสำคัญ</string>
+    <string name="sport_match_stats">สถิติ</string>
+    <string name="sport_match_watch">ดูผ่านช่องของคุณ</string>
+    <string name="sport_match_no_channel">ไม่มีช่องของคุณที่ถ่ายทอดแมตช์นี้</string>
+    <string name="sport_match_round">นัดที่ %1$d</string>
+    <string name="sport_tbl_played">แข่ง</string>
+    <string name="sport_tbl_gd">ผลต่าง</string>
+    <string name="sport_tbl_pts">แต้ม</string>
 </resources>

@@ -1754,4 +1754,33 @@
     <string name="prof_sources_all">Alle kilder</string>
     <string name="prof_search_all">Søk i alle kilder</string>
     <string name="prof_search_all_hint">Resultater fra alle synlige kilder, med kilden vist på hvert</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">TV-guide</string>
+    <string name="sport_mode_leagues">Turneringer</string>
+    <string name="sport_lg_live">Direkte</string>
+    <string name="sport_lg_results">Resultater</string>
+    <string name="sport_lg_fixtures">Kommende</string>
+    <string name="sport_lg_table">Tabell</string>
+    <string name="sport_lg_empty">Ingen kamper å vise akkurat nå.</string>
+    <string name="sport_lg_unavailable">Resultatene er utilgjengelige akkurat nå. Prøv igjen om noen minutter.</string>
+    <string name="sport_lg_not_paired">Koble denne enheten til kontoen din for å se resultater og tabeller.</string>
+    <string name="sport_lg_stale">Viser siste kjente data.</string>
+    <string name="sport_lg_customize">Tilpass ligaer</string>
+    <string name="sport_lg_done">Ferdig</string>
+    <string name="sport_lg_hide">Skjul</string>
+    <string name="sport_lg_show">Vis</string>
+    <string name="sport_nospoiler_label">Spoilerfri modus</string>
+    <string name="sport_nospoiler_hint">Skjuler resultater og tabeller til du velger å vise dem. Lagres per profil.</string>
+    <string name="sport_spoiler_hidden">Resultat skjult</string>
+    <string name="sport_spoiler_show_all">Vis resultater</string>
+    <string name="sport_spoiler_show_score">Vis resultat</string>
+    <string name="sport_match_key_moments">Høydepunkter</string>
+    <string name="sport_match_stats">Statistikk</string>
+    <string name="sport_match_watch">Se på kanalene dine</string>
+    <string name="sport_match_no_channel">Ingen av kanalene dine sender denne kampen.</string>
+    <string name="sport_match_round">Runde %1$d</string>
+    <string name="sport_tbl_played">K</string>
+    <string name="sport_tbl_gd">ML</string>
+    <string name="sport_tbl_pts">P</string>
 </resources>

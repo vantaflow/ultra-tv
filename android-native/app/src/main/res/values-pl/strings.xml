@@ -1707,4 +1707,33 @@
     <string name="prof_sources_all">Wszystkie źródła</string>
     <string name="prof_search_all">Szukaj we wszystkich źródłach</string>
     <string name="prof_search_all_hint">Wyniki ze wszystkich widocznych źródeł, ze wskazaniem źródła przy każdym</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Program TV</string>
+    <string name="sport_mode_leagues">Rozgrywki</string>
+    <string name="sport_lg_live">Na żywo</string>
+    <string name="sport_lg_results">Wyniki</string>
+    <string name="sport_lg_fixtures">Nadchodzące</string>
+    <string name="sport_lg_table">Tabela</string>
+    <string name="sport_lg_empty">Brak meczów do wyświetlenia.</string>
+    <string name="sport_lg_unavailable">Wyniki są teraz niedostępne. Spróbuj ponownie za kilka minut.</string>
+    <string name="sport_lg_not_paired">Sparuj to urządzenie z kontem, aby zobaczyć wyniki i tabele.</string>
+    <string name="sport_lg_stale">Wyświetlane są ostatnie znane dane.</string>
+    <string name="sport_lg_customize">Dostosuj ligi</string>
+    <string name="sport_lg_done">Gotowe</string>
+    <string name="sport_lg_hide">Ukryj</string>
+    <string name="sport_lg_show">Pokaż</string>
+    <string name="sport_nospoiler_label">Tryb bez spoilerów</string>
+    <string name="sport_nospoiler_hint">Ukrywa wyniki i tabele, dopóki nie zdecydujesz się ich pokazać. Zapisywane dla każdego profilu.</string>
+    <string name="sport_spoiler_hidden">Wynik ukryty</string>
+    <string name="sport_spoiler_show_all">Pokaż wyniki</string>
+    <string name="sport_spoiler_show_score">Pokaż wynik</string>
+    <string name="sport_match_key_moments">Najważniejsze momenty</string>
+    <string name="sport_match_stats">Statystyki</string>
+    <string name="sport_match_watch">Oglądaj na swoich kanałach</string>
+    <string name="sport_match_no_channel">Żaden z Twoich kanałów nie pokazuje tego meczu.</string>
+    <string name="sport_match_round">Kolejka %1$d</string>
+    <string name="sport_tbl_played">M</string>
+    <string name="sport_tbl_gd">RB</string>
+    <string name="sport_tbl_pts">Pkt</string>
 </resources>

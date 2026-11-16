@@ -1754,4 +1754,33 @@
     <string name="prof_sources_all">Όλες οι πηγές</string>
     <string name="prof_search_all">Αναζήτηση σε όλες τις πηγές</string>
     <string name="prof_search_all_hint">Αποτελέσματα από όλες τις ορατές πηγές, με την πηγή σε καθένα</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Πρόγραμμα TV</string>
+    <string name="sport_mode_leagues">Διοργανώσεις</string>
+    <string name="sport_lg_live">Ζωντανά</string>
+    <string name="sport_lg_results">Αποτελέσματα</string>
+    <string name="sport_lg_fixtures">Επόμενοι αγώνες</string>
+    <string name="sport_lg_table">Βαθμολογία</string>
+    <string name="sport_lg_empty">Δεν υπάρχουν αγώνες για εμφάνιση προς το παρόν.</string>
+    <string name="sport_lg_unavailable">Τα αποτελέσματα δεν είναι διαθέσιμα αυτή τη στιγμή. Δοκιμάστε ξανά σε λίγα λεπτά.</string>
+    <string name="sport_lg_not_paired">Συνδέστε αυτή τη συσκευή με τον λογαριασμό σας για να δείτε αποτελέσματα και βαθμολογίες.</string>
+    <string name="sport_lg_stale">Εμφανίζονται τα τελευταία γνωστά δεδομένα.</string>
+    <string name="sport_lg_customize">Προσαρμογή πρωταθλημάτων</string>
+    <string name="sport_lg_done">Τέλος</string>
+    <string name="sport_lg_hide">Απόκρυψη</string>
+    <string name="sport_lg_show">Εμφάνιση</string>
+    <string name="sport_nospoiler_label">Λειτουργία χωρίς σπόιλερ</string>
+    <string name="sport_nospoiler_hint">Κρύβει τα σκορ και τις βαθμολογίες μέχρι να επιλέξετε να τα δείτε. Αποθηκεύεται ανά προφίλ.</string>
+    <string name="sport_spoiler_hidden">Κρυφό σκορ</string>
+    <string name="sport_spoiler_show_all">Εμφάνιση αποτελεσμάτων</string>
+    <string name="sport_spoiler_show_score">Εμφάνιση σκορ</string>
+    <string name="sport_match_key_moments">Κομβικές στιγμές</string>
+    <string name="sport_match_stats">Στατιστικά</string>
+    <string name="sport_match_watch">Παρακολούθηση στα κανάλια σας</string>
+    <string name="sport_match_no_channel">Κανένα από τα κανάλια σας δεν μεταδίδει αυτόν τον αγώνα.</string>
+    <string name="sport_match_round">Αγωνιστική %1$d</string>
+    <string name="sport_tbl_played">Αγ</string>
+    <string name="sport_tbl_gd">ΔΤ</string>
+    <string name="sport_tbl_pts">Βθ</string>
 </resources>

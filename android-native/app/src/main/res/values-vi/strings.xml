@@ -1735,4 +1735,33 @@
     <string name="prof_sources_all">Tất cả nguồn</string>
     <string name="prof_search_all">Tìm trong tất cả nguồn</string>
     <string name="prof_search_all_hint">Kết quả từ mọi nguồn hiển thị, kèm tên nguồn trên từng mục</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Lịch truyền hình</string>
+    <string name="sport_mode_leagues">Giải đấu</string>
+    <string name="sport_lg_live">Trực tiếp</string>
+    <string name="sport_lg_results">Kết quả</string>
+    <string name="sport_lg_fixtures">Sắp diễn ra</string>
+    <string name="sport_lg_table">Bảng xếp hạng</string>
+    <string name="sport_lg_empty">Hiện chưa có trận nào để hiển thị.</string>
+    <string name="sport_lg_unavailable">Hiện không có tỷ số. Hãy thử lại sau vài phút.</string>
+    <string name="sport_lg_not_paired">Hãy ghép nối thiết bị này với tài khoản để xem tỷ số và bảng xếp hạng.</string>
+    <string name="sport_lg_stale">Đang hiển thị dữ liệu gần nhất đã biết.</string>
+    <string name="sport_lg_customize">Tùy chỉnh giải đấu</string>
+    <string name="sport_lg_done">Xong</string>
+    <string name="sport_lg_hide">Ẩn</string>
+    <string name="sport_lg_show">Hiện</string>
+    <string name="sport_nospoiler_label">Chế độ không tiết lộ kết quả</string>
+    <string name="sport_nospoiler_hint">Ẩn tỷ số và bảng xếp hạng cho đến khi bạn chọn hiển thị. Lưu theo từng hồ sơ.</string>
+    <string name="sport_spoiler_hidden">Tỷ số đã ẩn</string>
+    <string name="sport_spoiler_show_all">Hiện kết quả</string>
+    <string name="sport_spoiler_show_score">Hiện tỷ số</string>
+    <string name="sport_match_key_moments">Diễn biến chính</string>
+    <string name="sport_match_stats">Thống kê</string>
+    <string name="sport_match_watch">Xem trên kênh của bạn</string>
+    <string name="sport_match_no_channel">Không kênh nào của bạn phát trận này.</string>
+    <string name="sport_match_round">Vòng %1$d</string>
+    <string name="sport_tbl_played">Trận</string>
+    <string name="sport_tbl_gd">HS</string>
+    <string name="sport_tbl_pts">Điểm</string>
 </resources>

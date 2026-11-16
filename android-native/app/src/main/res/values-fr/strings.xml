@@ -1766,4 +1766,33 @@
     <string name="prof_sources">Sources</string>
     <string name="prof_search_all">Rechercher dans toutes les sources</string>
     <string name="prof_search_all_hint">Résultats de toutes les sources visibles, avec la source indiquée sur chacun</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Programme TV</string>
+    <string name="sport_mode_leagues">Compétitions</string>
+    <string name="sport_lg_live">En direct</string>
+    <string name="sport_lg_results">Résultats</string>
+    <string name="sport_lg_fixtures">À venir</string>
+    <string name="sport_lg_table">Classement</string>
+    <string name="sport_lg_empty">Aucun match à afficher pour le moment.</string>
+    <string name="sport_lg_unavailable">Les scores sont indisponibles pour le moment. Réessayez dans quelques minutes.</string>
+    <string name="sport_lg_not_paired">Associez cet appareil à votre compte pour voir les scores et les classements.</string>
+    <string name="sport_lg_stale">Dernières données connues.</string>
+    <string name="sport_lg_customize">Personnaliser les ligues</string>
+    <string name="sport_lg_done">Terminé</string>
+    <string name="sport_lg_hide">Masquer</string>
+    <string name="sport_lg_show">Afficher</string>
+    <string name="sport_nospoiler_label">Mode sans spoiler</string>
+    <string name="sport_nospoiler_hint">Masque les scores et les classements jusqu\'à ce que vous choisissiez de les afficher. Réglage propre à chaque profil.</string>
+    <string name="sport_spoiler_hidden">Score masqué</string>
+    <string name="sport_spoiler_show_all">Afficher les résultats</string>
+    <string name="sport_spoiler_show_score">Afficher le score</string>
+    <string name="sport_match_key_moments">Temps forts</string>
+    <string name="sport_match_stats">Statistiques</string>
+    <string name="sport_match_watch">Regarder sur vos chaînes</string>
+    <string name="sport_match_no_channel">Aucune de vos chaînes ne diffuse ce match.</string>
+    <string name="sport_match_round">Journée %1$d</string>
+    <string name="sport_tbl_played">J</string>
+    <string name="sport_tbl_gd">Diff</string>
+    <string name="sport_tbl_pts">Pts</string>
 </resources>

@@ -1735,4 +1735,33 @@
     <string name="prof_sources_all">Všechny zdroje</string>
     <string name="prof_search_all">Hledat ve všech zdrojích</string>
     <string name="prof_search_all_hint">Výsledky ze všech viditelných zdrojů, u každého je uveden zdroj</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">TV program</string>
+    <string name="sport_mode_leagues">Soutěže</string>
+    <string name="sport_lg_live">Živě</string>
+    <string name="sport_lg_results">Výsledky</string>
+    <string name="sport_lg_fixtures">Nadcházející</string>
+    <string name="sport_lg_table">Tabulka</string>
+    <string name="sport_lg_empty">Zatím není co zobrazit.</string>
+    <string name="sport_lg_unavailable">Výsledky jsou momentálně nedostupné. Zkuste to znovu za pár minut.</string>
+    <string name="sport_lg_not_paired">Spárujte toto zařízení se svým účtem, abyste viděli výsledky a tabulky.</string>
+    <string name="sport_lg_stale">Zobrazují se poslední známá data.</string>
+    <string name="sport_lg_customize">Upravit ligy</string>
+    <string name="sport_lg_done">Hotovo</string>
+    <string name="sport_lg_hide">Skrýt</string>
+    <string name="sport_lg_show">Zobrazit</string>
+    <string name="sport_nospoiler_label">Režim bez spoilerů</string>
+    <string name="sport_nospoiler_hint">Skryje skóre a tabulky, dokud se nerozhodnete je zobrazit. Ukládá se pro každý profil.</string>
+    <string name="sport_spoiler_hidden">Skóre skryto</string>
+    <string name="sport_spoiler_show_all">Zobrazit výsledky</string>
+    <string name="sport_spoiler_show_score">Zobrazit skóre</string>
+    <string name="sport_match_key_moments">Hlavní momenty</string>
+    <string name="sport_match_stats">Statistiky</string>
+    <string name="sport_match_watch">Sledovat na vašich kanálech</string>
+    <string name="sport_match_no_channel">Žádný z vašich kanálů tento zápas nevysílá.</string>
+    <string name="sport_match_round">%1$d. kolo</string>
+    <string name="sport_tbl_played">Z</string>
+    <string name="sport_tbl_gd">RS</string>
+    <string name="sport_tbl_pts">B</string>
 </resources>

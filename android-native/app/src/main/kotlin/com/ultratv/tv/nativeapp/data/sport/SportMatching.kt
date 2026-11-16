@@ -160,6 +160,9 @@ object SportMatching {
         .thenBy { it.channel.num == 0 }.thenBy { it.channel.num }
         .thenBy { it.channel.title }.thenBy { it.channel.id }
 
+    /** Entrées triées par ordre d'affichage (qualité, chaîne de sport, numéro), une par chaîne. */
+    fun orderChannels(entries: List<SportEntry>): List<SportEntry> = entries.sortedWith(channelOrder).distinctBy { it.channel.id }
+
     /** Les autres chaînes du groupe [g] pour [self] : une entrée par chaîne, sans la sienne, triées. */
     private fun others(g: List<SportEntry>, self: SportEntry): List<SportEntry> =
         g.filter { it.channel.id != self.channel.id }.sortedWith(channelOrder).distinctBy { it.channel.id }

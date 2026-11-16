@@ -1772,4 +1772,33 @@
     <string name="prof_sources_all">Toate sursele</string>
     <string name="prof_search_all">Caută în toate sursele</string>
     <string name="prof_search_all_hint">Rezultate din toate sursele vizibile, cu sursa indicată la fiecare</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Ghid TV</string>
+    <string name="sport_mode_leagues">Competiții</string>
+    <string name="sport_lg_live">În direct</string>
+    <string name="sport_lg_results">Rezultate</string>
+    <string name="sport_lg_fixtures">Urmează</string>
+    <string name="sport_lg_table">Clasament</string>
+    <string name="sport_lg_empty">Niciun meci de afișat deocamdată.</string>
+    <string name="sport_lg_unavailable">Scorurile nu sunt disponibile acum. Încearcă din nou peste câteva minute.</string>
+    <string name="sport_lg_not_paired">Asociază acest dispozitiv cu contul tău pentru a vedea scoruri și clasamente.</string>
+    <string name="sport_lg_stale">Se afișează ultimele date cunoscute.</string>
+    <string name="sport_lg_customize">Personalizează ligile</string>
+    <string name="sport_lg_done">Gata</string>
+    <string name="sport_lg_hide">Ascunde</string>
+    <string name="sport_lg_show">Afișează</string>
+    <string name="sport_nospoiler_label">Mod fără spoilere</string>
+    <string name="sport_nospoiler_hint">Ascunde scorurile și clasamentele până alegi să le afișezi. Salvat pentru fiecare profil.</string>
+    <string name="sport_spoiler_hidden">Scor ascuns</string>
+    <string name="sport_spoiler_show_all">Afișează rezultatele</string>
+    <string name="sport_spoiler_show_score">Afișează scorul</string>
+    <string name="sport_match_key_moments">Momente cheie</string>
+    <string name="sport_match_stats">Statistici</string>
+    <string name="sport_match_watch">Urmărește pe canalele tale</string>
+    <string name="sport_match_no_channel">Niciunul dintre canalele tale nu transmite acest meci.</string>
+    <string name="sport_match_round">Etapa %1$d</string>
+    <string name="sport_tbl_played">J</string>
+    <string name="sport_tbl_gd">DG</string>
+    <string name="sport_tbl_pts">Pct</string>
 </resources>
