@@ -145,6 +145,10 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             // Libération : le fil principal n'attend plus (500 ms par défaut) que le fil de lecture d'ExoPlayer ait détruit
             // les décodeurs — voir [release].
             .setReleaseTimeoutMs(RELEASE_WAIT_MS)
+            // Flux média explicite (le volume du casque / des touches s'applique) ; le focus audio reste géré comme avant.
+            .setAudioAttributes(androidx.media3.common.AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(), false)
+            // Casque débranché / Bluetooth coupé : pause au lieu de continuer sur le haut-parleur.
+            .setHandleAudioBecomingNoisy(true)
             .build().apply {
             playWhenReady = true
             addListener(listener)

@@ -1001,6 +1001,21 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             touch()
         }
     }
+    // Suivant / précédent média : chaîne en direct, épisode en différé (règles : MediaKeyRouter). Deux chemins mènent ici (touche
+    // reçue par la fenêtre, ou session média pour un casque Bluetooth) ; le même appui reçu par les deux n'agit qu'une fois.
+    val skipDebounce = remember { SkipDebounce() }
+    fun mediaSkip(fwd: Boolean) {
+        if (!skipDebounce.accept(fwd, android.os.SystemClock.uptimeMillis())) return
+        val action = if (fwd) MediaKeyAction.NEXT else MediaKeyAction.PREVIOUS
+        when (MediaKeyRouter.skipTarget(action, isLive, epNav.second, epNav.first)) {
+            SkipTarget.CHANNEL_NEXT, SkipTarget.CHANNEL_PREVIOUS -> scope.launch { vm.zap(fwd)?.let { currentUrl = it } }
+            SkipTarget.EPISODE_NEXT -> stepEpisode(1)
+            SkipTarget.EPISODE_PREVIOUS -> stepEpisode(-1)
+            SkipTarget.NONE -> Unit
+        }
+        touch()
+    }
+    androidx.compose.runtime.SideEffect { mediaSession?.setSkipHandler { fwd -> mediaSkip(fwd) } }
     // Direct : la surcouche sert d'abord de BANDEAU (étage haut de l'OSD : chaîne, programme) ; Haut zappe, OK ou Bas ouvrent
     // l'OSD complet (récents + barre de contrôles, focus sur la barre ; voir LiveOsdLogic.decide). Gauche/Droite/Menu/Info
     // l'ouvrent aussi. Sans cette séparation, le 1er zap affichait les commandes et la touche suivante y déplaçait le focus
@@ -1213,10 +1228,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                         return@onPreviewKeyEvent true
                     }
                     Key.MediaNext, Key.MediaPrevious -> {
-                        touch()
-                        val fwd = ev.key == Key.MediaNext
-                        if (isLive) scope.launch { vm.zap(fwd)?.let { currentUrl = it } }
-                        else if (if (fwd) epNav.second else epNav.first) stepEpisode(if (fwd) 1 else -1)
+                        if (ev.nativeKeyEvent.repeatCount == 0) mediaSkip(ev.key == Key.MediaNext) else touch()
                         return@onPreviewKeyEvent true
                     }
                     Key.Info -> if (panel == Panel.None && !drawerOpen) { touch(); infoOpen = true; return@onPreviewKeyEvent true }
