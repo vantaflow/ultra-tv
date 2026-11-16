@@ -62,6 +62,7 @@ class CloudSyncManager @Inject constructor(
     private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
+    private val handoffs: HandoffInbox,
 ) {
     private val mutex = Mutex()
     /** Cadence adaptative (2 min après un changement, puis 10 min) et empreintes de ce qui a déjà été envoyé. */
@@ -109,6 +110,8 @@ class CloudSyncManager @Inject constructor(
             // Suppressions faites hors ligne : transmises d'abord ; la configuration est alors relue en entier.
             val flushed = flushPendingDeletes(base)
             val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed) null else links.etag()) }
+            // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
+            handoffs.note(fetched.handoff)
             if (fetched.notModified) {
                 links.lastSyncAt = System.currentTimeMillis()
                 // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange
@@ -189,8 +192,9 @@ class CloudSyncManager @Inject constructor(
         }
         val all = dao.observeAll().first()
         val langs = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }?.value?.let { p.id to it } }.toMap()
+        val srcs = all.mapNotNull { p -> profileRepo.sourcesOf(p.id)?.let { p.id to it } }.toMap()
         val screenTimes = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.SCREEN_TIME }?.value?.let { p.id to it } }.toMap()
-        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs, screenTimes)
+        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs, srcs, screenTimes)
         val body = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)
         // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
         val print = SyncPushGate.print(body)
@@ -198,7 +202,7 @@ class CloudSyncManager @Inject constructor(
         val raw = source.withToken(base) { t -> client.syncProfiles(base, t, body) } ?: return false
         pushGate.markSent("profiles", print, System.currentTimeMillis())
         val remote = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.parse(raw)
-        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs, screenTimes)
+        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs, srcs, screenTimes)
         if (actions.isNotEmpty()) with(profileRepo) { applySharedProfiles(dao, profileLog, actions) }
         return actions.isNotEmpty()
     }

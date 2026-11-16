@@ -17,6 +17,7 @@ import {
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
+import { noteHandoffHeader } from "./handoff";
 import { cadence, pushGate } from "./cadence";
 import { syncSourceState } from "./sharedState";
 import { onLocalProfilesChanged, syncProfiles } from "./profilesSync";
@@ -162,6 +163,8 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     const pendingChanged = await flushPendingDeletes(worker, token);
     const etag = force || !booted || pendingChanged ? "" : await getSetting<string>(K.etag, "");
     const res = await fetchConfig(worker, token, etag);
+    // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
+    noteHandoffHeader(res.handoff);
     const now = Date.now();
     await setSetting(K.lastSync, now);
     patch({ lastSyncAt: now });

@@ -33,6 +33,8 @@ sealed interface OsdDecision {
 object LiveOsdLogic {
     /** Saut du différé, en secondes. */
     const val TIMESHIFT_JUMP_SEC = 30
+    /** Saut court d'un replay d'archive (le saut long est d'une minute). */
+    const val REPLAY_SHORT_JUMP_SEC = 10
     /** Nombre maximal de chaînes récentes affichées. */
     const val MAX_RECENTS = 10
 
@@ -119,6 +121,8 @@ object LiveOsdLogic {
 enum class OsdActionId {
     PLAY_PAUSE, JUMP_BACK, JUMP_FORWARD, AUDIO, SUBS, ASPECT, CHANNELS, HISTORY, FAVORITE, RECORD, PIP, REPLAY, SLEEP, PLAYER,
     MY_LIST, MOVIES, SERIES, RECORDINGS, SETTINGS,
+    // Replay : sauts d'une minute, programme précédent / suivant ; direct : retour arrière dans l'archive du fournisseur.
+    JUMP_BACK_MIN, JUMP_FORWARD_MIN, PREV_PROGRAMME, NEXT_PROGRAMME, LIVE_REWIND,
 }
 
 /** Un bouton de la barre : libellé, tracé d'icône (grille 24), état actif visible, complément de libellé (format courant). */
@@ -145,6 +149,11 @@ data class OsdActionInputs(
     val sleepActive: Boolean, val pipSupported: Boolean,
     /** Raccourcis Ma liste, Films… (faux si le lecteur n'a pas de navigation à proposer). */
     val shortcuts: Boolean = true,
+    /** Replay d'archive en cours : barre de saut (±10 s, ±1 min, programme précédent / suivant). */
+    val replayBar: Boolean = false,
+    val prevProgrammeLabel: String = "", val nextProgrammeLabel: String = "",
+    /** Libellé du retour arrière depuis le direct (chaîne avec archive) ; null = indisponible. */
+    val rewindLabel: String? = null,
 )
 
 object OsdIcons {
@@ -160,7 +169,7 @@ object OsdIcons {
     const val HEART = "M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"
     const val RECORD = "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"
     const val PIP = "M3 5h18v14H3zM12 12h7v5h-7z"
-    const val REPLAY = "M3 12a9 9 0 1 0 3-6.7M3 4v5h5"
+    const val REPLAY ="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"
     const val SLEEP = "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"
     const val PLAYER = "M3 5h18v12H3zM8 21h8M12 17v4"
     const val MY_LIST = "M5 4h14v17l-7-4-7 4z"
@@ -178,6 +187,15 @@ object OsdActions {
             add(OsdAction(OsdActionId.JUMP_BACK, "−${LiveOsdLogic.TIMESHIFT_JUMP_SEC}", ""))
             add(OsdAction(OsdActionId.JUMP_FORWARD, "+${LiveOsdLogic.TIMESHIFT_JUMP_SEC}", ""))
         }
+        if (i.replayBar && !i.tsActive) {
+            add(OsdAction(OsdActionId.PREV_PROGRAMME, i.prevProgrammeLabel, OsdIcons.PREV))
+            add(OsdAction(OsdActionId.JUMP_BACK_MIN, "−1 min", ""))
+            add(OsdAction(OsdActionId.JUMP_BACK, "−${LiveOsdLogic.REPLAY_SHORT_JUMP_SEC} s", ""))
+            add(OsdAction(OsdActionId.JUMP_FORWARD, "+${LiveOsdLogic.REPLAY_SHORT_JUMP_SEC} s", ""))
+            add(OsdAction(OsdActionId.JUMP_FORWARD_MIN, "+1 min", ""))
+            add(OsdAction(OsdActionId.NEXT_PROGRAMME, i.nextProgrammeLabel, OsdIcons.NEXT))
+        }
+        if (i.rewindLabel != null && !i.tsActive && !i.replayBar) add(OsdAction(OsdActionId.LIVE_REWIND, i.rewindLabel, OsdIcons.REPLAY))
         add(OsdAction(OsdActionId.AUDIO, L.audio, OsdIcons.AUDIO))
         add(OsdAction(OsdActionId.SUBS, L.subs, OsdIcons.SUBS))
         add(OsdAction(OsdActionId.ASPECT, L.aspect, OsdIcons.ASPECT, detail = L.aspectNames[i.aspect]))

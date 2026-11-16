@@ -22,7 +22,7 @@ object GoldenDump {
     )
     private val extensionFiles = listOf(
         "CatalogCategoryStringsKt", "DesignStringsB1Kt", "DirectGuideStringsKt", "GuideStringsKt", "HomeV2StringsKt",
-        "PersonStringsKt", "PersonalizationStringsKt", "PhoneSendStringsKt", "RemoteStringsKt", "TraktStringsKt",
+        "PersonStringsKt", "PersonalizationStringsKt", "PhoneSendStringsKt", "RemoteStringsKt", "TraktStringsKt", "HandoffStringsKt",
     ).map { "$PKG.i18n.$it" }
 
     /** Membres ignorés faute d'arguments d'exemple (à garder vide ou justifié). */

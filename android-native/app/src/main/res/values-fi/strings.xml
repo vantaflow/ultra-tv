@@ -809,6 +809,9 @@
     <string name="pex_from_start">Alusta</string>
     <string name="pex_seek_bar">Edistymispalkki</string>
     <string name="pex_back_to_live">Takaisin suoraan lähetykseen</string>
+    <string name="pex_prev_programme">Edellinen ohjelma</string>
+    <string name="pex_next_programme">Seuraava ohjelma</string>
+    <string name="pex_rewind_live">Taaksepäin 5 min</string>
     <string name="pex_subs_pill">Tekstitys</string>
     <string name="pex_subtitles_title">Tekstitys</string>
     <string name="pex_preview_text">Tekstityksen esikatselu\nasetuksillasi</string>
@@ -1680,4 +1683,20 @@
     <string name="st_unlock_extra">+30 minuuttia</string>
     <string name="st_unlock_today">Tälle päivälle (kerran)</string>
     <string name="st_warn">Katselu päättyy %1$d min kuluttua</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Jatketaanko tällä laitteella?</string>
+    <string name="handoff_body">%1$s lähettää sinulle: %2$s</string>
+    <string name="handoff_yes">Kyllä</string>
+    <string name="handoff_no">Ei</string>
+    <string name="handoff_send">Lähetä laitteeseen…</string>
+    <string name="handoff_sent">Lähetetty laitteeseen %1$s. Vahvista siellä 2 minuutin kuluessa.</string>
+    <string name="handoff_no_source">Tätä lähdettä ei ole jaettu tilisi kanssa, joten toinen laite ei löydä sitä.</string>
+    <string name="handoff_failed">Lähetys epäonnistui. Yritä uudelleen.</string>
+    <string name="handoff_not_found">Tätä nimikettä ei ole tämän laitteen luettelossa.</string>
+    <string name="handoff_no_devices">Tähän tiliin ei ole yhdistetty muita laitteita.</string>
+    <string name="prof_sources">Lähteet</string>
+    <string name="prof_sources_all">Kaikki lähteet</string>
+    <string name="prof_search_all">Hae kaikista lähteistä</string>
+    <string name="prof_search_all_hint">Tulokset kaikista näkyvistä lähteistä, lähde näkyy jokaisessa</string>
 </resources>

@@ -848,6 +848,9 @@
     <string name="pex_from_start">Depuis le début</string>
     <string name="pex_seek_bar">Barre de progression</string>
     <string name="pex_back_to_live">Revenir au direct</string>
+    <string name="pex_prev_programme">Programme précédent</string>
+    <string name="pex_next_programme">Programme suivant</string>
+    <string name="pex_rewind_live">Reculer de 5 min</string>
     <string name="pex_subs_pill">Sous-titres</string>
     <string name="pex_subtitles_title">Sous-titres</string>
     <string name="pex_preview_text">Aperçu des sous-titres\navec vos réglages</string>
@@ -1747,4 +1750,20 @@
     <string name="st_unlock_extra">+30 minutes</string>
     <string name="st_unlock_today">Pour aujourd\'hui (une fois)</string>
     <string name="st_warn">Fin du visionnage dans %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Reprendre sur cet appareil ?</string>
+    <string name="handoff_body">%1$s vous envoie : %2$s</string>
+    <string name="handoff_yes">Oui</string>
+    <string name="handoff_no">Non</string>
+    <string name="handoff_send">Envoyer vers…</string>
+    <string name="handoff_sent">Envoyé à %1$s. Confirmez sur cet appareil dans les 2 minutes.</string>
+    <string name="handoff_no_source">Cette source n’est pas partagée avec votre compte : un autre appareil ne peut pas la retrouver.</string>
+    <string name="handoff_failed">Envoi impossible. Réessayez.</string>
+    <string name="handoff_not_found">Ce titre n’est pas dans le catalogue de cet appareil.</string>
+    <string name="handoff_no_devices">Aucun autre appareil n’est appairé à ce compte.</string>
+    <string name="prof_sources_all">Toutes les sources</string>
+    <string name="prof_sources">Sources</string>
+    <string name="prof_search_all">Rechercher dans toutes les sources</string>
+    <string name="prof_search_all_hint">Résultats de toutes les sources visibles, avec la source indiquée sur chacun</string>
 </resources>

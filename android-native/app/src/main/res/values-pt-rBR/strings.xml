@@ -852,6 +852,9 @@
     <string name="pex_from_start">Desde o início</string>
     <string name="pex_seek_bar">Barra de progresso</string>
     <string name="pex_back_to_live">Voltar ao vivo</string>
+    <string name="pex_prev_programme">Programa anterior</string>
+    <string name="pex_next_programme">Próximo programa</string>
+    <string name="pex_rewind_live">Voltar 5 min</string>
     <string name="pex_subs_pill">Legendas</string>
     <string name="pex_subtitles_title">Legendas</string>
     <string name="pex_preview_text">Prévia da legenda\ncom suas configurações</string>
@@ -1752,4 +1755,20 @@
     <string name="st_unlock_extra">+30 minutos</string>
     <string name="st_unlock_today">Por hoje (uma vez)</string>
     <string name="st_warn">A exibição termina em %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Continuar neste dispositivo?</string>
+    <string name="handoff_body">%1$s está enviando para você: %2$s</string>
+    <string name="handoff_yes">Sim</string>
+    <string name="handoff_no">Não</string>
+    <string name="handoff_send">Enviar para…</string>
+    <string name="handoff_sent">Enviado para %1$s. Confirme nesse dispositivo em até 2 minutos.</string>
+    <string name="handoff_no_source">Esta fonte não está compartilhada com a sua conta, então outro dispositivo não consegue encontrá-la.</string>
+    <string name="handoff_failed">Não foi possível enviar. Tente novamente.</string>
+    <string name="handoff_not_found">Este título não está no catálogo deste dispositivo.</string>
+    <string name="handoff_no_devices">Nenhum outro dispositivo está pareado com esta conta.</string>
+    <string name="prof_sources">Fontes</string>
+    <string name="prof_sources_all">Todas as fontes</string>
+    <string name="prof_search_all">Pesquisar em todas as fontes</string>
+    <string name="prof_search_all_hint">Resultados de todas as fontes visíveis, com a fonte indicada em cada um</string>
 </resources>

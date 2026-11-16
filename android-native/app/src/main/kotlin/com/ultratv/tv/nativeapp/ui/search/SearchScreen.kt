@@ -81,6 +81,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -129,14 +130,28 @@ class SearchViewModel @Inject constructor(
     private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
     private val seriesDao: com.ultratv.tv.nativeapp.data.db.SeriesDao,
     private val indexHealth: com.ultratv.tv.nativeapp.data.repo.SearchIndexHealth,
+    private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
+    /** Sources interrogées : la source active, ou (mode « Toutes les sources ») les sources visibles du profil courant. */
+    private suspend fun searchedProviders(): List<com.ultratv.tv.nativeapp.data.db.ProviderEntity> {
+        val all = provider.observeProviders().first()
+        val active = all.firstOrNull { it.active } ?: all.firstOrNull() ?: return emptyList()
+        if (!profiles.currentSearchAll.first() || all.size < 2) return listOf(active)
+        return com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(all, profiles.sourcesOf(profiles.currentIdNow))
+    }
+
+    /** Nom court de la source par identifiant, seulement en mode multi-sources (sinon null : aucune pastille). */
+    private val _sourceNames = MutableStateFlow<Map<Long, String>?>(null)
+    val sourceNames: StateFlow<Map<Long, String>?> = _sourceNames.asStateFlow()
+
     /** Favoris de la source active (« LIVE:id », « MOVIE:id », « SERIES:id ») : cœur sur les résultats. */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    val favoriteKeys: StateFlow<Set<String>> = kotlinx.coroutines.flow.flow { emit(provider.firstActiveId()) }
-        .flatMapLatest { pid ->
-            if (pid == null) kotlinx.coroutines.flow.flowOf(emptySet())
-            else kotlinx.coroutines.flow.combine(catalog.favoritesByKind(pid, "LIVE"), catalog.favoritesByKind(pid, "MOVIE"), catalog.favoritesByKind(pid, "SERIES")) { a, b, c ->
-                (a + b + c).mapTo(HashSet()) { "${it.kind}:${it.remoteId}" }
+    val favoriteKeys: StateFlow<Set<String>> = kotlinx.coroutines.flow.combine(provider.observeProviders(), profiles.currentSearchAll, profiles.currentSources) { all, multi, names -> Triple(all, multi, names) }
+        .flatMapLatest { (all, multi, names) ->
+            val pids = if (multi && all.size > 1) com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(all, names).map { it.id } else listOfNotNull((all.firstOrNull { it.active } ?: all.firstOrNull())?.id)
+            if (pids.isEmpty()) kotlinx.coroutines.flow.flowOf(emptySet())
+            else kotlinx.coroutines.flow.combine(pids.flatMap { pid -> listOf("LIVE", "MOVIE", "SERIES").map { catalog.favoritesByKind(pid, it) } }) { lists ->
+                lists.flatMapTo(HashSet()) { l -> l.map { "${it.providerId}:${it.kind}:${it.remoteId}" } }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -144,10 +159,9 @@ class SearchViewModel @Inject constructor(
      * Appui long sur un résultat : ajoute aux favoris (ou retire) sans ouvrir la fiche — pratique pour ajouter plusieurs
      * séries d'affilée depuis la recherche. Le message confirme l'action.
      */
-    fun toggleFavorite(kind: String, remoteId: String, title: String, added: String, removed: String) {
+    fun toggleFavorite(pid: Long, kind: String, remoteId: String, title: String, added: String, removed: String) {
         viewModelScope.launch {
-            val pid = provider.firstActiveId() ?: return@launch
-            val on = "$kind:$remoteId" !in favoriteKeys.value
+            val on = "$pid:$kind:$remoteId" !in favoriteKeys.value
             catalog.setFavorite(pid, kind, remoteId, on)
             com.ultratv.tv.nativeapp.ui.common.Toaster.ok("${if (on) added else removed} · $title")
         }
@@ -233,7 +247,10 @@ class SearchViewModel @Inject constructor(
         job = viewModelScope.launch {
             delay(220)
             // Aucune source : on ne laisse pas « Recherche… » affiché indéfiniment.
-            val pid = provider.firstActiveId() ?: run { publish(Hits(s, SearchResults())); _searching.value = false; return@launch }
+            val searched = searchedProviders()
+            if (searched.isEmpty()) { publish(Hits(s, SearchResults())); _searching.value = false; return@launch }
+            val pids = searched.map { it.id }
+            _sourceNames.value = if (searched.size > 1) searched.associate { it.id to com.ultratv.tv.nativeapp.data.profile.SourceBadge.of(it.name) } else null
             // Chaînes / films / séries (FTS, instantané) affichés d'abord ; les programmes du guide (plus lents) ensuite.
             // La vérification de l'index n'est PLUS attendue ici : elle passe par la connexion d'écriture de la base, prise
             // par une synchro en cours ; la recherche restait alors « Recherche… » plus de 30 s. Elle tourne à part (init).
@@ -242,11 +259,11 @@ class SearchViewModel @Inject constructor(
             // pendant que les programmes du guide étaient encore cherchés. Une erreur ne laisse jamais le chargement affiché.
             try {
                 val only = SearchScope.onlyOf(_scope.value)
-                val quick = catalog.search(pid, s, limit = SEARCH_LIMIT, includePrograms = false, only = only)
+                val quick = catalog.searchAll(pids, s, limit = SEARCH_LIMIT, includePrograms = false, only = only)
                 // Mesure (jamais le texte saisi) : durée de la recherche rapide.
                 android.util.Log.i("UltraSearch", "quick len=${s.length} ms=${android.os.SystemClock.elapsedRealtime() - t0} hits=${quick.channels.size + quick.movies.size + quick.series.size}")
                 publish(Hits(s, quick))
-                if (only == null && s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchPrograms(pid, s))))
+                if (only == null && s.trim().length >= 3) publish(Hits(s, quick.copy(programs = catalog.searchProgramsAll(pids, s))))
             } catch (e: kotlinx.coroutines.CancellationException) { throw e
             } catch (e: Exception) {
                 publish(Hits(s, SearchResults()))   // erreur : « Aucun résultat » plutôt qu'un chargement sans fin
@@ -328,8 +345,9 @@ fun SearchScreen(
     // Appui long sur un résultat (chaîne, film, série) : favoris ajoutés / retirés sans ouvrir la fiche.
     val D = LocalDs.current
     val keys by vm.favoriteKeys.collectAsState()
-    val fav = remember(keys, D) { SearchFav(keys) { k, id, t -> vm.toggleFavorite(k, id, t, D.favAdded, D.favRemoved) } }
-    androidx.compose.runtime.CompositionLocalProvider(LocalSearchFav provides fav) {
+    val fav = remember(keys, D) { SearchFav(keys) { p, k, id, t -> vm.toggleFavorite(p, k, id, t, D.favAdded, D.favRemoved) } }
+    val sourceNames by vm.sourceNames.collectAsState()
+    androidx.compose.runtime.CompositionLocalProvider(LocalSearchFav provides fav, LocalSearchSources provides sourceNames) {
         SearchScreenContent(onOpenChannel, onOpenMovie, onOpenSeries, vm)
     }
 }
@@ -572,14 +590,16 @@ private fun <T> ResultRow(title: String, items: List<T>, key: (T) -> Any, onSeeA
 private fun MoviePoster(m: MovieEntity, width: Int?, onOpen: (MovieEntity) -> Unit) {
     val fav = LocalSearchFav.current
     VodCard(m.title, m.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.MOVIE, m.year,
-        favorite = fav?.has("MOVIE", m.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle("MOVIE", m.remoteId, m.title) } }) { onOpen(m) }
+        favorite = fav?.has(m.providerId, "MOVIE", m.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle(m.providerId, "MOVIE", m.remoteId, m.title) } },
+        badge = LocalSearchSources.current?.get(m.providerId)) { onOpen(m) }
 }
 
 @Composable
 private fun SeriesPoster(s: SeriesEntity, width: Int?, onOpen: (SeriesEntity) -> Unit) {
     val fav = LocalSearchFav.current
     VodCard(s.title, s.poster, if (width != null) Modifier.width(width.design) else Modifier.fillMaxWidth(), TmdbKind.TV, s.year,
-        favorite = fav?.has("SERIES", s.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle("SERIES", s.remoteId, s.title) } }) { onOpen(s) }
+        favorite = fav?.has(s.providerId, "SERIES", s.remoteId) == true, onLongClick = fav?.let { f -> { f.toggle(s.providerId, "SERIES", s.remoteId, s.title) } },
+        badge = LocalSearchSources.current?.get(s.providerId)) { onOpen(s) }
 }
 
 /** Onglet « Tout » : meilleur résultat, puis une rangée complète par type. */
@@ -801,11 +821,13 @@ private fun FuzzyPane(q: String, view: SearchView, vm: SearchViewModel, openMovi
 @Composable
 private fun ChannelCard(c: ChannelEntity, modifier: Modifier, onClick: () -> Unit) {
     val fav = LocalSearchFav.current
-    val isFav = fav?.has("LIVE", c.remoteId) == true
-    FocusSurface(onClick = onClick, onLongClick = fav?.let { f -> { f.toggle("LIVE", c.remoteId, c.title) } }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
+    val isFav = fav?.has(c.providerId, "LIVE", c.remoteId) == true
+    val badge = LocalSearchSources.current?.get(c.providerId)
+    FocusSurface(onClick = onClick, onLongClick = fav?.let { f -> { f.toggle(c.providerId, "LIVE", c.remoteId, c.title) } }, shape = RoundedCornerShape(18.design), bg = Ux.SurfaceDeep, ringWidth = 5.design, focusedScale = 1f, modifier = modifier.height(96.design)) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 22.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(18.design)) {
             LogoBox(c.logo, c.title, Modifier.width(64.design).height(44.design), radius = 10, pad = 4, bg = if (f) Ux.Surface else Ux.Surface2)
             Text(c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, lineHeight = 28.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            if (badge != null) SourcePill(badge, f)
             if (isFav) DIcon(Icons.Heart, 26.design, if (f) Ux.TextOnLight else Ux.AccentInk, fill = true)
         }
     }
@@ -905,12 +927,12 @@ private fun SearchTouch(
                     }
                     section(SearchTab.MOVIES, D.searchMovies(view.movies.size), view.movies.size) { shown ->
                         items(shown, key = { "m${view.movies[it].id}" }, contentType = { "vod" }) { i ->
-                            val m = view.movies[i]; TouchVodRow(m.title, m.poster, TmdbKind.MOVIE, m.year, listOfNotNull(m.year?.toString(), ratingLabel(m.rating, D)).joinToString(" · ")) { openMovie(m) }
+                            val m = view.movies[i]; TouchVodRow(m.title, m.poster, TmdbKind.MOVIE, m.year, listOfNotNull(m.year?.toString(), ratingLabel(m.rating, D), LocalSearchSources.current?.get(m.providerId)).joinToString(" · ")) { openMovie(m) }
                         }
                     }
                     section(SearchTab.SERIES, D.searchSeries(view.series.size), view.series.size) { shown ->
                         items(shown, key = { "s${view.series[it].id}" }, contentType = { "vod" }) { i ->
-                            val s = view.series[i]; TouchVodRow(s.title, s.poster, TmdbKind.TV, s.year, listOfNotNull(s.year?.toString(), ratingLabel(s.rating, D)).joinToString(" · ")) { openSeries(s) }
+                            val s = view.series[i]; TouchVodRow(s.title, s.poster, TmdbKind.TV, s.year, listOfNotNull(s.year?.toString(), ratingLabel(s.rating, D), LocalSearchSources.current?.get(s.providerId)).joinToString(" · ")) { openSeries(s) }
                         }
                     }
                     section(SearchTab.CHANNELS, D.searchChannels(view.channels.size), view.channels.size) { shown ->
@@ -958,7 +980,16 @@ private fun TouchChannelHit(c: ChannelEntity, onClick: () -> Unit) {
         Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             LogoBox(c.logo, c.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4)
             Text(c.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            LocalSearchSources.current?.get(c.providerId)?.let { SourcePill(it, false) }
         }
+    }
+}
+
+/** Pastille courte de la source d'un résultat (mode « Toutes les sources »). */
+@Composable
+private fun SourcePill(name: String, focused: Boolean) {
+    Box(Modifier.clip(RoundedCornerShape(8.dp)).background(if (focused) Ux.Surface2 else Ux.Surface).padding(horizontal = 8.dp, vertical = 3.dp)) {
+        Text(name, color = if (focused) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)
     }
 }
 
@@ -993,7 +1024,9 @@ private fun scopedTitle(base: String, scope: SearchTab?): String {
 }
 
 /** Favoris des résultats : état (cœur) et action de l'appui long, fournis par l'écran Recherche. */
-internal class SearchFav(val keys: Set<String>, val toggle: (kind: String, remoteId: String, title: String) -> Unit) {
-    fun has(kind: String, remoteId: String) = "$kind:$remoteId" in keys
+internal class SearchFav(val keys: Set<String>, val toggle: (pid: Long, kind: String, remoteId: String, title: String) -> Unit) {
+    fun has(pid: Long, kind: String, remoteId: String) = "$pid:$kind:$remoteId" in keys
 }
 internal val LocalSearchFav = androidx.compose.runtime.compositionLocalOf<SearchFav?> { null }
+/** Pastilles « source » des résultats (identifiant de source → nom court) ; null = une seule source, aucune pastille. */
+internal val LocalSearchSources = androidx.compose.runtime.compositionLocalOf<Map<Long, String>?> { null }

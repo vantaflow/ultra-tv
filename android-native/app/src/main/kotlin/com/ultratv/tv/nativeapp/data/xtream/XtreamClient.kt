@@ -323,6 +323,18 @@ class XtreamClient @Inject constructor(okBase: OkHttpClient) {
         }.getOrNull()
     }
 
+    /** Fuseau du serveur (`server_info.timezone`), pour écrire l'heure des URL de rattrapage. null si injoignable ou absent. */
+    suspend fun fetchServerTimezone(p: ProviderEntity): String? = withContext(Dispatchers.IO) {
+        runCatching {
+            val url = "${p.baseUrl}/player_api.php?username=${p.username.urlEnc()}&password=${p.password.urlEnc()}"
+            ok.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) return@use null
+                val root = json.parseToJsonElement(resp.body?.string().orEmpty()) as? JsonObject ?: return@use null
+                com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore.parseServerTimezone(root)
+            }
+        }.getOrNull()
+    }
+
     /** Compte IPTV (`user_info`) : statut, expiration, connexions. null si injoignable. Aucun identifiant n'est journalisé. */
     suspend fun fetchAccount(p: ProviderEntity): XtreamAccount? = withContext(Dispatchers.IO) {
         runCatching {

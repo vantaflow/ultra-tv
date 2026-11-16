@@ -30,6 +30,9 @@ class PlayerExtraStrings(val lang: AppLang) {
     val fromStart get() = tx(R.string.pex_from_start)
     val seekBar get() = tx(R.string.pex_seek_bar)
     val backToLive get() = tx(R.string.pex_back_to_live)
+    val prevProgramme get() = tx(R.string.pex_prev_programme)
+    val nextProgramme get() = tx(R.string.pex_next_programme)
+    val rewindLive get() = tx(R.string.pex_rewind_live)
 
     // Sous-titres
     val subsPill get() = tx(R.string.pex_subs_pill)

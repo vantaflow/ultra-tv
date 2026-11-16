@@ -853,6 +853,9 @@
     <string name="pex_from_start">De la început</string>
     <string name="pex_seek_bar">Bara de progres</string>
     <string name="pex_back_to_live">Înapoi la direct</string>
+    <string name="pex_prev_programme">Programul anterior</string>
+    <string name="pex_next_programme">Programul următor</string>
+    <string name="pex_rewind_live">Înapoi 5 min</string>
     <string name="pex_subs_pill">Subtitrări</string>
     <string name="pex_subtitles_title">Subtitrări</string>
     <string name="pex_preview_text">Previzualizare subtitrare\ncu setările tale</string>
@@ -1753,4 +1756,20 @@
     <string name="st_unlock_extra">+30 de minute</string>
     <string name="st_unlock_today">Pentru azi (o dată)</string>
     <string name="st_warn">Vizionarea se termină în %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Continui pe acest dispozitiv?</string>
+    <string name="handoff_body">%1$s îți trimite: %2$s</string>
+    <string name="handoff_yes">Da</string>
+    <string name="handoff_no">Nu</string>
+    <string name="handoff_send">Trimite către…</string>
+    <string name="handoff_sent">Trimis către %1$s. Confirmă pe acel dispozitiv în 2 minute.</string>
+    <string name="handoff_no_source">Această sursă nu este partajată cu contul tău, deci alt dispozitiv nu o poate găsi.</string>
+    <string name="handoff_failed">Trimiterea a eșuat. Încearcă din nou.</string>
+    <string name="handoff_not_found">Acest titlu nu se află în catalogul acestui dispozitiv.</string>
+    <string name="handoff_no_devices">Niciun alt dispozitiv nu este asociat cu acest cont.</string>
+    <string name="prof_sources">Surse</string>
+    <string name="prof_sources_all">Toate sursele</string>
+    <string name="prof_search_all">Caută în toate sursele</string>
+    <string name="prof_search_all_hint">Rezultate din toate sursele vizibile, cu sursa indicată la fiecare</string>
 </resources>

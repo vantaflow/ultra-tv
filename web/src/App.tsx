@@ -30,6 +30,7 @@ import { Settings } from "@/screens/Settings";
 import { Sport } from "@/screens/Sport";
 import { Recordings } from "@/screens/Recordings";
 import { ReminderBanners } from "@/ui/ReminderBanners";
+import { HandoffPrompt } from "@/ui/HandoffPrompt";
 import { pushCloseLabels, startScheduler } from "@/state/schedule";
 import { Onboarding } from "@/screens/Onboarding";
 import { Profiles } from "@/screens/Profiles";
@@ -262,6 +263,7 @@ export function App() {
         <Shell />
         <PlayerHost />
         <ScreenTimeGate />
+        <HandoffPrompt />
       </HashRouter>
     </ErrorBoundary>
   );

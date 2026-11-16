@@ -820,6 +820,9 @@
     <string name="pex_from_start">Từ đầu</string>
     <string name="pex_seek_bar">Thanh tiến trình</string>
     <string name="pex_back_to_live">Quay lại trực tiếp</string>
+    <string name="pex_prev_programme">Chương trình trước</string>
+    <string name="pex_next_programme">Chương trình tiếp theo</string>
+    <string name="pex_rewind_live">Tua lại 5 phút</string>
     <string name="pex_subs_pill">Phụ đề</string>
     <string name="pex_subtitles_title">Phụ đề</string>
     <string name="pex_preview_text">Xem trước phụ đề\ntheo cài đặt của bạn</string>
@@ -1716,4 +1719,20 @@
     <string name="st_unlock_extra">+30 phút</string>
     <string name="st_unlock_today">Cho hôm nay (một lần)</string>
     <string name="st_warn">Việc xem kết thúc sau %1$d phút</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Tiếp tục xem trên thiết bị này?</string>
+    <string name="handoff_body">%1$s gửi cho bạn: %2$s</string>
+    <string name="handoff_yes">Có</string>
+    <string name="handoff_no">Không</string>
+    <string name="handoff_send">Gửi tới…</string>
+    <string name="handoff_sent">Đã gửi tới %1$s. Hãy xác nhận trên thiết bị đó trong vòng 2 phút.</string>
+    <string name="handoff_no_source">Nguồn này chưa được chia sẻ với tài khoản của bạn nên thiết bị khác không tìm thấy được.</string>
+    <string name="handoff_failed">Không gửi được. Hãy thử lại.</string>
+    <string name="handoff_not_found">Tiêu đề này không có trong danh mục của thiết bị này.</string>
+    <string name="handoff_no_devices">Chưa có thiết bị nào khác được ghép đôi với tài khoản này.</string>
+    <string name="prof_sources">Nguồn</string>
+    <string name="prof_sources_all">Tất cả nguồn</string>
+    <string name="prof_search_all">Tìm trong tất cả nguồn</string>
+    <string name="prof_search_all_hint">Kết quả từ mọi nguồn hiển thị, kèm tên nguồn trên từng mục</string>
 </resources>

@@ -820,6 +820,9 @@
     <string name="pex_from_start">ตั้งแต่ต้น</string>
     <string name="pex_seek_bar">แถบความคืบหน้า</string>
     <string name="pex_back_to_live">กลับไปที่สด</string>
+    <string name="pex_prev_programme">รายการก่อนหน้า</string>
+    <string name="pex_next_programme">รายการถัดไป</string>
+    <string name="pex_rewind_live">ย้อนหลัง 5 นาที</string>
     <string name="pex_subs_pill">คำบรรยาย</string>
     <string name="pex_subtitles_title">คำบรรยาย</string>
     <string name="pex_preview_text">ตัวอย่างคำบรรยาย\nตามการตั้งค่าของคุณ</string>
@@ -1716,4 +1719,20 @@
     <string name="st_unlock_extra">+30 นาที</string>
     <string name="st_unlock_today">สำหรับวันนี้ (ครั้งเดียว)</string>
     <string name="st_warn">การรับชมจะสิ้นสุดใน %1$d นาที</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">ดูต่อบนอุปกรณ์นี้หรือไม่?</string>
+    <string name="handoff_body">%1$s ส่งมาให้คุณ: %2$s</string>
+    <string name="handoff_yes">ใช่</string>
+    <string name="handoff_no">ไม่</string>
+    <string name="handoff_send">ส่งไปยัง…</string>
+    <string name="handoff_sent">ส่งไปยัง %1$s แล้ว โปรดยืนยันบนอุปกรณ์นั้นภายใน 2 นาที</string>
+    <string name="handoff_no_source">แหล่งที่มานี้ไม่ได้แชร์กับบัญชีของคุณ อุปกรณ์อื่นจึงหาไม่พบ</string>
+    <string name="handoff_failed">ส่งไม่สำเร็จ ลองอีกครั้ง</string>
+    <string name="handoff_not_found">ไม่พบชื่อเรื่องนี้ในแคตตาล็อกของอุปกรณ์นี้</string>
+    <string name="handoff_no_devices">ไม่มีอุปกรณ์อื่นที่จับคู่กับบัญชีนี้</string>
+    <string name="prof_sources">แหล่งที่มา</string>
+    <string name="prof_sources_all">ทุกแหล่งที่มา</string>
+    <string name="prof_search_all">ค้นหาในทุกแหล่งที่มา</string>
+    <string name="prof_search_all_hint">ผลลัพธ์จากทุกแหล่งที่มาที่แสดง พร้อมระบุแหล่งที่มาในแต่ละรายการ</string>
 </resources>

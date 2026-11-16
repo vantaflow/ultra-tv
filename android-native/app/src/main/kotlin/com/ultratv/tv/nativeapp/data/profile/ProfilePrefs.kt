@@ -32,6 +32,10 @@ data class ProfilePrefs(
     val uiLanguage: String? = null,
     /** Horaires de visionnage et temps d'écran du profil (codage de [com.ultratv.tv.nativeapp.data.screentime.ScreenTime]) ; null = aucune règle. Partagé entre appareils, le décompte reste local. */
     val screenTime: String? = null,
+    /** Noms des sources visibles du profil (null = toutes). Partagé entre appareils ; sans effet sur [applyTo]. */
+    val sources: List<String>? = null,
+    /** Recherche dans toutes les sources visibles du profil (et non la seule source active) ; local à l'appareil. */
+    val searchAllSources: Boolean? = null,
 ) {
     /** Applique les surcharges du profil sur les préférences globales. [isKids] force le contrôle parental. */
     fun applyTo(base: UserPrefs, isKids: Boolean = false): UserPrefs = base.copy(
@@ -68,6 +72,8 @@ data class ProfilePrefs(
         const val GUIDE_GROUP = "guide_group"
         const val UI_LANGUAGE = "ui_language"
         const val SCREEN_TIME = "screen_time"
+        const val SOURCES = "sources"
+        const val SEARCH_ALL = "search_all"
 
         fun fromMap(m: Map<String, String>) = ProfilePrefs(
             theme = m[THEME]?.let { AppTheme.parse(it) },
@@ -86,6 +92,8 @@ data class ProfilePrefs(
             guideGroup = m[GUIDE_GROUP]?.takeIf { it.isNotEmpty() },
             uiLanguage = m[UI_LANGUAGE]?.takeIf { it.isNotEmpty() },
             screenTime = m[SCREEN_TIME]?.takeIf { it.isNotEmpty() },
+            sources = ProfileSourcesRules.decode(m[SOURCES]),
+            searchAllSources = m[SEARCH_ALL]?.toBooleanStrictOrNull(),
         )
     }
 }

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { env } from "cloudflare:workers";
 import {
-  simklEnabled, simklAuthorizeUrl, simklExchangeCode, fetchSimklLibrary, simklWriteRequest, simklScrobbleBody, simklSend,
+  simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklRefresh, simklRevoke, simklApiUrl, fetchSimklLibrary, simklWriteRequest, simklScrobbleBody, simklSend,
 } from "../src/simkl.js";
 import { activeTracker, trackingStatus } from "../src/tracking.js";
 import { keysFromEnv, encryptJson } from "../src/crypto.js";
@@ -35,15 +35,20 @@ describe("simkl : identifiants et choix du service", () => {
 describe("simkl : API", () => {
   it("adresse d'autorisation et échange du code (secret dans le corps, jamais dans l'adresse)", async () => {
     const u = new URL(simklAuthorizeUrl("CID", "https://x.test/simkl/callback", "ST"));
-    expect(u.origin + u.pathname).toBe("https://simkl.com/oauth/authorize");
+    expect(u.origin + u.pathname).toBe("https://simkl.com/oauth2/authorize");
+
     expect(u.searchParams.get("client_id")).toBe("CID");
     expect(u.search).not.toContain("SECRET");
-    const f = vi.fn(async () => res(200, { access_token: "TOK", token_type: "bearer" }));
-    expect(await simklExchangeCode("CID", "SECRET", "https://x.test/simkl/callback", "CODE", f)).toEqual({ access: "TOK" });
+    expect(u.searchParams.get("scope")).toBe("media:read media:write");
+    const f = vi.fn(async () => res(200, { access_token: "simkl_at_TOK", refresh_token: "simkl_rt_R", expires_in: 604800, token_type: "bearer", scope: "media:read media:write" }));
+    const t = await simklExchangeCode("CID", "SECRET", "https://x.test/simkl/callback", "CODE", f, "VER");
+    expect(t).toMatchObject({ access: "simkl_at_TOK", refresh: "simkl_rt_R" });
+    expect(Math.abs(t.exp - (Date.now() + 604800_000))).toBeLessThan(5000);
     const [url, init] = f.mock.calls[0];
-    expect(url).toBe("https://api.simkl.com/oauth/token");
-    expect(init.headers["simkl-api-key"]).toBe("CID");
-    expect(JSON.parse(init.body)).toMatchObject({ code: "CODE", client_secret: "SECRET", grant_type: "authorization_code" });
+    expect(url).toBe("https://api.simkl.com/oauth2/token");
+    expect(init.headers["content-type"]).toBe("application/x-www-form-urlencoded");
+    const form = new URLSearchParams(init.body);
+    expect(Object.fromEntries(form)).toEqual({ grant_type: "authorization_code", client_id: "CID", client_secret: "SECRET", code: "CODE", redirect_uri: "https://x.test/simkl/callback", code_verifier: "VER" });
     expect(await simklExchangeCode("C", "S", "r", "c", async () => res(400, {}))).toEqual({ error: "denied" });
     expect(await simklExchangeCode("C", "S", "r", "c", async () => res(500, {}))).toEqual({ error: "upstream" });
     expect(await simklExchangeCode("C", "S", "r", "c", async () => res(200, {}))).toEqual({ error: "upstream" });
@@ -70,7 +75,12 @@ describe("simkl : API", () => {
     expect(lib.recommendations).toEqual([]);
     // Nombre d'appels borné (une sous-requête de stockage chacune côté Worker : ici, appels réseau en parallèle).
     expect(fetchFn.mock.calls.length).toBe(6);
-    expect(fetchFn.mock.calls[0][1].headers["simkl-api-key"]).toBe("CID");
+    const u0 = new URL(fetchFn.mock.calls[0][0]);
+    expect(u0.searchParams.get("client_id")).toBe("CID");
+    expect(u0.searchParams.get("app-name")).toBe("ultra-tv");
+    expect(u0.searchParams.get("app-version")).toBe("1.0");
+    expect(fetchFn.mock.calls[0][1].headers["user-agent"]).toBe("ultra-tv/1.0");
+    expect(fetchFn.mock.calls[0][1].headers.authorization).toBe("Bearer ACC");
   });
   it("accès refusé remonté ; tout en échec : erreur", async () => {
     await expect(fetchSimklLibrary("C", "A", async () => res(401, {}))).rejects.toMatchObject({ unauthorized: true });
@@ -101,11 +111,11 @@ describe("simkl : API", () => {
 describe("simkl : routes appareil", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  async function linkedSimkl(tracking) {
+  async function linkedSimkl(tracking, tok = { access: "SACC", refresh: "simkl_rt_R", exp: Date.now() + 5 * 86_400_000 }) {
     const acct = await newAccount();
     const dev = await pairDevice(acct, "Salon");
     const a = await getAccount(env, acct.login);
-    a.simklEnc = await encryptJson(keysFromEnv(env), { access: "SACC" }, a.login);
+    a.simklEnc = await encryptJson(keysFromEnv(env), tok, a.login);
     a.simkl = { user: "moi", at: Date.now() };
     if (tracking) a.tracking = tracking;
     await putAccount(env, a);
@@ -133,9 +143,14 @@ describe("simkl : routes appareil", () => {
     vi.stubGlobal("fetch", vi.fn(async (u, init) => { calls.push({ url: String(u), init }); return res(201, { added: { movies: 1 }, not_found: { movies: [] } }); }));
     const r = await post(dev, "/api/device/tracking/watchlist", { action: "add", type: "movie", title: "Alien", tmdb: 348 });
     expect(await r.json()).toEqual({ linked: true, matched: true, ok: true, tmdb: 348 });
-    expect(calls[0].url).toBe("https://api.simkl.com/sync/add-to-list");
+    expect(calls[0].url).toMatch(/^https:\/\/api\.simkl\.com\/sync\/add-to-list\?/);
     expect(calls[0].init.headers.authorization).toBe("Bearer SACC");
-    expect(calls[0].init.headers["simkl-api-key"]).toBe("test-simkl-id-not-real");
+    const cu = new URL(calls[0].url);
+    expect(cu.searchParams.get("client_id")).toBe("test-simkl-id-not-real");
+    expect(cu.searchParams.get("app-name")).toBe("ultra-tv");
+    expect(cu.searchParams.get("app-version")).toBe("1.0");
+    expect(calls[0].init.headers["user-agent"]).toBe("ultra-tv/1.0");
+    expect(calls[0].init.headers["content-type"]).toBe("application/json");
     const rm = await post(dev, "/api/device/trakt/watchlist", { action: "remove", type: "movie", title: "Alien", tmdb: 348 });
     expect(await rm.json()).toMatchObject({ linked: true, ok: false, error: "unsupported" });
     expect(calls).toHaveLength(1);
@@ -152,9 +167,9 @@ describe("simkl : routes appareil", () => {
     expect(await env.CONFIG.get(`tlib:${acct.login}:fr`)).toBeNull();
   });
 
-  it("refus du jeton par Simkl : jeton oublié, compte marqué révoqué", async () => {
+  it("refus du jeton et échec du renouvellement : jeton oublié, compte marqué révoqué", async () => {
     const { acct, dev } = await linkedSimkl();
-    vi.stubGlobal("fetch", vi.fn(async () => res(401, {})));
+    vi.stubGlobal("fetch", vi.fn(async (u) => (String(u).includes("/oauth2/token") ? res(400, { error: "invalid_grant" }) : res(401, {}))));
     const r = await post(dev, "/api/device/trakt/history", { action: "add", type: "movie", title: "Alien", tmdb: 348 });
     expect(await r.json()).toEqual({ linked: false });
     const a = await getAccount(env, acct.login);
@@ -179,10 +194,135 @@ describe("simkl : tableau de bord", () => {
     const acct = await newAccount();
     const r = await call("/simkl/connect", { method: "POST", cookie: acct.cookie, ip: acct.ip, form: { csrf: acct.csrf } });
     expect(r.status).toBe(302);
-    expect(r.headers.get("location")).toMatch(/^https:\/\/simkl\.com\/oauth\/authorize\?/);
+    expect(r.headers.get("location")).toMatch(/^https:\/\/simkl\.com\/oauth2\/authorize\?/);
     expect(r.headers.get("set-cookie")).toContain("utv_simkl=");
     // Retour sans cookie : refus, rien d'enregistré.
     const back = await call("/simkl/callback?code=abc&state=" + "a".repeat(24), { ip: acct.ip });
     expect(await back.text()).toContain("e=simkl");
+  });
+});
+
+describe("simkl : PKCE", () => {
+  it("l'adresse d'autorisation porte le défi S256 quand il est fourni", () => {
+    const u = new URL(simklAuthorizeUrl("CID", "https://x.test/simkl/callback", "ST", "CHAL"));
+    expect(u.searchParams.get("code_challenge")).toBe("CHAL");
+    expect(u.searchParams.get("code_challenge_method")).toBe("S256");
+  });
+  it("l'échange du code envoie le vérificateur", async () => {
+    let body = null;
+    const fetchFn = async (_u, init) => { body = new URLSearchParams(init.body); return new Response(JSON.stringify({ access_token: "tok", refresh_token: "rt", expires_in: 100 }), { status: 200 }); };
+    const r = await simklExchangeCode("CID", "SEC", "https://x.test/simkl/callback", "CODE", fetchFn, "VER");
+    expect(r).toMatchObject({ access: "tok", refresh: "rt" });
+    expect(body.get("code_verifier")).toBe("VER");
+  });
+});
+
+describe("simkl : renouvellement des jetons (Auth V2)", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const post = (dev, path, json) => call(path, { method: "POST", ip: freshIp(), headers: bearer(dev.token), json });
+  async function linked(tok) {
+    const acct = await newAccount();
+    const dev = await pairDevice(acct, "Salon");
+    const a = await getAccount(env, acct.login);
+    a.simklEnc = await encryptJson(keysFromEnv(env), tok, a.login);
+    a.simkl = { user: "moi", at: Date.now() };
+    await putAccount(env, a);
+    return { acct, dev };
+  }
+  const stored = async (acct) => (await import("../src/crypto.js")).decryptJson(keysFromEnv(env), (await getAccount(env, acct.login)).simklEnc, acct.login);
+  const ok = () => res(201, { added: { movies: 1 }, not_found: { movies: [] } });
+  const addBody = { action: "add", type: "movie", title: "Alien", tmdb: 348 };
+
+  it("simklRefresh : form-urlencoded, même jeton de renouvellement conservé", async () => {
+    const f = vi.fn(async () => res(200, { access_token: "NEW", expires_in: 604800 }));
+    const t = await simklRefresh("CID", "SEC", "simkl_rt_R", f);
+    expect(t).toMatchObject({ access: "NEW", refresh: "simkl_rt_R" });
+    const [url, init] = f.mock.calls[0];
+    expect(url).toBe("https://api.simkl.com/oauth2/token");
+    expect(init.headers["content-type"]).toBe("application/x-www-form-urlencoded");
+    expect(Object.fromEntries(new URLSearchParams(init.body))).toEqual({ grant_type: "refresh_token", client_id: "CID", client_secret: "SEC", refresh_token: "simkl_rt_R" });
+    expect(await simklRefresh("C", "S", "r", async () => res(401, {}))).toEqual({ error: "revoked" });
+    expect(await simklRefresh("C", "S", "r", async () => res(500, {}))).toEqual({ error: "upstream" });
+  });
+
+  it("simklRevoke : form-urlencoded, sans lever en cas d'échec", async () => {
+    const f = vi.fn(async () => res(200, {}));
+    expect(await simklRevoke("CID", "TOK", f)).toBe(true);
+    expect(f.mock.calls[0][0]).toBe("https://api.simkl.com/oauth2/revoke");
+    expect(Object.fromEntries(new URLSearchParams(f.mock.calls[0][1].body))).toEqual({ client_id: "CID", token: "TOK" });
+    expect(await simklRevoke("C", "T", async () => { throw new Error("réseau"); })).toBe(false);
+  });
+
+  it("paramètres d'URL et version de l'appli", () => {
+    const u = new URL(simklApiUrl("/sync/history", "CID", "1.3.36"));
+    expect(Object.fromEntries(u.searchParams)).toEqual({ client_id: "CID", "app-name": "ultra-tv", "app-version": "1.3.36" });
+  });
+
+  it("renouvellement proactif : jeton proche de l'échéance renouvelé avant l'appel", async () => {
+    const { acct, dev } = await linked({ access: "OLD", refresh: "simkl_rt_R", exp: Date.now() + 3600_000 });
+    const calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (u, init) => {
+      calls.push({ url: String(u), init });
+      return String(u).includes("/oauth2/token") ? res(200, { access_token: "NEW", refresh_token: "simkl_rt_R", expires_in: 604800 }) : ok();
+    }));
+    expect((await (await post(dev, "/api/device/tracking/watchlist", addBody)).json()).ok).toBe(true);
+    expect(calls[0].url).toBe("https://api.simkl.com/oauth2/token");
+    expect(calls[1].init.headers.authorization).toBe("Bearer NEW");
+    const t = await stored(acct);
+    expect(t).toMatchObject({ access: "NEW", refresh: "simkl_rt_R" });
+    expect(t.exp).toBeGreaterThan(Date.now() + 6 * 86_400_000);
+  });
+
+  it("jeton valide : aucun renouvellement", async () => {
+    const { dev } = await linked({ access: "OK1", refresh: "simkl_rt_R", exp: Date.now() + 5 * 86_400_000 });
+    const f = vi.fn(async () => ok());
+    vi.stubGlobal("fetch", f);
+    await post(dev, "/api/device/tracking/watchlist", addBody);
+    expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it("401 : renouvellement puis une seule nouvelle tentative", async () => {
+    const { acct, dev } = await linked({ access: "OLD", refresh: "simkl_rt_R", exp: Date.now() + 5 * 86_400_000 });
+    const seen = [];
+    vi.stubGlobal("fetch", vi.fn(async (u, init) => {
+      if (String(u).includes("/oauth2/token")) { seen.push("refresh"); return res(200, { access_token: "NEW", expires_in: 604800 }); }
+      seen.push(init.headers.authorization);
+      return init.headers.authorization === "Bearer NEW" ? ok() : res(401, {});
+    }));
+    const r = await post(dev, "/api/device/tracking/watchlist", addBody);
+    expect(await r.json()).toMatchObject({ linked: true, ok: true });
+    expect(seen).toEqual(["Bearer OLD", "refresh", "Bearer NEW"]);
+    expect((await stored(acct)).access).toBe("NEW");
+  });
+
+  it("401 persistant après renouvellement : une seule nouvelle tentative, jeton oublié", async () => {
+    const { acct, dev } = await linked({ access: "OLD", refresh: "simkl_rt_R", exp: Date.now() + 5 * 86_400_000 });
+    const f = vi.fn(async (u) => (String(u).includes("/oauth2/token") ? res(200, { access_token: "NEW", expires_in: 604800 }) : res(401, {})));
+    vi.stubGlobal("fetch", f);
+    expect(await (await post(dev, "/api/device/tracking/watchlist", addBody)).json()).toEqual({ linked: false });
+    expect(f).toHaveBeenCalledTimes(3);
+    expect((await getAccount(env, acct.login)).simkl.revoked).toBe(true);
+  });
+
+  it("ancien enregistrement { access } : reconnexion forcée proprement", async () => {
+    const { acct, dev } = await linked({ access: "VIEUX" });
+    const f = vi.fn(async () => ok());
+    vi.stubGlobal("fetch", f);
+    expect(await (await post(dev, "/api/device/tracking/watchlist", addBody)).json()).toEqual({ linked: false });
+    expect(f).not.toHaveBeenCalled();
+    const a = await getAccount(env, acct.login);
+    expect(a.simklEnc).toBeUndefined();
+    expect(a.simkl.revoked).toBe(true);
+  });
+
+  it("déconnexion : révocation chez Simkl, sans bloquer si elle échoue", async () => {
+    const { acct } = await linked({ access: "simkl_at_X", refresh: "simkl_rt_R", exp: Date.now() + 5 * 86_400_000 });
+    const calls = [];
+    vi.stubGlobal("fetch", vi.fn(async (u, init) => { calls.push({ url: String(u), init }); throw new Error("réseau"); }));
+    const r = await call("/simkl/disconnect", { method: "POST", cookie: acct.cookie, ip: acct.ip, form: { csrf: acct.csrf } });
+    expect(r.status).toBe(302);
+    expect(calls[0].url).toBe("https://api.simkl.com/oauth2/revoke");
+    expect(Object.fromEntries(new URLSearchParams(calls[0].init.body))).toMatchObject({ token: "simkl_at_X" });
+    expect((await getAccount(env, acct.login)).simklEnc).toBeUndefined();
   });
 });

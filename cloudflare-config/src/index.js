@@ -28,6 +28,7 @@ import {
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
+import { parseHandoff, pushHandoff, loadHandoffs, handoffHeader } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
 import { ratingsProxy } from "./ratings.js";
@@ -45,8 +46,8 @@ import {
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import {
-  SIMKL_STATE_TTL_S, simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklUsername, fetchSimklLibrary,
-  simklWriteRequest, simklScrobbleBody, simklSend,
+  SIMKL_STATE_TTL_S, SIMKL_LIB_TTL_S, simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklUsername, fetchSimklLibrary,
+  simklWriteRequest, simklScrobbleBody, simklSend, simklRefresh, simklRevoke, SIMKL_REFRESH_MARGIN_MS,
 } from "./simkl.js";
 import { TRACKING_CHOICES, activeTracker, trackingStatus } from "./tracking.js";
 import { fontResponse } from "./fonts.js";
@@ -239,6 +240,7 @@ async function route(req, env, ctx) {
   if (path === "/api/device/profiles" && m === "POST") return deviceSyncProfiles(req, env);
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
+  if (path === "/api/device/handoff" && m === "POST") return deviceHandoff(req, env);
   if (path === "/api/device/license" && m === "POST") return deviceLicense(req, env);
   // Suivi (Trakt ou Simkl, au choix du compte) : /api/device/tracking/* est l'interface commune, /api/device/trakt/*
   // reste servi à l'identique pour les applications existantes.
@@ -390,6 +392,11 @@ async function route(req, env, ctx) {
   if (path === "/trakt/connect") return traktStart(env, acct, url);
   if (path === "/simkl/connect") return simklStart(env, acct, url);
   if (path === "/simkl/disconnect") {
+    // Révocation chez Simkl (un seul appel, jamais bloquante : l'échec est ignoré).
+    if (acct.simklEnc && simklEnabled(env)) {
+      const t = await decryptJson(keysFromEnv(env), acct.simklEnc, acct.login).catch(() => null);
+      if (t && typeof t.access === "string") await simklRevoke(env.SIMKL_CLIENT_ID, t.access, fetch, appVersionOf(req.headers.get("x-ultra-version"))).catch(() => {});
+    }
     delete acct.simklEnc;
     delete acct.simkl;
     await putAccount(env, acct);
@@ -985,7 +992,7 @@ async function traktFinish(req, env, url) {
 
 // ---- Simkl (facultatif, au choix avec Trakt) ------------------------------------
 // Même parcours que Trakt (état à usage unique + cookie Lax lié au navigateur), mais sans PKCE : Simkl exige le secret
-// client, gardé dans le Worker. Les jetons Simkl n'expirent pas : chiffrés dans le compte, jamais renouvelés.
+// client, gardé dans le Worker. Auth V2 : jetons { access, refresh, exp } chiffrés dans le compte, renouvelés sous verrou.
 const SIMKL_COOKIE = "utv_simkl";
 const simklStateKey = (state) => `simklst:${state}`;
 const simklRedirect = (url) => (url.hostname === PRIMARY_HOST || LEGACY_HOSTS.includes(url.hostname))
@@ -998,8 +1005,10 @@ async function simklStart(env, acct, url) {
   const rl = await limited(env, `simklink:${acct.login}`, 10, 3600);
   if (rl) return rl;
   const state = randomToken(24);
-  await docs.put(env, simklStateKey(state), JSON.stringify({ login: acct.login }), { expirationTtl: SIMKL_STATE_TTL_S });
-  return redirect(simklAuthorizeUrl(env.SIMKL_CLIENT_ID, simklRedirect(url), state), {
+  // PKCE (S256) exigé par Simkl : le vérificateur reste côté serveur, avec l'état.
+  const { verifier, challenge } = await pkcePair();
+  await docs.put(env, simklStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: SIMKL_STATE_TTL_S });
+  return redirect(simklAuthorizeUrl(env.SIMKL_CLIENT_ID, simklRedirect(url), state, challenge), {
     "set-cookie": `${SIMKL_COOKIE}=${state}; Path=/simkl; HttpOnly; Secure; SameSite=Lax; Max-Age=${SIMKL_STATE_TTL_S}`,
   });
 }
@@ -1014,12 +1023,12 @@ async function simklFinish(req, env, url) {
   let st = null;
   try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
   if (!st || typeof st.login !== "string" || !code || code.length > 512 || !simklEnabled(env)) return simklDone("e=simkl");
-  const t = await simklExchangeCode(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, simklRedirect(url), code);
+  const t = await simklExchangeCode(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, simklRedirect(url), code, fetch, st?.verifier || null);
   if (t.error) return simklDone("e=simkl");
   const user = await simklUsername(env.SIMKL_CLIENT_ID, t.access);
   return withAccountLock(env, st.login, async (acct) => {
     if (!acct) return simklDone("e=simkl");
-    acct.simklEnc = await encryptJson(keysFromEnv(env), { access: t.access }, acct.login);
+    acct.simklEnc = await encryptJson(keysFromEnv(env), { access: t.access, refresh: t.refresh, exp: t.exp }, acct.login);
     acct.simkl = { user, at: Date.now() };
     // Simkl vient d'être relié : si rien n'était choisi, c'est lui qui devient le service de suivi.
     if (!acct.tracking && !acct.traktEnc) acct.tracking = "simkl";
@@ -1029,12 +1038,67 @@ async function simklFinish(req, env, url) {
   });
 }
 
-/** Jeton d'accès Simkl du compte, ou null (non relié). */
-async function simklAccess(env, login) {
-  const acct = await getAccount(env, login);
-  if (!acct || !acct.simklEnc) return null;
-  const t = await decryptJson(keysFromEnv(env), acct.simklEnc, login).catch(() => null);
-  return t && typeof t.access === "string" ? t.access : null;
+/**
+ * Jeton d'accès Simkl valide pour le compte (renouvelé sous verrou s'il expire dans moins d'un jour), ou null (non relié,
+ * révoqué, ancien enregistrement sans jeton de renouvellement). force : renouvellement immédiat (après un 401).
+ */
+async function simklAccess(env, login, force = false) {
+  const keys = keysFromEnv(env);
+  const acct0 = await getAccount(env, login);
+  if (!acct0 || !acct0.simklEnc) return null;
+  const t0 = await decryptJson(keys, acct0.simklEnc, login).catch(() => null);
+  if (!t0 || typeof t0.access !== "string") return null;
+  const fresh = (t) => typeof t.exp === "number" && t.exp - Date.now() > SIMKL_REFRESH_MARGIN_MS;
+  if (!force && fresh(t0)) return t0.access;
+  return withAccountLock(env, login, async (acct) => {
+    if (!acct.simklEnc) return null;
+    const cur = await decryptJson(keys, acct.simklEnc, login).catch(() => null);
+    if (!cur || typeof cur.access !== "string") return null;
+    // Un autre appareil l'a déjà renouvelé pendant l'attente du verrou.
+    if (cur.access !== t0.access && fresh(cur)) return cur.access;
+    // Ancien format { access } (avant Auth V2) : pas de renouvellement possible, on oublie pour forcer la reconnexion.
+    if (!cur.refresh) {
+      delete acct.simklEnc;
+      acct.simkl = { ...(acct.simkl || {}), revoked: true };
+      await putAccount(env, acct);
+      return null;
+    }
+    const nt = await simklRefresh(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, cur.refresh);
+    if (nt.error === "revoked") {
+      delete acct.simklEnc;
+      acct.simkl = { ...(acct.simkl || {}), revoked: true };
+      await putAccount(env, acct);
+      return null;
+    }
+    // Panne passagère : le jeton actuel sert encore s'il n'est pas expiré (sauf renouvellement forcé après un 401).
+    if (nt.error) return !force && typeof cur.exp === "number" && cur.exp > Date.now() ? cur.access : null;
+    acct.simklEnc = await encryptJson(keys, { access: nt.access, refresh: nt.refresh, exp: nt.exp }, login);
+    await putAccount(env, acct);
+    return nt.access;
+  });
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Appel Simkl avec jeton : fn(access) renvoie le résultat, ou "unauthorized" (ou lève { unauthorized }).
+ * Sur un 401 : un renouvellement puis une seule nouvelle tentative (espacée d'1 s, limite de 1 POST/s par utilisateur) ;
+ * si le renouvellement échoue ou si le refus persiste, le jeton est oublié. → { linked: false } ou { r }.
+ */
+async function simklAuthed(env, login, fn, { post = false } = {}) {
+  const run = async (access) => { try { return await fn(access); } catch (e) { if (e && e.unauthorized) return "unauthorized"; throw e; } };
+  let access = await simklAccess(env, login);
+  if (!access) return { linked: false };
+  let r = await run(access);
+  if (r === "unauthorized") {
+    access = await simklAccess(env, login, true);
+    if (access) {
+      if (post) await sleep(1000);
+      r = await run(access);
+    }
+    if (!access || r === "unauthorized") { await simklRevoked(env, login); return { linked: false }; }
+  }
+  return { r };
 }
 
 /** Simkl refuse le jeton (révoqué chez Simkl) : on l'oublie, l'espace client propose de reconnecter. */
@@ -1114,10 +1178,10 @@ async function deviceTraktScrobble(req, env) {
   if (svc === "simkl") {
     const payload = simklScrobbleBody(s, tmdb);
     if (!payload) return json({ linked: true, matched: false });
-    const access = await simklAccess(env, auth.acct.login);
-    if (!access) return json({ linked: false });
-    const r = await simklSend(env.SIMKL_CLIENT_ID, access, `/scrobble/${s.action}`, payload);
-    if (r === "unauthorized") { await simklRevoked(env, auth.acct.login); return json({ linked: false }); }
+    const ver = appVersionOf(req.headers.get("x-ultra-version"));
+    const sent = await simklAuthed(env, auth.acct.login, (access) => simklSend(env.SIMKL_CLIENT_ID, access, `/scrobble/${s.action}`, payload, fetch, ver), { post: true });
+    if (!("r" in sent)) return json({ linked: false });
+    const r = sent.r;
     if (r === "ok" && s.action === "stop" && s.progress >= 80) await forgetTraktLibrary(env, auth.acct.login);
     return json({ linked: true, matched: r !== "unmatched", ok: r === "ok" });
   }
@@ -1162,10 +1226,10 @@ async function deviceTraktWrite(req, env, kind) {
     const req2 = simklWriteRequest(kind, p, tmdb);
     // Simkl n'a pas de retrait de la watchlist : réponse explicite plutôt qu'un faux succès.
     if (!req2) return json({ linked: true, matched: true, ok: false, error: "unsupported", tmdb });
-    const access = await simklAccess(env, auth.acct.login);
-    if (!access) return json({ linked: false });
-    const r = await simklSend(env.SIMKL_CLIENT_ID, access, req2.path, req2.body);
-    if (r === "unauthorized") { await simklRevoked(env, auth.acct.login); return json({ linked: false }); }
+    const ver = appVersionOf(req.headers.get("x-ultra-version"));
+    const sent = await simklAuthed(env, auth.acct.login, (access) => simklSend(env.SIMKL_CLIENT_ID, access, req2.path, req2.body, fetch, ver), { post: true });
+    if (!("r" in sent)) return json({ linked: false });
+    const r = sent.r;
     if (r === "ok") await forgetTraktLibrary(env, auth.acct.login);
     if (r === "upstream") return json({ linked: true, matched: true, ok: false, error: "upstream" }, 502);
     return json({ linked: true, matched: r !== "unmatched", ok: r === "ok", tmdb });
@@ -1212,26 +1276,28 @@ async function deviceTraktLibrary(req, env, url, ctx) {
   const at = v && typeof v.at === "number" ? v.at : 0;
   // Un cache fait pour l'autre service (changement de choix) est ignoré.
   const data = v && v.data && (v.svc || "trakt") === svc ? v.data : null;
-  if (data && Date.now() - at < LIB_TTL_S * 1000) return json(data);
+  // Simkl : 500 requêtes par jour et par utilisateur (offre gratuite), 6 par rafraîchissement → cache de 2 h (Trakt : 15 min).
+  // Les écritures faites depuis l'appli vident ce cache : elles restent visibles tout de suite.
+  const ttlS = svc === "simkl" ? SIMKL_LIB_TTL_S : LIB_TTL_S;
+  if (data && Date.now() - at < ttlS * 1000) return json(data);
   if (data && ctx && typeof ctx.waitUntil === "function") {
-    ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url), svc).catch(() => {}));
+    ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url), svc, appVersionOf(req.headers.get("x-ultra-version"))).catch(() => {}));
     return json(data);
   }
-  const fresh = await buildTraktLibrary(env, login, lang, traktRedirect(url), svc);
+  const fresh = await buildTraktLibrary(env, login, lang, traktRedirect(url), svc, appVersionOf(req.headers.get("x-ultra-version")));
   return json(fresh.body, fresh.status);
 }
 
 /** Relit Trakt, complète les titres, garde le résultat (chiffré) → { status, body }. */
-async function buildTraktLibrary(env, login, lang, redirectUri, svc = "trakt") {
+async function buildTraktLibrary(env, login, lang, redirectUri, svc = "trakt", ver = null) {
   const keys = keysFromEnv(env);
   let lib;
   if (svc === "simkl") {
-    const access = await simklAccess(env, login);
-    if (!access) return { status: 200, body: { linked: false } };
-    try { lib = await fetchSimklLibrary(env.SIMKL_CLIENT_ID, access); } catch (e) {
-      if (e.unauthorized) { await simklRevoked(env, login); return { status: 200, body: { linked: false } }; }
-      return { status: 502, body: { error: "upstream" } };
-    }
+    try {
+      const got = await simklAuthed(env, login, (access) => fetchSimklLibrary(env.SIMKL_CLIENT_ID, access, fetch, ver));
+      if (!("r" in got)) return { status: 200, body: { linked: false } };
+      lib = got.r;
+    } catch { return { status: 502, body: { error: "upstream" } }; }
   } else {
     let access = await traktAccess(env, login, redirectUri);
     if (!access) return { status: 200, body: { linked: false } };
@@ -1386,8 +1452,16 @@ async function deviceConfig(req, env) {
   if (rl) return rl;
   const version = auth.acct.cfgVersion || 0;
   const etag = `"v${version}"`;
+  // Demandes « Reprendre sur cet appareil » en attente (file de 2 min) : en-tête de la réponse, y compris du 304, donc
+  // aucune requête de plus pour la cible. Une seule lecture de stockage ; un échec ne gêne jamais la synchro.
+  let ho = "";
+  try {
+    const names = Object.fromEntries((auth.acct.devices || []).map((d) => [d.id, d.name]));
+    ho = handoffHeader(await loadHandoffs(env, auth.acct.login, auth.device.id), names);
+  } catch { ho = ""; }
+  const hoHeaders = ho ? { "x-utv-handoff": ho, "access-control-expose-headers": "x-utv-handoff" } : {};
   // Synchro incrémentale : rien n'a changé depuis la version connue de l'appareil.
-  if (etagMatches(req.headers.get("if-none-match"), etag)) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store" } });
+  if (etagMatches(req.headers.get("if-none-match"), etag)) return new Response(null, { status: 304, headers: { etag, "cache-control": "no-store", ...hoHeaders } });
   // Un appareil ne reçoit QUE les fournisseurs qui lui sont affectés (ou affectés à tous).
   const providers = (await loadProviders(env, auth.acct)).filter((p) => isSupportedKind(p) && isVisibleTo(p, auth.device.id));
   const act = await deviceActivity(env, (auth.acct.devices || []).map((d) => d.id));
@@ -1395,8 +1469,28 @@ async function deviceConfig(req, env) {
     .map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
   return json(
     { version, self: auth.device.id, devices, providers: providers.map(syncProvider), removed: liveTombstones(auth.acct) },
-    200, { etag, "cache-control": "no-store" },
+    200, { etag, "cache-control": "no-store", ...hoHeaders },
   );
+}
+
+/**
+ * POST /api/device/handoff { to, ref: { src, t: live|movie|episode, id, par?, pos, n } } : « Envoyer vers… ». Dépose une
+ * demande dans la file courte (2 min) de l'appareil cible, qui la lit à sa prochaine synchro. Ni URL de flux ni
+ * identifiants : une référence que la cible résout dans son propre catalogue. Cible = autre appareil du même compte.
+ */
+async function deviceHandoff(req, env) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `ho:ip:${clientIp(req)}`, 60, 600, true))
+    || (await limited(env, `ho:dev:${auth.device.id}`, 20, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, 2048);
+  if (body.error) return body.error;
+  const r = parseHandoff(body.value);
+  if (r.error) return json({ error: "invalid", field: r.error }, 400);
+  if (r.to === auth.device.id || !(auth.acct.devices || []).some((d) => d.id === r.to)) return json({ error: "invalid", field: "to" }, 400);
+  await pushHandoff(env, auth.acct.login, r.to, { ...r.item, f: auth.device.id });
+  return json({ ok: true, expiresIn: 120 });
 }
 
 const DEV_BODY_MAX = 4 * 1024;

@@ -146,3 +146,5 @@ es|ds_search_series
 fr|st_minutes
 fr|st_unlock_extra
 es|st_minutes
+es|handoff_no
+fr|prof_sources

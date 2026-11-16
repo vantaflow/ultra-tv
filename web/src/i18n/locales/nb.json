@@ -729,5 +729,19 @@
   "st.codeNew": "Ny kode (4 sifre)",
   "st.codeCurrent": "Gjeldende kode",
   "st.codeWrong": "Feil kode",
-  "st.codeEnter": "Skriv inn foreldrekoden for å fortsette"
+  "st.codeEnter": "Skriv inn foreldrekoden for å fortsette",
+  "handoff.title": "Fortsette på denne enheten?",
+  "handoff.body": "{from} sender deg: {title}",
+  "handoff.yes": "Ja",
+  "handoff.no": "Nei",
+  "handoff.send": "Send til…",
+  "handoff.sent": "Sendt til {device}. Bekreft på den enheten innen 2 minutter.",
+  "handoff.noSource": "Denne kilden er ikke delt med kontoen din, så en annen enhet kan ikke finne den.",
+  "handoff.failed": "Kunne ikke sende. Prøv igjen.",
+  "handoff.notFound": "Denne tittelen finnes ikke i denne enhetens katalog.",
+  "handoff.noDevices": "Ingen andre enheter er koblet til denne kontoen.",
+  "set.profileSources": "Synlige kilder",
+  "set.allSources": "Alle kilder",
+  "set.searchAll": "Søk i alle kilder",
+  "set.searchAllD": "Resultater fra alle kilder som er synlige for profilen, med kilden vist på hvert."
 }

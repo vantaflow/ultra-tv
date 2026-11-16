@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.data.m3u
 
 import com.ultratv.tv.nativeapp.data.db.ChannelEntity
 import com.ultratv.tv.nativeapp.data.db.CategoryEntity
+import com.ultratv.tv.nativeapp.data.replay.CatchupFormats
+import com.ultratv.tv.nativeapp.data.replay.CatchupType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -92,6 +94,11 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
                 usedIds.add(tvgId) -> tvgId
                 else -> "$tvgId#${seq++}"
             }
+            // Rattrapage : catchup (default|append|shift|flussonic|xc) + catchup-source → un seul gabarit (CatchupFormats).
+            val catchupType = CatchupType.parse(attrs["catchup"])
+            val catchupTemplate = CatchupFormats.template(catchupType, attrs["catchup-source"], line)
+            val catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0)
+                ?: if (catchupType != null && (catchupTemplate != null || catchupType == CatchupType.XC)) CatchupFormats.DEFAULT_DAYS else 0
             channels += ChannelEntity(
                 providerId = providerId,
                 remoteId = rid,
@@ -100,9 +107,8 @@ class M3uParser @Inject constructor(okBase: OkHttpClient) {
                 categoryId = group?.let { "g:$it" },
                 streamUrl = line,
                 epgChannelId = tvgId,
-                // Rattrapage : `catchup-source` + `catchup-days` (voir Catchup.kt).
-                catchupSource = attrs["catchup-source"]?.takeIf { it.isNotBlank() },
-                catchupDays = attrs["catchup-days"]?.toIntOrNull()?.coerceAtLeast(0) ?: 0,
+                catchupSource = catchupTemplate,
+                catchupDays = catchupDays,
                 props = streamProps?.toJson(),
             )
         }

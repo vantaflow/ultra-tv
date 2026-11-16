@@ -822,6 +822,9 @@
     <string name="pex_from_start">Od początku</string>
     <string name="pex_seek_bar">Pasek postępu</string>
     <string name="pex_back_to_live">Wróć na żywo</string>
+    <string name="pex_prev_programme">Poprzedni program</string>
+    <string name="pex_next_programme">Następny program</string>
+    <string name="pex_rewind_live">Cofnij o 5 min</string>
     <string name="pex_subs_pill">Napisy</string>
     <string name="pex_subtitles_title">Napisy</string>
     <string name="pex_preview_text">Podgląd napisów\nz Twoimi ustawieniami</string>
@@ -1688,4 +1691,20 @@
     <string name="st_unlock_extra">+30 minut</string>
     <string name="st_unlock_today">Na dziś (raz)</string>
     <string name="st_warn">Oglądanie kończy się za %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Wznowić na tym urządzeniu?</string>
+    <string name="handoff_body">%1$s wysyła Ci: %2$s</string>
+    <string name="handoff_yes">Tak</string>
+    <string name="handoff_no">Nie</string>
+    <string name="handoff_send">Wyślij do…</string>
+    <string name="handoff_sent">Wysłano do urządzenia %1$s. Potwierdź na nim w ciągu 2 minut.</string>
+    <string name="handoff_no_source">To źródło nie jest udostępnione na Twoim koncie, więc inne urządzenie nie może go znaleźć.</string>
+    <string name="handoff_failed">Nie udało się wysłać. Spróbuj ponownie.</string>
+    <string name="handoff_not_found">Tego tytułu nie ma w katalogu tego urządzenia.</string>
+    <string name="handoff_no_devices">Żadne inne urządzenie nie jest sparowane z tym kontem.</string>
+    <string name="prof_sources">Źródła</string>
+    <string name="prof_sources_all">Wszystkie źródła</string>
+    <string name="prof_search_all">Szukaj we wszystkich źródłach</string>
+    <string name="prof_search_all_hint">Wyniki ze wszystkich widocznych źródeł, ze wskazaniem źródła przy każdym</string>
 </resources>

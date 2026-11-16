@@ -646,6 +646,8 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
             LaunchedEffect(revoked) { if (revoked) com.ultratv.tv.nativeapp.ui.common.Toaster.err(Dr.cloudRevoked) }
         }
         com.ultratv.tv.nativeapp.ui.common.ReminderBannerHost()
+        // Demande « Reprendre sur cet appareil ? » venue d'un autre appareil du compte (jamais de lecture sans réponse).
+        com.ultratv.tv.nativeapp.ui.common.HandoffHost()
         // Alertes de l’administrateur (tableau de bord) : pendant la lecture plein écran, seules les urgentes (en bandeau).
         com.ultratv.tv.nativeapp.ui.common.AnnouncementHost(suppressed = onPlayer)
         }

@@ -729,5 +729,19 @@
   "st.codeNew": "Uusi koodi (4 numeroa)",
   "st.codeCurrent": "Nykyinen koodi",
   "st.codeWrong": "Väärä koodi",
-  "st.codeEnter": "Anna vanhempainkoodi jatkaaksesi"
+  "st.codeEnter": "Anna vanhempainkoodi jatkaaksesi",
+  "handoff.title": "Jatketaanko tällä laitteella?",
+  "handoff.body": "{from} lähettää sinulle: {title}",
+  "handoff.yes": "Kyllä",
+  "handoff.no": "Ei",
+  "handoff.send": "Lähetä laitteeseen…",
+  "handoff.sent": "Lähetetty laitteeseen {device}. Vahvista siellä 2 minuutin kuluessa.",
+  "handoff.noSource": "Tätä lähdettä ei ole jaettu tilisi kanssa, joten toinen laite ei löydä sitä.",
+  "handoff.failed": "Lähetys epäonnistui. Yritä uudelleen.",
+  "handoff.notFound": "Tätä nimikettä ei ole tämän laitteen luettelossa.",
+  "handoff.noDevices": "Tähän tiliin ei ole yhdistetty muita laitteita.",
+  "set.profileSources": "Näkyvät lähteet",
+  "set.allSources": "Kaikki lähteet",
+  "set.searchAll": "Hae kaikista lähteistä",
+  "set.searchAllD": "Tulokset kaikista profiilin näkyvistä lähteistä, lähde näkyy jokaisessa."
 }

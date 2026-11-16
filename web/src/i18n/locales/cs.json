@@ -749,5 +749,19 @@
   "st.codeNew": "Nový kód (4 číslice)",
   "st.codeCurrent": "Současný kód",
   "st.codeWrong": "Nesprávný kód",
-  "st.codeEnter": "Pro pokračování zadejte rodičovský kód"
+  "st.codeEnter": "Pro pokračování zadejte rodičovský kód",
+  "handoff.title": "Pokračovat na tomto zařízení?",
+  "handoff.body": "{from} vám posílá: {title}",
+  "handoff.yes": "Ano",
+  "handoff.no": "Ne",
+  "handoff.send": "Odeslat do…",
+  "handoff.sent": "Odesláno do zařízení {device}. Potvrďte na něm do 2 minut.",
+  "handoff.noSource": "Tento zdroj není sdílen s vaším účtem, takže ho jiné zařízení nenajde.",
+  "handoff.failed": "Odeslání se nezdařilo. Zkuste to znovu.",
+  "handoff.notFound": "Tento titul není v katalogu tohoto zařízení.",
+  "handoff.noDevices": "K tomuto účtu není spárováno žádné další zařízení.",
+  "set.profileSources": "Viditelné zdroje",
+  "set.allSources": "Všechny zdroje",
+  "set.searchAll": "Hledat ve všech zdrojích",
+  "set.searchAllD": "Výsledky ze všech zdrojů viditelných pro profil, u každého je uveden zdroj."
 }

@@ -77,8 +77,13 @@ import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import com.ultratv.tv.nativeapp.data.repo.TitleCleaner
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
+import com.ultratv.tv.nativeapp.i18n.replayTag
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.handoffFailed
+import com.ultratv.tv.nativeapp.i18n.handoffNoSource
+import com.ultratv.tv.nativeapp.i18n.handoffSend
+import com.ultratv.tv.nativeapp.i18n.handoffSent
 import com.ultratv.tv.nativeapp.i18n.recNoSpace
 import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
@@ -184,7 +189,19 @@ class PlayerViewModel @Inject constructor(
     private val vodInfoDao: com.ultratv.tv.nativeapp.data.db.VodInfoDao,
     private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
     private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
+    private val handoffSender: com.ultratv.tv.nativeapp.data.config.HandoffSender,
 ) : ViewModel() {
+
+    /** « Envoyer vers… » : autres appareils du compte (liste reçue avec la dernière synchro). */
+    fun handoffDevices(): List<com.ultratv.tv.nativeapp.data.config.CloudDevice> = handoffSender.otherDevices()
+
+    /** Dépose la demande pour l'autre appareil (référence + position, jamais d'URL ni d'identifiants). */
+    fun sendHandoff(to: com.ultratv.tv.nativeapp.data.config.CloudDevice, positionMs: Long, onDone: (com.ultratv.tv.nativeapp.data.config.HandoffSend) -> Unit) {
+        viewModelScope.launch {
+            val item = playback.current.value
+            onDone(if (item == null) com.ultratv.tv.nativeapp.data.config.HandoffSend.Failed else handoffSender.send(to, item, positionMs))
+        }
+    }
 
     /** Chaîne regardée (base), pour les actions sur le programme suivant de l'OSD. */
     private suspend fun currentChannel(): com.ultratv.tv.nativeapp.data.db.ChannelEntity? {
@@ -557,6 +574,8 @@ class PlayerViewModel @Inject constructor(
     suspend fun prepareResume(): Long {
         val c = playback.current.value ?: return 0L
         if (c.kind == "LIVE") return 0L
+        // Reprise venue d'un autre appareil (« Reprendre sur cet appareil ? ») : sa position prime sur l'historique local.
+        playback.pendingStartMs?.let { playback.pendingStartMs = null; return it }
         return history.resumePositionMs(c.providerId, c.kind, c.remoteId)
     }
 
@@ -804,6 +823,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val guideReplay = remember { replayVm.takePending() }
     var replayProg by remember { mutableStateOf<EpgEntity?>(guideReplay?.first) }
     var liveUrlBeforeReplay by remember { mutableStateOf<String?>(null) }
+    // Position du moteur dans le replay d'archive (ms depuis son départ) : heure réelle = départ du programme + position.
+    var replayPosMs by remember { mutableStateOf(0L) }
     // Chaîne dont le nom annonce le HDR : départ direct en SurfaceView (écran HDR) et pastille « HDR » de secours.
     val nameHdr = isLive && remember(item?.title, title) {
         com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.parse(item?.title ?: title).flags and com.ultratv.tv.nativeapp.data.repo.ChannelNameParser.F_HDR != 0
@@ -924,6 +945,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())
+            if (replayProg != null) session.engine?.let { replayPosMs = it.positionMs.coerceAtLeast(0) }
             if (tsActive) tsSnap = ts.snapshot()
             if (overlayVisible && panel == Panel.None && !drawerOpen && System.currentTimeMillis() - lastInteraction > hideAfterMs) overlayVisible = false
             delay(500)
@@ -1085,9 +1107,58 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         if (isLive && replayProg == null && !tsActive) startTimeshift() else session.engine?.let { if (it.isPlaying) it.pause() else it.play() }
         touch()
     }
+    // Lance (ou relance à un autre départ) un replay d'archive pour [rp] ; l'URL du direct est gardée pour « Direct ».
+    val startReplayOf: (EpgEntity) -> Unit = { rp ->
+        scope.launch {
+            val u = replayVm.urlFor(rp)
+            if (u == null) { Toaster.show(X.tsFailed); return@launch }
+            if (replayProg == null) liveUrlBeforeReplay = currentUrl
+            replayProg = rp; replayPosMs = 0; currentUrl = u
+        }
+    }
+    // Retour au direct : URL gardée au lancement du replay, ou celle de la chaîne quand le replay vient du guide.
+    val replayToLive: () -> Unit = {
+        val rp = replayProg
+        replayProg = null
+        val saved = liveUrlBeforeReplay
+        if (saved != null) currentUrl = saved
+        else if (rp != null) scope.launch { replayVm.liveUrl(rp.channelId)?.let { currentUrl = it } }
+    }
+    // Saut dans le replay : positionnement du flux s'il le permet ; sinon (≥ 1 min) nouvelle demande d'archive à l'heure visée.
+    val replayJump: (Int) -> Unit = { delta ->
+        val rp = replayProg; val e = session.engine
+        if (rp != null && e != null) {
+            if (e.durationMs > 0) e.seekTo(com.ultratv.tv.nativeapp.data.replay.ReplayTransport.jumpTarget(e.positionMs, delta, e.durationMs))
+            else if (kotlin.math.abs(delta) >= com.ultratv.tv.nativeapp.data.replay.ReplayTransport.LONG_JUMP_SEC) scope.launch {
+                val target = com.ultratv.tv.nativeapp.data.replay.ReplayTransport.wallClockMs(rp.startMs, e.positionMs) + delta * 1000L
+                if (target >= System.currentTimeMillis() - 30_000) replayToLive()
+                else replayVm.programmeFrom(rp, target)?.let { startReplayOf(it) }
+            }
+        }
+        touch()
+    }
+    val replayNeighbour: (Boolean) -> Unit = { forward ->
+        replayProg?.let { rp -> scope.launch { replayVm.neighbour(rp, forward)?.let { startReplayOf(it) } ?: if (forward) replayToLive() else Unit } }
+        touch()
+    }
+    // Retour arrière dans le direct d'une chaîne à archive : replay qui démarre 5 min plus tôt.
+    val liveRewind: () -> Unit = {
+        nowProg?.let { np ->
+            scope.launch {
+                val from = System.currentTimeMillis() - com.ultratv.tv.nativeapp.data.replay.ReplayTransport.LIVE_REWIND_SEC * 1000L
+                replayVm.programmeFrom(np, from)?.let { startReplayOf(it) } ?: Toaster.show(X.tsFailed)
+            }
+        }
+        touch()
+    }
+    // Fin du flux d'archive : programme suivant déjà diffusé, sinon retour au direct.
+    LaunchedEffect(state.phase) {
+        val rp = replayProg ?: return@LaunchedEffect
+        if (state.phase == Phase.ENDED) replayVm.neighbour(rp, true)?.let { startReplayOf(it) } ?: replayToLive()
+    }
     val toggleReplay: () -> Unit = {
         val rp = replayProg
-        if (rp != null) { liveUrlBeforeReplay?.let { currentUrl = it }; replayProg = null }
+        if (rp != null) replayToLive()
         else nowProg?.let { np -> scope.launch { replayVm.urlFor(np)?.let { u -> liveUrlBeforeReplay = currentUrl; replayProg = np; currentUrl = u } } }
         touch()
     }
@@ -1109,6 +1180,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             replayActive = tsActive || replayProg != null,
             sleepActive = sleepPhase != com.ultratv.tv.nativeapp.ui.player.sleep.SleepPhase.IDLE || sleepDeadline > 0,
             pipSupported = pipSupported, shortcuts = onNavigate != null,
+            replayBar = replayProg != null, prevProgrammeLabel = X.prevProgramme, nextProgrammeLabel = X.nextProgramme,
+            rewindLabel = if (canReplay && replayProg == null) X.rewindLive else null,
         ),
         osdLabels,
     )
@@ -1118,8 +1191,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         touch()
         when (id) {
             OsdActionId.PLAY_PAUSE -> togglePlay()
-            OsdActionId.JUMP_BACK -> tsJump(-LiveOsdLogic.TIMESHIFT_JUMP_SEC)
-            OsdActionId.JUMP_FORWARD -> tsJump(LiveOsdLogic.TIMESHIFT_JUMP_SEC)
+            OsdActionId.JUMP_BACK -> if (replayProg != null && !tsActive) replayJump(-LiveOsdLogic.REPLAY_SHORT_JUMP_SEC) else tsJump(-LiveOsdLogic.TIMESHIFT_JUMP_SEC)
+            OsdActionId.JUMP_FORWARD -> if (replayProg != null && !tsActive) replayJump(LiveOsdLogic.REPLAY_SHORT_JUMP_SEC) else tsJump(LiveOsdLogic.TIMESHIFT_JUMP_SEC)
+            OsdActionId.JUMP_BACK_MIN -> replayJump(-com.ultratv.tv.nativeapp.data.replay.ReplayTransport.LONG_JUMP_SEC)
+            OsdActionId.JUMP_FORWARD_MIN -> replayJump(com.ultratv.tv.nativeapp.data.replay.ReplayTransport.LONG_JUMP_SEC)
+            OsdActionId.PREV_PROGRAMME -> replayNeighbour(false)
+            OsdActionId.NEXT_PROGRAMME -> replayNeighbour(true)
+            OsdActionId.LIVE_REWIND -> liveRewind()
             OsdActionId.AUDIO -> panel = Panel.Tracks
             OsdActionId.SUBS -> panel = Panel.Subtitles
             OsdActionId.ASPECT -> aspect = LiveOsdLogic.nextAspect(aspect)        // même état que le panneau Lecteur
@@ -1189,10 +1267,16 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
             nextWord = X.thenWord, remindWord = D.remind, recordWord = D.pRecord,
             programme = OsdModel.programme(
                 nowProg, osdNext, nowMs, X.thenWord,
-                tsWindow = snap?.let { OsdProgress(EpgClock.wall(nowMs - it.windowSec * 1000L), EpgClock.wall(nowMs), it.fraction, directMark = X.directMark) },
+                tsWindow = snap?.let { OsdProgress(EpgClock.wall(nowMs - it.windowSec * 1000L), EpgClock.wall(nowMs), it.fraction, directMark = X.directMark) }
+                    ?: replayProg?.takeIf { it.endMs > it.startMs }?.let { rp ->
+                        // Replay d'archive : bornes et avancement à l'heure réelle du programme.
+                        OsdProgress(EpgClock.wall(rp.startMs), EpgClock.wall(rp.endMs), (replayPosMs.toFloat() / (rp.endMs - rp.startMs)).coerceIn(0f, 1f))
+                    },
                 remaining = O::remaining, hm = EpgClock::hm, range = EpgClock::range,
             ),
-            badge = snap?.let { OsdBadge(X.delayed + " · " + com.ultratv.tv.nativeapp.ui.player.timeshift.behindLabel(it.behindSec), true) } ?: OsdBadge(D.live, false),
+            badge = snap?.let { OsdBadge(X.delayed + " · " + com.ultratv.tv.nativeapp.ui.player.timeshift.behindLabel(it.behindSec), true) }
+                ?: replayProg?.let { rp -> OsdBadge(D.replayTag + " · " + EpgClock.wall(com.ultratv.tv.nativeapp.data.replay.ReplayTransport.wallClockMs(rp.startMs, replayPosMs)), true) }
+                ?: OsdBadge(D.live, false),
             clock = clock, actions = osdActions, recents = osdRecents, recentsTitle = O.recentChannels,
             expanded = controlsEngaged || touch, hint = O.bannerHint,
         )
@@ -1749,6 +1833,21 @@ private fun PlayerSidePanel(
                                 .forEach { (b, l) -> OptionRow(l, null, state.bufferPreset == b) { onBuffer(b) } }
                         }
                         if (!state.isProtected) OptionRow(LocalStrings.current.playerExternal, null, false, onExternal)
+                        // Reprise sur un autre appareil du compte : l'autre appareil demande confirmation avant de lancer quoi que ce soit.
+                        val others = remember { vm.handoffDevices() }
+                        if (others.isNotEmpty()) OptionGroup(D.handoffSend) {
+                            others.forEach { dev ->
+                                OptionRow(com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(dev), null, false) {
+                                    vm.sendHandoff(dev, e?.positionMs ?: 0L) { r ->
+                                        when (r) {
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.Sent -> Toaster.ok(D.handoffSent(com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(dev)))
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.NoSource -> Toaster.err(D.handoffNoSource)
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.Failed -> Toaster.err(D.handoffFailed)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     SideTab.STATS -> {
                         OptionRow(D.statsLabel + " · " + D.onVideo, null, statsOpen, onStats)

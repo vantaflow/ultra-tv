@@ -841,6 +841,9 @@
     <string name="pex_from_start">Od začátku</string>
     <string name="pex_seek_bar">Posuvník</string>
     <string name="pex_back_to_live">Zpět na živé vysílání</string>
+    <string name="pex_prev_programme">Předchozí pořad</string>
+    <string name="pex_next_programme">Další pořad</string>
+    <string name="pex_rewind_live">Zpět o 5 min</string>
     <string name="pex_subs_pill">Titulky</string>
     <string name="pex_subtitles_title">Titulky</string>
     <string name="pex_preview_text">Náhled titulků\ns vašimi nastaveními</string>
@@ -1716,4 +1719,20 @@
     <string name="st_unlock_extra">+30 minut</string>
     <string name="st_unlock_today">Pro dnešek (jednou)</string>
     <string name="st_warn">Sledování skončí za %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Pokračovat na tomto zařízení?</string>
+    <string name="handoff_body">%1$s vám posílá: %2$s</string>
+    <string name="handoff_yes">Ano</string>
+    <string name="handoff_no">Ne</string>
+    <string name="handoff_send">Odeslat do…</string>
+    <string name="handoff_sent">Odesláno do zařízení %1$s. Potvrďte na něm do 2 minut.</string>
+    <string name="handoff_no_source">Tento zdroj není sdílen s vaším účtem, takže ho jiné zařízení nenajde.</string>
+    <string name="handoff_failed">Odeslání se nezdařilo. Zkuste to znovu.</string>
+    <string name="handoff_not_found">Tento titul není v katalogu tohoto zařízení.</string>
+    <string name="handoff_no_devices">K tomuto účtu není spárováno žádné další zařízení.</string>
+    <string name="prof_sources">Zdroje</string>
+    <string name="prof_sources_all">Všechny zdroje</string>
+    <string name="prof_search_all">Hledat ve všech zdrojích</string>
+    <string name="prof_search_all_hint">Výsledky ze všech viditelných zdrojů, u každého je uveden zdroj</string>
 </resources>

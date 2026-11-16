@@ -836,6 +836,9 @@
     <string name="pex_from_start">From the start</string>
     <string name="pex_seek_bar">Progress bar</string>
     <string name="pex_back_to_live">Back to live</string>
+    <string name="pex_prev_programme">Previous programme</string>
+    <string name="pex_next_programme">Next programme</string>
+    <string name="pex_rewind_live">Rewind 5 min</string>
     <string name="pex_subs_pill">Subtitles</string>
     <string name="pex_subtitles_title">Subtitles</string>
     <string name="pex_preview_text">Subtitle preview\nwith your settings</string>
@@ -1734,4 +1737,20 @@
     <string name="st_unlock_extra">+30 minutes</string>
     <string name="st_unlock_today">For today (once)</string>
     <string name="st_warn">Viewing ends in %1$d min</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Resume on this device?</string>
+    <string name="handoff_body">%1$s is sending you: %2$s</string>
+    <string name="handoff_yes">Yes</string>
+    <string name="handoff_no">No</string>
+    <string name="handoff_send">Send to…</string>
+    <string name="handoff_sent">Sent to %1$s. Confirm on that device within 2 minutes.</string>
+    <string name="handoff_no_source">This source is not shared with your account, so another device cannot find it.</string>
+    <string name="handoff_failed">Could not send. Try again.</string>
+    <string name="handoff_not_found">This title is not in this device’s catalog.</string>
+    <string name="handoff_no_devices">No other device is paired with this account.</string>
+    <string name="prof_sources">Sources</string>
+    <string name="prof_sources_all">All sources</string>
+    <string name="prof_search_all">Search all sources</string>
+    <string name="prof_search_all_hint">Results from every visible source, with the source shown on each one</string>
 </resources>

@@ -837,6 +837,9 @@
     <string name="pex_from_start">Από την αρχή</string>
     <string name="pex_seek_bar">Γραμμή προόδου</string>
     <string name="pex_back_to_live">Επιστροφή στο live</string>
+    <string name="pex_prev_programme">Προηγούμενη εκπομπή</string>
+    <string name="pex_next_programme">Επόμενη εκπομπή</string>
+    <string name="pex_rewind_live">Πίσω 5 λεπτά</string>
     <string name="pex_subs_pill">Υπότιτλοι</string>
     <string name="pex_subtitles_title">Υπότιτλοι</string>
     <string name="pex_preview_text">Προεπισκόπηση υποτίτλων\nμε τις ρυθμίσεις σας</string>
@@ -1735,4 +1738,20 @@
     <string name="st_unlock_extra">+30 λεπτά</string>
     <string name="st_unlock_today">Για σήμερα (μία φορά)</string>
     <string name="st_warn">Η προβολή τελειώνει σε %1$d λεπτά</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Συνέχεια σε αυτή τη συσκευή;</string>
+    <string name="handoff_body">Ο/Η %1$s σας στέλνει: %2$s</string>
+    <string name="handoff_yes">Ναι</string>
+    <string name="handoff_no">Όχι</string>
+    <string name="handoff_send">Αποστολή σε…</string>
+    <string name="handoff_sent">Εστάλη στη συσκευή %1$s. Επιβεβαιώστε σε εκείνη τη συσκευή μέσα σε 2 λεπτά.</string>
+    <string name="handoff_no_source">Αυτή η πηγή δεν είναι κοινή με τον λογαριασμό σας, οπότε άλλη συσκευή δεν μπορεί να τη βρει.</string>
+    <string name="handoff_failed">Η αποστολή απέτυχε. Δοκιμάστε ξανά.</string>
+    <string name="handoff_not_found">Αυτός ο τίτλος δεν υπάρχει στον κατάλογο αυτής της συσκευής.</string>
+    <string name="handoff_no_devices">Δεν υπάρχει άλλη συσκευή συνδεδεμένη με αυτόν τον λογαριασμό.</string>
+    <string name="prof_sources">Πηγές</string>
+    <string name="prof_sources_all">Όλες οι πηγές</string>
+    <string name="prof_search_all">Αναζήτηση σε όλες τις πηγές</string>
+    <string name="prof_search_all_hint">Αποτελέσματα από όλες τις ορατές πηγές, με την πηγή σε καθένα</string>
 </resources>

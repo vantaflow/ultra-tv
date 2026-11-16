@@ -1,52 +1,107 @@
 // Simkl : second service de suivi au choix (avec Trakt). Connexion depuis l'espace client (OAuth 2, code d'autorisation),
 // puis lecture/écriture relayées par le Worker : les appareils ne voient jamais de jeton Simkl.
 // Même contrat côté appareil que Trakt (routes /api/device/trakt/* ou /api/device/tracking/*) : le Worker choisit le
-// service actif du compte. Les jetons Simkl n'expirent pas (pas de renouvellement). Il faut SIMKL_CLIENT_ID et
-// SIMKL_CLIENT_SECRET : sans eux, Simkl est masqué partout.
+// service actif du compte. Auth V2 : jeton d'accès (simkl_at_…, 7 jours) + jeton de renouvellement (simkl_rt_…),
+// renouvelé avant échéance côté Worker. Il faut SIMKL_CLIENT_ID et SIMKL_CLIENT_SECRET : sans eux, Simkl est masqué
+// partout.
 
-export const SIMKL_AUTHORIZE = "https://simkl.com/oauth/authorize";
+// Auth V2 de Simkl (application « serveur ») : PKCE S256 obligatoire + secret côté serveur.
+export const SIMKL_AUTHORIZE = "https://simkl.com/oauth2/authorize";
 const SIMKL_API = "https://api.simkl.com";
-const USER_AGENT = "UltraTV/1.0";
+const SIMKL_SCOPE = "media:read media:write";
+const DEFAULT_VERSION = "1.0";
+/** Renouvellement proactif : quand il reste moins d'un jour avant l'expiration du jeton d'accès. */
+export const SIMKL_REFRESH_MARGIN_MS = 86_400_000;
+const DEFAULT_EXPIRES_S = 604_800;
 export const SIMKL_STATE_TTL_S = 600;
+/** Durée du cache de bibliothèque Simkl (quota Simkl : 500 requêtes / jour / utilisateur en offre gratuite). */
+export const SIMKL_LIB_TTL_S = 2 * 3600;
 
 /** Simkl est proposé seulement si l'identifiant ET le secret de l'application sont configurés. */
 export const simklEnabled = (env) => !!(env && env.SIMKL_CLIENT_ID && env.SIMKL_CLIENT_SECRET);
 
-export function simklAuthorizeUrl(clientId, redirectUri, state) {
+export function simklAuthorizeUrl(clientId, redirectUri, state, challenge) {
   const u = new URL(SIMKL_AUTHORIZE);
+  if (challenge) { u.searchParams.set("code_challenge", challenge); u.searchParams.set("code_challenge_method", "S256"); }
   u.searchParams.set("response_type", "code");
+  u.searchParams.set("scope", SIMKL_SCOPE);
   u.searchParams.set("client_id", clientId);
   u.searchParams.set("redirect_uri", redirectUri);
   u.searchParams.set("state", state);
   return u.toString();
 }
 
-const apiHeaders = (clientId, access) => ({
-  "content-type": "application/json", accept: "application/json", "user-agent": USER_AGENT,
+const versionOf = (v) => (typeof v === "string" && v ? v : DEFAULT_VERSION);
+
+/** Adresse d'un appel API : identification de l'appli en paramètres d'URL (client_id, app-name, app-version). */
+export function simklApiUrl(path, clientId, version) {
+  const u = new URL(`${SIMKL_API}${path}`);
+  u.searchParams.set("client_id", clientId);
+  u.searchParams.set("app-name", "ultra-tv");
+  u.searchParams.set("app-version", versionOf(version));
+  return u.toString();
+}
+
+const apiHeaders = (clientId, access, version, post = false) => ({
+  accept: "application/json", "user-agent": `ultra-tv/${versionOf(version)}`,
   "simkl-api-key": clientId,
+  ...(post ? { "content-type": "application/json" } : {}),
   ...(access ? { authorization: `Bearer ${access}` } : {}),
 });
 
-/** Échange du code d'autorisation → { access } ou { error: "denied" | "upstream" }. */
-export async function simklExchangeCode(clientId, clientSecret, redirectUri, code, fetchFn = fetch) {
+const formBody = (o) => new URLSearchParams(o).toString();
+const formHeaders = (version) => ({ "content-type": "application/x-www-form-urlencoded", accept: "application/json", "user-agent": `ultra-tv/${versionOf(version)}` });
+
+/** Réponse /oauth2/token → { access, refresh, exp } (exp en ms) ou null. */
+function tokensOf(d, fallbackRefresh = "") {
+  if (!d || typeof d.access_token !== "string" || !d.access_token) return null;
+  const refresh = typeof d.refresh_token === "string" && d.refresh_token ? d.refresh_token : fallbackRefresh;
+  const s = Number(d.expires_in);
+  return { access: d.access_token.slice(0, 512), refresh: String(refresh).slice(0, 512), exp: Date.now() + (Number.isFinite(s) && s > 0 ? s : DEFAULT_EXPIRES_S) * 1000 };
+}
+
+/** Échange du code d'autorisation → { access, refresh, exp } ou { error: "denied" | "upstream" }. */
+export async function simklExchangeCode(clientId, clientSecret, redirectUri, code, fetchFn = fetch, verifier = null, version = null) {
   let r;
   try {
-    r = await fetchFn(`${SIMKL_API}/oauth/token`, {
-      method: "POST", redirect: "manual", headers: apiHeaders(clientId),
-      body: JSON.stringify({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: "authorization_code" }),
+    r = await fetchFn(`${SIMKL_API}/oauth2/token`, {
+      method: "POST", redirect: "manual", headers: formHeaders(version),
+      body: formBody({ grant_type: "authorization_code", client_id: clientId, client_secret: clientSecret, code, redirect_uri: redirectUri, ...(verifier ? { code_verifier: verifier } : {}) }),
     });
   } catch { return { error: "upstream" }; }
   if (r.status === 400 || r.status === 401 || r.status === 403) return { error: "denied" };
   if (r.status !== 200) return { error: "upstream" };
-  const d = await r.json().catch(() => null);
-  if (!d || typeof d.access_token !== "string" || !d.access_token) return { error: "upstream" };
-  return { access: d.access_token.slice(0, 512) };
+  return tokensOf(await r.json().catch(() => null)) || { error: "upstream" };
+}
+
+/** Renouvellement → { access, refresh, exp } ou { error: "revoked" | "upstream" } (le jeton de renouvellement reste le même). */
+export async function simklRefresh(clientId, clientSecret, refresh, fetchFn = fetch, version = null) {
+  if (!refresh) return { error: "revoked" };
+  let r;
+  try {
+    r = await fetchFn(`${SIMKL_API}/oauth2/token`, {
+      method: "POST", redirect: "manual", headers: formHeaders(version),
+      body: formBody({ grant_type: "refresh_token", client_id: clientId, client_secret: clientSecret, refresh_token: refresh }),
+    });
+  } catch { return { error: "upstream" }; }
+  if (r.status === 400 || r.status === 401 || r.status === 403) return { error: "revoked" };
+  if (r.status !== 200) return { error: "upstream" };
+  return tokensOf(await r.json().catch(() => null), refresh) || { error: "upstream" };
+}
+
+/** Révocation du jeton à la déconnexion. Ne bloque jamais : l'échec est ignoré. */
+export async function simklRevoke(clientId, token, fetchFn = fetch, version = null) {
+  if (!token) return false;
+  try {
+    const r = await fetchFn(`${SIMKL_API}/oauth2/revoke`, { method: "POST", redirect: "manual", headers: formHeaders(version), body: formBody({ client_id: clientId, token }) });
+    return r.status === 200 || r.status === 204;
+  } catch { return false; }
 }
 
 /** Nom d'utilisateur Simkl (affichage dans l'espace client), ou "" si indisponible. */
-export async function simklUsername(clientId, access, fetchFn = fetch) {
+export async function simklUsername(clientId, access, fetchFn = fetch, version = null) {
   try {
-    const r = await fetchFn(`${SIMKL_API}/users/settings`, { method: "POST", headers: apiHeaders(clientId, access), redirect: "manual", body: "{}" });
+    const r = await fetchFn(simklApiUrl("/users/settings", clientId, version), { method: "POST", headers: apiHeaders(clientId, access, version, true), redirect: "manual", body: "{}" });
     if (r.status !== 200) return "";
     const d = await r.json();
     return String(d?.user?.name || "").slice(0, 60);
@@ -67,8 +122,8 @@ const item = (type, o) => ({ type, tmdb: tmdbOf(o), year: yearOf(o?.year), title
 const msOf = (v) => { const t = Date.parse(typeof v === "string" ? v : ""); return Number.isFinite(t) ? t : 0; };
 
 /** GET /sync/all-items/... → objet { movies?, shows? }, ou lève { unauthorized } / { status }. */
-async function simklGet(clientId, access, path, fetchFn) {
-  const r = await fetchFn(`${SIMKL_API}${path}`, { headers: apiHeaders(clientId, access), redirect: "manual" });
+async function simklGet(clientId, access, path, fetchFn, version) {
+  const r = await fetchFn(simklApiUrl(path, clientId, version), { headers: apiHeaders(clientId, access, version), redirect: "manual" });
   if (r.status === 401 || r.status === 403) throw Object.assign(new Error("unauthorized"), { unauthorized: true });
   if (r.status !== 200) throw Object.assign(new Error(`simkl ${r.status}`), { status: r.status });
   const d = await r.json().catch(() => null);
@@ -82,9 +137,9 @@ const note = (v) => (Number.isInteger(v) && v >= 1 && v <= 10 ? v : null);
  * fetchTraktLibrary. Simkl n'a ni recommandations, ni tendances, ni listes personnelles, ni reprises : listes vides.
  * Un appel en échec (autre qu'un refus d'accès) laisse sa liste vide ; tous en échec : erreur.
  */
-export async function fetchSimklLibrary(clientId, access, fetchFn = fetch) {
+export async function fetchSimklLibrary(clientId, access, fetchFn = fetch, version = null) {
   let failed = 0;
-  const get = (p) => simklGet(clientId, access, p, fetchFn).catch((e) => {
+  const get = (p) => simklGet(clientId, access, p, fetchFn, version).catch((e) => {
     if (e.unauthorized) throw e;
     failed++;
     console.log(JSON.stringify({ simkl: "library", path: p.split("?")[0], status: e.status ?? "network" }));
@@ -167,10 +222,10 @@ function countOf(d) {
 }
 
 /** Envoi à Simkl (écriture /sync ou /scrobble) → "ok" | "unauthorized" | "unmatched" | "upstream". */
-export async function simklSend(clientId, access, path, body, fetchFn = fetch) {
+export async function simklSend(clientId, access, path, body, fetchFn = fetch, version = null) {
   let r;
   try {
-    r = await fetchFn(`${SIMKL_API}${path}`, { method: "POST", redirect: "manual", headers: apiHeaders(clientId, access), body: JSON.stringify(body) });
+    r = await fetchFn(simklApiUrl(path, clientId, version), { method: "POST", redirect: "manual", headers: apiHeaders(clientId, access, version, true), body: JSON.stringify(body) });
   } catch { return "upstream"; }
   // Statut seul (jamais de jeton ni de titre).
   console.log(JSON.stringify({ simkl: "send", path, status: r.status }));

@@ -32,7 +32,7 @@ import com.ultratv.tv.nativeapp.ui.settings.AddProviderDialog
 import com.ultratv.tv.nativeapp.ui.settings.FormField
 import kotlinx.coroutines.launch
 
-private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, SCREEN_TIME, PIN, PIN_REMOVE, DELETE }
+private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, SOURCES, SCREEN_TIME, PIN, PIN_REMOVE, DELETE }
 
 /** Réglages › Profils : liste, création, renommage, couleur, profil Enfants, PIN, suppression, mode de démarrage. */
 @Composable
@@ -48,6 +48,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     var stError by remember { mutableStateOf<String?>(null) }
     var stAttempt by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
+    val providers by vm.providers.collectAsState()
     val SM = com.ultratv.tv.nativeapp.i18n.SimpleStrings(LocalDs.current.lang)
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     var menuFor by remember { mutableStateOf<ProfileEntity?>(null) }
@@ -80,6 +81,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             add(ProfileAction.KIDS to "${S.kidsProfile} : ${if (p.isKids) S.pinSet else S.pinNone}")
             if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(touch)) add(ProfileAction.SIMPLE to if (p.id in simpleIds) SM.profileOn else SM.profileOff)
             add(ProfileAction.SCREEN_TIME to "${ST.title} : ${com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeText.summary(com.ultratv.tv.nativeapp.data.screentime.ScreenTime.decode(screenTimes[p.id]), ST) ?: ST.off}")
+            if (providers.size > 1) add(ProfileAction.SOURCES to S.sources)
             add(ProfileAction.PIN to "${S.pin} : ${if (p.pinHash != null) S.pinSet else S.pinNone}")
             if (p.pinHash != null) add(ProfileAction.PIN_REMOVE to S.pinRemove)
             add(ProfileAction.DELETE to if (ProfileRules.canDelete(profiles.size)) S.delete else S.deleteLast)
@@ -109,6 +111,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
                     onCancel = close, error = stError, resetKey = stAttempt,
                 )
             } else com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeEditor(p, screenTimes[p.id], pinSet, onSave = { vm.setScreenTime(p.id, it) }, onClose = close)
+            ProfileAction.SOURCES -> SourcesDialog(p, providers.map { it.name }, vm, S, close)
             ProfileAction.COLOR -> ChoiceDialog(S.color, ProfileColors.palette.mapIndexed { i, c -> c to S.colorNames[i] }, p.color, { vm.setColor(p.id, it); close() }, close)
             ProfileAction.PIN -> {
                 PinPad(title = S.pin, subtitle = p.name, onComplete = { vm.setPin(p.id, it); close() }, onCancel = close)
@@ -140,4 +143,31 @@ fun ProfileEditDialog(profile: ProfileEntity?, vm: ProfileViewModel, onDismiss: 
         FormField(S.nameLabel, name, { name = it.take(ProfileRules.MAX_NAME) }, autoFocus = true, last = profile != null, required = true, testTag = "field-profile-name")
         if (profile == null) SwitchPrefRow(S.kidsProfile, kids, hint = S.kidsHelp) { kids = it }
     }
+}
+
+/** Sources visibles d'un profil : une ligne par source (cochée = visible) ; tout coché revient à « toutes les sources ». */
+@Composable
+private fun SourcesDialog(p: ProfileEntity, names: List<String>, vm: ProfileViewModel, S: ProfileStrings, onClose: () -> Unit) {
+    var chosen by remember { mutableStateOf<List<String>?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(p.id) { chosen = vm.sourcesOf(p.id); loaded = true }
+    if (!loaded) return
+    val picked = chosen?.map { it.trim().lowercase() }?.toSet()
+    val ALL = "\u0000all"
+    val DONE = "\u0000done"
+    val opts = buildList<Pair<String, String>> {
+        add(ALL to ((if (picked == null) "\u2713 " else "    ") + S.sourcesAll))
+        names.forEach { n -> add(n to ((if (picked == null || n.trim().lowercase() in picked) "\u2713 " else "    ") + n)) }
+        add(DONE to S.done)
+    }
+    ChoiceDialog(p.name, opts, null, onPick = { k ->
+        when (k) {
+            DONE -> onClose()
+            ALL -> { chosen = null; vm.setSources(p.id, null) }
+            else -> {
+                val next = com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.toggle(names, chosen, k)
+                chosen = next; vm.setSources(p.id, next)
+            }
+        }
+    }, onDismiss = onClose)
 }

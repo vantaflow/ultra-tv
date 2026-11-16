@@ -7,9 +7,11 @@ import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
-/** `kids`, `lang` et `screenTime` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
+/** `kids`, `lang`, `sources` et `screenTime` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
 export interface Profile {
   id: string; name: string; color: string; kids?: boolean; lang?: Lang;
+  /** Noms des sources visibles du profil (absent = toutes) ; partagé entre appareils. */
+  sources?: string[];
   /** Horaires de visionnage et temps d'écran (codage de lib/screenTime) ; absent = aucune règle. Synchronisé avec le profil, le décompte reste local. */
   screenTime?: string;
 }
@@ -35,6 +37,8 @@ export interface Prefs {
   /** Format de l'heure : « auto » (langue / système), 12 h ou 24 h. Local à l'appareil : les réglages synchronisés ne contiennent que langues et catégories. */
   timeFormat: TimeFormat;
   activeSourceId: number | null;
+  /** Recherche dans toutes les sources visibles du profil (et non la seule source active) ; local à l'appareil. */
+  searchAll: boolean;
   profiles: Profile[];
   profileId: string;
   askProfile: boolean;
@@ -71,7 +75,7 @@ export const PROFILE_COLORS = ["#D91E2B", "#0EA5E9", "#F59E0B", "#7C3AED", "#10B
 const KEY = "ultratv.prefs.v1";
 
 const defaults = (): Prefs => ({
-  theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), deviceLang: detectLang(), timeFormat: "auto", activeSourceId: null,
+  theme: "auto", accent: DEFAULT_ACCENT, lang: detectLang(), deviceLang: detectLang(), timeFormat: "auto", activeSourceId: null, searchAll: false,
   profiles: [{ id: "main", name: "", color: PROFILE_COLORS[0]! }], profileId: "main", askProfile: false,
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",

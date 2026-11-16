@@ -16,7 +16,7 @@ import type { ChannelRow } from "@/db/types";
 import { histKey } from "@/db/queries";
 import { useNowNext } from "@/hooks/epg";
 import { useCategories, useFavorites, useHiddenCats } from "@/hooks/data";
-import { useT } from "@/i18n";
+import { translate, useT } from "@/i18n";
 import { fmtClock, fmtDuration } from "@/lib/text";
 import { COMMIT_MS, fmtDelta, press as scrubPressState, release as scrubRelease, type ScrubState } from "@/lib/seekScrub";
 import { bridge, currentTransport, requestHeaders, transportSync, wrapUrl } from "@/net/transport";
@@ -43,6 +43,9 @@ import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
 import { usePlayer, ZAP_DEBOUNCE_MS } from "./store";
+import { getToken, useCloud } from "@/cloud/service";
+import { sendToDevice } from "@/cloud/handoff";
+import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
@@ -111,6 +114,20 @@ export function PlayerHost() {
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
   const [cur, setCur] = useState({ t: 0, d: 0, buf: 0 });
+  // « Envoyer vers… » : autres appareils du compte (liste déjà renvoyée par la synchro de la configuration).
+  const cloudPaired = useCloud((s) => s.paired);
+  const cloudDevices = useCloud((s) => s.devices);
+  const otherDevices = Array.isArray(cloudDevices) ? cloudDevices.filter((d) => !d.isCurrent) : [];
+  const sendTo = useCallback(async (to: { id: string; name: string }) => {
+    const tg = usePlayer.getState().target;
+    const v = videoRef.current;
+    const token = await getToken();
+    if (!tg || !token) return;
+    const pos = tg.kind === "live" || !v ? 0 : txClock(txRef.current, v.currentTime, v.duration).t;
+    const r = await sendToDevice(useCloud.getState().worker, token, to.id, tg, pos);
+    const lang = usePrefs.getState().lang;
+    useUi.getState().toast(r === "sent" ? translate(lang, "handoff.sent", { device: to.name }) : translate(lang, r === "noSource" ? "handoff.noSource" : "handoff.failed"));
+  }, []);
   const [clock, setClock] = useState(() => new Date());
   const [osFull, setOsFull] = useState(false);
   const [zapFlash, setZapFlash] = useState<string | null>(null);
@@ -1133,6 +1150,13 @@ export function PlayerHost() {
           )}
           {panel === "player" && (
             <>
+              {cloudPaired && Array.isArray(cloudDevices) && (
+                <>
+                  <div className="grp-t">{t("handoff.send")}</div>
+                  {otherDevices.length === 0 ? <div className="muted">{t("handoff.noDevices")}</div>
+                    : otherDevices.map((d) => <button key={d.id} className="opt" onClick={() => void sendTo(d)}>{d.name}{d.model ? <span className="h">{d.model}</span> : null}</button>)}
+                </>
+              )}
               <div className="grp-t">{t("player.shortcuts")}</div>
               <div className="hotkeys">
                 <span><span className="kbd">{t("key.space")}</span></span><span>{t("player.sk.space")}</span>

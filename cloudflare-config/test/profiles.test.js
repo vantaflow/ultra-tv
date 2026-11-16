@@ -51,3 +51,17 @@ describe("langue du profil partagée", () => {
     expect(parseProfiles({ profiles: [{ n: "Papa", at: 5, l: "<script>" }] }).profiles[0].l).toBeUndefined();
   });
 });
+
+describe("sources visibles du profil", () => {
+  it("liste nettoyée, dédoublonnée et plafonnée ; absente = toutes", () => {
+    const one = (s) => parseProfiles({ profiles: [{ n: "Papa", at: 5, s }] }).profiles[0];
+    expect(one(["A", "B", "A", 3, "  "]).s).toEqual(["A", "B"]);
+    expect(one(Array.from({ length: 30 }, (_, i) => `S${i}`)).s).toHaveLength(12);
+    expect(one("A").s).toBeUndefined();
+    expect(one([]).s).toBeUndefined();
+  });
+  it("la fusion garde la liste de la version la plus récente", () => {
+    const merged = mergeProfiles([{ n: "Papa", c: 0, k: false, at: 1, on: true, s: ["A"] }], [{ n: "Papa", c: 0, k: false, at: 2, on: true }], 10);
+    expect(merged[0].s).toBeUndefined();
+  });
+});

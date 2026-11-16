@@ -890,6 +890,9 @@
     <string name="pex_from_start">من البداية</string>
     <string name="pex_seek_bar">شريط التقدم</string>
     <string name="pex_back_to_live">العودة إلى البث المباشر</string>
+    <string name="pex_prev_programme">البرنامج السابق</string>
+    <string name="pex_next_programme">البرنامج التالي</string>
+    <string name="pex_rewind_live">رجوع 5 دقائق</string>
     <string name="pex_subs_pill">الترجمة</string>
     <string name="pex_subtitles_title">الترجمة</string>
     <string name="pex_preview_text">معاينة الترجمة\nبإعداداتك</string>
@@ -1796,4 +1799,20 @@
     <string name="st_unlock_extra">+30 دقيقة</string>
     <string name="st_unlock_today">لهذا اليوم (مرة واحدة)</string>
     <string name="st_warn">تنتهي المشاهدة بعد %1$d د</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">هل تريد المتابعة على هذا الجهاز؟</string>
+    <string name="handoff_body">%1$s يرسل إليك: %2$s</string>
+    <string name="handoff_yes">نعم</string>
+    <string name="handoff_no">لا</string>
+    <string name="handoff_send">إرسال إلى…</string>
+    <string name="handoff_sent">تم الإرسال إلى %1$s. أكّد على ذلك الجهاز خلال دقيقتين.</string>
+    <string name="handoff_no_source">هذا المصدر غير مشترك مع حسابك، لذا لا يمكن لجهاز آخر العثور عليه.</string>
+    <string name="handoff_failed">تعذّر الإرسال. حاول مرة أخرى.</string>
+    <string name="handoff_not_found">هذا العنوان غير موجود في كتالوج هذا الجهاز.</string>
+    <string name="handoff_no_devices">لا يوجد جهاز آخر مقترن بهذا الحساب.</string>
+    <string name="prof_sources">المصادر</string>
+    <string name="prof_sources_all">كل المصادر</string>
+    <string name="prof_search_all">البحث في كل المصادر</string>
+    <string name="prof_search_all_hint">نتائج من كل المصادر المرئية مع إظهار المصدر على كل نتيجة</string>
 </resources>
