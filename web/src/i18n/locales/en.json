@@ -698,5 +698,7 @@
   "rail.expand": "Expand menu",
   "rail.switchProfile": "Switch profile",
   "rail.recordingRunning": "{n} recording",
-  "rail.syncing": "Syncing"
+  "rail.syncing": "Syncing",
+  "set.profileSources": "Visible sources",
+  "set.allSources": "All sources"
 }

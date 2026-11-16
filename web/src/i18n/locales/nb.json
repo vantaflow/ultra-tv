@@ -698,5 +698,7 @@
   "rail.expand": "Utvid menyen",
   "rail.switchProfile": "Bytt profil",
   "rail.recordingRunning": "{n} opptak",
-  "rail.syncing": "Synkroniserer"
+  "rail.syncing": "Synkroniserer",
+  "set.profileSources": "Synlige kilder",
+  "set.allSources": "Alle kilder"
 }

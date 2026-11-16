@@ -18,6 +18,7 @@ import type { TimeFormat } from "@/lib/clock";
 import { deleteProfileData } from "@/db/profileData";
 import { setCategoriesVisible } from "@/db/profileCategories";
 import { isShown } from "@/lib/profileCategories";
+import { toggleSource, visibleSources } from "@/lib/profileSources";
 import { PROFILE_COLORS, dateTimeLabel, usePrefs, type Theme } from "@/state/prefs";
 import { ACCENT_DEFS } from "@/lib/themes";
 import { useActiveSource, useSources } from "@/state/sources";
@@ -128,7 +129,12 @@ function SourcesPane() {
               <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
               {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
-            {!isActive && <button className="btn sm" onClick={() => prefs.set({ activeSourceId: s.id! })}>{t("set.makeActive")}</button>}
+            {!isActive && <button className="btn sm" onClick={() => {
+              // Source choisie à la main : elle reste visible pour le profil courant (si celui-ci a fait un choix de sources).
+              const cur = prefs.profiles.find((x) => x.id === prefs.profileId)?.sources;
+              const hidden = !!cur?.length && !visibleSources(list, cur).some((v) => v.id === s.id);
+              prefs.set({ activeSourceId: s.id!, ...(hidden ? { profiles: prefs.profiles.map((x) => (x.id === prefs.profileId ? { ...x, sources: [...cur!, s.name] } : x)) } : {}) });
+            }}>{t("set.makeActive")}</button>}
             {cloud.paired && cloud.pushAvailable !== false && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && (
               <button className="btn sm" onClick={() => setShare(s)}><Icon name="globe" size={14} />{t("cloud.share")}</button>
             )}
@@ -604,17 +610,34 @@ function LanguagePane() {
 function ProfilesPane() {
   const t = useT();
   const p = usePrefs();
+  const sources = useSources((s) => s.list);
   const [name, setName] = useState("");
   return (
     <>
       <h2>{t("set.profiles")}</h2>
       <p className="lead">{t("set.profilesLead")}</p>
       {p.profiles.map((pr, i) => (
-        <div key={pr.id} className="src-card">
+        <div key={pr.id} className="src-card" style={{ flexWrap: "wrap" }}>
           <span className="avatar" style={{ background: pr.color }}>{(pr.name || t("profile.main")).slice(0, 1).toUpperCase()}</span>
           <span className="grow"><b>{pr.name || t("profile.main")}</b>{p.profileId === pr.id && <div className="meta">{t("set.active")}</div>}</span>
           {p.profileId !== pr.id && <button className="btn sm" onClick={() => p.set({ profileId: pr.id })}>{t("set.makeActive")}</button>}
           {i > 0 && <button className="btn sm danger" aria-label={t("common.delete")} onClick={() => { void deleteProfileData(pr.id); p.set({ profiles: p.profiles.filter((x) => x.id !== pr.id), profileId: p.profileId === pr.id ? p.profiles[0]!.id : p.profileId }); }}><Icon name="trash" size={16} /></button>}
+          {sources.length > 1 && (
+            <div style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginTop: 8 }}>
+              <span className="meta">{t("set.profileSources")}</span>
+              <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input type="checkbox" checked={!pr.sources?.length} onChange={() => p.set({ profiles: p.profiles.map((x) => { if (x.id !== pr.id) return x; const { sources: _s, ...rest } = x; void _s; return rest; }) })} />
+                {t("set.allSources")}
+              </label>
+              {sources.map((s) => (
+                <label key={s.id} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <input type="checkbox" checked={!pr.sources?.length || visibleSources(sources, pr.sources).some((v) => v.id === s.id)}
+                    onChange={() => p.set({ profiles: p.profiles.map((x) => { if (x.id !== pr.id) return x; const n = toggleSource(sources.map((z) => z.name), x.sources, s.name); if (n) return { ...x, sources: n }; const { sources: _s, ...rest } = x; void _s; return rest; }) })} />
+                  {s.name || "—"}
+                </label>
+              ))}
+            </div>
+          )}
         </div>
       ))}
       <div style={{ display: "flex", gap: 10 }}>

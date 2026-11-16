@@ -698,5 +698,7 @@
   "rail.expand": "ขยายเมนู",
   "rail.switchProfile": "เปลี่ยนโปรไฟล์",
   "rail.recordingRunning": "{n} การบันทึก",
-  "rail.syncing": "กำลังซิงค์"
+  "rail.syncing": "กำลังซิงค์",
+  "set.profileSources": "แหล่งที่มาที่แสดง",
+  "set.allSources": "ทุกแหล่งที่มา"
 }

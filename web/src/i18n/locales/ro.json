@@ -708,5 +708,7 @@
   "rail.expand": "Extinde meniul",
   "rail.switchProfile": "Schimbă profilul",
   "rail.recordingRunning": "{n} înregistrare",
-  "rail.syncing": "Se sincronizează"
+  "rail.syncing": "Se sincronizează",
+  "set.profileSources": "Surse vizibile",
+  "set.allSources": "Toate sursele"
 }

@@ -698,5 +698,7 @@
   "rail.expand": "Laajenna valikko",
   "rail.switchProfile": "Vaihda profiilia",
   "rail.recordingRunning": "{n} tallenne",
-  "rail.syncing": "Synkronoidaan"
+  "rail.syncing": "Synkronoidaan",
+  "set.profileSources": "Näkyvät lähteet",
+  "set.allSources": "Kaikki lähteet"
 }

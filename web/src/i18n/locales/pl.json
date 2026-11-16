@@ -709,5 +709,7 @@
   "rail.expand": "Rozwiń menu",
   "rail.switchProfile": "Zmień profil",
   "rail.recordingRunning": "{n} w toku",
-  "rail.syncing": "Synchronizacja"
+  "rail.syncing": "Synchronizacja",
+  "set.profileSources": "Widoczne źródła",
+  "set.allSources": "Wszystkie źródła"
 }

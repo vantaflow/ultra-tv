@@ -698,5 +698,7 @@
   "rail.expand": "Ανάπτυξη μενού",
   "rail.switchProfile": "Αλλαγή προφίλ",
   "rail.recordingRunning": "{n} εγγραφή",
-  "rail.syncing": "Συγχρονισμός"
+  "rail.syncing": "Συγχρονισμός",
+  "set.profileSources": "Ορατές πηγές",
+  "set.allSources": "Όλες οι πηγές"
 }

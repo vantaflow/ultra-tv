@@ -708,5 +708,7 @@
   "rail.expand": "Expandir el menú",
   "rail.switchProfile": "Cambiar de perfil",
   "rail.recordingRunning": "{n} en curso",
-  "rail.syncing": "Sincronizando"
+  "rail.syncing": "Sincronizando",
+  "set.profileSources": "Fuentes visibles",
+  "set.allSources": "Todas las fuentes"
 }

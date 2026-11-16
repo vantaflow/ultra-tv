@@ -8,7 +8,8 @@ import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type
 
 export type Theme = ThemeId;
 /** `kids` et `lang` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
-export interface Profile { id: string; name: string; color: string; kids?: boolean; lang?: Lang }
+/** `sources` : noms des sources visibles du profil (absent = toutes) ; partagé entre appareils. */
+export interface Profile { id: string; name: string; color: string; kids?: boolean; lang?: Lang; sources?: string[] }
 
 /** Langue effective : celle du profil courant si elle existe, sinon celle de l'appareil. */
 export function effectiveLang(profiles: Profile[], profileId: string, deviceLang: Lang): Lang {

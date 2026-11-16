@@ -738,5 +738,7 @@
   "rail.expand": "توسيع القائمة",
   "rail.switchProfile": "تغيير الملف الشخصي",
   "rail.recordingRunning": "{n} قيد التسجيل",
-  "rail.syncing": "جارٍ المزامنة"
+  "rail.syncing": "جارٍ المزامنة",
+  "set.profileSources": "المصادر المرئية",
+  "set.allSources": "كل المصادر"
 }

@@ -718,5 +718,7 @@
   "rail.expand": "Rozbalit nabídku",
   "rail.switchProfile": "Přepnout profil",
   "rail.recordingRunning": "{n} nahrávka",
-  "rail.syncing": "Synchronizace"
+  "rail.syncing": "Synchronizace",
+  "set.profileSources": "Viditelné zdroje",
+  "set.allSources": "Všechny zdroje"
 }

@@ -698,5 +698,7 @@
   "rail.expand": "Mở rộng menu",
   "rail.switchProfile": "Đổi hồ sơ",
   "rail.recordingRunning": "{n} bản ghi",
-  "rail.syncing": "Đang đồng bộ"
+  "rail.syncing": "Đang đồng bộ",
+  "set.profileSources": "Nguồn hiển thị",
+  "set.allSources": "Tất cả nguồn"
 }

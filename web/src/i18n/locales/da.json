@@ -698,5 +698,7 @@
   "rail.expand": "Vis menu",
   "rail.switchProfile": "Skift profil",
   "rail.recordingRunning": "{n} optagelse",
-  "rail.syncing": "Synkroniserer"
+  "rail.syncing": "Synkroniserer",
+  "set.profileSources": "Synlige kilder",
+  "set.allSources": "Alle kilder"
 }
