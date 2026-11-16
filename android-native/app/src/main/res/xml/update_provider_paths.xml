@@ -3,4 +3,6 @@
     <!-- Matches `File(filesDir, "updates")` in UpdateChecker. The OS install
          flow needs a content:// URI it can read across the package boundary. -->
     <files-path name="updates" path="updates/"/>
+    <!-- Export M3U des favoris : fichier temporaire partagé via la feuille de partage Android (cacheDir/exports). -->
+    <cache-path name="exports" path="exports/"/>
 </paths>

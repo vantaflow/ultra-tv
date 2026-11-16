@@ -1680,4 +1680,14 @@
     <string name="stream_info_reload">Recarregar</string>
     <string name="stream_info_title">Transmissão</string>
     <string name="perso_start_screen_hint">Escolha onde o app abre: Início, uma seção ou a última tela usada (fichas, player, busca e ajustes nunca são restaurados).</string>
+    <string name="fav_export_button">Exportar canais (M3U)</string>
+    <string name="fav_export_title">Exportar canais favoritos</string>
+    <string name="fav_export_warning">O arquivo M3U contém os links dos seus canais, com o usuário e a senha da sua assinatura. Guarde-o em um local privado e compartilhe apenas com pessoas de confiança.</string>
+    <string name="fav_export_save">Salvar arquivo</string>
+    <string name="fav_export_share">Compartilhar</string>
+    <string name="fav_export_cancel">Cancelar</string>
+    <string name="fav_export_none">Nenhum canal favorito pode ser exportado: os links desta fonte só funcionam dentro do Ultra TV.</string>
+    <string name="fav_export_failed">Falha na exportação</string>
+    <string name="fav_export_share_unavailable">Nenhum app disponível para compartilhar o arquivo</string>
+    <string name="fav_export_done">Exportado: %1$s</string>
 </resources>

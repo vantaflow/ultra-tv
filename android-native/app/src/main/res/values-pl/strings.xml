@@ -1616,4 +1616,14 @@
     <string name="stream_info_reload">Przeładuj</string>
     <string name="stream_info_title">Strumień</string>
     <string name="perso_start_screen_hint">Wybierz, co otwiera się przy uruchomieniu: ekran główny, dział lub ostatnio używany ekran (karty, odtwarzacz, wyszukiwanie i ustawienia nie są przywracane).</string>
+    <string name="fav_export_button">Eksportuj kanały (M3U)</string>
+    <string name="fav_export_title">Eksportuj ulubione kanały</string>
+    <string name="fav_export_warning">Plik M3U zawiera linki do strumieni Twoich kanałów razem z nazwą użytkownika i hasłem abonamentu. Trzymaj go w bezpiecznym miejscu i udostępniaj tylko zaufanym osobom.</string>
+    <string name="fav_export_save">Zapisz plik</string>
+    <string name="fav_export_share">Udostępnij</string>
+    <string name="fav_export_cancel">Anuluj</string>
+    <string name="fav_export_none">Żaden ulubiony kanał nie nadaje się do eksportu: linki tego źródła działają tylko w Ultra TV.</string>
+    <string name="fav_export_failed">Eksport nie powiódł się</string>
+    <string name="fav_export_share_unavailable">Brak aplikacji do udostępnienia pliku</string>
+    <string name="fav_export_done">Wyeksportowano: %1$s</string>
 </resources>

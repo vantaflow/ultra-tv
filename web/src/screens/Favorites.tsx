@@ -14,7 +14,8 @@ import { channelTarget } from "@/player/targets";
 import { usePrefs } from "@/state/prefs";
 import { useActiveSource } from "@/state/sources";
 import { useUi } from "@/state/ui";
-import { QBadge, StateCard } from "@/ui/common";
+import { buildM3u, countExportable, m3uFileName, type M3uEntry } from "@/lib/m3uExport";
+import { Modal, QBadge, StateCard } from "@/ui/common";
 import { Img } from "@/ui/Img";
 import { PosterCard } from "@/ui/Poster";
 import { NoSource } from "./states";
@@ -80,6 +81,35 @@ function Inner({ source }: { source: Source }) {
       if (Number.isFinite(id)) { e.preventDefault(); e.stopPropagation(); beginMove(id); }
     }
   };
+  // Export M3U : avertissement (les liens contiennent les identifiants), puis téléchargement du fichier.
+  const [exporting, setExporting] = useState(false);
+  const exportM3u = async () => {
+    setExporting(false);
+    const toast = useUi.getState().toast;
+    try {
+      // Toutes les chaînes favorites de la source (pas seulement l'onglet affiché), dans l'ordre choisi par l'utilisateur.
+      const rows = (await Promise.all(live.map((f) => db.channels.where("[sourceId+streamId]").equals([source.cid, f.refId]).first()))).filter((c): c is ChannelRow => !!c);
+      const chans = mergeOrder(rows, order, (c) => c.streamId);
+      const cats = await db.categories.where("[sourceId+kind]").equals([source.cid, "live"]).toArray();
+      const group = new Map(cats.map((c) => [c.extId, c.name] as const));
+      let urlOf: (c: ChannelRow) => string | undefined = (c) => c.url;
+      if (source.type === "xtream") {
+        const [{ liveUrl }, { credsOf }] = await Promise.all([import("@/net/xtream"), import("@/sync/core")]);
+        const creds = credsOf(source);
+        const ext = usePrefs.getState().liveFormat;
+        urlOf = (c) => liveUrl(creds, c.streamId, ext);
+      }
+      const entries: M3uEntry[] = chans.map((c) => ({ name: c.name, url: urlOf(c) ?? "", tvgId: c.epg, logo: c.logo, group: group.get(c.catExt), num: c.num }));
+      const count = countExportable(entries);
+      if (count === 0) { toast(t("fav.exportNone")); return; }
+      const href = URL.createObjectURL(new Blob([buildM3u(entries)], { type: "audio/x-mpegurl;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = href; a.download = m3uFileName(new Date());
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(href), 10_000);
+      toast(t("fav.exportDone", { n: count }));
+    } catch { toast(t("fav.exportFailed")); }
+  };
   const n = (k: Kind) => all.filter((f) => f.kind === k).length;
   const label = (k: Kind) => t(k === "live" ? "nav.live" : k === "movie" ? "nav.movies" : "nav.series");
   const chanGrid = (
@@ -108,7 +138,18 @@ function Inner({ source }: { source: Source }) {
   );
   return (
     <div className="page">
-      <div className="page-head"><h1>{t("fav.title")}</h1></div>
+      <div className="page-head">
+        <h1>{t("fav.title")}</h1>
+        {live.length > 0 && <button className="btn" onClick={() => setExporting(true)}>{t("fav.export")}</button>}
+      </div>
+      {exporting && (
+        <Modal title={t("fav.exportTitle")} onClose={() => setExporting(false)} foot={<>
+          <button className="btn" onClick={() => setExporting(false)}>{t("common.cancel")}</button>
+          <button className="btn primary" onClick={() => void exportM3u()}>{t("fav.exportDownload")}</button>
+        </>}>
+          <p className="muted">{t("fav.exportWarn")}</p>
+        </Modal>
+      )}
       <div className="chips" role="tablist">
         <button className="chip" role="tab" aria-selected={tab === "all"} onClick={() => setTab("all")}>{t("common.all")} <span className="n">{all.length}</span></button>
         {(["live", "movie", "series"] as const).map((k) => (

@@ -1724,4 +1724,14 @@
     <string name="stream_info_reload">إعادة التحميل</string>
     <string name="stream_info_title">البث</string>
     <string name="perso_start_screen_hint">اختر الشاشة التي يفتح عليها التطبيق: الرئيسية أو قسم أو آخر شاشة استخدمتها (لا تُستعاد صفحات التفاصيل والمشغّل والبحث والإعدادات).</string>
+    <string name="fav_export_button">تصدير القنوات (M3U)</string>
+    <string name="fav_export_title">تصدير القنوات المفضلة</string>
+    <string name="fav_export_warning">يحتوي ملف M3U على روابط بث قنواتك مع اسم المستخدم وكلمة المرور الخاصين باشتراكك. احتفظ به في مكان خاص ولا تشاركه إلا مع أشخاص تثق بهم.</string>
+    <string name="fav_export_save">حفظ الملف</string>
+    <string name="fav_export_share">مشاركة</string>
+    <string name="fav_export_cancel">إلغاء</string>
+    <string name="fav_export_none">لا توجد قناة مفضلة قابلة للتصدير: روابط هذا المصدر تعمل داخل Ultra TV فقط.</string>
+    <string name="fav_export_failed">فشل التصدير</string>
+    <string name="fav_export_share_unavailable">لا يوجد تطبيق لمشاركة الملف</string>
+    <string name="fav_export_done">تم التصدير: %1$s</string>
 </resources>

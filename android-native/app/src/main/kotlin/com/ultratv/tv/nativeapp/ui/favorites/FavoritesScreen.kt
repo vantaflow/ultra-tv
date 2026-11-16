@@ -39,6 +39,7 @@ import com.ultratv.tv.nativeapp.data.db.EpgDao
 import com.ultratv.tv.nativeapp.data.db.EpgEntity
 import com.ultratv.tv.nativeapp.data.db.MovieEntity
 import com.ultratv.tv.nativeapp.data.db.SeriesEntity
+import com.ultratv.tv.nativeapp.data.m3u.M3uExport
 import com.ultratv.tv.nativeapp.data.repo.CatalogRepository
 import com.ultratv.tv.nativeapp.data.repo.ProviderRepository
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -49,6 +50,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -95,6 +97,20 @@ class FavoritesViewModel @Inject constructor(
             catalog.seriesByRemoteIds(id, favs.map { it.remoteId })
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /**
+     * Contenu M3U de TOUTES les chaînes favorites de la source active (pas seulement les 500 affichées), ou null s'il n'y a rien
+     * d'exportable. Lu à la demande, hors du fil principal.
+     */
+    suspend fun exportM3u(): Pair<String, Int>? = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        val id = pid.first() ?: return@withContext null
+        val names = catalog.categories(id, "LIVE").first().associate { it.remoteId to it.name }
+        val entries = catalog.favoriteChannels(id, 1_000_000).first().map {
+            M3uExport.Entry(it.name, it.streamUrl, it.epgChannelId, it.logo, it.categoryId?.let(names::get), it.num)
+        }
+        val n = M3uExport.count(entries)
+        if (n == 0) null else M3uExport.build(entries) to n
+    }
 
     fun remove(kind: String, providerId: Long, remoteId: String) {
         viewModelScope.launch { catalog.setFavorite(providerId, kind, remoteId, false) }
@@ -187,6 +203,7 @@ fun FavoritesScreen(
                 else items(series.distinctBy { it.id }, key = { it.id }) { s -> VodCard(s.title, s.poster, Modifier, onClick = { onOpenSeries(s.id) }) }
             }
         }
+        if (channels.isNotEmpty() && tab <= 1) FavoritesExportButton(vm)
         Text(D.favHint, color = Ux.Text3, fontFamily = Manrope, fontSize = if (touch) 12.sp else 22.spx, modifier = if (touch) Modifier.padding(bottom = 8.dp) else Modifier)
     }
 }

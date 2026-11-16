@@ -1675,4 +1675,14 @@
     <string name="stream_info_reload">Recharger</string>
     <string name="stream_info_title">Flux</string>
     <string name="perso_start_screen_hint">Choisissez l\'écran d\'ouverture : l\'accueil, une rubrique ou le dernier écran utilisé (fiches, lecteur, recherche et réglages ne sont jamais rouverts).</string>
+    <string name="fav_export_button">Exporter les chaînes (M3U)</string>
+    <string name="fav_export_title">Exporter les chaînes favorites</string>
+    <string name="fav_export_warning">Le fichier M3U contient les liens des flux de vos chaînes, avec l\'identifiant et le mot de passe de votre abonnement. Gardez-le dans un endroit privé et ne le partagez qu\'avec des personnes de confiance.</string>
+    <string name="fav_export_save">Enregistrer le fichier</string>
+    <string name="fav_export_share">Partager</string>
+    <string name="fav_export_cancel">Annuler</string>
+    <string name="fav_export_none">Aucune chaîne favorite n\'est exportable : les liens de cette source ne fonctionnent que dans Ultra TV.</string>
+    <string name="fav_export_failed">Échec de l\'export</string>
+    <string name="fav_export_share_unavailable">Aucune appli disponible pour partager le fichier</string>
+    <string name="fav_export_done">Exporté : %1$s</string>
 </resources>
