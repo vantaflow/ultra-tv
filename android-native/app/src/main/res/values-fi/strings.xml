@@ -1655,4 +1655,6 @@
     <string name="pex_diag_fallback">Soittimen vaihto</string>
     <string name="pex_diag_copy">Kopioi raportti</string>
     <string name="pex_diag_copied">Raportti kopioitu (tunnukset piilotettu)</string>
+    <string name="prof_sources">Lähteet</string>
+    <string name="prof_sources_all">Kaikki lähteet</string>
 </resources>

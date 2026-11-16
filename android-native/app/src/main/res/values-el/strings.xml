@@ -1710,4 +1710,6 @@
     <string name="pex_diag_fallback">Αλλαγή αναπαραγωγέα</string>
     <string name="pex_diag_copy">Αντιγραφή αναφοράς</string>
     <string name="pex_diag_copied">Η αναφορά αντιγράφηκε (τα στοιχεία κρύφτηκαν)</string>
+    <string name="prof_sources">Πηγές</string>
+    <string name="prof_sources_all">Όλες οι πηγές</string>
 </resources>

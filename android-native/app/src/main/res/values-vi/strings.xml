@@ -1691,4 +1691,6 @@
     <string name="pex_diag_fallback">Chuyển trình phát</string>
     <string name="pex_diag_copy">Sao chép báo cáo</string>
     <string name="pex_diag_copied">Đã sao chép báo cáo (đã ẩn thông tin đăng nhập)</string>
+    <string name="prof_sources">Nguồn</string>
+    <string name="prof_sources_all">Tất cả nguồn</string>
 </resources>

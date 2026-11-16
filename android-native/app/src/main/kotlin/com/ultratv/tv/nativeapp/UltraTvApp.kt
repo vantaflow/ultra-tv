@@ -56,6 +56,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var traktRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository>
     @Inject lateinit var traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>
     @Inject lateinit var providerRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProviderRepository>
+    @Inject lateinit var profileSources: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileSources>
     @Inject lateinit var posters: dagger.Lazy<com.ultratv.tv.nativeapp.data.tmdb.PosterResolver>
     @Inject lateinit var downloads: dagger.Lazy<com.ultratv.tv.nativeapp.data.downloads.DownloadRepository>
 
@@ -219,6 +220,9 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         // runCatching : sous Robolectric, l'application est recréée à chaque test et ce réveil différé tombait pendant le
         // test SUIVANT (environnement détruit) — exception attribuée à un autre test (UncaughtExceptionsBeforeTest).
         bgScope.launch { kotlinx.coroutines.delay(8_000); runCatching { googleTv.get().start(bgScope) } }
+
+        // Sources visibles par profil : la source active suit le profil courant.
+        bgScope.launch { runCatching { profileSources.get().start(bgScope) } }
 
         // Téléchargements hors ligne : table de lecture locale, purge des sources supprimées, reprise de la file.
         bgScope.launch { runCatching { downloads.get().start(bgScope) } }

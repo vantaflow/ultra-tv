@@ -18,7 +18,14 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val repo: ProfileRepository,
     private val parental: ParentalStore,
+    private val providerRepo: com.ultratv.tv.nativeapp.data.repo.ProviderRepository,
 ) : ViewModel() {
+    /** Sources de l'appareil (pour choisir celles que voit un profil). */
+    val providers: StateFlow<List<com.ultratv.tv.nativeapp.data.db.ProviderEntity>> =
+        providerRepo.observeProviders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+    suspend fun sourcesOf(id: Long): List<String>? = repo.sourcesOf(id)
+    fun setSources(id: Long, names: List<String>?) = viewModelScope.launch { repo.setSourcesFor(id, names) }
+
     val profiles: StateFlow<List<ProfileEntity>> = repo.profiles
     val current: StateFlow<ProfileEntity?> = repo.current
     val startupMode: StateFlow<StartupMode> = repo.startupMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), StartupMode.ALWAYS_ASK)

@@ -1691,4 +1691,6 @@
     <string name="pex_diag_fallback">Přepnutí přehrávače</string>
     <string name="pex_diag_copy">Kopírovat zprávu</string>
     <string name="pex_diag_copied">Zpráva zkopírována (přihlašovací údaje skryty)</string>
+    <string name="prof_sources">Zdroje</string>
+    <string name="prof_sources_all">Všechny zdroje</string>
 </resources>

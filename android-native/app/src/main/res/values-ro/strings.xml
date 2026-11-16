@@ -1728,4 +1728,6 @@
     <string name="pex_diag_fallback">Schimbare de motor</string>
     <string name="pex_diag_copy">Copiază raportul</string>
     <string name="pex_diag_copied">Raport copiat (datele de acces ascunse)</string>
+    <string name="prof_sources">Surse</string>
+    <string name="prof_sources_all">Toate sursele</string>
 </resources>

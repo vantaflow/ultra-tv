@@ -1710,4 +1710,6 @@
     <string name="pex_diag_fallback">Skift af afspiller</string>
     <string name="pex_diag_copy">Kopiér rapport</string>
     <string name="pex_diag_copied">Rapport kopieret (loginoplysninger skjult)</string>
+    <string name="prof_sources">Kilder</string>
+    <string name="prof_sources_all">Alle kilder</string>
 </resources>

@@ -1722,4 +1722,6 @@
     <string name="pex_diag_fallback">Repli de moteur</string>
     <string name="pex_diag_copy">Copier le rapport</string>
     <string name="pex_diag_copied">Rapport copié (identifiants masqués)</string>
+    <string name="prof_sources_all">Toutes les sources</string>
+    <string name="prof_sources">Sources</string>
 </resources>

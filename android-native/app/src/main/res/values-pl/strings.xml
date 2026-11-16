@@ -1663,4 +1663,6 @@
     <string name="pex_diag_fallback">Zmiana silnika</string>
     <string name="pex_diag_copy">Kopiuj raport</string>
     <string name="pex_diag_copied">Skopiowano raport (dane logowania ukryte)</string>
+    <string name="prof_sources">Źródła</string>
+    <string name="prof_sources_all">Wszystkie źródła</string>
 </resources>

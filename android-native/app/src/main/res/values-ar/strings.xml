@@ -1771,4 +1771,6 @@
     <string name="pex_diag_fallback">التحويل إلى محرك آخر</string>
     <string name="pex_diag_copy">نسخ التقرير</string>
     <string name="pex_diag_copied">تم نسخ التقرير (البيانات السرية مخفية)</string>
+    <string name="prof_sources">المصادر</string>
+    <string name="prof_sources_all">كل المصادر</string>
 </resources>

@@ -53,6 +53,7 @@ class SettingsViewModel @Inject constructor(
     private val installIds: com.ultratv.tv.nativeapp.data.config.InstallIdStore,
     private val guideChecker: com.ultratv.tv.nativeapp.data.xmltv.GuideChecker,
     private val limits: com.ultratv.tv.nativeapp.data.prefs.ProviderLimitsStore,
+    private val profileSources: com.ultratv.tv.nativeapp.data.profile.ProfileSources,
 ) : ViewModel() {
 
     // ---- « Guide de cette source » (adresse EPG propre à une source) ----
@@ -340,6 +341,8 @@ class SettingsViewModel @Inject constructor(
     fun setDefault(id: Long) {
         viewModelScope.launch {
             repo.setDefault(id)
+            // Source choisie à la main : elle reste visible pour le profil courant.
+            profileSources.ensureVisible(id)
             _message.value = "Default provider changed."
         }
     }

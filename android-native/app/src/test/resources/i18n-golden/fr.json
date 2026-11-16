@@ -1748,5 +1748,7 @@
   "SimpleStrings.getOrType()": "Ou l’écrire :",
   "SimpleStrings.getHoldFav()": "Maintenir : favori",
   "SimpleStrings.getHoldRemove()": "Maintenir : retirer",
-  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choisissez l'\u00e9cran d'ouverture : l'accueil, une rubrique ou le dernier \u00e9cran utilis\u00e9 (fiches, lecteur, recherche et r\u00e9glages ne sont jamais rouverts)."
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choisissez l'\u00e9cran d'ouverture : l'accueil, une rubrique ou le dernier \u00e9cran utilis\u00e9 (fiches, lecteur, recherche et r\u00e9glages ne sont jamais rouverts).",
+  "ProfileStrings.getSources()": "Sources",
+  "ProfileStrings.getSourcesAll()": "Toutes les sources"
 }

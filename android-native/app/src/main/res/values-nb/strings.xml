@@ -1710,4 +1710,6 @@
     <string name="pex_diag_fallback">Bytte av motor</string>
     <string name="pex_diag_copy">Kopier rapport</string>
     <string name="pex_diag_copied">Rapport kopiert (påloggingsinfo skjult)</string>
+    <string name="prof_sources">Kilder</string>
+    <string name="prof_sources_all">Alle kilder</string>
 </resources>

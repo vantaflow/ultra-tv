@@ -1727,4 +1727,6 @@
     <string name="pex_diag_fallback">Troca de player</string>
     <string name="pex_diag_copy">Copiar relatório</string>
     <string name="pex_diag_copied">Relatório copiado (credenciais ocultas)</string>
+    <string name="prof_sources">Fontes</string>
+    <string name="prof_sources_all">Todas as fontes</string>
 </resources>

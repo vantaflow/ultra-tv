@@ -1691,4 +1691,6 @@
     <string name="pex_diag_fallback">สลับเครื่องเล่น</string>
     <string name="pex_diag_copy">คัดลอกรายงาน</string>
     <string name="pex_diag_copied">คัดลอกรายงานแล้ว (ซ่อนข้อมูลเข้าสู่ระบบ)</string>
+    <string name="prof_sources">แหล่งที่มา</string>
+    <string name="prof_sources_all">ทุกแหล่งที่มา</string>
 </resources>

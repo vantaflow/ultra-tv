@@ -1709,4 +1709,6 @@
     <string name="pex_diag_fallback">Engine fallback</string>
     <string name="pex_diag_copy">Copy report</string>
     <string name="pex_diag_copied">Report copied (credentials hidden)</string>
+    <string name="prof_sources">Sources</string>
+    <string name="prof_sources_all">All sources</string>
 </resources>

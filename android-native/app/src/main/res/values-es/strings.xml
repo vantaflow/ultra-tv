@@ -1713,4 +1713,6 @@
     <string name="pex_diag_fallback">Cambio de motor</string>
     <string name="pex_diag_copy">Copiar informe</string>
     <string name="pex_diag_copied">Informe copiado (credenciales ocultas)</string>
+    <string name="prof_sources">Fuentes</string>
+    <string name="prof_sources_all">Todas las fuentes</string>
 </resources>

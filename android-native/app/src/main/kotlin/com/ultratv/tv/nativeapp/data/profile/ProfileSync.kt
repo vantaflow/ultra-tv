@@ -10,7 +10,8 @@ import javax.inject.Singleton
 /** Profil tel que partagé entre appareils : nom, couleur, profil Enfants, date de modification, `on = false` = supprimé. Jamais de PIN. */
 /** [from] : ancien nom quand le profil vient d'être renommé (les autres appareils renomment au lieu de supprimer / recréer). */
 /** [l] : langue de l'interface du profil (null = non choisie). */
-data class SharedProfile(val n: String, val c: Int, val k: Boolean, val at: Long, val on: Boolean = true, val from: String? = null, val l: String? = null)
+/** [s] : noms des sources visibles du profil (null = toutes) ; champ facultatif, ignoré par les anciennes versions. */
+data class SharedProfile(val n: String, val c: Int, val k: Boolean, val at: Long, val on: Boolean = true, val from: String? = null, val l: String? = null, val s: List<String>? = null)
 
 /**
  * Journal local des modifications de profils (date de la dernière modification par nom, et suppressions) : c'est lui qui
@@ -46,14 +47,14 @@ object ProfileSyncLogic {
     }
 
     /** Ce que cet appareil envoie : ses profils (date du journal, sinon de création) et ses suppressions. */
-    fun local(profiles: List<ProfileEntity>, log: Map<String, SharedProfile>, langs: Map<Long, String> = emptyMap()): List<SharedProfile> {
+    fun local(profiles: List<ProfileEntity>, log: Map<String, SharedProfile>, langs: Map<Long, String> = emptyMap(), sources: Map<Long, List<String>> = emptyMap()): List<SharedProfile> {
         val names = profiles.map { key(it.name) }.toSet()
-        return profiles.map { p -> val l = log[key(p.name)]?.takeIf { it.on }; SharedProfile(p.name, p.color, p.isKids, l?.at ?: p.createdAt, true, l?.from, langs[p.id]) } +
+        return profiles.map { p -> val l = log[key(p.name)]?.takeIf { it.on }; SharedProfile(p.name, p.color, p.isKids, l?.at ?: p.createdAt, true, l?.from, langs[p.id], sources[p.id]?.takeIf { it.isNotEmpty() }) } +
             log.values.filter { !it.on && key(it.n) !in names }
     }
 
     /** Ce qu'il faut appliquer ici d'après la liste fusionnée reçue : le plus récent gagne, par nom. */
-    fun plan(profiles: List<ProfileEntity>, log: Map<String, SharedProfile>, remote: List<SharedProfile>, langs: Map<Long, String> = emptyMap()): List<Action> = buildList {
+    fun plan(profiles: List<ProfileEntity>, log: Map<String, SharedProfile>, remote: List<SharedProfile>, langs: Map<Long, String> = emptyMap(), sources: Map<Long, List<String>> = emptyMap()): List<Action> = buildList {
         // Renommages d'abord : « Papa » devenu « Papa 2 » ailleurs → on renomme le profil local au lieu de le supprimer
         // (sa tombe « Papa ») et d'en créer un vide (« Papa 2 »).
         val renamed = mutableSetOf<String>()
@@ -71,13 +72,13 @@ object ProfileSyncLogic {
             val localAt = log[k]?.at ?: l?.createdAt ?: 0L
             if (r.on) {
                 if (l == null) { if (r.at > localAt || log[k] == null) add(Action.Create(r)) }
-                else if (r.at > localAt && (l.color != r.c || l.isKids != r.k || (r.l != null && langs[l.id] != r.l))) add(Action.Update(l.id, r))
+                else if (r.at > localAt && (l.color != r.c || l.isKids != r.k || (r.l != null && langs[l.id] != r.l) || (r.s ?: emptyList<String>()) != (sources[l.id] ?: emptyList<String>()))) add(Action.Update(l.id, r))
             } else if (l != null && r.at > localAt) add(Action.Delete(l.id, r))
         }
     }
 
     fun toJson(list: List<SharedProfile>): String = JSONObject().put("profiles", JSONArray().apply {
-        list.forEach { p -> put(JSONObject().put("n", p.n).put("c", p.c).put("k", p.k).put("at", p.at).put("on", p.on).apply { p.from?.let { put("f", it) }; p.l?.let { put("l", it) } }) }
+        list.forEach { p -> put(JSONObject().put("n", p.n).put("c", p.c).put("k", p.k).put("at", p.at).put("on", p.on).apply { p.from?.let { put("f", it) }; p.l?.let { put("l", it) }; p.s?.takeIf { it.isNotEmpty() }?.let { put("s", JSONArray(it)) } }) }
     }).toString()
 
     fun parse(raw: String?): List<SharedProfile> = runCatching {
@@ -85,7 +86,8 @@ object ProfileSyncLogic {
         (0 until a.length()).mapNotNull { i ->
             val o = a.optJSONObject(i) ?: return@mapNotNull null
             val n = o.optString("n").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-            SharedProfile(n, o.optInt("c"), o.optBoolean("k"), o.optLong("at"), o.optBoolean("on", true), o.optString("f").trim().takeIf { it.isNotEmpty() }, o.optString("l").trim().takeIf { it.isNotEmpty() })
+            SharedProfile(n, o.optInt("c"), o.optBoolean("k"), o.optLong("at"), o.optBoolean("on", true), o.optString("f").trim().takeIf { it.isNotEmpty() }, o.optString("l").trim().takeIf { it.isNotEmpty() },
+                o.optJSONArray("s")?.let { a2 -> (0 until a2.length()).map { j -> a2.optString(j).trim() }.filter { it.isNotEmpty() } }?.takeIf { it.isNotEmpty() })
         }
     }.getOrDefault(emptyList())
 
