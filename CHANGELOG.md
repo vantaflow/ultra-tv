@@ -2,12 +2,9 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
-## [1.3.38] — 2026-11-16 (Android)
-
-### Technique
-- Mise à jour des dépendances (Dependabot) : Bump the android-mineures group in /android-native with 5 updates (#163).
-
 ## [Non publié]
+
+## [1.3.39] — 2026-11-16 (Android) · Bureau 1.2.64 · Worker
 
 ### Ajouté
 - Site ultratv.dpdns.org entièrement multilingue (anglais, français, espagnol, arabe, polonais) : connexion, inscription, tableau de bord, appairage, téléchargement ; sélecteur de langue en pied de page.
@@ -43,6 +40,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Supprimer une source sur un appareil ou depuis le tableau de bord la retire partout ; une suppression faite hors ligne est renvoyée plus tard.
 - Affectation des playlists aux appareils réparée (Android et bureau) : la fenêtre de partage affiche l'affectation actuelle, une même playlist peut aller sur plusieurs appareils, aussi depuis le tableau de bord.
 - Fire TV : filtres de lancement séparés, bannière et icône déclarées sur l'activité, fonction Fire TV marquée facultative.
+
+## [1.3.38] — 2026-11-16 (Android)
+
+### Technique
+- Mise à jour des dépendances (Dependabot) : Bump the android-mineures group in /android-native with 5 updates (#163).
 
 ## [1.3.37] — 2026-11-14 (Android)
 
