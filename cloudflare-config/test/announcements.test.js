@@ -138,3 +138,19 @@ describe("alertes dans la langue de l'application", () => {
     expect(activeAnnouncements([a], now, null, null, "fr")[0].i18n).toBeUndefined();
   });
 });
+
+import { parseAnnouncementForm } from "../src/announcements.js";
+describe("alertes : traductions du formulaire", () => {
+  it("garde les langues remplies, ignore les vides", () => {
+    const f = new FormData();
+    f.set("title", "Big update"); f.set("message", "Coming soon");
+    f.set("title_fr", "Grosse mise à jour"); f.set("message_fr", "Bientôt");
+    f.set("title_es", "Solo título");
+    const r = parseAnnouncementForm(f, 1_000);
+    expect(r.value.i18n).toEqual({ fr: { title: "Grosse mise à jour", message: "Bientôt" } });
+  });
+  it("sans traduction : pas de champ i18n", () => {
+    const f = new FormData(); f.set("message", "Hello");
+    expect(parseAnnouncementForm(f, 1_000).value.i18n).toBeUndefined();
+  });
+});

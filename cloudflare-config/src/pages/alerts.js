@@ -1,5 +1,6 @@
 // Alertes (administration) : programmation des messages affichés par les applications.
 import { escapeHtml as e } from "../http.js";
+import { ANN_LANGS } from "../announcements.js";
 
 export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
@@ -17,7 +18,7 @@ export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}
     const [st, label] = state(a);
     return `<article class="card ann ann-${e(a.level)}"><div class="card-title"><span class="kind ann-st ann-${st}">${e(label)}</span><span class="kind">${e(LEVEL[a.level] || a.level)}</span>${e(a.title || "(sans titre)")}</div>
 <p class="ann-msg">${e(a.message)}</p>
-<div class="card-meta">${e(AUD[a.audience || "all"] || a.audience)}${a.below ? ` · versions antérieures à ${e(a.below)}` : ""}${a.action === "update" ? " · bouton « Mettre à jour »" : ""} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
+<div class="card-meta">${a.i18n && Object.keys(a.i18n).length ? `Traduit : ${e(Object.keys(a.i18n).join(", "))} · ` : "Anglais seulement · "}${e(AUD[a.audience || "all"] || a.audience)}${a.below ? ` · versions antérieures à ${e(a.below)}` : ""}${a.action === "update" ? " · bouton « Mettre à jour »" : ""} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
 ${statLine(a)}
 <div class="actions">${st !== "ended" ? `<form method="post" action="/admin/announcements/${e(a.id)}/end" data-confirm="Arrêter la diffusion de cette alerte maintenant ?">${csrfInput}<button class="secondary" type="submit">Arrêter</button></form>` : ""}
 <form method="post" action="/admin/announcements/${e(a.id)}/delete" data-confirm="Supprimer cette alerte ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
@@ -26,8 +27,11 @@ ${statLine(a)}
   return `<section class="panel wide" id="alertes"><h2>Alertes</h2>
 <p class="muted small">Message affiché par les applications pendant la période choisie (vérifié au lancement puis toutes les 15 minutes). « Information » s'affiche en bandeau discret qui disparaît seul ; « Avertissement » et « Urgent » en fenêtre à valider. Chaque alerte s'affiche une fois par appareil, sauf « Urgent » : à chaque lancement jusqu'à la fin, et en bandeau pendant la lecture d'une vidéo.</p>
 <form method="post" action="/admin/announcements" class="ann-form">${csrfInput}
-<label for="ann-title">Titre</label><input id="ann-title" name="title" maxlength="80" placeholder="Maintenance du service"/>
-<label for="ann-msg">Message</label><textarea id="ann-msg" name="message" maxlength="600" rows="3" required placeholder="Le service sera indisponible dimanche de 2 h à 4 h."></textarea>
+<label for="ann-title">Titre <span class="muted">(anglais : affiché quand la langue de l'appli n'a pas de traduction)</span></label><input id="ann-title" name="title" maxlength="80" placeholder="Service maintenance"/>
+<label for="ann-msg">Message <span class="muted">(anglais)</span></label><textarea id="ann-msg" name="message" maxlength="600" rows="3" required placeholder="The service will be unavailable on Sunday from 2 to 4 am."></textarea>
+<details class="ann-i18n"><summary>Traductions <span class="muted">(facultatif : chaque appareil reçoit le texte dans sa langue)</span></summary>
+${Object.entries(ANN_LANGS).map(([l, name]) => `<fieldset class="ann-lang"><legend>${e(name)}</legend><input name="title_${l}" maxlength="80" placeholder="Titre" aria-label="Titre ${e(name)}"${l === "ar" ? ' dir="rtl"' : ""}/><textarea name="message_${l}" maxlength="600" rows="2" placeholder="Message" aria-label="Message ${e(name)}"${l === "ar" ? ' dir="rtl"' : ""}></textarea></fieldset>`).join("")}
+</details>
 <div class="row"><div class="grow"><label for="ann-level">Niveau</label><select id="ann-level" name="level">${opts(LEVEL, "info")}</select></div>
 <div class="grow"><label for="ann-aud">Appareils</label><select id="ann-aud" name="audience">${opts(AUD, "all")}</select></div></div>
 <div class="row"><div class="grow"><label for="ann-below">Versions antérieures à <span class="muted">(vide : toutes)</span></label><input id="ann-below" name="below" maxlength="20" pattern="[0-9]{1,4}([.][0-9]{1,4}){0,3}" placeholder="1.2.79"/></div>

@@ -100,6 +100,19 @@ function parseWhen(ms, local) {
  * Formulaire de création → { value } ou { error } (code de message du tableau de bord).
  * Début vide : tout de suite. Fin vide : jusqu'à suppression.
  */
+/** Langues des traductions (code sur 2 lettres, comme la recherche de `i18n` : « pt » sert le portugais du Brésil). */
+export const ANN_LANGS = { fr: "Français", es: "Español", ar: "العربية", pl: "Polski", pt: "Português", ro: "Română", nb: "Norsk", cs: "Čeština", fi: "Suomi", da: "Dansk", el: "Ελληνικά", th: "ไทย", vi: "Tiếng Việt" };
+
+/** Traductions du formulaire (`title_xx`, `message_xx`) : seules celles qui ont un message sont gardées. */
+export function parseAnnouncementI18n(form) {
+  const out = {};
+  for (const l of Object.keys(ANN_LANGS)) {
+    const message = clean(form.get(`message_${l}`), MESSAGE_MAX);
+    if (message) out[l] = { title: clean(form.get(`title_${l}`), TITLE_MAX), message };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 export function parseAnnouncementForm(form, now = Date.now(), id = null) {
   const title = clean(form.get("title"), TITLE_MAX);
   const message = clean(form.get("message"), MESSAGE_MAX);
@@ -113,5 +126,6 @@ export function parseAnnouncementForm(form, now = Date.now(), id = null) {
   const endAt = parseWhen(form.get("endMs"), form.get("end"));
   if (endAt && endAt <= startAt) return { error: "ann_dates" };
   if (endAt && endAt <= now) return { error: "ann_past" };
-  return { value: { id: id || crypto.randomUUID().replace(/-/g, "").slice(0, 16), title, message, level, audience, below: below || null, action, startAt, endAt, createdAt: now } };
+  const i18n = parseAnnouncementI18n(form);
+  return { value: { id: id || crypto.randomUUID().replace(/-/g, "").slice(0, 16), title, message, level, audience, below: below || null, action, startAt, endAt, createdAt: now, ...(i18n ? { i18n } : {}) } };
 }

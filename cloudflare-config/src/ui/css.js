@@ -288,6 +288,7 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px var(--mo
 .ann.ann-urgent{border-color:var(--acc)} .ann.ann-warning{border-color:var(--warn)}
 .kind.ann-st{background:var(--s2);color:var(--fg2)} .kind.ann-live{background:var(--ok-soft);color:var(--ok)} .kind.ann-ended{opacity:.65}
 .ann-form .row{gap:12px;align-items:flex-end}
+.ann-i18n{margin:8px 0}.ann-i18n summary{cursor:pointer;padding:6px 0}.ann-lang{border:1px solid var(--line,#333);border-radius:10px;padding:8px 10px;margin:8px 0;display:grid;gap:6px}.ann-lang legend{padding:0 6px;font-weight:600}
 .ann-form .row .grow{min-width:200px}
 /* ---- Choix de l'APK (/apk) : gros boutons pour la télécommande ---- */
 .apk-list{display:grid;gap:var(--sp-3);margin:var(--sp-4) 0}
