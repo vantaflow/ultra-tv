@@ -22,8 +22,8 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 - Distribution : compte Apple Developer payant (99 $/an) et validation App Store ; sans compte, seule l'installation par AltStore/Sideloadly est possible, avec une signature à refaire tous les 7 jours — peu praticable pour le grand public.
 - Décision en attente : pas de développement tant que la question du compte Apple n'est pas tranchée.
 
-**Serveurs multimédias personnels (Jellyfin, Emby) et partages NAS**
-- Parcourir en direct la bibliothèque d'un serveur Jellyfin ou Emby, avec sa propre recherche : rien à synchroniser, quelle que soit la taille de la bibliothèque.
+**Serveurs multimédias personnels (Jellyfin, Emby, Plex) et partages NAS**
+- Parcourir en direct la bibliothèque d'un serveur Jellyfin, Emby ou Plex, avec sa propre recherche : rien à synchroniser, quelle que soit la taille de la bibliothèque.
 - Ajouter des partages réseau (NAS : SMB, NFS, DLNA) comme source de films et de séries.
 
 **Espace Sport**
@@ -56,8 +56,8 @@ Ce qui est prévu ou à l'étude pour Ultra TV. Rien n'est promis à une date : 
 - Distribution: paid Apple Developer account ($99/year) and App Store review; without one, only AltStore/Sideloadly installs are possible, re-signed every 7 days — not practical for most people.
 - On hold: no development until the Apple account question is settled.
 
-**Personal media servers (Jellyfin, Emby) and NAS shares**
-- Browse a Jellyfin or Emby server's library live, with its own search: nothing to sync, whatever the library size.
+**Personal media servers (Jellyfin, Emby, Plex) and NAS shares**
+- Browse a Jellyfin, Emby or Plex server's library live, with its own search: nothing to sync, whatever the library size.
 - Add network shares (NAS: SMB, NFS, DLNA) as a source of movies and series.
 
 **Sports hub**
