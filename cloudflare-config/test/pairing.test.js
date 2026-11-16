@@ -10,6 +10,7 @@ describe("parcours normal : compte, appairage, fournisseur, lecture", () => {
     expect(start.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
     expect(start.pollSecret).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(start.expiresIn).toBeGreaterThan(0);
+    expect(start.interval).toBe(5); // intervalle d'interrogation imposé aux applis (quota de requêtes)
     // avant confirmation : en attente
     const pending = await call("/api/pair/poll", { method: "POST", ip: tvIp, json: { code: start.code, pollSecret: start.pollSecret } });
     expect(pending.status).toBe(202);

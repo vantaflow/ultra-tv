@@ -17,6 +17,7 @@ describe("envoi d'une source depuis le web (sans compte)", () => {
     expect(s.code).toMatch(/^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/);
     expect(s.secret.length).toBeGreaterThanOrEqual(32);
     expect(s.expiresIn).toBe(900);
+    expect(s.interval).toBe(5); // intervalle d'interrogation imposé aux applis (quota de requêtes)
   });
 
   it("parcours complet : envoi, remise à la TV une seule fois, rien d'exploitable en KV", async () => {

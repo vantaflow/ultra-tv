@@ -556,7 +556,7 @@ async function pairStart(req, env) {
   for (let i = 0; i < 5; i++) {
     const code = newPairCode();
     const r = await guardStub(env, `pair:${code}`).pairInit({ secretHash, label, ttlSec: PAIR_TTL_S });
-    if (r.ok) return json({ code: formatCode(code), pollSecret, expiresIn: PAIR_TTL_S, interval: 3 });
+    if (r.ok) return json({ code: formatCode(code), pollSecret, expiresIn: PAIR_TTL_S, interval: 5 });
   }
   return json({ error: "unavailable" }, 503);
 }
@@ -620,7 +620,7 @@ async function envoiStart(req, env) {
   for (let i = 0; i < 5; i++) {
     const code = newEnvoiCode();
     const r = await guardStub(env, `envoi:${code}`).envoiInit({ secretHash, installHash, ttlSec: ENVOI_TTL_S });
-    if (r.ok) return json({ code, secret, expiresIn: ENVOI_TTL_S, interval: 3 });
+    if (r.ok) return json({ code, secret, expiresIn: ENVOI_TTL_S, interval: 5 });
   }
   return json({ error: "unavailable" }, 503);
 }
