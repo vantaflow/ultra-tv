@@ -841,6 +841,9 @@
     <string name="pex_from_start">Od začátku</string>
     <string name="pex_seek_bar">Posuvník</string>
     <string name="pex_back_to_live">Zpět na živé vysílání</string>
+    <string name="pex_prev_programme">Předchozí pořad</string>
+    <string name="pex_next_programme">Další pořad</string>
+    <string name="pex_rewind_live">Zpět o 5 min</string>
     <string name="pex_subs_pill">Titulky</string>
     <string name="pex_subtitles_title">Titulky</string>
     <string name="pex_preview_text">Náhled titulků\ns vašimi nastaveními</string>

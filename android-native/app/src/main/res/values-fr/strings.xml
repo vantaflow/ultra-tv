@@ -848,6 +848,9 @@
     <string name="pex_from_start">Depuis le début</string>
     <string name="pex_seek_bar">Barre de progression</string>
     <string name="pex_back_to_live">Revenir au direct</string>
+    <string name="pex_prev_programme">Programme précédent</string>
+    <string name="pex_next_programme">Programme suivant</string>
+    <string name="pex_rewind_live">Reculer de 5 min</string>
     <string name="pex_subs_pill">Sous-titres</string>
     <string name="pex_subtitles_title">Sous-titres</string>
     <string name="pex_preview_text">Aperçu des sous-titres\navec vos réglages</string>

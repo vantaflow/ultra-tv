@@ -822,6 +822,9 @@
     <string name="pex_from_start">Od początku</string>
     <string name="pex_seek_bar">Pasek postępu</string>
     <string name="pex_back_to_live">Wróć na żywo</string>
+    <string name="pex_prev_programme">Poprzedni program</string>
+    <string name="pex_next_programme">Następny program</string>
+    <string name="pex_rewind_live">Cofnij o 5 min</string>
     <string name="pex_subs_pill">Napisy</string>
     <string name="pex_subtitles_title">Napisy</string>
     <string name="pex_preview_text">Podgląd napisów\nz Twoimi ustawieniami</string>

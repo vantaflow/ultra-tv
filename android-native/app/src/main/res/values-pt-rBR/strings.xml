@@ -852,6 +852,9 @@
     <string name="pex_from_start">Desde o início</string>
     <string name="pex_seek_bar">Barra de progresso</string>
     <string name="pex_back_to_live">Voltar ao vivo</string>
+    <string name="pex_prev_programme">Programa anterior</string>
+    <string name="pex_next_programme">Próximo programa</string>
+    <string name="pex_rewind_live">Voltar 5 min</string>
     <string name="pex_subs_pill">Legendas</string>
     <string name="pex_subtitles_title">Legendas</string>
     <string name="pex_preview_text">Prévia da legenda\ncom suas configurações</string>
