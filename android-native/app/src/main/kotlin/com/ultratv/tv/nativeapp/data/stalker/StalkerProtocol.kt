@@ -84,7 +84,7 @@ object StalkerLink {
         val type = (if (q < 0) rest.substring(slash + 1) else rest.substring(slash + 1, q)).ifBlank { return null }
         val params = if (q < 0) emptyMap() else rest.substring(q + 1).split('&').mapNotNull { kv ->
             val i = kv.indexOf('=')
-            if (i <= 0) null else kv.substring(0, i) to java.net.URLDecoder.decode(kv.substring(i + 1), "UTF-8")
+            if (i <= 0) null else kv.substring(0, i) to com.ultratv.tv.nativeapp.nav.SafeDecode.url(kv.substring(i + 1))
         }.toMap()
         val cmd = params["cmd"] ?: return null
         return Parsed(pid, type, cmd, params["series"]?.toIntOrNull(), params["ch"]?.takeIf { it.isNotBlank() })

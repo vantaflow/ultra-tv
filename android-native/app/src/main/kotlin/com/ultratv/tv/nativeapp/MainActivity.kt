@@ -818,8 +818,9 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         ) { entry ->
             val rawUrl = entry.arguments?.getString("url").orEmpty()
             val rawTitle = entry.arguments?.getString("title").orEmpty()
-            val url = java.net.URLDecoder.decode(rawUrl, "UTF-8")
-            val title = java.net.URLDecoder.decode(rawTitle, "UTF-8")
+            // Tolérant : la navigation a déjà décodé une fois, un « % » littéral du titre ne doit pas planter.
+            val url = com.ultratv.tv.nativeapp.nav.SafeDecode.url(rawUrl)
+            val title = com.ultratv.tv.nativeapp.nav.SafeDecode.url(rawTitle)
             PlayerScreen(
                 url = url, title = title, onBack = { nav.popBackStack() }, onHome = { nav.popBackStack(Routes.HOME, false) },
                 // Raccourcis de l'OSD du Direct (Ma liste, Films, Séries, Enregistrements, Réglages) : le lecteur se ferme, puis la route s'ouvre.

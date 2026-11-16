@@ -1,7 +1,6 @@
 package com.ultratv.tv.nativeapp.nav
 
 import java.net.URI
-import java.net.URLDecoder
 import java.net.URLEncoder
 
 /**
@@ -27,7 +26,7 @@ sealed interface DeepLink {
         const val SCHEME = "ultratv"
 
         private fun enc(s: String) = URLEncoder.encode(s, "UTF-8").replace("+", "%20")
-        private fun dec(s: String) = URLDecoder.decode(s.replace("+", "%2B"), "UTF-8")
+        private fun dec(s: String) = SafeDecode.url(s.replace("+", "%2B"))
 
         fun live(providerId: Long, remoteId: String) = "$SCHEME://live/$providerId/${enc(remoteId)}"
         fun movie(providerId: Long, remoteId: String) = "$SCHEME://movie/$providerId/${enc(remoteId)}"
