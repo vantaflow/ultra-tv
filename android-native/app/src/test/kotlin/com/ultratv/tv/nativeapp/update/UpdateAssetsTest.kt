@@ -18,6 +18,17 @@ class UpdateAssetsTest {
         assertEquals("https://exemple.invalid/SHA256SUMS.txt", c.sumsUrl)
     }
 
+    @Test fun fireOs6_android7_prendLApkAndroid7_etLesAutresGardentLApkNormal() {
+        val withA7 = full + a("UltraTV-1.1.1-armeabi-v7a-android7.apk")
+        val c = UpdateAssets.choose(withA7, "1.1.1", listOf("armeabi-v7a", "armeabi"), sdkInt = 25)!!
+        assertEquals("UltraTV-1.1.1-armeabi-v7a-android7.apk", c.apkName)
+        assertEquals("https://exemple.invalid/SHA256SUMS.txt", c.sumsUrl)
+        // Android 9+ : jamais l'APK android7 (sans lineage, il ne s'installerait pas par-dessus une ancienne clé).
+        assertEquals("UltraTV-1.1.1-armeabi-v7a.apk", UpdateAssets.choose(withA7, "1.1.1", listOf("armeabi-v7a"), sdkInt = 28)!!.apkName)
+        // Release sans APK android7 : repli sur le choix habituel.
+        assertEquals("UltraTV-1.1.1-armeabi-v7a.apk", UpdateAssets.choose(full, "1.1.1", listOf("armeabi-v7a"), sdkInt = 25)!!.apkName)
+    }
+
     @Test fun boxArm64_prendLApkArm64_premierAbiDisponible() {
         assertEquals("UltraTV-1.1.1-arm64-v8a.apk", UpdateAssets.choose(full, "1.1.1", listOf("arm64-v8a", "armeabi-v7a", "armeabi"))!!.apkName)
     }
