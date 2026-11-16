@@ -584,6 +584,8 @@
   "sport.settingD": "Adiciona uma entrada Esporte ao menu e uma linha “Esporte ao vivo” ao Início, criadas a partir do seu próprio guia. Desativada por padrão.",
   "sport.liveNow": "Ao vivo agora",
   "sport.upcoming": "Em breve · 48 h",
+  "sport.alsoOn": "Também em",
+  "sport.alsoOnN": "Também em {n}",
   "sport.channels": "Canais de esporte",
   "sport.homeRow": "Esporte ao vivo",
   "sport.fromGuide": "Com base no guia da sua fonte",

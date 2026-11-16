@@ -1561,6 +1561,8 @@
     <string name="sport_record">Record</string>
     <string name="sport_today">Today</string>
     <string name="sport_tomorrow">Tomorrow</string>
+    <string name="sport_also_on">Also on</string>
+    <string name="sport_also_on_n">Also on %1$d</string>
     <string name="sport_empty_live">No sport on air right now.</string>
     <string name="sport_empty_upcoming">No sport announced in the next 48 hours.</string>
     <string name="sport_no_channels">No sports channel found in your source.</string>

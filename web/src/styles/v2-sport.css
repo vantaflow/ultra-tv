@@ -52,6 +52,19 @@
 .sp-ch:hover .go, .sp-ch:focus-visible .go { opacity: 1; }
 .sp-ch:hover .sp-chan-logo, .sp-ch:focus-visible .sp-chan-logo { background: var(--sel-logo); }
 .home .sp-live { flex-basis: 20rem; }
+/* « Aussi sur » : autres chaînes du même événement. */
+.sp-live-wrap { flex: 0 0 22rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; min-width: 0; }
+.sp-live-wrap > .sp-live { flex: 0 0 auto; align-self: stretch; }
+.sp-also { grid-column: 1 / -1; }
+.sp-also-list { display: flex; flex-direction: column; gap: 0.4rem; align-self: stretch; min-width: 0; }
+.sp-also-ch { display: flex; align-items: center; gap: 0.7rem; padding: 0.5rem 0.75rem; border-radius: 1rem; background: var(--surface-2); text-align: start; min-width: 0; }
+.sp-also-ch .tx { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.sp-also-ch .tx b { font-weight: 800; font-size: 0.9rem; }
+.sp-also-ch .sp-badges { color: var(--text-3); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; }
+.sp-also-ch .go { flex: none; opacity: 0.6; }
+.sp-also-ch:hover, .sp-also-ch:focus-visible { background: var(--sel-bg); color: var(--sel-ink); outline: none; }
+.sp-also-ch:hover .sp-badges, .sp-also-ch:focus-visible .sp-badges { color: var(--sel-sub); }
+.home .sp-live-wrap { flex-basis: 20rem; }
 @media (max-width: 1100px) { .sp-cols { grid-template-columns: minmax(0, 1fr); } }
 
 /* Bouton d'action « posé » (rappel actif, enregistrement programmé). */

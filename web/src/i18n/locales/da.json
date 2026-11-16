@@ -584,6 +584,8 @@
   "sport.settingD": "Tilføjer et Sport-punkt i menuen og en række “Sport live” på startsiden, bygget ud fra din egen guide. Slået fra som standard.",
   "sport.liveNow": "Live nu",
   "sport.upcoming": "Kommer snart · 48 t",
+  "sport.alsoOn": "Også på",
+  "sport.alsoOnN": "Også på {n}",
   "sport.channels": "Sportskanaler",
   "sport.homeRow": "Sport live",
   "sport.fromGuide": "Baseret på din kildes guide",

@@ -1543,6 +1543,8 @@
     <string name="sport_record">Nahrávat</string>
     <string name="sport_today">Dnes</string>
     <string name="sport_tomorrow">Zítra</string>
+    <string name="sport_also_on">Také na</string>
+    <string name="sport_also_on_n">Také na %1$d</string>
     <string name="sport_empty_live">Právě se nevysílá žádný sport.</string>
     <string name="sport_empty_upcoming">V následujících 48 hodinách není oznámen žádný sport.</string>
     <string name="sport_no_channels">Ve vašem zdroji nebyl nalezen žádný sportovní kanál.</string>

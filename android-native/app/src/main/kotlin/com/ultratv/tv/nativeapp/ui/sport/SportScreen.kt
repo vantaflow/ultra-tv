@@ -53,6 +53,7 @@ import com.ultratv.tv.nativeapp.data.sport.SportDay
 import com.ultratv.tv.nativeapp.data.sport.SportEntry
 import com.ultratv.tv.nativeapp.data.sport.SportKind
 import com.ultratv.tv.nativeapp.data.sport.SportLogic
+import com.ultratv.tv.nativeapp.data.sport.SportMatching
 import com.ultratv.tv.nativeapp.data.sport.matchLineOf
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
@@ -62,6 +63,8 @@ import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
 import com.ultratv.tv.nativeapp.i18n.remindSet
 import com.ultratv.tv.nativeapp.i18n.reminderOn
+import com.ultratv.tv.nativeapp.i18n.sportAlsoOn
+import com.ultratv.tv.nativeapp.i18n.sportAlsoOnN
 import com.ultratv.tv.nativeapp.i18n.sportChannels
 import com.ultratv.tv.nativeapp.i18n.sportEmptyLive
 import com.ultratv.tv.nativeapp.i18n.sportEmptyUpcoming
@@ -130,6 +133,8 @@ fun SportScreen(
     val clock = rememberEpgClock()
     val touch = LocalTouch.current
     var pinFor by remember { mutableStateOf<ChannelEntity?>(null) }
+    // Programme dont on affiche « Aussi sur » (les autres chaînes du même événement) ; on ne change jamais de chaîne d'office.
+    var alsoFor by remember { mutableStateOf<SportEntry?>(null) }
     // Rappels posés pendant cette visite : le bouton passe à « Rappel activé » (pas de doublon au second appui).
     var reminded by remember { mutableStateOf(emptySet<String>()) }
 
@@ -162,14 +167,38 @@ fun SportScreen(
     }
 
     androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) {
-        if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
-        else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings)
+        if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
+        else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
+    }
+    alsoFor?.let { e ->
+        val others = st.alsoOn[SportMatching.entryKey(e)].orEmpty()
+        val options = alsoOnOptions(others)
+        if (options.isNotEmpty()) com.ultratv.tv.nativeapp.ui.design.ChoiceDialog(
+            D.sportAlsoOn, options, null,
+            onPick = { id -> alsoFor = null; others.firstOrNull { it.channel.id == id }?.let { play(it.channel) } }, onDismiss = { alsoFor = null },
+        )
     }
 
     pinFor?.let { c -> PinPromptDialog(title = c.title, onUnlocked = { pinFor = null; vm.play(c) { onPlay(c.streamUrl, c.title) } }, onCancel = { pinFor = null }) }
 }
 
 private fun entryKey(e: SportEntry) = "${e.channel.id}-${e.prog.startMs}"
+
+/** Nombre d'autres chaînes qui diffusent le même événement que [e] (0 = aucune). */
+private fun alsoCount(st: SportState, e: SportEntry): Int = st.alsoOn[SportMatching.entryKey(e)]?.size ?: 0
+
+/** Lignes du dialogue « Aussi sur » : numéro, chaîne et badges (qualité · langue) ; libellés uniques (clé de liste). */
+internal fun alsoOnOptions(others: List<SportEntry>): List<Pair<Long, String>> {
+    val seen = HashSet<String>()
+    return others.map { e ->
+        val c = e.channel
+        val badges = SportMatching.badgesOf(c)
+        var label = (if (c.num > 0) "${c.num} · " else "") + c.title + (if (badges.isNotEmpty()) "  [$badges]" else "")
+        var n = 2
+        while (!seen.add(label)) label = "${c.title} #${n++}"
+        c.id to label
+    }
+}
 
 private fun kindLabel(D: DesignStrings, k: SportKind): String = when (k) {
     SportKind.FOOTBALL -> D.sportKindFootball
@@ -195,6 +224,7 @@ internal fun SportTvContent(
     onPlay: (ChannelEntity) -> Unit, onRemind: (SportEntry) -> Unit, onRecord: (SportEntry) -> Unit, onGoSettings: () -> Unit,
     modifier: Modifier = Modifier,
     initialKind: SportKind? = null,
+    onAlso: (SportEntry) -> Unit = {},
 ) {
     val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
     var kindName by rememberSaveable { mutableStateOf(initialKind?.name) }
@@ -240,7 +270,10 @@ internal fun SportTvContent(
                             Modifier.rowBleedStart(RowBleed).focusRestorer().focusGroup(),
                             horizontalArrangement = Arrangement.spacedBy(18.design), contentPadding = PaddingValues(start = RowBleed, end = 24.design),
                         ) {
-                            items(live, key = { "l${it.channel.id}" }, contentType = { "live" }) { e -> SportLiveCard(e, clock, 408.design) { onPlay(e.channel) } }
+                            items(live, key = { "l${it.channel.id}" }, contentType = { "live" }) { e ->
+                                val n = alsoCount(st, e)
+                                SportLiveCard(e, clock, 408.design, alsoCount = n, onLongClick = if (n > 0) ({ onAlso(e) }) else null) { onPlay(e.channel) }
+                            }
                         }
                     }
                 }
@@ -256,6 +289,7 @@ internal fun SportTvContent(
                                     UpcomingRowTv(
                                         u, D, locale, clock.value, reminded = k in reminded, first = u === upcoming.first(),
                                         onRemind = { onRemind(u.entry) }, onRecord = { onRecord(u.entry) },
+                                        alsoCount = alsoCount(st, u.entry), onAlso = { onAlso(u.entry) },
                                     )
                                 }
                             }
@@ -308,7 +342,7 @@ private fun shortDay(D: DesignStrings, dayStartMs: Long, nowMs: Long, locale: Lo
 @Composable
 private fun UpcomingRowTv(
     u: UpcomingItem, D: DesignStrings, locale: Locale, nowMs: Long, reminded: Boolean, first: Boolean,
-    onRemind: () -> Unit, onRecord: () -> Unit,
+    onRemind: () -> Unit, onRecord: () -> Unit, alsoCount: Int = 0, onAlso: () -> Unit = {},
 ) {
     val e = u.entry
     val kind = remember(e.prog.title, e.prog.description) { kindOf(e) }
@@ -325,6 +359,7 @@ private fun UpcomingRowTv(
                 Text(title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(sub, color = Ux.Text3, fontFamily = Manrope, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+            if (alsoCount > 0) SportPill(D.sportAlsoOnN(alsoCount), onAlso)
             SportPill(if (reminded) D.reminderOn else D.sportRemind, onRemind, active = reminded)
             SportPill(D.sportRecord, onRecord, icon = Icons.Record)
         }
@@ -357,7 +392,7 @@ private fun liveBadgeText(D: DesignStrings, e: SportEntry, kind: SportKind?, now
 
 /** Carte d'un direct (maquette) : compétition + minute, équipes, logo · numéro · nom de la chaîne, progression. */
 @Composable
-internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, onClick: () -> Unit) {
+internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, alsoCount: Int = 0, onLongClick: (() -> Unit)? = null, onClick: () -> Unit) {
     val D = LocalDs.current
     val c = e.channel
     val line = remember(e.prog.title) { matchLineOf(e.prog.title) }
@@ -366,7 +401,7 @@ internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, onClick
     // Sur le fond de focus (clair en sombre, encre en clair), l'intitulé reprend l'accent de l'autre palette.
     val focusedComp = if (Ux.palette.light) DarkPalette.accentText else LightPalette.accentText
     FocusSurface(
-        onClick = onClick, shape = RoundedCornerShape(24.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.03f, ringWidth = 0.dp,
+        onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(24.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.03f, ringWidth = 0.dp,
         modifier = Modifier.width(width).height(250.designT),
     ) { f ->
         Column(Modifier.fillMaxSize().padding(20.design), verticalArrangement = Arrangement.SpaceBetween) {
@@ -391,6 +426,8 @@ internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, onClick
                     (if (c.num > 0) "${c.num} · " else "") + c.title,
                     color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
+                // Appui long : les autres chaînes du même événement (« Aussi sur »).
+                if (alsoCount > 0) Text(D.sportAlsoOnN(alsoCount), color = if (f) Ux.OnFocus2 else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 14.spx, maxLines = 1)
             }
             EpgProgressBar(e.prog.startMs, e.prog.endMs, clock, heightDp = 4f, track = if (f) Ux.TextOnLight.copy(alpha = 0.12f) else Ux.Text.copy(alpha = 0.10f))
         }
@@ -461,6 +498,7 @@ private fun SportChannelCard(c: ChannelEntity, now: String?, modifier: Modifier,
 private fun SportTouchContent(
     st: SportState, D: DesignStrings, clock: State<Long>, reminded: Set<String>,
     onPlay: (ChannelEntity) -> Unit, onRemind: (SportEntry) -> Unit, onRecord: (SportEntry) -> Unit, onGoSettings: () -> Unit,
+    onAlso: (SportEntry) -> Unit = {},
 ) {
     val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
     val nowByChannel = remember(st.live) { st.live.associate { it.channel.id to it.prog.title } }
@@ -486,7 +524,10 @@ private fun SportTouchContent(
                     if (st.live.isEmpty()) item(key = "live-empty") { Empty(D.sportEmptyLive) }
                     else item(key = "live") {
                         LazyRow(Modifier.rowBleedStart(RowBleed).focusRestorer().focusGroup(), horizontalArrangement = Arrangement.spacedBy(24.design), contentPadding = PaddingValues(start = RowBleed, end = 48.design)) {
-                            items(st.live, key = { "l${it.channel.id}" }, contentType = { "live" }) { e -> SportLiveCard(e, clock, 260.dp) { onPlay(e.channel) } }
+                            items(st.live, key = { "l${it.channel.id}" }, contentType = { "live" }) { e ->
+                                val n = alsoCount(st, e)
+                                SportLiveCard(e, clock, 260.dp, alsoCount = n, onLongClick = if (n > 0) ({ onAlso(e) }) else null) { onPlay(e.channel) }
+                            }
                         }
                     }
                     // ── À venir (48 h), groupé par jour ──
@@ -496,7 +537,7 @@ private fun SportTouchContent(
                         for (day in st.upcoming) {
                             item(key = "d${day.dayStartMs}") { DayLabel(dayLabel(D, day, clock.value, locale)) }
                             items(day.entries, key = { "u${entryKey(it)}" }, contentType = { "upcoming" }) { e ->
-                                UpcomingRowTouch(e, D, reminded = entryKey(e) in reminded, onRemind = { onRemind(e) }, onRecord = { onRecord(e) })
+                                UpcomingRowTouch(e, D, reminded = entryKey(e) in reminded, onRemind = { onRemind(e) }, onRecord = { onRecord(e) }, alsoCount = alsoCount(st, e), onAlso = { onAlso(e) })
                             }
                         }
                     }
@@ -533,7 +574,7 @@ private fun dayLabel(D: DesignStrings, day: SportDay, nowMs: Long, locale: Local
 
 /** Un programme à venir (tactile) : heure, chaîne, titre, puis « Me rappeler » et « Enregistrer » dessous. */
 @Composable
-private fun UpcomingRowTouch(e: SportEntry, D: DesignStrings, reminded: Boolean, onRemind: () -> Unit, onRecord: () -> Unit) {
+private fun UpcomingRowTouch(e: SportEntry, D: DesignStrings, reminded: Boolean, onRemind: () -> Unit, onRecord: () -> Unit, alsoCount: Int = 0, onAlso: () -> Unit = {}) {
     val c = e.channel
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.design)).background(Ux.Card2).padding(horizontal = 20.design, vertical = 14.design), verticalArrangement = Arrangement.spacedBy(12.design)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design)) {
@@ -545,6 +586,7 @@ private fun UpcomingRowTouch(e: SportEntry, D: DesignStrings, reminded: Boolean,
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
+            if (alsoCount > 0) SportPill(D.sportAlsoOnN(alsoCount), onAlso)
             SportPill(if (reminded) D.reminderOn else D.sportRemind, onRemind, active = reminded)
             SportPill(D.sportRecord, onRecord, icon = Icons.Record)
         }

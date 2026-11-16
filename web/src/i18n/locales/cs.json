@@ -604,6 +604,8 @@
   "sport.settingD": "Přidá do nabídky položku Sport a na domovskou obrazovku řádek „Sport živě“, sestavené z vašeho vlastního průvodce. Ve výchozím stavu vypnuto.",
   "sport.liveNow": "Právě živě",
   "sport.upcoming": "Brzy · 48 h",
+  "sport.alsoOn": "Také na",
+  "sport.alsoOnN": "Také na {n}",
   "sport.channels": "Sportovní kanály",
   "sport.homeRow": "Sport živě",
   "sport.fromGuide": "Podle průvodce vašeho zdroje",

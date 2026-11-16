@@ -594,6 +594,8 @@
   "sport.settingD": "Ajoute une entrée Sport au menu et une rangée « Sport en direct » à l’accueil, tirées de votre propre guide. Désactivée par défaut.",
   "sport.liveNow": "En direct maintenant",
   "sport.upcoming": "À venir · 48 h",
+  "sport.alsoOn": "Aussi sur",
+  "sport.alsoOnN": "Aussi sur {n}",
   "sport.channels": "Chaînes sport",
   "sport.homeRow": "Sport en direct",
   "sport.fromGuide": "D’après le guide de votre source",

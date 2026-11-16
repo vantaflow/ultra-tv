@@ -594,6 +594,8 @@
   "sport.settingD": "Adaugă o intrare Sport în meniu și un rând „Sport în direct” pe ecranul principal, construite din propriul tău ghid. Dezactivată implicit.",
   "sport.liveNow": "Acum în direct",
   "sport.upcoming": "Urmează · 48 h",
+  "sport.alsoOn": "Și pe",
+  "sport.alsoOnN": "Și pe {n}",
   "sport.channels": "Canale sportive",
   "sport.homeRow": "Sport în direct",
   "sport.fromGuide": "Pe baza ghidului sursei tale",

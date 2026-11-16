@@ -1577,6 +1577,8 @@
     <string name="sport_record">Gravar</string>
     <string name="sport_today">Hoje</string>
     <string name="sport_tomorrow">Amanhã</string>
+    <string name="sport_also_on">Também em</string>
+    <string name="sport_also_on_n">Também em %1$d</string>
     <string name="sport_empty_live">Nenhum esporte no ar agora.</string>
     <string name="sport_empty_upcoming">Nenhum esporte anunciado nas próximas 48 horas.</string>
     <string name="sport_no_channels">Nenhum canal de esportes encontrado na sua fonte.</string>

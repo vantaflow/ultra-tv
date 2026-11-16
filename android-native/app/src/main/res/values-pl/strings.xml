@@ -1511,6 +1511,8 @@
     <string name="sport_record">Nagraj</string>
     <string name="sport_today">Dzisiaj</string>
     <string name="sport_tomorrow">Jutro</string>
+    <string name="sport_also_on">Także na</string>
+    <string name="sport_also_on_n">Także na %1$d</string>
     <string name="sport_empty_live">Teraz nie ma transmisji sportowych.</string>
     <string name="sport_empty_upcoming">Brak zapowiedzi sportowych w ciągu najbliższych 48 godzin.</string>
     <string name="sport_no_channels">Nie znaleziono kanału sportowego w Twoim źródle.</string>
