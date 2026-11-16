@@ -16,13 +16,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 const val POSTER_TTL_MS = 30L * 24 * 3_600_000
-private const val POSTER_MAX_PARALLEL = 3
+private const val POSTER_MAX_PARALLEL = 4
+/** Une vignette doit rester à l'écran ce délai avant qu'on lance une recherche réseau (anti-rebond au défilement). */
+const val POSTER_SETTLE_MS = 500L
 
 /**
  * Affiches de repli : quand un film / une série n'a pas d'affiche (ou qu'elle ne charge pas), on la cherche sur
  * TMDB (via le proxy du Worker) avec le titre nettoyé + l'année, puis sans l'année. Le résultat — « rien trouvé »
- * compris — est mémorisé 30 jours dans `tmdb_info` (clé `poster_<kind>` / titre normalisé). 3 requêtes
+ * compris — est mémorisé 30 jours dans `tmdb_info` (clé `poster_<kind>` / titre normalisé). 4 requêtes
  * simultanées au plus ; aucune requête tant que l'appareil n'est pas appairé ; une erreur réseau n'est pas mémorisée.
+ *
+ * Économie de requêtes (défilement d'une catégorie VOD) : titre qui ne ressemble pas à un film ignoré
+ * ([TmdbTitleFilter]), recherche lancée seulement si la vignette reste affichée [settleMs] (la coroutine de la
+ * cellule est annulée quand elle quitte l'écran), « rien trouvé » mémorisé aussi sans l'année, 429 : pause
+ * (voir [TmdbRateLimitedException]), rien n'est mémorisé.
  */
 @Singleton
 class PosterResolver internal constructor(
@@ -30,9 +37,10 @@ class PosterResolver internal constructor(
     private val dao: TmdbDao,
     private val lang: suspend () -> String,
     private val clock: () -> Long,
+    private val settleMs: Long = 0L,
 ) {
     @Inject constructor(api: TmdbApi, dao: TmdbDao, prefs: UserPreferencesStore) :
-        this(api, dao, { defaultLang(prefs) }, System::currentTimeMillis)
+        this(api, dao, { defaultLang(prefs) }, System::currentTimeMillis, POSTER_SETTLE_MS)
 
     private val gate = Semaphore(POSTER_MAX_PARALLEL)
     // « » = rien trouvé. BORNÉ (LRU, 1 500 titres) : sur une box allumée des jours, il grossissait à chaque titre vu.
@@ -50,6 +58,7 @@ class PosterResolver internal constructor(
     suspend fun resolve(kind: TmdbKind, rawTitle: String, year: Int?): String? {
         if (!api.isEnabled() || rawTitle.isBlank()) return null
         val q = tmdbQueryFor(rawTitle, year)
+        if (!TmdbTitleFilter.looksLikeTitle(rawTitle) || !TmdbTitleFilter.looksLikeTitle(q.title)) return null         // pas un film : aucune recherche
         val rowKind = "poster_${kind.path}"
         val key = SearchDedup.fold(q.title) + "|" + (q.year ?: 0)
         if (key.startsWith("|")) return null
@@ -64,17 +73,32 @@ class PosterResolver internal constructor(
             memory[mk] = p?.let { TmdbImages.poster342(it) }.orEmpty()
             return p?.let { TmdbImages.poster342(it) }
         }
+        // « Rien trouvé » déjà connu pour ce titre sans année : l'année ne changera rien.
+        if (q.year != null) {
+            val anyYear = dao.get(rowKind, 0L, SearchDedup.fold(q.title) + "|0")
+            if (anyYear != null && anyYear.posterPath == null && clock() - anyYear.fetchedAt < POSTER_TTL_MS) {
+                memory[mk] = ""
+                return null
+            }
+        }
+        // Anti-rebond : la vignette doit rester affichée ; sortie de l'écran = annulation, aucune requête.
+        if (settleMs > 0) kotlinx.coroutines.delay(settleMs)
         val path = try {
             gate.withPermit {
                 val l = lang()
                 api.searchPoster(kind, q, l) ?: if (q.year != null) api.searchPoster(kind, q.copy(year = null), l) else null
             }
+        } catch (e: TmdbRateLimitedException) {
+            // 429 : pause gérée par l'API (Retry-After) ; ni cache négatif ni nouvel essai immédiat.
+            return cached?.posterPath?.let { TmdbImages.poster342(it) }
         } catch (e: java.io.IOException) {
             if (failedAt.size > 2_000) failedAt.clear()
             failedAt[mk] = clock()                                            // erreur transitoire : cache négatif court
             return cached?.posterPath?.let { TmdbImages.poster342(it) }
         }
         dao.upsert(TmdbInfoEntity(kind = rowKind, providerId = 0L, remoteId = key, posterPath = path, fetchedAt = clock()))
+        // Rien trouvé, même sans année : mémorisé aussi pour le titre seul (autres années du même titre).
+        if (path == null && q.year != null) dao.upsert(TmdbInfoEntity(kind = rowKind, providerId = 0L, remoteId = SearchDedup.fold(q.title) + "|0", posterPath = null, fetchedAt = clock()))
         val url = path?.let { TmdbImages.poster342(it) }
         memory[mk] = url.orEmpty()
         return url
