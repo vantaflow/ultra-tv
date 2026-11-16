@@ -2,6 +2,8 @@ package com.ultratv.tv.nativeapp.ui.player
 
 import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.view.KeyEvent
 import android.net.Uri
 import android.os.Looper
 import androidx.media3.common.C
@@ -32,7 +34,11 @@ import com.ultratv.tv.nativeapp.ui.player.engine.PlayerEngine
 class PlayerMediaSession private constructor(
     private val player: EnginePlayer,
     private val session: MediaSession,
+    private val skipper: SkipHolder,
 ) {
+    /** Suivant / précédent reçus par la session (casque Bluetooth) : true = suivant. Posé par l'écran du lecteur. */
+    fun setSkipHandler(h: ((forward: Boolean) -> Unit)?) { skipper.handler = h }
+
     /** Nouvel élément (titre, image…) : mis à jour tout de suite pour le système. */
     fun setNowPlaying(now: NowPlaying) { player.setNowPlaying(now) }
 
@@ -50,12 +56,35 @@ class PlayerMediaSession private constructor(
         /** Crée la session ; null si le système la refuse (jamais d'exception : le lecteur ne doit pas en dépendre). */
         fun create(ctx: Context, engine: () -> PlayerEngine?, phase: () -> Phase): PlayerMediaSession? = runCatching {
             val player = EnginePlayer(engine, phase)
-            val builder = MediaSession.Builder(ctx, player).setId("ultratv-player-${counter++}")
+            val skipper = SkipHolder()
+            val builder = MediaSession.Builder(ctx, player).setId("ultratv-player-${counter++}").setCallback(skipper)
             ctx.packageManager.getLaunchIntentForPackage(ctx.packageName)?.let {
                 builder.setSessionActivity(PendingIntent.getActivity(ctx, 0, it, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
             }
-            PlayerMediaSession(player, builder.build())
+            PlayerMediaSession(player, builder.build(), skipper)
         }.getOrNull()
+    }
+}
+
+/**
+ * Touches suivant / précédent de la session : le faux lecteur n'a qu'un seul élément (rien à « sauter » pour Media3), on les
+ * intercepte donc ici et on les relaie à l'écran (chaîne ou épisode). Les autres touches (lecture / pause / avance / retour)
+ * suivent le chemin normal vers [EnginePlayer]. Le dédoublonnage (même appui reçu aussi par la fenêtre) est fait par l'écran.
+ */
+@UnstableApi
+internal class SkipHolder : MediaSession.Callback {
+    @Volatile var handler: ((Boolean) -> Unit)? = null
+
+    override fun onMediaButtonEvent(session: MediaSession, controllerInfo: MediaSession.ControllerInfo, intent: Intent): Boolean {
+        @Suppress("DEPRECATION")
+        val ev = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT) ?: return false
+        if (!MediaKeyRouter.isSkip(ev.keyCode)) return false
+        val h = handler ?: return false
+        // Relâchement et répétitions : consommés sans action.
+        if (MediaKeyRouter.isInitialPress(ev.action == KeyEvent.ACTION_DOWN, ev.repeatCount)) {
+            h(MediaKeyRouter.actionFor(ev.keyCode) == MediaKeyAction.NEXT)
+        }
+        return true
     }
 }
 
