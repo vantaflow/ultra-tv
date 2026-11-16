@@ -13,9 +13,9 @@ Never translate the **content of playlists**: channel names, categories, movie a
 | Status | Languages | Requirement |
 |---|---|---|
 | Official | English (source), French, Spanish, Arabic | 100 % of the strings, enforced by tests |
-| Community | Polish and Brazilian Portuguese (first drafts), any other language | Partial is fine; missing strings fall back to English |
+| Community | Polish, Brazilian Portuguese, Romanian, Norwegian Bokmål, Czech, Finnish, Danish, Greek, Thai, Vietnamese (first drafts), any other language | Partial is fine; missing strings fall back to English |
 
-**Polish (`pl`)** and **Brazilian Portuguese (`pt-BR`)** are complete first drafts that still need a fluent reviewer. `values-pl/strings.xml` carries a comment saying so; `pl.json` and `pt-BR.json` cannot (JSON has no comments), so this note is the marker. Review it on Weblate and fix anything unnatural.
+**Polish (`pl`)**, **Brazilian Portuguese (`pt-BR`)**, **Romanian (`ro`)**, **Norwegian Bokmål (`nb`)**, **Czech (`cs`)**, **Finnish (`fi`)**, **Danish (`da`)**, **Greek (`el`)**, **Thai (`th`)** and **Vietnamese (`vi`)** are complete first drafts (machine translation) that still need a fluent reviewer. `values-pl/strings.xml` carries a comment saying so; `pl.json` and `pt-BR.json` cannot (JSON has no comments), so this note is the marker. Review it on Weblate and fix anything unnatural.
 
 A community language becomes official when it is **100 % translated** and a **reviewer** (a fluent speaker, other than the author) has checked it. Open an issue to ask for the promotion.
 

@@ -16,6 +16,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Le lecteur publie une session média système (titre, chaîne ou série, image, durée) et répond aux commandes lecture / pause / avance / retour de Google TV, Fire TV et des touches média.
 - Favoris : export des chaînes en M3U (Android : fichier ou partage ; bureau : téléchargement), avec avertissement sur les identifiants contenus dans les liens.
 - Réglages › Ouvrir sur : explication des choix, dont « Dernier écran ».
+- Huit nouvelles langues (premier jet à relire sur Weblate), dans l'appli Android et sur le bureau : roumain, norvégien bokmål, tchèque, finnois, danois, grec, thaï, vietnamien.
 
 ### Modifié
 - Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.

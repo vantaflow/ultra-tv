@@ -107,7 +107,7 @@ class PosterResolver internal constructor(
     companion object {
         private suspend fun defaultLang(prefs: UserPreferencesStore): String {
             val app = AppLang.fromCode(prefs.flow.first().language)
-            val sys = when (java.util.Locale.getDefault().language) { "fr" -> AppLang.French; "es" -> AppLang.Spanish; "ar" -> AppLang.Arabic; "pl" -> AppLang.Polish; "pt" -> AppLang.PortugueseBr; else -> AppLang.English }
+            val sys = AppLang.fromLanguage(java.util.Locale.getDefault().language)
             return tmdbLang(if (app == AppLang.System) sys else app)
         }
 

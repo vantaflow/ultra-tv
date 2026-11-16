@@ -21,13 +21,27 @@ enum class AppLang(val code: String, val displayName: String, val rtl: Boolean =
     // Langues communautaires (premier jet, à relire via Weblate).
     Polish("pl", "Polski"),
     /** Portugais du Brésil : ressources `values-pt-rBR` ; un appareil en portugais (pt, pt-PT) la prend aussi. */
-    PortugueseBr("pt-BR", "Português (Brasil)");
+    PortugueseBr("pt-BR", "Português (Brasil)"),
+    Romanian("ro", "Română"),
+    NorwegianBokmal("nb", "Norsk bokmål"),
+    Czech("cs", "Čeština"),
+    Finnish("fi", "Suomi"),
+    Danish("da", "Dansk"),
+    Greek("el", "Ελληνικά"),
+    Thai("th", "ไทย"),
+    Vietnamese("vi", "Tiếng Việt");
 
     /** Langue de l'appareil (« pt » pour pt-BR) : sert à reconnaître la langue du système. */
     val baseLanguage: String get() = code.substringBefore('-')
 
     companion object {
         fun fromCode(code: String): AppLang = entries.firstOrNull { it.code == code } ?: System
+        /** Langue de l'appareil (« fr », « pt », « no »…) → langue de l'appli ; inconnue : anglais. « no » / « nn » → bokmål. */
+        fun fromLanguage(language: String): AppLang {
+            val l = language.lowercase()
+            if (l == "no" || l == "nn") return NorwegianBokmal
+            return entries.firstOrNull { it != System && it.baseLanguage == l } ?: English
+        }
     }
 }
 

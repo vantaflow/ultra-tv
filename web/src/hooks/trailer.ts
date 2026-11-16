@@ -9,7 +9,7 @@ import { findTmdbTrailer, youtubeKey } from "@/lib/youtube";
 import { usePrefs } from "@/state/prefs";
 
 /** Langue demandée à TMDB (le proxy n'accepte que `xx` ou `xx-YY`). */
-export const TMDB_LANG: Record<Lang, string> = { fr: "fr-FR", en: "en-US", es: "es-ES", ar: "ar", pl: "pl-PL", "pt-BR": "pt-BR" };
+export const TMDB_LANG: Record<Lang, string> = { fr: "fr-FR", en: "en-US", es: "es-ES", ar: "ar", pl: "pl-PL", "pt-BR": "pt-BR", ro: "ro-RO", nb: "nb-NO", cs: "cs-CZ", fi: "fi-FI", da: "da-DK", el: "el-GR", th: "th-TH", vi: "vi-VN" };
 
 const cache = new Map<string, string | null>();
 
