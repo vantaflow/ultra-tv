@@ -1022,7 +1022,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // (plus de zapping, OK = pause).
     var controlsEngaged by remember { mutableStateOf(false) }
     LaunchedEffect(overlayVisible) { if (!overlayVisible) controlsEngaged = false }
-    LaunchedEffect(controlsEngaged, isLive) { hideAfterMs = if (isLive && controlsEngaged) OSD_HIDE_FULL_MS else OSD_HIDE_BANNER_MS }
+    // Téléphone : « Plus » ouvre les commandes complètes de l'OSD (barre minimale par défaut) ; refermé avec la surcouche.
+    var osdMore by remember { mutableStateOf(false) }
+    LaunchedEffect(overlayVisible) { if (!overlayVisible) osdMore = false }
+    LaunchedEffect(controlsEngaged, isLive, osdMore) { hideAfterMs = if (isLive && (controlsEngaged || osdMore)) OSD_HIDE_FULL_MS else OSD_HIDE_BANNER_MS }
     // OSD complet à la télécommande ; étage qui porte le focus (Retour : récents → barre → fermeture).
     val osdOpen = isLive && overlayVisible && controlsEngaged
     var osdStage by remember { mutableStateOf(OsdStage.CONTROLS) }
@@ -1085,8 +1088,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val isFavNow by vm.isFavoriteNow.collectAsState()
     val pipSupported = remember { context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE) }
     val currentKey = item?.let { "${it.providerId}:${it.remoteId}" }
-    val osdRecents = remember(zapRecent, currentKey, item?.title) {
-        OsdModel.recents(zapRecent.map { OsdRecent("${it.channel.providerId}:${it.channel.remoteId}", it.channel.logo, it.number.takeIf { n -> n > 0 }, it.channel.title, it.now) }, currentKey, item?.title)
+    // Réglage « Numéros de chaîne » désactivé : l'OSD (tactile et TV) n'affiche aucun numéro.
+    val showNumbers = com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers
+    val osdRecents = remember(zapRecent, currentKey, item?.title, showNumbers) {
+        OsdModel.recents(zapRecent.map { OsdRecent("${it.channel.providerId}:${it.channel.remoteId}", it.channel.logo, it.number.takeIf { n -> showNumbers && n > 0 }, it.channel.title, it.now) }, currentKey, item?.title)
     }
     val osdActions = if (!isLive) emptyList() else OsdActions.build(
         OsdActionInputs(
@@ -1147,7 +1152,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     val osdCurrentChannel =if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel else null
-    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { it > 0 }
+    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { showNumbers && it > 0 }
     val osdSchedule by vm.schedule.collectAsState()
     // Pastille HDR : type du flux lu dans les statistiques du moteur (quelques relectures après le début de la lecture, pas en continu).
     var liveHdr by remember { mutableStateOf<String?>(null) }
@@ -1379,6 +1384,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                             if (osdState != null && !portrait) LiveOsd(
                                 state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent, onNextAction = onOsdNext,
                                 backDescription = M.a11yBack, onBack = leave,
+                                minimal = !osdMore, onMore = { osdMore = true; touch() }, moreLabel = M.moreInfo, previousLabel = M.previousChannel, nextLabel = M.nextChannel,
+                                onZap = { fwd -> touch(); scope.launch { vm.zap(fwd)?.let { currentUrl = it } } },
                                 topEnd = if (lockedLandscape) ({ com.ultratv.tv.nativeapp.ui.mobile.PlayerRoundButton(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Fullscreen, M.rotateHint) { context.lockOrientation(false) } }) else null,
                             ) else MobileControls(
                                 isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = thenLine, playing = playing,

@@ -423,7 +423,7 @@ internal fun SportLiveCard(e: SportEntry, clock: State<Long>, width: Dp, alsoCou
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
                 LogoBox(c.logo, c.title, Modifier.width(40.design).height(40.design), radius = 11, pad = 4, bg = if (f) Color(0xFFE4E4E7) else Ux.Tile, decodeSize = DpSize(40.design, 40.design))
                 Text(
-                    (if (c.num > 0) "${c.num} · " else "") + c.title,
+                    (if (c.num > 0 && com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) "${c.num} · " else "") + c.title,
                     color = if (f) Ux.OnFocus2 else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 16.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
                 // Appui long : les autres chaînes du même événement (« Aussi sur »).

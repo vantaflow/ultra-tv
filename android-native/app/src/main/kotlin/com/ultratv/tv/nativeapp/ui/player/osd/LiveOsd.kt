@@ -2,6 +2,7 @@ package com.ultratv.tv.nativeapp.ui.player.osd
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,6 +34,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -142,10 +145,17 @@ fun LiveOsd(
     onBack: (() -> Unit)? = null,
     topEnd: (@Composable () -> Unit)? = null,
     onNextAction: (OsdNextAction) -> Unit = {},
+    minimal: Boolean = false,
+    onMore: () -> Unit = {},
+    onZap: (forward: Boolean) -> Unit = {},
+    moreLabel: String = "",
+    previousLabel: String = "",
+    nextLabel: String = "",
 ) {
     val touch = LocalTouch.current
     val sz = Sz(touch)
-    if (state.expanded) LaunchedEffect(Unit) {
+    // Tactile : le focus clavier n'a pas de sens (pas de barre focalisable en mode minimal) ; la TV garde son comportement.
+    if (state.expanded && !touch) LaunchedEffect(Unit) {
         val target = if (initialStage == OsdStage.RECENTS && state.recents.isNotEmpty()) focus.recents else focus.bar
         // Les éléments des LazyRow ne sont composés qu'à la mesure : la cible n'existe pas encore au premier essai.
         repeat(30) {
@@ -158,6 +168,12 @@ fun LiveOsd(
         androidx.compose.runtime.CompositionLocalProvider(com.ultratv.tv.nativeapp.ui.design.LocalUxPalette provides com.ultratv.tv.nativeapp.ui.design.DarkPalette, com.ultratv.tv.nativeapp.ui.design.LocalTextWrap provides false) {
             Box(modifier.fillMaxSize()) { TvOsd(state, focus, onAction, onRecent, onStage, onNextAction) }
         }
+        return
+    }
+    // Téléphone, plein écran : un toucher = barre minimale (retour, chaîne + programme, lecture/pause, précédente/suivante,
+    // rotation, « Plus ») ; le reste (pistes, sous-titres, guide, récentes, détails) est derrière « Plus ».
+    if (minimal) {
+        MinimalTouchOsd(state, backDescription, onBack, topEnd, onAction, onMore, onZap, moreLabel, previousLabel, nextLabel, modifier)
         return
     }
     Box(modifier.fillMaxSize()) {
@@ -176,6 +192,56 @@ fun LiveOsd(
             )
         }
     }
+}
+
+// ───────────────────────── Tactile : barre minimale ─────────────────────────
+
+/** Titre affiché en tactile minimal : programme en cours, sinon nom de la chaîne. */
+internal fun minimalTitle(state: LiveOsdState): String = state.programme?.title?.takeIf { it.isNotBlank() } ?: state.channel.name
+
+/** Sous-titre : « numéro · chaîne » quand un programme est connu (sinon le nom de la chaîne est déjà le titre). */
+internal fun minimalSubtitle(state: LiveOsdState): String? = if (state.programme == null) null else channelLine(state.channel)
+
+@Composable
+private fun MinimalTouchOsd(
+    state: LiveOsdState, backDescription: String, onBack: (() -> Unit)?, topEnd: (@Composable () -> Unit)?,
+    onAction: (OsdActionId) -> Unit, onMore: () -> Unit, onZap: (Boolean) -> Unit,
+    moreLabel: String, previousLabel: String, nextLabel: String, modifier: Modifier,
+) {
+    val playAction = state.actions.firstOrNull { it.id == OsdActionId.PLAY_PAUSE }
+    Box(modifier.fillMaxSize()) {
+        // Haut : retour, programme en cours + chaîne, rotation.
+        Row(
+            Modifier.align(Alignment.TopStart).fillMaxWidth().background(Brush.verticalGradient(listOf(Color(0xB80A0A0C), Color.Transparent))).padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (onBack != null) PlayerRoundButton(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Back, backDescription, onBack)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(minimalTitle(state), color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                minimalSubtitle(state)?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            }
+            topEnd?.invoke()
+        }
+        // Centre : chaîne précédente, lecture / pause, chaîne suivante.
+        Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(28.dp), verticalAlignment = Alignment.CenterVertically) {
+            MinimalRoundButton(OsdIcons.PREV, previousLabel, 52.dp, 22.dp, fill = true) { onZap(false) }
+            if (playAction != null) MinimalRoundButton(playAction.icon, playAction.label, 72.dp, 32.dp, fill = true) { onAction(OsdActionId.PLAY_PAUSE) }
+            MinimalRoundButton(OsdIcons.NEXT, nextLabel, 52.dp, 22.dp, fill = true) { onZap(true) }
+        }
+        // Bas droite : « Plus » ouvre les commandes complètes.
+        Box(Modifier.align(Alignment.BottomEnd).padding(12.dp)) {
+            PlayerPill(ControlPill(moreLabel, com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.More, onMore))
+        }
+    }
+}
+
+@Composable
+private fun MinimalRoundButton(icon: String, description: String, size: Dp, iconSize: Dp, fill: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(size).clip(CircleShape).background(Color(0x66000000)).clickable(onClickLabel = description, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) { DIcon(icon, iconSize, Color(0xFFF5F5F7), strokeWidth = 2.2f, fill = fill) }
 }
 
 // ───────────────────────── Étage haut ─────────────────────────

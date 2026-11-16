@@ -35,7 +35,7 @@ enum class GuideNameWidth(val key: String, val tvPx: Int, val touchDp: Int) {
 }
 
 /** Réglages d'affichage des chaînes, fournis à toute l'interface (Direct, Guide, aperçus). */
-data class ChannelDisplay(val showLogos: Boolean = true, val guideNameWidth: GuideNameWidth = GuideNameWidth.NORMAL)
+data class ChannelDisplay(val showLogos: Boolean = true, val guideNameWidth: GuideNameWidth = GuideNameWidth.NORMAL, val showNumbers: Boolean = true)
 
 val LocalChannelDisplay = compositionLocalOf { ChannelDisplay() }
 
@@ -45,6 +45,10 @@ fun channelNumber(seq: Int, num: Int): Int? = when {
     num > 0 -> num
     else -> null
 }
+
+/** Numéro à afficher : null si le réglage « Numéros de chaîne » est désactivé (toute l'interface, téléphone comme TV). */
+@Composable
+fun shownChannelNumber(seq: Int, num: Int): Int? = if (LocalChannelDisplay.current.showNumbers) channelNumber(seq, num) else null
 
 /** Libellé « numéro · nom » d'une chaîne (le numéro est omis s'il est inconnu). */
 fun channelHeading(number: Int?, title: String): String = if (number == null) title else "$number · $title"
