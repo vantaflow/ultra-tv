@@ -116,6 +116,7 @@
   "settings.trackingHint": "اربط Trakt أو Simkl أولًا من صفحة حسابك على الموقع",
   "trakt.serviceNotLinked": "{name} غير مرتبط بعد: اربطه من صفحة حسابك",
   "trakt.unsupported": "لا تستطيع هذه الخدمة إزالة عنوان من قائمة المشاهدة",
+  "home.traktAvailable": "متوفر من قائمتك",
   "home.guide": "دليل البرامج",
   "home.emptyHero": "اختر قناة من البث المباشر للبدء.",
   "live.preview": "تبدأ المعاينة عند اختيار قناة.",

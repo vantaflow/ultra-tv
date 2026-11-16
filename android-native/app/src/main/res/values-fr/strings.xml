@@ -800,6 +800,8 @@
     <string name="trakt_tracking_hint">Reliez d\'abord Trakt ou Simkl depuis la page de votre compte sur le site</string>
     <string name="trakt_tracking_not_linked">%1$s n\'est pas encore relié : reliez-le depuis la page de votre compte</string>
     <string name="trakt_tracking_unsupported">Ce service ne peut pas retirer un titre de la liste à voir</string>
+    <string name="trakt_available_from_list">Disponible de votre liste</string>
+    <string name="trakt_available_channel">Disponibilité de la liste à voir</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Films · Catégories</string>

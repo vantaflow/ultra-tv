@@ -789,6 +789,8 @@
     <string name="trakt_tracking_hint">Συνδέστε πρώτα το Trakt ή το Simkl από τη σελίδα του λογαριασμού σας στον ιστότοπο</string>
     <string name="trakt_tracking_not_linked">Το %1$s δεν έχει συνδεθεί ακόμη: συνδέστε το από τη σελίδα του λογαριασμού σας</string>
     <string name="trakt_tracking_unsupported">Αυτή η υπηρεσία δεν μπορεί να αφαιρέσει έναν τίτλο από τη λίστα</string>
+    <string name="trakt_available_from_list">Διαθέσιμο από τη λίστα σας</string>
+    <string name="trakt_available_channel">Διαθεσιμότητα της λίστας παρακολούθησης</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Ταινίες · Κατηγορίες</string>

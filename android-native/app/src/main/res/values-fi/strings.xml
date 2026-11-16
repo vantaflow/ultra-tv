@@ -765,6 +765,8 @@
     <string name="trakt_tracking_hint">Yhdistä ensin Trakt tai Simkl verkkosivuston tilisivulta</string>
     <string name="trakt_tracking_not_linked">%1$s ei ole vielä yhdistetty: yhdistä se tilisivultasi</string>
     <string name="trakt_tracking_unsupported">Tämä palvelu ei voi poistaa nimikettä katselulistalta</string>
+    <string name="trakt_available_from_list">Saatavilla listaltasi</string>
+    <string name="trakt_available_channel">Katselulistan saatavuus</string>
     <string name="cat_catalog_categories_title_1">Elokuvat · Luokat</string>
     <string name="cat_catalog_categories_title_2">Sarjat · Luokat</string>
     <string name="cat_categories_count">%1$s luokkaa</string>

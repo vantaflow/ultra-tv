@@ -195,20 +195,26 @@ class TraktCatalogMatcher(
     /** Reprises Trakt rapprochées du catalogue, à importer dans l'historique. */
     private val importer: suspend (List<PlaybackHit>) -> Unit = {},
     private val prefs: Flow<TraktPrefs> = flowOf(TraktPrefs()),
+    /** Titres de la watchlist devenus disponibles à cette synchro (notification locale ; jamais envoyés au serveur). */
+    private val onNewlyAvailable: suspend (List<String>) -> Unit = {},
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     @Inject constructor(
         movies: MovieDao, series: SeriesDao, repo: TraktLibraryRepository, store: FileTraktStore,
         providers: com.ultratv.tv.nativeapp.data.db.ProviderDao, episodes: EpisodeDao,
         catalog: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.CatalogRepository>,
-        importer: TraktProgressImporter, prefs: TraktPrefsStore,
+        importer: TraktProgressImporter, prefs: TraktPrefsStore, notifier: WatchlistAvailabilityNotifier,
     ) : this(
         movies, series, repo, store as TraktStore, { id -> providers.observeCatalogStamp(id) },
         { sid -> episodes.forSeries(sid) }, { sid -> catalog.get().loadEpisodes(sid) }, { hits -> importer.import(hits) }, prefs.state,
+        { titles -> notifier.notify(titles) },
     )
 
     private data class Sig(val pid: Long, val stamp: Long, val lib: TraktLibrary)
     @Volatile private var cached: Pair<Sig, TraktRows>? = null
     private val computeLock = Mutex()
+    // Mémoire de la watchlist par source (chargée du disque une fois) : titres devenus disponibles à une synchro.
+    private var watchStates: MutableMap<Long, WatchlistState>? = null
     // Dernières rangées calculées par source, aussi écrites sur disque : affichées instantanément au prochain lancement.
     private val persisted = java.util.concurrent.ConcurrentHashMap<Long, TraktRows>()
     @Volatile private var persistedLoaded = false
@@ -261,7 +267,8 @@ class TraktCatalogMatcher(
         if (cached == null && persisted.isEmpty()) return
         cached = null
         persisted.clear()
-        withContext(Dispatchers.IO) { store.writeRows("{}") }
+        watchStates = null
+        withContext(Dispatchers.IO) { store.writeRows("{}"); store.writeWatch("{}") }
     }
 
     private suspend fun instant(pid: Long): TraktRows? {
@@ -289,7 +296,7 @@ class TraktCatalogMatcher(
         if (wantedSeries.isNotEmpty()) scan(seriesIdx, wantedSeries) { after -> series.liteChunk(sig.pid, after, CHUNK) }
         val budget = intArrayOf(MAX_EPISODE_LOADS)
         val upNext = upNext(candidates, seriesIdx, budget)
-        val rows = TraktAvailability.rows(lib, movieIdx, seriesIdx).copy(upNext = upNext)
+        val rows = withRecent(sig, lib, movieIdx, seriesIdx, TraktAvailability.rows(lib, movieIdx, seriesIdx).copy(upNext = upNext))
         // Reprises Trakt → historique local (jamais au-dessus d'une position locale plus récente).
         runCatching { importer(playbackHits(sig.pid, lib.playback, movieIdx, seriesIdx, budget)) }
         cached = sig to rows
@@ -299,6 +306,35 @@ class TraktCatalogMatcher(
             withContext(Dispatchers.IO) { store.writeRows(snapshot) }
         }
         rows
+    }
+
+    /**
+     * Compare la watchlist au catalogue de la source, sur l'appareil, à la fin d'une synchro du catalogue : un titre qui
+     * n'était pas disponible au calcul précédent et l'est maintenant entre dans « Disponible de ta liste » et déclenche
+     * une notification locale. Rien n'est calculé tant qu'aucune synchro n'est terminée (horodatage nul).
+     */
+    private suspend fun withRecent(
+        sig: Sig, lib: TraktLibrary, movieIdx: Map<String, List<CatalogLite>>, seriesIdx: Map<String, List<CatalogLite>>, rows: TraktRows,
+    ): TraktRows {
+        if (sig.stamp <= 0 || lib.watchlist.isEmpty()) return rows
+        val cards = HashMap<String, TraktCard>()
+        val ids = ArrayList<String>(lib.watchlist.size)
+        for (item in lib.watchlist) {
+            val id = TraktWatchlistTracker.id(item)
+            ids += id
+            TraktAvailability.resolve(listOf(item), movieIdx, seriesIdx).firstOrNull()?.let { cards[id] = it }
+        }
+        val states = watchStates ?: withContext(Dispatchers.IO) { TraktWatchlistTracker.decode(store.readWatch()) }.also { watchStates = it }
+        val result = TraktWatchlistTracker.update(states[sig.pid], ids, cards.keys, clock())
+        states[sig.pid] = result.state
+        val snapshot = TraktWatchlistTracker.encode(states)
+        withContext(Dispatchers.IO) { store.writeWatch(snapshot) }
+        if (result.newly.isNotEmpty()) {
+            val titles = result.newly.mapNotNull { cards[it]?.title }
+            runCatching { onNewlyAvailable(titles) }
+        }
+        val recent = result.state.recent.entries.sortedByDescending { it.value }.mapNotNull { cards[it.key] }
+        return if (recent.isEmpty()) rows else rows.copy(recent = recent)
     }
 
     /** Épisodes d'une série du catalogue ; demandés à la source une seule fois par lancement s'ils manquent (budget borné). */

@@ -20,6 +20,9 @@ interface TraktStore {
     /** Reprises Trakt déjà importées dans l'historique (une pause n'est importée qu'une fois). */
     fun readImported(): String? = null
     fun writeImported(json: String) {}
+    /** Mémoire de la watchlist par source (titres devenus disponibles, voir [TraktWatchlistTracker]). */
+    fun readWatch(): String? = null
+    fun writeWatch(json: String) {}
 }
 
 /** Aucune persistance (tests, valeur par défaut). */
@@ -40,6 +43,7 @@ class FileTraktStore(private val dir: File) : TraktStore {
     private val rows get() = File(dir, "trakt-rows.json")
     private val prefs get() = File(dir, "trakt-prefs.json")
     private val imported get() = File(dir, "trakt-imported.json")
+    private val watch get() = File(dir, "trakt-watch.json")
 
     override fun readLibrary() = read(lib)
     override fun writeLibrary(json: String) = write(lib, json)
@@ -49,7 +53,9 @@ class FileTraktStore(private val dir: File) : TraktStore {
     override fun writePrefs(json: String) = write(prefs, json)
     override fun readImported() = read(imported)
     override fun writeImported(json: String) = write(imported, json)
-    override fun clear() { runCatching { lib.delete() }; runCatching { rows.delete() }; runCatching { imported.delete() } }
+    override fun readWatch() = read(watch)
+    override fun writeWatch(json: String) = write(watch, json)
+    override fun clear() { runCatching { lib.delete() }; runCatching { rows.delete() }; runCatching { imported.delete() }; runCatching { watch.delete() } }
 
     private fun read(f: File): String? = try { if (f.isFile) f.readText().takeIf { it.isNotBlank() } else null } catch (_: Exception) { null }
 

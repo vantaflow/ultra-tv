@@ -41,8 +41,11 @@ val DesignStrings.traktAutoWatchedHint get() = tx(R.string.trakt_trakt_auto_watc
 val DesignStrings.traktListsHome get() = tx(R.string.trakt_trakt_lists_home).forTracker()
 val DesignStrings.traktListsHomeHint get() = tx(R.string.trakt_trakt_lists_home_hint).forTracker()
 
+// Service de suivi au choix (Trakt, Simkl ou aucun) et « disponible de ta liste » (watchlist devenue disponible)
 val DesignStrings.trackingTitle get() = tx(R.string.trakt_tracking_title)
 val DesignStrings.trackingNone get() = tx(R.string.trakt_tracking_none)
 val DesignStrings.trackingHint get() = tx(R.string.trakt_tracking_hint)
 fun DesignStrings.trackingNotLinked(name: String) = tx(R.string.trakt_tracking_not_linked, name)
 val DesignStrings.trackingUnsupported get() = tx(R.string.trakt_tracking_unsupported)
+val DesignStrings.traktAvailable get() = tx(R.string.trakt_available_from_list)
+val DesignStrings.traktAvailableChannel get() = tx(R.string.trakt_available_channel)

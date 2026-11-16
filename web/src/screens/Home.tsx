@@ -329,6 +329,7 @@ function HomeInner({ source }: { source: Source }) {
 
       <NewEpisodesSection rows={newEps} onOpen={(id) => nav(`/serie/${id}`)} />
       <UpNextSection title={t("home.traktUpNext")} rows={trakt.upNext} onOpen={(u) => nav(`/serie/${u.ref}`)} />
+      <TraktRowSection title={t("home.traktAvailable")} rows={trakt.recent} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktTrending")} rows={trakt.trending} seen={seen} onOpen={openTrakt} />

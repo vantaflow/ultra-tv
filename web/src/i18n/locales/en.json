@@ -100,6 +100,7 @@
   "settings.trackingHint": "Link Trakt or Simkl from your account page on the website first",
   "trakt.serviceNotLinked": "{name} is not linked yet: link it from your account page",
   "trakt.unsupported": "This service cannot remove a title from the watchlist",
+  "home.traktAvailable": "Available from your list",
   "home.guide": "TV guide",
   "home.emptyHero": "Pick a channel in Live to get started.",
   "live.preview": "The preview starts when you select a channel.",

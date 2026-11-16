@@ -100,6 +100,7 @@
   "settings.trackingHint": "Vincule primeiro o Trakt ou o Simkl na página da sua conta no site",
   "trakt.serviceNotLinked": "{name} ainda não está vinculado: vincule-o na página da sua conta",
   "trakt.unsupported": "Este serviço não pode remover um título da lista",
+  "home.traktAvailable": "Disponível da sua lista",
   "home.guide": "Guia de TV",
   "home.emptyHero": "Escolha um canal em Ao vivo para começar.",
   "live.preview": "A prévia começa quando você seleciona um canal.",

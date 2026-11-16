@@ -797,6 +797,8 @@
     <string name="trakt_tracking_hint">Nejprve propojte Trakt nebo Simkl na stránce svého účtu na webu</string>
     <string name="trakt_tracking_not_linked">%1$s zatím není propojen: propojte jej na stránce svého účtu</string>
     <string name="trakt_tracking_unsupported">Tato služba nemůže odebrat titul ze seznamu</string>
+    <string name="trakt_available_from_list">Dostupné z vašeho seznamu</string>
+    <string name="trakt_available_channel">Dostupnost seznamu ke zhlédnutí</string>
     <string name="cat_catalog_categories_title_1">Filmy · Kategorie</string>
     <string name="cat_catalog_categories_title_2">Seriály · Kategorie</string>
     <string name="cat_categories_count">%1$s kategorií</string>

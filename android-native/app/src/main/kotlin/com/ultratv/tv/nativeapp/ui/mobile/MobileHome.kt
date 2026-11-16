@@ -59,6 +59,7 @@ import com.ultratv.tv.nativeapp.i18n.traktListRow
 import com.ultratv.tv.nativeapp.i18n.traktUpNext
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
 import com.ultratv.tv.nativeapp.i18n.traktTrending
+import com.ultratv.tv.nativeapp.i18n.traktAvailable
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.design.BackdropImage
 import com.ultratv.tv.nativeapp.ui.design.DIcon
@@ -184,6 +185,7 @@ fun MobileHomeScreen(
                             items(rows.resume, key = { it.key }, contentType = { "resume" }) { c -> ResumeCard(c, D) { onPlayHistory(c.entry) } }
                         }
                     }
+                    HomeSectionId.TRAKT_AVAILABLE -> TraktPosterRow(D.traktAvailable, rows.availableNow, wide, openPoster)
                     HomeSectionId.TRAKT_WATCHLIST -> TraktPosterRow(D.traktWatchlist, rows.watchlist, wide, openPoster)
                     HomeSectionId.TRAKT_RECOMMENDED -> TraktPosterRow(D.traktRecommended, rows.recommended, wide, openPoster)
                     HomeSectionId.TRAKT_TRENDING -> TraktPosterRow(D.traktTrending, rows.trending, wide, openPoster)

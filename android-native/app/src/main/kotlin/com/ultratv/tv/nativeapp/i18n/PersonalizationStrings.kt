@@ -88,6 +88,7 @@ val DesignStrings.startScreenHint get() = tx(R.string.perso_start_screen_hint)
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.RESUME -> continueWatching
     HomeBlock.TRAKT_UP_NEXT -> traktUpNext
+    HomeBlock.TRAKT_AVAILABLE -> traktAvailable
     HomeBlock.NEW_EPISODES -> extNewEpisodes
     HomeBlock.TRAKT_WATCHLIST -> traktWatchlist
     HomeBlock.TRAKT_RECOMMENDED -> traktRecommended

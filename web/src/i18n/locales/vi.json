@@ -100,6 +100,7 @@
   "settings.trackingHint": "Hãy liên kết Trakt hoặc Simkl từ trang tài khoản của bạn trên trang web trước",
   "trakt.serviceNotLinked": "{name} chưa được liên kết: hãy liên kết từ trang tài khoản của bạn",
   "trakt.unsupported": "Dịch vụ này không thể xóa một tựa khỏi danh sách",
+  "home.traktAvailable": "Có sẵn từ danh sách của bạn",
   "home.guide": "Lịch phát sóng",
   "home.emptyHero": "Hãy chọn một kênh trong mục Trực tiếp để bắt đầu.",
   "live.preview": "Bản xem trước bắt đầu khi bạn chọn một kênh.",

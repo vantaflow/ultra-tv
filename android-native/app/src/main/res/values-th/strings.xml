@@ -772,6 +772,8 @@
     <string name="trakt_tracking_hint">เชื่อมต่อ Trakt หรือ Simkl จากหน้าบัญชีของคุณบนเว็บไซต์ก่อน</string>
     <string name="trakt_tracking_not_linked">%1$s ยังไม่ได้เชื่อมต่อ: เชื่อมต่อจากหน้าบัญชีของคุณ</string>
     <string name="trakt_tracking_unsupported">บริการนี้ไม่สามารถลบรายการออกจากรายการที่อยากดูได้</string>
+    <string name="trakt_available_from_list">พร้อมดูจากรายการของคุณ</string>
+    <string name="trakt_available_channel">ความพร้อมของรายการที่อยากดู</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">ภาพยนตร์ · หมวดหมู่</string>

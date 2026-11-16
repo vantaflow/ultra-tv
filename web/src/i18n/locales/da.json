@@ -100,6 +100,7 @@
   "settings.trackingHint": "Tilknyt først Trakt eller Simkl fra din kontoside på webstedet",
   "trakt.serviceNotLinked": "{name} er ikke tilknyttet endnu: tilknyt den fra din kontoside",
   "trakt.unsupported": "Denne tjeneste kan ikke fjerne en titel fra listen",
+  "home.traktAvailable": "Tilgængelig fra din liste",
   "home.guide": "TV-guide",
   "home.emptyHero": "Vælg en kanal under Live for at komme i gang.",
   "live.preview": "Forhåndsvisningen starter, når du vælger en kanal.",

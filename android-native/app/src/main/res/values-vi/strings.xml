@@ -772,6 +772,8 @@
     <string name="trakt_tracking_hint">Hãy liên kết Trakt hoặc Simkl từ trang tài khoản của bạn trên trang web trước</string>
     <string name="trakt_tracking_not_linked">%1$s chưa được liên kết: hãy liên kết từ trang tài khoản của bạn</string>
     <string name="trakt_tracking_unsupported">Dịch vụ này không thể xóa một tựa khỏi danh sách</string>
+    <string name="trakt_available_from_list">Có sẵn từ danh sách của bạn</string>
+    <string name="trakt_available_channel">Tình trạng có sẵn của danh sách xem sau</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Phim · Danh mục</string>

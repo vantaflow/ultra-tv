@@ -789,6 +789,8 @@
     <string name="trakt_tracking_hint">Tilknyt først Trakt eller Simkl fra din kontoside på webstedet</string>
     <string name="trakt_tracking_not_linked">%1$s er ikke tilknyttet endnu: tilknyt den fra din kontoside</string>
     <string name="trakt_tracking_unsupported">Denne tjeneste kan ikke fjerne en titel fra listen</string>
+    <string name="trakt_available_from_list">Tilgængelig fra din liste</string>
+    <string name="trakt_available_channel">Tilgængelighed af ønskelisten</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Film · Kategorier</string>

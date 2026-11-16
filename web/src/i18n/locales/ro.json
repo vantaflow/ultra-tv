@@ -104,6 +104,7 @@
   "settings.trackingHint": "Conectează mai întâi Trakt sau Simkl din pagina contului tău de pe site",
   "trakt.serviceNotLinked": "{name} nu este încă conectat: conectează-l din pagina contului tău",
   "trakt.unsupported": "Acest serviciu nu poate elimina un titlu din listă",
+  "home.traktAvailable": "Disponibil din lista ta",
   "home.guide": "Ghid TV",
   "home.emptyHero": "Alege un canal din Direct pentru a începe.",
   "live.preview": "Previzualizarea pornește când selectezi un canal.",

@@ -804,6 +804,8 @@
     <string name="trakt_tracking_hint">Vincule primeiro o Trakt ou o Simkl na página da sua conta no site</string>
     <string name="trakt_tracking_not_linked">%1$s ainda não está vinculado: vincule-o na página da sua conta</string>
     <string name="trakt_tracking_unsupported">Este serviço não pode remover um título da lista</string>
+    <string name="trakt_available_from_list">Disponível da sua lista</string>
+    <string name="trakt_available_channel">Disponibilidade da lista para assistir</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Filmes · Categorias</string>

@@ -104,6 +104,7 @@
   "settings.trackingHint": "Relie d'abord Trakt ou Simkl depuis la page de ton compte sur le site",
   "trakt.serviceNotLinked": "{name} n'est pas encore relié : relie-le depuis la page de ton compte",
   "trakt.unsupported": "Ce service ne peut pas retirer un titre de la liste à voir",
+  "home.traktAvailable": "Disponible de ta liste",
   "home.guide": "Guide TV",
   "home.emptyHero": "Choisissez une chaîne dans le direct pour démarrer.",
   "live.preview": "L’aperçu démarre à la sélection d’une chaîne.",

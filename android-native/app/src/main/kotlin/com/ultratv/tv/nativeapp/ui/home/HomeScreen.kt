@@ -77,6 +77,7 @@ import com.ultratv.tv.nativeapp.i18n.traktListRow
 import com.ultratv.tv.nativeapp.i18n.traktUpNext
 import com.ultratv.tv.nativeapp.i18n.traktRecommended
 import com.ultratv.tv.nativeapp.i18n.traktTrending
+import com.ultratv.tv.nativeapp.i18n.traktAvailable
 import com.ultratv.tv.nativeapp.i18n.traktWatchlist
 import com.ultratv.tv.nativeapp.ui.common.EpgClock
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -389,6 +390,7 @@ private fun HomeSection(
         HomeSectionId.TOP10 -> Section(D.homeTop10) { Top10Row(rows.top10, openPoster) }
         HomeSectionId.RESUME -> Section(D.continueWatching) { ResumeRow(rows.resume, playHistory) }
         // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
+        HomeSectionId.TRAKT_AVAILABLE -> Section(D.traktAvailable) { PosterRow(rows.availableNow, openPoster) }
         HomeSectionId.TRAKT_WATCHLIST -> Section(D.traktWatchlist) { PosterRow(rows.watchlist, openPoster) }
         HomeSectionId.TRAKT_RECOMMENDED -> Section(D.traktRecommended) { PosterRow(rows.recommended, openPoster) }
         HomeSectionId.TRAKT_TRENDING -> Section(D.traktTrending) { PosterRow(rows.trending, openPoster) }

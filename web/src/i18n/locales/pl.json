@@ -106,6 +106,7 @@
   "settings.trackingHint": "Najpierw połącz Trakt lub Simkl na stronie swojego konta w witrynie",
   "trakt.serviceNotLinked": "{name} nie jest jeszcze połączony: połącz go na stronie swojego konta",
   "trakt.unsupported": "Ta usługa nie może usunąć tytułu z listy",
+  "home.traktAvailable": "Dostępne z Twojej listy",
   "home.guide": "Przewodnik TV",
   "home.emptyHero": "Wybierz kanał w zakładce Na żywo, aby zacząć.",
   "live.preview": "Podgląd rozpocznie się po wybraniu kanału.",
