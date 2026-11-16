@@ -698,7 +698,7 @@
     <string name="simple_tile_series">รายการทีวี</string>
     <string name="simple_tile_favorites">รายการโปรดของฉัน</string>
     <string name="simple_tile_search">ค้นหา</string>
-    <string name="simple_tile_live_hint">ช่องล่าสุดหรือรายการช่อง</string>
+    <string name="simple_tile_live_hint">รายการช่อง</string>
     <string name="simple_tile_resume_hint">ดูต่อจากที่ค้างไว้</string>
     <string name="simple_tile_resume_nothing">ยังไม่มีอะไรให้ดูต่อ: เลือกภาพยนตร์</string>
     <string name="simple_tile_movies_hint">เลือกภาพยนตร์</string>

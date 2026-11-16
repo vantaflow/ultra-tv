@@ -714,7 +714,7 @@
     <string name="simple_tile_series">TV shows</string>
     <string name="simple_tile_favorites">My favorites</string>
     <string name="simple_tile_search">Search</string>
-    <string name="simple_tile_live_hint">Last channel or channel list</string>
+    <string name="simple_tile_live_hint">Channel list</string>
     <string name="simple_tile_resume_hint">Continue where you stopped</string>
     <string name="simple_tile_resume_nothing">Nothing to resume yet: choose a film</string>
     <string name="simple_tile_movies_hint">Choose a film</string>

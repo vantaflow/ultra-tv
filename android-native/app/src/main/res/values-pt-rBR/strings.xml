@@ -730,7 +730,7 @@
     <string name="simple_tile_series">Séries</string>
     <string name="simple_tile_favorites">Meus favoritos</string>
     <string name="simple_tile_search">Pesquisar</string>
-    <string name="simple_tile_live_hint">Último canal ou lista de canais</string>
+    <string name="simple_tile_live_hint">Lista de canais</string>
     <string name="simple_tile_resume_hint">Continue de onde parou</string>
     <string name="simple_tile_resume_nothing">Nada para continuar ainda: escolha um filme</string>
     <string name="simple_tile_movies_hint">Escolha um filme</string>

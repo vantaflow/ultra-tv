@@ -87,20 +87,12 @@ fun SimpleHomeScreen(
     val S = SimpleStrings(D.lang)
     val hasSource by vm.hasSource.collectAsStateWithLifecycle()
     val resume by vm.resume.collectAsStateWithLifecycle()
-    val lastLive by vm.lastLive.collectAsStateWithLifecycle()
-    val locked by vm.locked.collectAsStateWithLifecycle()
     val multiProfiles by vm.multipleProfiles.collectAsStateWithLifecycle()
     val profileName by vm.profileName.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var pinFor by remember { mutableStateOf<WatchHistoryEntity?>(null) }
 
-    val playLive: (WatchHistoryEntity) -> Unit = { h -> scope.launch { vm.prepareLastLive(h); onPlay(h.streamUrl, h.title) } }
     val onTile: (SimpleTile) -> Unit = { tile ->
         when (tile) {
-            SimpleTile.LIVE -> when (val a = SimpleHome.liveAction(lastLive, locked)) {
-                is SimpleHome.LiveAction.PlayLast -> if (a.needsPin) pinFor = a.item else playLive(a.item)
-                SimpleHome.LiveAction.ShowList -> onNavigate(Routes.SIMPLE_CHANNELS)
-            }
             SimpleTile.RESUME -> when (val a = SimpleHome.resumeAction(resume)) {
                 is SimpleHome.ResumeAction.Play -> { vm.prepareResume(a.item); onPlay(a.item.streamUrl, a.item.title) }
                 is SimpleHome.ResumeAction.Browse -> onNavigate(a.route)
@@ -173,10 +165,6 @@ fun SimpleHomeScreen(
             PillButton(S.settings, onGoSettings, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Settings)
             if (multiProfiles) PillButton(S.switchProfile, { vm.requestProfileSwitch() }, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Account)
         }
-    }
-
-    pinFor?.let { h ->
-        PinPromptDialog(title = h.title, onUnlocked = { pinFor = null; playLive(h) }, onCancel = { pinFor = null })
     }
 }
 

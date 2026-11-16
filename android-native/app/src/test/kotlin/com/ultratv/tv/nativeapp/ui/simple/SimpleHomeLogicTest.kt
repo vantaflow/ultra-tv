@@ -124,24 +124,9 @@ class SimpleHomeLogicTest {
 
     // ── Direct ──
 
-    @Test fun direct_sansHistorique_liste() {
-        assertEquals(SimpleHome.LiveAction.ShowList, SimpleHome.liveAction(null, emptySet()))
-    }
-
-    @Test fun direct_derniereChaine_lectureDirecte() {
-        val h = hist("LIVE", "c9")
-        assertEquals(SimpleHome.LiveAction.PlayLast(h, needsPin = false), SimpleHome.liveAction(h, setOf("1:autre")))
-    }
-
-    @Test fun direct_chaineVerrouillee_codeParentalDAbord() {
-        val h = hist("LIVE", "c9", provider = 1)
-        assertEquals(SimpleHome.LiveAction.PlayLast(h, needsPin = true), SimpleHome.liveAction(h, setOf("1:c9")))
-    }
-
-    @Test fun derniereChaine_ignoreSansAdresseEtNonDirect() {
-        val l = listOf(hist("MOVIE", "m1"), hist("LIVE", "c1", url = ""), hist("LIVE", "c2"))
-        assertEquals("c2", SimpleHome.lastLive(l)?.remoteId)
-        assertNull(SimpleHome.lastLive(emptyList()))
+    @Test fun direct_tuileTele_ouvreToujoursLaListeDesChaines() {
+        // Plus de lecture directe de la dernière chaîne : la tuile mène à la liste (favoris d'abord).
+        assertEquals(Routes.SIMPLE_CHANNELS, SimpleTile.LIVE.route)
     }
 
     // ── Liste de chaînes : favoris d'abord ──

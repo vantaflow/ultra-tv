@@ -698,7 +698,7 @@
     <string name="simple_tile_series">Chương trình TV</string>
     <string name="simple_tile_favorites">Yêu thích của tôi</string>
     <string name="simple_tile_search">Tìm kiếm</string>
-    <string name="simple_tile_live_hint">Kênh gần nhất hoặc danh sách kênh</string>
+    <string name="simple_tile_live_hint">Danh sách kênh</string>
     <string name="simple_tile_resume_hint">Tiếp tục từ chỗ bạn dừng</string>
     <string name="simple_tile_resume_nothing">Chưa có gì để xem tiếp: hãy chọn một bộ phim</string>
     <string name="simple_tile_movies_hint">Chọn một bộ phim</string>

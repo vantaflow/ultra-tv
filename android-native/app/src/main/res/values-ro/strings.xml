@@ -731,7 +731,7 @@
     <string name="simple_tile_series">Seriale</string>
     <string name="simple_tile_favorites">Favoritele mele</string>
     <string name="simple_tile_search">Caută</string>
-    <string name="simple_tile_live_hint">Ultimul canal sau lista de canale</string>
+    <string name="simple_tile_live_hint">Lista de canale</string>
     <string name="simple_tile_resume_hint">Continuă de unde ai rămas</string>
     <string name="simple_tile_resume_nothing">Nimic de reluat încă: alege un film</string>
     <string name="simple_tile_movies_hint">Alege un film</string>

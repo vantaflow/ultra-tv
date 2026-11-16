@@ -73,22 +73,6 @@ object SimpleHome {
     fun resumeAction(item: WatchHistoryEntity?): ResumeAction =
         if (item == null) ResumeAction.Browse(Routes.MOVIES) else ResumeAction.Play(item)
 
-    /** Dernière chaîne regardée jouable (adresse connue). */
-    fun lastLive(recentLive: List<WatchHistoryEntity>): WatchHistoryEntity? =
-        recentLive.firstOrNull { it.kind == "LIVE" && it.streamUrl.isNotBlank() }
-
-    /** Ce que fait la tuile « Télé en direct ». */
-    sealed interface LiveAction {
-        /** Lance directement la dernière chaîne ; [needsPin] si elle est verrouillée (code parental d'abord). */
-        data class PlayLast(val item: WatchHistoryEntity, val needsPin: Boolean) : LiveAction
-        /** Aucune chaîne regardée : liste à gros caractères (favoris d'abord). */
-        data object ShowList : LiveAction
-    }
-
-    fun liveAction(lastLive: WatchHistoryEntity?, locked: Set<String>): LiveAction =
-        if (lastLive == null) LiveAction.ShowList
-        else LiveAction.PlayLast(lastLive, needsPin = "${lastLive.providerId}:${lastLive.remoteId}" in locked)
-
     /** Liste de chaînes du mode simple : favoris d'abord, puis le reste, sans doublon ni séparateur, plafonnée à [max]. */
     fun orderChannels(favorites: List<ChannelEntity>, others: List<ChannelEntity>, max: Int = MAX_CHANNELS): List<ChannelEntity> =
         (favorites + others).filter { !it.isSeparator }.distinctBy { it.id }.take(max)

@@ -718,7 +718,7 @@
     <string name="simple_tile_series">Series</string>
     <string name="simple_tile_favorites">Mis favoritos</string>
     <string name="simple_tile_search">Buscar</string>
-    <string name="simple_tile_live_hint">Último canal o lista de canales</string>
+    <string name="simple_tile_live_hint">Lista de canales</string>
     <string name="simple_tile_resume_hint">Seguir donde lo dejó</string>
     <string name="simple_tile_resume_nothing">Nada que continuar todavía: elija una película</string>
     <string name="simple_tile_movies_hint">Elegir una película</string>
