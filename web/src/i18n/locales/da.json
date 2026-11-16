@@ -213,6 +213,7 @@
   "player.buffering": "Bufferer…",
   "player.reconnecting": "Genopretter forbindelse…",
   "player.noTracks": "Ingen alternative spor",
+  "player.subtitlesFailed": "Undertekster kunne ikke udtrækkes.",
   "player.shortcuts": "Genveje",
   "player.sk.space": "Afspil / pause",
   "player.sk.arrows": "10 s tilbage / frem (videoer)",

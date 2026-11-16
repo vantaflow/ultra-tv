@@ -2,11 +2,11 @@
 const test = require("node:test");
 const { PassThrough } = require("node:stream");
 const assert = require("node:assert");
-const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, serveTranscode } = require("../transcode.cjs");
+const { ffmpegCandidates, findFfmpeg, parseTranscodePath, transcodeArgs, parseStreams, subtitleArgs, serveStreamInfo, serveTranscode } = require("../transcode.cjs");
 
 test("parseTranscodePath : jeton, cible et position", () => {
-  assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=754.5"), { token: "tok", b64: "aGVsbG8", ss: 754.5, live: false });
-  assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?live=1"), { token: "tok", b64: "aGVsbG8", ss: 0, live: true });
+  assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=754.5"), { kind: "tx", token: "tok", b64: "aGVsbG8", ss: 754.5, live: false, a: 0, s: 0 });
+  assert.deepStrictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?live=1"), { kind: "tx", token: "tok", b64: "aGVsbG8", ss: 0, live: true, a: 0, s: 0 });
   assert.strictEqual(parseTranscodePath("/tok/aGVsbG8", ""), null);
   assert.strictEqual(parseTranscodePath("/tok/tx/a/b", ""), null);
   assert.strictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?ss=-1;rm")?.ss, 0);
@@ -74,4 +74,55 @@ test("serveTranscode : échec de ffmpeg sans sortie → 502", async () => {
   child.emit("close", 1);
   assert.strictEqual(res.status, 502);
   assert.ok(res.writableEnded);
+});
+
+test("parseTranscodePath : routes pistes (txi) et sous-titres (txs), index bornés", () => {
+  assert.strictEqual(parseTranscodePath("/tok/txi/aGVsbG8", "")?.kind, "info");
+  assert.deepStrictEqual(parseTranscodePath("/tok/txs/aGVsbG8", "?s=3"), { kind: "sub", token: "tok", b64: "aGVsbG8", ss: 0, live: false, a: 0, s: 3 });
+  assert.strictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?a=2")?.a, 2);
+  assert.strictEqual(parseTranscodePath("/tok/tx/aGVsbG8", "?a=2;rm")?.a, 0);
+  assert.strictEqual(parseTranscodePath("/tok/zz/aGVsbG8", ""), null);
+});
+
+test("transcodeArgs : piste audio choisie", () => {
+  const a = transcodeArgs("http://h/1.mkv", { audio: 2 });
+  assert.ok(a.includes("0:a:2?"));
+  assert.ok(transcodeArgs("http://h/1.mkv").includes("0:a:0?"));
+});
+
+const FF_OUT = `Input #0, matroska,webm, from 'http://h/1.mkv':
+  Stream #0:0: Video: h264 (High), yuv420p, 1920x1080
+  Stream #0:1(fre): Audio: ac3, 48000 Hz, 5.1(side), fltp, 448 kb/s (default)
+    Metadata:
+      title           : VFF 5.1
+  Stream #0:2(eng): Audio: eac3, 48000 Hz, 5.1(side), fltp
+  Stream #0:3(fre): Subtitle: hdmv_pgs_subtitle
+  Stream #0:4(eng): Subtitle: subrip (srt)
+    Metadata:
+      title           : English SDH
+  Stream #0:5[0x100](und): Subtitle: ass (ssa)
+At least one output file must be specified
+`;
+
+test("parseStreams : pistes audio, sous-titres texte, index dans le type", () => {
+  const r = parseStreams(FF_OUT);
+  assert.deepStrictEqual(r.audio.map((x) => [x.i, x.lang, x.codec, x.title]), [[0, "fre", "ac3", "VFF 5.1"], [1, "eng", "eac3", ""]]);
+  // Le sous-titre image (PGS) compte dans l'index (0:s:0) mais n'est pas proposé.
+  assert.deepStrictEqual(r.subs.map((x) => [x.i, x.lang, x.codec, x.title]), [[1, "eng", "subrip", "English SDH"], [2, "", "ass", ""]]);
+});
+
+test("subtitleArgs : WebVTT sur la sortie standard", () => {
+  const a = subtitleArgs("http://h/1.mkv", { s: 1, userAgent: "UA" });
+  assert.ok(a.includes("0:s:1"));
+  assert.strictEqual(a[a.indexOf("-f") + 1], "webvtt");
+  assert.strictEqual(a.at(-1), "pipe:1");
+});
+
+test("serveStreamInfo : JSON des pistes, 502 sinon", async () => {
+  const res = fakeRes();
+  await serveStreamInfo({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), headers: {}, probe: async () => ({ audio: [], subs: [] }) });
+  assert.strictEqual(res.status, 200);
+  const bad = fakeRes();
+  await serveStreamInfo({ headers: {} }, bad, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), headers: {}, probe: async () => null });
+  assert.strictEqual(bad.status, 502);
 });

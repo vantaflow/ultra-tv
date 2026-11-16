@@ -68,7 +68,10 @@ android {
         // Different applicationId during development so it can be installed
         // alongside the existing Capacitor build (com.ultratv.tv).
         applicationId = "com.ultratv.tv.nativeapp"
-        minSdk = 28
+        // 25 : Fire OS 6 (Fire TV Stick 2e génération / Stick 4K 1re génération = Android 7.1, 32 bits). Plus bas, ces boîtiers
+        // refusent l'APK (« problème lors de l'analyse du package »). java.time / Base64 / java.nio.file passent par le
+        // désucrage de la bibliothèque standard (coreLibraryDesugaring) ; le reste est protégé par des tests de version.
+        minSdk = 25
         targetSdk = 35
         versionCode = appVersionCode
         versionName = appVersionName
@@ -107,11 +110,10 @@ android {
                 storePassword = System.getenv("ULTRA_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("ULTRA_KEY_ALIAS")
                 keyPassword = System.getenv("ULTRA_KEY_PASSWORD")
-                // Rotation lineage is only natively supported by APK Signature
-                // Scheme v3 (Android 9 / API 28+). Pre-9 devices would need
-                // the OLD signer for v1/v2 — which we don't ship — so we
-                // bumped minSdk to 28 and disable v1/v2. Modern Android TV
-                // boxes are all on 9+.
+                // La rotation de clé (lineage) n'existe qu'en schéma v3 (Android 9 / API 28+), et apksigner refuse v1/v2
+                // avec un lineage sans la clé privée du PLUS ANCIEN signataire (la clé de debug d'origine, perdue). Les APK
+                // à lineage restent donc v3 seul : Android 7.x les rejette (« problème lors de l'analyse du package »).
+                // Pour Android 7.x (Fire OS 6), resignRelease produit en plus un APK « android7 » signé v1+v2 sans lineage.
                 enableV1Signing = false
                 enableV2Signing = false
                 enableV3Signing = true
@@ -160,6 +162,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        isCoreLibraryDesugaringEnabled = true
     }
 
     buildFeatures {
@@ -217,6 +220,7 @@ ksp {
 }
 
 dependencies {
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.ui.tooling.preview)
@@ -363,6 +367,32 @@ tasks.register("resignRelease") {
             val code = proc.waitFor()
             check(code == 0) { "[resignRelease] apksigner exited with $code on ${apk.name}" }
             println("[resignRelease] APK re-signed with rotation lineage → $apk")
+        }
+
+        // Android 7.x / Fire OS 6 (API 25-27) ne lit que les signatures v1/v2 : APK 32 bits à part, signé de la clé actuelle
+        // SANS lineage (aucun appareil de cette génération n'a jamais installé une ancienne clé : rien à faire pivoter).
+        // Nom hors du motif « *-release.apk » : il n'est ni re-signé avec le lineage ni confondu avec l'APK 32 bits normal.
+        // À ne PAS proposer aux Android 9+ déjà équipés (clé de debug d'origine) : l'installation par-dessus échouerait.
+        val v7 = apks.firstOrNull { it.name.endsWith("-armeabi-v7a-release.apk") }
+        if (v7 != null) {
+            val legacy = File(v7.parentFile, "app-armeabi-v7a-android7.apk")
+            v7.copyTo(legacy, overwrite = true)
+            File(legacy.path + ".idsig").delete()
+            val proc = ProcessBuilder(
+                apksigner, "sign",
+                "--ks", ks,
+                "--ks-key-alias", alias,
+                "--ks-pass", "pass:$ksPwd",
+                "--key-pass", "pass:$keyPwd",
+                "--min-sdk-version", "25",
+                "--v1-signing-enabled", "true",
+                "--v2-signing-enabled", "true",
+                "--v3-signing-enabled", "false",
+                "--v4-signing-enabled", "false",
+                legacy.absolutePath,
+            ).inheritIO().start()
+            check(proc.waitFor() == 0) { "[resignRelease] apksigner a échoué sur ${legacy.name}" }
+            println("[resignRelease] APK Android 7 (v1+v2, sans lineage) → $legacy")
         }
     }
 }

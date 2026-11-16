@@ -18,10 +18,18 @@ object UpdateAssets {
         val dmName: String? = null, val dmUrl: String? = null,
     )
 
-    fun choose(assets: List<Asset>, versionName: String, supportedAbis: List<String>): Choice? {
+    /**
+     * [sdkInt] : version d'Android de l'appareil. Avant Android 9 (API 28, ex. Fire OS 6), seuls les schémas de signature
+     * v1/v2 sont lus : l'APK « android7 » (`UltraTV-<version>-<abi>-android7.apk`, signé v1+v2 sans lineage) est alors préféré.
+     */
+    fun choose(assets: List<Asset>, versionName: String, supportedAbis: List<String>, sdkInt: Int = 28): Choice? {
         fun find(n: String) = assets.firstOrNull { it.name.equals(n, ignoreCase = true) }
         val sums = find(SUMS)
         if (sums != null) {
+            if (sdkInt < 28) for (abi in supportedAbis) {
+                val apk = find("UltraTV-$versionName-$abi-android7.apk") ?: continue
+                return Choice(apk.name, apk.url, null, sums.url)
+            }
             for (abi in supportedAbis) {
                 val apk = find("UltraTV-$versionName-$abi.apk") ?: continue
                 val dm = find("UltraTV-$versionName-$abi.dm")

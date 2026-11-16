@@ -213,6 +213,7 @@
   "player.buffering": "กำลังบัฟเฟอร์…",
   "player.reconnecting": "กำลังเชื่อมต่อใหม่…",
   "player.noTracks": "ไม่มีแทร็กทางเลือก",
+  "player.subtitlesFailed": "ไม่สามารถดึงคำบรรยายนี้ได้",
   "player.shortcuts": "ทางลัด",
   "player.sk.space": "เล่น / หยุดชั่วคราว",
   "player.sk.arrows": "ย้อนกลับ / ข้ามไปข้างหน้า 10 วินาที (วิดีโอ)",

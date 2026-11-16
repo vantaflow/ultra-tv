@@ -32,7 +32,7 @@
 
 | Device | Link |
 |---|---|
-| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+) | See « Which APK? » below · on a box: Downloader app, code **`5189921`** |
+| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+, 7.1+ with the android7 APK) | See « Which APK? » below · on a box: Downloader app, code **`5189921`** |
 | **Samsung TVs** (Tizen 5.5+, 2020 models and later) | [Unsigned .wgt](https://github.com/vantaflow/ultra-tv/releases) — developer install, [see the guide](docs/tv.md) |
 | **LG TVs** (webOS 6+, 2021 models and later) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — developer mode, [see the guide](docs/tv.md) |
 | **Windows** (x64) | [.exe installer](https://ultratv.dpdns.org/download/windows) |
@@ -188,7 +188,7 @@ Everything is on the [Releases](https://github.com/vantaflow/ultra-tv/releases) 
 
 ## Installation
 
-Android 9 or newer (API 28).
+Android 9 or newer (API 28) for the regular APK; Android 7.1 (API 25), i.e. Fire TV Sticks running Fire OS 6 (2nd-generation Stick, 1st-generation Stick 4K), with the **android7** APK (`UltraTV-android7.apk`, 32-bit).
 
 **APK.** Download [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (SHA-256 sum on the release page) and install it. If the install fails (32-bit device such as the Chromecast with Google TV HD), take [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk); as a last resort, the [universal APK](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk). The in-app updater picks the right build for your device.
 
@@ -227,7 +227,8 @@ An address like `…/get.php?username=…&password=…` pasted as an M3U link is
 - **Wrong APK**: on a 32-bit device (Chromecast with Google TV HD), take the 32-bit APK (`android-32`) rather than the universal one.
 - **Older version signed differently**: uninstall the old Ultra TV first (Settings › Apps), then reinstall. Your sources stay in the cloud if you enabled it.
 - **Truncated download**: compare the file size with the release's, and its SHA-256 with the `.sha256` file (or `SHA256SUMS.txt`) published alongside; download again if they differ.
-- **Android 9 minimum**: older versions are not supported.
+- **Fire TV Stick on Fire OS 6 (Android 7.1): "problem parsing the package"**: the regular APKs are signed with v3 only (key rotation, Android 9 minimum), a format Android 7.x cannot read. Take the **android7** APK (`UltraTV-android7.apk`, 32-bit, v1/v2 signed); it then updates with later app versions. On Fire OS 7 (Android 9) the regular 32-bit APK works. If the error persists: incomplete file (compare the SHA-256) or not enough space (the basic Stick has only 8 GB). A basic Fire TV Stick has no 4K output: that is the hardware, not the app.
+- **Android 7.1 minimum** (API 25): older versions are not supported.
 
 ## Cloud sync
 

@@ -105,7 +105,7 @@ object UpdateChecker {
                     }
                 }
                 // APK adapté au processeur (plus léger) s'il est publié, sinon l'universel historique.
-                val choice = UpdateAssets.choose(assets, verName, Build.SUPPORTED_ABIS.toList())
+                val choice = UpdateAssets.choose(assets, verName, Build.SUPPORTED_ABIS.toList(), Build.VERSION.SDK_INT)
                 if (choice == null || choice.apkUrl.isBlank()) {
                     RemoteLog.warn(TAG, "no installable APK asset on $tag")
                     return@use null

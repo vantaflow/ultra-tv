@@ -221,6 +221,7 @@
   "player.buffering": "Vyrovnávání…",
   "player.reconnecting": "Opětovné připojování…",
   "player.noTracks": "Žádné alternativní stopy",
+  "player.subtitlesFailed": "Tyto titulky se nepodařilo extrahovat.",
   "player.shortcuts": "Zkratky",
   "player.sk.space": "Přehrát / pozastavit",
   "player.sk.arrows": "Zpět / vpřed o 10 s (videa)",

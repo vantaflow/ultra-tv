@@ -45,7 +45,7 @@ object HdrOutput {
         val dm = ctx.getSystemService(Context.DISPLAY_SERVICE) as android.hardware.display.DisplayManager
         val d = dm.getDisplay(android.view.Display.DEFAULT_DISPLAY) ?: return@runCatching false
         @Suppress("DEPRECATION") val types = d.hdrCapabilities?.supportedHdrTypes
-        displayHdrCapable(types, d.isHdr)
+        displayHdrCapable(types, if (android.os.Build.VERSION.SDK_INT >= 26) d.isHdr else null)
     }.getOrDefault(false)
 
     private const val PREFS = "ultra_hdr_output"

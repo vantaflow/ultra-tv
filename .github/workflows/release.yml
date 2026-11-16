@@ -141,6 +141,12 @@ jobs:
             # reste valide d'une version à l'autre (lien Downloader, liens courts).
             [ -n "$f" ] && cp "$f" "dist/UltraTV-$V-$abi.apk" && cp "$f" "dist/UltraTV-$abi.apk"
           done
+          # Android 7.x / Fire OS 6 (Fire TV Stick 32 bits) : APK signé v1+v2 sans lineage (produit par resignRelease quand la
+          # clé de publication est présente). Les APK à lineage sont v3 seul et donnent « problème lors de l'analyse du package ».
+          A7="$OUT/app-armeabi-v7a-android7.apk"
+          if [ -f "$A7" ]; then
+            cp "$A7" "dist/UltraTV-$V-armeabi-v7a-android7.apk" && cp "$A7" "dist/UltraTV-android7.apk"
+          fi
           # Profil de démarrage précompilé (.dm, format Android 12+) pour chaque APK versionné : installé avec l'APK
           # (adb install-multiple UltraTV-X-abi.apk UltraTV-X-abi.dm), ART compile en speed-profile dès l'installation
           # au lieu d'attendre une optimisation de fond. Mesuré sur une box 2 Go : démarrage 1,1 s → 0,6 s, p99 550 → 150 ms.
@@ -156,7 +162,7 @@ jobs:
           sha256sum UltraTV-debug.apk | awk '{print $1}' > UltraTV-debug.apk.sha256
           sha256sum UltraTV.apk | awk '{print $1}' > UltraTV.apk.sha256
           # Condensat des copies à nom fixe par processeur (même format que UltraTV.apk.sha256).
-          for abi in arm64-v8a armeabi-v7a; do
+          for abi in arm64-v8a armeabi-v7a android7; do
             [ -f "UltraTV-$abi.apk" ] && sha256sum "UltraTV-$abi.apk" | awk '{print $1}' > "UltraTV-$abi.apk.sha256"
           done
           sha256sum *.apk $(ls *.dm 2>/dev/null) > SHA256SUMS.txt
@@ -188,4 +194,5 @@ jobs:
             dist/UltraTV.apk.sha256
             dist/UltraTV-arm64-v8a.apk.sha256
             dist/UltraTV-armeabi-v7a.apk.sha256
+            dist/UltraTV-android7.apk.sha256
             dist/SHA256SUMS.txt

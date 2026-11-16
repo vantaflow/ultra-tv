@@ -6,6 +6,7 @@ compose-bom = "2026.09.00"
 compose-tv-foundation = "1.0.0"
 compose-tv-material = "1.1.0"
 media3 = "1.11.1"
+desugar-jdk-libs = "2.1.5"
 libvlc = "3.7.7"
 media3-ffmpeg = "1.9.0+1"
 room = "2.8.5"
@@ -28,6 +29,7 @@ mediarouter = "1.8.1"
 play-cast = "23.0.0"
 
 [libraries]
+desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugar-jdk-libs" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }

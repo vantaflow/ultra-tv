@@ -36,7 +36,7 @@ import {
 import { parseEpisodes } from "@/screens/Detail";
 import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
-import { effectivePreferred } from "./trackChoice";
+import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
 import { stalkerCandidate, candidates, type Candidate } from "./resolve";
 import { isTv } from "@/lib/tv";
@@ -48,7 +48,8 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
+import { clampSeek, parseTxInfo, TX_LABEL, txClock, txInfoUrl, txSubUrl, txUrl, type TxInfo, type TxState } from "./transcode";
+import { parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
 import { stepIndex } from "@/lib/episodePanel";
@@ -110,6 +111,14 @@ export function PlayerHost() {
   /** Conversion audio AC-3 / DTS en cours (bureau) ; null sinon. */
   const txRef = useRef<TxState | null>(null);
   const [tracks, setTracks] = useState<Tracks>(NO_TRACKS);
+  // Bureau (ffmpeg) : pistes audio / sous-titres lues dans le fichier quand le navigateur ne les expose pas (MP4/MKV natif, flux converti).
+  const [xinfo, setXinfo] = useState<TxInfo | null>(null);
+  const xinfoKeyRef = useRef("");
+  const [xAudio, setXAudio] = useState(0);
+  const [xText, setXText] = useState(-1);
+  const [subFail, setSubFail] = useState(false);
+  const subCuesRef = useRef<Cue[] | null>(null);
+  const subTrackRef = useRef<TextTrack | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [ui, setUi] = useState(true);
   const [panel, setPanel] = useState<null | "tracks" | "display" | "player" | "stats" | "channels" | "episodes">(null);
@@ -240,6 +249,34 @@ export function PlayerHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Pose les sous-titres choisis sur la vidéo, décalés du départ de la conversion en cours (aucun = piste vide). */
+  const applySubs = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    let tr = subTrackRef.current;
+    const cues = subCuesRef.current;
+    if (!tr && !cues) return;
+    if (!tr) { tr = v.addTextTrack("subtitles", "Ultra TV"); subTrackRef.current = tr; }
+    while (tr.cues && tr.cues.length > 0) tr.removeCue(tr.cues[0]!);
+    if (!cues) { tr.mode = "disabled"; return; }
+    for (const c of shiftCues(cues, txRef.current?.offset ?? 0)) tr.addCue(new VTTCue(c.start, c.end, c.text));
+    tr.mode = "showing";
+  }, []);
+
+  /** Adresse d'origine du média (celle que ffmpeg lit) : flux converti en cours, sinon candidat natif MP4/MKV ; null sinon. */
+  const originUrl = useCallback((): string | null => {
+    if (txRef.current) return txRef.current.orig;
+    const c = candRef.current.list[candRef.current.i];
+    return c && c.format === "native" ? c.url : null;
+  }, []);
+
+  /** En-têtes du proxy pour une requête ffmpeg (identité du fournisseur). */
+  const proxyHeaders = useCallback(() => {
+    const tg = usePlayer.getState().target;
+    const src = useSources.getState().list.find((x) => x.id === tg?.sourceId);
+    return requestHeaders(transportSync(), { userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null });
+  }, []);
+
   const startCandidate = useCallback(async (c: Candidate) => {
     const tg = usePlayer.getState().target;
     const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
@@ -264,6 +301,7 @@ export function PlayerHost() {
     setLimit(false);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
+    setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); subCuesRef.current = null; applySubs();
     setPanel(null);
     setCur({ t: 0, d: 0, buf: 0 });
     window.clearTimeout(scrubTimer.current); scrubRef.current = null; setScrub(null);
@@ -562,12 +600,67 @@ export function PlayerHost() {
       const ss = clampSeek(sec, tx.duration);
       txRef.current = { ...tx, offset: ss };
       const c = candRef.current;
-      c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss) } : x));
+      c.list = c.list.map((x, k) => (k === c.i ? { ...x, url: txUrl(base, tx.orig, ss, false, tx.audio ?? 0) } : x));
       void startCandidate(c.list[c.i]!);
+      applySubs();
       return;
     }
     if (Number.isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, sec));
-  }, [startCandidate]);
+  }, [startCandidate, applySubs]);
+  /** Liste des pistes, demandée au proxy à l'ouverture du panneau (une connexion brève au fournisseur, pas pendant la lecture normale). */
+  useEffect(() => {
+    const base = bridge()?.proxyBase;
+    if (panel !== "tracks" || !target || target.kind === "live" || !bridge()?.transcode || !base) return;
+    const orig = originUrl();
+    if (!orig || xinfoKeyRef.current === orig) return;
+    xinfoKeyRef.current = orig;
+    void fetch(txInfoUrl(base, orig), { headers: proxyHeaders() })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (xinfoKeyRef.current === orig) setXinfo(parseTxInfo(j)); })
+      .catch(() => { if (xinfoKeyRef.current === orig) setXinfo(null); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel, target?.refId, target?.kind]);
+
+  /** Choix d'une piste audio du fichier : le flux est refait par ffmpeg (vidéo copiée, audio AAC) à la position courante. */
+  const switchAudio = useCallback((i: number) => {
+    const v = videoRef.current;
+    const base = bridge()?.proxyBase;
+    const orig = originUrl();
+    const tg = usePlayer.getState().target;
+    if (!v || !base || !orig || !tg) return;
+    const c = candRef.current;
+    const prev = txRef.current;
+    const { t: pos } = txClock(prev, v.currentTime, v.duration);
+    const duration = prev?.duration ?? (Number.isFinite(v.duration) ? v.duration : 0);
+    const tx: TxState = { orig, offset: pos, duration, audio: i };
+    txRef.current = tx;
+    skipProbeRef.current = true;
+    const cand: Candidate = { url: txUrl(base, orig, pos, false, i), format: "ts", label: TX_LABEL };
+    const at = c.list.findIndex((x) => x.label === TX_LABEL);
+    if (at >= 0) { c.list = c.list.map((x, k) => (k === at ? cand : x)); c.i = at; }
+    else { c.list = [...c.list, cand]; c.i = c.list.length - 1; }
+    setXAudio(i);
+    void startCandidate(cand);
+    applySubs();
+  }, [originUrl, startCandidate, applySubs]);
+
+  /** Choix d'un sous-titre texte du fichier (-1 = aucun) : extrait en WebVTT par ffmpeg puis posé sur la vidéo. */
+  const selectSub = useCallback((i: number) => {
+    const base = bridge()?.proxyBase;
+    const orig = originUrl();
+    setSubFail(false);
+    if (i < 0 || !base || !orig) { subCuesRef.current = null; setXText(-1); applySubs(); return; }
+    setXText(i);
+    void fetch(txSubUrl(base, orig, i), { headers: proxyHeaders() })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error("sub"))))
+      .then((txt) => {
+        const cues = parseVtt(txt);
+        if (cues.length === 0) throw new Error("empty");
+        subCuesRef.current = cues; applySubs();
+      })
+      .catch(() => { subCuesRef.current = null; setXText(-1); setSubFail(true); applySubs(); });
+  }, [originUrl, applySubs, proxyHeaders]);
+
   const seekBy = useCallback((s: number) => {
     const v = videoRef.current!;
     seekTo(txClock(txRef.current, v.currentTime, v.duration).t + s);
@@ -1113,6 +1206,20 @@ export function PlayerHost() {
                 <>
                   <button className="opt" role="radio" aria-checked={tracks.activeLevel === -1} onClick={() => engineRef.current?.setLevel(-1)}>{t("player.auto")}</button>
                   {tracks.levels.map((l) => <button key={l.id} className="opt" role="radio" aria-checked={tracks.activeLevel === l.id} onClick={() => engineRef.current?.setLevel(l.id)}>{l.label}</button>)}
+                </>
+              )}
+              {tracks.audio.length <= 1 && xinfo && xinfo.audio.length > 1 && (
+                <>
+                  <div className="grp-t">{t("player.audio")}</div>
+                  {xinfo.audio.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xAudio === a.i} onClick={() => switchAudio(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
+                </>
+              )}
+              {tracks.text.length === 0 && xinfo && xinfo.subs.length > 0 && (
+                <>
+                  <div className="grp-t">{t("player.subtitles")}</div>
+                  <button className="opt" role="radio" aria-checked={xText === -1} onClick={() => selectSub(-1)}>{t("player.off")}</button>
+                  {xinfo.subs.map((a) => <button key={a.i} className="opt" role="radio" aria-checked={xText === a.i} onClick={() => selectSub(a.i)}>{a.title || trackLabel({ lang: a.lang }, a.i, usePrefs.getState().lang)}<span className="h">{a.lang}</span></button>)}
+                  {subFail && <div className="muted" role="status">{t("player.subtitlesFailed")}</div>}
                 </>
               )}
               {tracks.audio.length > 1 && (
