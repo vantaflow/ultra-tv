@@ -267,6 +267,10 @@ class CatalogGridViewModel @Inject constructor(
      * squelette puis clignotement). Pendant une synchro, au plus une relecture par seconde.
      */
     private val rowCache = java.util.concurrent.ConcurrentHashMap<String, StateFlow<List<PosterItem>?>>()
+
+    // Manque de mémoire : les rangées déjà construites sont rendues (les rangées affichées se rechargent depuis la base).
+    private val pressure = com.ultratv.tv.nativeapp.data.memory.MemoryPressure.register { rowCache.clear() }
+    override fun onCleared() { pressure.close(); super.onCleared() }
     fun rowItems(cat: String): StateFlow<List<PosterItem>?> = rowCache.getOrPut(cat) {
         combine(pid, kind, sourceFlow) { p, k, s -> Triple(p, k, s) }.flatMapLatest { (p, k, s) ->
             val genre = s == CategorySource.GENRES

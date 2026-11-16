@@ -155,6 +155,11 @@ class TmdbRepository @Inject constructor(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, RelatedEntry>?) = size > 40
     })
 
+    // Manque de mémoire (onTrimMemory) : ces caches se reconstruisent à la demande, on les rend.
+    init {
+        com.ultratv.tv.nativeapp.data.memory.MemoryPressure.register { photoCache.clear(); relatedCache.clear() }
+    }
+
     /**
      * Titres que TMDB recommande (puis « similaires ») pour un film, dans son ordre. Identifiant TMDB : celui de la source
      * ([sourceTmdbId]), sinon la fiche enrichie (cache Room, ou recherche titre + année). Cache mémoire de 6 h (une

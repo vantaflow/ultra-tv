@@ -177,7 +177,13 @@ object RemoteLog {
         val ctx = contextInfo ?: return
         val sw = java.io.StringWriter()
         error.printStackTrace(java.io.PrintWriter(sw))
-        val payload = sanitize("${thread.name}: ${error.javaClass.name}: ${error.message}\n$sw")
+        // Limite de tas et mémoire libre jointes à la trace ; « [OOM] » en tête pour repérer les appareils à risque.
+        val oom = com.ultratv.tv.nativeapp.data.memory.CrashMemory.isOutOfMemory(error)
+        val mem = runCatching { com.ultratv.tv.nativeapp.data.memory.CrashMemory.line(memorySnapshot(appCtx)) }.getOrDefault("")
+        val payload = sanitize(
+            "${com.ultratv.tv.nativeapp.data.memory.CrashMemory.tag(oom)}${thread.name}: ${error.javaClass.name}: ${error.message}\n$sw" +
+                if (mem.isNotEmpty()) "\n$mem" else "",
+        )
 
         // 1. Persist locally so we can retry on next launch if the network leg
         //    doesn't complete in time. The crash.txt file is the source of
@@ -203,6 +209,20 @@ object RemoteLog {
     }
 
     private val JSON = "application/json".toMediaType()
+
+    /** Relevé mémoire au moment du plantage (tas Java, classe de tas, RAM libre) ; sans contexte, seul le tas est connu. */
+    private fun memorySnapshot(ctx: android.content.Context?): com.ultratv.tv.nativeapp.data.memory.CrashMemory.Snapshot {
+        val mb = 1024L * 1024
+        val rt = Runtime.getRuntime()
+        val am = ctx?.getSystemService(android.content.Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
+        val info = android.app.ActivityManager.MemoryInfo().also { am?.getMemoryInfo(it) }
+        return com.ultratv.tv.nativeapp.data.memory.CrashMemory.Snapshot(
+            maxHeapMb = rt.maxMemory() / mb, usedHeapMb = (rt.totalMemory() - rt.freeMemory()) / mb,
+            memoryClassMb = am?.memoryClass ?: 0, largeMemoryClassMb = am?.largeMemoryClass ?: 0,
+            lowRamDevice = am?.isLowRamDevice ?: false, availMb = info.availMem / mb, totalMb = info.totalMem / mb,
+            systemLow = info.lowMemory,
+        )
+    }
 }
 
 

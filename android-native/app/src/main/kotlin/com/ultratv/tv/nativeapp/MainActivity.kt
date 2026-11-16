@@ -577,6 +577,11 @@ private fun UltraTvAppRoot(sidebarPosition: SidebarPosition, simpleHome: Boolean
     val liveScope = androidx.compose.runtime.rememberCoroutineScope()
     val sharedLive = androidx.compose.runtime.remember { com.ultratv.tv.nativeapp.ui.player.engine.SharedLiveSession(liveScope) }
     androidx.compose.runtime.DisposableEffect(sharedLive) { onDispose { sharedLive.stop() } }
+    // Mémoire au plus bas (niveau critique / onLowMemory) : l'aperçu vidéo de la liste est fermé (jamais le plein écran).
+    androidx.compose.runtime.DisposableEffect(sharedLive) {
+        val reg = com.ultratv.tv.nativeapp.data.memory.MemoryPressure.register(com.ultratv.tv.nativeapp.data.memory.MemoryPressure.Severity.CRITICAL) { sharedLive.stopPreview() }
+        onDispose { reg.close() }
+    }
     val openSearch: () -> Unit = { nav.navigate(Routes.SEARCH) { launchSingleTop = true } }
     val navBack: () -> Unit = { nav.popBackStack() }
     Surface(

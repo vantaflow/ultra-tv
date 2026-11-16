@@ -83,8 +83,10 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
         )
         return ImageLoader.Builder(this)
             .memoryCache {
+                // Selon la classe de tas de l'appareil (pas la grande classe de largeHeap) : voir ImageMemoryPolicy.
+                val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
                 MemoryCache.Builder()
-                    .maxSizePercent(this, if (economy) 0.08 else 0.25)
+                    .maxSizeBytes(com.ultratv.tv.nativeapp.data.memory.ImageMemoryPolicy.maxBytes(am.memoryClass, am.isLowRamDevice, economy).toInt())
                     .build()
             }
             .diskCache {
@@ -140,10 +142,25 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                 memoryPrefs.get().state.value.economy, adaptive.state.value.auto.lowRam || ramState().limited,
             )
         }.getOrDefault(false)
-        if (level >= TRIM_MEMORY_RUNNING_LOW || (low && level >= TRIM_MEMORY_UI_HIDDEN)) {
-            runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
-            runCatching { posters.get().trim() }
-        }
+        val severity = com.ultratv.tv.nativeapp.data.memory.MemoryPressure.severity(level, low)
+        android.util.Log.i("UltraMemory", "onTrimMemory level=$level severity=$severity")
+        trimCaches(severity)
+    }
+
+    /** Le système est au plus bas : tout ce qui se reconstruit est rendu (même chemin que le niveau critique). */
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun onLowMemory() {
+        super.onLowMemory()
+        android.util.Log.i("UltraMemory", "onLowMemory")
+        trimCaches(com.ultratv.tv.nativeapp.data.memory.MemoryPressure.Severity.CRITICAL)
+    }
+
+    private fun trimCaches(severity: com.ultratv.tv.nativeapp.data.memory.MemoryPressure.Severity) {
+        if (severity < com.ultratv.tv.nativeapp.data.memory.MemoryPressure.Severity.MODERATE) return
+        runCatching { SingletonImageLoader.get(this).memoryCache?.clear() }
+        runCatching { posters.get().trim() }
+        // Caches de fiches / rangées du catalogue et aperçu vidéo, inscrits par leurs propriétaires.
+        com.ultratv.tv.nativeapp.data.memory.MemoryPressure.trim(severity)
     }
 
     override val workManagerConfiguration: Configuration
