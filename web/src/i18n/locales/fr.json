@@ -708,5 +708,15 @@
   "rail.expand": "Déplier le menu",
   "rail.switchProfile": "Changer de profil",
   "rail.recordingRunning": "{n} en cours",
-  "rail.syncing": "Synchronisation"
+  "rail.syncing": "Synchronisation",
+  "handoff.title": "Reprendre sur cet appareil ?",
+  "handoff.body": "{from} vous envoie : {title}",
+  "handoff.yes": "Oui",
+  "handoff.no": "Non",
+  "handoff.send": "Envoyer vers…",
+  "handoff.sent": "Envoyé à {device}. Confirmez sur cet appareil dans les 2 minutes.",
+  "handoff.noSource": "Cette source n’est pas partagée avec votre compte : un autre appareil ne peut pas la retrouver.",
+  "handoff.failed": "Envoi impossible. Réessayez.",
+  "handoff.notFound": "Ce titre n’est pas dans le catalogue de cet appareil.",
+  "handoff.noDevices": "Aucun autre appareil n’est appairé à ce compte."
 }

@@ -1713,4 +1713,16 @@
     <string name="pex_diag_fallback">Αλλαγή αναπαραγωγέα</string>
     <string name="pex_diag_copy">Αντιγραφή αναφοράς</string>
     <string name="pex_diag_copied">Η αναφορά αντιγράφηκε (τα στοιχεία κρύφτηκαν)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Συνέχεια σε αυτή τη συσκευή;</string>
+    <string name="handoff_body">Ο/Η %1$s σας στέλνει: %2$s</string>
+    <string name="handoff_yes">Ναι</string>
+    <string name="handoff_no">Όχι</string>
+    <string name="handoff_send">Αποστολή σε…</string>
+    <string name="handoff_sent">Εστάλη στη συσκευή %1$s. Επιβεβαιώστε σε εκείνη τη συσκευή μέσα σε 2 λεπτά.</string>
+    <string name="handoff_no_source">Αυτή η πηγή δεν είναι κοινή με τον λογαριασμό σας, οπότε άλλη συσκευή δεν μπορεί να τη βρει.</string>
+    <string name="handoff_failed">Η αποστολή απέτυχε. Δοκιμάστε ξανά.</string>
+    <string name="handoff_not_found">Αυτός ο τίτλος δεν υπάρχει στον κατάλογο αυτής της συσκευής.</string>
+    <string name="handoff_no_devices">Δεν υπάρχει άλλη συσκευή συνδεδεμένη με αυτόν τον λογαριασμό.</string>
 </resources>

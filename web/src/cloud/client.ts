@@ -82,14 +82,14 @@ export function normalizeWorkerUrl(raw: string, allowLoopbackHttp = false): stri
 }
 
 export interface HttpRequest { url: string; method?: string; headers?: Record<string, string>; body?: string }
-export interface HttpResult { status: number; text: string; retryAfter: string; etag: string }
+export interface HttpResult { status: number; text: string; retryAfter: string; etag: string; /** En-tête x-utv-handoff (demandes « Reprendre sur cet appareil »), base64url ; vide ou absent = aucune. */ handoff?: string }
 export type CloudHttp = (req: HttpRequest) => Promise<HttpResult>;
 
 const defaultHttp: CloudHttp = async (req) => {
   const b = bridge() as { cloudRequest?: CloudHttp } | undefined;
   if (b?.cloudRequest) return b.cloudRequest(req);
   const res = await fetch(req.url, { method: req.method ?? "GET", headers: req.headers, body: req.body, redirect: "manual" });
-  return { status: res.status, text: await res.text(), retryAfter: res.headers.get("retry-after") ?? "", etag: res.headers.get("etag") ?? "" };
+  return { status: res.status, text: await res.text(), retryAfter: res.headers.get("retry-after") ?? "", etag: res.headers.get("etag") ?? "", handoff: res.headers.get("x-utv-handoff") ?? "" };
 };
 
 let http: CloudHttp = withFallback(defaultHttp);
@@ -173,7 +173,7 @@ export interface CloudPrefs {
 export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
 export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; /** Identifiants des sources supprimées du compte (pierres tombales) : à retirer aussi en local. */ removed?: string[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
 
-export type ConfigResult = { unchanged: true } | { unchanged: false; config: CloudConfig; etag: string };
+export type ConfigResult = { unchanged: true; handoff?: string } | { unchanged: false; config: CloudConfig; etag: string; handoff?: string };
 
 /** Édition de l'appli (standard / pro, fixée à la compilation par VITE_EDITION) : affichée sur le tableau de bord du compte. */
 const EDITION_HEADER = (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_EDITION === "pro" ? "pro" : "standard";
@@ -185,11 +185,11 @@ export async function fetchConfig(base: string, token: string, etag?: string | n
   const r = await http({ url: `${base}/api/config`, headers: auth(token, etag ? { "if-none-match": etag } : {}) });
   if (r.status === 401) throw new TokenRejectedError();
   common(r);
-  if (r.status === 304) return { unchanged: true };
+  if (r.status === 304) return { unchanged: true, handoff: r.handoff || undefined };
   if (r.status < 200 || r.status >= 300) throw new CloudError("config", r.status);
   const o = parse<Partial<CloudConfig>>(r);
   return {
-    unchanged: false, etag: r.etag,
+    unchanged: false, etag: r.etag, handoff: r.handoff || undefined,
     config: { version: o.version ?? 0, devices: o.devices ?? 0, providers: Array.isArray(o.providers) ? o.providers : [], removed: Array.isArray(o.removed) ? o.removed.filter((x: unknown): x is string => typeof x === "string") : [], deviceName: o.deviceName, self: o.self },
   };
 }
@@ -592,4 +592,48 @@ export async function sportsTeamGet(base: string, token: string, name: string): 
 export function siteHost(worker: string): string {
   const host = worker.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase();
   return host === "tv.weedy.dpdns.org" || host === "ultratv-config.khalilbenaz.workers.dev" ? "ultratv.dpdns.org" : host;
+}
+
+// ---------------- Reprise de la lecture d'un appareil à l'autre ----------------
+
+/** Référence envoyée à l'autre appareil : jamais d'URL de flux ni d'identifiants, seulement de quoi retrouver l'élément dans SON catalogue. */
+export interface HandoffRef {
+  /** Identifiant cloud (8 hexadécimaux) de la source. */
+  src: string;
+  t: "live" | "movie" | "episode";
+  /** Identifiant du flux / du film / de l'épisode chez le fournisseur. */
+  id: string;
+  /** Épisode : identifiant de la série chez le fournisseur. */
+  par?: string;
+  /** Position en millisecondes (0 pour le direct). */
+  pos: number;
+  /** Titre affiché dans la question de l'appareil cible. */
+  n: string;
+}
+/** Demande reçue (en-tête x-utv-handoff) : `i` identifiant de la demande, `f` nom de l'appareil émetteur, `a` heure d'envoi (ms). */
+export interface HandoffRequest { i: string; f: string; s: string; t: "live" | "movie" | "episode"; r: string; p?: string; o: number; n: string; a: number }
+
+/** Décode l'en-tête (JSON UTF-8 en base64url) ; toute anomalie donne une liste vide. */
+export function parseHandoffHeader(h: string | null | undefined): HandoffRequest[] {
+  if (!h || h.length > 8192) return [];
+  try {
+    const bin = atob(h.replace(/-/g, "+").replace(/_/g, "/"));
+    const list = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)))) as unknown;
+    if (!Array.isArray(list)) return [];
+    const ok = (x: unknown): x is HandoffRequest => {
+      const o = x as HandoffRequest | null;
+      return !!o && typeof o === "object" && typeof o.i === "string" && typeof o.s === "string" && typeof o.r === "string" && ["live", "movie", "episode"].includes(o.t);
+    };
+    return list.filter(ok).slice(0, 3).map((x) => ({ ...x, f: String(x.f ?? "").slice(0, 64), n: String(x.n ?? "").slice(0, 100), o: Number(x.o) > 0 ? Number(x.o) : 0, a: Number(x.a) || 0 }));
+  } catch { return []; }
+}
+
+/** POST /api/device/handoff : dépose la demande dans la file (2 min) de l'appareil `to`. */
+export async function sendHandoff(base: string, token: string, to: string, ref: HandoffRef): Promise<void> {
+  const r = await http({ url: `${base}/api/device/handoff`, method: "POST", headers: auth(token, HJSON), body: json({ to, ref }) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) throw new NotFoundError();
+  if (r.status === 400) throw new InvalidFieldError(parse<{ field?: string }>(r).field ?? "body");
+  if (r.status < 200 || r.status >= 300) throw new CloudError("handoff", r.status);
 }

@@ -31,6 +31,12 @@ class PlaybackContext @Inject constructor() {
     private val _current = MutableStateFlow<Item?>(null)
     val current: StateFlow<Item?> = _current
 
+    /**
+     * Position de départ imposée au prochain lancement (reprise demandée par un autre appareil, en ms) : le lecteur la
+     * consomme à l'ouverture, avant l'historique local.
+     */
+    @Volatile var pendingStartMs: Long? = null
+
     fun set(item: Item) { _current.value = item }
     fun clear() { _current.value = null }
 }

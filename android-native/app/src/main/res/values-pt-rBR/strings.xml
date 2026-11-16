@@ -1730,4 +1730,16 @@
     <string name="pex_diag_fallback">Troca de player</string>
     <string name="pex_diag_copy">Copiar relatório</string>
     <string name="pex_diag_copied">Relatório copiado (credenciais ocultas)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Continuar neste dispositivo?</string>
+    <string name="handoff_body">%1$s está enviando para você: %2$s</string>
+    <string name="handoff_yes">Sim</string>
+    <string name="handoff_no">Não</string>
+    <string name="handoff_send">Enviar para…</string>
+    <string name="handoff_sent">Enviado para %1$s. Confirme nesse dispositivo em até 2 minutos.</string>
+    <string name="handoff_no_source">Esta fonte não está compartilhada com a sua conta, então outro dispositivo não consegue encontrá-la.</string>
+    <string name="handoff_failed">Não foi possível enviar. Tente novamente.</string>
+    <string name="handoff_not_found">Este título não está no catálogo deste dispositivo.</string>
+    <string name="handoff_no_devices">Nenhum outro dispositivo está pareado com esta conta.</string>
 </resources>

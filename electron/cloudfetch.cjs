@@ -72,6 +72,8 @@ async function cloudRequest(req, fetchImpl) {
       status: res.status,
       retryAfter: res.headers.get("retry-after") || "",
       etag: res.headers.get("etag") || "",
+      // Demandes « Reprendre sur cet appareil » (file de 2 min du compte), en base64url ; vide = aucune.
+      handoff: res.headers.get("x-utv-handoff") || "",
       text: Buffer.concat(chunks).toString("utf8"),
     };
   } catch (e) {

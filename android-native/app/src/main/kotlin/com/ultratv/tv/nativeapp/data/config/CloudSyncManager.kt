@@ -62,6 +62,7 @@ class CloudSyncManager @Inject constructor(
     private val profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val profileLog: com.ultratv.tv.nativeapp.data.profile.ProfileSyncLog,
     private val profileCats: com.ultratv.tv.nativeapp.data.repo.ProfileCategories,
+    private val handoffs: HandoffInbox,
 ) {
     private val mutex = Mutex()
     /** Cadence adaptative (2 min après un changement, puis 10 min) et empreintes de ce qui a déjà été envoyé. */
@@ -109,6 +110,8 @@ class CloudSyncManager @Inject constructor(
             // Suppressions faites hors ligne : transmises d'abord ; la configuration est alors relue en entier.
             val flushed = flushPendingDeletes(base)
             val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed) null else links.etag()) }
+            // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
+            handoffs.note(fetched.handoff)
             if (fetched.notModified) {
                 links.lastSyncAt = System.currentTimeMillis()
                 // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange

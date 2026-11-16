@@ -698,5 +698,15 @@
   "rail.expand": "Utvid menyen",
   "rail.switchProfile": "Bytt profil",
   "rail.recordingRunning": "{n} opptak",
-  "rail.syncing": "Synkroniserer"
+  "rail.syncing": "Synkroniserer",
+  "handoff.title": "Fortsette på denne enheten?",
+  "handoff.body": "{from} sender deg: {title}",
+  "handoff.yes": "Ja",
+  "handoff.no": "Nei",
+  "handoff.send": "Send til…",
+  "handoff.sent": "Sendt til {device}. Bekreft på den enheten innen 2 minutter.",
+  "handoff.noSource": "Denne kilden er ikke delt med kontoen din, så en annen enhet kan ikke finne den.",
+  "handoff.failed": "Kunne ikke sende. Prøv igjen.",
+  "handoff.notFound": "Denne tittelen finnes ikke i denne enhetens katalog.",
+  "handoff.noDevices": "Ingen andre enheter er koblet til denne kontoen."
 }

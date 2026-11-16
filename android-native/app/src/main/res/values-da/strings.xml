@@ -1713,4 +1713,16 @@
     <string name="pex_diag_fallback">Skift af afspiller</string>
     <string name="pex_diag_copy">Kopiér rapport</string>
     <string name="pex_diag_copied">Rapport kopieret (loginoplysninger skjult)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Fortsæt på denne enhed?</string>
+    <string name="handoff_body">%1$s sender dig: %2$s</string>
+    <string name="handoff_yes">Ja</string>
+    <string name="handoff_no">Nej</string>
+    <string name="handoff_send">Send til…</string>
+    <string name="handoff_sent">Sendt til %1$s. Bekræft på den enhed inden for 2 minutter.</string>
+    <string name="handoff_no_source">Denne kilde er ikke delt med din konto, så en anden enhed kan ikke finde den.</string>
+    <string name="handoff_failed">Kunne ikke sende. Prøv igen.</string>
+    <string name="handoff_not_found">Denne titel findes ikke i denne enheds katalog.</string>
+    <string name="handoff_no_devices">Ingen anden enhed er parret med denne konto.</string>
 </resources>

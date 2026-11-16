@@ -1666,4 +1666,16 @@
     <string name="pex_diag_fallback">Zmiana silnika</string>
     <string name="pex_diag_copy">Kopiuj raport</string>
     <string name="pex_diag_copied">Skopiowano raport (dane logowania ukryte)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Wznowić na tym urządzeniu?</string>
+    <string name="handoff_body">%1$s wysyła Ci: %2$s</string>
+    <string name="handoff_yes">Tak</string>
+    <string name="handoff_no">Nie</string>
+    <string name="handoff_send">Wyślij do…</string>
+    <string name="handoff_sent">Wysłano do urządzenia %1$s. Potwierdź na nim w ciągu 2 minut.</string>
+    <string name="handoff_no_source">To źródło nie jest udostępnione na Twoim koncie, więc inne urządzenie nie może go znaleźć.</string>
+    <string name="handoff_failed">Nie udało się wysłać. Spróbuj ponownie.</string>
+    <string name="handoff_not_found">Tego tytułu nie ma w katalogu tego urządzenia.</string>
+    <string name="handoff_no_devices">Żadne inne urządzenie nie jest sparowane z tym kontem.</string>
 </resources>

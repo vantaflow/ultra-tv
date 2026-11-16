@@ -1658,4 +1658,16 @@
     <string name="pex_diag_fallback">Soittimen vaihto</string>
     <string name="pex_diag_copy">Kopioi raportti</string>
     <string name="pex_diag_copied">Raportti kopioitu (tunnukset piilotettu)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Jatketaanko tällä laitteella?</string>
+    <string name="handoff_body">%1$s lähettää sinulle: %2$s</string>
+    <string name="handoff_yes">Kyllä</string>
+    <string name="handoff_no">Ei</string>
+    <string name="handoff_send">Lähetä laitteeseen…</string>
+    <string name="handoff_sent">Lähetetty laitteeseen %1$s. Vahvista siellä 2 minuutin kuluessa.</string>
+    <string name="handoff_no_source">Tätä lähdettä ei ole jaettu tilisi kanssa, joten toinen laite ei löydä sitä.</string>
+    <string name="handoff_failed">Lähetys epäonnistui. Yritä uudelleen.</string>
+    <string name="handoff_not_found">Tätä nimikettä ei ole tämän laitteen luettelossa.</string>
+    <string name="handoff_no_devices">Tähän tiliin ei ole yhdistetty muita laitteita.</string>
 </resources>

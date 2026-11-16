@@ -698,5 +698,15 @@
   "rail.expand": "Mở rộng menu",
   "rail.switchProfile": "Đổi hồ sơ",
   "rail.recordingRunning": "{n} bản ghi",
-  "rail.syncing": "Đang đồng bộ"
+  "rail.syncing": "Đang đồng bộ",
+  "handoff.title": "Tiếp tục xem trên thiết bị này?",
+  "handoff.body": "{from} gửi cho bạn: {title}",
+  "handoff.yes": "Có",
+  "handoff.no": "Không",
+  "handoff.send": "Gửi tới…",
+  "handoff.sent": "Đã gửi tới {device}. Hãy xác nhận trên thiết bị đó trong vòng 2 phút.",
+  "handoff.noSource": "Nguồn này chưa được chia sẻ với tài khoản của bạn nên thiết bị khác không tìm thấy được.",
+  "handoff.failed": "Không gửi được. Hãy thử lại.",
+  "handoff.notFound": "Tiêu đề này không có trong danh mục của thiết bị này.",
+  "handoff.noDevices": "Chưa có thiết bị nào khác được ghép đôi với tài khoản này."
 }

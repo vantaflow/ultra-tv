@@ -30,7 +30,7 @@ test("cloudRequest : transmet Authorization, filtre les autres en-tetes, lit le 
     req.on("data", (c) => (b += c));
     req.on("end", () => {
       seen.body = b;
-      res.writeHead(200, { "content-type": "application/json", etag: '"v3"', "retry-after": "7" });
+      res.writeHead(200, { "content-type": "application/json", etag: '"v3"', "retry-after": "7", "x-utv-handoff": "abc_-" });
       res.end('{"ok":true}');
     });
   });
@@ -43,6 +43,7 @@ test("cloudRequest : transmet Authorization, filtre les autres en-tetes, lit le 
     assert.equal(r.text, '{"ok":true}');
     assert.equal(r.etag, '"v3"');
     assert.equal(r.retryAfter, "7");
+    assert.equal(r.handoff, "abc_-");
     assert.equal(seen.auth, "Bearer t");
     assert.equal(seen.cookie, undefined);
     assert.equal(seen.method, "POST");

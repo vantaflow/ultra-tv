@@ -698,5 +698,15 @@
   "rail.expand": "Expand menu",
   "rail.switchProfile": "Switch profile",
   "rail.recordingRunning": "{n} recording",
-  "rail.syncing": "Syncing"
+  "rail.syncing": "Syncing",
+  "handoff.title": "Resume on this device?",
+  "handoff.body": "{from} is sending you: {title}",
+  "handoff.yes": "Yes",
+  "handoff.no": "No",
+  "handoff.send": "Send to…",
+  "handoff.sent": "Sent to {device}. Confirm on that device within 2 minutes.",
+  "handoff.noSource": "This source is not shared with your account, so another device cannot find it.",
+  "handoff.failed": "Could not send. Try again.",
+  "handoff.notFound": "This title is not in this device’s catalog.",
+  "handoff.noDevices": "No other device is paired with this account."
 }

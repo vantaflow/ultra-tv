@@ -698,5 +698,15 @@
   "rail.expand": "Expandir menu",
   "rail.switchProfile": "Trocar de perfil",
   "rail.recordingRunning": "{n} gravação",
-  "rail.syncing": "Sincronizando"
+  "rail.syncing": "Sincronizando",
+  "handoff.title": "Continuar neste dispositivo?",
+  "handoff.body": "{from} está enviando para você: {title}",
+  "handoff.yes": "Sim",
+  "handoff.no": "Não",
+  "handoff.send": "Enviar para…",
+  "handoff.sent": "Enviado para {device}. Confirme nesse dispositivo em até 2 minutos.",
+  "handoff.noSource": "Esta fonte não está compartilhada com a sua conta, então outro dispositivo não consegue encontrá-la.",
+  "handoff.failed": "Não foi possível enviar. Tente novamente.",
+  "handoff.notFound": "Este título não está no catálogo deste dispositivo.",
+  "handoff.noDevices": "Nenhum outro dispositivo está pareado com esta conta."
 }

@@ -1694,4 +1694,16 @@
     <string name="pex_diag_fallback">สลับเครื่องเล่น</string>
     <string name="pex_diag_copy">คัดลอกรายงาน</string>
     <string name="pex_diag_copied">คัดลอกรายงานแล้ว (ซ่อนข้อมูลเข้าสู่ระบบ)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">ดูต่อบนอุปกรณ์นี้หรือไม่?</string>
+    <string name="handoff_body">%1$s ส่งมาให้คุณ: %2$s</string>
+    <string name="handoff_yes">ใช่</string>
+    <string name="handoff_no">ไม่</string>
+    <string name="handoff_send">ส่งไปยัง…</string>
+    <string name="handoff_sent">ส่งไปยัง %1$s แล้ว โปรดยืนยันบนอุปกรณ์นั้นภายใน 2 นาที</string>
+    <string name="handoff_no_source">แหล่งที่มานี้ไม่ได้แชร์กับบัญชีของคุณ อุปกรณ์อื่นจึงหาไม่พบ</string>
+    <string name="handoff_failed">ส่งไม่สำเร็จ ลองอีกครั้ง</string>
+    <string name="handoff_not_found">ไม่พบชื่อเรื่องนี้ในแคตตาล็อกของอุปกรณ์นี้</string>
+    <string name="handoff_no_devices">ไม่มีอุปกรณ์อื่นที่จับคู่กับบัญชีนี้</string>
 </resources>

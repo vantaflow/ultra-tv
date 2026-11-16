@@ -1751,5 +1751,15 @@
   "SimpleStrings.getOrType()": "أو اكتبه:",
   "SimpleStrings.getHoldFav()": "اضغط مطولًا: المفضلة",
   "SimpleStrings.getHoldRemove()": "اضغط مطولًا: إزالة",
-  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "\u0627\u062e\u062a\u0631 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u062a\u064a \u064a\u0641\u062a\u062d \u0639\u0644\u064a\u0647\u0627 \u0627\u0644\u062a\u0637\u0628\u064a\u0642: \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629 \u0623\u0648 \u0642\u0633\u0645 \u0623\u0648 \u0622\u062e\u0631 \u0634\u0627\u0634\u0629 \u0627\u0633\u062a\u062e\u062f\u0645\u062a\u0647\u0627 (\u0644\u0627 \u062a\u064f\u0633\u062a\u0639\u0627\u062f \u0635\u0641\u062d\u0627\u062a \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644 \u0648\u0627\u0644\u0645\u0634\u063a\u0651\u0644 \u0648\u0627\u0644\u0628\u062d\u062b \u0648\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a)."
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "\u0627\u062e\u062a\u0631 \u0627\u0644\u0634\u0627\u0634\u0629 \u0627\u0644\u062a\u064a \u064a\u0641\u062a\u062d \u0639\u0644\u064a\u0647\u0627 \u0627\u0644\u062a\u0637\u0628\u064a\u0642: \u0627\u0644\u0631\u0626\u064a\u0633\u064a\u0629 \u0623\u0648 \u0642\u0633\u0645 \u0623\u0648 \u0622\u062e\u0631 \u0634\u0627\u0634\u0629 \u0627\u0633\u062a\u062e\u062f\u0645\u062a\u0647\u0627 (\u0644\u0627 \u062a\u064f\u0633\u062a\u0639\u0627\u062f \u0635\u0641\u062d\u0627\u062a \u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644 \u0648\u0627\u0644\u0645\u0634\u063a\u0651\u0644 \u0648\u0627\u0644\u0628\u062d\u062b \u0648\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a).",
+  "DesignStrings/HandoffStringsKt.getHandoffTitle()": "هل تريد المتابعة على هذا الجهاز؟",
+  "DesignStrings/HandoffStringsKt.handoffBody(Zed,Zed)": "Zed يرسل إليك: Zed",
+  "DesignStrings/HandoffStringsKt.getHandoffYes()": "نعم",
+  "DesignStrings/HandoffStringsKt.getHandoffNo()": "لا",
+  "DesignStrings/HandoffStringsKt.getHandoffSend()": "إرسال إلى…",
+  "DesignStrings/HandoffStringsKt.handoffSent(Zed)": "تم الإرسال إلى Zed. أكّد على ذلك الجهاز خلال دقيقتين.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoSource()": "هذا المصدر غير مشترك مع حسابك، لذا لا يمكن لجهاز آخر العثور عليه.",
+  "DesignStrings/HandoffStringsKt.getHandoffFailed()": "تعذّر الإرسال. حاول مرة أخرى.",
+  "DesignStrings/HandoffStringsKt.getHandoffNotFound()": "هذا العنوان غير موجود في كتالوج هذا الجهاز.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "لا يوجد جهاز آخر مقترن بهذا الحساب."
 }

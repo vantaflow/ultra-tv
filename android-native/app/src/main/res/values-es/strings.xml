@@ -1716,4 +1716,16 @@
     <string name="pex_diag_fallback">Cambio de motor</string>
     <string name="pex_diag_copy">Copiar informe</string>
     <string name="pex_diag_copied">Informe copiado (credenciales ocultas)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">¿Continuar en este dispositivo?</string>
+    <string name="handoff_body">%1$s te envía: %2$s</string>
+    <string name="handoff_yes">Sí</string>
+    <string name="handoff_no">No</string>
+    <string name="handoff_send">Enviar a…</string>
+    <string name="handoff_sent">Enviado a %1$s. Confirma en ese dispositivo en menos de 2 minutos.</string>
+    <string name="handoff_no_source">Esta fuente no está compartida con tu cuenta, así que otro dispositivo no puede encontrarla.</string>
+    <string name="handoff_failed">No se pudo enviar. Inténtalo de nuevo.</string>
+    <string name="handoff_not_found">Este título no está en el catálogo de este dispositivo.</string>
+    <string name="handoff_no_devices">No hay otro dispositivo vinculado a esta cuenta.</string>
 </resources>

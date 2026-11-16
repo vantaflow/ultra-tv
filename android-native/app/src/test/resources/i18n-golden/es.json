@@ -1751,5 +1751,15 @@
   "SimpleStrings.getOrType()": "O escríbelo:",
   "SimpleStrings.getHoldFav()": "Mantener: favorito",
   "SimpleStrings.getHoldRemove()": "Mantener: quitar",
-  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Elija d\u00f3nde se abre la app: Inicio, una secci\u00f3n o la \u00faltima pantalla usada (fichas, reproductor, b\u00fasqueda y ajustes nunca se restauran)."
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Elija d\u00f3nde se abre la app: Inicio, una secci\u00f3n o la \u00faltima pantalla usada (fichas, reproductor, b\u00fasqueda y ajustes nunca se restauran).",
+  "DesignStrings/HandoffStringsKt.getHandoffTitle()": "¿Continuar en este dispositivo?",
+  "DesignStrings/HandoffStringsKt.handoffBody(Zed,Zed)": "Zed te envía: Zed",
+  "DesignStrings/HandoffStringsKt.getHandoffYes()": "Sí",
+  "DesignStrings/HandoffStringsKt.getHandoffNo()": "No",
+  "DesignStrings/HandoffStringsKt.getHandoffSend()": "Enviar a…",
+  "DesignStrings/HandoffStringsKt.handoffSent(Zed)": "Enviado a Zed. Confirma en ese dispositivo en menos de 2 minutos.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoSource()": "Esta fuente no está compartida con tu cuenta, así que otro dispositivo no puede encontrarla.",
+  "DesignStrings/HandoffStringsKt.getHandoffFailed()": "No se pudo enviar. Inténtalo de nuevo.",
+  "DesignStrings/HandoffStringsKt.getHandoffNotFound()": "Este título no está en el catálogo de este dispositivo.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "No hay otro dispositivo vinculado a esta cuenta."
 }
