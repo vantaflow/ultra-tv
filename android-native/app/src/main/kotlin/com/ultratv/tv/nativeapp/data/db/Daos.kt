@@ -115,13 +115,6 @@ class ProviderDao @Inject constructor(private val raw: ProviderRawDao) {
 
 @Dao
 interface ChannelDao {
-    // userPosition first (0 = unset, sorted last via CASE), then alpha by name.
-    @Query("""
-        SELECT * FROM channel WHERE providerId = :pid
-        ORDER BY num, id
-    """)
-    fun observeForProvider(pid: Long): Flow<List<ChannelEntity>>
-
     /** Les [limit] premières chaînes seulement (rails de l'accueil) : charger les
      *  40 000 lignes pour n'en garder que 30 saturait le CPU à chaque lot inséré. */
     @Query("""
@@ -265,6 +258,25 @@ interface ChannelDao {
 
     @Query("SELECT ch.id FROM channel ch LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0 ORDER BY CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, k.position, k.id, ch.num, ch.id")
     suspend fun orderedAllIdsLegacy(pid: Long): List<Long>
+
+    /**
+     * Rang (0 = première) de la chaîne [cid] dans l'ordre de [orderedAllIdsLegacy], calculé par COMPTAGE des lignes qui la
+     * précèdent au lieu de charger les ~55 000 identifiants pour un indexOf. Mêmes critères et même ordre
+     * (les NULL de la jointure passent avant tout, d'où COALESCE(…, -1)).
+     */
+    @Query("""
+        SELECT COUNT(*) FROM channel ch
+        LEFT JOIN category k ON k.providerId = ch.providerId AND k.kind = 'LIVE' AND k.remoteId = ch.categoryId,
+        (SELECT CASE WHEN COALESCE(tk.position, 0) = 0 THEN 1 ELSE 0 END AS o, COALESCE(tk.position, -1) AS p,
+                COALESCE(tk.id, -1) AS kid, t.num AS n, t.id AS i
+           FROM channel t
+           LEFT JOIN category tk ON tk.providerId = t.providerId AND tk.kind = 'LIVE' AND tk.remoteId = t.categoryId
+          WHERE t.id = :cid LIMIT 1) tg
+        WHERE ch.providerId = :pid AND ch.junk = 0 AND ch.isSeparator = 0
+          AND (CASE WHEN COALESCE(k.position, 0) = 0 THEN 1 ELSE 0 END, COALESCE(k.position, -1), COALESCE(k.id, -1), ch.num, ch.id)
+              < (tg.o, tg.p, tg.kid, tg.n, tg.i)
+    """)
+    suspend fun rankAllLegacy(pid: Long, cid: Long): Int
 
     /** Sources dont des chaînes affichées n'ont pas encore de rang de catégorie (0) : à remplir en tâche de fond (recherche d'index, pas de parcours). */
     @Query("SELECT p.id FROM provider p WHERE EXISTS(SELECT 1 FROM channel WHERE providerId = p.id AND junk = 0 AND isSeparator = 0 AND catRank = 0)")
@@ -808,6 +820,9 @@ interface CategoryDao {
 
     @Query("SELECT * FROM category WHERE providerId = :pid AND kind = :kind ORDER BY CASE WHEN position = 0 THEN 1 ELSE 0 END, position, id")
     fun observeOrdered(pid: Long, kind: String): Flow<List<CategoryEntity>>
+
+    @Query("SELECT COUNT(*) FROM category WHERE providerId = :pid AND kind = :kind")
+    fun observeCount(pid: Long, kind: String): Flow<Int>
 
     @Query("SELECT remoteId FROM category WHERE providerId = :pid AND kind = :kind ORDER BY CASE WHEN position = 0 THEN 1 ELSE 0 END, position, id")
     suspend fun orderedIds(pid: Long, kind: String): List<String>

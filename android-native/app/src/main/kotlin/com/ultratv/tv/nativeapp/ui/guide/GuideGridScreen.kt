@@ -296,7 +296,7 @@ class GuideGridViewModel @Inject constructor(
             .flatMapLatest { a ->
                 @Suppress("UNCHECKED_CAST") val id = a[0] as Long?; val w = a[1] as Long; val g = a[2] as String; val hidden = a[3] as Set<String>; val prof = a[4] as Long
                 if (id == null) flowOf(PagingData.empty())
-                else Pager(PagingConfig(pageSize = 20, prefetchDistance = 10, initialLoadSize = 30, enablePlaceholders = false)) {
+                else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(20, 10, 30)) {
                     when (g) {
                         com.ultratv.tv.nativeapp.ui.live.CATEGORY_FAVORITES -> channelDao.pagedWithEpgFavorites(id, w, w + GUIDE_WINDOW_MS, prof)
                         com.ultratv.tv.nativeapp.ui.live.CATEGORY_ALL -> {

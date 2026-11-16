@@ -96,6 +96,14 @@ class LiveOrderTest {
     }
 
     @Test
+    fun rangLegacy_parComptage_egalALindexDansLaListeComplete() = runBlocking {
+        seed(stamp = false)
+        val ids = ch.orderedAllIdsLegacy(pid)
+        assertTrue(ids.isNotEmpty())
+        ids.forEachIndexed { i, id -> assertEquals("rang de $id", i, ch.rankAllLegacy(pid, id)) }
+    }
+
+    @Test
     fun ordreParCle_filtresCategoriesMasqueesEtLangue_identiques() {
         seed(stamp = true)
         assertEquals(legacyFiltered(listOf("sport", "news"), emptyList()), keysetIds(LiveAllFilter(hidden = listOf("sport", "news"))))

@@ -432,7 +432,7 @@ class PlayerViewModel @Inject constructor(
                     c != null && c.catRank > 0 -> com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, c)
                     c != null -> {
                         // Repli (ordre pas encore précalculé) : même ordre, calculé par jointure.
-                        val rank = channelDao.orderedAllIdsLegacy(pid).indexOf(c.id).coerceAtLeast(0)
+                        val rank = channelDao.rankAllLegacy(pid, c.id)
                         channelDao.windowAllLegacy(pid, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> channelDao.windowAllLegacy(pid, 401, 0)

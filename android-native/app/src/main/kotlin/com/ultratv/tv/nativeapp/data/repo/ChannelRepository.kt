@@ -10,6 +10,5 @@ import javax.inject.Singleton
 class ChannelRepository @Inject constructor(
     private val dao: ChannelDao,
 ) {
-    fun observeForProvider(pid: Long): Flow<List<ChannelEntity>> = dao.observeForProvider(pid)
     suspend fun byId(id: Long): ChannelEntity? = dao.byId(id)
 }
