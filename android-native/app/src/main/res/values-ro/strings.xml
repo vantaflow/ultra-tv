@@ -800,6 +800,13 @@
     <string name="trakt_trakt_auto_watched_hint">Dezactivat: finalul este salvat ca pauză pe Trakt</string>
     <string name="trakt_trakt_lists_home">Liste Trakt pe ecranul principal</string>
     <string name="trakt_trakt_lists_home_hint">Până la 5 rânduri, doar titluri disponibile în lista ta</string>
+    <string name="trakt_tracking_title">Serviciu de urmărire</string>
+    <string name="trakt_tracking_none">Niciunul</string>
+    <string name="trakt_tracking_hint">Conectează mai întâi Trakt sau Simkl din pagina contului tău de pe site</string>
+    <string name="trakt_tracking_not_linked">%1$s nu este încă conectat: conectează-l din pagina contului tău</string>
+    <string name="trakt_tracking_unsupported">Acest serviciu nu poate elimina un titlu din listă</string>
+    <string name="trakt_available_from_list">Disponibil din lista ta</string>
+    <string name="trakt_available_channel">Disponibilitatea listei de vizionat</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Filme · Categorii</string>

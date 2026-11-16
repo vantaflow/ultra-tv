@@ -787,6 +787,13 @@
     <string name="trakt_trakt_auto_watched_hint">Desactivado: el final se guarda como una pausa en Trakt</string>
     <string name="trakt_trakt_lists_home">Listas de Trakt en Inicio</string>
     <string name="trakt_trakt_lists_home_hint">Hasta 5 filas, solo títulos disponibles en tu lista</string>
+    <string name="trakt_tracking_title">Servicio de seguimiento</string>
+    <string name="trakt_tracking_none">Ninguno</string>
+    <string name="trakt_tracking_hint">Primero vincula Trakt o Simkl desde la página de tu cuenta en el sitio web</string>
+    <string name="trakt_tracking_not_linked">%1$s aún no está vinculado: vincúlalo desde la página de tu cuenta</string>
+    <string name="trakt_tracking_unsupported">Este servicio no puede quitar un título de la lista</string>
+    <string name="trakt_available_from_list">Disponible de tu lista</string>
+    <string name="trakt_available_channel">Disponibilidad de la lista por ver</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Películas · Categorías</string>

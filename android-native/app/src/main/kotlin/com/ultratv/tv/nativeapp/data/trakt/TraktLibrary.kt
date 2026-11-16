@@ -40,6 +40,8 @@ class TraktLibrary(
     val ratedShows: List<TraktRated> = emptyList(),
     val lists: List<TraktUserList> = emptyList(),
     val playback: List<TraktPlayback> = emptyList(),
+    /** Service de suivi dont vient cette bibliothèque (« trakt » ou « simkl », voir [TrackingService]). */
+    val service: String = TrackingService.TRAKT,
 ) {
     // Clé de rapprochement → années des films vus (une clé peut couvrir un remake : on compare l'année).
     private val movieIndex: Map<String, List<Int?>> by lazy {
@@ -131,7 +133,7 @@ class TraktLibrary(
         watchedShows: List<TraktWatchedShow> = this.watchedShows,
         ratedMovies: List<TraktRated> = this.ratedMovies,
         ratedShows: List<TraktRated> = this.ratedShows,
-    ) = TraktLibrary(linked, updatedAt, watchlist, recommendations, watchedMovies, watchedShows, trending, popular, ratedMovies, ratedShows, lists, playback)
+    ) = TraktLibrary(linked, updatedAt, watchlist, recommendations, watchedMovies, watchedShows, trending, popular, ratedMovies, ratedShows, lists, playback, service)
 
     companion object {
         val EMPTY = TraktLibrary(false, 0L, emptyList(), emptyList(), emptyList(), emptyList())
@@ -231,6 +233,7 @@ class TraktLibrary(
                 ratedShows = rated(ratings?.optJSONArray("shows")),
                 lists = lists(o.optJSONArray("lists")),
                 playback = playback(o.optJSONArray("playback")),
+                service = if (o.optString("service") == TrackingService.SIMKL) TrackingService.SIMKL else TrackingService.TRAKT,
             )
         }
     }
@@ -253,9 +256,11 @@ data class TraktRows(
     val popular: List<TraktCard> = emptyList(),
     val lists: List<TraktListRow> = emptyList(),
     val upNext: List<TraktUpNextCard> = emptyList(),
+    /** Titres de la watchlist devenus disponibles dans le catalogue depuis une synchro récente (les plus récents d'abord). */
+    val recent: List<TraktCard> = emptyList(),
 ) {
     val isEmpty: Boolean get() = watchlist.isEmpty() && recommendations.isEmpty() && trending.isEmpty() && popular.isEmpty() &&
-        lists.all { it.cards.isEmpty() } && upNext.isEmpty()
+        lists.all { it.cards.isEmpty() } && upNext.isEmpty() && recent.isEmpty()
     companion object { val EMPTY = TraktRows(emptyList(), emptyList()) }
 }
 
@@ -285,7 +290,7 @@ object TraktRowsCodec {
 
     fun encode(byProvider: Map<Long, TraktRows>): String = JSONObject().also { root ->
         for ((pid, r) in byProvider) root.put(pid.toString(), JSONObject()
-            .put("w", enc(r.watchlist)).put("r", enc(r.recommendations)).put("t", enc(r.trending)).put("p", enc(r.popular))
+            .put("a", enc(r.recent)).put("w", enc(r.watchlist)).put("r", enc(r.recommendations)).put("t", enc(r.trending)).put("p", enc(r.popular))
             .put("l", JSONArray().also { a -> for (l in r.lists) a.put(JSONObject().put("i", l.id).put("n", l.name).put("c", enc(l.cards))) })
             .put("u", JSONArray().also { a ->
                 val cards = enc(r.upNext.map { it.card })
@@ -317,7 +322,7 @@ object TraktRowsCodec {
                         cards.getOrNull(i)?.let { c -> upNext += TraktUpNextCard(c, u.optInt("se"), u.optInt("ep")) }
                     }
                 }
-                out[pid] = TraktRows(dec(o.optJSONArray("w")), dec(o.optJSONArray("r")), dec(o.optJSONArray("t")), dec(o.optJSONArray("p")), lists, upNext)
+                out[pid] = TraktRows(dec(o.optJSONArray("w")), dec(o.optJSONArray("r")), dec(o.optJSONArray("t")), dec(o.optJSONArray("p")), lists, upNext, dec(o.optJSONArray("a")))
             }
             out
         } catch (_: Exception) { emptyMap() }

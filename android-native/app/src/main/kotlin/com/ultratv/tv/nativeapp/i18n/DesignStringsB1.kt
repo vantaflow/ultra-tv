@@ -1,6 +1,7 @@
 package com.ultratv.tv.nativeapp.i18n
 
 import com.ultratv.tv.nativeapp.R
+import com.ultratv.tv.nativeapp.data.trakt.forTracker
 
 /**
  * Libellés du lot B1 (actions sur un programme, enregistrements programmés, fiches enrichies).
@@ -51,11 +52,11 @@ val DesignStrings.locale: java.util.Locale get() = when (lang) {
 }
 
 // Trakt : rangées de l'accueil (seulement ce qui est disponible dans la playlist) et marque « vu »
-val DesignStrings.traktWatchlist get() = tx(R.string.dsb1_trakt_watchlist)
-val DesignStrings.traktRecommended get() = tx(R.string.dsb1_trakt_recommended)
-val DesignStrings.traktTrending get() = tx(R.string.dsb1_trakt_trending)
-val DesignStrings.traktPopular get() = tx(R.string.dsb1_trakt_popular)
-val DesignStrings.traktWatched get() = tx(R.string.dsb1_trakt_watched)
+val DesignStrings.traktWatchlist get() = tx(R.string.dsb1_trakt_watchlist).forTracker()
+val DesignStrings.traktRecommended get() = tx(R.string.dsb1_trakt_recommended).forTracker()
+val DesignStrings.traktTrending get() = tx(R.string.dsb1_trakt_trending).forTracker()
+val DesignStrings.traktPopular get() = tx(R.string.dsb1_trakt_popular).forTracker()
+val DesignStrings.traktWatched get() = tx(R.string.dsb1_trakt_watched).forTracker()
 
 // Portail Stalker / Ministra (source par adresse MAC)
 val DesignStrings.kindStalker get() = tx(R.string.dsb1_kind_stalker)

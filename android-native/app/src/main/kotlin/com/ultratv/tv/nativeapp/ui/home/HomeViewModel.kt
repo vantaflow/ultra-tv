@@ -384,6 +384,7 @@ class HomeViewModel @Inject constructor(
         HomeRows(
             resume = resume.map { resumeCardOf(it, "", clean) }.distinctKeys { it.key }.oneCardPerTitle(),
             watchlist = t.watchlist.map(::traktPosterOf).distinctKeys { it.key },
+            availableNow = t.recent.map(::traktPosterOf).distinctKeys { it.key },
             recommended = t.recommendations.map(::traktPosterOf).distinctKeys { it.key },
             trending = t.trending.map(::traktPosterOf).distinctKeys { it.key },
             popular = t.popular.map(::traktPosterOf).distinctKeys { it.key },

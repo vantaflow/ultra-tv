@@ -783,6 +783,13 @@
     <string name="trakt_trakt_auto_watched_hint">Off: the end is saved as a pause on Trakt</string>
     <string name="trakt_trakt_lists_home">Trakt lists on Home</string>
     <string name="trakt_trakt_lists_home_hint">Up to 5 rows, only titles available in your playlist</string>
+    <string name="trakt_tracking_title">Tracking service</string>
+    <string name="trakt_tracking_none">None</string>
+    <string name="trakt_tracking_hint">Link Trakt or Simkl from your account page on the website first</string>
+    <string name="trakt_tracking_not_linked">%1$s is not linked yet: link it from your account page</string>
+    <string name="trakt_tracking_unsupported">This service cannot remove a title from the watchlist</string>
+    <string name="trakt_available_from_list">Available from your list</string>
+    <string name="trakt_available_channel">Watchlist availability</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Movies · Categories</string>

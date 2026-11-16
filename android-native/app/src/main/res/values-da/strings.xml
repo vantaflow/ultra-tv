@@ -784,6 +784,13 @@
     <string name="trakt_trakt_auto_watched_hint">Fra: slutningen gemmes som en pause på Trakt</string>
     <string name="trakt_trakt_lists_home">Trakt-lister på startskærmen</string>
     <string name="trakt_trakt_lists_home_hint">Op til 5 rækker, kun titler i din playliste</string>
+    <string name="trakt_tracking_title">Sporingstjeneste</string>
+    <string name="trakt_tracking_none">Ingen</string>
+    <string name="trakt_tracking_hint">Tilknyt først Trakt eller Simkl fra din kontoside på webstedet</string>
+    <string name="trakt_tracking_not_linked">%1$s er ikke tilknyttet endnu: tilknyt den fra din kontoside</string>
+    <string name="trakt_tracking_unsupported">Denne tjeneste kan ikke fjerne en titel fra listen</string>
+    <string name="trakt_available_from_list">Tilgængelig fra din liste</string>
+    <string name="trakt_available_channel">Tilgængelighed af ønskelisten</string>
 
     <!-- i18n/CatalogCategoryStrings.kt -->
     <string name="cat_catalog_categories_title_1">Film · Kategorier</string>

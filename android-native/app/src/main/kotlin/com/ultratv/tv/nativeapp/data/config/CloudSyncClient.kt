@@ -53,6 +53,31 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
+    /** Service de suivi du compte (GET /api/device/tracking), ou null pour tout échec. Ne lève jamais (hors annulation). */
+    suspend fun trackingStatus(base: String, token: String): com.ultratv.tv.nativeapp.data.trakt.TrackingStatus? = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder().url("$base/api/device/tracking").header("Authorization", "Bearer $token").get().build()
+            http.newCall(req).execute().use { resp -> if (resp.isSuccessful) com.ultratv.tv.nativeapp.data.trakt.TrackingStatus.parse(resp.body?.string()) else null }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /** Change le service de suivi (POST /api/device/tracking {service}) ; renvoie le nouvel état, ou null pour tout échec. */
+    suspend fun setTracking(base: String, token: String, service: String): com.ultratv.tv.nativeapp.data.trakt.TrackingStatus? = withContext(Dispatchers.IO) {
+        try {
+            val body = org.json.JSONObject().put("service", service).toString()
+            val req = Request.Builder().url("$base/api/device/tracking").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
+            http.newCall(req).execute().use { resp -> if (resp.isSuccessful) com.ultratv.tv.nativeapp.data.trakt.TrackingStatus.parse(resp.body?.string()) else null }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
     /**
      * Bibliothèque Trakt (GET /api/device/trakt/library?lang=…). Renvoie le corps JSON, ou null pour tout échec
      * (réseau, 401, 429, 5xx) : l'appelant garde alors sa dernière valeur valide. Ne lève jamais (hors annulation).

@@ -23,6 +23,8 @@ enum class HomeSectionId(val contentType: String) {
     TOP10("top10"),
     RESUME("resume"),
     TRAKT_UP_NEXT("posters"),
+    /** Titres de la watchlist (Trakt ou Simkl) devenus disponibles dans la source après une synchro du catalogue. */
+    TRAKT_AVAILABLE("posters"),
     /** Séries favorites ou en cours dont un épisode vient de sortir ou sort dans la semaine (TVmaze, appareil appairé). */
     NEW_EPISODES("posters"),
     // Rangées calculées en local (sans Trakt), montées juste sous « Reprendre » pour qu'on les remarque.
@@ -46,7 +48,7 @@ enum class HomeSectionId(val contentType: String) {
 
 /** Rangées montrées par l'accueil tactile (pas de « regardées récemment » ni de « derniers ajouts », comme avant). */
 val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
-    HomeSectionId.RESUME, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED,
+    HomeSectionId.RESUME, HomeSectionId.TRAKT_AVAILABLE, HomeSectionId.TRAKT_WATCHLIST, HomeSectionId.TRAKT_RECOMMENDED,
     HomeSectionId.TRAKT_TRENDING, HomeSectionId.TRAKT_POPULAR, HomeSectionId.CHANNELS,
     HomeSectionId.TRAKT_UP_NEXT, HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3,
     HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
@@ -129,6 +131,8 @@ fun top10Of(trending: List<PosterCardUi>, topMovies: List<PosterCardUi>): List<P
 data class HomeRows(
     val resume: List<ResumeCardUi> = emptyList(),
     val watchlist: List<PosterCardUi> = emptyList(),
+    /** « Disponible de ta liste » : watchlist devenue disponible depuis une synchro récente (calcul local). */
+    val availableNow: List<PosterCardUi> = emptyList(),
     val recommended: List<PosterCardUi> = emptyList(),
     val trending: List<PosterCardUi> = emptyList(),
     val popular: List<PosterCardUi> = emptyList(),
@@ -173,6 +177,7 @@ private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.top10.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP10)
     if (rows.resume.isNotEmpty()) add(HomeSectionId.RESUME)
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
+    if (rows.availableNow.isNotEmpty()) add(HomeSectionId.TRAKT_AVAILABLE)
     if (rows.newEpisodes.isNotEmpty()) add(HomeSectionId.NEW_EPISODES)
     if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
     if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)

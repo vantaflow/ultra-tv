@@ -750,7 +750,8 @@ private fun PlaybackPane(panes: SettingsPanesViewModel, app: AppViewModel) {
     }
     DnsSection()   // Réseau › DNS (DnsSection.kt)
     com.ultratv.tv.nativeapp.ui.downloads.DownloadSettingsSection()   // Téléchargements hors ligne (Wi-Fi seulement, emplacement)
-    // Trakt (compte lié seulement) : marquer vu à la fin, listes personnelles à l'accueil.
+    // Service de suivi (Trakt / Simkl / aucun), puis ses réglages (compte lié seulement) : marquer vu à la fin, listes à l'accueil.
+    com.ultratv.tv.nativeapp.ui.trakt.TrackingServiceSection()
     com.ultratv.tv.nativeapp.ui.trakt.TraktSettingsSection()
     when (choice) {
         "engine" -> ChoiceDialog(D.playerRow, listOf("auto" to D.auto, "exo" to D.engineExo, "vlc" to D.engineVlc), p.playerEngine, { panes.setPlayerEngine(it); choice = "" }, { choice = "" })

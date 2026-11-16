@@ -83,6 +83,8 @@ wrangler secret put PROVIDER_ENC_KEY   # clé AES-256 en base64      : openssl r
 wrangler secret put OPS_TOKEN          # >= 32 caractères : mot de passe de /crashes et /logs
 wrangler secret put TMDB_READ_TOKEN   # facultatif : jeton de lecture TMDB v4 (fiches enrichies)
 wrangler secret put TMDB_API_KEY       # facultatif : clé TMDB v3, repli si pas de jeton v4
+wrangler secret put SIMKL_CLIENT_ID       # facultatif : identifiant de l'application Simkl (https://simkl.com/settings/developer/) ; avec SIMKL_CLIENT_SECRET, active Simkl
+wrangler secret put SIMKL_CLIENT_SECRET   # facultatif : secret de l'application Simkl (exigé par l'échange du code d'autorisation). Sans les DEUX, Simkl est masqué (tableau de bord et applis)
 wrangler secret put OPENSUBTITLES_API_KEY  # facultatif : sous-titres en ligne (clé commune ; chaque client peut relier son compte)
 wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
 wrangler secret put ACCOUNT_RELAY_KEY      # facultatif : clé partagée avec le relais d'abonnement (voir « Relais d'abonnement »)
@@ -142,7 +144,22 @@ Les anciens `ADMIN_PASSWORD` et `CRASH_TOKEN` ne sont **plus lus**.
 | GET | `/trakt/callback` | session | Retour de Trakt : jetons chiffrés dans le compte |
 | POST | `/api/device/trakt/scrobble` | `Bearer` | L'appareil signale sa lecture ; le Worker relaie à Trakt |
 | GET | `/api/device/trakt/library?lang=` | `Bearer` | Watchlist, recommandations et vus, avec clés de rapprochement (cache chiffré 15 min) |
+| POST | `/simkl/connect`, `/simkl/disconnect`, `/tracking/service` | session + CSRF | Simkl (OAuth, code d'autorisation, état lié au compte, 10 min) et choix du service de suivi : `trakt`, `simkl` ou `none` |
+| GET | `/simkl/callback` | cookie de liaison + état | Retour de Simkl : jeton chiffré dans le compte (n'expire pas) ; adresse de retour à déclarer chez Simkl : `https://<site>/simkl/callback` |
+| GET, POST | `/api/device/tracking` | `Bearer` | Service de suivi choisi, services proposés et reliés ; POST `{service}` change le choix |
+| POST, GET | `/api/device/tracking/{scrobble,library,watchlist,history,rating}` | `Bearer` | Interface commune de suivi : aiguillée vers le service actif du compte (identique à `/api/device/trakt/*`, qui reste servi pour les applis existantes) |
 | GET | `/api/subtitles/search`, `/api/subtitles/download` | `Bearer` | Sous-titres (au nom du compte OpenSubtitles relié s'il y en a un) |
+
+### Service de suivi : Trakt ou Simkl
+
+Le compte choisit UN service de suivi (`acct.tracking` : `trakt`, `simkl`, `none` ; sans choix, Trakt s'il est relié, sinon
+Simkl). Les applis n'ont qu'une interface (`/api/device/tracking/*`, ou l'ancien `/api/device/trakt/*`) ; le Worker aiguille
+vers le service actif (`src/tracking.js`). Simkl (`src/simkl.js`) renvoie la même bibliothèque que Trakt (watchlist, vus,
+notes), sans recommandations, tendances, listes ni reprises (Simkl n'en a pas) ; le retrait d'un titre de la watchlist
+n'existe pas côté Simkl (réponse `error: "unsupported"`). Le cache de bibliothèque est propre à chaque service.
+Configuration : créer une application sur Simkl, y déclarer l'adresse de retour `https://<site>/simkl/callback`, puis
+`wrangler secret put SIMKL_CLIENT_ID` et `SIMKL_CLIENT_SECRET` (aucune valeur dans le dépôt). Sans ces deux variables,
+Simkl est masqué.
 
 ## Relais d'abonnement
 

@@ -414,7 +414,7 @@ export type TraktPlayback = TraktItem & { progress: number; pausedAt: number; ru
 export type TraktLibraryResult =
   | { linked: false }
   | {
-    linked: true; updatedAt: number; watchlist: TraktItem[]; recommendations: TraktItem[]; trending: TraktItem[]; popular: TraktItem[];
+    linked: true; updatedAt: number; /** Service de suivi dont vient la bibliothèque (Trakt par défaut). */ service?: "trakt" | "simkl"; watchlist: TraktItem[]; recommendations: TraktItem[]; trending: TraktItem[]; popular: TraktItem[];
     watched: { movies: TraktItem[]; shows: TraktShowItem[] };
     ratings: { movies: TraktRatedItem[]; shows: TraktRatedItem[] }; lists: TraktList[]; playback: TraktPlayback[];
   };
@@ -439,6 +439,7 @@ export function normalizeTraktLibrary(o: Record<string, unknown>): Extract<Trakt
   const r = (o.ratings ?? {}) as { movies?: unknown; shows?: unknown };
   return {
     linked: true, updatedAt: typeof o.updatedAt === "number" ? o.updatedAt : 0,
+    service: o.service === "simkl" ? "simkl" : "trakt",
     watchlist: asItems(o.watchlist), recommendations: asItems(o.recommendations),
     trending: asItems(o.trending), popular: asItems(o.popular),
     watched: {
@@ -466,18 +467,51 @@ export async function traktLibrary(base: string, token: string, lang: string): P
 }
 
 export type TraktWritePath = "watchlist" | "history" | "rating";
-export type TraktWriteResult = "ok" | "not-linked" | "unmatched" | "failed";
+export type TraktWriteResult = "ok" | "not-linked" | "unmatched" | "failed" | "unsupported";
 
 /** Écriture Trakt via le Worker (watchlist, vu / non vu, note). Ne lève jamais : tout échec donne "failed". */
 export async function traktWrite(base: string, token: string, path: TraktWritePath, body: Record<string, unknown>): Promise<TraktWriteResult> {
   try {
     const r = await http({ url: `${base}/api/device/trakt/${path}`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json(body) });
     if (r.status < 200 || r.status >= 300) return "failed";
-    const o = parse<{ linked?: boolean; matched?: boolean; ok?: boolean }>(r);
+    const o = parse<{ linked?: boolean; matched?: boolean; ok?: boolean; error?: string }>(r);
     if (o.linked !== true) return "not-linked";
     if (o.matched === false) return "unmatched";
+    // Le service choisi ne sait pas faire ce geste (Simkl : retirer un titre de la watchlist).
+    if (o.error === "unsupported") return "unsupported";
     return o.ok === true ? "ok" : "failed";
   } catch { return "failed"; }
+}
+
+/** Service de suivi du compte : actif (null = aucun), choix enregistré, services proposés (Simkl absent tant que le Worker n'est pas configuré) et reliés. */
+export interface TrackingStatus { service: "trakt" | "simkl" | null; choice: "trakt" | "simkl" | "none"; available: ("trakt" | "simkl")[]; linked: { trakt: boolean; simkl: boolean } }
+
+export function normalizeTracking(o: Record<string, unknown>): TrackingStatus {
+  const svc = (v: unknown): "trakt" | "simkl" | null => (v === "trakt" || v === "simkl" ? v : null);
+  const l = (o.linked ?? {}) as { trakt?: unknown; simkl?: unknown };
+  return {
+    service: svc(o.service), choice: svc(o.choice) ?? "none",
+    available: (Array.isArray(o.available) ? o.available : []).map(svc).filter((x): x is "trakt" | "simkl" => x !== null),
+    linked: { trakt: l.trakt === true, simkl: l.simkl === true },
+  };
+}
+
+/** Service de suivi du compte (GET /api/device/tracking). Lève sur 401 / 429 / erreur : l'appelant ignore. */
+export async function trackingStatus(base: string, token: string): Promise<TrackingStatus> {
+  const r = await http({ url: `${base}/api/device/tracking`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status < 200 || r.status >= 300) throw new CloudError("tracking", r.status);
+  return normalizeTracking(parse<Record<string, unknown>>(r));
+}
+
+/** Change le service de suivi (POST /api/device/tracking). null pour tout échec. */
+export async function setTrackingService(base: string, token: string, service: "trakt" | "simkl" | "none"): Promise<TrackingStatus | null> {
+  try {
+    const r = await http({ url: `${base}/api/device/tracking`, method: "POST", headers: auth(token, { "content-type": "application/json" }), body: json({ service }) });
+    if (r.status < 200 || r.status >= 300) return null;
+    return normalizeTracking(parse<Record<string, unknown>>(r));
+  } catch { return null; }
 }
 
 /** Notes externes (Worker → OMDb). Champ absent = inconnu. */

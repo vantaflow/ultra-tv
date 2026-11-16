@@ -777,6 +777,13 @@
     <string name="trakt_trakt_auto_watched_hint">Wył.: koniec jest zapisywany w Trakt jako pauza</string>
     <string name="trakt_trakt_lists_home">Listy Trakt na stronie głównej</string>
     <string name="trakt_trakt_lists_home_hint">Do 5 wierszy, tylko tytuły dostępne na Twojej liście</string>
+    <string name="trakt_tracking_title">Usługa śledzenia</string>
+    <string name="trakt_tracking_none">Brak</string>
+    <string name="trakt_tracking_hint">Najpierw połącz Trakt lub Simkl na stronie swojego konta w witrynie</string>
+    <string name="trakt_tracking_not_linked">%1$s nie jest jeszcze połączony: połącz go na stronie swojego konta</string>
+    <string name="trakt_tracking_unsupported">Ta usługa nie może usunąć tytułu z listy</string>
+    <string name="trakt_available_from_list">Dostępne z Twojej listy</string>
+    <string name="trakt_available_channel">Dostępność listy do obejrzenia</string>
     <string name="cat_catalog_categories_title_1">Filmy · Kategorie</string>
     <string name="cat_catalog_categories_title_2">Seriale · Kategorie</string>
     <string name="cat_categories_count">Kategorie: %1$s</string>

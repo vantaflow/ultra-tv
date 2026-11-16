@@ -10,6 +10,7 @@ import { availableItems, isWatchedMovie, watchedEpisodes, type Available } from 
 import { buildCatalogIndex, useCatalogIndex, wantedTokens, type CatalogIndex } from "./catalog";
 import { episodesOf } from "./episodes";
 import { refreshTraktLibrary, TRAKT_REFRESH_MS, useTraktLibrary } from "./library";
+import { loadWatch, notifyAvailable, saveWatch, updateWatch, watchId } from "./watchlist";
 import { useTraktPrefs, visibleLists } from "./prefs";
 import { nextEpisode, resumeDecision, upNextCandidates, UP_NEXT_MAX, type Linked } from "./progress";
 
@@ -56,8 +57,10 @@ export interface TraktListRows { id: string; name: string; rows: TraktRow[] }
 export interface TraktRows {
   watchlist: TraktRow[]; recommendations: TraktRow[]; trending: TraktRow[]; popular: TraktRow[];
   lists: TraktListRows[]; upNext: UpNextRow[];
+  /** « Disponible de ta liste » : watchlist devenue disponible depuis une synchro récente du catalogue (calcul local). */
+  recent: TraktRow[];
 }
-const NONE: TraktRows = { watchlist: [], recommendations: [], trending: [], popular: [], lists: [], upNext: [] };
+const NONE: TraktRows = { watchlist: [], recommendations: [], trending: [], popular: [], lists: [], upNext: [], recent: [] };
 /** Fiches de séries demandées à la source par calcul (« À suivre », reprises d'épisodes). */
 const EPISODE_LOADS = 3;
 const LISTS = ["watchlist", "recommendations", "trending", "popular"] as const;
@@ -83,11 +86,32 @@ export function saveRefs(cid: number, rows: TraktRows): void {
   } catch { /* stockage indisponible : sans effet */ }
 }
 const rowsFromRefs = async (source: Source, refs: Refs): Promise<TraktRows> => {
-  const o = { lists: [], upNext: [] } as unknown as TraktRows;
+  const o = { lists: [], upNext: [], recent: [] } as unknown as TraktRows;
   const all = await Promise.all(LISTS.map((k) => rowsOf(source, refs[k].map(([kind, ref]) => ({ kind, ref, item: null as never })))));
   LISTS.forEach((k, n) => { o[k] = all[n]!; });
   return o;
 };
+
+/**
+ * Titres de la watchlist devenus disponibles : compare, sur l'appareil, la watchlist à l'index du catalogue local au
+ * moment où une nouvelle génération du catalogue est prête (fin d'une synchro). Le catalogue ne quitte jamais l'appareil.
+ * L'état (titres vus indisponibles, titres récemment disponibles) est gardé par source ; `commit` faux = lecture seule.
+ */
+export async function recentAvailable(source: Source, lib: Linked, av: Available[], commit: () => boolean = () => true, now = Date.now()): Promise<TraktRow[]> {
+  if (!lib.watchlist.length) return [];
+  const key = String(source.id ?? source.cid);
+  const r = updateWatch(loadWatch(key), lib.watchlist.map(watchId), new Set(av.map((a) => watchId(a.item))), now);
+  if (commit()) {
+    saveWatch(key, r.state);
+    if (r.newly.length) {
+      const ids = new Set(r.newly);
+      notifyAvailable(av.filter((a) => ids.has(watchId(a.item))).map((a) => a.item.title));
+    }
+  }
+  const ordered = av.filter((a) => r.state.recent[watchId(a.item)] !== undefined)
+    .sort((a, b) => r.state.recent[watchId(b.item)]! - r.state.recent[watchId(a.item)]!);
+  return rowsOf(source, ordered);
+}
 
 /** Toutes les listes Trakt à rapprocher du catalogue (rangées, listes perso, reprises, séries « À suivre »). */
 export function wantedLists(lib: Linked): TraktItem[][] {
@@ -214,7 +238,8 @@ function useAllTraktRows(source: Source | undefined): TraktRows {
       const all = await Promise.all(LISTS.map((k) => rowsOf(source, availableItems(lib[k], idx.movies, idx.series))));
       const lists = await Promise.all(lib.lists.map(async (l) => ({ id: l.id, name: l.name, rows: await rowsOf(source, availableItems(l.items, idx.movies, idx.series)) })));
       const upNext = await computeUpNext(source, lib, idx).catch(() => [] as UpNextRow[]);
-      const r: TraktRows = { watchlist: all[0]!, recommendations: all[1]!, trending: all[2]!, popular: all[3]!, lists, upNext };
+      const recent = await recentAvailable(source, lib, availableItems(lib.watchlist, idx.movies, idx.series), () => live).catch(() => [] as TraktRow[]);
+      const r: TraktRows = { watchlist: all[0]!, recommendations: all[1]!, trending: all[2]!, popular: all[3]!, lists, upNext, recent };
       if (!live) return;
       computed.current = true;
       setOut(r);

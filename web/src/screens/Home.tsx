@@ -9,6 +9,7 @@ import { useFavorites, useHiddenCats } from "@/hooks/data";
 import { useNowNext } from "@/hooks/epg";
 import { useNow } from "@/hooks/misc";
 import { useT } from "@/i18n";
+import { useTrackerT } from "@/trakt/tracker";
 import { fmtDuration } from "@/lib/text";
 import { usePlayer } from "@/player/store";
 import { channelTarget, movieTarget } from "@/player/targets";
@@ -179,7 +180,8 @@ function PosterSection({ title, items }: { title: string; items: PosterItem[] })
 }
 
 function HomeInner({ source }: { source: Source }) {
-  const t = useT();
+  // Les textes Trakt nomment le service de suivi actif (Trakt ou Simkl).
+  const t = useTrackerT();
   const nav = useNavigate();
   const { profileId, lang, sportSection } = usePrefs();
   const favs = useFavorites(source, "live");
@@ -327,6 +329,7 @@ function HomeInner({ source }: { source: Source }) {
 
       <NewEpisodesSection rows={newEps} onOpen={(id) => nav(`/serie/${id}`)} />
       <UpNextSection title={t("home.traktUpNext")} rows={trakt.upNext} onOpen={(u) => nav(`/serie/${u.ref}`)} />
+      <TraktRowSection title={t("home.traktAvailable")} rows={trakt.recent} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktWatchlist")} rows={trakt.watchlist} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktRecs")} rows={trakt.recommendations} seen={seen} onOpen={openTrakt} />
       <TraktRowSection title={t("home.traktTrending")} rows={trakt.trending} seen={seen} onOpen={openTrakt} />

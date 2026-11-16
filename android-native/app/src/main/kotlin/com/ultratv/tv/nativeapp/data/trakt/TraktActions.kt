@@ -75,7 +75,7 @@ class TraktPrefsStore(private val store: TraktStore, scope: CoroutineScope, io: 
 // ───────────────────────── Écritures via le Worker ─────────────────────────
 
 /** Issue d'une écriture Trakt. */
-enum class TraktWriteResult { OK, NOT_LINKED, UNMATCHED, FAILED }
+enum class TraktWriteResult { OK, NOT_LINKED, UNMATCHED, FAILED, UNSUPPORTED }
 
 /** Œuvre du catalogue telle que décrite au Worker (il l'identifie lui-même si [tmdb] manque). */
 data class TraktWork(val isShow: Boolean, val title: String, val year: Int?, val tmdb: Int?)
@@ -118,6 +118,8 @@ class WorkerTraktWriteTransport @Inject constructor(
             return when {
                 !o.optBoolean("linked", false) -> TraktWriteResult.NOT_LINKED
                 !o.optBoolean("matched", true) -> TraktWriteResult.UNMATCHED
+                // Le service choisi ne sait pas faire ce geste (Simkl : retirer un titre de la watchlist).
+                o.optString("error") == "unsupported" -> TraktWriteResult.UNSUPPORTED
                 o.optBoolean("ok", false) -> TraktWriteResult.OK
                 else -> TraktWriteResult.FAILED
             }
