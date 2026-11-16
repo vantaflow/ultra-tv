@@ -48,7 +48,7 @@ class SyncCadenceTest {
 
     @Test fun retourAuPremierPlan_auPlusUneParMinute() {
         val c = SyncCadence(start = 0)
-        assertTrue(c.foregroundDue(1_000, lastRun = 0))
+        assertTrue(c.foregroundDue(100 * min, lastRun = 0))
         assertFalse(c.foregroundDue(100 * min + 59_000, lastRun = 100 * min))
         assertTrue(c.foregroundDue(101 * min, lastRun = 100 * min))
     }

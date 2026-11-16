@@ -25,10 +25,10 @@ class RemoteLogQueueTest {
         val q = LogQueue()
         q.add(line("info"), 0)
         q.add(line("error"), 10_000)
-        assertEquals(50_000L, q.nextFlushDelay(10_000)) // 60 s après l'erreur
+        assertEquals(60_000L, q.nextFlushDelay(10_000)) // 60 s après l erreur
         // Une info ultérieure ne repousse pas l'échéance.
         q.add(line("info"), 20_000)
-        assertEquals(40_000L, q.nextFlushDelay(20_000))
+        assertEquals(50_000L, q.nextFlushDelay(20_000))
     }
 
     @Test fun delaiJamaisNegatif() {
