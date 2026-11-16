@@ -83,6 +83,7 @@ import com.ultratv.tv.nativeapp.i18n.accentName
 import com.ultratv.tv.nativeapp.i18n.homeRows
 import com.ultratv.tv.nativeapp.i18n.homeRowsSummary
 import com.ultratv.tv.nativeapp.i18n.personalization
+import com.ultratv.tv.nativeapp.i18n.startScreenHint
 import com.ultratv.tv.nativeapp.i18n.startScreenName
 import com.ultratv.tv.nativeapp.i18n.textSizeLabel
 import com.ultratv.tv.nativeapp.i18n.textSizeName
@@ -655,7 +656,7 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
         // (« Colonne des chaînes du guide » retiré : largeur normale pour tous, un réglage de moins.)
         SwitchPrefRow(D.launchAtBoot, p.launchAtBoot) { app.setLaunchAtBoot(it) }
         val start = com.ultratv.tv.nativeapp.nav.StartScreen.parse(p.startScreen, p.autoPlayLastOnLaunch)
-        PrefRow(D.openOn, D.startScreenName(start)) { choice = "open" }
+        PrefRow(D.openOn, D.startScreenName(start), hint = D.startScreenHint) { choice = "open" }
         PrefRow(D.timeZone, timeZoneLabel(D, p.timeZone)) { choice = "tz" }
         PrefRow(D.timeFormat, timeFormatLabel(D, com.ultratv.tv.nativeapp.ui.common.TimeFormatPref.parse(p.timeFormat))) { choice = "tf" }
         PrefRow(D.logosFolder, if (logosUri.isBlank()) D.none else "…" + logosUri.takeLast(24), hint = null) {

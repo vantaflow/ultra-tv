@@ -246,6 +246,7 @@
   "set.open_series": "Series",
   "set.open_guide": "Guía",
   "set.open_last": "Última pantalla",
+  "set.openOnDesc": "Elija dónde se abre la app: Inicio, una sección o la última pantalla usada (fichas, reproductor, búsqueda y ajustes nunca se restauran).",
   "set.guideCol": "Columna de canales de la guía",
   "set.colNarrow": "Estrecha",
   "set.colNormal": "Normal",

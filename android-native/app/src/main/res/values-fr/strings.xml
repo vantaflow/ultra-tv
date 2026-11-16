@@ -1674,4 +1674,5 @@
     <string name="stream_info_bitrate">Débit</string>
     <string name="stream_info_reload">Recharger</string>
     <string name="stream_info_title">Flux</string>
+    <string name="perso_start_screen_hint">Choisissez l\'écran d\'ouverture : l\'accueil, une rubrique ou le dernier écran utilisé (fiches, lecteur, recherche et réglages ne sont jamais rouverts).</string>
 </resources>

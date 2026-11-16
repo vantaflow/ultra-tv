@@ -246,6 +246,7 @@
   "set.open_series": "Seriale",
   "set.open_guide": "Przewodnik",
   "set.open_last": "Ostatni ekran",
+  "set.openOnDesc": "Wybierz, co otwiera się przy uruchomieniu: ekran główny, dział lub ostatnio używany ekran (karty, odtwarzacz, wyszukiwanie i ustawienia nie są przywracane).",
   "set.guideCol": "Kolumna kanałów w przewodniku",
   "set.colNarrow": "Wąska",
   "set.colNormal": "Normalna",

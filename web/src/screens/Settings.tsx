@@ -285,7 +285,7 @@ function DisplayPane() {
       <Pref label={t("set.channelLogos")}><Switch on={p.channelLogos} onChange={(channelLogos) => p.set({ channelLogos })} label={t("set.channelLogos")} /></Pref>
       <Pref label={t("set.optimizeImages")} desc={t("set.optimizeImagesD")}><Switch on={p.optimizeImages} onChange={(optimizeImages) => p.set({ optimizeImages })} label={t("set.optimizeImages")} /></Pref>
       <Pref label={t("sport.setting")} desc={t("sport.settingD")}><Switch on={p.sportSection} onChange={(sportSection) => p.set({ sportSection })} label={t("sport.setting")} /></Pref>
-      <Pref label={t("set.openOn")}>
+      <Pref label={t("set.openOn")} desc={t("set.openOnDesc")}>
         <Seg<StartScreen> label={t("set.openOn")} value={p.startScreen} onChange={(startScreen) => p.set({ startScreen })} options={START_SCREENS.map((v) => ({ v, label: t(`set.open_${v}`) }))} />
       </Pref>
       <Pref label={t("set.guideCol")}>

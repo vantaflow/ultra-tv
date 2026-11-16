@@ -1665,4 +1665,5 @@
     <string name="stream_info_bitrate">Tasa de bits</string>
     <string name="stream_info_reload">Recargar</string>
     <string name="stream_info_title">Transmisión</string>
+    <string name="perso_start_screen_hint">Elija dónde se abre la app: Inicio, una sección o la última pantalla usada (fichas, reproductor, búsqueda y ajustes nunca se restauran).</string>
 </resources>

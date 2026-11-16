@@ -1661,4 +1661,5 @@
     <string name="stream_info_bitrate">Bitrate</string>
     <string name="stream_info_reload">Reload</string>
     <string name="stream_info_title">Stream</string>
+    <string name="perso_start_screen_hint">Choose where the app opens: Home, a section, or the last screen you were on (details, player, search and settings are never restored).</string>
 </resources>

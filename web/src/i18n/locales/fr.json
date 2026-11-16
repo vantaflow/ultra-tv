@@ -246,6 +246,7 @@
   "set.open_series": "Séries",
   "set.open_guide": "Guide",
   "set.open_last": "Dernier écran",
+  "set.openOnDesc": "Choisissez l'écran d'ouverture : l'accueil, une rubrique ou le dernier écran utilisé (fiches, lecteur, recherche et réglages ne sont jamais rouverts).",
   "set.guideCol": "Colonne des chaînes du guide",
   "set.colNarrow": "Étroite",
   "set.colNormal": "Normale",

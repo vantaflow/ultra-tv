@@ -81,6 +81,9 @@ fun DesignStrings.startScreenName(s: StartScreen): String = when (s) {
     StartScreen.LAST_SCREEN -> tx(R.string.perso_start_screen_name_last_screen)
 }
 
+/** Explication de « Ouvrir sur » : ce que chaque choix fait et ce qui n'est jamais rouvert. */
+val DesignStrings.startScreenHint get() = tx(R.string.perso_start_screen_hint)
+
 fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.RESUME -> continueWatching
     HomeBlock.TRAKT_UP_NEXT -> traktUpNext
