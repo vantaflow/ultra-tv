@@ -4,7 +4,8 @@
 // service actif du compte. Les jetons Simkl n'expirent pas (pas de renouvellement). Il faut SIMKL_CLIENT_ID et
 // SIMKL_CLIENT_SECRET : sans eux, Simkl est masqué partout.
 
-export const SIMKL_AUTHORIZE = "https://simkl.com/oauth/authorize";
+// Auth V2 de Simkl (application « serveur ») : PKCE S256 obligatoire + secret côté serveur.
+export const SIMKL_AUTHORIZE = "https://simkl.com/oauth2/authorize";
 const SIMKL_API = "https://api.simkl.com";
 const USER_AGENT = "UltraTV/1.0";
 export const SIMKL_STATE_TTL_S = 600;
@@ -12,8 +13,9 @@ export const SIMKL_STATE_TTL_S = 600;
 /** Simkl est proposé seulement si l'identifiant ET le secret de l'application sont configurés. */
 export const simklEnabled = (env) => !!(env && env.SIMKL_CLIENT_ID && env.SIMKL_CLIENT_SECRET);
 
-export function simklAuthorizeUrl(clientId, redirectUri, state) {
+export function simklAuthorizeUrl(clientId, redirectUri, state, challenge) {
   const u = new URL(SIMKL_AUTHORIZE);
+  if (challenge) { u.searchParams.set("code_challenge", challenge); u.searchParams.set("code_challenge_method", "S256"); }
   u.searchParams.set("response_type", "code");
   u.searchParams.set("client_id", clientId);
   u.searchParams.set("redirect_uri", redirectUri);
@@ -28,12 +30,12 @@ const apiHeaders = (clientId, access) => ({
 });
 
 /** Échange du code d'autorisation → { access } ou { error: "denied" | "upstream" }. */
-export async function simklExchangeCode(clientId, clientSecret, redirectUri, code, fetchFn = fetch) {
+export async function simklExchangeCode(clientId, clientSecret, redirectUri, code, fetchFn = fetch, verifier = null) {
   let r;
   try {
     r = await fetchFn(`${SIMKL_API}/oauth/token`, {
       method: "POST", redirect: "manual", headers: apiHeaders(clientId),
-      body: JSON.stringify({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: "authorization_code" }),
+      body: JSON.stringify({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri, grant_type: "authorization_code", ...(verifier ? { code_verifier: verifier } : {}) }),
     });
   } catch { return { error: "upstream" }; }
   if (r.status === 400 || r.status === 401 || r.status === 403) return { error: "denied" };

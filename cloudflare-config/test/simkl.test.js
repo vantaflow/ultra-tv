@@ -35,7 +35,8 @@ describe("simkl : identifiants et choix du service", () => {
 describe("simkl : API", () => {
   it("adresse d'autorisation et échange du code (secret dans le corps, jamais dans l'adresse)", async () => {
     const u = new URL(simklAuthorizeUrl("CID", "https://x.test/simkl/callback", "ST"));
-    expect(u.origin + u.pathname).toBe("https://simkl.com/oauth/authorize");
+    expect(u.origin + u.pathname).toBe("https://simkl.com/oauth2/authorize");
+
     expect(u.searchParams.get("client_id")).toBe("CID");
     expect(u.search).not.toContain("SECRET");
     const f = vi.fn(async () => res(200, { access_token: "TOK", token_type: "bearer" }));
@@ -179,10 +180,25 @@ describe("simkl : tableau de bord", () => {
     const acct = await newAccount();
     const r = await call("/simkl/connect", { method: "POST", cookie: acct.cookie, ip: acct.ip, form: { csrf: acct.csrf } });
     expect(r.status).toBe(302);
-    expect(r.headers.get("location")).toMatch(/^https:\/\/simkl\.com\/oauth\/authorize\?/);
+    expect(r.headers.get("location")).toMatch(/^https:\/\/simkl\.com\/oauth2\/authorize\?/);
     expect(r.headers.get("set-cookie")).toContain("utv_simkl=");
     // Retour sans cookie : refus, rien d'enregistré.
     const back = await call("/simkl/callback?code=abc&state=" + "a".repeat(24), { ip: acct.ip });
     expect(await back.text()).toContain("e=simkl");
+  });
+});
+
+describe("simkl : PKCE", () => {
+  it("l'adresse d'autorisation porte le défi S256 quand il est fourni", () => {
+    const u = new URL(simklAuthorizeUrl("CID", "https://x.test/simkl/callback", "ST", "CHAL"));
+    expect(u.searchParams.get("code_challenge")).toBe("CHAL");
+    expect(u.searchParams.get("code_challenge_method")).toBe("S256");
+  });
+  it("l'échange du code envoie le vérificateur", async () => {
+    let body = null;
+    const fetchFn = async (_u, init) => { body = JSON.parse(init.body); return new Response(JSON.stringify({ access_token: "tok" }), { status: 200 }); };
+    const r = await simklExchangeCode("CID", "SEC", "https://x.test/simkl/callback", "CODE", fetchFn, "VER");
+    expect(r).toEqual({ access: "tok" });
+    expect(body.code_verifier).toBe("VER");
   });
 });

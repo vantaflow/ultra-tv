@@ -998,8 +998,10 @@ async function simklStart(env, acct, url) {
   const rl = await limited(env, `simklink:${acct.login}`, 10, 3600);
   if (rl) return rl;
   const state = randomToken(24);
-  await docs.put(env, simklStateKey(state), JSON.stringify({ login: acct.login }), { expirationTtl: SIMKL_STATE_TTL_S });
-  return redirect(simklAuthorizeUrl(env.SIMKL_CLIENT_ID, simklRedirect(url), state), {
+  // PKCE (S256) exigé par Simkl : le vérificateur reste côté serveur, avec l'état.
+  const { verifier, challenge } = await pkcePair();
+  await docs.put(env, simklStateKey(state), JSON.stringify({ login: acct.login, verifier }), { expirationTtl: SIMKL_STATE_TTL_S });
+  return redirect(simklAuthorizeUrl(env.SIMKL_CLIENT_ID, simklRedirect(url), state, challenge), {
     "set-cookie": `${SIMKL_COOKIE}=${state}; Path=/simkl; HttpOnly; Secure; SameSite=Lax; Max-Age=${SIMKL_STATE_TTL_S}`,
   });
 }
@@ -1014,7 +1016,7 @@ async function simklFinish(req, env, url) {
   let st = null;
   try { st = raw ? JSON.parse(raw) : null; } catch { st = null; }
   if (!st || typeof st.login !== "string" || !code || code.length > 512 || !simklEnabled(env)) return simklDone("e=simkl");
-  const t = await simklExchangeCode(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, simklRedirect(url), code);
+  const t = await simklExchangeCode(env.SIMKL_CLIENT_ID, env.SIMKL_CLIENT_SECRET, simklRedirect(url), code, fetch, st?.verifier || null);
   if (t.error) return simklDone("e=simkl");
   const user = await simklUsername(env.SIMKL_CLIENT_ID, t.access);
   return withAccountLock(env, st.login, async (acct) => {
