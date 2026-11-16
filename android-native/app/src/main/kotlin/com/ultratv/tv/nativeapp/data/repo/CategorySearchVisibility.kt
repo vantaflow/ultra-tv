@@ -20,3 +20,7 @@ internal object CategorySearchVisibility {
         return (profileHidden + disabledRemoteIds).distinct()
     }
 }
+
+/** Garde les éléments dont la catégorie n'est pas exclue (catégorie inconnue : gardé). Sans exclusion : liste inchangée. */
+internal inline fun <T> List<T>.visibleIn(excluded: Set<String>, category: (T) -> String?): List<T> =
+    if (excluded.isEmpty()) this else filter { item -> category(item).let { it == null || it !in excluded } }

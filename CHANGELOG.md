@@ -26,6 +26,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Worker : recherches TMDB en série refusées (429) depuis le limiteur natif ; marge élargie pour retrouver les rafales permises auparavant.
 - Android : manque de mémoire possible sur les TV à petit tas (128 Mo) en gérant les catégories ; l'appli demande désormais un tas élargi et l'ordre des catégories est appliqué sans allocation par comparaison.
 - Worker (Turso) : les clés expirées (anciens caches KV) sont purgées chaque nuit, comme le faisait KV ; outil de migration des anciens comptes paginé pour rester sous la limite de sous-requêtes.
+- Recherche Films / Séries : les titres des catégories désactivées ou masquées par le profil n'apparaissent plus (filtrage en mémoire, sans limite de paramètres SQL) ; réglages : chaque volet repart en haut ; annonces relues au retour sur l'appli.
 
 ## [1.3.37] — 2026-11-14 (Android)
 

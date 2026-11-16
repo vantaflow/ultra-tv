@@ -221,18 +221,20 @@ class CatalogRepository @Inject constructor(
         val match = FtsQuery.of(query) ?: return SearchResults()
         val wantMovies = only == null || only == "movie"
         val wantSeries = only == null || only == "series"
-        val excludedMovies = if (wantMovies) excludedCategoryIds(pid, "MOVIE") else emptyList()
-        val excludedSeries = if (wantSeries) excludedCategoryIds(pid, "SERIES") else emptyList()
+        // Catégories exclues filtrées EN MÉMOIRE (pas de NOT IN (:liste) : SQLite plafonne à 999 paramètres jusqu'à
+        // Android 11, et un profil peut masquer des milliers de catégories). Lot SQL élargi pour compenser le filtre.
+        val excludedMovies = if (wantMovies) excludedCategoryIds(pid, "MOVIE").toHashSet() else emptySet()
+        val excludedSeries = if (wantSeries) excludedCategoryIds(pid, "SERIES").toHashSet() else emptySet()
         val cap = limit * 3
+        val mCap = if (excludedMovies.isEmpty()) cap else cap * 4
+        val sCap = if (excludedSeries.isEmpty()) cap else cap * 4
         val rawMovies = when {
             !wantMovies -> emptyList()
-            excludedMovies.isEmpty() -> movieDao.searchFts(pid, match, cap)
-            else -> movieDao.searchFtsExcludingCategories(pid, match, cap, excludedMovies)
+            else -> movieDao.searchFts(pid, match, mCap).visibleIn(excludedMovies) { it.categoryId }.take(cap)
         }
         val rawSeries = when {
             !wantSeries -> emptyList()
-            excludedSeries.isEmpty() -> seriesDao.searchFts(pid, match, cap)
-            else -> seriesDao.searchFtsExcludingCategories(pid, match, cap, excludedSeries)
+            else -> seriesDao.searchFts(pid, match, sCap).visibleIn(excludedSeries) { it.categoryId }.take(cap)
         }
         // Mot courant : la recherche plein texte rend ses lignes dans l'ordre de la table et s'arrête au plafond, le titre
         // cherché pouvait être au-delà. On ajoute alors, en tête, les titres qui commencent par la saisie.
@@ -240,12 +242,10 @@ class CatalogRepository @Inject constructor(
         // Index vide (déclencheurs perdus, reconstruction pas encore faite) : même recherche par début de titre, sans l'index —
         // avant, la recherche ne rendait alors plus rien du tout.
         val mHead = if (wantMovies && prefix != null && (rawMovies.size >= cap || rawMovies.isEmpty())) {
-            if (excludedMovies.isEmpty()) movieDao.titlePrefix(pid, prefix, PREFIX_LIMIT)
-            else movieDao.titlePrefixExcludingCategories(pid, prefix, PREFIX_LIMIT, excludedMovies)
+            movieDao.titlePrefix(pid, prefix, if (excludedMovies.isEmpty()) PREFIX_LIMIT else PREFIX_LIMIT * 4).visibleIn(excludedMovies) { it.categoryId }.take(PREFIX_LIMIT)
         } else emptyList()
         val sHead = if (wantSeries && prefix != null && (rawSeries.size >= cap || rawSeries.isEmpty())) {
-            if (excludedSeries.isEmpty()) seriesDao.titlePrefix(pid, prefix, PREFIX_LIMIT)
-            else seriesDao.titlePrefixExcludingCategories(pid, prefix, PREFIX_LIMIT, excludedSeries)
+            seriesDao.titlePrefix(pid, prefix, if (excludedSeries.isEmpty()) PREFIX_LIMIT else PREFIX_LIMIT * 4).visibleIn(excludedSeries) { it.categoryId }.take(PREFIX_LIMIT)
         } else emptyList()
         var movies = SearchDedup.movies((mHead + rawMovies).distinctBy { it.id }).take(limit)
         var series = SearchDedup.series((sHead + rawSeries).distinctBy { it.id }).take(limit)
@@ -255,13 +255,11 @@ class CatalogRepository @Inject constructor(
             FuzzySearch.candidateMatch(query)?.let { loose ->
                 fuzzy = true
                 if (wantMovies) {
-                    val candidates = if (excludedMovies.isEmpty()) movieDao.searchFts(pid, loose, FUZZY_POOL)
-                    else movieDao.searchFtsExcludingCategories(pid, loose, FUZZY_POOL, excludedMovies)
+                    val candidates = movieDao.searchFts(pid, loose, FUZZY_POOL).visibleIn(excludedMovies) { it.categoryId }
                     movies = SearchDedup.movies(FuzzySearch.rank(query, candidates, { it.title }, limit * 3)).take(limit)
                 }
                 if (wantSeries) {
-                    val candidates = if (excludedSeries.isEmpty()) seriesDao.searchFts(pid, loose, FUZZY_POOL)
-                    else seriesDao.searchFtsExcludingCategories(pid, loose, FUZZY_POOL, excludedSeries)
+                    val candidates = seriesDao.searchFts(pid, loose, FUZZY_POOL).visibleIn(excludedSeries) { it.categoryId }
                     series = SearchDedup.series(FuzzySearch.rank(query, candidates, { it.title }, limit * 3)).take(limit)
                 }
             }

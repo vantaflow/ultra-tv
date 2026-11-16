@@ -53,7 +53,7 @@ import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 /**
- * Admin announcements are fetched at launch, on foreground entry, and every five minutes while the app is visible.
+ * Admin announcements are fetched at launch, on foreground entry, and every 15 minutes while the app is visible (a 5-minute poll tripled a request family already ~7% of the Worker quota).
  * The host lives at the navigation root so pending messages are not tied to an individual screen.
  * Announcements are shown one at a time (see [AnnouncementPlan.next]); display, dismissal and action statistics
  * are counted once per device.
@@ -136,7 +136,7 @@ class AnnouncementViewModel @Inject constructor(private val repo: AnnouncementRe
     fun history(): List<ReceivedAnnouncement> = repo.history()
 
     companion object {
-        const val POLL_MS = 5 * 60_000L
+        const val POLL_MS = 15 * 60_000L
         const val MIN_REFRESH_INTERVAL_MS = 30_000L
         const val BANNER_MS = 15_000L
         /** Alertes urgentes déjà montrées depuis le lancement du processus (réaffichées au lancement suivant). */
