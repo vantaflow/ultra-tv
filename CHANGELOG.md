@@ -2,6 +2,11 @@
 
 Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Versions suivant `VERSION`.
 
+## [1.3.38] — 2026-11-16 (Android)
+
+### Technique
+- Mise à jour des dépendances (Dependabot) : Bump the android-mineures group in /android-native with 5 updates (#163).
+
 ## [Non publié]
 
 ### Ajouté
