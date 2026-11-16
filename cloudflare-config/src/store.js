@@ -719,6 +719,20 @@ export function mergeProfiles(cur, incoming, now = Date.now()) {
   return [...byKey.values()].filter((p) => p.on || now - p.at < PROFILE_TOMB_TTL_MS).sort((a, b) => a.at - b.at).slice(-PROFILES_MAX * 2);
 }
 
+/**
+ * Sources visibles d'un profil, modifiées depuis le tableau de bord : `names` = liste de noms de sources, ou null
+ * pour « toutes » (champ `s` retiré). L'horodatage `at` avance pour que la fusion avec les appareils retienne le
+ * changement. Renvoie la nouvelle liste de profils, ou null si le profil n'existe pas (ou est supprimé).
+ */
+export function setProfileSources(profiles, name, names, now = Date.now()) {
+  const list = profiles || [];
+  const i = list.findIndex((p) => p.on !== false && p.n.toLowerCase() === String(name || "").toLowerCase());
+  if (i < 0) return null;
+  const clean = names === null ? [] : [...new Set(names.map((x) => cleanLine(x, 40)).filter(Boolean))].slice(0, 12);
+  const { s: _old, ...rest } = list[i];
+  const next = { ...rest, at: Math.max(now, (list[i].at || 0) + 1), ...(clean.length ? { s: clean } : {}) };
+  return list.map((p, j) => (j === i ? next : p));
+}
 
 // ---- reprise de la lecture d'un appareil à l'autre (« Envoyer vers… ») -----------------------------------------
 // File COURTE par appareil cible (3 demandes, 2 min), écrite par l'émetteur, lue par la cible pendant sa synchro

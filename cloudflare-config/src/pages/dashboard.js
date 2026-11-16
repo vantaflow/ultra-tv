@@ -97,7 +97,7 @@ ${d.edition === "pro" ? licenseLine(d.license, Date.now(), lang) : ""}
   const cJs = t.clientJs;
   const script = `<script nonce="${n}">
 document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventListener('submit',function(ev){if(!confirm(f.dataset.confirm))ev.preventDefault();});});
-document.querySelectorAll('.share-form').forEach(function(f){var all=f.querySelector('input[name=all]'),ds=f.querySelectorAll('input[name=d]');
+document.querySelectorAll('.share-form,.prof-form').forEach(function(f){var all=f.querySelector('input[name=all]'),ds=f.querySelectorAll('input[name=d],input[name=src]');
  all.addEventListener('change',function(){ds.forEach(function(d){d.checked=all.checked;});});
  ds.forEach(function(d){d.addEventListener('change',function(){all.checked=Array.prototype.every.call(ds,function(x){return x.checked;});});});});
 document.querySelectorAll('.reveal-link').forEach(function(b){b.addEventListener('click',function(){
@@ -215,7 +215,8 @@ ${listbar("dev-list", cJs.searchDevPh)}
 <div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">${e(t.srcs.title)} <span class="count">${providers.length}</span></h2><p class="muted small">${e(t.srcs.sub)}</p></div><a class="button secondary" href="#ajouter">${ico("plus")}${e(t.srcs.addBtn)}</a></div>
 ${listbar("prov-list", cJs.searchSrcPh)}
 <div class="cards c2" id="prov-list">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>${e(t.srcs.emptyTitle)}</strong><span class="small">${e(t.srcs.emptySub)}</span></div>`}</div>
-<section class="panel mt16" id="ajouter" aria-labelledby="h-add"><h2 id="h-add">${e(t.add.title)}</h2><p class="sub">${e(t.add.sub)}</p>
+${profilesPanel(acct, providers, csrfInput, lang)}
+<section class="panel mt16" id="ajouter"aria-labelledby="h-add"><h2 id="h-add">${e(t.add.title)}</h2><p class="sub">${e(t.add.sub)}</p>
 <div class="tabbed"><input type="radio" name="tab" id="t-xtream" checked aria-label="${e(t.add.tabXtream)}"/><input type="radio" name="tab" id="t-m3u" aria-label="${e(t.add.tabM3u)}"/><input type="radio" name="tab" id="t-stalker" aria-label="${e(t.add.tabStalker)}"/><div class="seg" aria-hidden="true"><label for="t-xtream">${e(t.add.tabXtream)}</label><label for="t-m3u">${e(t.add.tabM3u)}</label><label for="t-stalker">${e(t.add.tabStalker)}</label></div>
 <form method="post" action="/providers" id="form-xtream">${csrfInput}<input type="hidden" name="kind" value="XTREAM"/>
 <label for="xn">${e(t.add.nameLabel)} <span class="hint">${e(t.add.optional)}</span></label><input id="xn" name="name" maxlength="64" placeholder="${e(t.add.namePhXtream)}"/>
@@ -238,12 +239,8 @@ ${listbar("prov-list", cJs.searchSrcPh)}
 
 <div class="section-h" id="integrations"><span id="compte" class="anchor"></span><div class="sh-t"><h2>${e(t.integ.title)}</h2><p class="muted small">${e(t.integ.sub)}</p></div></div>
 <div class="two">
-${traktPanel(acct.trakt, csrfInput, lang)}
-${osPanel(acct.os, csrfInput, lang)}
-</div>
-<div class="two">
 ${trackingPanel(acct, csrfInput, lang, simkl, traktOn)}
-${simkl ? simklPanel(acct.simkl, csrfInput, lang) : ""}
+${osPanel(acct.os, csrfInput, lang)}
 </div>
 
 <div class="section-h" id="securite"><div class="sh-t"><h2>${e(t.sec.title)}</h2><p class="muted small">${e(t.sec.sub)}</p></div></div>
@@ -260,44 +257,68 @@ ${simkl ? simklPanel(acct.simkl, csrfInput, lang) : ""}
 </div>` });
 }
 
-/** Service de suivi au choix : Trakt, Simkl (seulement s'il est configuré) ou aucun ; vaut pour tous les appareils. */
-function trackingPanel(acct, csrfInput, lang, simkl, traktOn) {
+/**
+ * Profils partagés du compte (acct.profiles, synchronisés avec les appareils) : pour chacun, les sources visibles.
+ * Champ `s` absent = toutes les sources (« Toutes » coché). Rien n'est affiché sans profil ni source.
+ */
+export function profilesPanel(acct, providers, csrfInput, lang = "fr") {
+  const t = (SITE_DICT[lang] || SITE_DICT.fr).dash.profs;
+  const profs = (acct.profiles || []).filter((p) => p.on !== false);
+  const names = [...new Set(providers.map((p) => p.name))];
+  if (!profs.length || !names.length) return "";
+  const items = profs.map((p, i) => {
+    const all = !Array.isArray(p.s) || !p.s.length;
+    const chosen = all ? names : p.s.filter((x) => names.includes(x));
+    const summary = all ? t.all : chosen.length ? chosen.map(e).join(", ") : t.none;
+    const picks = names.map((nm) => `<label class="pick"><input type="checkbox" name="src" value="${e(nm)}"${all || p.s.includes(nm) ? " checked" : ""}/>${e(nm)}</label>`).join("");
+    return `<article class="card"><div class="card-top"><div class="badge-ico">${ico("user")}</div>
+<div class="grow"><div class="card-title">${e(p.n)}${p.k ? ` <span class="kind std">${e(t.kids)}</span>` : ""}</div><div class="card-meta">${t.visible} ${summary}</div></div></div>
+<div class="actions"><details><summary>${ico("edit")}${e(t.edit)}</summary><form method="post" action="/profiles/sources" class="drop prof-form">${csrfInput}<input type="hidden" name="name" value="${e(p.n)}"/>
+<div class="picks"><label class="pick all"><input type="checkbox" name="all" value="1"${all ? " checked" : ""} id="pa-${i}"/>${e(t.allBox)}</label>${picks}</div>
+<div class="row"><button type="submit">${e(t.save)}</button></div></form></details></div></article>`;
+  }).join("");
+  return `<div class="section-h" id="profils"><div class="sh-t"><h2 id="h-prof">${e(t.title)} <span class="count">${profs.length}</span></h2><p class="muted small">${e(t.sub)}</p></div></div>
+<div class="cards c2">${items}</div>`;
+}
+
+/**
+ * Service de suivi : UNE carte. En tête le service actuellement actif (choix explicite, sinon Trakt s'il est relié,
+ * sinon Simkl : même règle que activeTracker dans tracking.js) ; une ligne par service (état + Connecter/Déconnecter) ;
+ * puis le choix du service actif. Un service non relié reste choisissable (mention « à relier »).
+ */
+export function trackingPanel(acct, csrfInput, lang, simkl, traktOn) {
   const t = (SITE_DICT[lang] || SITE_DICT.fr).dash.integ;
-  const cur = acct.tracking === "none" || acct.tracking === "simkl" || acct.tracking === "trakt"
-    ? acct.tracking : (acct.traktEnc ? "trakt" : acct.simklEnc ? "simkl" : "none");
-  const opts = [...(traktOn ? [["trakt", "Trakt"]] : []), ...(simkl ? [["simkl", "Simkl"]] : []), ["none", t.trackNone]];
-  return `<section class="panel" aria-labelledby="h-track"><h2 id="h-track">${e(t.trackTitle)}</h2>
+  const linked = { trakt: !!(traktOn && acct.traktEnc), simkl: !!(simkl && acct.simklEnc) };
+  const explicit = acct.tracking === "none" || acct.tracking === "simkl" || acct.tracking === "trakt" ? acct.tracking : null;
+  const active = explicit === "none" ? null
+    : explicit ? (linked[explicit] ? explicit : null)
+      : linked.trakt ? "trakt" : linked.simkl ? "simkl" : null;
+  // Choix affiché dans les boutons radio : l'explicite, sinon le service actif par défaut, sinon Aucun.
+  const choice = explicit || active || "none";
+  const names = { trakt: "Trakt", simkl: "Simkl" };
+  const users = { trakt: acct.trakt && acct.trakt.user, simkl: acct.simkl && acct.simkl.user };
+  const status = (k) => (linked[k] ? (users[k] ? t.trackLinkedUser(users[k]) : t.trackLinked) : t.trackNotLinked);
+  const now = choice === "none" ? `<strong>${e(t.trackNone)}</strong>` : `<strong>${names[choice]}</strong> (${e(status(choice))})`;
+  const note = choice !== "none" && !linked[choice] ? t.trackPending(names[choice]) : explicit ? "" : t.trackDefaultNote;
+  const row = (k, revoked, desc, descOn) => {
+    const l = linked[k];
+    return `<div class="svc"><div class="svc-h"><strong>${names[k]}</strong><span class="chip${l ? " all" : ""}">${e(status(k))}</span>
+<form method="post" action="/${k}/${l ? "disconnect" : "connect"}">${csrfInput}<button${l ? ' class="secondary"' : ""} type="submit">${e(t[`${k}${l ? "Disconnect" : "Connect"}`])}</button></form></div>
+<p class="muted small">${revoked && !l ? e(t[`${k}RevokedMsg`]) : ""}${e(l ? descOn : desc)}</p></div>`;
+  };
+  const services = [
+    ...(traktOn ? [["trakt", acct.trakt]] : []),
+    ...(simkl ? [["simkl", acct.simkl]] : []),
+  ];
+  const radios = [...services.map(([k]) => [k, names[k] + (linked[k] ? "" : ` · ${t.trackToLink}`)]), ["none", t.trackNone]];
+  return `<section class="panel track-panel" aria-labelledby="h-track"><h2 id="h-track">${e(t.trackTitle)}</h2>
+<p class="track-now" aria-live="polite">${e(t.trackNow)} ${now}</p>${note ? `<p class="muted small">${e(note)}</p>` : ""}
 <p class="muted small mt6">${e(t.trackDesc)}</p>
-<form method="post" action="/tracking/service">${csrfInput}
-<label for="trk" class="mt0">${e(t.trackTitle)}</label><select id="trk" name="service">${opts.map(([v, l]) => `<option value="${v}"${v === cur ? " selected" : ""}>${e(l)}</option>`).join("")}</select>
-<div class="row"><button type="submit">${e(t.trackSave)}</button></div></form></section>`;
-}
-
-/** Simkl (facultatif, affiché seulement si l'application Simkl est configurée sur le Worker). */
-function simklPanel(sObj, csrfInput, lang = "fr") {
-  const t = (SITE_DICT[lang] || SITE_DICT.fr).dash.integ;
-  const linked = sObj && !sObj.revoked;
-  return `<section class="panel" aria-labelledby="h-simkl"><h2 id="h-simkl">${e(t.simklTitle)} <span class="hint">${e(t.traktOptional)}</span></h2>
-${linked ? `<p class="mt6">${t.simklConnected(sObj.user)}</p>
-<p class="muted small mt6">${e(t.simklDescConnected)}</p>
-<form method="post" action="/simkl/disconnect">${csrfInput}<div class="row"><button class="secondary" type="submit">${e(t.simklDisconnect)}</button></div></form>`
-    : `<p class="muted small mt6">${sObj && sObj.revoked ? e(t.simklRevokedMsg) : ""}${e(t.simklDescConnect)}</p>
-<form method="post" action="/simkl/connect">${csrfInput}<div class="row"><button type="submit">${e(t.simklConnect)}</button></div></form>
-<p class="secure">${ico("lock")}<span>${e(t.simklSecure)}</span></p>`}</section>`;
-}
-
-/** Trakt (facultatif) : connexion OAuth depuis l'espace client ; les appareils n'ont rien à configurer. */
-function traktPanel(tObj, csrfInput, lang = "fr") {
-  const dict = SITE_DICT[lang] || SITE_DICT.fr;
-  const t = dict.dash.integ;
-  const linked = tObj && !tObj.revoked;
-  return `<section class="panel" aria-labelledby="h-trakt"><h2 id="h-trakt">${e(t.traktTitle)} <span class="hint">${e(t.traktOptional)}</span></h2>
-${linked ? `<p class="mt6">${t.traktConnected(tObj.user)}</p>
-<p class="muted small mt6">${e(t.traktDescConnected)}</p>
-<form method="post" action="/trakt/disconnect">${csrfInput}<div class="row"><button class="secondary" type="submit">${e(t.traktDisconnect)}</button></div></form>`
-    : `<p class="muted small mt6">${tObj && tObj.revoked ? e(t.traktRevokedMsg) : ""}${e(t.traktDescConnect)}</p>
-<form method="post" action="/trakt/connect">${csrfInput}<div class="row"><button type="submit">${e(t.traktConnect)}</button></div></form>
-<p class="secure">${ico("lock")}<span>${e(t.traktSecure)}</span></p>`}</section>`;
+<div class="svcs">${services.map(([k, o]) => row(k, !!(o && o.revoked), t[`${k}DescConnect`], t[`${k}DescConnected`])).join("")}</div>
+<form method="post" action="/tracking/service" class="track-form">${csrfInput}
+<fieldset class="picks track-picks"><legend class="lbl">${e(t.trackActive)}</legend>${radios.map(([v, l]) => `<label class="pick"><input type="radio" name="service" value="${v}"${v === choice ? " checked" : ""}/>${e(l)}</label>`).join("")}</fieldset>
+<div class="row"><button type="submit">${e(t.trackSave)}</button></div></form>
+<p class="secure">${ico("lock")}<span>${e(t.trackSecure)}</span></p></section>`;
 }
 
 /**

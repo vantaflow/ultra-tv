@@ -28,6 +28,7 @@ import {
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
+import { setProfileSources } from "./store.js";
 import { parseHandoff, pushHandoff, loadHandoffs, handoffHeader } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
@@ -316,7 +317,7 @@ async function route(req, env, ctx) {
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service"].includes(path)
+  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
@@ -410,6 +411,18 @@ async function route(req, env, ctx) {
     await putAccount(env, acct);
     await forgetTraktLibrary(env, acct.login);
     return redirect("/?m=tracking_saved#compte");
+  }
+  if (path === "/profiles/sources") {
+    // Sources visibles d'un profil partagé : « Toutes » (ou toutes cochées) = champ absent ; sinon noms des sources du compte.
+    const names = [...new Set((await loadProviders(env, acct)).map((p) => p.name))];
+    const picked = form.getAll("src").map(String).filter((x) => names.includes(x));
+    const all = form.get("all") === "1" || (names.length > 0 && picked.length === names.length);
+    if (!all && !picked.length) return redirect("/?e=profile_src#profils");
+    const next = setProfileSources(acct.profiles, String(form.get("name") || ""), all ? null : picked);
+    if (!next) return redirect("/?e=profile_src#profils");
+    acct.profiles = next;
+    await putAccount(env, acct);
+    return redirect("/?m=profile_src_saved#profils");
   }
   if (path === "/trakt/disconnect") {
     if (acct.traktEnc && env.TRAKT_CLIENT_ID) {

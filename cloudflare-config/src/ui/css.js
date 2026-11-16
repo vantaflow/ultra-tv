@@ -223,6 +223,16 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 .pick{display:inline-flex;align-items:center;gap:10px;min-height:44px;margin:0;padding:0 14px;border-radius:var(--r-md);background:var(--bg);border:1.5px solid var(--bd);color:var(--fg);font-size:14px;font-weight:600;cursor:pointer}
 .pick:has(input:checked){border-color:var(--acc)}
 .pick.all{border-style:dashed}
+/* Carte « Service de suivi » : état en tête, une ligne par service, choix du service actif. */
+.track-now{margin-top:var(--sp-3);font-size:16px}
+.svcs{display:grid;gap:var(--sp-3);margin-top:var(--sp-4)}
+.svc{border:1px solid var(--bd);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-4);background:var(--bg)}
+.svc-h{display:flex;flex-wrap:wrap;align-items:center;gap:var(--sp-2) var(--sp-3)}
+.svc-h form{margin:0;margin-inline-start:auto}
+.svc p{margin-top:var(--sp-2)}
+.track-form{margin-top:var(--sp-4)}
+.track-picks{border:0;padding:0;margin:0;min-width:0}
+.track-picks legend{padding:0}
 .meter{height:6px;border-radius:var(--r-pill);background:var(--s3);overflow:hidden;margin-top:var(--sp-2)}
 .meter i{display:block;height:100%;width:0;background:var(--ok);border-radius:var(--r-pill);transition:width .4s}
 .acct.warn .meter i{background:var(--warn)}.acct.bad .meter i{background:var(--dng)}
