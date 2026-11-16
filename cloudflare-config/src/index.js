@@ -45,7 +45,7 @@ import {
 } from "./trakt.js";
 import { LIB_TTL_S, LANGS, fetchTraktLibrary, enrichTitles, libraryForDevice } from "./traktlib.js";
 import {
-  SIMKL_STATE_TTL_S, simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklUsername, fetchSimklLibrary,
+  SIMKL_STATE_TTL_S, SIMKL_LIB_TTL_S, simklEnabled, simklAuthorizeUrl, simklExchangeCode, simklUsername, fetchSimklLibrary,
   simklWriteRequest, simklScrobbleBody, simklSend,
 } from "./simkl.js";
 import { TRACKING_CHOICES, activeTracker, trackingStatus } from "./tracking.js";
@@ -1214,7 +1214,10 @@ async function deviceTraktLibrary(req, env, url, ctx) {
   const at = v && typeof v.at === "number" ? v.at : 0;
   // Un cache fait pour l'autre service (changement de choix) est ignoré.
   const data = v && v.data && (v.svc || "trakt") === svc ? v.data : null;
-  if (data && Date.now() - at < LIB_TTL_S * 1000) return json(data);
+  // Simkl : 500 requêtes par jour et par utilisateur (offre gratuite), 6 par rafraîchissement → cache de 2 h (Trakt : 15 min).
+  // Les écritures faites depuis l'appli vident ce cache : elles restent visibles tout de suite.
+  const ttlS = svc === "simkl" ? SIMKL_LIB_TTL_S : LIB_TTL_S;
+  if (data && Date.now() - at < ttlS * 1000) return json(data);
   if (data && ctx && typeof ctx.waitUntil === "function") {
     ctx.waitUntil(buildTraktLibrary(env, login, lang, traktRedirect(url), svc).catch(() => {}));
     return json(data);

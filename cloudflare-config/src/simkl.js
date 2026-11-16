@@ -9,6 +9,8 @@ export const SIMKL_AUTHORIZE = "https://simkl.com/oauth2/authorize";
 const SIMKL_API = "https://api.simkl.com";
 const USER_AGENT = "UltraTV/1.0";
 export const SIMKL_STATE_TTL_S = 600;
+/** Durée du cache de bibliothèque Simkl (quota Simkl : 500 requêtes / jour / utilisateur en offre gratuite). */
+export const SIMKL_LIB_TTL_S = 2 * 3600;
 
 /** Simkl est proposé seulement si l'identifiant ET le secret de l'application sont configurés. */
 export const simklEnabled = (env) => !!(env && env.SIMKL_CLIENT_ID && env.SIMKL_CLIENT_SECRET);
