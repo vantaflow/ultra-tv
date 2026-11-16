@@ -208,6 +208,10 @@ data class ResolvedPlayback(
     val manualBuffer: Boolean,
     val lowRam: Boolean = false,
     val heapClassMb: Int = 192,
+    /** Réglages › Lecture › Qualité « Maximale » : aucun plafond de résolution ni de débit, piste la plus haute forcée (Media3). */
+    val maxQuality: Boolean = false,
+    /** Réglages › Lecture › Lecture tunnelisée (Media3 seulement). */
+    val tunneling: Boolean = false,
 )
 
 object PlaybackResolver {
@@ -230,8 +234,11 @@ object PlaybackResolver {
             lowRam = auto.lowRam, heapClassMb = heapClassMb,
         )
     }
-    fun resolve(auto: AutoSettings, p: UserPrefs, heapClassMb: Int, levelBump: Int = 0) =
-        resolve(auto, p.playerEngine, p.decoderMode, p.bufferPreset, CustomBuffer(p.bufMinSec, p.bufMaxSec, p.bufStartSec, p.bufRebufferSec, p.bufMaxMb), heapClassMb, levelBump)
+    fun resolve(auto: AutoSettings, p: UserPrefs, heapClassMb: Int, levelBump: Int = 0): ResolvedPlayback {
+        val r = resolve(auto, p.playerEngine, p.decoderMode, p.bufferPreset, CustomBuffer(p.bufMinSec, p.bufMaxSec, p.bufStartSec, p.bufRebufferSec, p.bufMaxMb), heapClassMb, levelBump)
+        val t = r.copy(tunneling = p.tunneledPlayback)
+        return if (com.ultratv.tv.nativeapp.ui.player.engine.TrackPolicy.isMax(p.videoQuality)) t.copy(maxVideoHeight = Int.MAX_VALUE, maxVideoBitrateBps = null, maxQuality = true) else t
+    }
 }
 
 /**

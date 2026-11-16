@@ -70,15 +70,15 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 Player.STATE_ENDED -> _events.tryEmit(EngineEvent.Ended)
             }
         }
-        override fun onRenderedFirstFrame() { _events.tryEmit(EngineEvent.FirstFrame) }
+        override fun onRenderedFirstFrame() { firstFrameRendered = true; _events.tryEmit(EngineEvent.FirstFrame); applyFrameRate() }
         override fun onPlayerError(error: PlaybackException) {
             val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
             _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status), status))
         }
-        override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
+        override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }   // sans effet avant la première image rendue
         // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
         // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
-        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); detectHdr(tracks) }
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); forceHighestVideo(); detectHdr(tracks) }
     }
 
     init {
@@ -129,7 +129,15 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 DecoderMode.AUTO -> setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
         }
+        // Débit initial : ExoPlayer démarre à ~1-2 Mb/s sans mesure (donc la variante la plus basse, 240p-360p) ; voir [TrackPolicy].
+        val bandwidth = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(ctx)
+            .setInitialBitrateEstimate(TrackPolicy.initialBitrateEstimate(config.maxVideoBitrateBps, config.maxQuality)).build()
+        // Montée de qualité plus tôt (4 s de tampon au lieu de 10 s) ; le reste de l'adaptation est celui de Media3.
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(
+            ctx, androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(TrackPolicy.MIN_INCREASE_BUFFER_MS, 25_000, 25_000, 0.7f),
+        )
         player = ExoPlayer.Builder(ctx, renderers).setLoadControl(loadControl).setMediaSourceFactory(mediaSources)
+            .setBandwidthMeter(bandwidth).setTrackSelector(trackSelector)
             // Libération : le fil principal n'attend plus (500 ms par défaut) que le fil de lecture d'ExoPlayer ait détruit
             // les décodeurs — voir [release].
             .setReleaseTimeoutMs(RELEASE_WAIT_MS)
@@ -144,7 +152,12 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                     decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
                 ) { signalHdr(HdrOutput.contentKind(format.colorInfo?.colorTransfer, format.sampleMimeType)) }
             })
-            setVideoFrameMetadataListener { _, _, format, mediaFormat ->
+            setVideoFrameMetadataListener { presentationTimeUs, _, format, mediaFormat ->
+                // Cadence réelle (AFR) : horodatages des images rendues, tant qu'aucune mesure n'est prête.
+                if (config.autoFrameRate && !fpsMeasured) {
+                    fpsEstimator.add(presentationTimeUs)
+                    if (fpsEstimator.estimate() != null) { fpsMeasured = true; mainHandler.post { applyFrameRate() } }
+                }
                 if (hdrSignalled) return@setVideoFrameMetadataListener
                 val transfer = mediaFormat?.takeIf { it.containsKey(android.media.MediaFormat.KEY_COLOR_TRANSFER) }
                     ?.getInteger(android.media.MediaFormat.KEY_COLOR_TRANSFER)
@@ -160,7 +173,12 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .setPreferredAudioLanguages(*config.preferredAudio.flatMap { languageVariants(it) }.distinct().toTypedArray())
             .setPreferredTextLanguages(*config.preferredText.flatMap { languageVariants(it) }.distinct().toTypedArray())
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, config.textOff)
+            // Qualité « Maximale » : variante du plus haut débit dès le départ, sans plafond (la piste est ensuite forcée, voir [forceHighestVideo]).
+            .setForceHighestSupportedBitrate(config.maxQuality)
             .build()
+        // Lecture tunnelisée : le décodeur reçoit audio et vidéo synchronisés par le matériel (utile sur Google TV / Fire TV).
+        // Paramètre propre au sélecteur par défaut (absent des paramètres génériques) ; voir [TrackPolicy.tunnelingEffective].
+        trackSelector.setParameters(trackSelector.buildUponParameters().setTunnelingEnabled(TrackPolicy.tunnelingEffective(config.tunneling, config.textureView, config.decoder)))
     }
 
     /** « fr » → fr, fra, fre : les flux étiquettent en 639-1, 639-2/T ou 639-2/B. */
@@ -194,6 +212,22 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 return
             }
         }
+    }
+
+    /** Qualité « Maximale » : piste vidéo la plus haute déjà forcée pour le flux en cours (réarmé à chaque ouverture). */
+    private var videoForced = false
+
+    /** Qualité « Maximale » : force la piste vidéo de plus haute résolution / débit prise en charge (une fois par flux). */
+    private fun forceHighestVideo() {
+        if (!config.maxQuality || videoForced) return
+        val flat = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.flatMap { g ->
+            (0 until g.length).map { ti -> val f = g.getTrackFormat(ti); Triple(g, ti, TrackPolicy.VideoCandidate(f.width.coerceAtLeast(0), f.height.coerceAtLeast(0), f.bitrate.coerceAtLeast(0), g.isTrackSupported(ti))) }
+        }
+        if (flat.size < 2) return   // une seule piste : rien à forcer (les pistes d'un HLS arrivent parfois en deux temps)
+        val best = TrackPolicy.highestIndex(flat.map { it.third })?.let { flat[it] } ?: return
+        videoForced = true
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(best.first.mediaTrackGroup, best.second)).build()
     }
 
     private var audioManual = false
@@ -263,7 +297,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         streamHeaders = props?.let { DrmMedia.streamHeaders(it) } ?: emptyMap()
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
-        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false
+        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false; videoForced = false
+        firstFrameRendered = false; fpsMeasured = false; afrFps = null; fpsEstimator.reset()
         ccProbe.clear()   // chaîne suivante : les CC vus sur la précédente ne comptent plus
         if (player.mediaItemCount > 0) {
             player.stop()
@@ -342,6 +377,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun setMuted(muted: Boolean) { player.volume = if (muted) 0f else 1f }
     override val hasVideo get() = player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {
+        if (config.maxQuality) return   // qualité « Maximale » : aucun plafond, même après des remises en mémoire tampon
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setMaxVideoSize(Int.MAX_VALUE, maxHeight.coerceAtLeast(240))
             .setMaxVideoBitrate(maxBitrateBps ?: Int.MAX_VALUE)
@@ -364,25 +400,41 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         )
     }
 
-    /** Adapte la fréquence de l'écran à celle de la vidéo (24/25/50 ips), si l'option est active. */
+    /** Première image rendue du flux en cours : le format est alors réellement décodé (pas seulement annoncé). */
+    @Volatile private var firstFrameRendered = false
+    /** Mesure de cadence prête (assez d'images rendues) ; vrai une seule fois par flux. */
+    @Volatile private var fpsMeasured = false
+    private val fpsEstimator = FrameRateEstimator()
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Cadence pour laquelle un changement de mode a déjà été évalué (évite de redemander le même mode à chaque événement). */
+    private var afrFps: Float? = null
+
+    /**
+     * Cadence réelle du flux, arrondie aux cadences usuelles ([FrameRatePolicy.snap]), ou null si inconnue.
+     * Jamais avant la première image rendue. La mesure sur les images rendues l'emporte sur la cadence déclarée (manifeste
+     * HLS faux, MPEG-TS sans cadence) ; sans mesure, on prend la cadence du format décodé.
+     */
+    private fun detectedFrameRate(): Float? {
+        if (!firstFrameRendered) return null
+        FrameRatePolicy.snap(fpsEstimator.estimate())?.let { return it }
+        return FrameRatePolicy.snap(player.videoFormat?.frameRate?.takeIf { it > 0f })
+    }
+
+    /** Adapte la fréquence de l'écran à celle de la vidéo (24/25/50 ips…), si l'option est active et la cadence connue. */
     private fun applyFrameRate() {
-        if (!config.autoFrameRate) return
+        if (!config.autoFrameRate || released) return
         val act = (ctx as? Activity) ?: return
-        val fps = player.videoFormat?.frameRate?.takeIf { it > 0f } ?: return
+        val fps = detectedFrameRate() ?: return   // inconnue : on ne change rien
+        if (fps == afrFps) return
+        afrFps = fps
         @Suppress("DEPRECATION") val display = act.windowManager.defaultDisplay ?: return
-        // Fréquence actuelle déjà compatible (multiple entier, ex. 50 Hz pour 25 i/s) : pas de bascule HDMI — elle
-        // coûte 1 à 3 s d'écran noir et se produisait à chaque zap entre chaînes à 25 et 50 i/s.
-        val currentHz = display.mode?.refreshRate ?: 0f
-        if (currentHz > 0f) {
-            val ratio = currentHz / fps
-            if (ratio >= 0.99f && kotlin.math.abs(ratio - kotlin.math.round(ratio)) < 0.01f) return
-        }
-        val target = display.supportedModes.minByOrNull { m ->
-            val multiple = (m.refreshRate / fps).coerceAtLeast(1f)
-            kotlin.math.abs(m.refreshRate - fps * kotlin.math.round(multiple))
-        } ?: return
+        val cur = display.mode ?: return
+        // Fréquence actuelle déjà compatible (multiple entier, ex. 50 Hz pour 25 i/s) : pas de bascule HDMI — elle coûte
+        // 1 à 3 s d'écran noir. Résolution inchangée : voir [FrameRatePolicy.chooseMode].
+        fun info(m: android.view.Display.Mode) = DisplayModeInfo(m.modeId, m.refreshRate, m.physicalWidth, m.physicalHeight)
+        val id = FrameRatePolicy.chooseMode(fps, info(cur), display.supportedModes.map(::info)) ?: return
         val lp = act.window.attributes
-        if (lp.preferredDisplayModeId != target.modeId) { lp.preferredDisplayModeId = target.modeId; act.window.attributes = lp }
+        if (lp.preferredDisplayModeId != id) { lp.preferredDisplayModeId = id; act.window.attributes = lp }
     }
 
     @Volatile private var released = false
@@ -404,6 +456,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun release() {
         if (released) return
         released = true
+        mainHandler.removeCallbacksAndMessages(null)
         runCatching { player.removeListener(listener) }
         runCatching { player.release() }
         runCatching { playerView.player = null }

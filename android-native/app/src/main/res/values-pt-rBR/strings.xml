@@ -397,6 +397,11 @@
     <string name="ds_compat_video">Renderização de vídeo compatível</string>
     <string name="ds_compat_video_hint">Ative se você ouvir o som, mas não vir a imagem. Ativada por padrão em celulares, tablets e NVIDIA Shield.</string>
     <string name="ds_auto_fps">Ajustar à taxa de atualização da tela</string>
+    <string name="ds_playback_quality">Qualidade de reprodução</string>
+    <string name="ds_playback_quality_hint">Auto se adapta à rede e ao aparelho. Máxima sempre escolhe a maior resolução e taxa de bits (mais dados, pode travar em conexão lenta).</string>
+    <string name="ds_quality_max">Máxima</string>
+    <string name="ds_tunneled_playback">Reprodução em túnel</string>
+    <string name="ds_tunneled_playback_hint">Deixa o decodificador de hardware sincronizar áudio e vídeo sozinho (somente player Media3). Ative se o áudio ficar dessincronizado ou o vídeo travar no Google TV / Fire TV; desative se a imagem ficar preta.</string>
     <string name="ds_on">Ativado</string>
     <string name="ds_off_state">Desativado</string>
     <string name="ds_app_language">Idioma do app</string>

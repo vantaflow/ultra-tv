@@ -390,6 +390,11 @@
     <string name="ds_compat_video">Compatibility video rendering</string>
     <string name="ds_compat_video_hint">Turn on if you hear the sound but see no picture. On by default on smartphones, tablets and NVIDIA Shield.</string>
     <string name="ds_auto_fps">Match screen refresh rate</string>
+    <string name="ds_playback_quality">Playback quality</string>
+    <string name="ds_playback_quality_hint">Auto adapts to your network and device. Maximum always picks the highest resolution and bitrate (more data, can stutter on a slow connection).</string>
+    <string name="ds_quality_max">Maximum</string>
+    <string name="ds_tunneled_playback">Tunneled playback</string>
+    <string name="ds_tunneled_playback_hint">Lets the hardware decoder sync audio and video itself (Media3 player only). Turn on if audio drifts or video stutters on Google TV / Fire TV; turn off if the picture goes black.</string>
     <string name="ds_on">On</string>
     <string name="ds_off_state">Off</string>
     <string name="ds_app_language">App language</string>

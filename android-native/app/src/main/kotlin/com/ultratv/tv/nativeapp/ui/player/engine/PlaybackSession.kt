@@ -349,7 +349,8 @@ class PlaybackSession(
         val tc = com.ultratv.tv.nativeapp.data.subtitles.TrackChoice
         val audioPref = tc.effectivePreferred(sub.languages.audio, key?.let { memory.audioLang(it) }, ui)
         val textPref = if (sub.autoOn) tc.effectivePreferred(sub.languages.text, null, ui) else emptyList()
-        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureNow, headers = o.headers)
+        val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureNow, headers = o.headers,
+            maxQuality = s.maxQuality, maxVideoBitrateBps = PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level), tunneling = s.tunneling)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         if (isProtected && !e.supportsProtected) {
             runCatching { e.release() }
@@ -361,7 +362,7 @@ class PlaybackSession(
         if (muted) e.setMuted(true)
         // Masqué en quittant le lecteur (couche vidéo retirée tout de suite) : toujours réaffiché au lancement suivant.
         container.visibility = android.view.View.VISIBLE
-        e.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
+        e.limitQuality(s.maxVideoHeight, if (s.maxQuality) null else PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
         eventsJob = scope.launch { e.events.collect { onEvent(it, e) } }
         loadOn(e, o.url)
         armStartup(e)
@@ -378,7 +379,7 @@ class PlaybackSession(
 
     private fun applyQualityLimit(level: Int) {
         val s = settings()
-        engine?.limitQuality(s.maxVideoHeight, PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, level))
+        engine?.limitQuality(s.maxVideoHeight, if (s.maxQuality) null else PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, level))
     }
 
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {

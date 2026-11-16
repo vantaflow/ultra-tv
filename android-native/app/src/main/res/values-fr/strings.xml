@@ -393,6 +393,11 @@
     <string name="ds_compat_video">Rendu vidéo de compatibilité</string>
     <string name="ds_compat_video_hint">À activer si vous entendez le son sans voir l’image. Activé d’office sur smartphone, tablette et NVIDIA Shield.</string>
     <string name="ds_auto_fps">Fréquence d’écran adaptée à la vidéo</string>
+    <string name="ds_playback_quality">Qualité de lecture</string>
+    <string name="ds_playback_quality_hint">Auto s’adapte au réseau et à l’appareil. Maximale choisit toujours la plus haute résolution et le plus haut débit (plus de données, saccades possibles sur une connexion lente).</string>
+    <string name="ds_quality_max">Maximale</string>
+    <string name="ds_tunneled_playback">Lecture tunnelisée</string>
+    <string name="ds_tunneled_playback_hint">Laisse le décodeur matériel synchroniser lui-même le son et l’image (lecteur Media3 seulement). À activer si le son se décale ou si l’image saccade sur Google TV / Fire TV ; à désactiver si l’image devient noire.</string>
     <string name="ds_on">Activé</string>
     <string name="ds_off_state">Désactivé</string>
     <string name="ds_app_language">Langue de l’application</string>
