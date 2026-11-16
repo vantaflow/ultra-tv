@@ -22,6 +22,11 @@ class ProviderLimitsStore @Inject constructor(@ApplicationContext ctx: Context) 
 
     fun setMaxConnections(providerId: Long, value: Int) { sp.edit().putInt("max_conn_$providerId", value.coerceAtLeast(1)).apply() }
 
+    /** Fuseau du serveur Xtream (`server_info.timezone`) : les heures des URL de rattrapage s'y écrivent. null tant qu'il n'est pas lu. */
+    fun serverTimezone(providerId: Long): String? = sp.getString("server_tz_$providerId", null)?.takeIf { it.isNotBlank() }
+
+    fun setServerTimezone(providerId: Long, id: String) { sp.edit().putString("server_tz_$providerId", id).apply() }
+
     /** Adresses de guide (`url-tvg` / `x-tvg-url`) de l'en-tête de la playlist M3U de la source, séparées par un saut de ligne. */
     fun epgUrls(providerId: Long): List<String> = sp.getString("epg_urls_$providerId", "").orEmpty().split('\n').filter { it.isNotBlank() }
 
@@ -47,6 +52,12 @@ class ProviderLimitsStore @Inject constructor(@ApplicationContext ctx: Context) 
 
     companion object {
         const val DEFAULT_MAX_CONNECTIONS = 1
+
+        /** `server_info.timezone` (ex. « Europe/Paris ») ; absent ou fuseau inconnu de l'appareil → null. */
+        fun parseServerTimezone(root: JsonObject): String? {
+            val tz = ((root["server_info"] as? JsonObject)?.get("timezone") as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            return tz.takeIf { java.util.TimeZone.getTimeZone(it).id == it }
+        }
 
         /** `user_info.max_connections` : le serveur l'envoie tantôt en chaîne (« 2 »), tantôt en nombre ; absent ou illisible → null. */
         fun parseMaxConnections(root: JsonObject): Int? {

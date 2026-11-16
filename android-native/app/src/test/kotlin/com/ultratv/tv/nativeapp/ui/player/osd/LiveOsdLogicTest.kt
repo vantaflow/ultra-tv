@@ -184,6 +184,24 @@ class LiveOsdLogicTest {
         assertFalse(OsdActionId.JUMP_BACK in OsdActions.build(inputs(ts = false), labels).map { it.id })
     }
 
+    @Test fun barre_replay_sautsEtProgrammesVoisins() {
+        val i = inputs(replay = "Direct", replayActive = true).copy(replayBar = true, prevProgrammeLabel = "Prev", nextProgrammeLabel = "Next")
+        val ids = OsdActions.build(i, labels).map { it.id }
+        assertEquals(
+            listOf(OsdActionId.PLAY_PAUSE, OsdActionId.PREV_PROGRAMME, OsdActionId.JUMP_BACK_MIN, OsdActionId.JUMP_BACK, OsdActionId.JUMP_FORWARD, OsdActionId.JUMP_FORWARD_MIN, OsdActionId.NEXT_PROGRAMME, OsdActionId.AUDIO),
+            ids.take(8),
+        )
+        assertTrue(OsdActionId.REPLAY in ids)               // bouton « Direct »
+        assertFalse(OsdActionId.LIVE_REWIND in ids)
+    }
+
+    @Test fun barre_direct_avecArchive_proposeLeRetourArriere() {
+        val withArchive = OsdActions.build(inputs().copy(rewindLabel = "Rewind"), labels)
+        assertEquals("Rewind", withArchive.first { it.id == OsdActionId.LIVE_REWIND }.label)
+        assertFalse(OsdActionId.LIVE_REWIND in OsdActions.build(inputs(), labels).map { it.id })
+        assertFalse(OsdActionId.LIVE_REWIND in OsdActions.build(inputs(ts = true).copy(rewindLabel = "Rewind"), labels).map { it.id })
+    }
+
     @Test fun barre_lecturePause_suitLEtat() {
         assertEquals("Pause", OsdActions.build(inputs(playing = true), labels).first().label)
         assertEquals("Play", OsdActions.build(inputs(playing = false), labels).first().label)

@@ -837,6 +837,9 @@
     <string name="pex_from_start">Από την αρχή</string>
     <string name="pex_seek_bar">Γραμμή προόδου</string>
     <string name="pex_back_to_live">Επιστροφή στο live</string>
+    <string name="pex_prev_programme">Προηγούμενη εκπομπή</string>
+    <string name="pex_next_programme">Επόμενη εκπομπή</string>
+    <string name="pex_rewind_live">Πίσω 5 λεπτά</string>
     <string name="pex_subs_pill">Υπότιτλοι</string>
     <string name="pex_subtitles_title">Υπότιτλοι</string>
     <string name="pex_preview_text">Προεπισκόπηση υποτίτλων\nμε τις ρυθμίσεις σας</string>

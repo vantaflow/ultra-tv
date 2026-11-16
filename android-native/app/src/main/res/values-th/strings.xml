@@ -820,6 +820,9 @@
     <string name="pex_from_start">ตั้งแต่ต้น</string>
     <string name="pex_seek_bar">แถบความคืบหน้า</string>
     <string name="pex_back_to_live">กลับไปที่สด</string>
+    <string name="pex_prev_programme">รายการก่อนหน้า</string>
+    <string name="pex_next_programme">รายการถัดไป</string>
+    <string name="pex_rewind_live">ย้อนหลัง 5 นาที</string>
     <string name="pex_subs_pill">คำบรรยาย</string>
     <string name="pex_subtitles_title">คำบรรยาย</string>
     <string name="pex_preview_text">ตัวอย่างคำบรรยาย\nตามการตั้งค่าของคุณ</string>

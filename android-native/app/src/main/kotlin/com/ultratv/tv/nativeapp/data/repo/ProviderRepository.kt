@@ -611,6 +611,8 @@ class ProviderRepository @Inject constructor(
         // Connexions simultanées autorisées (user_info) : alimente les avertissements enregistrement/lecture et le timeshift.
         // En parallèle du reste : une requête de plus en série, c'était un aller-retour réseau avant le premier octet utile.
         if (p.kind == "XTREAM") syncScope.launch { xtream.fetchMaxConnections(p)?.let { limits.setMaxConnections(p.id, it) } }
+        // Fuseau du serveur : l'heure de départ des URL de rattrapage s'écrit dans ce fuseau, pas celui de l'appareil.
+        if (p.kind == "XTREAM") syncScope.launch { xtream.fetchServerTimezone(p)?.let { limits.setServerTimezone(p.id, it) } }
 
         // Pondération de la barre de progression : seules les parties dues comptent.
         val weights = mapOf(SyncPart.LIVE to 20, SyncPart.VOD to 35, SyncPart.SERIES to 20, SyncPart.EPG to 25)

@@ -820,6 +820,9 @@
     <string name="pex_from_start">Từ đầu</string>
     <string name="pex_seek_bar">Thanh tiến trình</string>
     <string name="pex_back_to_live">Quay lại trực tiếp</string>
+    <string name="pex_prev_programme">Chương trình trước</string>
+    <string name="pex_next_programme">Chương trình tiếp theo</string>
+    <string name="pex_rewind_live">Tua lại 5 phút</string>
     <string name="pex_subs_pill">Phụ đề</string>
     <string name="pex_subtitles_title">Phụ đề</string>
     <string name="pex_preview_text">Xem trước phụ đề\ntheo cài đặt của bạn</string>

@@ -890,6 +890,9 @@
     <string name="pex_from_start">من البداية</string>
     <string name="pex_seek_bar">شريط التقدم</string>
     <string name="pex_back_to_live">العودة إلى البث المباشر</string>
+    <string name="pex_prev_programme">البرنامج السابق</string>
+    <string name="pex_next_programme">البرنامج التالي</string>
+    <string name="pex_rewind_live">رجوع 5 دقائق</string>
     <string name="pex_subs_pill">الترجمة</string>
     <string name="pex_subtitles_title">الترجمة</string>
     <string name="pex_preview_text">معاينة الترجمة\nبإعداداتك</string>
