@@ -233,6 +233,8 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 .track-form{margin-top:var(--sp-4)}
 .track-picks{border:0;padding:0;margin:0;min-width:0}
 .track-picks legend{padding:0}
+.track-picks .pick{display:flex;align-items:center;gap:10px;flex:1 1 0;min-width:0;white-space:nowrap}
+.track-picks .pick input[type=radio]{width:18px;height:18px;min-width:18px;padding:0;margin:0;flex:none;accent-color:var(--accent,#e5484d)}
 .meter{height:6px;border-radius:var(--r-pill);background:var(--s3);overflow:hidden;margin-top:var(--sp-2)}
 .meter i{display:block;height:100%;width:0;background:var(--ok);border-radius:var(--r-pill);transition:width .4s}
 .acct.warn .meter i{background:var(--warn)}.acct.bad .meter i{background:var(--dng)}
