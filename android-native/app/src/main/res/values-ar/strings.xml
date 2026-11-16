@@ -1739,4 +1739,27 @@
     <string name="fav_export_failed">فشل التصدير</string>
     <string name="fav_export_share_unavailable">لا يوجد تطبيق لمشاركة الملف</string>
     <string name="fav_export_done">تم التصدير: %1$s</string>
+    <string name="pex_diag_title">تشخيص البث</string>
+    <string name="pex_diag_good">جيد</string>
+    <string name="pex_diag_fair">متوسط</string>
+    <string name="pex_diag_poor">سيئ</string>
+    <string name="pex_diag_unknown">غير حاسم</string>
+    <string name="pex_diag_cause_none">لم تُكتشف أي مشكلة.</string>
+    <string name="pex_diag_cause_slow">شبكة بطيئة: السرعة المستلمة بالكاد تكفي لهذه الجودة.</string>
+    <string name="pex_diag_cause_provider">يبدو أن المزوّد يحدّ من هذا البث: شبكتك سريعة بما يكفي لكن البث يتقطع أو يبدأ ببطء.</string>
+    <string name="pex_diag_cause_variant">يتم تشغيل نسخة أدنى جودة رغم أن شبكتك تتحمل أفضل.</string>
+    <string name="pex_diag_cause_refused">تم رفض الوصول: تحقق من بيانات الدخول أو من أن الاتصال غير مستخدم بالفعل.</string>
+    <string name="pex_diag_cause_notfound">القناة لم تعد موجودة لدى المزوّد.</string>
+    <string name="pex_diag_cause_format">تنسيق غير مدعوم أو فشل في فك الترميز على هذا الجهاز.</string>
+    <string name="pex_diag_cause_device">يجد الجهاز صعوبة في عرض هذا البث (إطارات كثيرة مفقودة).</string>
+    <string name="pex_diag_cause_unknown">لا توجد أدلة كافية لتحديد السبب.</string>
+    <string name="pex_diag_first_frame">أول إطار</string>
+    <string name="pex_diag_throughput">السرعة المستلمة</string>
+    <string name="pex_diag_variants">النسخة</string>
+    <string name="pex_diag_rebuffers">التخزين المؤقت</string>
+    <string name="pex_diag_errors">الأخطاء</string>
+    <string name="pex_diag_no_errors">لا شيء</string>
+    <string name="pex_diag_fallback">التحويل إلى محرك آخر</string>
+    <string name="pex_diag_copy">نسخ التقرير</string>
+    <string name="pex_diag_copied">تم نسخ التقرير (البيانات السرية مخفية)</string>
 </resources>

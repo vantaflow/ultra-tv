@@ -1681,4 +1681,27 @@
     <string name="fav_export_failed">Error al exportar</string>
     <string name="fav_export_share_unavailable">No hay ninguna app para compartir el archivo</string>
     <string name="fav_export_done">Exportado: %1$s</string>
+    <string name="pex_diag_title">Diagnóstico del flujo</string>
+    <string name="pex_diag_good">Bueno</string>
+    <string name="pex_diag_fair">Regular</string>
+    <string name="pex_diag_poor">Malo</string>
+    <string name="pex_diag_unknown">No concluyente</string>
+    <string name="pex_diag_cause_none">No se detectó ningún problema.</string>
+    <string name="pex_diag_cause_slow">Red lenta: la velocidad recibida apenas alcanza para esta calidad.</string>
+    <string name="pex_diag_cause_provider">El proveedor parece limitar este flujo: su red es suficientemente rápida pero el flujo se entrecorta o tarda en iniciar.</string>
+    <string name="pex_diag_cause_variant">Se reproduce una variante inferior aunque su red admitiría una mejor.</string>
+    <string name="pex_diag_cause_refused">Acceso denegado: compruebe sus credenciales o si la conexión ya está en uso.</string>
+    <string name="pex_diag_cause_notfound">El canal ya no existe en el proveedor.</string>
+    <string name="pex_diag_cause_format">Formato no compatible o fallo del decodificador en este dispositivo.</string>
+    <string name="pex_diag_cause_device">El dispositivo tiene dificultades para mostrar este flujo (muchos fotogramas perdidos).</string>
+    <string name="pex_diag_cause_unknown">No hay pruebas suficientes para indicar una causa.</string>
+    <string name="pex_diag_first_frame">Primer fotograma</string>
+    <string name="pex_diag_throughput">Velocidad recibida</string>
+    <string name="pex_diag_variants">Variante</string>
+    <string name="pex_diag_rebuffers">Almacenamiento en búfer</string>
+    <string name="pex_diag_errors">Errores</string>
+    <string name="pex_diag_no_errors">ninguno</string>
+    <string name="pex_diag_fallback">Cambio de motor</string>
+    <string name="pex_diag_copy">Copiar informe</string>
+    <string name="pex_diag_copied">Informe copiado (credenciales ocultas)</string>
 </resources>

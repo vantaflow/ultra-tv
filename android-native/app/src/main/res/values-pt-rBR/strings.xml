@@ -1695,4 +1695,27 @@
     <string name="fav_export_failed">Falha na exportação</string>
     <string name="fav_export_share_unavailable">Nenhum app disponível para compartilhar o arquivo</string>
     <string name="fav_export_done">Exportado: %1$s</string>
+    <string name="pex_diag_title">Diagnóstico do fluxo</string>
+    <string name="pex_diag_good">Bom</string>
+    <string name="pex_diag_fair">Médio</string>
+    <string name="pex_diag_poor">Ruim</string>
+    <string name="pex_diag_unknown">Inconclusivo</string>
+    <string name="pex_diag_cause_none">Nenhum problema detectado.</string>
+    <string name="pex_diag_cause_slow">Rede lenta: a velocidade recebida mal basta para esta qualidade.</string>
+    <string name="pex_diag_cause_provider">O provedor parece limitar este fluxo: sua rede é rápida o bastante, mas o fluxo trava ou demora a iniciar.</string>
+    <string name="pex_diag_cause_variant">Uma variante inferior está sendo reproduzida, embora sua rede suportasse uma melhor.</string>
+    <string name="pex_diag_cause_refused">Acesso recusado: verifique suas credenciais ou se a conexão já está em uso.</string>
+    <string name="pex_diag_cause_notfound">O canal não existe mais no provedor.</string>
+    <string name="pex_diag_cause_format">Formato não suportado ou falha do decodificador neste dispositivo.</string>
+    <string name="pex_diag_cause_device">O dispositivo tem dificuldade para exibir este fluxo (muitos quadros perdidos).</string>
+    <string name="pex_diag_cause_unknown">Não há evidências suficientes para apontar uma causa.</string>
+    <string name="pex_diag_first_frame">Primeiro quadro</string>
+    <string name="pex_diag_throughput">Velocidade recebida</string>
+    <string name="pex_diag_variants">Variante</string>
+    <string name="pex_diag_rebuffers">Buffering</string>
+    <string name="pex_diag_errors">Erros</string>
+    <string name="pex_diag_no_errors">nenhum</string>
+    <string name="pex_diag_fallback">Troca de player</string>
+    <string name="pex_diag_copy">Copiar relatório</string>
+    <string name="pex_diag_copied">Relatório copiado (credenciais ocultas)</string>
 </resources>

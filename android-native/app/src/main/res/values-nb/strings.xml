@@ -1678,4 +1678,27 @@
     <string name="fav_export_failed">Eksporten mislyktes</string>
     <string name="fav_export_share_unavailable">Ingen app tilgjengelig for å dele filen</string>
     <string name="fav_export_done">Eksportert: %1$s</string>
+    <string name="pex_diag_title">Strømdiagnostikk</string>
+    <string name="pex_diag_good">Bra</string>
+    <string name="pex_diag_fair">Middels</string>
+    <string name="pex_diag_poor">Dårlig</string>
+    <string name="pex_diag_unknown">Ikke avgjort</string>
+    <string name="pex_diag_cause_none">Ingen problemer funnet.</string>
+    <string name="pex_diag_cause_slow">Tregt nettverk: mottatt hastighet rekker knapt til denne kvaliteten.</string>
+    <string name="pex_diag_cause_provider">Leverandøren ser ut til å begrense strømmen: nettverket er raskt nok, men bildet hakker eller starter sakte.</string>
+    <string name="pex_diag_cause_variant">En lavere variant spilles av selv om nettverket tåler en bedre.</string>
+    <string name="pex_diag_cause_refused">Tilgang nektet: sjekk påloggingsinformasjonen eller om tilkoblingen allerede er i bruk.</string>
+    <string name="pex_diag_cause_notfound">Kanalen finnes ikke lenger hos leverandøren.</string>
+    <string name="pex_diag_cause_format">Format som ikke støttes eller dekoderfeil på denne enheten.</string>
+    <string name="pex_diag_cause_device">Enheten sliter med å vise strømmen (mange tapte bilder).</string>
+    <string name="pex_diag_cause_unknown">For lite grunnlag til å angi en årsak.</string>
+    <string name="pex_diag_first_frame">Første bilde</string>
+    <string name="pex_diag_throughput">Mottatt hastighet</string>
+    <string name="pex_diag_variants">Variant</string>
+    <string name="pex_diag_rebuffers">Bufring</string>
+    <string name="pex_diag_errors">Feil</string>
+    <string name="pex_diag_no_errors">ingen</string>
+    <string name="pex_diag_fallback">Bytte av motor</string>
+    <string name="pex_diag_copy">Kopier rapport</string>
+    <string name="pex_diag_copied">Rapport kopiert (påloggingsinfo skjult)</string>
 </resources>

@@ -1726,6 +1726,7 @@ private fun PlayerSidePanel(
                     SideTab.STATS -> {
                         OptionRow(D.statsLabel + " · " + D.onVideo, null, statsOpen, onStats)
                         StatsRows(session, D)
+                        StreamDiagnosticBlock(session, D)
                     }
                 }
             }
@@ -1761,6 +1762,51 @@ private fun StatsRows(session: PlaybackSession, D: DesignStrings) {
                 Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
             }
         }
+    }
+}
+
+/**
+ * Diagnostic du flux en cours : classement, cause probable, mesures et « Copier le rapport » (sans identifiants).
+ * Lecture seule des mesures du lecteur, relues chaque seconde tant que l'onglet est ouvert : aucune requête réseau ajoutée.
+ */
+@Composable
+private fun StreamDiagnosticBlock(session: PlaybackSession, D: DesignStrings) {
+    val X = playerExtras()
+    val ctx = LocalContext.current
+    var d by remember { mutableStateOf(session.diagnosticInput()) }
+    LaunchedEffect(Unit) { while (true) { d = session.diagnosticInput(); delay(1_000) } }
+    val g = StreamDiagnostic.grade(d)
+    val color = when (g) {
+        StreamDiagnostic.Grade.GOOD -> androidx.compose.ui.graphics.Color(0xFF3DDC84)
+        StreamDiagnostic.Grade.FAIR -> androidx.compose.ui.graphics.Color(0xFFFFB020)
+        StreamDiagnostic.Grade.POOR -> Ux.Err
+        StreamDiagnostic.Grade.UNKNOWN -> Ux.Text3
+    }
+    val top = d.variants.maxByOrNull { it.height }
+    val low = d.variants.minByOrNull { it.height }
+    val playedH = d.resolution?.substringAfter('×', "")?.toIntOrNull()
+    Column(Modifier.padding(top = 18.design), verticalArrangement = Arrangement.spacedBy(10.design)) {
+        Text(X.diagTitle.uppercase(), color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, letterSpacing = 2.sp(), maxLines = 1)
+        Text(X.diagGrade(g), color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 30.spx, maxLines = 1)
+        Text(X.diagCause(StreamDiagnostic.cause(d)), color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx)
+        listOf(
+            X.diagFirstFrame to (d.firstFrameMs?.let { "%.1f s".format(it / 1000.0) } ?: "—"),
+            X.diagThroughput to (StreamInfoFormat.bitrate(d.bandwidthKbps) ?: "—"),
+            X.diagVariant to (if (top != null && low != null) "${playedH ?: "?"}p · ${low.height}p–${top.height}p" else (playedH?.let { "${it}p" } ?: "—")),
+            X.diagRebuffers to "${d.rebufferCount} · %.1f s".format(d.rebufferTotalMs / 1000.0),
+            X.diagErrors to (if (d.errors.isEmpty()) X.diagNone else d.errors.joinToString(", ") { it.kind.name + (it.http?.let { h -> " $h" } ?: "") }),
+            D.engine to (d.engine + if (d.fellBack) " · " + X.diagFallback else ""),
+        ).forEach { (k, v) ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(k, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Text(v, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        PillButton(X.diagCopy, {
+            val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText("Ultra TV", StreamDiagnostic.report(session.diagnosticInput(), com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)))
+            Toaster.ok(X.diagCopied)
+        }, heightPx = 64, hPadPx = 36, fontPx = 22, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
     }
 }
 

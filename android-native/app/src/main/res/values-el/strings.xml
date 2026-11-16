@@ -1678,4 +1678,27 @@
     <string name="fav_export_failed">Η εξαγωγή απέτυχε</string>
     <string name="fav_export_share_unavailable">Δεν υπάρχει διαθέσιμη εφαρμογή για κοινοποίηση του αρχείου</string>
     <string name="fav_export_done">Εξαγωγή ολοκληρώθηκε: %1$s</string>
+    <string name="pex_diag_title">Διάγνωση ροής</string>
+    <string name="pex_diag_good">Καλή</string>
+    <string name="pex_diag_fair">Μέτρια</string>
+    <string name="pex_diag_poor">Κακή</string>
+    <string name="pex_diag_unknown">Μη τεκμηριωμένο</string>
+    <string name="pex_diag_cause_none">Δεν εντοπίστηκε πρόβλημα.</string>
+    <string name="pex_diag_cause_slow">Αργό δίκτυο: η ταχύτητα που λαμβάνεται μόλις αρκεί για αυτήν την ποιότητα.</string>
+    <string name="pex_diag_cause_provider">Ο πάροχος φαίνεται να περιορίζει αυτή τη ροή: το δίκτυό σας είναι αρκετά γρήγορο αλλά η εικόνα κόβεται ή ξεκινά αργά.</string>
+    <string name="pex_diag_cause_variant">Αναπαράγεται χαμηλότερη παραλλαγή ενώ το δίκτυό σας θα άντεχε καλύτερη.</string>
+    <string name="pex_diag_cause_refused">Άρνηση πρόσβασης: ελέγξτε τα στοιχεία σύνδεσης ή αν η σύνδεση χρησιμοποιείται ήδη.</string>
+    <string name="pex_diag_cause_notfound">Το κανάλι δεν υπάρχει πλέον στον πάροχο.</string>
+    <string name="pex_diag_cause_format">Μη υποστηριζόμενη μορφή ή αποτυχία αποκωδικοποιητή σε αυτή τη συσκευή.</string>
+    <string name="pex_diag_cause_device">Η συσκευή δυσκολεύεται να εμφανίσει αυτή τη ροή (πολλά χαμένα καρέ).</string>
+    <string name="pex_diag_cause_unknown">Ανεπαρκείς ενδείξεις για να οριστεί αιτία.</string>
+    <string name="pex_diag_first_frame">Πρώτο καρέ</string>
+    <string name="pex_diag_throughput">Ταχύτητα λήψης</string>
+    <string name="pex_diag_variants">Παραλλαγή</string>
+    <string name="pex_diag_rebuffers">Προσωρινή αποθήκευση</string>
+    <string name="pex_diag_errors">Σφάλματα</string>
+    <string name="pex_diag_no_errors">κανένα</string>
+    <string name="pex_diag_fallback">Αλλαγή αναπαραγωγέα</string>
+    <string name="pex_diag_copy">Αντιγραφή αναφοράς</string>
+    <string name="pex_diag_copied">Η αναφορά αντιγράφηκε (τα στοιχεία κρύφτηκαν)</string>
 </resources>

@@ -1696,4 +1696,27 @@
     <string name="fav_export_failed">Exportul a eșuat</string>
     <string name="fav_export_share_unavailable">Nicio aplicație disponibilă pentru a partaja fișierul</string>
     <string name="fav_export_done">Exportat: %1$s</string>
+    <string name="pex_diag_title">Diagnosticul fluxului</string>
+    <string name="pex_diag_good">Bun</string>
+    <string name="pex_diag_fair">Mediu</string>
+    <string name="pex_diag_poor">Slab</string>
+    <string name="pex_diag_unknown">Neconcludent</string>
+    <string name="pex_diag_cause_none">Nicio problemă detectată.</string>
+    <string name="pex_diag_cause_slow">Rețea lentă: viteza primită abia ajunge pentru această calitate.</string>
+    <string name="pex_diag_cause_provider">Furnizorul pare să limiteze acest flux: rețeaua e destul de rapidă, dar fluxul se blochează sau pornește greu.</string>
+    <string name="pex_diag_cause_variant">Se redă o variantă inferioară, deși rețeaua ar suporta una mai bună.</string>
+    <string name="pex_diag_cause_refused">Acces refuzat: verificați datele de autentificare sau dacă conexiunea este deja folosită.</string>
+    <string name="pex_diag_cause_notfound">Canalul nu mai există la furnizor.</string>
+    <string name="pex_diag_cause_format">Format neacceptat sau defecțiune a decodorului pe acest dispozitiv.</string>
+    <string name="pex_diag_cause_device">Dispozitivul se chinuie să afișeze acest flux (multe cadre pierdute).</string>
+    <string name="pex_diag_cause_unknown">Prea puține dovezi pentru a indica o cauză.</string>
+    <string name="pex_diag_first_frame">Primul cadru</string>
+    <string name="pex_diag_throughput">Viteză primită</string>
+    <string name="pex_diag_variants">Variantă</string>
+    <string name="pex_diag_rebuffers">Buffering</string>
+    <string name="pex_diag_errors">Erori</string>
+    <string name="pex_diag_no_errors">niciuna</string>
+    <string name="pex_diag_fallback">Schimbare de motor</string>
+    <string name="pex_diag_copy">Copiază raportul</string>
+    <string name="pex_diag_copied">Raport copiat (datele de acces ascunse)</string>
 </resources>

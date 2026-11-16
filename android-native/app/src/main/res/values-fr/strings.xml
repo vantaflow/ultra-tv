@@ -1690,4 +1690,27 @@
     <string name="fav_export_failed">Échec de l\'export</string>
     <string name="fav_export_share_unavailable">Aucune appli disponible pour partager le fichier</string>
     <string name="fav_export_done">Exporté : %1$s</string>
+    <string name="pex_diag_title">Diagnostic du flux</string>
+    <string name="pex_diag_good">Bon</string>
+    <string name="pex_diag_fair">Moyen</string>
+    <string name="pex_diag_poor">Mauvais</string>
+    <string name="pex_diag_unknown">Non concluant</string>
+    <string name="pex_diag_cause_none">Aucun problème détecté.</string>
+    <string name="pex_diag_cause_slow">Réseau lent : le débit reçu suffit à peine pour cette qualité.</string>
+    <string name="pex_diag_cause_provider">Le fournisseur semble limiter ce flux : votre réseau est assez rapide mais le flux saccade ou démarre lentement.</string>
+    <string name="pex_diag_cause_variant">Une variante plus basse est lue alors que votre réseau supporterait mieux.</string>
+    <string name="pex_diag_cause_refused">Accès refusé : vérifiez vos identifiants ou si la connexion est déjà utilisée.</string>
+    <string name="pex_diag_cause_notfound">La chaîne n\'existe plus chez le fournisseur.</string>
+    <string name="pex_diag_cause_format">Format non pris en charge ou décodeur en échec sur cet appareil.</string>
+    <string name="pex_diag_cause_device">L\'appareil peine à afficher ce flux (beaucoup d\'images perdues).</string>
+    <string name="pex_diag_cause_unknown">Pas assez d\'éléments pour nommer une cause.</string>
+    <string name="pex_diag_first_frame">Première image</string>
+    <string name="pex_diag_throughput">Débit reçu</string>
+    <string name="pex_diag_variants">Variante</string>
+    <string name="pex_diag_rebuffers">Mises en mémoire tampon</string>
+    <string name="pex_diag_errors">Erreurs</string>
+    <string name="pex_diag_no_errors">aucune</string>
+    <string name="pex_diag_fallback">Repli de moteur</string>
+    <string name="pex_diag_copy">Copier le rapport</string>
+    <string name="pex_diag_copied">Rapport copié (identifiants masqués)</string>
 </resources>

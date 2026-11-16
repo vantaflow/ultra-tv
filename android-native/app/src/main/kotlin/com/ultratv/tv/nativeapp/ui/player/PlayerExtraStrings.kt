@@ -117,6 +117,35 @@ class PlayerExtraStrings(val lang: AppLang) {
     val previousEpisode get() = tx(R.string.pex_previous_episode)
     val close get() = tx(R.string.pex_close)
     fun sleepStopsIn(s: Int) = tx(R.string.pex_sleep_stops_in, s)
+
+    // Diagnostic du flux
+    val diagTitle get() = tx(R.string.pex_diag_title)
+    fun diagGrade(g: StreamDiagnostic.Grade) = tx(when (g) {
+        StreamDiagnostic.Grade.GOOD -> R.string.pex_diag_good
+        StreamDiagnostic.Grade.FAIR -> R.string.pex_diag_fair
+        StreamDiagnostic.Grade.POOR -> R.string.pex_diag_poor
+        StreamDiagnostic.Grade.UNKNOWN -> R.string.pex_diag_unknown
+    })
+    fun diagCause(c: StreamDiagnostic.Cause) = tx(when (c) {
+        StreamDiagnostic.Cause.NONE -> R.string.pex_diag_cause_none
+        StreamDiagnostic.Cause.SLOW_NETWORK -> R.string.pex_diag_cause_slow
+        StreamDiagnostic.Cause.PROVIDER_LIMITED -> R.string.pex_diag_cause_provider
+        StreamDiagnostic.Cause.VARIANT_CAPPED -> R.string.pex_diag_cause_variant
+        StreamDiagnostic.Cause.REFUSED -> R.string.pex_diag_cause_refused
+        StreamDiagnostic.Cause.NOT_FOUND -> R.string.pex_diag_cause_notfound
+        StreamDiagnostic.Cause.FORMAT -> R.string.pex_diag_cause_format
+        StreamDiagnostic.Cause.DEVICE -> R.string.pex_diag_cause_device
+        StreamDiagnostic.Cause.UNKNOWN -> R.string.pex_diag_cause_unknown
+    })
+    val diagFirstFrame get() = tx(R.string.pex_diag_first_frame)
+    val diagThroughput get() = tx(R.string.pex_diag_throughput)
+    val diagVariant get() = tx(R.string.pex_diag_variants)
+    val diagRebuffers get() = tx(R.string.pex_diag_rebuffers)
+    val diagErrors get() = tx(R.string.pex_diag_errors)
+    val diagNone get() = tx(R.string.pex_diag_no_errors)
+    val diagFallback get() = tx(R.string.pex_diag_fallback)
+    val diagCopy get() = tx(R.string.pex_diag_copy)
+    val diagCopied get() = tx(R.string.pex_diag_copied)
 }
 
 @Composable

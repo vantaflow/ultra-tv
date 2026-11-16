@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.ultratv.tv.nativeapp.ui.player.StreamDiagnostic
 
 enum class Phase { LOADING, PLAYING, ENDED, ERROR }
 
@@ -139,6 +140,40 @@ class PlaybackSession(
     /** Dernier code HTTP vu et début de la lecture en cours : journal des reconnexions Stalker. */
     private var lastHttp: Int? = null
     private var playedSinceMs = 0L
+
+    // Diagnostic du flux (Réglages du lecteur › Statistiques) : mesures du flux en cours, remises à zéro à chaque ouverture.
+    private var diagStartMs = 0L
+    private var diagFirstFrameMs: Long? = null
+    private var diagRebuffers = 0
+    private var diagRebufferTotalMs = 0L
+    private var diagBufferingSinceMs = 0L
+    private val diagErrors = ArrayList<StreamDiagnostic.ErrorEvent>()
+
+    private fun diagEndBuffering() {
+        if (diagBufferingSinceMs != 0L) { diagRebufferTotalMs += System.currentTimeMillis() - diagBufferingSinceMs; diagBufferingSinceMs = 0L }
+    }
+
+    /** Mesures du flux en cours pour [StreamDiagnostic] ; le moteur fournit débit, variantes et images perdues. */
+    fun diagnosticInput(): StreamDiagnostic.Input {
+        val e = engine
+        val st = runCatching { e?.stats() }.getOrNull()
+        val now = System.currentTimeMillis()
+        return StreamDiagnostic.Input(
+            engine = (if (combo.engine == EngineKind.EXO) "ExoPlayer" else "VLC") + "/" + combo.decoder.name.lowercase(),
+            fellBack = tried.size > 1,
+            firstFrameMs = diagFirstFrameMs,
+            rebufferCount = diagRebuffers,
+            rebufferTotalMs = diagRebufferTotalMs + if (diagBufferingSinceMs != 0L) now - diagBufferingSinceMs else 0L,
+            droppedFrames = st?.droppedFrames,
+            renderedFrames = e?.renderedFrames() ?: -1L,
+            errors = diagErrors.toList(),
+            playing = _state.value.phase == Phase.PLAYING,
+            resolution = st?.resolution,
+            currentKbps = st?.videoBitrateKbps,
+            bandwidthKbps = st?.bandwidthKbps,
+            variants = st?.variants.orEmpty(),
+        )
+    }
     /** Surface effective du prochain moteur : [textureView], ou SurfaceView imposée pour un contenu HDR (cet élément seulement). */
     private var textureNow = textureView
     /** Type de HDR de l'élément en cours (null = SDR / inconnu) ; bascule SurfaceView déjà tentée ; essai de SurfaceView en cours. */
@@ -211,6 +246,7 @@ class PlaybackSession(
         val hintSurface = hdrHint && videoSurfacePref() == "auto" && textureView && HdrOutput.displayHdrCapable(ctx) && !HdrOutput.surfaceKnownBad(ctx)
         val wantTexture = if (hintSurface) false else textureView
         syncPresence(); lastHttp = null; playedSinceMs = 0L
+        diagStartMs = System.currentTimeMillis(); diagFirstFrameMs = null; diagRebuffers = 0; diagRebufferTotalMs = 0L; diagBufferingSinceMs = 0L; diagErrors.clear()
         reconnects = 0; everPlayed = false; reconnectJob?.cancel(); stallJob?.cancel(); frozenJob?.cancel(); startupJob?.cancel(); stableJob?.cancel(); errorJob?.cancel(); openJob?.cancel()
         val s = settings()
         presetOverride = channelKey?.let { memory.bufferPreset(it) }
@@ -385,16 +421,18 @@ class PlaybackSession(
     private fun onEvent(ev: EngineEvent, e: PlayerEngine) {
         when (ev) {
             EngineEvent.Buffering -> if (firstFrame) {
-                if (!_state.value.buffering) _state.value = _state.value.copy(buffering = true)
+                if (!_state.value.buffering) { _state.value = _state.value.copy(buffering = true); diagRebuffers++; diagBufferingSinceMs = System.currentTimeMillis() }
                 android.util.Log.i("UltraPlay", "rebuffer engine=${combo.engine}"); network.onRebuffer(); applyQualityLimit(adapter.onRebuffer(System.currentTimeMillis()))
                 // Direct figé en chargement (serveur qui ne renvoie plus rien sans fermer) : reconnexion au bout de 12 s.
                 if (reconnectAllowed && stallJob?.isActive != true) stallJob = scope.launch { delay(STALL_MS); reconnectLive() }
             } else if (e.hasVideo && startupJob?.isActive != true) armStartup(e)   // rechargement avant toute image (après Ready) : même garde-fou
-            EngineEvent.Ready -> { if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
+            EngineEvent.Ready -> { diagEndBuffering(); if (_state.value.buffering) _state.value = _state.value.copy(buffering = false); stallJob?.cancel(); startupJob?.cancel(); if (!firstFrame && watchdog?.isActive != true) armPictureWatchdog(e) }
             EngineEvent.FirstFrame -> {
                 // Déjà vue pour ce lancement : le moteur la resignale quand sa surface change (aperçu → plein écran) ;
                 // la durée depuis le lancement n'aurait plus de sens (41 s affichées pour 1,7 s réelles).
                 val again = firstFrame
+                diagEndBuffering()
+                if (diagFirstFrameMs == null) diagFirstFrameMs = System.currentTimeMillis() - diagStartMs
                 firstFrame = true; watchdog?.cancel(); blackJob?.cancel(); stallJob?.cancel(); startupJob?.cancel()
                 everPlayed = true
                 if (playedSinceMs == 0L) playedSinceMs = System.currentTimeMillis()
@@ -553,6 +591,7 @@ class PlaybackSession(
             return
         }
         if (http != null) lastHttp = http
+        if (diagErrors.size < 20) diagErrors += StreamDiagnostic.ErrorEvent(kind, http)
         // Direct Stalker : code HTTP et type d'erreur (sans MAC ni hôte) pour diagnostiquer les retours.
         if (isStalkerUrl && !logged) StalkerPlayLog.playerError(kind.name, http, combo.engine.name).let { android.util.Log.i("UltraPlay", it); com.ultratv.tv.nativeapp.RemoteLog.info("StalkerPlay", it) }
         // Direct qui jouait : coupure du serveur ou du réseau → reconnexion, pas de changement de moteur.
