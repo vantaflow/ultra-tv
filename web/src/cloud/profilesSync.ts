@@ -4,6 +4,7 @@
 import { deleteProfileData } from "@/db/profileData";
 import { setProfilesHook, usePrefs } from "@/state/prefs";
 import { syncProfilesRemote } from "./client";
+import { cadence, fingerprint, pushGate } from "./cadence";
 import { applyActions, diffLog, localEntries, parseRemote, plan, type ProfileLog } from "./profilesLogic";
 
 const LOG_KEY = "ultratv.profileSync.v1";
@@ -42,12 +43,18 @@ export function syncProfiles(worker: string, token: string): Promise<boolean> {
 
 async function doSync(worker: string, token: string): Promise<boolean> {
   const s0 = usePrefs.getState();
-  const res = await syncProfilesRemote(worker, token, localEntries(s0.profiles, loadProfileLog()));
+  const entries = localEntries(s0.profiles, loadProfileLog());
+  // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
+  const print = fingerprint(JSON.stringify(entries));
+  if (!pushGate.shouldExchange("profiles", print)) return true;
+  const res = await syncProfilesRemote(worker, token, entries);
   if (!res) return false;
+  pushGate.markSent("profiles", print);
   // L'état est relu après la réponse : une modification faite pendant l'échange (date plus récente) n'est pas écrasée.
   const s = usePrefs.getState();
   const actions = plan(s.profiles, loadProfileLog(), parseRemote(res));
   if (!actions.length) return true;
+  cadence.noteChange(); // profils reçus d'un autre appareil : cadence rapide
   const r = applyActions(s.profiles, s.profileId, loadProfileLog(), actions, Date.now());
   applying = true;
   try { usePrefs.getState().set({ profiles: r.profiles, profileId: r.profileId }); } finally { applying = false; }
