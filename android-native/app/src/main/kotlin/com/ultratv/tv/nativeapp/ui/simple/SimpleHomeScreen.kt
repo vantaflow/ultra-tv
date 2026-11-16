@@ -252,12 +252,29 @@ private fun BigTile(label: String, hint: String, iconPath: String, onClick: () -
     }
 }
 
-/** Rappel de touche en grand : « [OK] Ouvrir ». */
+/** Flèche de retour dessinée (chemin SVG 24×24) : remplace le glyphe « ↩ » de la police, absent sur beaucoup de TV. */
+internal const val BACK_ICON = "M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"
+
+/** Symbole d'une touche à dessiner plutôt qu'à écrire : « ↩ » (retour) et « OK ⏵ » (appui long) n'ont pas de glyphe fiable sur TV. */
+internal fun keyGlyphKind(key: String): String = when {
+    key == "↩" -> "back"
+    key.endsWith("⏵") -> "hold"
+    else -> "text"
+}
+
+/** Rappel de touche en grand : « [OK] Ouvrir ». Les symboles sont dessinés (voir [keyGlyphKind]), jamais écrits en police. */
 @Composable
 internal fun KeyHintBig(key: String, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-        Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1,
-            modifier = Modifier.border(3.design, Ux.Text3, RoundedCornerShape(12.design)).padding(horizontal = 14.design, vertical = 2.design))
+        val box = Modifier.border(3.design, Ux.Text3, RoundedCornerShape(12.design)).padding(horizontal = 14.design, vertical = 2.design)
+        when (keyGlyphKind(key)) {
+            "back" -> Box(box.padding(vertical = 3.design)) { DIcon(BACK_ICON, 30.design, Ux.Text, strokeWidth = 2.4f) }
+            "hold" -> Row(box, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.design)) {
+                Text("OK", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1)
+                DIcon(Icons.Play, 22.design, Ux.Text, fill = true)
+            }
+            else -> Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1, modifier = box)
+        }
         Text(label, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, maxLines = 1)
     }
 }
