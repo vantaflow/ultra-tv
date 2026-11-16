@@ -16,7 +16,16 @@ import com.ultratv.tv.nativeapp.nav.startupTarget
 /** Écran de la destination « accueil » : l'accueil habituel, ou l'écran des grandes tuiles. */
 enum class HomeKind { STANDARD, SIMPLE }
 
-fun homeKindFor(prefs: UserPrefs): HomeKind = if (prefs.simpleMode) HomeKind.SIMPLE else HomeKind.STANDARD
+/**
+ * Le mode simple est fait pour la télécommande : sur un appareil tactile (téléphone, tablette) il n'est ni proposé dans
+ * les réglages ni appliqué, même si le réglage (synchronisé depuis une TV, ou posé avant) est actif.
+ */
+fun simpleModeAvailable(touch: Boolean): Boolean = !touch
+
+/** Mode simple réellement appliqué : réglage actif ET appareil non tactile. */
+fun simpleModeApplies(simpleMode: Boolean, touch: Boolean): Boolean = simpleMode && simpleModeAvailable(touch)
+
+fun homeKindFor(prefs: UserPrefs, touch: Boolean = false): HomeKind = if (simpleModeApplies(prefs.simpleMode, touch)) HomeKind.SIMPLE else HomeKind.STANDARD
 
 /** Les grandes tuiles de l'écran simple, dans l'ordre de lecture (gauche → droite, haut → bas). */
 enum class SimpleTile(val route: String?) {

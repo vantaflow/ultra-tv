@@ -640,7 +640,8 @@ private fun DisplayPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, ap
     PaneTitle(D.rubDisplay, D.setDescDisplay)
     SettingsCard {
         // Mode simple : grandes tuiles à la place de l'accueil (profil courant) ; la sortie demande le code parental s'il existe.
-        com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
+        // Masqué sur téléphone / tablette (tactile) : le mode simple est conçu pour la télécommande.
+        if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current)) com.ultratv.tv.nativeapp.ui.simple.SimpleModeRow(p.simpleMode, onChange = { app.setSimpleMode(it) })
         PrefRow(D.theme, themeLabel(D, p.theme)) { choice = "theme" }
         PrefRow(D.language, D.langName(AppLang.fromCode(p.language))) { choice = "lang" }
         // (Réglage « Menu : barre latérale / barre du haut » retiré : depuis le nouveau menu latéral il n'avait plus d'effet.)

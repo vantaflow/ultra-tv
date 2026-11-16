@@ -42,6 +42,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     val simpleIds by vm.simpleModeIds.collectAsState()
     val pinSet by vm.parentalPinSet.collectAsState()
     val SM = com.ultratv.tv.nativeapp.i18n.SimpleStrings(LocalDs.current.lang)
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     var menuFor by remember { mutableStateOf<ProfileEntity?>(null) }
     var action by remember { mutableStateOf<Pair<ProfileEntity, ProfileAction>?>(null) }
     var creating by remember { mutableStateOf(false) }
@@ -69,7 +70,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             add(ProfileAction.RENAME to S.rename)
             add(ProfileAction.COLOR to S.color)
             add(ProfileAction.KIDS to "${S.kidsProfile} : ${if (p.isKids) S.pinSet else S.pinNone}")
-            add(ProfileAction.SIMPLE to if (p.id in simpleIds) SM.profileOn else SM.profileOff)
+            if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(touch)) add(ProfileAction.SIMPLE to if (p.id in simpleIds) SM.profileOn else SM.profileOff)
             add(ProfileAction.PIN to "${S.pin} : ${if (p.pinHash != null) S.pinSet else S.pinNone}")
             if (p.pinHash != null) add(ProfileAction.PIN_REMOVE to S.pinRemove)
             add(ProfileAction.DELETE to if (ProfileRules.canDelete(profiles.size)) S.delete else S.deleteLast)

@@ -381,7 +381,7 @@ class MainActivity : ComponentActivity() {
             val prefs = prefsStore.get().flow.first()
             // Écran d'ouverture (Réglages › Affichage) : seulement au vrai lancement (pas après une rotation ni une
             // recréation), et jamais par-dessus un lien profond déjà en attente. Tout de suite, avant le délai qui suit.
-            val target = com.ultratv.tv.nativeapp.ui.simple.SimpleHome.startupTarget(prefs.simpleMode, com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch), prefs.lastScreen)
+            val target = com.ultratv.tv.nativeapp.ui.simple.SimpleHome.startupTarget(com.ultratv.tv.nativeapp.ui.simple.simpleModeApplies(prefs.simpleMode, touch = !com.ultratv.tv.nativeapp.ui.common.isTelevision(this@MainActivity)), com.ultratv.tv.nativeapp.nav.StartScreen.parse(prefs.startScreen, prefs.autoPlayLastOnLaunch), prefs.lastScreen)
             val deepLinkPending = StartupNav.pending.value != null || StartupNav.pendingRoute.value != null
             if (coldStart && !deepLinkPending && target is com.ultratv.tv.nativeapp.nav.StartupTarget.Route) StartupNav.pendingRoute.value = target.route
             StartupNav.startupDecided.value = true
@@ -513,7 +513,7 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                             onRetry = { first.retry(ui.providerId) },
                             onFixSource = { StartupNav.pendingRoute.value = Routes.SETTINGS; first.dismiss() },
                         )
-                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition, com.ultratv.tv.nativeapp.ui.simple.homeKindFor(prefs) == com.ultratv.tv.nativeapp.ui.simple.HomeKind.SIMPLE, com.ultratv.tv.nativeapp.ui.simple.SimpleSize.parse(prefs.simpleSize).scale) }
+                        else -> Box(Modifier.fillMaxSize()) { UltraTvAppRoot(prefs.sidebarPosition, com.ultratv.tv.nativeapp.ui.simple.homeKindFor(prefs, touch = !com.ultratv.tv.nativeapp.ui.common.isTelevision(androidx.compose.ui.platform.LocalContext.current)) == com.ultratv.tv.nativeapp.ui.simple.HomeKind.SIMPLE, com.ultratv.tv.nativeapp.ui.simple.SimpleSize.parse(prefs.simpleSize).scale) }
                     }
                 }
                 }
