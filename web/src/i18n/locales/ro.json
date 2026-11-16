@@ -710,5 +710,7 @@
   "rail.recordingRunning": "{n} înregistrare",
   "rail.syncing": "Se sincronizează",
   "set.profileSources": "Surse vizibile",
-  "set.allSources": "Toate sursele"
+  "set.allSources": "Toate sursele",
+  "set.searchAll": "Caută în toate sursele",
+  "set.searchAllD": "Rezultate din toate sursele vizibile profilului, cu sursa indicată la fiecare."
 }

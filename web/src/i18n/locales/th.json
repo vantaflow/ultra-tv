@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} การบันทึก",
   "rail.syncing": "กำลังซิงค์",
   "set.profileSources": "แหล่งที่มาที่แสดง",
-  "set.allSources": "ทุกแหล่งที่มา"
+  "set.allSources": "ทุกแหล่งที่มา",
+  "set.searchAll": "ค้นหาในทุกแหล่งที่มา",
+  "set.searchAllD": "ผลลัพธ์จากทุกแหล่งที่มาที่โปรไฟล์เห็น พร้อมระบุแหล่งที่มาในแต่ละรายการ"
 }

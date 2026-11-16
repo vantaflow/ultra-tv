@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} bản ghi",
   "rail.syncing": "Đang đồng bộ",
   "set.profileSources": "Nguồn hiển thị",
-  "set.allSources": "Tất cả nguồn"
+  "set.allSources": "Tất cả nguồn",
+  "set.searchAll": "Tìm trong tất cả nguồn",
+  "set.searchAllD": "Kết quả từ mọi nguồn hồ sơ nhìn thấy, kèm tên nguồn trên từng mục."
 }

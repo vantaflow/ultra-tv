@@ -711,5 +711,7 @@
   "rail.recordingRunning": "{n} w toku",
   "rail.syncing": "Synchronizacja",
   "set.profileSources": "Widoczne źródła",
-  "set.allSources": "Wszystkie źródła"
+  "set.allSources": "Wszystkie źródła",
+  "set.searchAll": "Szukaj we wszystkich źródłach",
+  "set.searchAllD": "Wyniki ze wszystkich źródeł widocznych dla profilu, ze wskazaniem źródła przy każdym."
 }

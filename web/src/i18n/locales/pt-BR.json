@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} gravação",
   "rail.syncing": "Sincronizando",
   "set.profileSources": "Fontes visíveis",
-  "set.allSources": "Todas as fontes"
+  "set.allSources": "Todas as fontes",
+  "set.searchAll": "Pesquisar em todas as fontes",
+  "set.searchAllD": "Resultados de todas as fontes visíveis ao perfil, com a fonte indicada em cada um."
 }

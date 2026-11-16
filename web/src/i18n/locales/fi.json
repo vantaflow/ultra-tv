@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} tallenne",
   "rail.syncing": "Synkronoidaan",
   "set.profileSources": "Näkyvät lähteet",
-  "set.allSources": "Kaikki lähteet"
+  "set.allSources": "Kaikki lähteet",
+  "set.searchAll": "Hae kaikista lähteistä",
+  "set.searchAllD": "Tulokset kaikista profiilin näkyvistä lähteistä, lähde näkyy jokaisessa."
 }

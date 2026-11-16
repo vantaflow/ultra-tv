@@ -37,5 +37,11 @@ export function toggleSource(allNames: readonly string[], current: readonly stri
   return base;
 }
 
+/** Pastille courte d'une source (mode « Toutes les sources ») : son nom tronqué à 8 caractères. */
+export function sourceBadge(name: string): string {
+  const n = name.trim() || "?";
+  return n.length <= 8 ? n : `${n.slice(0, 7).trimEnd()}…`;
+}
+
 export const sameNames = (a: readonly string[] | undefined, b: readonly string[] | undefined) =>
   (a ?? []).length === (b ?? []).length && (a ?? []).every((x, i) => x === (b ?? [])[i]);

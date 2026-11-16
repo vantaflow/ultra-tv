@@ -720,5 +720,7 @@
   "rail.recordingRunning": "{n} nahrávka",
   "rail.syncing": "Synchronizace",
   "set.profileSources": "Viditelné zdroje",
-  "set.allSources": "Všechny zdroje"
+  "set.allSources": "Všechny zdroje",
+  "set.searchAll": "Hledat ve všech zdrojích",
+  "set.searchAllD": "Výsledky ze všech zdrojů viditelných pro profil, u každého je uveden zdroj."
 }

@@ -119,6 +119,7 @@ function SourcesPane() {
     <>
       <h2>{t("set.sources")}</h2>
       <p className="lead">{t("set.sourcesLead")}</p>
+      {list.length > 1 && <Pref label={t("set.searchAll")} desc={t("set.searchAllD")}><Switch on={prefs.searchAll} onChange={(searchAll) => prefs.set({ searchAll })} label={t("set.searchAll")} /></Pref>}
       {list.map((s) => {
         const isActive = active?.id === s.id;
         return (

@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} opptak",
   "rail.syncing": "Synkroniserer",
   "set.profileSources": "Synlige kilder",
-  "set.allSources": "Alle kilder"
+  "set.allSources": "Alle kilder",
+  "set.searchAll": "Søk i alle kilder",
+  "set.searchAllD": "Resultater fra alle kilder som er synlige for profilen, med kilden vist på hvert."
 }

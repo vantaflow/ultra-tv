@@ -700,5 +700,7 @@
   "rail.recordingRunning": "{n} εγγραφή",
   "rail.syncing": "Συγχρονισμός",
   "set.profileSources": "Ορατές πηγές",
-  "set.allSources": "Όλες οι πηγές"
+  "set.allSources": "Όλες οι πηγές",
+  "set.searchAll": "Αναζήτηση σε όλες τις πηγές",
+  "set.searchAllD": "Αποτελέσματα από όλες τις πηγές που βλέπει το προφίλ, με την πηγή σε καθένα."
 }

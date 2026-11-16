@@ -740,5 +740,7 @@
   "rail.recordingRunning": "{n} قيد التسجيل",
   "rail.syncing": "جارٍ المزامنة",
   "set.profileSources": "المصادر المرئية",
-  "set.allSources": "كل المصادر"
+  "set.allSources": "كل المصادر",
+  "set.searchAll": "البحث في كل المصادر",
+  "set.searchAllD": "نتائج من كل المصادر المرئية للملف الشخصي مع إظهار المصدر على كل نتيجة."
 }
