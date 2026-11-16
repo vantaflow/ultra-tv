@@ -139,6 +139,8 @@
   "DesignStrings.getAudio()": "الصوت",
   "DesignStrings.getAuto()": "تلقائي",
   "DesignStrings.getAutoFps()": "مطابقة معدل تحديث الشاشة",
+  "DesignStrings.getTunneledPlayback()": "التشغيل بالنفق (Tunneling)",
+  "DesignStrings.getTunneledPlaybackHint()": "يترك لوحدة فك الترميز العتادية مزامنة الصوت والصورة بنفسها (مشغّل Media3 فقط). فعّله إذا تأخر الصوت أو تقطعت الصورة على Google TV / Fire TV، وعطّله إذا أصبحت الصورة سوداء.",
   "DesignStrings.getPlaybackQuality()": "جودة التشغيل",
   "DesignStrings.getPlaybackQualityHint()": "التلقائي يتكيّف مع الشبكة والجهاز. الأقصى يختار دائمًا أعلى دقة ومعدل بيانات (استهلاك أكبر وقد يتقطع التشغيل مع اتصال بطيء).",
   "DesignStrings.getQualityMax()": "الأقصى",

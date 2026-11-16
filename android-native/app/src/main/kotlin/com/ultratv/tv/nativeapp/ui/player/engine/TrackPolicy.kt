@@ -26,6 +26,14 @@ object TrackPolicy {
         else -> DEFAULT_INITIAL_BPS
     }
 
+    /**
+     * Lecture tunnelisée (Réglages › Lecture › Lecture tunnelisée) : seulement si demandée, avec une SurfaceView (la
+     * TextureView ne reçoit pas la vidéo d'un décodeur tunnelisé : écran noir) et un décodeur matériel (le tunneling
+     * n'existe pas en décodage logiciel). Sans effet sur LibVLC, qui n'utilise pas ce réglage.
+     */
+    fun tunnelingEffective(pref: Boolean, textureView: Boolean, decoder: DecoderMode): Boolean =
+        pref && !textureView && decoder != DecoderMode.SOFTWARE
+
     /** Durée de tampon minimale (ms) avant de monter d'une variante : 4 s au lieu de 10 s par défaut. */
     const val MIN_INCREASE_BUFFER_MS = 4_000
 

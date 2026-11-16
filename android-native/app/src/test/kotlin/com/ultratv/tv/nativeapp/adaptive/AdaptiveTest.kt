@@ -172,4 +172,9 @@ class AdaptiveTest {
         val max = PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(videoQuality = "max"), 256)
         assertTrue(max.maxQuality); assertEquals(Int.MAX_VALUE, max.maxVideoHeight); assertNull(max.maxVideoBitrateBps)
     }
+    @Test fun resolver_tunneling_suitLeReglage() {
+        val a = AutoTuner.settings(profile(dev()), NetQuality.GOOD, false, 50)
+        assertFalse(PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(), 256).tunneling)
+        assertTrue(PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(tunneledPlayback = true), 256).tunneling)
+    }
 }

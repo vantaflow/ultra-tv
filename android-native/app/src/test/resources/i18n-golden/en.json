@@ -139,6 +139,8 @@
   "DesignStrings.getAudio()": "Audio",
   "DesignStrings.getAuto()": "Auto",
   "DesignStrings.getAutoFps()": "Match screen refresh rate",
+  "DesignStrings.getTunneledPlayback()": "Tunneled playback",
+  "DesignStrings.getTunneledPlaybackHint()": "Lets the hardware decoder sync audio and video itself (Media3 player only). Turn on if audio drifts or video stutters on Google TV / Fire TV; turn off if the picture goes black.",
   "DesignStrings.getPlaybackQuality()": "Playback quality",
   "DesignStrings.getPlaybackQualityHint()": "Auto adapts to your network and device. Maximum always picks the highest resolution and bitrate (more data, can stutter on a slow connection).",
   "DesignStrings.getQualityMax()": "Maximum",

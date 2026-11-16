@@ -52,4 +52,16 @@ class TrackPolicyTest {
         assertTrue(TrackPolicy.isMax("max"))
         assertFalse(TrackPolicy.isMax("auto")); assertFalse(TrackPolicy.isMax(null)); assertFalse(TrackPolicy.isMax("autre"))
     }
+
+    @Test fun tunneling_desactiveParDefaut() = assertFalse(TrackPolicy.tunnelingEffective(false, textureView = false, decoder = DecoderMode.AUTO))
+
+    @Test fun tunneling_actifSurSurfaceViewEtDecodeurMateriel() {
+        assertTrue(TrackPolicy.tunnelingEffective(true, textureView = false, decoder = DecoderMode.AUTO))
+        assertTrue(TrackPolicy.tunnelingEffective(true, textureView = false, decoder = DecoderMode.HARDWARE))
+    }
+
+    @Test fun tunneling_ignoreAvecTextureViewOuDecodeurLogiciel() {
+        assertFalse(TrackPolicy.tunnelingEffective(true, textureView = true, decoder = DecoderMode.AUTO))
+        assertFalse(TrackPolicy.tunnelingEffective(true, textureView = false, decoder = DecoderMode.SOFTWARE))
+    }
 }

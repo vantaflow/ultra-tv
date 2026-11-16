@@ -171,6 +171,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             // Qualité « Maximale » : variante du plus haut débit dès le départ, sans plafond (la piste est ensuite forcée, voir [forceHighestVideo]).
             .setForceHighestSupportedBitrate(config.maxQuality)
             .build()
+        // Lecture tunnelisée : le décodeur reçoit audio et vidéo synchronisés par le matériel (utile sur Google TV / Fire TV).
+        // Paramètre propre au sélecteur par défaut (absent des paramètres génériques) ; voir [TrackPolicy.tunnelingEffective].
+        trackSelector.setParameters(trackSelector.buildUponParameters().setTunnelingEnabled(TrackPolicy.tunnelingEffective(config.tunneling, config.textureView, config.decoder)))
     }
 
     /** « fr » → fr, fra, fre : les flux étiquettent en 639-1, 639-2/T ou 639-2/B. */

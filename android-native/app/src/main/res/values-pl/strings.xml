@@ -392,6 +392,8 @@
     <string name="ds_playback_quality">Jakość odtwarzania</string>
     <string name="ds_playback_quality_hint">Auto dopasowuje się do sieci i urządzenia. Maksymalna zawsze wybiera najwyższą rozdzielczość i przepływność (więcej danych, możliwe zacinanie przy wolnym łączu).</string>
     <string name="ds_quality_max">Maksymalna</string>
+    <string name="ds_tunneled_playback">Odtwarzanie tunelowane</string>
+    <string name="ds_tunneled_playback_hint">Pozwala sprzętowemu dekoderowi samodzielnie synchronizować dźwięk i obraz (tylko odtwarzacz Media3). Włącz, jeśli dźwięk się rozjeżdża lub obraz się zacina na Google TV / Fire TV; wyłącz, jeśli obraz robi się czarny.</string>
     <string name="ds_on">Wł.</string>
     <string name="ds_off_state">Wył.</string>
     <string name="ds_app_language">Język aplikacji</string>

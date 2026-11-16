@@ -443,6 +443,8 @@ class DesignStrings(val lang: AppLang) {
     val playbackQuality get() = tx(R.string.ds_playback_quality)
     val playbackQualityHint get() = tx(R.string.ds_playback_quality_hint)
     val qualityMax get() = tx(R.string.ds_quality_max)
+    val tunneledPlayback get() = tx(R.string.ds_tunneled_playback)
+    val tunneledPlaybackHint get() = tx(R.string.ds_tunneled_playback_hint)
     val on get() = tx(R.string.ds_on)
     val offState get() = tx(R.string.ds_off_state)
     val appLanguage get() = tx(R.string.ds_app_language)

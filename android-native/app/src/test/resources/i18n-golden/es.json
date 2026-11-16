@@ -139,6 +139,8 @@
   "DesignStrings.getAudio()": "Audio",
   "DesignStrings.getAuto()": "Auto",
   "DesignStrings.getAutoFps()": "Adaptar la frecuencia de pantalla",
+  "DesignStrings.getTunneledPlayback()": "Reproducción en túnel",
+  "DesignStrings.getTunneledPlaybackHint()": "Deja que el decodificador de hardware sincronice el audio y el vídeo (solo reproductor Media3). Actívala si el audio se desfasa o la imagen va a tirones en Google TV / Fire TV; desactívala si la imagen se queda en negro.",
   "DesignStrings.getPlaybackQuality()": "Calidad de reproducción",
   "DesignStrings.getPlaybackQualityHint()": "Auto se adapta a la red y al dispositivo. Máxima elige siempre la mayor resolución y tasa de bits (más datos, posibles cortes con una conexión lenta).",
   "DesignStrings.getQualityMax()": "Máxima",

@@ -350,7 +350,7 @@ class PlaybackSession(
         val audioPref = tc.effectivePreferred(sub.languages.audio, key?.let { memory.audioLang(it) }, ui)
         val textPref = if (sub.autoOn) tc.effectivePreferred(sub.languages.text, null, ui) else emptyList()
         val cfg = EngineConfig(c.decoder, buffer, isLive, autoFrameRate, launchedUa, sub.style, audioPref, textPref, textOff = !sub.autoOn, uiLanguage = ui, textureView = textureNow, headers = o.headers,
-            maxQuality = s.maxQuality, maxVideoBitrateBps = PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level))
+            maxQuality = s.maxQuality, maxVideoBitrateBps = PlaybackAdapter.scaleBitrate(s.maxVideoBitrateBps, adapter.level), tunneling = s.tunneling)
         val e = runCatching { engineFactory(c.engine, cfg) }.getOrElse { onError(PlayErrorKind.UNKNOWN); return }
         if (isProtected && !e.supportsProtected) {
             runCatching { e.release() }

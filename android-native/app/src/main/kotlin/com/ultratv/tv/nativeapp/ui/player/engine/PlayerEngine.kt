@@ -80,6 +80,8 @@ data class EngineConfig(
     val maxQuality: Boolean = false,
     /** Plafond de débit vidéo (bits/s) en qualité automatique : sert à l'estimation initiale du débit d'ExoPlayer. */
     val maxVideoBitrateBps: Int? = null,
+    /** Lecture tunnelisée demandée (Media3 seulement ; voir [TrackPolicy.tunnelingEffective]). */
+    val tunneling: Boolean = false,
 )
 
 /**

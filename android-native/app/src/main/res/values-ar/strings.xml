@@ -411,6 +411,8 @@
     <string name="ds_playback_quality">جودة التشغيل</string>
     <string name="ds_playback_quality_hint">التلقائي يتكيّف مع الشبكة والجهاز. الأقصى يختار دائمًا أعلى دقة ومعدل بيانات (استهلاك أكبر وقد يتقطع التشغيل مع اتصال بطيء).</string>
     <string name="ds_quality_max">الأقصى</string>
+    <string name="ds_tunneled_playback">التشغيل بالنفق (Tunneling)</string>
+    <string name="ds_tunneled_playback_hint">يترك لوحدة فك الترميز العتادية مزامنة الصوت والصورة بنفسها (مشغّل Media3 فقط). فعّله إذا تأخر الصوت أو تقطعت الصورة على Google TV / Fire TV، وعطّله إذا أصبحت الصورة سوداء.</string>
     <string name="ds_on">مفعّل</string>
     <string name="ds_off_state">معطّل</string>
     <string name="ds_app_language">لغة التطبيق</string>
