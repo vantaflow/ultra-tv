@@ -1691,4 +1691,29 @@
     <string name="pex_diag_fallback">Přepnutí přehrávače</string>
     <string name="pex_diag_copy">Kopírovat zprávu</string>
     <string name="pex_diag_copied">Zpráva zkopírována (přihlašovací údaje skryty)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Čas u obrazovky</string>
+    <string name="st_sub">Povolené hodiny a denní limit sledování pro tento profil. Změna vyžaduje rodičovský kód. Pravidla následují profil na všech vašich zařízeních, ale doba sledování se počítá na každém zařízení zvlášť.</string>
+    <string name="st_limit">Denní limit</string>
+    <string name="st_limit_none">Bez limitu</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Bez omezení</string>
+    <string name="st_blocked_day">Celý den zablokováno</string>
+    <string name="st_pick_hours">Zvolit povolené hodiny…</string>
+    <string name="st_start">Povoleno od</string>
+    <string name="st_end">Povoleno do</string>
+    <string name="st_clear">Odebrat všechna pravidla</string>
+    <string name="st_off">Vypnuto</string>
+    <string name="st_summary_limit">%1$d min denně</string>
+    <string name="st_summary_hours">Povolené hodiny nastaveny</string>
+    <string name="st_need_code">Nejprve nastavte rodičovský kód, jinak lze tato pravidla obejít.</string>
+    <string name="st_pin_title">Rodičovský kód</string>
+    <string name="st_block_outside">Sledování teď není povoleno</string>
+    <string name="st_block_limit">Dnešní čas sledování je vyčerpán</string>
+    <string name="st_block_next">Další sledování: %1$s</string>
+    <string name="st_block_none">Tento týden není naplánováno žádné sledování.</string>
+    <string name="st_unlock">Odemknout rodičovským kódem</string>
+    <string name="st_unlock_extra">+30 minut</string>
+    <string name="st_unlock_today">Pro dnešek (jednou)</string>
+    <string name="st_warn">Sledování skončí za %1$d min</string>
 </resources>

@@ -1691,4 +1691,29 @@
     <string name="pex_diag_fallback">สลับเครื่องเล่น</string>
     <string name="pex_diag_copy">คัดลอกรายงาน</string>
     <string name="pex_diag_copied">คัดลอกรายงานแล้ว (ซ่อนข้อมูลเข้าสู่ระบบ)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">เวลาหน้าจอ</string>
+    <string name="st_sub">ชั่วโมงที่อนุญาตและขีดจำกัดการรับชมรายวันของโปรไฟล์นี้ การเปลี่ยนแปลงต้องใช้รหัสผู้ปกครอง กฎจะตามโปรไฟล์ไปทุกอุปกรณ์ แต่เวลารับชมจะนับแยกกันในแต่ละอุปกรณ์</string>
+    <string name="st_limit">ขีดจำกัดรายวัน</string>
+    <string name="st_limit_none">ไม่จำกัด</string>
+    <string name="st_minutes">%1$d นาที</string>
+    <string name="st_free">ไม่มีข้อจำกัด</string>
+    <string name="st_blocked_day">ถูกบล็อกทั้งวัน</string>
+    <string name="st_pick_hours">เลือกชั่วโมงที่อนุญาต…</string>
+    <string name="st_start">อนุญาตตั้งแต่</string>
+    <string name="st_end">อนุญาตถึง</string>
+    <string name="st_clear">ลบกฎทั้งหมด</string>
+    <string name="st_off">ปิด</string>
+    <string name="st_summary_limit">%1$d นาทีต่อวัน</string>
+    <string name="st_summary_hours">ตั้งชั่วโมงที่อนุญาตแล้ว</string>
+    <string name="st_need_code">ตั้งรหัสผู้ปกครองก่อน มิฉะนั้นกฎเหล่านี้อาจถูกเลี่ยงได้</string>
+    <string name="st_pin_title">รหัสผู้ปกครอง</string>
+    <string name="st_block_outside">ขณะนี้ไม่อนุญาตให้รับชม</string>
+    <string name="st_block_limit">เวลารับชมของวันนี้หมดแล้ว</string>
+    <string name="st_block_next">การรับชมครั้งถัดไป: %1$s</string>
+    <string name="st_block_none">สัปดาห์นี้ไม่มีช่วงเวลารับชม</string>
+    <string name="st_unlock">ปลดล็อกด้วยรหัสผู้ปกครอง</string>
+    <string name="st_unlock_extra">+30 นาที</string>
+    <string name="st_unlock_today">สำหรับวันนี้ (ครั้งเดียว)</string>
+    <string name="st_warn">การรับชมจะสิ้นสุดใน %1$d นาที</string>
 </resources>

@@ -1691,4 +1691,29 @@
     <string name="pex_diag_fallback">Chuyển trình phát</string>
     <string name="pex_diag_copy">Sao chép báo cáo</string>
     <string name="pex_diag_copied">Đã sao chép báo cáo (đã ẩn thông tin đăng nhập)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Thời gian màn hình</string>
+    <string name="st_sub">Khung giờ cho phép và giới hạn xem mỗi ngày cho hồ sơ này. Thay đổi cần mã phụ huynh. Quy tắc đi theo hồ sơ trên mọi thiết bị của bạn, nhưng thời gian xem được tính riêng trên từng thiết bị.</string>
+    <string name="st_limit">Giới hạn mỗi ngày</string>
+    <string name="st_limit_none">Không giới hạn</string>
+    <string name="st_minutes">%1$d phút</string>
+    <string name="st_free">Không hạn chế</string>
+    <string name="st_blocked_day">Chặn cả ngày</string>
+    <string name="st_pick_hours">Chọn giờ được phép…</string>
+    <string name="st_start">Cho phép từ</string>
+    <string name="st_end">Cho phép đến</string>
+    <string name="st_clear">Xóa mọi quy tắc</string>
+    <string name="st_off">Tắt</string>
+    <string name="st_summary_limit">%1$d phút mỗi ngày</string>
+    <string name="st_summary_hours">Đã đặt giờ được phép</string>
+    <string name="st_need_code">Hãy đặt mã phụ huynh trước, nếu không có thể lách các quy tắc này.</string>
+    <string name="st_pin_title">Mã phụ huynh</string>
+    <string name="st_block_outside">Hiện không được phép xem</string>
+    <string name="st_block_limit">Đã hết thời gian xem hôm nay</string>
+    <string name="st_block_next">Lần xem tiếp theo: %1$s</string>
+    <string name="st_block_none">Tuần này không có khung giờ xem nào.</string>
+    <string name="st_unlock">Mở khóa bằng mã phụ huynh</string>
+    <string name="st_unlock_extra">+30 phút</string>
+    <string name="st_unlock_today">Cho hôm nay (một lần)</string>
+    <string name="st_warn">Việc xem kết thúc sau %1$d phút</string>
 </resources>

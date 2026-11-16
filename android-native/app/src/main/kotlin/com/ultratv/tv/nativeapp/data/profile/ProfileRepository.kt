@@ -137,6 +137,16 @@ class ProfileRepository(
     suspend fun setSimpleModeFor(profileId: Long, on: Boolean) =
         dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SIMPLE_MODE, on.toString()))
 
+    /** Règles de temps d'écran (texte codé) par profil. */
+    val screenTimeById: Flow<Map<Long, String>> = dao.observeScreenTimeRows().map { rows -> rows.associate { it.profileId to it.value } }
+
+    /** Règles de temps d'écran d'un profil précis (Réglages › Profils) ; texte vide = règles retirées. Le profil est marqué modifié : le choix gagne sur les autres appareils. */
+    suspend fun setScreenTimeFor(profileId: Long, encoded: String) {
+        if (encoded.isBlank()) dao.removePref(profileId, ProfilePrefs.SCREEN_TIME)
+        else dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SCREEN_TIME, encoded))
+        dao.byId(profileId)?.let { log?.touch(it.name) }
+    }
+
     suspend fun setCategoryHidden(key: String, hidden: Boolean) {
         if (hidden) dao.hide(ProfileHiddenCategoryEntity(currentIdNow, key)) else dao.unhide(currentIdNow, key)
     }
@@ -166,18 +176,28 @@ suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileS
         is ProfileSyncLogic.Action.Create -> if (ProfileRules.canAdd(dao.count())) {
             val id = dao.insert(ProfileEntity(name = a.p.n, color = a.p.c, initial = ProfileRules.initialOf(a.p.n), isKids = a.p.k))
             a.p.l?.let { dao.putPref(ProfilePrefEntity(id, ProfilePrefs.UI_LANGUAGE, it)) }
+            applySharedScreenTime(dao, id, a.p.t)
             log.set(a.p.n, a.p.at, true)
         }
         is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let {
             dao.update(it.copy(color = a.p.c, isKids = a.p.k))
             a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
+            applySharedScreenTime(dao, a.id, a.p.t)
             log.set(a.p.n, a.p.at, true)
         }
         is ProfileSyncLogic.Action.Delete -> if (delete(a.id)) log.set(a.p.n, a.p.at, false)
         is ProfileSyncLogic.Action.Rename -> dao.byId(a.id)?.let { old ->
             dao.update(old.copy(name = a.p.n, initial = ProfileRules.initialOf(a.p.n), color = a.p.c, isKids = a.p.k))
             a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
+            applySharedScreenTime(dao, a.id, a.p.t)
             log.set(old.name, a.p.at, false); log.set(a.p.n, a.p.at, true, a.p.from)
         }
     }
+}
+
+/** Règles de temps d'écran reçues : normalisées (jamais de texte brut du réseau tel quel) ; null = champ absent, rien à changer. */
+private suspend fun applySharedScreenTime(dao: ProfileDao, profileId: Long, t: String?) {
+    if (t == null) return
+    val clean = com.ultratv.tv.nativeapp.data.screentime.ScreenTime.encode(com.ultratv.tv.nativeapp.data.screentime.ScreenTime.decode(t))
+    if (clean.isEmpty()) dao.removePref(profileId, ProfilePrefs.SCREEN_TIME) else dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SCREEN_TIME, clean))
 }

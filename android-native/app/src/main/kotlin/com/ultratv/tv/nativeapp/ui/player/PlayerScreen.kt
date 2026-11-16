@@ -179,6 +179,7 @@ class PlayerViewModel @Inject constructor(
     val network: NetworkMonitor,
     val remoteBus: com.ultratv.tv.nativeapp.data.remote.RemoteBus,
     val guard: com.ultratv.tv.nativeapp.data.parental.ParentalGuard,
+    val screenTime: com.ultratv.tv.nativeapp.data.screentime.ScreenTimeController,
     private val movieDao: com.ultratv.tv.nativeapp.data.db.MovieDao,
     private val vodInfoDao: com.ultratv.tv.nativeapp.data.db.VodInfoDao,
     private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
@@ -904,6 +905,13 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         if (dur <= 0) emptyList() else skipSegs.map { sg -> (sg.startMs.toFloat() / dur).coerceIn(0f, 1f) to ((sg.endMs ?: dur).toFloat() / dur).coerceIn(0f, 1f) }
     }
     var playing by remember { mutableStateOf(true) }
+    // Temps d'écran : la lecture effective compte ici (pas les menus) ; hors plage ou limite atteinte, la lecture est mise en pause en continu.
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { vm.screenTime.setPlaying(false) } }
+    val screenTimeState by vm.screenTime.state.collectAsState()
+    val screenTimeBlocked = screenTimeState.verdict is com.ultratv.tv.nativeapp.data.screentime.Verdict.Blocked
+    LaunchedEffect(screenTimeBlocked) {
+        while (screenTimeBlocked) { session.engine?.let { if (it.isPlaying) it.pause() }; kotlinx.coroutines.delay(1_000) }
+    }
     var clock by remember { mutableStateOf(EpgClock.wall(System.currentTimeMillis())) }
     // Délai de masquage de la surcouche : 5 s pour le bandeau, 8 s pour l'OSD complet du direct (trois étages à lire).
     var hideAfterMs by remember { mutableStateOf(OSD_HIDE_BANNER_MS) }
@@ -912,7 +920,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         while (true) {
             // Position écrite seulement en VOD (le direct affiche l'horaire du programme) et arrondie à la seconde :
             // chaque écriture recompose tout le lecteur — avant, 2 fois par seconde y compris en direct.
-            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying; vm.remoteBus.setPlaying(e.isPlaying); if (!isLive) vm.scrobbleTick(e.isPlaying, e.positionMs, e.durationMs.coerceAtLeast(0)) }
+            session.engine?.let { e -> if (!isLive) { pos = e.positionMs / 1_000 * 1_000; dur = e.durationMs }; playing = e.isPlaying; vm.remoteBus.setPlaying(e.isPlaying); vm.screenTime.setPlaying(e.isPlaying); if (!isLive) vm.scrobbleTick(e.isPlaying, e.positionMs, e.durationMs.coerceAtLeast(0)) }
             // Film / épisode : position enregistrée toutes les 30 s (box éteinte ou appli fermée en force : la reprise tient).
             if (!isLive && playing && System.currentTimeMillis() - lastSave > 30_000) { lastSave = System.currentTimeMillis(); session.engine?.let { vm.recordProgress(it.positionMs, it.durationMs.coerceAtLeast(0)) } }
             clock = EpgClock.wall(System.currentTimeMillis())

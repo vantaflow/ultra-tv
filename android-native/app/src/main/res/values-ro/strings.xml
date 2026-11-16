@@ -1728,4 +1728,29 @@
     <string name="pex_diag_fallback">Schimbare de motor</string>
     <string name="pex_diag_copy">Copiază raportul</string>
     <string name="pex_diag_copied">Raport copiat (datele de acces ascunse)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Timp de ecran</string>
+    <string name="st_sub">Intervale orare permise și limită zilnică de vizionare pentru acest profil. Modificarea lor cere codul parental. Regulile urmează profilul pe toate dispozitivele tale, dar timpul de vizionare se numără separat pe fiecare dispozitiv.</string>
+    <string name="st_limit">Limită zilnică</string>
+    <string name="st_limit_none">Fără limită</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Fără restricții</string>
+    <string name="st_blocked_day">Blocat toată ziua</string>
+    <string name="st_pick_hours">Alege orele permise…</string>
+    <string name="st_start">Permis de la</string>
+    <string name="st_end">Permis până la</string>
+    <string name="st_clear">Elimină toate regulile</string>
+    <string name="st_off">Dezactivat</string>
+    <string name="st_summary_limit">%1$d min pe zi</string>
+    <string name="st_summary_hours">Ore permise setate</string>
+    <string name="st_need_code">Setează mai întâi un cod parental, altfel aceste reguli pot fi ocolite.</string>
+    <string name="st_pin_title">Cod parental</string>
+    <string name="st_block_outside">Vizionarea nu este permisă acum</string>
+    <string name="st_block_limit">Timpul de vizionare de azi s-a terminat</string>
+    <string name="st_block_next">Următoarea vizionare: %1$s</string>
+    <string name="st_block_none">Nu este planificat niciun interval de vizionare săptămâna aceasta.</string>
+    <string name="st_unlock">Deblochează cu codul parental</string>
+    <string name="st_unlock_extra">+30 de minute</string>
+    <string name="st_unlock_today">Pentru azi (o dată)</string>
+    <string name="st_warn">Vizionarea se termină în %1$d min</string>
 </resources>

@@ -1655,4 +1655,29 @@
     <string name="pex_diag_fallback">Soittimen vaihto</string>
     <string name="pex_diag_copy">Kopioi raportti</string>
     <string name="pex_diag_copied">Raportti kopioitu (tunnukset piilotettu)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Ruutuaika</string>
+    <string name="st_sub">Sallitut kellonajat ja päivittäinen katseluaikaraja tälle profiilille. Muuttaminen vaatii vanhempainkoodin. Säännöt seuraavat profiilia kaikilla laitteillasi, mutta katseluaika lasketaan jokaisella laitteella erikseen.</string>
+    <string name="st_limit">Päivittäinen raja</string>
+    <string name="st_limit_none">Ei rajaa</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Ei rajoitusta</string>
+    <string name="st_blocked_day">Estetty koko päivän</string>
+    <string name="st_pick_hours">Valitse sallitut kellonajat…</string>
+    <string name="st_start">Sallittu alkaen</string>
+    <string name="st_end">Sallittu asti</string>
+    <string name="st_clear">Poista kaikki säännöt</string>
+    <string name="st_off">Pois</string>
+    <string name="st_summary_limit">%1$d min päivässä</string>
+    <string name="st_summary_hours">Sallitut kellonajat asetettu</string>
+    <string name="st_need_code">Aseta ensin vanhempainkoodi, muuten nämä säännöt voi kiertää.</string>
+    <string name="st_pin_title">Vanhempainkoodi</string>
+    <string name="st_block_outside">Katselu ei ole nyt sallittua</string>
+    <string name="st_block_limit">Tämän päivän katseluaika on käytetty</string>
+    <string name="st_block_next">Seuraava katselu: %1$s</string>
+    <string name="st_block_none">Tälle viikolle ei ole suunniteltu katseluaikaa.</string>
+    <string name="st_unlock">Avaa vanhempainkoodilla</string>
+    <string name="st_unlock_extra">+30 minuuttia</string>
+    <string name="st_unlock_today">Tälle päivälle (kerran)</string>
+    <string name="st_warn">Katselu päättyy %1$d min kuluttua</string>
 </resources>

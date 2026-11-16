@@ -1722,4 +1722,29 @@
     <string name="pex_diag_fallback">Repli de moteur</string>
     <string name="pex_diag_copy">Copier le rapport</string>
     <string name="pex_diag_copied">Rapport copié (identifiants masqués)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Temps d\'écran</string>
+    <string name="st_sub">Plages horaires autorisées et limite de visionnage quotidienne pour ce profil. Les modifier demande le code parental. Les règles suivent le profil sur tous vos appareils, mais le temps de visionnage est compté séparément sur chaque appareil.</string>
+    <string name="st_limit">Limite quotidienne</string>
+    <string name="st_limit_none">Aucune limite</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Aucune restriction</string>
+    <string name="st_blocked_day">Bloqué toute la journée</string>
+    <string name="st_pick_hours">Choisir les heures autorisées…</string>
+    <string name="st_start">Autorisé à partir de</string>
+    <string name="st_end">Autorisé jusqu\'à</string>
+    <string name="st_clear">Supprimer toutes les règles</string>
+    <string name="st_off">Désactivé</string>
+    <string name="st_summary_limit">%1$d min par jour</string>
+    <string name="st_summary_hours">Plages horaires définies</string>
+    <string name="st_need_code">Définissez d\'abord un code parental, sinon ces règles peuvent être contournées.</string>
+    <string name="st_pin_title">Code parental</string>
+    <string name="st_block_outside">Le visionnage n\'est pas autorisé pour le moment</string>
+    <string name="st_block_limit">Le temps de visionnage du jour est épuisé</string>
+    <string name="st_block_next">Prochain visionnage : %1$s</string>
+    <string name="st_block_none">Aucune plage de visionnage n\'est prévue cette semaine.</string>
+    <string name="st_unlock">Déverrouiller avec le code parental</string>
+    <string name="st_unlock_extra">+30 minutes</string>
+    <string name="st_unlock_today">Pour aujourd\'hui (une fois)</string>
+    <string name="st_warn">Fin du visionnage dans %1$d min</string>
 </resources>

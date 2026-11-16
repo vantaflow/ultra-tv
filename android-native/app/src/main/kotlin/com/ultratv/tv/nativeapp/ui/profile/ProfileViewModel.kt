@@ -27,6 +27,9 @@ class ProfileViewModel @Inject constructor(
     val simpleModeIds: StateFlow<Set<Long>> = repo.simpleModeProfileIds.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
     fun setSimpleMode(id: Long, on: Boolean) = viewModelScope.launch { repo.setSimpleModeFor(id, on) }
 
+    val screenTimeById: StateFlow<Map<Long, String>> = repo.screenTimeById.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+    fun setScreenTime(id: Long, encoded: String) = viewModelScope.launch { repo.setScreenTimeFor(id, encoded) }
+
     fun select(id: Long) = viewModelScope.launch { repo.select(id) }
     fun requestSwitch() = repo.requestSwitch()
     fun cancelSwitch() = repo.cancelSwitch()

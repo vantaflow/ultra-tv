@@ -1709,4 +1709,29 @@
     <string name="pex_diag_fallback">Engine fallback</string>
     <string name="pex_diag_copy">Copy report</string>
     <string name="pex_diag_copied">Report copied (credentials hidden)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Screen time</string>
+    <string name="st_sub">Allowed hours and a daily viewing limit for this profile. Changing them needs the parental code. The rules follow the profile on all your devices, but viewing time is counted separately on each device.</string>
+    <string name="st_limit">Daily limit</string>
+    <string name="st_limit_none">No limit</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">No restriction</string>
+    <string name="st_blocked_day">Blocked all day</string>
+    <string name="st_pick_hours">Choose allowed hours…</string>
+    <string name="st_start">Allowed from</string>
+    <string name="st_end">Allowed until</string>
+    <string name="st_clear">Remove all rules</string>
+    <string name="st_off">Off</string>
+    <string name="st_summary_limit">%1$d min per day</string>
+    <string name="st_summary_hours">Allowed hours set</string>
+    <string name="st_need_code">Set a parental code first, otherwise these rules can be bypassed.</string>
+    <string name="st_pin_title">Parental code</string>
+    <string name="st_block_outside">Viewing is not allowed right now</string>
+    <string name="st_block_limit">Today\'s viewing time is used up</string>
+    <string name="st_block_next">Next viewing: %1$s</string>
+    <string name="st_block_none">No viewing slot is planned this week.</string>
+    <string name="st_unlock">Unlock with the parental code</string>
+    <string name="st_unlock_extra">+30 minutes</string>
+    <string name="st_unlock_today">For today (once)</string>
+    <string name="st_warn">Viewing ends in %1$d min</string>
 </resources>

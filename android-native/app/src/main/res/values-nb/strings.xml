@@ -1710,4 +1710,29 @@
     <string name="pex_diag_fallback">Bytte av motor</string>
     <string name="pex_diag_copy">Kopier rapport</string>
     <string name="pex_diag_copied">Rapport kopiert (påloggingsinfo skjult)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Skjermtid</string>
+    <string name="st_sub">Tillatte tidsrom og daglig seergrense for denne profilen. Endring krever foreldrekoden. Reglene følger profilen på alle enhetene dine, men seertiden telles separat på hver enhet.</string>
+    <string name="st_limit">Daglig grense</string>
+    <string name="st_limit_none">Ingen grense</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Ingen begrensning</string>
+    <string name="st_blocked_day">Blokkert hele dagen</string>
+    <string name="st_pick_hours">Velg tillatte tidsrom…</string>
+    <string name="st_start">Tillatt fra</string>
+    <string name="st_end">Tillatt til</string>
+    <string name="st_clear">Fjern alle regler</string>
+    <string name="st_off">Av</string>
+    <string name="st_summary_limit">%1$d min per dag</string>
+    <string name="st_summary_hours">Tillatte tidsrom er satt</string>
+    <string name="st_need_code">Angi først en foreldrekode, ellers kan reglene omgås.</string>
+    <string name="st_pin_title">Foreldrekode</string>
+    <string name="st_block_outside">Det er ikke tillatt å se nå</string>
+    <string name="st_block_limit">Dagens seertid er brukt opp</string>
+    <string name="st_block_next">Neste visning: %1$s</string>
+    <string name="st_block_none">Ingen seertid er planlagt denne uken.</string>
+    <string name="st_unlock">Lås opp med foreldrekoden</string>
+    <string name="st_unlock_extra">+30 minutter</string>
+    <string name="st_unlock_today">For i dag (én gang)</string>
+    <string name="st_warn">Visningen slutter om %1$d min</string>
 </resources>

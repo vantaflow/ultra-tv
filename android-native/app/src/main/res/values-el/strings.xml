@@ -1710,4 +1710,29 @@
     <string name="pex_diag_fallback">Αλλαγή αναπαραγωγέα</string>
     <string name="pex_diag_copy">Αντιγραφή αναφοράς</string>
     <string name="pex_diag_copied">Η αναφορά αντιγράφηκε (τα στοιχεία κρύφτηκαν)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Χρόνος οθόνης</string>
+    <string name="st_sub">Επιτρεπόμενες ώρες και ημερήσιο όριο προβολής για αυτό το προφίλ. Η αλλαγή τους απαιτεί τον γονικό κωδικό. Οι κανόνες ακολουθούν το προφίλ σε όλες τις συσκευές σας, αλλά ο χρόνος προβολής μετράται χωριστά σε κάθε συσκευή.</string>
+    <string name="st_limit">Ημερήσιο όριο</string>
+    <string name="st_limit_none">Χωρίς όριο</string>
+    <string name="st_minutes">%1$d λεπτά</string>
+    <string name="st_free">Χωρίς περιορισμό</string>
+    <string name="st_blocked_day">Αποκλεισμένο όλη μέρα</string>
+    <string name="st_pick_hours">Επιλογή επιτρεπόμενων ωρών…</string>
+    <string name="st_start">Επιτρέπεται από</string>
+    <string name="st_end">Επιτρέπεται έως</string>
+    <string name="st_clear">Αφαίρεση όλων των κανόνων</string>
+    <string name="st_off">Ανενεργό</string>
+    <string name="st_summary_limit">%1$d λεπτά την ημέρα</string>
+    <string name="st_summary_hours">Έχουν οριστεί επιτρεπόμενες ώρες</string>
+    <string name="st_need_code">Ορίστε πρώτα γονικό κωδικό, αλλιώς οι κανόνες αυτοί μπορούν να παρακαμφθούν.</string>
+    <string name="st_pin_title">Γονικός κωδικός</string>
+    <string name="st_block_outside">Η προβολή δεν επιτρέπεται αυτή τη στιγμή</string>
+    <string name="st_block_limit">Ο χρόνος προβολής της ημέρας εξαντλήθηκε</string>
+    <string name="st_block_next">Επόμενη προβολή: %1$s</string>
+    <string name="st_block_none">Δεν έχει προγραμματιστεί προβολή αυτή την εβδομάδα.</string>
+    <string name="st_unlock">Ξεκλείδωμα με τον γονικό κωδικό</string>
+    <string name="st_unlock_extra">+30 λεπτά</string>
+    <string name="st_unlock_today">Για σήμερα (μία φορά)</string>
+    <string name="st_warn">Η προβολή τελειώνει σε %1$d λεπτά</string>
 </resources>

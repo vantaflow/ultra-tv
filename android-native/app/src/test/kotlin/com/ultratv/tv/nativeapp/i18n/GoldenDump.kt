@@ -18,7 +18,7 @@ object GoldenDump {
         "$PKG.i18n.DesignStrings", "$PKG.i18n.SimpleStrings", "$PKG.ui.player.PlayerExtraStrings",
         "$PKG.ui.memory.MemoryStrings", "$PKG.ui.downloads.DownloadStrings", "$PKG.ui.profile.ProfileStrings",
         "$PKG.ui.settings.CloudSyncStrings", "$PKG.ui.settings.DnsStrings", "$PKG.ui.account.AccountStrings",
-        "$PKG.ui.live.LivePreviewStrings",
+        "$PKG.ui.live.LivePreviewStrings", "$PKG.ui.screentime.ScreenTimeStrings",
     )
     private val extensionFiles = listOf(
         "CatalogCategoryStringsKt", "DesignStringsB1Kt", "DirectGuideStringsKt", "GuideStringsKt", "HomeV2StringsKt",

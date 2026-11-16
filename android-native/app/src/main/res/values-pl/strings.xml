@@ -1663,4 +1663,29 @@
     <string name="pex_diag_fallback">Zmiana silnika</string>
     <string name="pex_diag_copy">Kopiuj raport</string>
     <string name="pex_diag_copied">Skopiowano raport (dane logowania ukryte)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Czas przed ekranem</string>
+    <string name="st_sub">Dozwolone godziny i dzienny limit oglądania dla tego profilu. Zmiana wymaga kodu rodzicielskiego. Reguły podążają za profilem na wszystkich urządzeniach, ale czas oglądania jest liczony osobno na każdym urządzeniu.</string>
+    <string name="st_limit">Dzienny limit</string>
+    <string name="st_limit_none">Bez limitu</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Bez ograniczeń</string>
+    <string name="st_blocked_day">Zablokowane przez cały dzień</string>
+    <string name="st_pick_hours">Wybierz dozwolone godziny…</string>
+    <string name="st_start">Dozwolone od</string>
+    <string name="st_end">Dozwolone do</string>
+    <string name="st_clear">Usuń wszystkie reguły</string>
+    <string name="st_off">Wyłączone</string>
+    <string name="st_summary_limit">%1$d min dziennie</string>
+    <string name="st_summary_hours">Ustawiono dozwolone godziny</string>
+    <string name="st_need_code">Najpierw ustaw kod rodzicielski, inaczej te reguły można obejść.</string>
+    <string name="st_pin_title">Kod rodzicielski</string>
+    <string name="st_block_outside">Oglądanie nie jest teraz dozwolone</string>
+    <string name="st_block_limit">Dzisiejszy czas oglądania został wykorzystany</string>
+    <string name="st_block_next">Następne oglądanie: %1$s</string>
+    <string name="st_block_none">W tym tygodniu nie zaplanowano oglądania.</string>
+    <string name="st_unlock">Odblokuj kodem rodzicielskim</string>
+    <string name="st_unlock_extra">+30 minut</string>
+    <string name="st_unlock_today">Na dziś (raz)</string>
+    <string name="st_warn">Oglądanie kończy się za %1$d min</string>
 </resources>

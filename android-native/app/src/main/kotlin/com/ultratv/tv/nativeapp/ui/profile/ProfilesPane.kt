@@ -26,12 +26,13 @@ import com.ultratv.tv.nativeapp.ui.design.PillButton
 import com.ultratv.tv.nativeapp.ui.design.PrefRow
 import com.ultratv.tv.nativeapp.ui.design.SwitchPrefRow
 import com.ultratv.tv.nativeapp.ui.design.Ux
+import com.ultratv.tv.nativeapp.ui.design.spx
 import com.ultratv.tv.nativeapp.ui.parental.PinPad
 import com.ultratv.tv.nativeapp.ui.settings.AddProviderDialog
 import com.ultratv.tv.nativeapp.ui.settings.FormField
 import kotlinx.coroutines.launch
 
-private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, PIN, PIN_REMOVE, DELETE }
+private enum class ProfileAction { RENAME, COLOR, KIDS, SIMPLE, SCREEN_TIME, PIN, PIN_REMOVE, DELETE }
 
 /** Réglages › Profils : liste, création, renommage, couleur, profil Enfants, PIN, suppression, mode de démarrage. */
 @Composable
@@ -41,6 +42,12 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     val startup by vm.startupMode.collectAsState()
     val simpleIds by vm.simpleModeIds.collectAsState()
     val pinSet by vm.parentalPinSet.collectAsState()
+    val screenTimes by vm.screenTimeById.collectAsState()
+    val ST = com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeStrings(LocalDs.current.lang)
+    var screenTimeUnlocked by remember { mutableStateOf<Long?>(null) }
+    var stError by remember { mutableStateOf<String?>(null) }
+    var stAttempt by remember { mutableStateOf(0) }
+    val scope = rememberCoroutineScope()
     val SM = com.ultratv.tv.nativeapp.i18n.SimpleStrings(LocalDs.current.lang)
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     var menuFor by remember { mutableStateOf<ProfileEntity?>(null) }
@@ -54,12 +61,13 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             profiles.forEach { p ->
                 PrefRow(
                     label = p.name,
-                    value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.id in simpleIds) SM.settingName else null, if (p.pinHash != null) S.protectedHint else null).joinToString(" · "),
+                    value = listOfNotNull(if (p.isKids) S.kidsHint else null, if (p.id in simpleIds) SM.settingName else null, if (p.pinHash != null) S.protectedHint else null, com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeText.summary(com.ultratv.tv.nativeapp.data.screentime.ScreenTime.decode(screenTimes[p.id]), ST)).joinToString(" · "),
                 ) { menuFor = p }
             }
         }
         if (ProfileRules.canAdd(profiles.size)) PillButton(S.newProfile, { creating = true }, heightPx = 64, hPadPx = 32, fontPx = 22, bg = Ux.Surface2, iconPath = "M12 5v14M5 12h14")
     }
+    com.ultratv.tv.nativeapp.ui.design.Text(ST.sub, color = Ux.Text3, fontFamily = com.ultratv.tv.nativeapp.ui.design.Manrope, fontSize = 20.spx)
     com.ultratv.tv.nativeapp.ui.design.SettingsCard { PrefRow(S.startup, if (startup == StartupMode.ALWAYS_ASK) S.alwaysAsk else S.lastProfile) { startupDialog = true } }
 
     if (startupDialog) ChoiceDialog(S.startup, listOf(StartupMode.ALWAYS_ASK to S.alwaysAsk, StartupMode.LAST_PROFILE to S.lastProfile), startup, { vm.setStartupMode(it); startupDialog = false }, { startupDialog = false })
@@ -71,6 +79,7 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
             add(ProfileAction.COLOR to S.color)
             add(ProfileAction.KIDS to "${S.kidsProfile} : ${if (p.isKids) S.pinSet else S.pinNone}")
             if (com.ultratv.tv.nativeapp.ui.simple.simpleModeAvailable(touch)) add(ProfileAction.SIMPLE to if (p.id in simpleIds) SM.profileOn else SM.profileOff)
+            add(ProfileAction.SCREEN_TIME to "${ST.title} : ${com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeText.summary(com.ultratv.tv.nativeapp.data.screentime.ScreenTime.decode(screenTimes[p.id]), ST) ?: ST.off}")
             add(ProfileAction.PIN to "${S.pin} : ${if (p.pinHash != null) S.pinSet else S.pinNone}")
             if (p.pinHash != null) add(ProfileAction.PIN_REMOVE to S.pinRemove)
             add(ProfileAction.DELETE to if (ProfileRules.canDelete(profiles.size)) S.delete else S.deleteLast)
@@ -88,10 +97,18 @@ fun ProfilesPane(vm: ProfileViewModel = hiltViewModel()) {
     }
 
     action?.let { (p, a) ->
-        val close = { action = null }
+        val close = { action = null; screenTimeUnlocked = null }
         when (a) {
             ProfileAction.RENAME -> ProfileEditDialog(p, vm, onDismiss = close)
             ProfileAction.SIMPLE -> com.ultratv.tv.nativeapp.ui.simple.ExitSimpleModePin(onUnlocked = { vm.setSimpleMode(p.id, false); close() }, onCancel = close)
+            // Le code parental (s'il existe) est exigé avant de modifier les règles ; l'éditeur enregistre à chaque choix.
+            ProfileAction.SCREEN_TIME -> if (pinSet && screenTimeUnlocked != p.id) {
+                PinPad(
+                    title = ST.pinTitle, subtitle = p.name,
+                    onComplete = { pin -> scope.launch { if (vm.checkParentalPin(pin)) screenTimeUnlocked = p.id else { stError = S.wrongPin; stAttempt++ } } },
+                    onCancel = close, error = stError, resetKey = stAttempt,
+                )
+            } else com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeEditor(p, screenTimes[p.id], pinSet, onSave = { vm.setScreenTime(p.id, it) }, onClose = close)
             ProfileAction.COLOR -> ChoiceDialog(S.color, ProfileColors.palette.mapIndexed { i, c -> c to S.colorNames[i] }, p.color, { vm.setColor(p.id, it); close() }, close)
             ProfileAction.PIN -> {
                 PinPad(title = S.pin, subtitle = p.name, onComplete = { vm.setPin(p.id, it); close() }, onCancel = close)

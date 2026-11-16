@@ -1771,4 +1771,29 @@
     <string name="pex_diag_fallback">التحويل إلى محرك آخر</string>
     <string name="pex_diag_copy">نسخ التقرير</string>
     <string name="pex_diag_copied">تم نسخ التقرير (البيانات السرية مخفية)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">وقت الشاشة</string>
+    <string name="st_sub">الساعات المسموح بها وحد المشاهدة اليومي لهذا الملف الشخصي. تغييرها يتطلب الرمز الأبوي. تتبع القواعد الملف الشخصي على جميع أجهزتك، لكن وقت المشاهدة يُحتسب بشكل منفصل على كل جهاز.</string>
+    <string name="st_limit">الحد اليومي</string>
+    <string name="st_limit_none">بلا حد</string>
+    <string name="st_minutes">%1$d د</string>
+    <string name="st_free">بلا قيود</string>
+    <string name="st_blocked_day">محظور طوال اليوم</string>
+    <string name="st_pick_hours">اختر الساعات المسموح بها…</string>
+    <string name="st_start">مسموح من</string>
+    <string name="st_end">مسموح حتى</string>
+    <string name="st_clear">إزالة كل القواعد</string>
+    <string name="st_off">متوقف</string>
+    <string name="st_summary_limit">%1$d د في اليوم</string>
+    <string name="st_summary_hours">تم تحديد الساعات المسموح بها</string>
+    <string name="st_need_code">عيّن رمزاً أبوياً أولاً، وإلا يمكن تجاوز هذه القواعد.</string>
+    <string name="st_pin_title">الرمز الأبوي</string>
+    <string name="st_block_outside">المشاهدة غير مسموحة الآن</string>
+    <string name="st_block_limit">انتهى وقت المشاهدة اليوم</string>
+    <string name="st_block_next">المشاهدة التالية: %1$s</string>
+    <string name="st_block_none">لا توجد فترة مشاهدة مقررة هذا الأسبوع.</string>
+    <string name="st_unlock">فتح بالرمز الأبوي</string>
+    <string name="st_unlock_extra">+30 دقيقة</string>
+    <string name="st_unlock_today">لهذا اليوم (مرة واحدة)</string>
+    <string name="st_warn">تنتهي المشاهدة بعد %1$d د</string>
 </resources>

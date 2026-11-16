@@ -1713,4 +1713,29 @@
     <string name="pex_diag_fallback">Cambio de motor</string>
     <string name="pex_diag_copy">Copiar informe</string>
     <string name="pex_diag_copied">Informe copiado (credenciales ocultas)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Tiempo de pantalla</string>
+    <string name="st_sub">Horas permitidas y límite diario de visualización para este perfil. Para cambiarlos hace falta el código parental. Las reglas acompañan al perfil en todos tus dispositivos, pero el tiempo de visualización se cuenta por separado en cada dispositivo.</string>
+    <string name="st_limit">Límite diario</string>
+    <string name="st_limit_none">Sin límite</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Sin restricción</string>
+    <string name="st_blocked_day">Bloqueado todo el día</string>
+    <string name="st_pick_hours">Elegir horas permitidas…</string>
+    <string name="st_start">Permitido desde</string>
+    <string name="st_end">Permitido hasta</string>
+    <string name="st_clear">Quitar todas las reglas</string>
+    <string name="st_off">Desactivado</string>
+    <string name="st_summary_limit">%1$d min al día</string>
+    <string name="st_summary_hours">Horas permitidas definidas</string>
+    <string name="st_need_code">Primero define un código parental; si no, estas reglas se pueden eludir.</string>
+    <string name="st_pin_title">Código parental</string>
+    <string name="st_block_outside">Ahora no se permite ver contenido</string>
+    <string name="st_block_limit">Se agotó el tiempo de visualización de hoy</string>
+    <string name="st_block_next">Próxima visualización: %1$s</string>
+    <string name="st_block_none">No hay ningún horario de visualización previsto esta semana.</string>
+    <string name="st_unlock">Desbloquear con el código parental</string>
+    <string name="st_unlock_extra">+30 minutos</string>
+    <string name="st_unlock_today">Por hoy (una vez)</string>
+    <string name="st_warn">La visualización termina en %1$d min</string>
 </resources>

@@ -143,3 +143,6 @@ fr|ds_catalog_sort_name_title
 es|ds_catalog_sort_name_title
 es|ds_search_tab_series
 es|ds_search_series
+fr|st_minutes
+fr|st_unlock_extra
+es|st_minutes

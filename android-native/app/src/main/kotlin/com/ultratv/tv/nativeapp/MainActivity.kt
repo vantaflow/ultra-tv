@@ -518,6 +518,8 @@ private fun Root(vm: AppViewModel = hiltViewModel()) {
                 }
                 }
             }
+            // Horaires de visionnage et temps d'écran du profil : blocage et avertissement par-dessus tout, sauf pendant « Qui regarde ? » et l'assistant.
+            com.ultratv.tv.nativeapp.ui.screentime.ScreenTimeOverlay(active = askProfile == false && showOnboarding == false)
         }
         // Animation d'ouverture (700 ms) : posée AU-DESSUS de l'application, déjà en cours de chargement derrière.
         com.ultratv.tv.nativeapp.ui.design.StartupAnimation()

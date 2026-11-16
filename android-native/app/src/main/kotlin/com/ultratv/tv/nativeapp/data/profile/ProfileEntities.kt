@@ -84,6 +84,10 @@ interface ProfileDao {
     @Query("SELECT profileId FROM profile_pref WHERE `key` = 'simple_mode' AND value = 'true'")
     fun observeSimpleModeProfiles(): Flow<List<Long>>
 
+    /** Règles de temps d'écran de tous les profils (Réglages › Profils, contrôleur de temps d'écran). */
+    @Query("SELECT * FROM profile_pref WHERE `key` = 'screen_time'")
+    fun observeScreenTimeRows(): Flow<List<ProfilePrefEntity>>
+
     @Query("DELETE FROM profile_pref WHERE profileId = :profileId AND `key` = :key")
     suspend fun removePref(profileId: Long, key: String)
 

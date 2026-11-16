@@ -1727,4 +1727,29 @@
     <string name="pex_diag_fallback">Troca de player</string>
     <string name="pex_diag_copy">Copiar relatório</string>
     <string name="pex_diag_copied">Relatório copiado (credenciais ocultas)</string>
+    <!-- Temps d'écran (#157) -->
+    <string name="st_title">Tempo de tela</string>
+    <string name="st_sub">Horários permitidos e limite diário de exibição para este perfil. Alterá-los exige o código parental. As regras acompanham o perfil em todos os seus dispositivos, mas o tempo de exibição é contado separadamente em cada dispositivo.</string>
+    <string name="st_limit">Limite diário</string>
+    <string name="st_limit_none">Sem limite</string>
+    <string name="st_minutes">%1$d min</string>
+    <string name="st_free">Sem restrição</string>
+    <string name="st_blocked_day">Bloqueado o dia todo</string>
+    <string name="st_pick_hours">Escolher horários permitidos…</string>
+    <string name="st_start">Permitido a partir de</string>
+    <string name="st_end">Permitido até</string>
+    <string name="st_clear">Remover todas as regras</string>
+    <string name="st_off">Desativado</string>
+    <string name="st_summary_limit">%1$d min por dia</string>
+    <string name="st_summary_hours">Horários permitidos definidos</string>
+    <string name="st_need_code">Defina primeiro um código parental, senão essas regras podem ser contornadas.</string>
+    <string name="st_pin_title">Código parental</string>
+    <string name="st_block_outside">A exibição não é permitida agora</string>
+    <string name="st_block_limit">O tempo de exibição de hoje acabou</string>
+    <string name="st_block_next">Próxima exibição: %1$s</string>
+    <string name="st_block_none">Nenhum horário de exibição previsto nesta semana.</string>
+    <string name="st_unlock">Desbloquear com o código parental</string>
+    <string name="st_unlock_extra">+30 minutos</string>
+    <string name="st_unlock_today">Por hoje (uma vez)</string>
+    <string name="st_warn">A exibição termina em %1$d min</string>
 </resources>
