@@ -292,7 +292,7 @@ class CatalogGridViewModel @Inject constructor(
             val cat = t?.cat
             val genre = if (t?.source == CategorySource.GENRES) cat else null
             if (p == null || t == null || f == null) flowOf(PagingData.empty())
-            else if (k == CatalogKind.MOVIES) Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
+            else if (k == CatalogKind.MOVIES) Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(42, 28, 84)) {
                 if (genre != null) when (f.sort) {
                     CatalogFilter.Sort.RATING -> movieDao.pagedGenreByRating(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.TITLE -> movieDao.pagedGenreByTitle(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
@@ -308,7 +308,7 @@ class CatalogGridViewModel @Inject constructor(
                 }
                 else if (cat == null) movieDao.pagedAll(p, lv.useLang, lv.langs) else movieDao.pagedForCategory(p, cat, lv.useLang, lv.langs)
             }.flow.map { pd -> val lib = trakt.library.value; pd.map { PosterItem(it.id, it.title, it.poster, it.year, it.rating, it.lang, lib.isMovieWatched(it.title, it.year)) } }
-            else Pager(PagingConfig(pageSize = 42, prefetchDistance = 28, initialLoadSize = 84, enablePlaceholders = false)) {
+            else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(42, 28, 84)) {
                 if (genre != null) when (f.sort) {
                     CatalogFilter.Sort.RATING -> seriesDao.pagedGenreByRating(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)
                     CatalogFilter.Sort.TITLE -> seriesDao.pagedGenreByTitle(p, genre, lv.useLang, lv.langs, f.minRating, f.yearFrom, f.yearTo)

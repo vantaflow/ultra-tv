@@ -131,7 +131,6 @@ class CatalogRepository @Inject constructor(
     fun channelsWithLogo(pid: Long, limit: Int): Flow<List<ChannelEntity>> = channelDao.observeTopWithLogo(pid, limit)
     fun favoriteChannels(pid: Long, limit: Int): Flow<List<ChannelEntity>> =
         profiles.currentId.flatMapLatest { channelDao.observeFavoritesTop(pid, limit, it) }
-    fun channels(pid: Long): Flow<List<ChannelEntity>> = channelDao.observeForProvider(pid)
 
     fun topMovies(pid: Long, limit: Int): Flow<List<MovieEntity>> = movieDao.observeTop(pid, limit)
     fun topSeries(pid: Long, limit: Int): Flow<List<SeriesEntity>> = seriesDao.observeTop(pid, limit)

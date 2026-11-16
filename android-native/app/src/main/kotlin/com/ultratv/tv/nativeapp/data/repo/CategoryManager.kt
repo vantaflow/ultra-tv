@@ -45,7 +45,8 @@ class CategoryManager @Inject constructor(
         return combine(categoryDao.observeOrdered(pid, kind), throttled) { cats, cnt -> rows(cats, cnt, query) }.conflate()
     }
 
-    fun observeTotals(pid: Long, kind: String): Flow<Int> = categoryDao.observeOrdered(pid, kind).let { f -> kotlinx.coroutines.flow.flow { f.collect { emit(it.size) } } }
+    /** Total de catégories d'un type : un COUNT SQL (la liste complète des catégories n'est plus chargée pour en prendre la taille). */
+    fun observeTotals(pid: Long, kind: String): Flow<Int> = categoryDao.observeCount(pid, kind)
 
     suspend fun setEnabled(pid: Long, kind: String, ids: List<String>, enabled: Boolean) {
         if (ids.isEmpty()) return

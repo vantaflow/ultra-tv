@@ -200,7 +200,7 @@ class LiveViewModel @Inject constructor(
         .flatMapLatest { arr ->
             @Suppress("UNCHECKED_CAST") val id = arr[0] as Long?; val cat = arr[1] as String; val hidden = arr[2] as Set<String>; val lv = arr[3] as com.ultratv.tv.nativeapp.data.repo.LangView; val custom = arr[6] as Set<String>
             if (id == null) flowOf(PagingData.empty())
-            else Pager(PagingConfig(pageSize = 40, prefetchDistance = 24, initialLoadSize = 60, enablePlaceholders = false)) {
+            else Pager(com.ultratv.tv.nativeapp.data.repo.PagingMemory.config(40, 24, 60)) {
                 when {
                     cat == CATEGORY_FAVORITES -> if (com.ultratv.tv.nativeapp.data.repo.ChannelOrder.FAVORITES_SCOPE in custom) channelDao.pagedFavoritesOrdered(id, lv.useLang, lv.langs, profiles.currentIdNow) else channelDao.pagedFavorites(id, lv.useLang, lv.langs, profiles.currentIdNow)
                     cat == CATEGORY_ALL -> {
@@ -350,7 +350,7 @@ class LiveViewModel @Inject constructor(
                     CATEGORY_ALL -> if (ranked.value && channel.catRank > 0) com.ultratv.tv.nativeapp.data.repo.LiveAllPagingSource.window(channelDao, channel)
                     else {
                         // Repli (ordre pas encore précalculé) : ancienne méthode, même ordre.
-                        val rank = channelDao.orderedAllIdsLegacy(channel.providerId).indexOf(channel.id).coerceAtLeast(0)
+                        val rank = channelDao.rankAllLegacy(channel.providerId, channel.id)
                         channelDao.windowAllLegacy(channel.providerId, 401, (rank - 200).coerceAtLeast(0))
                     }
                     else -> {
