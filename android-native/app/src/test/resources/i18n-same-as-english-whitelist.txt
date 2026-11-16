@@ -148,3 +148,5 @@ fr|st_unlock_extra
 es|st_minutes
 es|handoff_no
 fr|prof_sources
+fr|sport_tbl_pts
+es|sport_tbl_pts

@@ -61,6 +61,10 @@ export interface Prefs {
   dns: DnsSettings;
   /** Rubrique Sport (entrée du menu + rangée de l'accueil), tirée du guide de la source. Désactivée par défaut. */
   sportSection: boolean;
+  /** Espace Compétitions : ordre et masquage des ligues PAR PROFIL (codage de lib/sportLeagues, id du profil → chaîne) ; local à l'appareil. */
+  sportLeagues: Record<string, string>;
+  /** Espace Compétitions : mode sans spoiler par profil (id du profil → actif). */
+  sportNoSpoiler: Record<string, boolean>;
   /** Fanart.tv / TVmaze via wsrv.nl (images plus légères). Activé par défaut. */
   optimizeImages: boolean;
   /** Barre latérale repliée (icônes seules) ; dépliée par défaut. */
@@ -80,7 +84,7 @@ const defaults = (): Prefs => ({
   autoPreview: true, autoplayNext: true, preferMp4: true, liveFormat: "m3u8", syncOn: "launch",
   volume: 1, muted: false, fit: "contain", animations: "auto", liveCat: {}, channelLogos: true, guideCol: "normal",
   dns: { mode: "system", dohPreset: "cloudflare", dohUrl: "", primary: "", secondary: "" },
-  sportSection: false, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/",
+  sportSection: false, sportLeagues: {}, sportNoSpoiler: {}, optimizeImages: true, railCollapsed: false, startScreen: "home", lastScreen: "/",
 });
 
 function load(): Prefs {

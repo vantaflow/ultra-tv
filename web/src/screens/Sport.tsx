@@ -24,6 +24,7 @@ import { Img } from "@/ui/Img";
 import { ProgActions, useRecordingIds, useReminderIds } from "@/ui/ProgActions";
 import { StateCard, hhmm } from "@/ui/common";
 import { NoSource } from "./states";
+import { SportLeagues } from "./SportLeagues";
 
 export const KIND_LABEL: Record<SportKind, Key> = {
   football: "sport.kind.football", basket: "sport.kind.basket", tennis: "sport.kind.tennis", combat: "sport.kind.combat", motor: "sport.kind.motor", rugby: "sport.kind.rugby",
@@ -139,6 +140,8 @@ function SportInner({ source }: { source: Source }) {
   const now = useNow(30_000);
   const data = useSportData(source);
   const [kind, setKind] = useState<SportKind | null>(null);
+  // Deux espaces : « Programme TV » (le guide de l'utilisateur) et « Compétitions » (scores, classements, feuilles de match).
+  const [leagues, setLeagues] = useState(false);
   const reminded = useReminderIds();
   const recorded = useRecordingIds();
 
@@ -159,16 +162,20 @@ function SportInner({ source }: { source: Source }) {
     <div className="page sport">
       <header className="sp-head">
         <h1>{t("nav.sport")}</h1>
-        {data?.hasGuide && kinds.length > 0 && (
+        <div className="chips sp-kinds" role="tablist">
+          <button className="chip" role="tab" aria-selected={!leagues} onClick={() => setLeagues(false)}>{t("sport.modeTv")}</button>
+          <button className="chip" role="tab" aria-selected={leagues} onClick={() => setLeagues(true)}>{t("sport.modeLeagues")}</button>
+        </div>
+        {!leagues && data?.hasGuide && kinds.length > 0 && (
           <HScroll wheel follow={k} className="chips scroll sp-kinds" role="tablist" aria-label={t("sport.disciplines")}>
             <button className="chip" role="tab" aria-selected={k === null} onClick={() => setKind(null)}>{t("common.all")}</button>
             {kinds.map((x) => <button key={x} className="chip" role="tab" aria-selected={k === x} onClick={() => setKind(x)}>{t(KIND_LABEL[x])}</button>)}
           </HScroll>
         )}
-        {data?.hasGuide && <span className="sp-from">{t("sport.fromGuide")}</span>}
+        {!leagues && data?.hasGuide && <span className="sp-from">{t("sport.fromGuide")}</span>}
       </header>
 
-      {!data ? <div className="skeleton" style={{ height: 220 }} aria-label={t("common.loading")} /> : (
+      {leagues ? <SportLeagues source={source} entries={data?.entries ?? []} /> : !data ? <div className="skeleton" style={{ height: 220 }} aria-label={t("common.loading")} /> : (
         <>
           {!data.hasGuide ? (
             <StateCard icon="trophy" title={t("sport.noGuideTitle")} body={t("sport.noGuideBody")} actions={<button className="btn primary" onClick={() => nav("/guide")}>{t("sport.openGuide")}</button>} />

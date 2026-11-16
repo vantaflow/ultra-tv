@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { RateLimitedError, TokenRejectedError, setCloudHttp, sportsTeamGet, type HttpRequest } from "./client";
+import { RateLimitedError, TokenRejectedError, setCloudHttp, sportsDataGet, sportsTeamGet, type HttpRequest } from "./client";
 
 const reply = (status: number, body = "") => async () => ({ status, text: body, retryAfter: "7", etag: "" });
 
@@ -27,5 +27,25 @@ describe("sportsTeamGet (écussons via le Worker)", () => {
     await expect(sportsTeamGet("https://w.example", "t", "X Y")).rejects.toBeInstanceOf(TokenRejectedError);
     setCloudHttp(reply(429));
     await expect(sportsTeamGet("https://w.example", "t", "X Y")).rejects.toBeInstanceOf(RateLimitedError);
+  });
+});
+
+describe("sportsDataGet (scores et classements via le Worker)", () => {
+  afterEach(() => setCloudHttp(null));
+
+  it("demande la ressource avec le jeton d'appareil, sans rien d'autre", async () => {
+    let seen: HttpRequest | null = null;
+    setCloudHttp(async (r) => { seen = r; return { status: 200, text: '{"events":[]}', retryAfter: "", etag: "" }; });
+    expect(await sportsDataGet("https://w.example", "tok", "league?id=ligue1&view=live")).toEqual({ events: [] });
+    expect(seen!.url).toBe("https://w.example/api/sports/league?id=ligue1&view=live");
+    expect(seen!.headers?.authorization).toBe("Bearer tok");
+  });
+
+  it("amont indisponible (502 / 503) ou refusé (404) : null ; 401 et 429 : erreurs", async () => {
+    for (const s of [404, 502, 503]) { setCloudHttp(reply(s)); expect(await sportsDataGet("https://w.example", "t", "match?id=1")).toBeNull(); }
+    setCloudHttp(reply(401));
+    await expect(sportsDataGet("https://w.example", "t", "match?id=1")).rejects.toBeInstanceOf(TokenRejectedError);
+    setCloudHttp(reply(429));
+    await expect(sportsDataGet("https://w.example", "t", "match?id=1")).rejects.toBeInstanceOf(RateLimitedError);
   });
 });

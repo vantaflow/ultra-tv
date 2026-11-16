@@ -587,6 +587,19 @@ export async function sportsTeamGet(base: string, token: string, name: string): 
   return parse<unknown>(r);
 }
 
+/**
+ * Scores, calendriers, classements et feuilles de match (Worker, TheSportsDB en amont). `path` : « league?id=ligue1&view=live|schedule|table »
+ * ou « match?id=2489551 ». Corps JSON brut ; null : Worker sans service ou amont indisponible (404 / 502 / 503). Lève sur 401 / 429 / réseau.
+ */
+export async function sportsDataGet(base: string, token: string, path: string): Promise<unknown | null> {
+  const r = await http({ url: `${base}/api/sports/${path}`, headers: auth(token) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404 || r.status === 502 || r.status === 503) return null;
+  if (r.status < 200 || r.status >= 300) throw new CloudError("sports", r.status);
+  return parse<unknown>(r);
+}
+
 /** Adresse du site à AFFICHER (tableau de bord) pour une adresse d'API : nos hôtes → ultratv.dpdns.org ; un Worker
  *  auto-hébergé garde la sienne. */
 export function siteHost(worker: string): string {
