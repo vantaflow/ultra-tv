@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
+- Réglages (TV) : espace vide supprimé entre le menu de gauche et la liste des rubriques.
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.

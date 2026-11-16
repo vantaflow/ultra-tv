@@ -251,7 +251,7 @@ internal fun SettingsTvLayout(
             Modifier.width(520.design).fillMaxHeight().background(Ux.Rail)
                 .focusProperties { enter = { rubFocus[selected] } }.focusGroup()
                 .verticalScroll(rememberScrollState())
-                .padding(start = 72.design, end = 32.design, top = 48.design, bottom = 32.design),
+                .padding(start = 32.design, end = 32.design, top = 48.design, bottom = 32.design), // même marge que le Direct (72 laissait un vide après le menu)
             verticalArrangement = Arrangement.spacedBy(6.design),
         ) {
             Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 48.spx, maxLines = 1, modifier = Modifier.padding(bottom = 14.design))
