@@ -1661,4 +1661,27 @@
     <string name="fav_export_failed">Xuất thất bại</string>
     <string name="fav_export_share_unavailable">Không có ứng dụng nào để chia sẻ tệp</string>
     <string name="fav_export_done">Đã xuất: %1$s</string>
+    <string name="pex_diag_title">Chẩn đoán luồng</string>
+    <string name="pex_diag_good">Tốt</string>
+    <string name="pex_diag_fair">Trung bình</string>
+    <string name="pex_diag_poor">Kém</string>
+    <string name="pex_diag_unknown">Chưa kết luận</string>
+    <string name="pex_diag_cause_none">Không phát hiện sự cố.</string>
+    <string name="pex_diag_cause_slow">Mạng chậm: tốc độ nhận được vừa đủ cho chất lượng này.</string>
+    <string name="pex_diag_cause_provider">Nhà cung cấp có vẻ giới hạn luồng này: mạng đủ nhanh nhưng hình giật hoặc khởi động chậm.</string>
+    <string name="pex_diag_cause_variant">Đang phát phiên bản thấp hơn dù mạng có thể chịu được bản tốt hơn.</string>
+    <string name="pex_diag_cause_refused">Bị từ chối truy cập: kiểm tra thông tin đăng nhập hoặc kết nối đã được dùng.</string>
+    <string name="pex_diag_cause_notfound">Kênh không còn tồn tại ở nhà cung cấp.</string>
+    <string name="pex_diag_cause_format">Định dạng không được hỗ trợ hoặc bộ giải mã lỗi trên thiết bị này.</string>
+    <string name="pex_diag_cause_device">Thiết bị khó hiển thị luồng này (mất nhiều khung hình).</string>
+    <string name="pex_diag_cause_unknown">Chưa đủ bằng chứng để nêu nguyên nhân.</string>
+    <string name="pex_diag_first_frame">Khung hình đầu</string>
+    <string name="pex_diag_throughput">Tốc độ nhận</string>
+    <string name="pex_diag_variants">Phiên bản</string>
+    <string name="pex_diag_rebuffers">Đệm dữ liệu</string>
+    <string name="pex_diag_errors">Lỗi</string>
+    <string name="pex_diag_no_errors">không có</string>
+    <string name="pex_diag_fallback">Chuyển trình phát</string>
+    <string name="pex_diag_copy">Sao chép báo cáo</string>
+    <string name="pex_diag_copied">Đã sao chép báo cáo (đã ẩn thông tin đăng nhập)</string>
 </resources>

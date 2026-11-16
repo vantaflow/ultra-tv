@@ -1661,4 +1661,27 @@
     <string name="fav_export_failed">ส่งออกล้มเหลว</string>
     <string name="fav_export_share_unavailable">ไม่มีแอปสำหรับแชร์ไฟล์</string>
     <string name="fav_export_done">ส่งออกแล้ว: %1$s</string>
+    <string name="pex_diag_title">การวินิจฉัยสตรีม</string>
+    <string name="pex_diag_good">ดี</string>
+    <string name="pex_diag_fair">ปานกลาง</string>
+    <string name="pex_diag_poor">แย่</string>
+    <string name="pex_diag_unknown">สรุปไม่ได้</string>
+    <string name="pex_diag_cause_none">ไม่พบปัญหา</string>
+    <string name="pex_diag_cause_slow">เครือข่ายช้า: ความเร็วที่ได้รับแทบไม่พอสำหรับคุณภาพนี้</string>
+    <string name="pex_diag_cause_provider">ผู้ให้บริการน่าจะจำกัดสตรีมนี้: เครือข่ายเร็วพอ แต่ภาพกระตุกหรือเริ่มช้า</string>
+    <string name="pex_diag_cause_variant">กำลังเล่นเวอร์ชันคุณภาพต่ำกว่า ทั้งที่เครือข่ายรองรับได้ดีกว่า</string>
+    <string name="pex_diag_cause_refused">ถูกปฏิเสธการเข้าถึง: ตรวจสอบข้อมูลเข้าสู่ระบบหรือดูว่ามีการใช้การเชื่อมต่ออยู่แล้วหรือไม่</string>
+    <string name="pex_diag_cause_notfound">ช่องนี้ไม่มีอยู่ที่ผู้ให้บริการแล้ว</string>
+    <string name="pex_diag_cause_format">รูปแบบไม่รองรับหรือตัวถอดรหัสล้มเหลวบนอุปกรณ์นี้</string>
+    <string name="pex_diag_cause_device">อุปกรณ์แสดงสตรีมนี้ได้ลำบาก (เฟรมหลุดจำนวนมาก)</string>
+    <string name="pex_diag_cause_unknown">หลักฐานไม่พอที่จะระบุสาเหตุ</string>
+    <string name="pex_diag_first_frame">เฟรมแรก</string>
+    <string name="pex_diag_throughput">ความเร็วที่ได้รับ</string>
+    <string name="pex_diag_variants">เวอร์ชัน</string>
+    <string name="pex_diag_rebuffers">การบัฟเฟอร์</string>
+    <string name="pex_diag_errors">ข้อผิดพลาด</string>
+    <string name="pex_diag_no_errors">ไม่มี</string>
+    <string name="pex_diag_fallback">สลับเครื่องเล่น</string>
+    <string name="pex_diag_copy">คัดลอกรายงาน</string>
+    <string name="pex_diag_copied">คัดลอกรายงานแล้ว (ซ่อนข้อมูลเข้าสู่ระบบ)</string>
 </resources>

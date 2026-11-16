@@ -1661,4 +1661,27 @@
     <string name="fav_export_failed">Export selhal</string>
     <string name="fav_export_share_unavailable">Není k dispozici aplikace pro sdílení souboru</string>
     <string name="fav_export_done">Exportováno: %1$s</string>
+    <string name="pex_diag_title">Diagnostika streamu</string>
+    <string name="pex_diag_good">Dobrý</string>
+    <string name="pex_diag_fair">Střední</string>
+    <string name="pex_diag_poor">Špatný</string>
+    <string name="pex_diag_unknown">Neprůkazné</string>
+    <string name="pex_diag_cause_none">Nebyl zjištěn žádný problém.</string>
+    <string name="pex_diag_cause_slow">Pomalá síť: přijímaná rychlost sotva stačí pro tuto kvalitu.</string>
+    <string name="pex_diag_cause_provider">Poskytovatel tento stream zřejmě omezuje: síť je dost rychlá, ale obraz sekává nebo se pomalu spouští.</string>
+    <string name="pex_diag_cause_variant">Přehrává se nižší varianta, i když by síť zvládla lepší.</string>
+    <string name="pex_diag_cause_refused">Přístup odepřen: zkontrolujte přihlašovací údaje nebo zda už není připojení využito.</string>
+    <string name="pex_diag_cause_notfound">Kanál už u poskytovatele neexistuje.</string>
+    <string name="pex_diag_cause_format">Nepodporovaný formát nebo selhání dekodéru na tomto zařízení.</string>
+    <string name="pex_diag_cause_device">Zařízení má potíže s přehráním tohoto streamu (mnoho zahozených snímků).</string>
+    <string name="pex_diag_cause_unknown">Příliš málo údajů pro určení příčiny.</string>
+    <string name="pex_diag_first_frame">První snímek</string>
+    <string name="pex_diag_throughput">Přijímaná rychlost</string>
+    <string name="pex_diag_variants">Varianta</string>
+    <string name="pex_diag_rebuffers">Načítání do vyrovnávací paměti</string>
+    <string name="pex_diag_errors">Chyby</string>
+    <string name="pex_diag_no_errors">žádné</string>
+    <string name="pex_diag_fallback">Přepnutí přehrávače</string>
+    <string name="pex_diag_copy">Kopírovat zprávu</string>
+    <string name="pex_diag_copied">Zpráva zkopírována (přihlašovací údaje skryty)</string>
 </resources>

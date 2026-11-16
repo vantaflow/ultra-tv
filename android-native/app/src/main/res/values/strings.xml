@@ -1679,4 +1679,27 @@
     <string name="fav_export_failed">Export failed</string>
     <string name="fav_export_share_unavailable">No app available to share the file</string>
     <string name="fav_export_done">Exported: %1$s</string>
+    <string name="pex_diag_title">Stream diagnostic</string>
+    <string name="pex_diag_good">Good</string>
+    <string name="pex_diag_fair">Fair</string>
+    <string name="pex_diag_poor">Poor</string>
+    <string name="pex_diag_unknown">Inconclusive</string>
+    <string name="pex_diag_cause_none">No problem detected.</string>
+    <string name="pex_diag_cause_slow">Slow network: the received speed is barely enough for this quality.</string>
+    <string name="pex_diag_cause_provider">The provider seems to limit this stream: your network is fast enough but the stream stutters or starts slowly.</string>
+    <string name="pex_diag_cause_variant">A lower variant is being played although your network could handle a higher one.</string>
+    <string name="pex_diag_cause_refused">Access refused: check your credentials or whether the connection is already in use.</string>
+    <string name="pex_diag_cause_notfound">The stream no longer exists on the provider side.</string>
+    <string name="pex_diag_cause_format">Unsupported format or decoder failure on this device.</string>
+    <string name="pex_diag_cause_device">The device struggles to display this stream (many dropped frames).</string>
+    <string name="pex_diag_cause_unknown">Not enough evidence to name a cause.</string>
+    <string name="pex_diag_first_frame">First frame</string>
+    <string name="pex_diag_throughput">Received speed</string>
+    <string name="pex_diag_variants">Variant</string>
+    <string name="pex_diag_rebuffers">Rebuffering</string>
+    <string name="pex_diag_errors">Errors</string>
+    <string name="pex_diag_no_errors">none</string>
+    <string name="pex_diag_fallback">Engine fallback</string>
+    <string name="pex_diag_copy">Copy report</string>
+    <string name="pex_diag_copied">Report copied (credentials hidden)</string>
 </resources>

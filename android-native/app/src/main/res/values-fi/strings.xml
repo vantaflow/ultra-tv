@@ -1625,4 +1625,27 @@
     <string name="fav_export_failed">Vienti epäonnistui</string>
     <string name="fav_export_share_unavailable">Tiedoston jakamiseen ei ole sovellusta</string>
     <string name="fav_export_done">Viety: %1$s</string>
+    <string name="pex_diag_title">Lähetyksen diagnostiikka</string>
+    <string name="pex_diag_good">Hyvä</string>
+    <string name="pex_diag_fair">Kohtalainen</string>
+    <string name="pex_diag_poor">Huono</string>
+    <string name="pex_diag_unknown">Epävarma</string>
+    <string name="pex_diag_cause_none">Ongelmia ei havaittu.</string>
+    <string name="pex_diag_cause_slow">Hidas verkko: vastaanotettu nopeus tuskin riittää tähän laatuun.</string>
+    <string name="pex_diag_cause_provider">Palveluntarjoaja näyttää rajoittavan lähetystä: verkko on riittävän nopea, mutta kuva pätkii tai käynnistyy hitaasti.</string>
+    <string name="pex_diag_cause_variant">Toistetaan matalampaa versiota, vaikka verkko riittäisi parempaan.</string>
+    <string name="pex_diag_cause_refused">Pääsy evätty: tarkista tunnukset tai onko yhteys jo käytössä.</string>
+    <string name="pex_diag_cause_notfound">Kanavaa ei enää ole palveluntarjoajalla.</string>
+    <string name="pex_diag_cause_format">Muotoa ei tueta tai dekooderi epäonnistui tällä laitteella.</string>
+    <string name="pex_diag_cause_device">Laitteella on vaikeuksia näyttää lähetys (paljon pudonneita ruutuja).</string>
+    <string name="pex_diag_cause_unknown">Todisteita ei ole tarpeeksi syyn nimeämiseen.</string>
+    <string name="pex_diag_first_frame">Ensimmäinen kuva</string>
+    <string name="pex_diag_throughput">Vastaanotettu nopeus</string>
+    <string name="pex_diag_variants">Versio</string>
+    <string name="pex_diag_rebuffers">Puskurointi</string>
+    <string name="pex_diag_errors">Virheet</string>
+    <string name="pex_diag_no_errors">ei yhtään</string>
+    <string name="pex_diag_fallback">Soittimen vaihto</string>
+    <string name="pex_diag_copy">Kopioi raportti</string>
+    <string name="pex_diag_copied">Raportti kopioitu (tunnukset piilotettu)</string>
 </resources>

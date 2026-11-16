@@ -1633,4 +1633,27 @@
     <string name="fav_export_failed">Eksport nie powiódł się</string>
     <string name="fav_export_share_unavailable">Brak aplikacji do udostępnienia pliku</string>
     <string name="fav_export_done">Wyeksportowano: %1$s</string>
+    <string name="pex_diag_title">Diagnostyka strumienia</string>
+    <string name="pex_diag_good">Dobry</string>
+    <string name="pex_diag_fair">Średni</string>
+    <string name="pex_diag_poor">Zły</string>
+    <string name="pex_diag_unknown">Niejednoznaczny</string>
+    <string name="pex_diag_cause_none">Nie wykryto problemów.</string>
+    <string name="pex_diag_cause_slow">Wolna sieć: odbierana prędkość ledwo wystarcza na tę jakość.</string>
+    <string name="pex_diag_cause_provider">Dostawca wydaje się ograniczać ten strumień: sieć jest dość szybka, ale obraz się zacina lub wolno startuje.</string>
+    <string name="pex_diag_cause_variant">Odtwarzany jest niższy wariant, choć sieć obsłużyłaby lepszy.</string>
+    <string name="pex_diag_cause_refused">Odmowa dostępu: sprawdź dane logowania lub czy połączenie nie jest już używane.</string>
+    <string name="pex_diag_cause_notfound">Kanał nie istnieje już u dostawcy.</string>
+    <string name="pex_diag_cause_format">Nieobsługiwany format lub awaria dekodera na tym urządzeniu.</string>
+    <string name="pex_diag_cause_device">Urządzenie ma problem z wyświetleniem tego strumienia (wiele utraconych klatek).</string>
+    <string name="pex_diag_cause_unknown">Za mało danych, by wskazać przyczynę.</string>
+    <string name="pex_diag_first_frame">Pierwsza klatka</string>
+    <string name="pex_diag_throughput">Odbierana prędkość</string>
+    <string name="pex_diag_variants">Wariant</string>
+    <string name="pex_diag_rebuffers">Buforowanie</string>
+    <string name="pex_diag_errors">Błędy</string>
+    <string name="pex_diag_no_errors">brak</string>
+    <string name="pex_diag_fallback">Zmiana silnika</string>
+    <string name="pex_diag_copy">Kopiuj raport</string>
+    <string name="pex_diag_copied">Skopiowano raport (dane logowania ukryte)</string>
 </resources>

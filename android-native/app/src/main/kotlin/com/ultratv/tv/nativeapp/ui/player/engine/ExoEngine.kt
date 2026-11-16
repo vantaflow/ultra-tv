@@ -41,6 +41,9 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     private val _events = MutableSharedFlow<EngineEvent>(extraBufferCapacity = 32, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     override val events: Flow<EngineEvent> = _events
 
+    /** Mesureur de débit du lecteur (diagnostic du flux : débit réellement reçu). */
+    private var bandwidthMeter: androidx.media3.exoplayer.upstream.BandwidthMeter? = null
+
     private val player: ExoPlayer
     // TextureView : le type de surface d'une PlayerView ne se règle qu'à l'inflation (attribut app:surface_type).
     private val playerView: PlayerView = (
@@ -132,6 +135,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         // Débit initial : ExoPlayer démarre à ~1-2 Mb/s sans mesure (donc la variante la plus basse, 240p-360p) ; voir [TrackPolicy].
         val bandwidth = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(ctx)
             .setInitialBitrateEstimate(TrackPolicy.initialBitrateEstimate(config.maxVideoBitrateBps, config.maxQuality)).build()
+        bandwidthMeter = bandwidth
         // Montée de qualité plus tôt (4 s de tampon au lieu de 10 s) ; le reste de l'adaptation est celui de Media3.
         val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(
             ctx, androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(TrackPolicy.MIN_INCREASE_BUFFER_MS, 25_000, 25_000, 0.7f),
@@ -385,6 +389,14 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     }
 
     override fun loadProgress(): Long = runCatching { player.bufferedPosition }.getOrDefault(-1L)
+    /** Variantes vidéo du flux (HLS / DASH) : (hauteur, kb/s), sans doublon, formats lisibles seulement. */
+    private fun videoVariants(): List<com.ultratv.tv.nativeapp.ui.player.StreamDiagnostic.Variant> = runCatching {
+        player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.flatMap { g ->
+            (0 until g.length).map { g.getTrackFormat(it) }
+        }.filter { it.height > 0 && it.bitrate > 0 }
+            .map { com.ultratv.tv.nativeapp.ui.player.StreamDiagnostic.Variant(it.height, it.bitrate / 1000) }.distinct()
+    }.getOrDefault(emptyList())
+
     override fun stats(): EngineStats {
         val v = player.videoFormat; val a = player.audioFormat
         val counters = player.videoDecoderCounters
@@ -397,6 +409,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             droppedFrames = counters?.let { it.maxConsecutiveDroppedBufferCount.let { _ -> it.droppedBufferCount } },
             hardwareDecoding = hw?.let { config.decoder != DecoderMode.SOFTWARE },
             hdrKind = v?.let { HdrOutput.contentKind(it.colorInfo?.colorTransfer, it.sampleMimeType) },
+            bandwidthKbps = bandwidthMeter?.bitrateEstimate?.takeIf { it > 0 }?.div(1000)?.toInt(),
+            variants = videoVariants(),
         )
     }
 

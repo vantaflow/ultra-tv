@@ -54,6 +54,10 @@ data class EngineStats(
     val hardwareDecoding: Boolean? = null,
     /** « hdr10 », « hlg » ou « dv » si le flux est HDR ; null sinon / inconnu. */
     val hdrKind: String? = null,
+    /** Débit réellement reçu (estimation du moteur), kb/s ; null si le moteur ne l'expose pas (LibVLC). */
+    val bandwidthKbps: Int? = null,
+    /** Variantes vidéo proposées par le flux adaptatif (hauteur, kb/s) ; vide si inconnues ou flux unique. */
+    val variants: List<com.ultratv.tv.nativeapp.ui.player.StreamDiagnostic.Variant> = emptyList(),
 )
 
 /** Paramètres communs à tous les moteurs. */
