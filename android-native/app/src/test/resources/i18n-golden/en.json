@@ -1711,5 +1711,6 @@
   "SimpleStrings.getFound()": "Found",
   "SimpleStrings.getOrType()": "Or type it:",
   "SimpleStrings.getHoldFav()": "Hold: favourite",
-  "SimpleStrings.getHoldRemove()": "Hold: remove"
+  "SimpleStrings.getHoldRemove()": "Hold: remove",
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choose where the app opens: Home, a section, or the last screen you were on (details, player, search and settings are never restored)."
 }

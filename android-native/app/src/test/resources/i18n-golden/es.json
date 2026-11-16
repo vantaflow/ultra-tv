@@ -1711,5 +1711,6 @@
   "SimpleStrings.getFound()": "Encontrado",
   "SimpleStrings.getOrType()": "O escríbelo:",
   "SimpleStrings.getHoldFav()": "Mantener: favorito",
-  "SimpleStrings.getHoldRemove()": "Mantener: quitar"
+  "SimpleStrings.getHoldRemove()": "Mantener: quitar",
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Elija d\u00f3nde se abre la app: Inicio, una secci\u00f3n o la \u00faltima pantalla usada (fichas, reproductor, b\u00fasqueda y ajustes nunca se restauran)."
 }

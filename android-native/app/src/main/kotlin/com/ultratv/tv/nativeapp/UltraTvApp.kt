@@ -86,7 +86,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                 // Selon la classe de tas de l'appareil (pas la grande classe de largeHeap) : voir ImageMemoryPolicy.
                 val am = getSystemService(ACTIVITY_SERVICE) as android.app.ActivityManager
                 MemoryCache.Builder()
-                    .maxSizeBytes(com.ultratv.tv.nativeapp.data.memory.ImageMemoryPolicy.maxBytes(am.memoryClass, am.isLowRamDevice, economy).toInt())
+                    .maxSizeBytes(com.ultratv.tv.nativeapp.data.memory.ImageMemoryPolicy.maxBytes(am.memoryClass, am.isLowRamDevice, economy).toLong())
                     .build()
             }
             .diskCache {
