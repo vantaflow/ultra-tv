@@ -150,6 +150,8 @@ data class OsdActionInputs(
 object OsdIcons {
     const val PLAY = "M7 4v16l13-8z"
     const val PAUSE = "M7 4h3.5v16H7zM13.5 4H17v16h-3.5z"
+    const val PREV = "M6 5v14M20 5L9 12l11 7z"
+    const val NEXT = "M18 5v14M4 5l11 7L4 19z"
     const val AUDIO = "M4 6h16M4 12h10M4 18h6"
     const val SUBS = "M3 6h18v12H3zM7 11h3M12 11h5M7 15h6"
     const val ASPECT = "M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4"

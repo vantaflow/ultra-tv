@@ -1007,7 +1007,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     // (plus de zapping, OK = pause).
     var controlsEngaged by remember { mutableStateOf(false) }
     LaunchedEffect(overlayVisible) { if (!overlayVisible) controlsEngaged = false }
-    LaunchedEffect(controlsEngaged, isLive) { hideAfterMs = if (isLive && controlsEngaged) OSD_HIDE_FULL_MS else OSD_HIDE_BANNER_MS }
+    // Téléphone : « Plus » ouvre les commandes complètes de l'OSD (barre minimale par défaut) ; refermé avec la surcouche.
+    var osdMore by remember { mutableStateOf(false) }
+    LaunchedEffect(overlayVisible) { if (!overlayVisible) osdMore = false }
+    LaunchedEffect(controlsEngaged, isLive, osdMore) { hideAfterMs = if (isLive && (controlsEngaged || osdMore)) OSD_HIDE_FULL_MS else OSD_HIDE_BANNER_MS }
     // OSD complet à la télécommande ; étage qui porte le focus (Retour : récents → barre → fermeture).
     val osdOpen = isLive && overlayVisible && controlsEngaged
     var osdStage by remember { mutableStateOf(OsdStage.CONTROLS) }
@@ -1369,6 +1372,8 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                             if (osdState != null && !portrait) LiveOsd(
                                 state = osdState, focus = osdFocus, onAction = onOsdAction, onRecent = onOsdRecent, onNextAction = onOsdNext,
                                 backDescription = M.a11yBack, onBack = leave,
+                                minimal = !osdMore, onMore = { osdMore = true; touch() }, moreLabel = M.moreInfo, previousLabel = M.previousChannel, nextLabel = M.nextChannel,
+                                onZap = { fwd -> touch(); scope.launch { vm.zap(fwd)?.let { currentUrl = it } } },
                                 topEnd = if (lockedLandscape) ({ com.ultratv.tv.nativeapp.ui.mobile.PlayerRoundButton(com.ultratv.tv.nativeapp.ui.mobile.MobileIcons.Fullscreen, M.rotateHint) { context.lockOrientation(false) } }) else null,
                             ) else MobileControls(
                                 isLive = isLive && !tsActive, badge = badge, title = headTitle, subtitle = thenLine, playing = playing,
