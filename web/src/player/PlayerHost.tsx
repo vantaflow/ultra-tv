@@ -49,6 +49,7 @@ import { clampSeek, TX_LABEL, txClock, txUrl, type TxState } from "./transcode";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
 import { stepIndex } from "@/lib/episodePanel";
+import { useScreenTime } from "@/state/screenTime";
 
 /** HDR annoncé dans le nom de la chaîne (aucune autre source d'information côté Direct). */
 const HDR_RE = /\b(HDR10\+?|HDR|HLG|DOLBY ?VISION)\b/i;
@@ -89,6 +90,12 @@ export function PlayerHost() {
   modeRef.current = mode;
 
   const [state, setState] = useState<PlayState>("idle");
+  // Temps d'écran : seule la lecture effective compte (pas les menus).
+  const hasTarget = !!target;
+  useEffect(() => {
+    useScreenTime.getState().setPlaying(state === "playing" && hasTarget);
+    return () => useScreenTime.getState().setPlaying(false);
+  }, [state, hasTarget]);
   const [error, setError] = useState(false);
   /** Flux protégé (DRM) : aucune lecture tentée, message dédié sans bouton « Réessayer ». */
   const [drmBlocked, setDrmBlocked] = useState(false);

@@ -3,12 +3,16 @@
 
 import { LANGS } from "@/i18n/lang";
 import type { Profile } from "@/state/prefs";
+import { decode as decodeScreenTime, encode as encodeScreenTime } from "@/lib/screenTime";
 
 export const DEFAULT_PROFILE_NAME = "Principal";
 const NAME_MAX = 24;
 
-/** Profil tel qu'échangé avec le Worker : `on: false` = supprimé, `f` = ancien nom si renommé, `l` = langue (« system » = celle de l'appareil). */
-export interface SharedProfile { n: string; c: number; k: boolean; at: number; on: boolean; f?: string; l?: string }
+/**
+ * Profil tel qu'échangé avec le Worker : `on: false` = supprimé, `f` = ancien nom si renommé, `l` = langue (« system » = celle de l'appareil),
+ * `t` = horaires / temps d'écran (absent = ancienne version : on n'y touche pas ; « » = règles retirées).
+ */
+export interface SharedProfile { n: string; c: number; k: boolean; at: number; on: boolean; f?: string; l?: string; t?: string }
 /** Journal local : date de la dernière modification par nom, tombes, ancien nom d'un renommage. Clé = nom sans casse. */
 export interface LogEntry { n: string; at: number; on: boolean; from?: string }
 export type ProfileLog = Record<string, LogEntry>;
@@ -67,7 +71,7 @@ export function diffLog(before: Profile[], after: Profile[], log: ProfileLog, no
     if (k !== profileKey(wireName(b))) {
       out = logSet(out, wireName(b), now, false);
       out = logSet(out, wireName(a), now, true, wireName(b));
-    } else if (a.name !== b.name || a.color !== b.color || !!a.kids !== !!b.kids || a.lang !== b.lang) {
+    } else if (a.name !== b.name || a.color !== b.color || !!a.kids !== !!b.kids || a.lang !== b.lang || (a.screenTime ?? "") !== (b.screenTime ?? "")) {
       // Un renommage pas encore échangé reste annoncé (ancien nom gardé).
       out = logSet(out, wireName(a), now, true, out[k]?.on ? out[k]?.from : undefined);
     }
@@ -83,11 +87,14 @@ export function localEntries(profiles: Profile[], log: ProfileLog): SharedProfil
   const live = profiles.map((p): SharedProfile => {
     const l = log[profileKey(wireName(p))];
     const e = l?.on ? l : undefined;
-    return { n: wireName(p), c: hexToArgb(p.color), k: !!p.kids, at: e?.at ?? createdAt(p), on: true, ...(e?.from ? { f: e.from } : {}), ...(p.lang ? { l: p.lang } : {}) };
+    return { n: wireName(p), c: hexToArgb(p.color), k: !!p.kids, at: e?.at ?? createdAt(p), on: true, ...(e?.from ? { f: e.from } : {}), ...(p.lang ? { l: p.lang } : {}), t: p.screenTime ?? "" };
   });
   const tombs = Object.values(log).filter((e) => !e.on && !names.has(profileKey(e.n))).map((e): SharedProfile => ({ n: e.n, c: 0, k: false, at: e.at, on: false }));
   return [...live, ...tombs];
 }
+
+/** Règles reçues, normalisées (jamais de texte du réseau tel quel). */
+const cleanT = (t: string) => encodeScreenTime(decodeScreenTime(t));
 
 /** Ce qu'il faut appliquer ici d'après la liste fusionnée reçue : le plus récent gagne, par nom. */
 export function plan(profiles: Profile[], log: ProfileLog, remote: SharedProfile[]): ProfileAction[] {
@@ -113,7 +120,8 @@ export function plan(profiles: Profile[], log: ProfileLog, remote: SharedProfile
       if (!l) { if (r.at > localAt || !log[k]) out.push({ type: "create", p: r }); }
       else if (r.at > localAt) {
         const lw = langFromWire(r.l);
-        if (!sameColor(l.color, r.c) || !!l.kids !== r.k || (lw && lw.lang !== l.lang)) out.push({ type: "update", id: l.id, p: r });
+        const tDiff = r.t !== undefined && (l.screenTime ?? "") !== cleanT(r.t);
+        if (!sameColor(l.color, r.c) || !!l.kids !== r.k || (lw && lw.lang !== l.lang) || tDiff) out.push({ type: "update", id: l.id, p: r });
       }
     } else if (l && r.at > localAt) out.push({ type: "delete", id: l.id, p: r });
   }
@@ -130,6 +138,7 @@ export function applyActions(profiles: Profile[], profileId: string, log: Profil
     const next: Profile = { ...p, name, color: argbToHex(r.c) ?? p.color };
     if (r.k) next.kids = true; else delete next.kids;
     if (lw) { if (lw.lang) next.lang = lw.lang; else delete next.lang; }
+    if (r.t !== undefined) { const t = cleanT(r.t); if (t) next.screenTime = t; else delete next.screenTime; }
     return next;
   };
   let seq = 0;
@@ -168,7 +177,7 @@ export function parseRemote(raw: unknown): SharedProfile[] {
     const at = Number(e.at);
     if (!n || !Number.isFinite(at) || at <= 0) continue;
     const f = typeof e.f === "string" ? e.f.trim().slice(0, NAME_MAX).trim() : "";
-    out.push({ n, c: Number.isInteger(e.c) ? (e.c as number) : 0, k: e.k === true, at, on: e.on !== false, ...(f ? { f } : {}), ...(typeof e.l === "string" && e.l ? { l: e.l } : {}) });
+    out.push({ n, c: Number.isInteger(e.c) ? (e.c as number) : 0, k: e.k === true, at, on: e.on !== false, ...(f ? { f } : {}), ...(typeof e.l === "string" && e.l ? { l: e.l } : {}), ...(typeof e.t === "string" ? { t: e.t.slice(0, 400) } : {}) });
   }
   return out;
 }

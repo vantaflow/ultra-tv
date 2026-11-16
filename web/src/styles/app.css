@@ -547,3 +547,9 @@ input[type="checkbox"]:indeterminate::after { content: ""; width: 0.55rem; heigh
 .acc-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.75rem; }
 
 .pstate .reconnecting { margin: 0.75rem 0 0; color: #C9CDD6; font-size: 0.875rem; font-weight: 600; text-align: center; }
+
+/* ---------- Temps d'écran : blocage et avertissement ---------- */
+.st-block { position: fixed; inset: 0; z-index: 79; background: var(--bg); color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; padding: 2rem; text-align: center; }
+.st-block h1 { font-size: clamp(1.75rem, 4vw, 3rem); }
+.st-block .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; margin-top: 0.5rem; }
+.st-warn { position: fixed; top: 1.25rem; left: 50%; transform: translateX(-50%); z-index: 78; background: var(--surface); color: var(--text); padding: 0.875rem 1.5rem; border-radius: 1rem; box-shadow: var(--shadow); font-weight: 600; }

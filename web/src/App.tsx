@@ -10,6 +10,8 @@ import { ErrorBoundary } from "@/ui/ErrorBoundary";
 import { Rail } from "@/ui/Rail";
 import { Toasts } from "@/ui/common";
 import { SyncPill } from "@/ui/SyncPill";
+import { ScreenTimeGate } from "@/ui/ScreenTimeGate";
+import { startScreenTime } from "@/state/screenTime";
 import { resolveTheme, resolveThemeAttr, usePrefs } from "@/state/prefs";
 import { accentVars } from "@/lib/themes";
 import { startSourcesWatcher, useActiveSource, useSources } from "@/state/sources";
@@ -80,6 +82,8 @@ function Effects() {
     void initTransport();
     // Rappels et enregistrements : reprogrammés au lancement (persistés dans Dexie).
     const stopSchedule = startScheduler();
+    // Temps d'écran du profil : compteur de lecture effective (local à l'appareil) et décision de blocage.
+    const stopScreenTime = startScreenTime();
     // DNS personnalisé : le réglage local fait foi, le processus principal est réaligné au démarrage.
     if (isElectron()) void pushDns(normalizeDns(usePrefs.getState().dns));
     const on = () => useUi.getState().setOnline(true);
@@ -94,6 +98,7 @@ function Effects() {
       stopCloud?.();
       stopAnon?.();
       stopSchedule();
+      stopScreenTime();
     };
   }, []);
 
@@ -256,6 +261,7 @@ export function App() {
         <Effects />
         <Shell />
         <PlayerHost />
+        <ScreenTimeGate />
       </HashRouter>
     </ErrorBoundary>
   );

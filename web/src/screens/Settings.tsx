@@ -38,6 +38,7 @@ import { readAnonTelemetry, writeAnonTelemetry } from "@/cloud/anon";
 import { SourceForm, type SourceKind } from "./SourceForm";
 import { TraktSettings } from "@/trakt/TraktUi";
 import { DnsSettings } from "./DnsSettings";
+import { ParentalCodeRow, ScreenTimeButton } from "./ScreenTimeEditor";
 
 type Section = "sources" | "cloud" | "display" | "playback" | "sync" | "categories" | "language" | "profiles" | "about";
 const SECTIONS: { id: Section; icon: IconName; key: "set.sources" }[] = [
@@ -613,10 +614,13 @@ function ProfilesPane() {
         <div key={pr.id} className="src-card">
           <span className="avatar" style={{ background: pr.color }}>{(pr.name || t("profile.main")).slice(0, 1).toUpperCase()}</span>
           <span className="grow"><b>{pr.name || t("profile.main")}</b>{p.profileId === pr.id && <div className="meta">{t("set.active")}</div>}</span>
+          <ScreenTimeButton profile={pr} />
           {p.profileId !== pr.id && <button className="btn sm" onClick={() => p.set({ profileId: pr.id })}>{t("set.makeActive")}</button>}
           {i > 0 && <button className="btn sm danger" aria-label={t("common.delete")} onClick={() => { void deleteProfileData(pr.id); p.set({ profiles: p.profiles.filter((x) => x.id !== pr.id), profileId: p.profileId === pr.id ? p.profiles[0]!.id : p.profileId }); }}><Icon name="trash" size={16} /></button>}
         </div>
       ))}
+      <ParentalCodeRow />
+      <p className="meta">{t("st.sub")}</p>
       <div style={{ display: "flex", gap: 10 }}>
         <input className="input" style={{ maxWidth: "20rem" }} placeholder={t("set.profileName")} value={name} onChange={(e) => setName(e.target.value)} aria-label={t("set.profileName")} />
         <button className="btn primary" disabled={!name.trim()} onClick={() => { p.set({ profiles: [...p.profiles, { id: `p${Date.now()}`, name: name.trim(), color: PROFILE_COLORS[p.profiles.length % PROFILE_COLORS.length]! }] }); setName(""); }}>{t("set.addProfile")}</button>

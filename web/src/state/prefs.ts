@@ -7,8 +7,12 @@ import { parseStartScreen, type StartScreen } from "@/lib/startScreen";
 import { DEFAULT_ACCENT, parseAccent, parseTheme, themeAttr, type AccentId, type ThemeId } from "@/lib/themes";
 
 export type Theme = ThemeId;
-/** `kids` et `lang` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
-export interface Profile { id: string; name: string; color: string; kids?: boolean; lang?: Lang }
+/** `kids`, `lang` et `screenTime` viennent de la synchro entre appareils : « enfants » est conservé tel quel (aucun effet ici), `lang` = langue de l'interface du profil (absent = celle de l'appareil). */
+export interface Profile {
+  id: string; name: string; color: string; kids?: boolean; lang?: Lang;
+  /** Horaires de visionnage et temps d'écran (codage de lib/screenTime) ; absent = aucune règle. Synchronisé avec le profil, le décompte reste local. */
+  screenTime?: string;
+}
 
 /** Langue effective : celle du profil courant si elle existe, sinon celle de l'appareil. */
 export function effectiveLang(profiles: Profile[], profileId: string, deviceLang: Lang): Lang {
