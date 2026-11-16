@@ -661,14 +661,14 @@ private fun ChannelRow(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(now.startMs), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
                         Spacer(Modifier.width(12.design))
-                        Text(now.title, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        Text(now.title.replace(WS_RUN, " ").trim(), color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
                     com.ultratv.tv.nativeapp.ui.common.EpgProgressBar(now.startMs, now.endMs, clock, heightDp = 3f, track = if (f) Color(0xFFD4D4D8) else Ux.Surface2)
                 } else Text("", maxLines = 1, fontSize = 22.spx)
                 if (next != null) Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(next.startMs), color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, softWrap = false)
                     Spacer(Modifier.width(12.design))
-                    Text(next.title, color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    Text(next.title.replace(WS_RUN, " ").trim(), color = sub, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 }
             }
         }
