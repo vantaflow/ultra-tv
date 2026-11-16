@@ -496,7 +496,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             )
         }
         OpenDialog.SHARE -> selected?.let { p ->
-            ShareDevicesDialog(cloud.devices, cloud.selfId, null, onConfirm = { sel -> vm.share(p.id, sel); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
+            ShareDevicesDialog(cloud.devices, cloud.selfId, vm.assignOf(p.id), onConfirm = { sel -> vm.share(p.id, sel); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         }
         OpenDialog.RENAME_DEVICE -> RenameDeviceDialog(cloud.selfName, onSave = { vm.renameThisDevice(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         else -> Unit

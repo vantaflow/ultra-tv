@@ -3,7 +3,7 @@ import { START_SCREENS, type StartScreen } from "@/lib/startScreen";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { db, getSetting, setSetting } from "@/db/db";
-import { deleteSource, saveSource } from "@/db/sources";
+import { saveSource } from "@/db/sources";
 import { categoriesOf, channelsCol } from "@/db/queries";
 import { getOrder, saveOrder } from "@/db/channelOrder";
 import { addHidden, listHidden, removeHidden, removeHiddenFromCatalog } from "@/db/hidden";
@@ -33,7 +33,7 @@ import { VList, arrayRows } from "@/ui/Virtual";
 import { errorKey } from "./Onboarding";
 import { convertToXtream } from "@/lib/xtreamUrl";
 import { cloudAvailable } from "@/cloud/client";
-import { notePrefsChanged, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
+import { notePrefsChanged, removeSource, saveDeviceName, saveWorker, setPrefsSync, shareSource, syncCloud, unpair, unshareSource, useCloud } from "@/cloud/service";
 import { readAnonTelemetry, writeAnonTelemetry } from "@/cloud/anon";
 import { SourceForm, type SourceKind } from "./SourceForm";
 import { TraktSettings } from "@/trakt/TraktUi";
@@ -129,12 +129,12 @@ function SourcesPane() {
               {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
             {!isActive && <button className="btn sm" onClick={() => prefs.set({ activeSourceId: s.id! })}>{t("set.makeActive")}</button>}
-            {cloud.paired && cloud.pushAvailable !== false && s.cloudOrigin !== "cloud" && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && (
+            {cloud.paired && cloud.pushAvailable !== false && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && (
               <button className="btn sm" onClick={() => setShare(s)}><Icon name="globe" size={14} />{t("cloud.share")}</button>
             )}
             {s.cloudOrigin === "local" && <button className="btn sm" onClick={async () => { if (await unshareSource(s)) useUi.getState().toast(t("cloud.unshare")); }}>{t("cloud.unshare")}</button>}
             <button className="btn sm" onClick={() => setEdit(s)}>{t("common.edit")}</button>
-            <button className="btn sm danger" disabled={sync.running} onClick={async () => { if (confirm(t("set.confirmDelete", { n: s.name }))) await deleteSource(s.id!); }} aria-label={t("common.delete")}><Icon name="trash" size={16} /></button>
+            <button className="btn sm danger" disabled={sync.running} onClick={async () => { if (confirm(t("set.confirmDelete", { n: s.name }))) await removeSource(s); }} aria-label={t("common.delete")}><Icon name="trash" size={16} /></button>
           </div>
         );
       })}
@@ -157,8 +157,10 @@ function ShareModal({ source, onClose }: { source: Source; onClose: () => void }
   const t = useT();
   const { devices, deviceId } = useCloud();
   const list = Array.isArray(devices) ? devices : [];
-  const [all, setAll] = useState(true);
-  const [sel, setSel] = useState<Set<string>>(new Set(list.map((d) => d.id)));
+  // Point de départ = affectation actuelle de la source (tous les appareils par défaut).
+  const current = Array.isArray(source.cloudSharedIds) && source.cloudSharedIds.length ? source.cloudSharedIds : null;
+  const [all, setAll] = useState(!current);
+  const [sel, setSel] = useState<Set<string>>(new Set(current ?? list.map((d) => d.id)));
   const [busy, setBusy] = useState(false);
   const submit = async () => {
     setBusy(true);

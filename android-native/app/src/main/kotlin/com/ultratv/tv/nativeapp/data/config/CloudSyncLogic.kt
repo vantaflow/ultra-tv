@@ -168,6 +168,13 @@ object CloudSyncLogic {
      */
     fun connectionWarning(maxConnections: Int, sharedWith: Int): Boolean = maxConnections <= 1 && sharedWith >= 2
 
+    /**
+     * Retire de la réponse les sources que cet appareil vient de supprimer et dont la suppression n'est pas encore
+     * arrivée au compte (hors ligne) : sans cela la fusion les recréerait.
+     */
+    fun withoutPendingDeletes(cfg: CloudConfig, pending: Set<String>): CloudConfig =
+        if (pending.isEmpty()) cfg else cfg.copy(providers = cfg.providers.filter { it.id !in pending })
+
     /** Corps JSON envoyé au Worker pour partager / mettre à jour une source locale. */
     fun uploadBody(l: LocalProvider, shareWith: List<String>?, cloudId: String?): String {
         val o = JSONObject().put("kind", l.kind).put("name", l.name).put("url", l.url)

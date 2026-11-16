@@ -26,8 +26,21 @@ class CloudLinkStore @Inject constructor(@ApplicationContext ctx: Context) {
 
     fun unlink(localId: Long) {
         val cid = cloudIdOf(localId)
-        sp.edit().remove("link_$localId").apply { if (cid != null) { remove("name_$cid"); remove("shared_$cid") } }.apply()
+        sp.edit().remove("link_$localId").apply { if (cid != null) { remove("name_$cid"); remove("shared_$cid"); remove("assign_$cid") } }.apply()
     }
+
+    /** Appareils destinataires d'une source liée : null = tous (ou inconnu), sinon la liste d'identifiants. */
+    fun assignOf(cloudId: String): List<String>? = sp.getString("assign_$cloudId", null)?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+    fun setAssign(cloudId: String, assign: List<String>?) {
+        sp.edit().apply { if (assign == null) remove("assign_$cloudId") else putString("assign_$cloudId", assign.joinToString(",")) }.apply()
+    }
+
+    /**
+     * Suppressions locales de sources liées pas encore transmises au compte (hors ligne) : renvoyées à la synchro suivante,
+     * et la source n'est pas recréée en attendant.
+     */
+    fun pendingDeletes(): Set<String> = sp.getStringSet("pending_del", emptySet()).orEmpty().toSet()
+    fun setPendingDeletes(ids: Set<String>) { sp.edit().putStringSet("pending_del", ids).apply() }
 
     /** Réglages d'affichage : horodatage de la dernière version appliquée/publiée et son empreinte (anti ping-pong). */
     fun prefsAt(cloudId: String): Long = sp.getLong("prefs_at_$cloudId", 0L)

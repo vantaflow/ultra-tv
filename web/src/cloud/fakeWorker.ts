@@ -9,6 +9,8 @@ export interface FakeWorker {
   base: string;
   close: () => void;
   providers: CloudProvider[];
+  /** Pierres tombales : sources supprimées du compte (renvoyées dans /api/config). */
+  removed: string[];
   version: number;
   token: string;
   /** Appairage : marque le code courant comme confirmé sur le tableau de bord. */
@@ -20,6 +22,10 @@ export interface FakeWorker {
     rateLimitNextPoll: boolean;
     shareWithSupported: boolean;
     lastPut?: unknown;
+    /** Dernières requêtes DELETE (chemin + requête) et PUT d'affectation. */
+    deletes: string[];
+    lastAssign?: unknown;
+    hasAssign: boolean;
     devices: { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }[];
     lastRename?: string;
     putCount: number;
@@ -34,8 +40,8 @@ export interface FakeWorker {
 
 export async function startFakeWorker(): Promise<FakeWorker> {
   const w: FakeWorker = {
-    base: "", providers: [], version: 1, token: "tok-1", close: () => undefined, confirm: () => undefined,
-    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, hasRename: true, profiles: [], hasProfiles: true, putCount: 0, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
+    base: "", providers: [], removed: [], version: 1, token: "tok-1", close: () => undefined, confirm: () => undefined,
+    state: { pollCount: 0, rejectToken: false, hasPushEndpoint: true, rateLimitNextPoll: false, shareWithSupported: true, deletes: [], hasAssign: true, hasRename: true, profiles: [], hasProfiles: true, putCount: 0, devices: [{ id: "dev-1", name: "Ce Mac", model: "MacBook", lastSeen: 1760000000000, isCurrent: true }, { id: "d2", name: "Box salon", model: "Android TV", lastSeen: 1759990000000 }] },
   };
   let confirmed = false;
   w.confirm = () => { confirmed = true; };
@@ -61,7 +67,7 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         if (!bearer) return send(401);
         const etag = `"v${w.version}"`;
         if (req.headers["if-none-match"] === etag) return send(304, undefined, { etag });
-        return send(200, { version: w.version, self: "dev-1", devices: w.state.devices, providers: w.providers }, { etag });
+        return send(200, { version: w.version, self: "dev-1", devices: w.state.devices, providers: w.providers, removed: w.removed }, { etag });
       }
       if (url.pathname === "/api/device" && req.method === "PATCH") {
         if (!bearer) return send(401);
@@ -119,12 +125,24 @@ export async function startFakeWorker(): Promise<FakeWorker> {
         w.version++;
         return send(200, { version: w.version, prefs: p.prefs });
       }
+      const asg = url.pathname.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/assign$/);
+      if (asg && req.method === "PUT") {
+        if (!bearer) return send(401);
+        const p = w.providers.find((x) => x.id === asg[1]);
+        if (!p || !w.state.hasAssign) return send(404);
+        w.state.lastAssign = body;
+        p.sharedWith = body.shareWith;
+        w.version++;
+        return send(200, { version: w.version, provider: p });
+      }
       const del = url.pathname.match(/^\/api\/device\/providers\/([0-9a-f]{8})$/);
       if (del && req.method === "DELETE") {
         if (!bearer) return send(401);
         const n = w.providers.length;
         w.providers = w.providers.filter((p) => p.id !== del[1]);
         if (w.providers.length === n) return send(404);
+        w.state.deletes.push(`${del[1]}${url.search}`);
+        w.removed.push(del[1]!);
         w.version++;
         return send(200, { version: w.version });
       }

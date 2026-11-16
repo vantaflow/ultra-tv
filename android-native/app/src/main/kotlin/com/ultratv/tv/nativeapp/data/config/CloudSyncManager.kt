@@ -106,7 +106,9 @@ class CloudSyncManager @Inject constructor(
         val base = workerBase() ?: return Result.Failed
         _state.value = _state.value.copy(syncing = true, failed = false)
         try {
-            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force) null else links.etag()) }
+            // Suppressions faites hors ligne : transmises d'abord ; la configuration est alors relue en entier.
+            val flushed = flushPendingDeletes(base)
+            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed) null else links.etag()) }
             if (fetched.notModified) {
                 links.lastSyncAt = System.currentTimeMillis()
                 // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange
@@ -116,7 +118,8 @@ class CloudSyncManager @Inject constructor(
                 _state.value = _state.value.copy(syncing = false, lastSyncAt = links.lastSyncAt, added = 0, updated = 0, removed = 0)
                 return Result.Done
             }
-            val cfg = CloudSyncLogic.parseConfig(fetched.body)
+            // Source supprimée ici dont la suppression n'est pas encore partie : on ne la recrée pas.
+            val cfg = CloudSyncLogic.withoutPendingDeletes(CloudSyncLogic.parseConfig(fetched.body), links.pendingDeletes())
             links.saveDevices(cfg.selfId, cfg.devices)
             val summary = apply(cfg)
             // Configuration reçue d'un autre appareil : cadence rapide pendant 10 min.
@@ -499,8 +502,13 @@ class CloudSyncManager @Inject constructor(
                 if (a.needsConfirm) pending += PendingRemoval(a.localId, a.name, a.dependents)
                 else { removeLocal(a.localId); removed++ }
         }
-        // Partage affiché : mis à jour pour les sources liées déjà à jour.
-        cfg.providers.forEach { c -> links.localIdOf(c.id)?.let { lid -> links.link(lid, c.id, links.appliedName(c.id) ?: c.name, c.sharedWith(deviceCount)) } }
+        // Partage affiché : mis à jour pour les sources liées déjà à jour (nombre d'appareils et liste des destinataires).
+        cfg.providers.forEach { c ->
+            links.localIdOf(c.id)?.let { lid ->
+                links.link(lid, c.id, links.appliedName(c.id) ?: c.name, c.sharedWith(deviceCount))
+                links.setAssign(c.id, c.assign)
+            }
+        }
         runCatching { applyPrefs(cfg) }
         return Summary(added, updated, removed, pending)
     }
@@ -542,13 +550,52 @@ class CloudSyncManager @Inject constructor(
         if (p.kind != "XTREAM" && p.kind != "M3U" && p.kind != "STALKER") return false
         val local = localModel(p)
         return try {
-            val resp = source.withToken(base) { t -> client.put(base, t, CloudSyncLogic.uploadBody(local, shareWith, local.cloudId)) }
-            val cid = JSONObject(resp).getJSONObject("provider").getString("id")
+            val known = local.cloudId
             val n = shareWith?.let { (it + listOfNotNull(links.selfId())).toSet().size } ?: _state.value.deviceCount
-            links.link(localId, cid, p.name, n)
+            // Source déjà liée : seule l'affectation change (route dédiée, identifiants et marquage revendeur conservés).
+            val assigned = known != null && source.withToken(base) { t -> client.assign(base, t, known, shareWith?.let { (it + listOfNotNull(links.selfId())).distinct() }) }
+            if (assigned) {
+                links.link(localId, known!!, links.appliedName(known) ?: p.name, n)
+                links.setAssign(known, shareWith?.let { (it + listOfNotNull(links.selfId())).distinct() })
+            } else {
+                val resp = source.withToken(base) { t -> client.put(base, t, CloudSyncLogic.uploadBody(local, shareWith, local.cloudId)) }
+                val cid = JSONObject(resp).getJSONObject("provider").getString("id")
+                links.link(localId, cid, p.name, n)
+                links.setAssign(cid, shareWith?.let { (it + listOfNotNull(links.selfId())).distinct() })
+            }
             links.resetVersion()
             true
         } catch (t: Throwable) { false }
+    }
+
+    /** Appareils destinataires d'une source liée (null = tous les appareils, ou source non liée). */
+    fun assignOf(localId: Long): List<String>? = links.cloudIdOf(localId)?.let { links.assignOf(it) }
+
+    /** Envoie au compte les suppressions locales en attente ; true si au moins une est passée. Les échecs restent en attente. */
+    private suspend fun flushPendingDeletes(base: String): Boolean {
+        val ids = links.pendingDeletes()
+        if (ids.isEmpty()) return false
+        val left = mutableSetOf<String>()
+        for (id in ids) {
+            try { source.withToken(base) { t -> client.delete(base, t, id, everywhere = true) } }
+            catch (e: TokenRejectedException) { throw e }
+            catch (e: Throwable) { left += id }
+        }
+        links.setPendingDeletes(left)
+        return left.size != ids.size
+    }
+
+    /**
+     * Supprime une source de CET appareil et propage la suppression : le compte la retire, les autres appareils aussi à
+     * leur prochaine synchro. Hors ligne : mémorisée et renvoyée plus tard (la source n'est pas recréée entre-temps).
+     */
+    suspend fun deleteSource(localId: Long): Unit = mutex.withLock {
+        val cid = links.cloudIdOf(localId)
+        removeLocal(localId)
+        if (cid == null || !tokens.isPaired) return@withLock
+        links.setPendingDeletes(links.pendingDeletes() + cid)
+        val base = workerBase() ?: return@withLock
+        runCatching { if (flushPendingDeletes(base)) links.resetVersion() }
     }
 
     /** Retire cet appareil de la source cloud (la source locale reste, redevient privée). */

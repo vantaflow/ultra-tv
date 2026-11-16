@@ -43,6 +43,8 @@ export interface Source {
   cloudOrigin?: "cloud" | "local";
   /** Partage connu : "all" ou nombre d'appareils. */
   cloudShared?: "all" | number;
+  /** Appareils destinataires quand l'affectation est une liste (vide/absent avec "all" ou si inconnue). */
+  cloudSharedIds?: string[];
   /** Nom de l'appareil d'origine (tableau de bord ou autre appareil). */
   cloudOriginName?: string;
   /** "ready" une fois la première synchro terminée. */

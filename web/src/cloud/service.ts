@@ -13,7 +13,7 @@ import { detectSourceLanguages } from "@/sync/client";
 import { OTHER_LANG } from "@/sync/core";
 import {
   DEFAULT_WORKER, resolveWorker, InvalidFieldError, NotFoundError, RateLimitedError, TokenRejectedError,
-  deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken, tmdbPosterPath,
+  assignProvider, deleteProvider, fetchConfig, normalizeWorkerUrl, putPrefs, putProvider, renameDevice, rotateToken, tmdbPosterPath,
   type CloudDevice, type CloudPrefs, type CloudProvider, type ProviderInput,
 } from "./client";
 import { reconcile } from "./reconcile";
@@ -30,7 +30,7 @@ import { DEFAULT_PROFILE_NAME } from "./sharedState";
 
 const K = {
   worker: "cloud.worker", token: "cloud.token", deviceId: "cloud.deviceId", tokenAt: "cloud.tokenAt", etag: "cloud.etag",
-  lastSync: "cloud.lastSync", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices", prefsSync: "cloud.prefsSync", prefsBoot: "cloud.prefsBoot",
+  lastSync: "cloud.lastSync", pendingDel: "cloud.pendingDel", deviceName: "cloud.deviceName", push: "cloud.pushAvailable", devices: "cloud.devices", prefsSync: "cloud.prefsSync", prefsBoot: "cloud.prefsBoot",
 } as const;
 const ROTATE_AFTER_MS = 90 * 86400_000;
 export const SYNC_EVERY_MS = 6 * 3600_000;
@@ -110,7 +110,7 @@ export async function storeToken(token: string, deviceId: string): Promise<void>
 /** Dissocie cet appareil : jeton effacé ; les sources restent mais ne sont plus liées au compte. */
 export async function unpair(): Promise<void> {
   await db.settings.bulkDelete([K.token, K.deviceId, K.tokenAt, K.etag, K.lastSync, K.devices]);
-  for (const s of await listSources()) if (s.cloudId) await saveSource({ ...s, cloudId: undefined, cloudOrigin: undefined, cloudShared: undefined, cloudOriginName: undefined });
+  for (const s of await listSources()) if (s.cloudId) await saveSource({ ...s, cloudId: undefined, cloudOrigin: undefined, cloudShared: undefined, cloudSharedIds: undefined, cloudOriginName: undefined });
   pushGate.reset();
   patch({ paired: false, deviceId: "", lastSyncAt: 0, devices: 0 });
 }
@@ -158,7 +158,9 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     }
     // Première synchro avec cette fonction : lecture complète (même si rien n'a changé) pour amorcer/appliquer les réglages.
     const booted = await getSetting<boolean>(K.prefsBoot, false);
-    const etag = force || !booted ? "" : await getSetting<string>(K.etag, "");
+    // Suppressions locales pas encore transmises au compte (hors ligne) : on les renvoie avant de relire la config.
+    const pendingChanged = await flushPendingDeletes(worker, token);
+    const etag = force || !booted || pendingChanged ? "" : await getSetting<string>(K.etag, "");
     const res = await fetchConfig(worker, token, etag);
     const now = Date.now();
     await setSetting(K.lastSync, now);
@@ -173,7 +175,7 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
     if (res.config.self) { await setSetting(K.deviceId, res.config.self); patch({ deviceId: res.config.self }); }
     if (me) { await saveDeviceName(me.name, false); if (me.id) { await setSetting(K.deviceId, me.id); patch({ deviceId: me.id }); } }
     else if (res.config.deviceName) await saveDeviceName(res.config.deviceName, false);
-    const summary = await applyProviders(res.config.providers, !!awaitSync);
+    const summary = await applyProviders(res.config.providers, !!awaitSync, res.config.removed ?? []);
     if (summary.added + summary.updated + summary.removed > 0) cadence.noteChange(); // reçu d'un autre appareil
     void syncSharedState();
     return summary;
@@ -189,9 +191,12 @@ async function doSync({ force, awaitSync }: { force?: boolean; awaitSync?: boole
   }
 }
 
-export async function applyProviders(remote: CloudProvider[], awaitSync = false): Promise<SyncSummary> {
+export async function applyProviders(remoteAll: CloudProvider[], awaitSync = false, removed: string[] = []): Promise<SyncSummary> {
   const local = await listSources();
-  const plan = reconcile(local, remote, emptySource);
+  // Une source supprimée ici dont la suppression n'est pas encore partie vers le compte ne doit pas être recréée.
+  const pending = new Set(await getSetting<string[]>(K.pendingDel, []));
+  const remote = pending.size ? remoteAll.filter((p) => !pending.has(p.id)) : remoteAll;
+  const plan = reconcile(local, remote, emptySource, removed);
   const newIds: number[] = [];
   for (const s of plan.add) newIds.push(await saveSource(s));
   const resync: number[] = [];
@@ -375,6 +380,19 @@ export async function shareSource(source: Source, target: ShareTarget): Promise<
     shareWith: target,
   };
   if (source.type === "m3u" && source.m3uUrl.startsWith("file:")) return { ok: false, reason: "unsupported" };
+  // Source déjà liée au compte : seule l'affectation change (route dédiée, identifiants et marquage conservés).
+  if (source.cloudId) {
+    try {
+      await assignProvider(worker, token, source.cloudId, target);
+      await saveSource({ ...source, cloudShared: target === "all" ? "all" : target.length, cloudSharedIds: target === "all" ? undefined : [...target] });
+      await setSetting(K.etag, "");
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof TokenRejectedError) { patch({ paired: false, error: "token-rejected" }); return { ok: false, reason: "error" }; }
+      // Worker sans la route (404) : repli sur l'ancienne mise à jour complète ; autre erreur : échec.
+      if (!(e instanceof NotFoundError)) return { ok: false, reason: "error" };
+    }
+  }
   try {
     let p: CloudProvider;
     try {
@@ -384,7 +402,7 @@ export async function shareSource(source: Source, target: ShareTarget): Promise<
       if (e instanceof InvalidFieldError && e.field === "shareWith") p = await putProvider(worker, token, { ...input, shareWith: undefined });
       else throw e;
     }
-    await saveSource({ ...source, cloudId: p.id, cloudOrigin: source.cloudOrigin ?? "local", cloudShared: target === "all" ? "all" : target.length });
+    await saveSource({ ...source, cloudId: p.id, cloudOrigin: source.cloudOrigin ?? "local", cloudShared: target === "all" ? "all" : target.length, cloudSharedIds: target === "all" ? undefined : [...target] });
     await setSetting(K.push, true);
     patch({ pushAvailable: true });
     await setSetting(K.etag, "");
@@ -396,12 +414,41 @@ export async function shareSource(source: Source, target: ShareTarget): Promise<
   }
 }
 
+/** Envoie au compte les suppressions locales en attente ; true si la liste a changé. Les échecs réseau restent en attente. */
+async function flushPendingDeletes(worker: string, token: string): Promise<boolean> {
+  const ids = await getSetting<string[]>(K.pendingDel, []);
+  if (!ids.length) return false;
+  const left: string[] = [];
+  for (const id of ids) {
+    try { await deleteProvider(worker, token, id, true); } catch (e) {
+      if (e instanceof TokenRejectedError) throw e;
+      if (!(e instanceof NotFoundError)) left.push(id); // déjà supprimée côté compte = fait
+    }
+  }
+  await setSetting(K.pendingDel, left);
+  return left.length !== ids.length;
+}
+
+/**
+ * Supprime une source de cet appareil ; si elle est liée au compte, la suppression est propagée (le compte la retire,
+ * les autres appareils aussi à leur prochaine synchro). Hors ligne : mémorisée et renvoyée à la synchro suivante.
+ */
+export async function removeSource(source: Source): Promise<void> {
+  const id = source.cloudId;
+  await deleteSource(source.id!);
+  if (!id || !useCloud.getState().paired) return;
+  await setSetting(K.pendingDel, [...new Set([...(await getSetting<string[]>(K.pendingDel, [])), id])]);
+  const token = await getToken();
+  if (!token) return;
+  try { if (await flushPendingDeletes(useCloud.getState().worker, token)) await setSetting(K.etag, ""); } catch { /* réessayé à la synchro */ }
+}
+
 /** Retire une source du compte (et du lien local). */
 export async function unshareSource(source: Source): Promise<boolean> {
   const { worker } = useCloud.getState();
   const token = await getToken();
   if (!token || !source.cloudId) return false;
-  try { await deleteProvider(worker, token, source.cloudId); } catch (e) { if (!(e instanceof NotFoundError)) return false; }
+  try { await deleteProvider(worker, token, source.cloudId, true); } catch (e) { if (!(e instanceof NotFoundError)) return false; }
   await saveSource({ ...source, cloudId: undefined, cloudOrigin: undefined, cloudShared: undefined });
   return true;
 }

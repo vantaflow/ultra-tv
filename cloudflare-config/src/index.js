@@ -25,7 +25,7 @@ import {
 import {
   guardStub, normalizeLogin, isMacLogin, getAccount, putAccount, loadProviders, saveProviders, deleteAccount,
   newDeviceToken, registerDevice, authDevice, revokeDevice, rotateDevice, parseProvider, publicProvider, syncProvider, parseDeviceProvider, parsePrefs,
-  isVisibleTo, assignmentOf, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
+  isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
@@ -229,6 +229,8 @@ async function route(req, env, ctx) {
   if (delProv && m === "DELETE") return deviceDeleteProvider(req, env, delProv[1]);
   const prefsProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/prefs$/);
   if (prefsProv && m === "PUT") return devicePutPrefs(req, env, prefsProv[1]);
+  const assignProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/assign$/);
+  if (assignProv && (m === "PUT" || m === "POST")) return deviceAssignProvider(req, env, assignProv[1]);
   if (path === "/api/device/profiles" && m === "POST") return deviceSyncProfiles(req, env);
   const stateProv = path.match(/^\/api\/device\/providers\/([0-9a-f]{8})\/state$/);
   if (stateProv && m === "POST") return deviceSyncState(req, env, stateProv[1]);
@@ -424,6 +426,8 @@ async function route(req, env, ctx) {
   if (!del) return new Response("Not found", { status: 404 });
   const providers = await loadProviders(env, acct);
   await saveProviders(env, acct, providers.filter((p) => p.id !== del[1]));
+  // Suppression propagée : les appareils retirent leur copie à leur prochaine synchro (cfgVersion a changé).
+  if (providers.some((p) => p.id === del[1])) addTombstones(acct, [del[1]]);
   await deleteState(env, acct.login, del[1]);
   await putAccount(env, acct);
   return redirect("/");
@@ -1242,7 +1246,7 @@ async function deviceConfig(req, env) {
   const devices = (auth.acct.devices || []).map((d) => withActivity(d, act))
     .map((d) => ({ id: d.id, name: d.name, model: d.label || "", lastSeen: d.lastSeen || 0, isCurrent: d.id === auth.device.id }));
   return json(
-    { version, self: auth.device.id, devices, providers: providers.map(syncProvider) },
+    { version, self: auth.device.id, devices, providers: providers.map(syncProvider), removed: liveTombstones(auth.acct) },
     200, { etag, "cache-control": "no-store" },
   );
 }
@@ -1291,6 +1295,32 @@ async function devicePutProvider(req, env) {
   await saveProviders(env, acct, providers);
   await putAccount(env, acct);
   return json({ version: acct.cfgVersion, provider: syncProvider(providers.find((p) => p.id === savedId)) }, status);
+  });
+}
+
+/**
+ * Change l'affectation d'une source (« all » ou liste d'appareils du compte) depuis un appareil, sans renvoyer ses
+ * identifiants : le reste de la source (dont le marquage revendeur) est conservé tel quel.
+ */
+async function deviceAssignProvider(req, env, id) {
+  const { auth, res } = await deviceAuth(req, env);
+  if (res) return res;
+  const rl = (await limited(env, `pput:ip:${clientIp(req)}`, 120, 600, true))
+    || (await limited(env, `pput:dev:${auth.device.id}`, 30, 600, true));
+  if (rl) return rl;
+  const body = await readJson(req, 2 * 1024);
+  if (body.error) return body.error;
+  return withAccountLock(env, auth.acct.login, async (acct) => {
+    if (!acct.devices?.some((d) => d.id === auth.device.id)) return json({ error: "unauthorized" }, 401);
+    const a = parseAssign(body.value.shareWith, acct);
+    if (a.error) return json({ error: "invalid", field: "shareWith" }, 400);
+    const providers = await loadProviders(env, acct);
+    const i = providers.findIndex((p) => p.id === id);
+    if (i < 0 || !isVisibleTo(providers[i], auth.device.id)) return json({ error: "not_found" }, 404);
+    providers[i] = { ...providers[i], assign: a.assign, updatedAt: Date.now() };
+    await saveProviders(env, acct, providers);
+    await putAccount(env, acct);
+    return json({ version: acct.cfgVersion, provider: syncProvider(providers[i]) });
   });
 }
 
@@ -1398,8 +1428,11 @@ async function deviceDeleteProvider(req, env, id) {
     next = rest.length === 0 ? providers.filter((x) => x.id !== id) : providers.map((x) => (x.id === id ? { ...x, assign: rest } : x));
   }
   await saveProviders(env, acct, next);
+  // Supprimée du compte (et plus seulement retirée de cet appareil) : pierre tombale pour les autres appareils.
+  const gone = !next.some((x) => x.id === id);
+  if (gone) addTombstones(acct, [id]);
   await putAccount(env, acct);
-  if (!next.some((x) => x.id === id)) await deleteState(env, acct.login, id);
+  if (gone) await deleteState(env, acct.login, id);
   return json({ version: acct.cfgVersion });
   });
 }

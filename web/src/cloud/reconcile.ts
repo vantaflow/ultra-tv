@@ -38,6 +38,9 @@ export function toSourceFields(p: CloudProvider): Fields | null {
   return null;
 }
 
+/** Mêmes appareils destinataires (ordre sans importance) ; absent = absent. */
+const sameIds = (a?: string[], b?: string[]) => (!a || !b ? !a && !b : a.length === b.length && a.every((x) => b.includes(x)));
+
 const norm = (u: string) => u.trim().replace(/\/+$/, "").toLowerCase();
 
 /** Une source locale identique (même serveur et identifiant, ou même lien) : adoptée au lieu d'être dupliquée. */
@@ -47,7 +50,8 @@ function sameProvider(s: Source, f: Fields): boolean {
   return s.type === "xtream" ? norm(s.server) === norm(f.server) && s.username === f.username : norm(s.m3uUrl) === norm(f.m3uUrl);
 }
 
-export function reconcile(local: Source[], remote: CloudProvider[], emptySource: () => Source): Plan {
+export function reconcile(local: Source[], remote: CloudProvider[], emptySource: () => Source, removed: readonly string[] = []): Plan {
+  const tomb = new Set(removed);
   const plan: Plan = { add: [], update: [], remove: [], detach: [], skipped: 0 };
   const byCloud = new Map(local.filter((s) => s.cloudId).map((s) => [s.cloudId!, s]));
   const seen = new Set<string>();
@@ -58,19 +62,20 @@ export function reconcile(local: Source[], remote: CloudProvider[], emptySource:
     seen.add(p.id);
     const shared = p.sharedWith;
     const sharedCount = shared === "all" ? "all" : Array.isArray(shared) ? shared.length : undefined;
+    const sharedIds = Array.isArray(shared) ? [...shared] : undefined;
     const cur = byCloud.get(p.id);
     if (!cur) {
       const twin = local.find((s) => !s.cloudId && sameProvider(s, f));
       if (twin) {
-        plan.update.push({ id: twin.id!, patch: { cloudId: p.id, cloudOrigin: "local", cloudShared: sharedCount }, resync: false });
+        plan.update.push({ id: twin.id!, patch: { cloudId: p.id, cloudOrigin: "local", cloudShared: sharedCount, cloudSharedIds: sharedIds }, resync: false });
         continue;
       }
-      plan.add.push({ ...emptySource(), ...f, cloudId: p.id, cloudOrigin: "cloud", cloudShared: sharedCount, cloudOriginName: p.originName || undefined });
+      plan.add.push({ ...emptySource(), ...f, cloudId: p.id, cloudOrigin: "cloud", cloudShared: sharedCount, cloudSharedIds: sharedIds, cloudOriginName: p.originName || undefined });
       continue;
     }
     // Source locale partagée : le local fait foi (on ne réécrit pas ses identifiants), seule l'étiquette de partage suit le cloud.
     if (cur.cloudOrigin === "local") {
-      if (cur.cloudShared !== sharedCount) plan.update.push({ id: cur.id!, patch: { cloudShared: sharedCount }, resync: false });
+      if (cur.cloudShared !== sharedCount || !sameIds(cur.cloudSharedIds, sharedIds)) plan.update.push({ id: cur.id!, patch: { cloudShared: sharedCount, cloudSharedIds: sharedIds }, resync: false });
       continue;
     }
     const patch: Partial<Source> = {};
@@ -80,13 +85,16 @@ export function reconcile(local: Source[], remote: CloudProvider[], emptySource:
       if (cur[k] !== f[k]) { patch[k] = f[k]; resync = true; }
     }
     if (cur.cloudShared !== sharedCount) patch.cloudShared = sharedCount;
+    if (!sameIds(cur.cloudSharedIds, sharedIds)) patch.cloudSharedIds = sharedIds;
     if (cur.cloudOriginName !== (p.originName || undefined)) patch.cloudOriginName = p.originName || undefined;
     if (Object.keys(patch).length) plan.update.push({ id: cur.id!, patch, resync });
   }
 
   for (const s of local) {
     if (!s.cloudId || seen.has(s.cloudId)) continue;
-    if (s.cloudOrigin === "cloud") plan.remove.push(s.id!);
+    // Source du cloud absente de la config : retirée du compte ou plus affectée à cet appareil -> supprimée ici.
+    // Source locale partagée : supprimée seulement si le compte l'a supprimée (pierre tombale), sinon simplement détachée.
+    if (s.cloudOrigin === "cloud" || tomb.has(s.cloudId)) plan.remove.push(s.id!);
     else plan.detach.push(s.id!);
   }
   return plan;
