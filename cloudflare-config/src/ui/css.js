@@ -116,6 +116,10 @@ p{margin:0}
 .two{display:grid;gap:var(--sp-4);align-items:start}
 .two>.panel{margin:0}
 @media (min-width:1000px){.two{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+/* Pas de vide : une carte seule en fin de grille prend toute la largeur ; cartes d'une rangée à la même hauteur. */
+@media (min-width:1000px){.two{align-items:stretch}.two>:last-child:nth-child(odd),.track-panel~*{grid-column:1/-1}}
+@media (min-width:1100px){.cards.c2>:last-child:nth-child(odd){grid-column:1/-1}}
+@media (min-width:900px){.agrid{align-items:stretch}.agrid>:last-child:nth-child(odd){grid-column:1/-1}}
 .stack{display:grid;gap:var(--sp-3);margin-top:var(--sp-4)}
 .section-h{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--sp-3);margin:var(--sp-6) 0 var(--sp-3);flex-wrap:wrap;scroll-margin-top:calc(var(--hdr) + 12px)}
 .section-h h2{font-size:var(--t-xl)}
