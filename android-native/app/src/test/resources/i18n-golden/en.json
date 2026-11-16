@@ -1748,5 +1748,15 @@
   "SimpleStrings.getOrType()": "Or type it:",
   "SimpleStrings.getHoldFav()": "Hold: favourite",
   "SimpleStrings.getHoldRemove()": "Hold: remove",
-  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choose where the app opens: Home, a section, or the last screen you were on (details, player, search and settings are never restored)."
+  "DesignStrings/PersonalizationStringsKt.getStartScreenHint()": "Choose where the app opens: Home, a section, or the last screen you were on (details, player, search and settings are never restored).",
+  "DesignStrings/HandoffStringsKt.getHandoffTitle()": "Resume on this device?",
+  "DesignStrings/HandoffStringsKt.handoffBody(Zed,Zed)": "Zed is sending you: Zed",
+  "DesignStrings/HandoffStringsKt.getHandoffYes()": "Yes",
+  "DesignStrings/HandoffStringsKt.getHandoffNo()": "No",
+  "DesignStrings/HandoffStringsKt.getHandoffSend()": "Send to…",
+  "DesignStrings/HandoffStringsKt.handoffSent(Zed)": "Sent to Zed. Confirm on that device within 2 minutes.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoSource()": "This source is not shared with your account, so another device cannot find it.",
+  "DesignStrings/HandoffStringsKt.getHandoffFailed()": "Could not send. Try again.",
+  "DesignStrings/HandoffStringsKt.getHandoffNotFound()": "This title is not in this device’s catalog.",
+  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "No other device is paired with this account."
 }

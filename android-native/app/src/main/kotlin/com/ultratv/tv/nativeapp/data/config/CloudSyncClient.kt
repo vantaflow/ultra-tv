@@ -11,7 +11,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Réponse de GET /api/config : `notModified` (304) ou le corps JSON et son ETag. */
-data class ConfigFetch(val notModified: Boolean, val body: String, val etag: String?)
+data class ConfigFetch(
+    val notModified: Boolean, val body: String, val etag: String?,
+    /** En-tête x-utv-handoff (demandes « Reprendre sur cet appareil »), présent aussi sur un 304 ; null = aucune. */
+    val handoff: String? = null,
+)
 
 /**
  * Client HTTP de la synchro multi-appareils (lecture conditionnelle, envoi, retrait, renommage).
@@ -101,10 +105,10 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
             .header("X-Ultra-Version", com.ultratv.tv.nativeapp.BuildConfig.VERSION_NAME)
         if (etag != null) b.header("If-None-Match", etag)
         http.newCall(b.get().build()).execute().use { r ->
-            if (r.code == 304) return@use ConfigFetch(true, "", etag)
+            if (r.code == 304) return@use ConfigFetch(true, "", etag, r.header("x-utv-handoff"))
             check(r.code, r.header("Retry-After"))
             if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} — config unreachable")
-            ConfigFetch(false, r.body?.string().orEmpty(), r.header("ETag"))
+            ConfigFetch(false, r.body?.string().orEmpty(), r.header("ETag"), r.header("x-utv-handoff"))
         }
     }
 
@@ -198,6 +202,15 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
             check(r.code, r.header("Retry-After"))
             if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while changing the source assignment")
             true
+        }
+    }
+
+    /** Dépose une demande « Reprendre sur cet appareil » (POST /api/device/handoff, corps déjà construit par HandoffLogic). */
+    suspend fun sendHandoff(base: String, token: String, body: String) = withContext(Dispatchers.IO) {
+        val req = Request.Builder().url("$base/api/device/handoff").header("Authorization", "Bearer $token").post(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while sending the playback request")
         }
     }
 

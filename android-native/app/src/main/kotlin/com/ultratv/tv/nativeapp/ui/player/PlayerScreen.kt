@@ -79,6 +79,10 @@ import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.recConnectionBusy
+import com.ultratv.tv.nativeapp.i18n.handoffFailed
+import com.ultratv.tv.nativeapp.i18n.handoffNoSource
+import com.ultratv.tv.nativeapp.i18n.handoffSend
+import com.ultratv.tv.nativeapp.i18n.handoffSent
 import com.ultratv.tv.nativeapp.i18n.recNoSpace
 import com.ultratv.tv.nativeapp.i18n.recNothing
 import com.ultratv.tv.nativeapp.i18n.recScheduled
@@ -183,7 +187,19 @@ class PlayerViewModel @Inject constructor(
     private val vodInfoDao: com.ultratv.tv.nativeapp.data.db.VodInfoDao,
     private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
     private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
+    private val handoffSender: com.ultratv.tv.nativeapp.data.config.HandoffSender,
 ) : ViewModel() {
+
+    /** « Envoyer vers… » : autres appareils du compte (liste reçue avec la dernière synchro). */
+    fun handoffDevices(): List<com.ultratv.tv.nativeapp.data.config.CloudDevice> = handoffSender.otherDevices()
+
+    /** Dépose la demande pour l'autre appareil (référence + position, jamais d'URL ni d'identifiants). */
+    fun sendHandoff(to: com.ultratv.tv.nativeapp.data.config.CloudDevice, positionMs: Long, onDone: (com.ultratv.tv.nativeapp.data.config.HandoffSend) -> Unit) {
+        viewModelScope.launch {
+            val item = playback.current.value
+            onDone(if (item == null) com.ultratv.tv.nativeapp.data.config.HandoffSend.Failed else handoffSender.send(to, item, positionMs))
+        }
+    }
 
     /** Chaîne regardée (base), pour les actions sur le programme suivant de l'OSD. */
     private suspend fun currentChannel(): com.ultratv.tv.nativeapp.data.db.ChannelEntity? {
@@ -556,6 +572,8 @@ class PlayerViewModel @Inject constructor(
     suspend fun prepareResume(): Long {
         val c = playback.current.value ?: return 0L
         if (c.kind == "LIVE") return 0L
+        // Reprise venue d'un autre appareil (« Reprendre sur cet appareil ? ») : sa position prime sur l'historique local.
+        playback.pendingStartMs?.let { playback.pendingStartMs = null; return it }
         return history.resumePositionMs(c.providerId, c.kind, c.remoteId)
     }
 
@@ -1741,6 +1759,21 @@ private fun PlayerSidePanel(
                                 .forEach { (b, l) -> OptionRow(l, null, state.bufferPreset == b) { onBuffer(b) } }
                         }
                         if (!state.isProtected) OptionRow(LocalStrings.current.playerExternal, null, false, onExternal)
+                        // Reprise sur un autre appareil du compte : l'autre appareil demande confirmation avant de lancer quoi que ce soit.
+                        val others = remember { vm.handoffDevices() }
+                        if (others.isNotEmpty()) OptionGroup(D.handoffSend) {
+                            others.forEach { dev ->
+                                OptionRow(com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(dev), null, false) {
+                                    vm.sendHandoff(dev, e?.positionMs ?: 0L) { r ->
+                                        when (r) {
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.Sent -> Toaster.ok(D.handoffSent(com.ultratv.tv.nativeapp.data.config.CloudSyncLogic.deviceDisplayName(dev)))
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.NoSource -> Toaster.err(D.handoffNoSource)
+                                            is com.ultratv.tv.nativeapp.data.config.HandoffSend.Failed -> Toaster.err(D.handoffFailed)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                     SideTab.STATS -> {
                         OptionRow(D.statsLabel + " · " + D.onVideo, null, statsOpen, onStats)

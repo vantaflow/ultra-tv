@@ -1691,4 +1691,16 @@
     <string name="pex_diag_fallback">Chuyển trình phát</string>
     <string name="pex_diag_copy">Sao chép báo cáo</string>
     <string name="pex_diag_copied">Đã sao chép báo cáo (đã ẩn thông tin đăng nhập)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Tiếp tục xem trên thiết bị này?</string>
+    <string name="handoff_body">%1$s gửi cho bạn: %2$s</string>
+    <string name="handoff_yes">Có</string>
+    <string name="handoff_no">Không</string>
+    <string name="handoff_send">Gửi tới…</string>
+    <string name="handoff_sent">Đã gửi tới %1$s. Hãy xác nhận trên thiết bị đó trong vòng 2 phút.</string>
+    <string name="handoff_no_source">Nguồn này chưa được chia sẻ với tài khoản của bạn nên thiết bị khác không tìm thấy được.</string>
+    <string name="handoff_failed">Không gửi được. Hãy thử lại.</string>
+    <string name="handoff_not_found">Tiêu đề này không có trong danh mục của thiết bị này.</string>
+    <string name="handoff_no_devices">Chưa có thiết bị nào khác được ghép đôi với tài khoản này.</string>
 </resources>

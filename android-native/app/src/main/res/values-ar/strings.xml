@@ -1771,4 +1771,16 @@
     <string name="pex_diag_fallback">التحويل إلى محرك آخر</string>
     <string name="pex_diag_copy">نسخ التقرير</string>
     <string name="pex_diag_copied">تم نسخ التقرير (البيانات السرية مخفية)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">هل تريد المتابعة على هذا الجهاز؟</string>
+    <string name="handoff_body">%1$s يرسل إليك: %2$s</string>
+    <string name="handoff_yes">نعم</string>
+    <string name="handoff_no">لا</string>
+    <string name="handoff_send">إرسال إلى…</string>
+    <string name="handoff_sent">تم الإرسال إلى %1$s. أكّد على ذلك الجهاز خلال دقيقتين.</string>
+    <string name="handoff_no_source">هذا المصدر غير مشترك مع حسابك، لذا لا يمكن لجهاز آخر العثور عليه.</string>
+    <string name="handoff_failed">تعذّر الإرسال. حاول مرة أخرى.</string>
+    <string name="handoff_not_found">هذا العنوان غير موجود في كتالوج هذا الجهاز.</string>
+    <string name="handoff_no_devices">لا يوجد جهاز آخر مقترن بهذا الحساب.</string>
 </resources>

@@ -1709,4 +1709,16 @@
     <string name="pex_diag_fallback">Engine fallback</string>
     <string name="pex_diag_copy">Copy report</string>
     <string name="pex_diag_copied">Report copied (credentials hidden)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Resume on this device?</string>
+    <string name="handoff_body">%1$s is sending you: %2$s</string>
+    <string name="handoff_yes">Yes</string>
+    <string name="handoff_no">No</string>
+    <string name="handoff_send">Send to…</string>
+    <string name="handoff_sent">Sent to %1$s. Confirm on that device within 2 minutes.</string>
+    <string name="handoff_no_source">This source is not shared with your account, so another device cannot find it.</string>
+    <string name="handoff_failed">Could not send. Try again.</string>
+    <string name="handoff_not_found">This title is not in this device’s catalog.</string>
+    <string name="handoff_no_devices">No other device is paired with this account.</string>
 </resources>

@@ -1728,4 +1728,16 @@
     <string name="pex_diag_fallback">Schimbare de motor</string>
     <string name="pex_diag_copy">Copiază raportul</string>
     <string name="pex_diag_copied">Raport copiat (datele de acces ascunse)</string>
+
+    <!-- Reprise de la lecture d'un appareil à l'autre (#156) -->
+    <string name="handoff_title">Continui pe acest dispozitiv?</string>
+    <string name="handoff_body">%1$s îți trimite: %2$s</string>
+    <string name="handoff_yes">Da</string>
+    <string name="handoff_no">Nu</string>
+    <string name="handoff_send">Trimite către…</string>
+    <string name="handoff_sent">Trimis către %1$s. Confirmă pe acel dispozitiv în 2 minute.</string>
+    <string name="handoff_no_source">Această sursă nu este partajată cu contul tău, deci alt dispozitiv nu o poate găsi.</string>
+    <string name="handoff_failed">Trimiterea a eșuat. Încearcă din nou.</string>
+    <string name="handoff_not_found">Acest titlu nu se află în catalogul acestui dispozitiv.</string>
+    <string name="handoff_no_devices">Niciun alt dispozitiv nu este asociat cu acest cont.</string>
 </resources>
