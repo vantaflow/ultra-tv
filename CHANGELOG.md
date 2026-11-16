@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Direct (TV) : liste des chaînes, le nom prend toute la largeur libre (« CANAL+ Cinema » ne passe plus sur deux lignes) et le programme en cours n'affiche que son heure de début, pour laisser la place au titre.
+
 ## [1.3.39] — 2026-11-16 (Android) · Bureau 1.2.64 · Worker
 
 ### Ajouté

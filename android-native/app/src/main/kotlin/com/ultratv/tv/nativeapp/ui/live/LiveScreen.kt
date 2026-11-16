@@ -646,17 +646,18 @@ private fun ChannelRow(
             }
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.design)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text((if (locked) "🔒 " else "") + c.title, color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false), style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
-                    Spacer(Modifier.weight(1f))
+                    // Nom sur une ligne : retours à la ligne / espaces multiples du fournisseur ramenés à un espace.
+                    Text((if (locked) "🔒 " else "") + c.title.replace(WS_RUN, " ").trim(), color = if (f) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f), style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
                     if (favorite) { Text("♥", color = Ux.Accent, fontSize = 22.spx, maxLines = 1); Spacer(Modifier.width(8.design)) }
                     com.ultratv.tv.nativeapp.ui.common.LangBadge(c.lang, f)
                     Spacer(Modifier.width(8.design))
                     StreamBadges(c.quality, c.flags, f, variant)
                 }
                 if (now != null) {
-                    // Horaire (accent) + titre, puis barre de progression dessinée depuis l'horloge partagée.
+                    // Heure de début (accent) + titre : la plage complète prenait la moitié de la ligne et coupait le titre ;
+                    // la durée se lit sur la barre de progression et dans le panneau de droite.
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.range(now.startMs, now.endMs), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
+                        Text(com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(now.startMs), color = if (f) Ux.TextOnLight else Ux.AccentInk, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 22.spx, maxLines = 1, softWrap = false)
                         Spacer(Modifier.width(12.design))
                         Text(now.title, color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     }
@@ -674,6 +675,9 @@ private fun ChannelRow(
 
 /** Hauteur de la carte chaîne TV : nom, programme en cours + barre, programme suivant. */
 private const val ROW_H = 136
+
+/** Suite d'espaces (dont retours à la ligne) dans un nom de chaîne. */
+private val WS_RUN = Regex("\\s+")
 
 // ───────────────────────── Aperçu ─────────────────────────
 
