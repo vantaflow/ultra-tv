@@ -70,12 +70,12 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 Player.STATE_ENDED -> _events.tryEmit(EngineEvent.Ended)
             }
         }
-        override fun onRenderedFirstFrame() { _events.tryEmit(EngineEvent.FirstFrame) }
+        override fun onRenderedFirstFrame() { firstFrameRendered = true; _events.tryEmit(EngineEvent.FirstFrame); applyFrameRate() }
         override fun onPlayerError(error: PlaybackException) {
             val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
             _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status), status))
         }
-        override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
+        override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }   // sans effet avant la première image rendue
         // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
         // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
         override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); forceHighestVideo(); detectHdr(tracks) }
@@ -152,7 +152,12 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                     decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
                 ) { signalHdr(HdrOutput.contentKind(format.colorInfo?.colorTransfer, format.sampleMimeType)) }
             })
-            setVideoFrameMetadataListener { _, _, format, mediaFormat ->
+            setVideoFrameMetadataListener { presentationTimeUs, _, format, mediaFormat ->
+                // Cadence réelle (AFR) : horodatages des images rendues, tant qu'aucune mesure n'est prête.
+                if (config.autoFrameRate && !fpsMeasured) {
+                    fpsEstimator.add(presentationTimeUs)
+                    if (fpsEstimator.estimate() != null) { fpsMeasured = true; mainHandler.post { applyFrameRate() } }
+                }
                 if (hdrSignalled) return@setVideoFrameMetadataListener
                 val transfer = mediaFormat?.takeIf { it.containsKey(android.media.MediaFormat.KEY_COLOR_TRANSFER) }
                     ?.getInteger(android.media.MediaFormat.KEY_COLOR_TRANSFER)
@@ -293,6 +298,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         streamHeaders = props?.let { DrmMedia.streamHeaders(it) } ?: emptyMap()
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
         audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false; videoForced = false
+        firstFrameRendered = false; fpsMeasured = false; afrFps = null; fpsEstimator.reset()
         ccProbe.clear()   // chaîne suivante : les CC vus sur la précédente ne comptent plus
         if (player.mediaItemCount > 0) {
             player.stop()
@@ -394,25 +400,41 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         )
     }
 
-    /** Adapte la fréquence de l'écran à celle de la vidéo (24/25/50 ips), si l'option est active. */
+    /** Première image rendue du flux en cours : le format est alors réellement décodé (pas seulement annoncé). */
+    @Volatile private var firstFrameRendered = false
+    /** Mesure de cadence prête (assez d'images rendues) ; vrai une seule fois par flux. */
+    @Volatile private var fpsMeasured = false
+    private val fpsEstimator = FrameRateEstimator()
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** Cadence pour laquelle un changement de mode a déjà été évalué (évite de redemander le même mode à chaque événement). */
+    private var afrFps: Float? = null
+
+    /**
+     * Cadence réelle du flux, arrondie aux cadences usuelles ([FrameRatePolicy.snap]), ou null si inconnue.
+     * Jamais avant la première image rendue. La mesure sur les images rendues l'emporte sur la cadence déclarée (manifeste
+     * HLS faux, MPEG-TS sans cadence) ; sans mesure, on prend la cadence du format décodé.
+     */
+    private fun detectedFrameRate(): Float? {
+        if (!firstFrameRendered) return null
+        FrameRatePolicy.snap(fpsEstimator.estimate())?.let { return it }
+        return FrameRatePolicy.snap(player.videoFormat?.frameRate?.takeIf { it > 0f })
+    }
+
+    /** Adapte la fréquence de l'écran à celle de la vidéo (24/25/50 ips…), si l'option est active et la cadence connue. */
     private fun applyFrameRate() {
-        if (!config.autoFrameRate) return
+        if (!config.autoFrameRate || released) return
         val act = (ctx as? Activity) ?: return
-        val fps = player.videoFormat?.frameRate?.takeIf { it > 0f } ?: return
+        val fps = detectedFrameRate() ?: return   // inconnue : on ne change rien
+        if (fps == afrFps) return
+        afrFps = fps
         @Suppress("DEPRECATION") val display = act.windowManager.defaultDisplay ?: return
-        // Fréquence actuelle déjà compatible (multiple entier, ex. 50 Hz pour 25 i/s) : pas de bascule HDMI — elle
-        // coûte 1 à 3 s d'écran noir et se produisait à chaque zap entre chaînes à 25 et 50 i/s.
-        val currentHz = display.mode?.refreshRate ?: 0f
-        if (currentHz > 0f) {
-            val ratio = currentHz / fps
-            if (ratio >= 0.99f && kotlin.math.abs(ratio - kotlin.math.round(ratio)) < 0.01f) return
-        }
-        val target = display.supportedModes.minByOrNull { m ->
-            val multiple = (m.refreshRate / fps).coerceAtLeast(1f)
-            kotlin.math.abs(m.refreshRate - fps * kotlin.math.round(multiple))
-        } ?: return
+        val cur = display.mode ?: return
+        // Fréquence actuelle déjà compatible (multiple entier, ex. 50 Hz pour 25 i/s) : pas de bascule HDMI — elle coûte
+        // 1 à 3 s d'écran noir. Résolution inchangée : voir [FrameRatePolicy.chooseMode].
+        fun info(m: android.view.Display.Mode) = DisplayModeInfo(m.modeId, m.refreshRate, m.physicalWidth, m.physicalHeight)
+        val id = FrameRatePolicy.chooseMode(fps, info(cur), display.supportedModes.map(::info)) ?: return
         val lp = act.window.attributes
-        if (lp.preferredDisplayModeId != target.modeId) { lp.preferredDisplayModeId = target.modeId; act.window.attributes = lp }
+        if (lp.preferredDisplayModeId != id) { lp.preferredDisplayModeId = id; act.window.attributes = lp }
     }
 
     @Volatile private var released = false
@@ -434,6 +456,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun release() {
         if (released) return
         released = true
+        mainHandler.removeCallbacksAndMessages(null)
         runCatching { player.removeListener(listener) }
         runCatching { player.release() }
         runCatching { playerView.player = null }
