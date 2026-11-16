@@ -698,5 +698,15 @@
   "rail.expand": "ขยายเมนู",
   "rail.switchProfile": "เปลี่ยนโปรไฟล์",
   "rail.recordingRunning": "{n} การบันทึก",
-  "rail.syncing": "กำลังซิงค์"
+  "rail.syncing": "กำลังซิงค์",
+  "handoff.title": "ดูต่อบนอุปกรณ์นี้หรือไม่?",
+  "handoff.body": "{from} ส่งมาให้คุณ: {title}",
+  "handoff.yes": "ใช่",
+  "handoff.no": "ไม่",
+  "handoff.send": "ส่งไปยัง…",
+  "handoff.sent": "ส่งไปยัง {device} แล้ว โปรดยืนยันบนอุปกรณ์นั้นภายใน 2 นาที",
+  "handoff.noSource": "แหล่งที่มานี้ไม่ได้แชร์กับบัญชีของคุณ อุปกรณ์อื่นจึงหาไม่พบ",
+  "handoff.failed": "ส่งไม่สำเร็จ ลองอีกครั้ง",
+  "handoff.notFound": "ไม่พบชื่อเรื่องนี้ในแคตตาล็อกของอุปกรณ์นี้",
+  "handoff.noDevices": "ไม่มีอุปกรณ์อื่นที่จับคู่กับบัญชีนี้"
 }

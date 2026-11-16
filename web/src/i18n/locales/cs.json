@@ -718,5 +718,15 @@
   "rail.expand": "Rozbalit nabídku",
   "rail.switchProfile": "Přepnout profil",
   "rail.recordingRunning": "{n} nahrávka",
-  "rail.syncing": "Synchronizace"
+  "rail.syncing": "Synchronizace",
+  "handoff.title": "Pokračovat na tomto zařízení?",
+  "handoff.body": "{from} vám posílá: {title}",
+  "handoff.yes": "Ano",
+  "handoff.no": "Ne",
+  "handoff.send": "Odeslat do…",
+  "handoff.sent": "Odesláno do zařízení {device}. Potvrďte na něm do 2 minut.",
+  "handoff.noSource": "Tento zdroj není sdílen s vaším účtem, takže ho jiné zařízení nenajde.",
+  "handoff.failed": "Odeslání se nezdařilo. Zkuste to znovu.",
+  "handoff.notFound": "Tento titul není v katalogu tohoto zařízení.",
+  "handoff.noDevices": "K tomuto účtu není spárováno žádné další zařízení."
 }

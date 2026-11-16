@@ -708,5 +708,15 @@
   "rail.expand": "Extinde meniul",
   "rail.switchProfile": "Schimbă profilul",
   "rail.recordingRunning": "{n} înregistrare",
-  "rail.syncing": "Se sincronizează"
+  "rail.syncing": "Se sincronizează",
+  "handoff.title": "Continui pe acest dispozitiv?",
+  "handoff.body": "{from} îți trimite: {title}",
+  "handoff.yes": "Da",
+  "handoff.no": "Nu",
+  "handoff.send": "Trimite către…",
+  "handoff.sent": "Trimis către {device}. Confirmă pe acel dispozitiv în 2 minute.",
+  "handoff.noSource": "Această sursă nu este partajată cu contul tău, deci alt dispozitiv nu o poate găsi.",
+  "handoff.failed": "Trimiterea a eșuat. Încearcă din nou.",
+  "handoff.notFound": "Acest titlu nu se află în catalogul acestui dispozitiv.",
+  "handoff.noDevices": "Niciun alt dispozitiv nu este asociat cu acest cont."
 }

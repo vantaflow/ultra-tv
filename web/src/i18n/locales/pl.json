@@ -709,5 +709,15 @@
   "rail.expand": "Rozwiń menu",
   "rail.switchProfile": "Zmień profil",
   "rail.recordingRunning": "{n} w toku",
-  "rail.syncing": "Synchronizacja"
+  "rail.syncing": "Synchronizacja",
+  "handoff.title": "Wznowić na tym urządzeniu?",
+  "handoff.body": "{from} wysyła Ci: {title}",
+  "handoff.yes": "Tak",
+  "handoff.no": "Nie",
+  "handoff.send": "Wyślij do…",
+  "handoff.sent": "Wysłano do urządzenia {device}. Potwierdź na nim w ciągu 2 minut.",
+  "handoff.noSource": "To źródło nie jest udostępnione na Twoim koncie, więc inne urządzenie nie może go znaleźć.",
+  "handoff.failed": "Nie udało się wysłać. Spróbuj ponownie.",
+  "handoff.notFound": "Tego tytułu nie ma w katalogu tego urządzenia.",
+  "handoff.noDevices": "Żadne inne urządzenie nie jest sparowane z tym kontem."
 }

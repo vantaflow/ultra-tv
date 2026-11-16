@@ -738,5 +738,15 @@
   "rail.expand": "توسيع القائمة",
   "rail.switchProfile": "تغيير الملف الشخصي",
   "rail.recordingRunning": "{n} قيد التسجيل",
-  "rail.syncing": "جارٍ المزامنة"
+  "rail.syncing": "جارٍ المزامنة",
+  "handoff.title": "هل تريد المتابعة على هذا الجهاز؟",
+  "handoff.body": "{from} يرسل إليك: {title}",
+  "handoff.yes": "نعم",
+  "handoff.no": "لا",
+  "handoff.send": "إرسال إلى…",
+  "handoff.sent": "تم الإرسال إلى {device}. أكّد على ذلك الجهاز خلال دقيقتين.",
+  "handoff.noSource": "هذا المصدر غير مشترك مع حسابك، لذا لا يمكن لجهاز آخر العثور عليه.",
+  "handoff.failed": "تعذّر الإرسال. حاول مرة أخرى.",
+  "handoff.notFound": "هذا العنوان غير موجود في كتالوج هذا الجهاز.",
+  "handoff.noDevices": "لا يوجد جهاز آخر مقترن بهذا الحساب."
 }
