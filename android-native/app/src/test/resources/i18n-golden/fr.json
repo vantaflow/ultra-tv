@@ -1761,5 +1761,9 @@
   "DesignStrings/HandoffStringsKt.getHandoffNoSource()": "Cette source n’est pas partagée avec votre compte : un autre appareil ne peut pas la retrouver.",
   "DesignStrings/HandoffStringsKt.getHandoffFailed()": "Envoi impossible. Réessayez.",
   "DesignStrings/HandoffStringsKt.getHandoffNotFound()": "Ce titre n’est pas dans le catalogue de cet appareil.",
-  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "Aucun autre appareil n’est appairé à ce compte."
+  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "Aucun autre appareil n’est appairé à ce compte.",
+  "ProfileStrings.getSources()": "Sources",
+  "ProfileStrings.getSourcesAll()": "Toutes les sources",
+  "ProfileStrings.getSearchAllSources()": "Rechercher dans toutes les sources",
+  "ProfileStrings.getSearchAllSourcesHint()": "R\u00e9sultats de toutes les sources visibles, avec la source indiqu\u00e9e sur chacun"
 }

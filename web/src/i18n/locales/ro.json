@@ -718,5 +718,9 @@
   "handoff.noSource": "Această sursă nu este partajată cu contul tău, deci alt dispozitiv nu o poate găsi.",
   "handoff.failed": "Trimiterea a eșuat. Încearcă din nou.",
   "handoff.notFound": "Acest titlu nu se află în catalogul acestui dispozitiv.",
-  "handoff.noDevices": "Niciun alt dispozitiv nu este asociat cu acest cont."
+  "handoff.noDevices": "Niciun alt dispozitiv nu este asociat cu acest cont.",
+  "set.profileSources": "Surse vizibile",
+  "set.allSources": "Toate sursele",
+  "set.searchAll": "Caută în toate sursele",
+  "set.searchAllD": "Rezultate din toate sursele vizibile profilului, cu sursa indicată la fiecare."
 }

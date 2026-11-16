@@ -718,5 +718,9 @@
   "handoff.noSource": "Cette source n’est pas partagée avec votre compte : un autre appareil ne peut pas la retrouver.",
   "handoff.failed": "Envoi impossible. Réessayez.",
   "handoff.notFound": "Ce titre n’est pas dans le catalogue de cet appareil.",
-  "handoff.noDevices": "Aucun autre appareil n’est appairé à ce compte."
+  "handoff.noDevices": "Aucun autre appareil n’est appairé à ce compte.",
+  "set.profileSources": "Sources visibles",
+  "set.allSources": "Toutes les sources",
+  "set.searchAll": "Rechercher dans toutes les sources",
+  "set.searchAllD": "Résultats de toutes les sources visibles du profil, avec la source indiquée sur chacun."
 }

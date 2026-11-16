@@ -1670,4 +1670,8 @@
     <string name="handoff_failed">Lähetys epäonnistui. Yritä uudelleen.</string>
     <string name="handoff_not_found">Tätä nimikettä ei ole tämän laitteen luettelossa.</string>
     <string name="handoff_no_devices">Tähän tiliin ei ole yhdistetty muita laitteita.</string>
+    <string name="prof_sources">Lähteet</string>
+    <string name="prof_sources_all">Kaikki lähteet</string>
+    <string name="prof_search_all">Hae kaikista lähteistä</string>
+    <string name="prof_search_all_hint">Tulokset kaikista näkyvistä lähteistä, lähde näkyy jokaisessa</string>
 </resources>

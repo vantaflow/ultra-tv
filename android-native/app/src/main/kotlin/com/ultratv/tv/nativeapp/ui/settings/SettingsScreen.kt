@@ -367,6 +367,14 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     PaneTitle(D.rubSources, D.sourcesSubtitle)
+    // Plusieurs sources : la recherche peut les interroger toutes (sources visibles du profil), avec une pastille par résultat.
+    if (providers.size > 1) {
+        val PS = com.ultratv.tv.nativeapp.ui.profile.ProfileStrings(LocalDs.current.lang)
+        val searchAll by vm.searchAllSources.collectAsState()
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            SwitchPrefRow(PS.searchAllSources, searchAll, hint = PS.searchAllSourcesHint) { vm.setSearchAllSources(it) }
+        }
+    }
     Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
         providers.forEach { p ->
             FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(26.design), bg = Ux.SurfaceDeep, ringWidth = 0.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->

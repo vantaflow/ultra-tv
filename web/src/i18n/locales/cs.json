@@ -728,5 +728,9 @@
   "handoff.noSource": "Tento zdroj není sdílen s vaším účtem, takže ho jiné zařízení nenajde.",
   "handoff.failed": "Odeslání se nezdařilo. Zkuste to znovu.",
   "handoff.notFound": "Tento titul není v katalogu tohoto zařízení.",
-  "handoff.noDevices": "K tomuto účtu není spárováno žádné další zařízení."
+  "handoff.noDevices": "K tomuto účtu není spárováno žádné další zařízení.",
+  "set.profileSources": "Viditelné zdroje",
+  "set.allSources": "Všechny zdroje",
+  "set.searchAll": "Hledat ve všech zdrojích",
+  "set.searchAllD": "Výsledky ze všech zdrojů viditelných pro profil, u každého je uveden zdroj."
 }

@@ -144,3 +144,4 @@ es|ds_catalog_sort_name_title
 es|ds_search_tab_series
 es|ds_search_series
 es|handoff_no
+fr|prof_sources

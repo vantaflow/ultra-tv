@@ -1706,4 +1706,8 @@
     <string name="handoff_failed">Odeslání se nezdařilo. Zkuste to znovu.</string>
     <string name="handoff_not_found">Tento titul není v katalogu tohoto zařízení.</string>
     <string name="handoff_no_devices">K tomuto účtu není spárováno žádné další zařízení.</string>
+    <string name="prof_sources">Zdroje</string>
+    <string name="prof_sources_all">Všechny zdroje</string>
+    <string name="prof_search_all">Hledat ve všech zdrojích</string>
+    <string name="prof_search_all_hint">Výsledky ze všech viditelných zdrojů, u každého je uveden zdroj</string>
 </resources>

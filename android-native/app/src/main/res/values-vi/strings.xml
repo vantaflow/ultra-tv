@@ -1706,4 +1706,8 @@
     <string name="handoff_failed">Không gửi được. Hãy thử lại.</string>
     <string name="handoff_not_found">Tiêu đề này không có trong danh mục của thiết bị này.</string>
     <string name="handoff_no_devices">Chưa có thiết bị nào khác được ghép đôi với tài khoản này.</string>
+    <string name="prof_sources">Nguồn</string>
+    <string name="prof_sources_all">Tất cả nguồn</string>
+    <string name="prof_search_all">Tìm trong tất cả nguồn</string>
+    <string name="prof_search_all_hint">Kết quả từ mọi nguồn hiển thị, kèm tên nguồn trên từng mục</string>
 </resources>

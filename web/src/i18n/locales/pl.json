@@ -719,5 +719,9 @@
   "handoff.noSource": "To źródło nie jest udostępnione na Twoim koncie, więc inne urządzenie nie może go znaleźć.",
   "handoff.failed": "Nie udało się wysłać. Spróbuj ponownie.",
   "handoff.notFound": "Tego tytułu nie ma w katalogu tego urządzenia.",
-  "handoff.noDevices": "Żadne inne urządzenie nie jest sparowane z tym kontem."
+  "handoff.noDevices": "Żadne inne urządzenie nie jest sparowane z tym kontem.",
+  "set.profileSources": "Widoczne źródła",
+  "set.allSources": "Wszystkie źródła",
+  "set.searchAll": "Szukaj we wszystkich źródłach",
+  "set.searchAllD": "Wyniki ze wszystkich źródeł widocznych dla profilu, ze wskazaniem źródła przy każdym."
 }

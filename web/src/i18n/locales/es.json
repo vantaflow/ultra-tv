@@ -718,5 +718,9 @@
   "handoff.noSource": "Esta fuente no está compartida con tu cuenta, así que otro dispositivo no puede encontrarla.",
   "handoff.failed": "No se pudo enviar. Inténtalo de nuevo.",
   "handoff.notFound": "Este título no está en el catálogo de este dispositivo.",
-  "handoff.noDevices": "No hay otro dispositivo vinculado a esta cuenta."
+  "handoff.noDevices": "No hay otro dispositivo vinculado a esta cuenta.",
+  "set.profileSources": "Fuentes visibles",
+  "set.allSources": "Todas las fuentes",
+  "set.searchAll": "Buscar en todas las fuentes",
+  "set.searchAllD": "Resultados de todas las fuentes visibles del perfil, con la fuente indicada en cada uno."
 }

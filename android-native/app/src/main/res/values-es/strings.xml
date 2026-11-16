@@ -1728,4 +1728,8 @@
     <string name="handoff_failed">No se pudo enviar. Inténtalo de nuevo.</string>
     <string name="handoff_not_found">Este título no está en el catálogo de este dispositivo.</string>
     <string name="handoff_no_devices">No hay otro dispositivo vinculado a esta cuenta.</string>
+    <string name="prof_sources">Fuentes</string>
+    <string name="prof_sources_all">Todas las fuentes</string>
+    <string name="prof_search_all">Buscar en todas las fuentes</string>
+    <string name="prof_search_all_hint">Resultados de todas las fuentes visibles, con la fuente indicada en cada uno</string>
 </resources>

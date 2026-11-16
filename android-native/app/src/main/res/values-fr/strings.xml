@@ -1737,4 +1737,8 @@
     <string name="handoff_failed">Envoi impossible. Réessayez.</string>
     <string name="handoff_not_found">Ce titre n’est pas dans le catalogue de cet appareil.</string>
     <string name="handoff_no_devices">Aucun autre appareil n’est appairé à ce compte.</string>
+    <string name="prof_sources_all">Toutes les sources</string>
+    <string name="prof_sources">Sources</string>
+    <string name="prof_search_all">Rechercher dans toutes les sources</string>
+    <string name="prof_search_all_hint">Résultats de toutes les sources visibles, avec la source indiquée sur chacun</string>
 </resources>

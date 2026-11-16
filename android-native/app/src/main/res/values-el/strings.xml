@@ -1725,4 +1725,8 @@
     <string name="handoff_failed">Η αποστολή απέτυχε. Δοκιμάστε ξανά.</string>
     <string name="handoff_not_found">Αυτός ο τίτλος δεν υπάρχει στον κατάλογο αυτής της συσκευής.</string>
     <string name="handoff_no_devices">Δεν υπάρχει άλλη συσκευή συνδεδεμένη με αυτόν τον λογαριασμό.</string>
+    <string name="prof_sources">Πηγές</string>
+    <string name="prof_sources_all">Όλες οι πηγές</string>
+    <string name="prof_search_all">Αναζήτηση σε όλες τις πηγές</string>
+    <string name="prof_search_all_hint">Αποτελέσματα από όλες τις ορατές πηγές, με την πηγή σε καθένα</string>
 </resources>

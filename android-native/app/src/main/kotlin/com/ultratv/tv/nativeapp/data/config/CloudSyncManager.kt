@@ -192,7 +192,8 @@ class CloudSyncManager @Inject constructor(
         }
         val all = dao.observeAll().first()
         val langs = all.mapNotNull { p -> dao.observePrefs(p.id).first().firstOrNull { it.key == com.ultratv.tv.nativeapp.data.profile.ProfilePrefs.UI_LANGUAGE }?.value?.let { p.id to it } }.toMap()
-        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs)
+        val srcs = all.mapNotNull { p -> profileRepo.sourcesOf(p.id)?.let { p.id to it } }.toMap()
+        val local = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.local(all, profileLog.all(), langs, srcs)
         val body = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.toJson(local)
         // Contenu inchangé depuis le dernier envoi réussi : rien à pousser (échange de rafraîchissement toutes les 10 min).
         val print = SyncPushGate.print(body)
@@ -200,7 +201,7 @@ class CloudSyncManager @Inject constructor(
         val raw = source.withToken(base) { t -> client.syncProfiles(base, t, body) } ?: return false
         pushGate.markSent("profiles", print, System.currentTimeMillis())
         val remote = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.parse(raw)
-        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs)
+        val actions = com.ultratv.tv.nativeapp.data.profile.ProfileSyncLogic.plan(dao.observeAll().first(), profileLog.all(), remote, langs, srcs)
         if (actions.isNotEmpty()) with(profileRepo) { applySharedProfiles(dao, profileLog, actions) }
         return actions.isNotEmpty()
     }

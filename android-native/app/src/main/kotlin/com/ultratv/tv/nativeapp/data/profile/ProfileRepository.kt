@@ -54,6 +54,12 @@ class ProfileRepository(
         }
     }
 
+    /** Sources visibles du profil courant (null = toutes). */
+    val currentSources: Flow<List<String>?> = currentPrefs.map { it.sources }.distinctUntilChanged()
+
+    /** Recherche dans toutes les sources visibles du profil courant. */
+    val currentSearchAll: Flow<Boolean> = currentPrefs.map { it.searchAllSources == true }.distinctUntilChanged()
+
     val startupMode: Flow<StartupMode> = state.startupMode
 
     private val chosenThisSession = MutableStateFlow(false)
@@ -137,6 +143,19 @@ class ProfileRepository(
     suspend fun setSimpleModeFor(profileId: Long, on: Boolean) =
         dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SIMPLE_MODE, on.toString()))
 
+    /** Sources visibles d'un profil précis ; null ou vide = toutes. Le profil est marqué modifié : le choix gagne sur les autres appareils. */
+    suspend fun setSourcesFor(profileId: Long, names: List<String>?) {
+        val clean = names?.map { it.trim() }?.filter { it.isNotEmpty() }?.distinct()?.takeIf { it.isNotEmpty() }
+        dao.byId(profileId)?.let { log?.touch(it.name) }
+        if (clean == null) dao.removePref(profileId, ProfilePrefs.SOURCES)
+        else dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SOURCES, ProfileSourcesRules.encode(clean)))
+    }
+
+    suspend fun setSearchAll(on: Boolean) = putPref(ProfilePrefs.SEARCH_ALL, on.toString())
+
+    suspend fun sourcesOf(profileId: Long): List<String>? =
+        dao.observePrefs(profileId).first().firstOrNull { it.key == ProfilePrefs.SOURCES }?.value?.let(ProfileSourcesRules::decode)
+
     suspend fun setCategoryHidden(key: String, hidden: Boolean) {
         if (hidden) dao.hide(ProfileHiddenCategoryEntity(currentIdNow, key)) else dao.unhide(currentIdNow, key)
     }
@@ -166,18 +185,27 @@ suspend fun ProfileRepository.applySharedProfiles(dao: ProfileDao, log: ProfileS
         is ProfileSyncLogic.Action.Create -> if (ProfileRules.canAdd(dao.count())) {
             val id = dao.insert(ProfileEntity(name = a.p.n, color = a.p.c, initial = ProfileRules.initialOf(a.p.n), isKids = a.p.k))
             a.p.l?.let { dao.putPref(ProfilePrefEntity(id, ProfilePrefs.UI_LANGUAGE, it)) }
+            a.p.s?.let { dao.putPref(ProfilePrefEntity(id, ProfilePrefs.SOURCES, ProfileSourcesRules.encode(it))) }
             log.set(a.p.n, a.p.at, true)
         }
         is ProfileSyncLogic.Action.Update -> dao.byId(a.id)?.let {
             dao.update(it.copy(color = a.p.c, isKids = a.p.k))
             a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
+            applySharedSources(dao, a.id, a.p.s)
             log.set(a.p.n, a.p.at, true)
         }
         is ProfileSyncLogic.Action.Delete -> if (delete(a.id)) log.set(a.p.n, a.p.at, false)
         is ProfileSyncLogic.Action.Rename -> dao.byId(a.id)?.let { old ->
             dao.update(old.copy(name = a.p.n, initial = ProfileRules.initialOf(a.p.n), color = a.p.c, isKids = a.p.k))
             a.p.l?.let { l -> dao.putPref(ProfilePrefEntity(a.id, ProfilePrefs.UI_LANGUAGE, l)) }
+            applySharedSources(dao, a.id, a.p.s)
             log.set(old.name, a.p.at, false); log.set(a.p.n, a.p.at, true, a.p.from)
         }
     }
+}
+
+/** Sources visibles reçues : absentes (null) = toutes, le choix local est donc retiré. */
+private suspend fun applySharedSources(dao: ProfileDao, profileId: Long, names: List<String>?) {
+    if (names.isNullOrEmpty()) dao.removePref(profileId, ProfilePrefs.SOURCES)
+    else dao.putPref(ProfilePrefEntity(profileId, ProfilePrefs.SOURCES, ProfileSourcesRules.encode(names)))
 }

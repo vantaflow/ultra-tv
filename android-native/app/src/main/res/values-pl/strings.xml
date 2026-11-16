@@ -1678,4 +1678,8 @@
     <string name="handoff_failed">Nie udało się wysłać. Spróbuj ponownie.</string>
     <string name="handoff_not_found">Tego tytułu nie ma w katalogu tego urządzenia.</string>
     <string name="handoff_no_devices">Żadne inne urządzenie nie jest sparowane z tym kontem.</string>
+    <string name="prof_sources">Źródła</string>
+    <string name="prof_sources_all">Wszystkie źródła</string>
+    <string name="prof_search_all">Szukaj we wszystkich źródłach</string>
+    <string name="prof_search_all_hint">Wyniki ze wszystkich widocznych źródeł, ze wskazaniem źródła przy każdym</string>
 </resources>

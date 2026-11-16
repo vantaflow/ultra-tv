@@ -1743,4 +1743,8 @@
     <string name="handoff_failed">Trimiterea a eșuat. Încearcă din nou.</string>
     <string name="handoff_not_found">Acest titlu nu se află în catalogul acestui dispozitiv.</string>
     <string name="handoff_no_devices">Niciun alt dispozitiv nu este asociat cu acest cont.</string>
+    <string name="prof_sources">Surse</string>
+    <string name="prof_sources_all">Toate sursele</string>
+    <string name="prof_search_all">Caută în toate sursele</string>
+    <string name="prof_search_all_hint">Rezultate din toate sursele vizibile, cu sursa indicată la fiecare</string>
 </resources>

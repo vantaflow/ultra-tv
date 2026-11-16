@@ -1742,4 +1742,8 @@
     <string name="handoff_failed">Não foi possível enviar. Tente novamente.</string>
     <string name="handoff_not_found">Este título não está no catálogo deste dispositivo.</string>
     <string name="handoff_no_devices">Nenhum outro dispositivo está pareado com esta conta.</string>
+    <string name="prof_sources">Fontes</string>
+    <string name="prof_sources_all">Todas as fontes</string>
+    <string name="prof_search_all">Pesquisar em todas as fontes</string>
+    <string name="prof_search_all_hint">Resultados de todas as fontes visíveis, com a fonte indicada em cada um</string>
 </resources>

@@ -708,5 +708,9 @@
   "handoff.noSource": "This source is not shared with your account, so another device cannot find it.",
   "handoff.failed": "Could not send. Try again.",
   "handoff.notFound": "This title is not in this device’s catalog.",
-  "handoff.noDevices": "No other device is paired with this account."
+  "handoff.noDevices": "No other device is paired with this account.",
+  "set.profileSources": "Visible sources",
+  "set.allSources": "All sources",
+  "set.searchAll": "Search all sources",
+  "set.searchAllD": "Results from every source visible to the profile, with the source shown on each one."
 }

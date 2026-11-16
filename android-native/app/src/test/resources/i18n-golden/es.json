@@ -1761,5 +1761,9 @@
   "DesignStrings/HandoffStringsKt.getHandoffNoSource()": "Esta fuente no está compartida con tu cuenta, así que otro dispositivo no puede encontrarla.",
   "DesignStrings/HandoffStringsKt.getHandoffFailed()": "No se pudo enviar. Inténtalo de nuevo.",
   "DesignStrings/HandoffStringsKt.getHandoffNotFound()": "Este título no está en el catálogo de este dispositivo.",
-  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "No hay otro dispositivo vinculado a esta cuenta."
+  "DesignStrings/HandoffStringsKt.getHandoffNoDevices()": "No hay otro dispositivo vinculado a esta cuenta.",
+  "ProfileStrings.getSources()": "Fuentes",
+  "ProfileStrings.getSourcesAll()": "Todas las fuentes",
+  "ProfileStrings.getSearchAllSources()": "Buscar en todas las fuentes",
+  "ProfileStrings.getSearchAllSourcesHint()": "Resultados de todas las fuentes visibles, con la fuente indicada en cada uno"
 }

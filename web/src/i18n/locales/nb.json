@@ -708,5 +708,9 @@
   "handoff.noSource": "Denne kilden er ikke delt med kontoen din, så en annen enhet kan ikke finne den.",
   "handoff.failed": "Kunne ikke sende. Prøv igjen.",
   "handoff.notFound": "Denne tittelen finnes ikke i denne enhetens katalog.",
-  "handoff.noDevices": "Ingen andre enheter er koblet til denne kontoen."
+  "handoff.noDevices": "Ingen andre enheter er koblet til denne kontoen.",
+  "set.profileSources": "Synlige kilder",
+  "set.allSources": "Alle kilder",
+  "set.searchAll": "Søk i alle kilder",
+  "set.searchAllD": "Resultater fra alle kilder som er synlige for profilen, med kilden vist på hvert."
 }

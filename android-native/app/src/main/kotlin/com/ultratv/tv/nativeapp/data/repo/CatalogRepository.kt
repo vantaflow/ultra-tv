@@ -216,6 +216,20 @@ class CatalogRepository @Inject constructor(
     suspend fun search(pid: Long, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true, only: String? = null): SearchResults =
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) { searchNow(pid, query, limit, nowMs, includePrograms, only) }
 
+    /**
+     * Recherche dans plusieurs sources (mode « Toutes les sources ») : une recherche indexée par source (chacune plafonnée à
+     * [limit]), puis fusion. Jamais de catalogue chargé en entier : la mémoire reste bornée par sources × limite.
+     */
+    suspend fun searchAll(pids: List<Long>, query: String, limit: Int = 40, nowMs: Long = System.currentTimeMillis(), includePrograms: Boolean = true, only: String? = null): SearchResults =
+        when (pids.size) {
+            0 -> SearchResults()
+            1 -> search(pids[0], query, limit, nowMs, includePrograms, only)
+            else -> SearchResults.merge(pids.map { search(it, query, limit, nowMs, includePrograms, only) })
+        }
+
+    suspend fun searchProgramsAll(pids: List<Long>, query: String, nowMs: Long = System.currentTimeMillis()): List<ProgramHit> =
+        pids.flatMap { searchPrograms(it, query, nowMs) }.sortedWith(compareByDescending<ProgramHit> { it.live }.thenBy { it.startMs })
+
     private suspend fun searchNow(pid: Long, query: String, limit: Int, nowMs: Long, includePrograms: Boolean, only: String?): SearchResults {
         val match = FtsQuery.of(query) ?: return SearchResults()
         val wantMovies = only == null || only == "movie"
@@ -387,7 +401,18 @@ data class SearchResults(
     val programs: List<ProgramHit> = emptyList(),
     /** Films et séries trouvés seulement par le repli tolérant aux fautes (aucun titre ne contient la saisie). */
     val fuzzy: Boolean = false,
-)
+) {
+    companion object {
+        /** Fusion de résultats de plusieurs sources : mêmes listes concaténées dans l'ordre des sources (le classement est refait à l'affichage). */
+        fun merge(all: List<SearchResults>): SearchResults = SearchResults(
+            channels = all.flatMap { it.channels },
+            movies = all.flatMap { it.movies },
+            series = all.flatMap { it.series },
+            programs = all.flatMap { it.programs },
+            fuzzy = all.isNotEmpty() && all.all { it.fuzzy || (it.movies.isEmpty() && it.series.isEmpty()) } && all.any { it.fuzzy },
+        )
+    }
+}
 
 private const val DAY_MS = 24L * 3_600_000
 

@@ -1706,4 +1706,8 @@
     <string name="handoff_failed">ส่งไม่สำเร็จ ลองอีกครั้ง</string>
     <string name="handoff_not_found">ไม่พบชื่อเรื่องนี้ในแคตตาล็อกของอุปกรณ์นี้</string>
     <string name="handoff_no_devices">ไม่มีอุปกรณ์อื่นที่จับคู่กับบัญชีนี้</string>
+    <string name="prof_sources">แหล่งที่มา</string>
+    <string name="prof_sources_all">ทุกแหล่งที่มา</string>
+    <string name="prof_search_all">ค้นหาในทุกแหล่งที่มา</string>
+    <string name="prof_search_all_hint">ผลลัพธ์จากทุกแหล่งที่มาที่แสดง พร้อมระบุแหล่งที่มาในแต่ละรายการ</string>
 </resources>

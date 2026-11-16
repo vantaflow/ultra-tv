@@ -708,5 +708,9 @@
   "handoff.noSource": "Nguồn này chưa được chia sẻ với tài khoản của bạn nên thiết bị khác không tìm thấy được.",
   "handoff.failed": "Không gửi được. Hãy thử lại.",
   "handoff.notFound": "Tiêu đề này không có trong danh mục của thiết bị này.",
-  "handoff.noDevices": "Chưa có thiết bị nào khác được ghép đôi với tài khoản này."
+  "handoff.noDevices": "Chưa có thiết bị nào khác được ghép đôi với tài khoản này.",
+  "set.profileSources": "Nguồn hiển thị",
+  "set.allSources": "Tất cả nguồn",
+  "set.searchAll": "Tìm trong tất cả nguồn",
+  "set.searchAllD": "Kết quả từ mọi nguồn hồ sơ nhìn thấy, kèm tên nguồn trên từng mục."
 }

@@ -1725,4 +1725,8 @@
     <string name="handoff_failed">Kunne ikke sende. Prøv igjen.</string>
     <string name="handoff_not_found">Denne tittelen finnes ikke i denne enhetens katalog.</string>
     <string name="handoff_no_devices">Ingen andre enheter er koblet til denne kontoen.</string>
+    <string name="prof_sources">Kilder</string>
+    <string name="prof_sources_all">Alle kilder</string>
+    <string name="prof_search_all">Søk i alle kilder</string>
+    <string name="prof_search_all_hint">Resultater fra alle synlige kilder, med kilden vist på hvert</string>
 </resources>

@@ -216,12 +216,17 @@ fun VodCard(
     favorite: Boolean = false,
     /** Appui long (ex. : ajouter aux favoris depuis la recherche). */
     onLongClick: (() -> Unit)? = null,
+    /** Pastille courte de la source (mode « Toutes les sources ») : coin haut gauche de l'affiche. */
+    badge: String? = null,
     onClick: () -> Unit,
 ) {
     FocusSurface(onClick = onClick, onLongClick = onLongClick, shape = RoundedCornerShape(16.design), bg = Color.Transparent, focusedBg = Color.Transparent, ringWidth = 5.design, focusedScale = 1f, modifier = modifier) { _ ->
         Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
             Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
                 PosterImage(poster, title, Modifier.fillMaxSize(), radius = 16, kind = kind, year = year)
+                if (badge != null) Box(Modifier.align(Alignment.TopStart).padding(10.design).clip(RoundedCornerShape(8.design)).background(Color(0xCC0A0A0C)).padding(horizontal = 10.design, vertical = 4.design)) {
+                    Text(badge, color = Color.White, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1)
+                }
                 if (favorite) Box(Modifier.align(Alignment.TopEnd).padding(10.design).size(40.design).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xCC0A0A0C)), contentAlignment = Alignment.Center) {
                     DIcon(Icons.Heart, 22.design, Ux.AccentInk, fill = true)
                 }
