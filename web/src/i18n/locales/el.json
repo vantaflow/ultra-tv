@@ -213,6 +213,7 @@
   "player.buffering": "Φόρτωση…",
   "player.reconnecting": "Επανασύνδεση…",
   "player.noTracks": "Δεν υπάρχουν εναλλακτικά κομμάτια",
+  "player.subtitlesFailed": "Δεν ήταν δυνατή η εξαγωγή αυτών των υποτίτλων.",
   "player.shortcuts": "Συντομεύσεις",
   "player.sk.space": "Αναπαραγωγή / παύση",
   "player.sk.arrows": "10 δευτ. πίσω / μπροστά (βίντεο)",

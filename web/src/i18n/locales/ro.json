@@ -217,6 +217,7 @@
   "player.buffering": "Se încarcă…",
   "player.reconnecting": "Se reconectează…",
   "player.noTracks": "Nicio pistă alternativă",
+  "player.subtitlesFailed": "Subtitrările nu au putut fi extrase.",
   "player.shortcuts": "Scurtături",
   "player.sk.space": "Redare / pauză",
   "player.sk.arrows": "Înapoi / înainte 10 s (videoclipuri)",

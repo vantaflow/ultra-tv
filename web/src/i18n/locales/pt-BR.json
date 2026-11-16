@@ -213,6 +213,7 @@
   "player.buffering": "Carregando…",
   "player.reconnecting": "Reconectando…",
   "player.noTracks": "Nenhuma faixa alternativa",
+  "player.subtitlesFailed": "Não foi possível extrair estas legendas.",
   "player.shortcuts": "Atalhos",
   "player.sk.space": "Reproduzir / pausar",
   "player.sk.arrows": "Voltar / avançar 10 s (vídeos)",

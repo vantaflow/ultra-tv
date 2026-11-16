@@ -213,6 +213,7 @@
   "player.buffering": "Buffering…",
   "player.reconnecting": "Reconnecting…",
   "player.noTracks": "No alternative tracks",
+  "player.subtitlesFailed": "Could not extract these subtitles.",
   "player.shortcuts": "Shortcuts",
   "player.sk.space": "Play / pause",
   "player.sk.arrows": "Back / forward 10 s (videos)",

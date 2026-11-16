@@ -18,7 +18,7 @@ const https = require("node:https");
 const crypto = require("node:crypto");
 const zlib = require("node:zlib");
 const { pipeline } = require("node:stream");
-const { parseTranscodePath, serveTranscode } = require("./transcode.cjs");
+const { parseTranscodePath, serveTranscode, serveStreamInfo, serveSubtitle } = require("./transcode.cjs");
 
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
 const MAX_POST_BYTES = 2 * 1024 * 1024;
@@ -473,9 +473,12 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       if (!txTarget || isSelfTarget(txTarget, port)) return fail(res, req, 400);
       if (req.method === "OPTIONS") { res.writeHead(204, { ...corsHeaders(req), "Content-Length": "0" }); return res.end(); }
       if (req.method !== "GET") return fail(res, req, 405);
+      // Liste des pistes et sous-titres : lecture de l'en-tête seule, sans libérer le flux en cours.
+      if (tx.kind === "info") return serveStreamInfo(req, res, { ffmpeg, target: txTarget, headers: corsHeaders(req) });
+      if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, headers: corsHeaders(req), report });
       // Comptes à connexion unique : l'ancien flux du même hôte est libéré avant que ffmpeg ouvre le sien.
       await releaseEntry(activeLive.get(txTarget.host.toLowerCase()));
-      return serveTranscode(req, res, { ffmpeg, target: txTarget, ss: tx.ss, live: tx.live, headers: corsHeaders(req), report });
+      return serveTranscode(req, res, { ffmpeg, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report });
     }
     const parsed = parseProxyPath(parsedUrl.pathname, secret);
     if (parsed.error) return fail(res, req, parsed.error);

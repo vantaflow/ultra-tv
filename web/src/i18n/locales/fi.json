@@ -213,6 +213,7 @@
   "player.buffering": "Puskuroidaan…",
   "player.reconnecting": "Yhdistetään uudelleen…",
   "player.noTracks": "Ei vaihtoehtoisia raitoja",
+  "player.subtitlesFailed": "Tekstitysten purkaminen epäonnistui.",
   "player.shortcuts": "Pikanäppäimet",
   "player.sk.space": "Toista / tauko",
   "player.sk.arrows": "Taakse / eteen 10 s (videot)",

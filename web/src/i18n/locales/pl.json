@@ -217,6 +217,7 @@
   "player.buffering": "Buforowanie…",
   "player.reconnecting": "Ponowne łączenie…",
   "player.noTracks": "Brak alternatywnych ścieżek",
+  "player.subtitlesFailed": "Nie udało się wyodrębnić tych napisów.",
   "player.shortcuts": "Skróty",
   "player.sk.space": "Odtwórz / wstrzymaj",
   "player.sk.arrows": "Wstecz / do przodu o 10 s (filmy)",

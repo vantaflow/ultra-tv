@@ -213,6 +213,7 @@
   "player.buffering": "Đang đệm…",
   "player.reconnecting": "Đang kết nối lại…",
   "player.noTracks": "Không có track thay thế",
+  "player.subtitlesFailed": "Không thể trích xuất phụ đề này.",
   "player.shortcuts": "Phím tắt",
   "player.sk.space": "Phát / tạm dừng",
   "player.sk.arrows": "Lùi / tua tới 10 giây (video)",

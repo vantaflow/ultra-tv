@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampSeek, txClock, txUrl } from "./transcode";
+import { clampSeek, parseTxInfo, txClock, txInfoUrl, txSubUrl, txUrl } from "./transcode";
 
 describe("conversion audio (bureau)", () => {
   it("URL /tx avec la position", () => {
@@ -9,6 +9,17 @@ describe("conversion audio (bureau)", () => {
     const b64 = u.slice("http://127.0.0.1:5000/tok/tx/".length).split("?")[0]!;
     expect(atob(b64.replace(/-/g, "+").replace(/_/g, "/"))).toBe("http://h/movie/u/p/1.mkv");
     expect(txUrl("http://x/t/", "http://h/a.ts", 0)).not.toContain("?ss");
+  });
+  it("piste audio dans l'URL, routes pistes et sous-titres", () => {
+    expect(txUrl("http://x/t/", "http://h/a.mkv", 10, false, 2)).toContain("ss=10&a=2");
+    expect(txUrl("http://x/t/", "http://h/a.mkv", 0, false, 0)).not.toContain("a=");
+    expect(txInfoUrl("http://x/t/", "http://h/a.mkv").startsWith("http://x/t/txi/")).toBe(true);
+    expect(txSubUrl("http://x/t/", "http://h/a.mkv", 3).endsWith("?s=3")).toBe(true);
+  });
+  it("réponse /txi validée", () => {
+    expect(parseTxInfo(null)).toBeNull();
+    expect(parseTxInfo({ audio: [], subs: [] })).toBeNull();
+    expect(parseTxInfo({ audio: [{ i: 1, lang: "fre", title: "VFF", codec: "ac3" }, { i: "x" }], subs: "?" })).toEqual({ audio: [{ i: 1, lang: "fre", title: "VFF", codec: "ac3" }], subs: [] });
   });
   it("position affichée = départ + lecture", () => {
     expect(txClock({ orig: "", offset: 600, duration: 5400 }, 12, Infinity)).toEqual({ t: 612, d: 5400 });

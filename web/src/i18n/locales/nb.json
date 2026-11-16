@@ -213,6 +213,7 @@
   "player.buffering": "Bufrer…",
   "player.reconnecting": "Kobler til på nytt…",
   "player.noTracks": "Ingen alternative spor",
+  "player.subtitlesFailed": "Kunne ikke hente ut disse undertekstene.",
   "player.shortcuts": "Snarveier",
   "player.sk.space": "Spill av / pause",
   "player.sk.arrows": "Tilbake / frem 10 s (videoer)",

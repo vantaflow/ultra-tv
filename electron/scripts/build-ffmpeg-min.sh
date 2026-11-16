@@ -27,6 +27,7 @@ DEMUXERS=matroska,mov,mpegts,mpegtsraw,hls,avi,flv,mpegps,mpegvideo,h264,hevc,aa
 AUDIO_DECODERS=ac3,eac3,dca,truehd,mlp,aac,aac_latm,mp3,mp2,mp1,flac,opus,vorbis,alac,pcm_s16le,pcm_s24le,pcm_s32le,pcm_s16be,pcm_f32le,pcm_dvd,pcm_bluray
 PARSERS=h264,hevc,mpeg4video,mpegvideo,vc1,av1,vp9,aac,aac_latm,ac3,dca,mlp,mpegaudio,flac,opus,vorbis
 BSFS=h264_mp4toannexb,hevc_mp4toannexb,aac_adtstoasc,extract_extradata,vp9_superframe
+SUB_DECODERS=subrip,srt,ass,ssa,webvtt,mov_text,text
 FILTERS=aresample,aformat,anull,null,format,abuffer,abuffersink,buffer,buffersink,asetnsamples
 
 COMMON=(
@@ -36,8 +37,8 @@ COMMON=(
   --enable-static --disable-shared --enable-small --enable-pic
   --enable-avformat --enable-avcodec --enable-avfilter --enable-swresample
   --enable-network
-  --enable-protocol="$PROTOCOLS" --enable-demuxer="$DEMUXERS" --enable-muxer=mpegts
-  --enable-decoder="$AUDIO_DECODERS" --enable-encoder=aac
+  --enable-protocol="$PROTOCOLS" --enable-demuxer="$DEMUXERS" --enable-muxer=mpegts,webvtt
+  --enable-decoder="$AUDIO_DECODERS,$SUB_DECODERS" --enable-encoder=aac,webvtt
   --enable-parser="$PARSERS" --enable-bsf="$BSFS" --enable-filter="$FILTERS"
 )
 
