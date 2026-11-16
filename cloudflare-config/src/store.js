@@ -51,6 +51,22 @@ export async function saveProviders(env, acct, providers) {
   acct.cfgVersion = (acct.cfgVersion || 0) + 1;
 }
 
+// Pierres tombales : identifiants des sources supprimées du compte, renvoyés aux appareils (`removed`) pour qu'ils
+// retirent aussi leur copie locale. Bornées (nombre et âge) : le document du compte reste petit.
+export const SRC_TOMB_MAX = 50;
+export const SRC_TOMB_TTL_MS = 30 * 86_400_000;
+
+/** Ajoute les sources supprimées aux pierres tombales du compte (en place), en écartant les plus anciennes. */
+export function addTombstones(acct, ids, now = Date.now()) {
+  const keep = (acct.removedProviders || []).filter((t) => now - t.at < SRC_TOMB_TTL_MS && !ids.includes(t.id));
+  acct.removedProviders = [...keep, ...ids.map((id) => ({ id, at: now }))].slice(-SRC_TOMB_MAX);
+}
+
+/** Identifiants supprimés encore dans leur fenêtre de rétention. */
+export function liveTombstones(acct, now = Date.now()) {
+  return (acct.removedProviders || []).filter((t) => now - t.at < SRC_TOMB_TTL_MS).map((t) => t.id);
+}
+
 export async function deleteAccount(env, acct) {
   await docs.deleteMany(env, (acct.devices || []).map((d) => `dev:${d.hash}`));
   // État partagé (favoris, reprises) de chaque source du compte.

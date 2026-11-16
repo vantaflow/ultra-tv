@@ -147,6 +147,77 @@ describe("affectations", () => {
     expect((await call(`/api/device/providers/${id}?all=1`, { method: "DELETE", ip: freshIp(), headers: bearer(phone.token) })).status).toBe(200);
     expect(await names(phone)).toEqual([]);
   });
+  it("uneSourceSurPlusieursAppareils_casesACocher_troisAppareils", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    const tab = await pairDevice(acct, "Tablette");
+    await addProvider(acct, m3u("Multi"));
+    const id = (await (await cfg(tv)).json()).providers[0].id;
+    // La page propose une case par appareil et « tous les appareils » (coché par défaut).
+    const html = await (await call("/?l=fr", { cookie: acct.cookie, ip: acct.ip })).text();
+    expect(html).toContain(`name="all" value="1" checked`);
+    for (const d of [tv, phone, tab]) expect(html).toContain(`name="d" value="${d.deviceId}"`);
+    await call(`/providers/${id}/assign`, { method: "POST", ip: acct.ip, cookie: acct.cookie, headers: { "content-type": "application/x-www-form-urlencoded" }, body: `csrf=${encodeURIComponent(acct.csrf)}&d=${tv.deviceId}&d=${tab.deviceId}` });
+    expect(await names(tv)).toEqual(["Multi"]);
+    expect(await names(tab)).toEqual(["Multi"]);
+    expect(await names(phone)).toEqual([]);
+  });
+  it("affectationDepuisUnAppareil_routeAssign_conserveLeResteDeLaSource", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    const tab = await pairDevice(acct, "Tablette");
+    const id = (await (await putProv(phone, { ...m3u("Ma liste"), shareWith: "all" })).json()).provider.id;
+    const put = (dev, shareWith, pid = id) => call(`/api/device/providers/${pid}/assign`, { method: "PUT", ip: freshIp(), headers: bearer(dev.token), json: { shareWith } });
+    const r = await put(phone, [phone.deviceId, tab.deviceId]);
+    expect(r.status).toBe(200);
+    expect((await r.json()).provider.sharedWith).toEqual([phone.deviceId, tab.deviceId]);
+    expect(await names(tab)).toEqual(["Ma liste"]);
+    expect(await names(tv)).toEqual([]);
+    // la TV ne voit pas la source : 404 ; liste vide, appareil inconnu ou autre compte : 400
+    expect((await put(tv, "all")).status).toBe(404);
+    for (const bad of [[], ["ffffffffffff"], "tous"]) expect((await put(phone, bad)).status).toBe(400);
+    expect((await put(phone, "all")).status).toBe(200);
+    expect(await names(tv)).toEqual(["Ma liste"]);
+    expect((await put(phone, "all", "deadbeef")).status).toBe(404);
+  });
+  it("suppressionDepuisUnAppareil_all1_pierreTombale_proposeeAuxAutres", async () => {
+    const { tv, phone } = await twoDevices();
+    const id = (await (await putProv(phone, { ...m3u("A jeter"), shareWith: "all" })).json()).provider.id;
+    const v0 = (await (await cfg(tv)).json()).version;
+    expect((await call(`/api/device/providers/${id}?all=1`, { method: "DELETE", ip: freshIp(), headers: bearer(phone.token) })).status).toBe(200);
+    const b = await (await cfg(tv)).json();
+    expect(b.providers).toEqual([]);
+    expect(b.removed).toEqual([id]);
+    expect(b.version).toBeGreaterThan(v0);
+  });
+  it("suppressionDepuisLeTableauDeBord_pierreTombale_etCfgVersionIncremente", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    const id = (await (await putProv(phone, { ...m3u("Dash"), shareWith: "all" })).json()).provider.id;
+    const r0 = await cfg(tv);
+    const etag = r0.headers.get("etag");
+    const del = await call(`/providers/${id}/delete`, { method: "POST", ip: acct.ip, cookie: acct.cookie, form: { csrf: acct.csrf } });
+    expect(del.status).toBe(302);
+    // L'ETag a changé : l'appareil relit la configuration (pas de 304) et y trouve la suppression.
+    const r1 = await cfg(tv, { "if-none-match": etag });
+    expect(r1.status).toBe(200);
+    const b = await r1.json();
+    expect(b.providers).toEqual([]);
+    expect(b.removed).toContain(id);
+    expect((await (await cfg(phone)).json()).removed).toContain(id);
+  });
+  it("simpleRetraitDeLAffectation_nEstPasUneSuppression", async () => {
+    const { acct, tv, phone } = await twoDevices();
+    await addProvider(acct, m3u("Dash"));
+    const id = (await (await cfg(tv)).json()).providers[0].id;
+    await call(`/api/device/providers/${id}`, { method: "DELETE", ip: freshIp(), headers: bearer(tv.token) });
+    expect((await (await cfg(phone)).json()).removed).toEqual([]);
+  });
+  it("pierresTombales_bornees", async () => {
+    const { addTombstones, liveTombstones, SRC_TOMB_MAX, SRC_TOMB_TTL_MS } = await import("../src/store.js");
+    const acct = {};
+    addTombstones(acct, ["vieux"], 1000);
+    expect(liveTombstones(acct, 1000 + SRC_TOMB_TTL_MS + 1)).toEqual([]);
+    for (let i = 0; i < SRC_TOMB_MAX + 10; i++) addTombstones(acct, [`id${i}`], 5000);
+    expect(acct.removedProviders.length).toBe(SRC_TOMB_MAX);
+  });
   it("donneesAnterieuresSansAffectation_sontVisiblesPourTous", async () => {
     const { acct, tv } = await twoDevices();
     await addProvider(acct, m3u("Ancienne"));

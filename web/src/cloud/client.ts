@@ -171,7 +171,7 @@ export interface CloudPrefs {
   by?: string;
 }
 export interface CloudDevice { id: string; name: string; model?: string; lastSeen?: number; isCurrent?: boolean }
-export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
+export interface CloudConfig { version: number; devices: number | CloudDevice[]; providers: CloudProvider[]; /** Identifiants des sources supprimées du compte (pierres tombales) : à retirer aussi en local. */ removed?: string[]; deviceName?: string; /** Identifiant de l'appareil courant. */ self?: string }
 
 export type ConfigResult = { unchanged: true } | { unchanged: false; config: CloudConfig; etag: string };
 
@@ -190,7 +190,7 @@ export async function fetchConfig(base: string, token: string, etag?: string | n
   const o = parse<Partial<CloudConfig>>(r);
   return {
     unchanged: false, etag: r.etag,
-    config: { version: o.version ?? 0, devices: o.devices ?? 0, providers: Array.isArray(o.providers) ? o.providers : [], deviceName: o.deviceName, self: o.self },
+    config: { version: o.version ?? 0, devices: o.devices ?? 0, providers: Array.isArray(o.providers) ? o.providers : [], removed: Array.isArray(o.removed) ? o.removed.filter((x: unknown): x is string => typeof x === "string") : [], deviceName: o.deviceName, self: o.self },
   };
 }
 
@@ -253,6 +253,19 @@ export async function putProvider(base: string, token: string, input: ProviderIn
   return o.provider;
 }
 
+/**
+ * Change l'affectation d'une source déjà liée au compte (sans renvoyer ses identifiants).
+ * 404 = source inconnue, non affectée à cet appareil, ou route absente d'un Worker plus ancien.
+ */
+export async function assignProvider(base: string, token: string, id: string, shareWith: "all" | string[]): Promise<void> {
+  const r = await http({ url: `${base}/api/device/providers/${encodeURIComponent(id)}/assign`, method: "PUT", headers: auth(token, { "content-type": "application/json" }), body: json({ shareWith }) });
+  if (r.status === 401) throw new TokenRejectedError();
+  common(r);
+  if (r.status === 404) throw new NotFoundError();
+  if (r.status === 400) throw new InvalidFieldError("shareWith");
+  if (r.status < 200 || r.status >= 300) throw new CloudError("assign-provider", r.status);
+}
+
 export type PutPrefsResult = { status: "ok" } | { status: "stale"; prefs: CloudPrefs } | { status: "unknown" };
 
 /** Publie les réglages d'affichage d'une source. 409 « stale » : le cloud a une version plus récente (à appliquer). */
@@ -305,8 +318,9 @@ export async function renameDevice(base: string, token: string, name: string): P
   if (r.status < 200 || r.status >= 300) throw new CloudError("rename", r.status);
 }
 
-export async function deleteProvider(base: string, token: string, id: string): Promise<void> {
-  const r = await http({ url: `${base}/api/device/providers/${encodeURIComponent(id)}`, method: "DELETE", headers: auth(token) });
+/** `everywhere` : supprime la source du compte (les autres appareils la retirent) ; sinon retire seulement cet appareil de l'affectation. */
+export async function deleteProvider(base: string, token: string, id: string, everywhere = false): Promise<void> {
+  const r = await http({ url: `${base}/api/device/providers/${encodeURIComponent(id)}${everywhere ? "?all=1" : ""}`, method: "DELETE", headers: auth(token) });
   if (r.status === 401) throw new TokenRejectedError();
   common(r);
   if (r.status === 404) throw new NotFoundError();

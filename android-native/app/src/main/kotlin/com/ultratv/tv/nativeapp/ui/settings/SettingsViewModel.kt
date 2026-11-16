@@ -78,6 +78,8 @@ class SettingsViewModel @Inject constructor(
 
     suspend fun providerById(id: Long) = repo.byId(id)
     fun cloudIdOf(localId: Long): String? = cloudSync.cloudIdOf(localId)
+    /** Appareils destinataires actuels d'une source liée (null = tous). */
+    fun assignOf(localId: Long): List<String>? = cloudSync.assignOf(localId)
     fun sharedWith(localId: Long): Int = cloudSync.sharedWith(localId)
     suspend fun connectionWarning(): Boolean = cloudSync.connectionWarning()
 
@@ -463,7 +465,8 @@ class SettingsViewModel @Inject constructor(
 
     fun delete(id: Long) {
         viewModelScope.launch {
-            repo.delete(id)
+            // Suppression propagée au compte (et donc aux autres appareils) quand la source est liée.
+            cloudSync.deleteSource(id)
             _message.value = "Provider deleted"
         }
     }

@@ -180,5 +180,34 @@ class CloudSyncLogicTest {
         assertEquals("STALKER", cfg.providers.single().kind); assertEquals("00:1A:79:00:00:01", cfg.providers.single().mac)
     }
 
+    // ── suppression propagée (#135) ──
+    @Test fun plan_sourceLieeAbsenteDeLaConfig_estRetiree_localeNonLieeJamaisTouchee() {
+        val liee = local(1, "aaaaaaaa"); val privee = local(2, null, url = "http://h/prive")
+        val a = plan(listOf(liee, privee), emptyList())
+        assertEquals(listOf<SyncAction>(SyncAction.Remove(1, "Src", 0)), a)
+    }
+
+    @Test fun plan_suppressionAvecFavoris_demandeConfirmation() {
+        val a = plan(listOf(local(1, "aaaaaaaa")), emptyList(), deps = mapOf(1L to 3))
+        assertTrue((a.single() as SyncAction.Remove).needsConfirm)
+    }
+
+    @Test fun withoutPendingDeletes_neRecreePasUneSourceSupprimeeIci() {
+        val cfg = CloudConfig(1, "me", emptyList(), listOf(cloud("aaaaaaaa"), cloud("bbbbbbbb")))
+        val filtered = CloudSyncLogic.withoutPendingDeletes(cfg, setOf("aaaaaaaa"))
+        assertEquals(listOf("bbbbbbbb"), filtered.providers.map { it.id })
+        assertTrue(plan(emptyList(), filtered.providers).none { it is SyncAction.Add && it.cloud.id == "aaaaaaaa" })
+        assertEquals(cfg, CloudSyncLogic.withoutPendingDeletes(cfg, emptySet()))
+    }
+
+    @Test fun parseConfig_listeDesDestinataires_etTous() {
+        val cfg = CloudSyncLogic.parseConfig("""{"version":3,"self":"d1","devices":[],"providers":[
+            {"id":"aaaaaaaa","kind":"M3U","name":"A","url":"http://x/a.m3u","sharedWith":["d1","d2"]},
+            {"id":"bbbbbbbb","kind":"M3U","name":"B","url":"http://x/b.m3u","sharedWith":"all"}]}""")
+        assertEquals(listOf("d1", "d2"), cfg.providers[0].assign)
+        assertNull(cfg.providers[1].assign)
+        assertEquals(2, cfg.providers[0].sharedWith(5)); assertEquals(5, cfg.providers[1].sharedWith(5))
+    }
+
     private fun JSONObjectOf(s: String) = org.json.JSONObject(s)
 }

@@ -160,6 +160,22 @@ class CloudSyncClient @Inject constructor(okHttp: OkHttpClient) {
         }
     }
 
+    /**
+     * Change l'affectation d'une source déjà liée au compte (`shareWith` : null = tous les appareils, sinon la liste),
+     * sans renvoyer ses identifiants. Renvoie false sur 404 (source non visible, ou Worker sans cette route).
+     */
+    suspend fun assign(base: String, token: String, cloudId: String, shareWith: List<String>?): Boolean = withContext(Dispatchers.IO) {
+        require(Regex("[0-9a-f]{8}").matches(cloudId)) { "bad id" }
+        val body = org.json.JSONObject().put("shareWith", if (shareWith == null) "all" else org.json.JSONArray(shareWith)).toString()
+        val req = Request.Builder().url("$base/api/device/providers/$cloudId/assign").header("Authorization", "Bearer $token").put(body.toRequestBody(json)).build()
+        http.newCall(req).execute().use { r ->
+            if (r.code == 404) return@use false
+            check(r.code, r.header("Retry-After"))
+            if (!r.isSuccessful) throw CloudSyncException("HTTP ${r.code} while changing the source assignment")
+            true
+        }
+    }
+
     suspend fun renameSelf(base: String, token: String, name: String) = withContext(Dispatchers.IO) {
         val body = org.json.JSONObject().put("name", name).toString().toRequestBody(json)
         val req = Request.Builder().url("$base/api/device").header("Authorization", "Bearer $token").patch(body).build()

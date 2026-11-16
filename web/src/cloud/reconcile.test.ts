@@ -70,10 +70,29 @@ describe("reconcile", () => {
   it("une source locale partagée garde ses identifiants locaux ; le partage suit le cloud", () => {
     const local = ls({ cloudOrigin: "local", password: "secret-local" });
     const p = reconcile([local], [rp({ password: "autre", sharedWith: ["d1", "d2"] })], emptySource);
-    expect(p.update).toEqual([{ id: 1, patch: { cloudShared: 2 }, resync: false }]);
+    expect(p.update).toEqual([{ id: 1, patch: { cloudShared: 2, cloudSharedIds: ["d1", "d2"] }, resync: false }]);
   });
   it("partagée avec tous", () => {
     const p = reconcile([], [rp({ sharedWith: "all" })], emptySource);
     expect(p.add[0]!.cloudShared).toBe("all");
+  });
+});
+
+describe("pierres tombales (suppression propagée)", () => {
+  it("source locale partagée : supprimée si le compte l'a supprimée, détachée sinon", () => {
+    const loc = ls({ cloudOrigin: "local" });
+    expect(reconcile([loc], [], emptySource, ["a0000001"])).toMatchObject({ remove: [1], detach: [] });
+    expect(reconcile([loc], [], emptySource, [])).toMatchObject({ remove: [], detach: [1] });
+  });
+  it("source du cloud absente : supprimée ; source jamais synchronisée : intacte", () => {
+    const pure = { ...emptySource(), id: 2, name: "Locale", type: "m3u" as const, m3uUrl: "http://x/l.m3u" };
+    const p = reconcile([ls(), pure], [], emptySource, ["a0000001"]);
+    expect(p.remove).toEqual([1]);
+    expect(p.detach).toEqual([]);
+  });
+  it("affectation en liste : changement détecté même à nombre égal", () => {
+    const cur = ls({ cloudShared: 2, cloudSharedIds: ["x", "y"] });
+    const p = reconcile([cur], [rp({ sharedWith: ["x", "z"] })], emptySource);
+    expect(p.update[0]?.patch).toMatchObject({ cloudSharedIds: ["x", "z"] });
   });
 });
