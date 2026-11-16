@@ -5,6 +5,8 @@
     <!-- Leanback is the Android TV launcher category. Optional so phones still work. -->
     <uses-feature android:name="android.software.leanback" android:required="false" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <!-- Fire TV : sans ce « required=false », certains appareils Amazon filtrent ou classent mal l'appli. -->
+    <uses-feature android:name="amazon.hardware.fire_tv" android:required="false" />
     <!-- Téléphone et tablette : le toucher simulé (souris, stylet) suffit, rien d'autre n'est exigé du matériel. -->
     <uses-feature android:name="android.hardware.faketouch" android:required="false" />
 
@@ -70,10 +72,20 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density|fontScale"
             android:resizeableActivity="true"
             android:windowSoftInputMode="adjustResize"
+            android:banner="@drawable/banner"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:label="@string/app_name"
             android:theme="@style/Theme.UltraTv.Starting">
+            <!-- Téléphone et tablette. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Android TV et Fire TV : filtre séparé (schéma recommandé pour une appli hybride), avec bannière et
+                 libellé sur l'activité elle-même, que les lanceurs TV lisent en priorité sur ceux de l'application. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
             </intent-filter>
             <!-- Liens profonds ultratv:// (rappels, Google TV) : résolus dans le catalogue local. -->
