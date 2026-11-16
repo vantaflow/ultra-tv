@@ -79,6 +79,18 @@ val DesignStrings.mediaChecking get() = tx(R.string.dsb1_ms_checking)
 val DesignStrings.mediaFailed get() = tx(R.string.dsb1_ms_failed)
 val DesignStrings.mediaHint get() = tx(R.string.dsb1_ms_hint)
 
+// Plex (connexion par code PIN) : « Plex » est un nom propre, jamais traduit
+val DesignStrings.formSubPlex get() = tx(R.string.dsb1_plex_sub)
+val DesignStrings.plexOpen get() = tx(R.string.dsb1_plex_open)
+val DesignStrings.plexWaiting get() = tx(R.string.dsb1_plex_waiting)
+val DesignStrings.plexExpired get() = tx(R.string.dsb1_plex_expired)
+val DesignStrings.plexFailed get() = tx(R.string.dsb1_plex_failed)
+val DesignStrings.plexNoServer get() = tx(R.string.dsb1_plex_none)
+val DesignStrings.plexUnreachable get() = tx(R.string.dsb1_plex_unreach)
+val DesignStrings.plexRetry get() = tx(R.string.dsb1_plex_retry)
+val DesignStrings.plexPick get() = tx(R.string.dsb1_plex_pick)
+val DesignStrings.plexHint get() = tx(R.string.dsb1_plex_hint)
+
 // Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
 val DesignStrings.typeMovie get() = tx(R.string.dsb1_type_movie)
 val DesignStrings.typeSeries get() = tx(R.string.dsb1_type_series)

@@ -517,6 +517,16 @@
     <string name="dsb1_ms_checking">Opretter forbindelse til serveren…</string>
     <string name="dsb1_ms_failed">Kunne ikke oprette forbindelse til serveren. Kontrollér adressen, brugernavnet og adgangskoden.</string>
     <string name="dsb1_ms_hint">Afspilning er direkte, og din fremgang gemmes på serveren. Loginoplysninger forbliver krypteret på denne enhed.</string>
+    <string name="dsb1_plex_sub">Din Plex-konto: forbind den med en kode, så bliver dens film- og serie-biblioteker en kilde</string>
+    <string name="dsb1_plex_open">Åbn plex.tv/link på en telefon eller computer, og indtast denne kode</string>
+    <string name="dsb1_plex_waiting">Venter på, at du indtaster koden…</string>
+    <string name="dsb1_plex_expired">Koden er udløbet. Anmod om en ny.</string>
+    <string name="dsb1_plex_failed">Kunne ikke få forbindelse til plex.tv. Tjek din internetforbindelse.</string>
+    <string name="dsb1_plex_none">Der blev ikke fundet nogen Plex-server på denne konto.</string>
+    <string name="dsb1_plex_unreach">Kunne ikke nå denne server herfra. Kontrollér, at den kører og er tilgængelig.</string>
+    <string name="dsb1_plex_retry">Ny kode</string>
+    <string name="dsb1_plex_pick">Vælg en Plex-server</string>
+    <string name="dsb1_plex_hint">Afspilning er direkte, og din fremgang gemmes på serveren. Login-tokenet forbliver krypteret på denne enhed.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Instruktør</string>

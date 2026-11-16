@@ -35,6 +35,9 @@ class MediaServerClient(okBase: OkHttpClient, private val deviceId: () -> String
 
     private val jsonType = "application/json".toMediaType()
 
+    /** Plex (connexion par code PIN, jeton dans un en-tête) : même interface, autre protocole. */
+    val plex = PlexClient(okBase, deviceId)
+
     private fun base(p: ProviderEntity) = p.baseUrl.trimEnd('/')
 
     private fun Request.Builder.auth(token: String?) = apply {
@@ -83,7 +86,7 @@ class MediaServerClient(okBase: OkHttpClient, private val deviceId: () -> String
 
     /** Bibliothèques de films et de séries de l'utilisateur. */
     suspend fun libraries(p: ProviderEntity): List<MediaServer.Library> =
-        MediaServer.parseViews(get(p, "${base(p)}/Users/${p.username}/Views"))
+        if (p.kind == Plex.KIND) plex.libraries(p) else MediaServer.parseViews(get(p, "${base(p)}/Users/${p.username}/Views"))
 
     /** Tous les éléments d'un type dans une bibliothèque, lus page par page. */
     private suspend fun allItems(p: ProviderEntity, libraryId: String, type: String): List<MediaServer.Item> {
@@ -99,13 +102,14 @@ class MediaServerClient(okBase: OkHttpClient, private val deviceId: () -> String
     }
 
     suspend fun movies(p: ProviderEntity, libraryId: String): List<MovieEntity> =
-        allItems(p, libraryId, "Movie").map { MediaServer.toMovie(p.id, base(p), it, libraryId) }
+        if (p.kind == Plex.KIND) plex.movies(p, libraryId) else allItems(p, libraryId, "Movie").map { MediaServer.toMovie(p.id, base(p), it, libraryId) }
 
     suspend fun series(p: ProviderEntity, libraryId: String): List<SeriesEntity> =
-        allItems(p, libraryId, "Series").map { MediaServer.toSeries(p.id, base(p), it, libraryId) }
+        if (p.kind == Plex.KIND) plex.series(p, libraryId) else allItems(p, libraryId, "Series").map { MediaServer.toSeries(p.id, base(p), it, libraryId) }
 
     /** Épisodes d'une série (toutes saisons), numérotés dans l'ordre du serveur si l'index manque. */
     suspend fun episodes(p: ProviderEntity, seriesRemoteId: String, seriesRowId: Long): List<EpisodeEntity> {
+        if (p.kind == Plex.KIND) return plex.episodes(p, seriesRemoteId, seriesRowId)
         val page = MediaServer.parseItems(get(p, MediaServer.episodesUrl(base(p), seriesRemoteId, p.username)))
         return page.items.filter { it.type.isEmpty() || it.type == "Episode" }
             .mapIndexed { i, it -> MediaServer.toEpisode(p.id, base(p), seriesRowId, it, i + 1) }
@@ -119,6 +123,7 @@ class MediaServerClient(okBase: OkHttpClient, private val deviceId: () -> String
 
     /** Adresse de lecture directe + en-têtes (jeton) d'un élément de la source [p]. */
     suspend fun openUrl(p: ProviderEntity, itemId: String): Pair<String, Map<String, String>> {
+        if (p.kind == Plex.KIND) return plex.openUrl(p, itemId)
         val it = runCatching { item(p, itemId) }.getOrNull()
         val url = MediaServer.playUrl(base(p), itemId, it?.mediaSourceId, it?.container)
         return url to MediaServer.playHeaders(p.password)
@@ -126,10 +131,11 @@ class MediaServerClient(okBase: OkHttpClient, private val deviceId: () -> String
 
     /** Reprise stockée sur le serveur (ms) mêlée à la position locale ; en cas d'échec réseau, la position locale. */
     suspend fun resumeMs(p: ProviderEntity, itemId: String, localMs: Long): Long =
-        MediaServer.resumeMs(runCatching { item(p, itemId) }.getOrNull(), localMs)
+        if (p.kind == Plex.KIND) plex.resumeMs(p, itemId, localMs) else MediaServer.resumeMs(runCatching { item(p, itemId) }.getOrNull(), localMs)
 
     /** Rapport de lecture (début, progression, fin) ; ne lève jamais (hors annulation) : jamais bloquant pour le lecteur. */
     suspend fun report(p: ProviderEntity, kind: MediaServer.Report, itemId: String, positionMs: Long, paused: Boolean) {
+        if (p.kind == Plex.KIND) return plex.report(p, kind, itemId, positionMs, paused)
         try {
             val body = MediaServer.reportBody(itemId, null, positionMs, paused).toRequestBody(jsonType)
             execute(Request.Builder().url(base(p) + kind.path).auth(p.password).post(body).build())

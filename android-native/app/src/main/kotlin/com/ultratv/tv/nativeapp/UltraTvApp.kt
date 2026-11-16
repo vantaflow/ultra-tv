@@ -53,6 +53,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
     @Inject lateinit var googleTv: dagger.Lazy<com.ultratv.tv.nativeapp.data.tv.GoogleTvSync>
     @Inject lateinit var hiddenCategories: dagger.Lazy<com.ultratv.tv.nativeapp.data.prefs.HiddenCategoriesStore>
     @Inject lateinit var okHttp: dagger.Lazy<okhttp3.OkHttpClient>
+    @Inject lateinit var plexImageAuth: dagger.Lazy<com.ultratv.tv.nativeapp.data.mediaserver.PlexImageAuth>
     @Inject lateinit var traktRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktLibraryRepository>
     @Inject lateinit var traktMatcher: dagger.Lazy<com.ultratv.tv.nativeapp.data.trakt.TraktCatalogMatcher>
     @Inject lateinit var providerRepo: dagger.Lazy<com.ultratv.tv.nativeapp.data.repo.ProviderRepository>
@@ -110,7 +111,7 @@ class UltraTvApp : Application(), SingletonImageLoader.Factory, Configuration.Pr
                     lowMem = { low || economy },
                 ))
                 add(OkHttpNetworkFetcherFactory(callFactory = {
-                    okHttp.get().newBuilder().apply { networkInterceptors().clear() }.dispatcher(okhttp3.Dispatcher()).build()
+                    okHttp.get().newBuilder().apply { networkInterceptors().clear() }.addInterceptor(plexImageAuth.get()).dispatcher(okhttp3.Dispatcher()).build()
                 }))
             }
             .apply {

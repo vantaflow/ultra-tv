@@ -508,6 +508,16 @@
     <string name="dsb1_ms_checking">Đang kết nối với máy chủ…</string>
     <string name="dsb1_ms_failed">Không thể kết nối với máy chủ. Hãy kiểm tra địa chỉ, tên người dùng và mật khẩu.</string>
     <string name="dsb1_ms_hint">Phát trực tiếp và tiến độ xem của bạn được lưu trên máy chủ. Thông tin đăng nhập luôn được mã hóa trên thiết bị này.</string>
+    <string name="dsb1_plex_sub">Tài khoản Plex của bạn: liên kết bằng một mã, rồi các thư viện phim và loạt phim của nó trở thành một nguồn</string>
+    <string name="dsb1_plex_open">Trên điện thoại hoặc máy tính, hãy mở plex.tv/link và nhập mã này</string>
+    <string name="dsb1_plex_waiting">Đang chờ bạn nhập mã…</string>
+    <string name="dsb1_plex_expired">Mã đã hết hạn. Hãy yêu cầu mã mới.</string>
+    <string name="dsb1_plex_failed">Không thể truy cập plex.tv. Hãy kiểm tra kết nối Internet của bạn.</string>
+    <string name="dsb1_plex_none">Không tìm thấy máy chủ Plex nào trong tài khoản này.</string>
+    <string name="dsb1_plex_unreach">Không thể truy cập máy chủ này từ đây. Hãy kiểm tra xem nó có đang chạy và truy cập được không.</string>
+    <string name="dsb1_plex_retry">Mã mới</string>
+    <string name="dsb1_plex_pick">Chọn máy chủ Plex</string>
+    <string name="dsb1_plex_hint">Phát trực tiếp và tiến độ xem của bạn được lưu trên máy chủ. Mã thông báo đăng nhập luôn được mã hóa trên thiết bị này.</string>
     <string name="dsb1_type_movie">PHIM</string>
     <string name="dsb1_type_series">SERIES</string>
     <string name="dsb1_director_label">Đạo diễn</string>

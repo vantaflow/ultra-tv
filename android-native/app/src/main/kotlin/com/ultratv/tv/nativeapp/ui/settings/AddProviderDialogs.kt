@@ -74,6 +74,15 @@ import com.ultratv.tv.nativeapp.i18n.fieldMediaUser
 import com.ultratv.tv.nativeapp.i18n.formSubMediaServer
 import com.ultratv.tv.nativeapp.i18n.mediaChecking
 import com.ultratv.tv.nativeapp.i18n.mediaHint
+import com.ultratv.tv.nativeapp.i18n.formSubPlex
+import com.ultratv.tv.nativeapp.i18n.plexExpired
+import com.ultratv.tv.nativeapp.i18n.plexFailed
+import com.ultratv.tv.nativeapp.i18n.plexHint
+import com.ultratv.tv.nativeapp.i18n.plexNoServer
+import com.ultratv.tv.nativeapp.i18n.plexOpen
+import com.ultratv.tv.nativeapp.i18n.plexRetry
+import com.ultratv.tv.nativeapp.i18n.plexUnreachable
+import com.ultratv.tv.nativeapp.i18n.plexWaiting
 import com.ultratv.tv.nativeapp.i18n.fieldPortalLogin
 import com.ultratv.tv.nativeapp.i18n.fieldPortalPassword
 import com.ultratv.tv.nativeapp.i18n.fieldPortalUrl
@@ -558,5 +567,43 @@ fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = fals
         FormField(D.fieldMediaPass, pass, { pass = it }, password = true, placeholder = "••••••••", testTag = "field-pass")
         FormField(D.fieldMediaKey, key, { key = it }, password = true, last = true, testTag = "field-key")
         Text(D.mediaHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
+    }
+}
+
+/**
+ * Connexion Plex par code PIN : le code est affiché en grand avec l'adresse plex.tv/link et un QR code ; le dialogue
+ * se ferme quand le serveur est ajouté (géré par l'appelant). Un message clair en cas d'expiration, d'échec ou de
+ * serveur injoignable, avec « Nouveau code ». Le choix du serveur (plusieurs sur le compte) est géré par l'appelant.
+ */
+@Composable
+fun PlexDialog(state: PlexUi, onDismiss: () -> Unit, onRetry: () -> Unit) {
+    val D = LocalDs.current
+    val retry = state is PlexUi.Expired || state is PlexUi.Failed || state is PlexUi.NoServer || state is PlexUi.Unreachable
+    AddProviderDialog(
+        title = "Plex",
+        subtitle = D.formSubPlex,
+        icon = Icons.Monitor,
+        onDismiss = onDismiss,
+        onSubmit = { if (retry) onRetry() },
+        canSubmit = retry,
+        submitLabel = if (retry) D.plexRetry else if (state is PlexUi.Adding) D.mediaChecking else null,
+        onBack = onDismiss,
+    ) {
+        when (state) {
+            is PlexUi.Waiting -> androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(32.design), verticalAlignment = Alignment.CenterVertically) {
+                com.ultratv.tv.nativeapp.ui.design.QrCode(com.ultratv.tv.nativeapp.data.mediaserver.Plex.LINK_URL, 200.design)
+                Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
+                    Text(D.plexOpen, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
+                    Text(state.code, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, color = Ux.Text, maxLines = 1)
+                    Text(D.plexWaiting, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 1)
+                }
+            }
+            PlexUi.Expired -> Text(D.plexExpired, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
+            PlexUi.NoServer -> Text(D.plexNoServer, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
+            PlexUi.Unreachable -> Text(D.plexUnreachable, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
+            PlexUi.Failed -> Text(D.plexFailed, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
+            else -> Text(D.mediaChecking, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
+        }
+        Text(D.plexHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }

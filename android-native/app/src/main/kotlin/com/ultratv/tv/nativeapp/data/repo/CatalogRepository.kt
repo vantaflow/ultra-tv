@@ -177,7 +177,7 @@ class CatalogRepository @Inject constructor(
             // Portail Stalker : saisons/épisodes du portail, ou tableau `series` de la série (voir StalkerClient.episodes).
             "STALKER" -> stalker.episodes(p, s).ifEmpty { return }
             // Serveur Jellyfin / Emby : épisodes de la série (toutes saisons), lus à l'ouverture de la fiche.
-            "JELLYFIN", "EMBY" -> mediaServer.episodes(p, s.remoteId, s.id).ifEmpty { return }
+            "JELLYFIN", "EMBY", "PLEX" -> mediaServer.episodes(p, s.remoteId, s.id).ifEmpty { return }
             else -> return
         }
         episodesFetchedAt[seriesId] = now

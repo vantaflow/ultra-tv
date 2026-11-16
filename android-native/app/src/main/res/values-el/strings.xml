@@ -517,6 +517,16 @@
     <string name="dsb1_ms_checking">Σύνδεση με τον διακομιστή…</string>
     <string name="dsb1_ms_failed">Δεν ήταν δυνατή η σύνδεση με τον διακομιστή. Ελέγξτε τη διεύθυνση, το όνομα χρήστη και τον κωδικό.</string>
     <string name="dsb1_ms_hint">Η αναπαραγωγή είναι άμεση και η πρόοδός σας αποθηκεύεται στον διακομιστή. Τα διαπιστευτήρια παραμένουν κρυπτογραφημένα σε αυτή τη συσκευή.</string>
+    <string name="dsb1_plex_sub">Ο λογαριασμός σας Plex: συνδέστε τον με έναν κωδικό και οι βιβλιοθήκες ταινιών και σειρών του γίνονται πηγή</string>
+    <string name="dsb1_plex_open">Σε τηλέφωνο ή υπολογιστή, ανοίξτε το plex.tv/link και εισαγάγετε αυτόν τον κωδικό</string>
+    <string name="dsb1_plex_waiting">Αναμονή για την εισαγωγή του κωδικού…</string>
+    <string name="dsb1_plex_expired">Ο κωδικός έληξε. Ζητήστε νέο.</string>
+    <string name="dsb1_plex_failed">Δεν ήταν δυνατή η πρόσβαση στο plex.tv. Ελέγξτε τη σύνδεσή σας στο διαδίκτυο.</string>
+    <string name="dsb1_plex_none">Δεν βρέθηκε διακομιστής Plex σε αυτόν τον λογαριασμό.</string>
+    <string name="dsb1_plex_unreach">Δεν ήταν δυνατή η πρόσβαση σε αυτόν τον διακομιστή από εδώ. Ελέγξτε ότι λειτουργεί και είναι προσβάσιμος.</string>
+    <string name="dsb1_plex_retry">Νέος κωδικός</string>
+    <string name="dsb1_plex_pick">Επιλέξτε διακομιστή Plex</string>
+    <string name="dsb1_plex_hint">Η αναπαραγωγή είναι άμεση και η πρόοδός σας αποθηκεύεται στον διακομιστή. Το διακριτικό σύνδεσης παραμένει κρυπτογραφημένο σε αυτή τη συσκευή.</string>
     <string name="dsb1_type_movie">ΤΑΙΝΙΑ</string>
     <string name="dsb1_type_series">ΣΕΙΡΑ</string>
     <string name="dsb1_director_label">Σκηνοθέτης</string>

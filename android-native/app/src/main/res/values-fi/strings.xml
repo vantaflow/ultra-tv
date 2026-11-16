@@ -511,6 +511,16 @@
     <string name="dsb1_ms_checking">Yhdistetään palvelimeen…</string>
     <string name="dsb1_ms_failed">Palvelimeen ei saatu yhteyttä. Tarkista osoite, käyttäjätunnus ja salasana.</string>
     <string name="dsb1_ms_hint">Toisto on suoraa, ja katselun edistyminen tallentuu palvelimelle. Tunnukset pysyvät salattuina tällä laitteella.</string>
+    <string name="dsb1_plex_sub">Plex-tilisi: yhdistä se koodilla, niin sen elokuva- ja sarjakirjastoista tulee lähde</string>
+    <string name="dsb1_plex_open">Avaa puhelimella tai tietokoneella plex.tv/link ja anna tämä koodi</string>
+    <string name="dsb1_plex_waiting">Odotetaan koodin syöttämistä…</string>
+    <string name="dsb1_plex_expired">Koodi on vanhentunut. Pyydä uusi.</string>
+    <string name="dsb1_plex_failed">plex.tv:hen ei saatu yhteyttä. Tarkista internetyhteytesi.</string>
+    <string name="dsb1_plex_none">Tililtä ei löytynyt Plex-palvelinta.</string>
+    <string name="dsb1_plex_unreach">Tähän palvelimeen ei saada yhteyttä täältä. Tarkista, että se on käynnissä ja tavoitettavissa.</string>
+    <string name="dsb1_plex_retry">Uusi koodi</string>
+    <string name="dsb1_plex_pick">Valitse Plex-palvelin</string>
+    <string name="dsb1_plex_hint">Toisto on suoraa, ja katselun edistyminen tallentuu palvelimelle. Kirjautumistunnus pysyy salattuna tällä laitteella.</string>
     <string name="dsb1_type_movie">ELOKUVA</string>
     <string name="dsb1_type_series">SARJA</string>
     <string name="dsb1_director_label">Ohjaaja</string>

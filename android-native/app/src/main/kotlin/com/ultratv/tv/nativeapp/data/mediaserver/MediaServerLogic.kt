@@ -29,7 +29,7 @@ object MediaServer {
     const val JELLYFIN = "JELLYFIN"
     const val EMBY = "EMBY"
 
-    fun isMediaKind(kind: String?): Boolean = kind == JELLYFIN || kind == EMBY
+    fun isMediaKind(kind: String?): Boolean = kind == JELLYFIN || kind == EMBY || kind == Plex.KIND
 
     /** Nom de client annoncé au serveur (apparaît dans son tableau de bord, rubrique Appareils). */
     const val CLIENT_NAME = "Ultra TV"

@@ -793,6 +793,33 @@ class ProviderRepository @Inject constructor(
         )
     }
 
+    // ───────────── Plex : connexion par code PIN ─────────────
+
+    /** Demande un code à saisir sur plex.tv/link. */
+    suspend fun plexCreatePin() = mediaServer.plex.createPin()
+
+    /** Jeton du compte une fois le code validé, null avant. */
+    suspend fun plexPollPin(id: Long) = mediaServer.plex.pollPin(id)
+
+    /** Serveurs du compte Plex. */
+    suspend fun plexServers(accountToken: String) = mediaServer.plex.servers(accountToken)
+
+    /**
+     * Ajoute un serveur Plex : choisit la meilleure connexion qui répond (locale, puis distante, puis relais) et enregistre
+     * adresse, identifiant de machine (`username`) et jeton DU SERVEUR (`password`, chiffré au repos). Aucune connexion
+     * joignable : [java.io.IOException] et RIEN n'est enregistré. Un serveur déjà ajouté renvoie sa source (jeton rafraîchi).
+     */
+    suspend fun addPlexServer(server: com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server): Long {
+        val conn = mediaServer.plex.bestConnection(server) ?: throw java.io.IOException("plex: no reachable connection")
+        val kind = com.ultratv.tv.nativeapp.data.mediaserver.Plex.KIND
+        providerDao.findByIdentity(kind, conn.uri, server.machineId)?.let { existing ->
+            providerDao.upsert(existing.copy(password = server.accessToken)); providerDao.resetSyncAt(existing.id); return existing.id
+        }
+        return providerDao.upsert(
+            ProviderEntity(name = server.name.ifBlank { "Plex" }, kind = kind, baseUrl = conn.uri, username = server.machineId, password = server.accessToken, active = false),
+        )
+    }
+
     // ───────────── Portail Stalker : films et séries partagent la même liste VOD ─────────────
 
     /**

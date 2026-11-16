@@ -517,6 +517,16 @@
     <string name="dsb1_ms_checking">Kobler til serveren…</string>
     <string name="dsb1_ms_failed">Kunne ikke koble til serveren. Kontroller adressen, brukernavnet og passordet.</string>
     <string name="dsb1_ms_hint">Avspillingen er direkte, og fremdriften din lagres på serveren. Påloggingsopplysningene forblir kryptert på denne enheten.</string>
+    <string name="dsb1_plex_sub">Din Plex-konto: koble den til med en kode, så blir bibliotekene med filmer og serier en kilde</string>
+    <string name="dsb1_plex_open">Åpne plex.tv/link på en telefon eller datamaskin, og skriv inn denne koden</string>
+    <string name="dsb1_plex_waiting">Venter på at du skriver inn koden…</string>
+    <string name="dsb1_plex_expired">Koden har utløpt. Be om en ny.</string>
+    <string name="dsb1_plex_failed">Fikk ikke kontakt med plex.tv. Sjekk internettforbindelsen din.</string>
+    <string name="dsb1_plex_none">Fant ingen Plex-server på denne kontoen.</string>
+    <string name="dsb1_plex_unreach">Fikk ikke kontakt med denne serveren herfra. Kontroller at den er på og tilgjengelig.</string>
+    <string name="dsb1_plex_retry">Ny kode</string>
+    <string name="dsb1_plex_pick">Velg en Plex-server</string>
+    <string name="dsb1_plex_hint">Avspillingen er direkte, og fremdriften din lagres på serveren. Påloggingstokenet forblir kryptert på denne enheten.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Regissør</string>

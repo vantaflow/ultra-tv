@@ -508,6 +508,16 @@
     <string name="dsb1_ms_checking">กำลังเชื่อมต่อกับเซิร์ฟเวอร์…</string>
     <string name="dsb1_ms_failed">เชื่อมต่อกับเซิร์ฟเวอร์ไม่ได้ ตรวจสอบที่อยู่ ชื่อผู้ใช้ และรหัสผ่าน</string>
     <string name="dsb1_ms_hint">เล่นโดยตรง และความคืบหน้าของคุณจะถูกบันทึกบนเซิร์ฟเวอร์ ข้อมูลเข้าสู่ระบบยังคงเข้ารหัสอยู่บนอุปกรณ์นี้</string>
+    <string name="dsb1_plex_sub">บัญชี Plex ของคุณ: ลิงก์ด้วยรหัส แล้วคลังภาพยนตร์และซีรีส์จะกลายเป็นแหล่งเนื้อหา</string>
+    <string name="dsb1_plex_open">บนโทรศัพท์หรือคอมพิวเตอร์ ให้เปิด plex.tv/link แล้วกรอกรหัสนี้</string>
+    <string name="dsb1_plex_waiting">กำลังรอให้คุณกรอกรหัส…</string>
+    <string name="dsb1_plex_expired">รหัสหมดอายุแล้ว ขอรหัสใหม่</string>
+    <string name="dsb1_plex_failed">เชื่อมต่อ plex.tv ไม่ได้ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณ</string>
+    <string name="dsb1_plex_none">ไม่พบเซิร์ฟเวอร์ Plex ในบัญชีนี้</string>
+    <string name="dsb1_plex_unreach">เข้าถึงเซิร์ฟเวอร์นี้จากที่นี่ไม่ได้ ตรวจสอบว่าเซิร์ฟเวอร์เปิดอยู่และเข้าถึงได้</string>
+    <string name="dsb1_plex_retry">รหัสใหม่</string>
+    <string name="dsb1_plex_pick">เลือกเซิร์ฟเวอร์ Plex</string>
+    <string name="dsb1_plex_hint">เล่นโดยตรง และความคืบหน้าของคุณจะถูกบันทึกบนเซิร์ฟเวอร์ โทเคนการเข้าสู่ระบบยังคงเข้ารหัสอยู่บนอุปกรณ์นี้</string>
     <string name="dsb1_type_movie">ภาพยนตร์</string>
     <string name="dsb1_type_series">ซีรีส์</string>
     <string name="dsb1_director_label">ผู้กำกับ</string>

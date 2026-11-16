@@ -525,6 +525,16 @@
     <string name="dsb1_ms_checking">Se conectează la server…</string>
     <string name="dsb1_ms_failed">Nu s-a putut face conexiunea la server. Verifică adresa, numele de utilizator și parola.</string>
     <string name="dsb1_ms_hint">Redarea este directă, iar progresul tău este salvat pe server. Datele de autentificare rămân criptate pe acest dispozitiv.</string>
+    <string name="dsb1_plex_sub">Contul tău Plex: asociază-l cu un cod, iar bibliotecile lui de filme și seriale devin o sursă</string>
+    <string name="dsb1_plex_open">Pe un telefon sau un computer, deschide plex.tv/link și introdu acest cod</string>
+    <string name="dsb1_plex_waiting">Se așteaptă introducerea codului…</string>
+    <string name="dsb1_plex_expired">Codul a expirat. Cere unul nou.</string>
+    <string name="dsb1_plex_failed">Nu s-a putut ajunge la plex.tv. Verifică conexiunea la internet.</string>
+    <string name="dsb1_plex_none">Nu a fost găsit niciun server Plex în acest cont.</string>
+    <string name="dsb1_plex_unreach">Nu s-a putut ajunge la acest server de aici. Verifică dacă este pornit și accesibil.</string>
+    <string name="dsb1_plex_retry">Cod nou</string>
+    <string name="dsb1_plex_pick">Alege un server Plex</string>
+    <string name="dsb1_plex_hint">Redarea este directă, iar progresul tău este salvat pe server. Tokenul de autentificare rămâne criptat pe acest dispozitiv.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIAL</string>
     <string name="dsb1_director_label">Regizor</string>

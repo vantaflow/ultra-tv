@@ -538,6 +538,16 @@
     <string name="dsb1_ms_checking">جارٍ الاتصال بالخادم…</string>
     <string name="dsb1_ms_failed">تعذّر الاتصال بالخادم. تحقّق من العنوان واسم المستخدم وكلمة المرور.</string>
     <string name="dsb1_ms_hint">التشغيل مباشر ويُحفظ تقدّمك على الخادم. تبقى بيانات الدخول مشفّرة على هذا الجهاز.</string>
+    <string name="dsb1_plex_sub">حساب Plex الخاص بك: اربطه برمز، فتصبح مكتبات الأفلام والمسلسلات فيه مصدرًا</string>
+    <string name="dsb1_plex_open">على هاتف أو حاسوب، افتح plex.tv/link وأدخل هذا الرمز</string>
+    <string name="dsb1_plex_waiting">في انتظار إدخالك الرمز…</string>
+    <string name="dsb1_plex_expired">انتهت صلاحية الرمز. اطلب رمزًا جديدًا.</string>
+    <string name="dsb1_plex_failed">تعذّر الوصول إلى plex.tv. تحقّق من اتصالك بالإنترنت.</string>
+    <string name="dsb1_plex_none">لم يُعثر على أي خادم Plex في هذا الحساب.</string>
+    <string name="dsb1_plex_unreach">تعذّر الوصول إلى هذا الخادم من هنا. تأكّد من أنه يعمل ويمكن الوصول إليه.</string>
+    <string name="dsb1_plex_retry">رمز جديد</string>
+    <string name="dsb1_plex_pick">اختر خادم Plex</string>
+    <string name="dsb1_plex_hint">التشغيل مباشر ويُحفظ تقدّمك على الخادم. يبقى رمز تسجيل الدخول مشفّرًا على هذا الجهاز.</string>
     <string name="dsb1_type_movie">فيلم</string>
     <string name="dsb1_type_series">مسلسل</string>
     <string name="dsb1_director_label">إخراج</string>

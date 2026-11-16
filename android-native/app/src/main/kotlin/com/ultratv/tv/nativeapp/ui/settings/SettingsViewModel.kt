@@ -31,6 +31,20 @@ sealed interface WebSendUi {
     data object Failed : WebSendUi
 }
 
+/** Étapes de la connexion Plex (code PIN) vues par l'écran : jamais de jeton ici. */
+sealed interface PlexUi {
+    data object Idle : PlexUi
+    data object Starting : PlexUi
+    data class Waiting(val code: String) : PlexUi
+    data class Choosing(val servers: List<com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server>) : PlexUi
+    data object Adding : PlexUi
+    data object Done : PlexUi
+    data object Expired : PlexUi
+    data object NoServer : PlexUi
+    data object Unreachable : PlexUi
+    data object Failed : PlexUi
+}
+
 data class SettingsState(
     val providers: List<ProviderEntity> = emptyList(),
     val syncing: Boolean = false,
@@ -411,6 +425,65 @@ class SettingsViewModel @Inject constructor(
             }
         }
     }
+
+    // ───────────── Plex : connexion par code PIN ─────────────
+
+    private val _plex = MutableStateFlow<PlexUi>(PlexUi.Idle)
+    val plex: StateFlow<PlexUi> = _plex.asStateFlow()
+    private var plexJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Lance la connexion Plex : affiche un code (plex.tv/link), attend sa validation, liste les serveurs du compte. Un seul
+     * serveur : ajouté directement ; plusieurs : [PlexUi.Choosing]. Jamais de jeton dans l'état exposé à l'écran.
+     */
+    fun startPlexLink() {
+        plexJob?.cancel()
+        _plex.value = PlexUi.Starting
+        plexJob = viewModelScope.launch {
+            try {
+                val res = com.ultratv.tv.nativeapp.data.mediaserver.awaitPlexToken(
+                    create = { repo.plexCreatePin() }, poll = { repo.plexPollPin(it) },
+                    onCode = { _plex.value = PlexUi.Waiting(it) },
+                )
+                val token = (res as? com.ultratv.tv.nativeapp.data.mediaserver.PlexLinkResult.Token)?.value
+                if (token == null) { _plex.value = PlexUi.Expired; return@launch }
+                _plex.value = PlexUi.Adding
+                val servers = repo.plexServers(token)
+                when (servers.size) {
+                    0 -> _plex.value = PlexUi.NoServer
+                    1 -> choosePlexServer(servers.first())
+                    else -> _plex.value = PlexUi.Choosing(servers)
+                }
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                _plex.value = PlexUi.Failed
+            }
+        }
+    }
+
+    /** Ajoute le serveur choisi (meilleure connexion qui répond) puis lance le premier index des bibliothèques. */
+    fun choosePlexServer(server: com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server) {
+        plexJob?.cancel()
+        _plex.value = PlexUi.Adding
+        plexJob = viewModelScope.launch {
+            _syncing.value = true
+            try {
+                val id = repo.addPlexServer(server)
+                makeDefaultIfNone(id)
+                sync.request(id, force = true)
+                _plex.value = PlexUi.Done
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                _plex.value = PlexUi.Unreachable
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
+    fun cancelPlexLink() { plexJob?.cancel(); plexJob = null; _plex.value = PlexUi.Idle }
 
     /**
      * Ajoute un serveur Jellyfin / Emby : connexion vérifiée d'abord (sans quoi rien n'est enregistré et [failedText] est affiché),

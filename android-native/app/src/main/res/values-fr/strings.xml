@@ -520,6 +520,16 @@
     <string name="dsb1_ms_checking">Connexion au serveur…</string>
     <string name="dsb1_ms_failed">Connexion impossible. Vérifiez l’adresse, le nom d’utilisateur et le mot de passe.</string>
     <string name="dsb1_ms_hint">La lecture est directe et votre progression est enregistrée sur le serveur. Les identifiants restent chiffrés sur cet appareil.</string>
+    <string name="dsb1_plex_sub">Votre compte Plex : liez-le avec un code, puis ses bibliothèques de films et de séries deviennent une source</string>
+    <string name="dsb1_plex_open">Sur un téléphone ou un ordinateur, ouvrez plex.tv/link et saisissez ce code</string>
+    <string name="dsb1_plex_waiting">En attente de la saisie du code…</string>
+    <string name="dsb1_plex_expired">Le code a expiré. Demandez-en un nouveau.</string>
+    <string name="dsb1_plex_failed">Impossible de joindre plex.tv. Vérifiez votre connexion Internet.</string>
+    <string name="dsb1_plex_none">Aucun serveur Plex trouvé sur ce compte.</string>
+    <string name="dsb1_plex_unreach">Impossible de joindre ce serveur d’ici. Vérifiez qu’il est allumé et accessible.</string>
+    <string name="dsb1_plex_retry">Nouveau code</string>
+    <string name="dsb1_plex_pick">Choisissez un serveur Plex</string>
+    <string name="dsb1_plex_hint">La lecture est directe et votre progression est enregistrée sur le serveur. Le jeton de connexion reste chiffré sur cet appareil.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SÉRIE</string>
     <string name="dsb1_director_label">Réalisateur</string>

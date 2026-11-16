@@ -48,7 +48,7 @@ fun requiredParts(kind: String): List<SyncPart> = when (kind) {
     "M3U", "M3U_LOCAL" -> listOf(SyncPart.LIVE)
     "XTREAM" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES, SyncPart.EPG)
     "STALKER" -> listOf(SyncPart.LIVE, SyncPart.VOD, SyncPart.SERIES)   // pas de guide XMLTV sur un portail
-    "JELLYFIN", "EMBY" -> listOf(SyncPart.VOD, SyncPart.SERIES)   // bibliothèques du serveur : ni direct ni guide
+    "JELLYFIN", "EMBY", "PLEX" -> listOf(SyncPart.VOD, SyncPart.SERIES)   // bibliothèques du serveur : ni direct ni guide
     else -> emptyList()   // type de source hérité non pris en charge : rien à attendre
 }
 

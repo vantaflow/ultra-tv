@@ -524,6 +524,16 @@
     <string name="dsb1_ms_checking">Conectando ao servidor…</string>
     <string name="dsb1_ms_failed">Não foi possível conectar ao servidor. Confira o endereço, o nome de usuário e a senha.</string>
     <string name="dsb1_ms_hint">A reprodução é direta e seu progresso é salvo no servidor. As credenciais continuam criptografadas neste dispositivo.</string>
+    <string name="dsb1_plex_sub">Sua conta Plex: vincule com um código e as bibliotecas de filmes e séries dela viram uma fonte</string>
+    <string name="dsb1_plex_open">Em um celular ou computador, abra plex.tv/link e digite este código</string>
+    <string name="dsb1_plex_waiting">Aguardando você digitar o código…</string>
+    <string name="dsb1_plex_expired">O código expirou. Peça um novo.</string>
+    <string name="dsb1_plex_failed">Não foi possível acessar o plex.tv. Confira sua conexão com a internet.</string>
+    <string name="dsb1_plex_none">Nenhum servidor Plex foi encontrado nesta conta.</string>
+    <string name="dsb1_plex_unreach">Não foi possível acessar este servidor daqui. Confira se ele está ligado e acessível.</string>
+    <string name="dsb1_plex_retry">Novo código</string>
+    <string name="dsb1_plex_pick">Escolha um servidor Plex</string>
+    <string name="dsb1_plex_hint">A reprodução é direta e seu progresso é salvo no servidor. O token de login continua criptografado neste dispositivo.</string>
     <string name="dsb1_type_movie">FILME</string>
     <string name="dsb1_type_series">SÉRIE</string>
     <string name="dsb1_director_label">Direção</string>

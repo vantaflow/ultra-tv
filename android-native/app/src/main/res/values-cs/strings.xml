@@ -527,6 +527,16 @@
     <string name="dsb1_ms_checking">Připojování k serveru…</string>
     <string name="dsb1_ms_failed">K serveru se nepodařilo připojit. Zkontrolujte adresu, uživatelské jméno a heslo.</string>
     <string name="dsb1_ms_hint">Přehrávání je přímé a váš postup se ukládá na server. Přihlašovací údaje zůstávají v tomto zařízení šifrované.</string>
+    <string name="dsb1_plex_sub">Váš účet Plex: propojte ho kódem a jeho knihovny filmů a seriálů se stanou zdrojem</string>
+    <string name="dsb1_plex_open">V telefonu nebo počítači otevřete plex.tv/link a zadejte tento kód</string>
+    <string name="dsb1_plex_waiting">Čekání na zadání kódu…</string>
+    <string name="dsb1_plex_expired">Platnost kódu vypršela. Vyžádejte si nový.</string>
+    <string name="dsb1_plex_failed">Server plex.tv není dostupný. Zkontrolujte připojení k internetu.</string>
+    <string name="dsb1_plex_none">V tomto účtu nebyl nalezen žádný server Plex.</string>
+    <string name="dsb1_plex_unreach">K tomuto serveru se odsud nelze připojit. Zkontrolujte, zda běží a je dostupný.</string>
+    <string name="dsb1_plex_retry">Nový kód</string>
+    <string name="dsb1_plex_pick">Vyberte server Plex</string>
+    <string name="dsb1_plex_hint">Přehrávání je přímé a váš postup se ukládá na server. Přihlašovací token zůstává v tomto zařízení šifrovaný.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIÁL</string>
     <string name="dsb1_director_label">Režie</string>
