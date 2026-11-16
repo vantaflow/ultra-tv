@@ -1615,6 +1615,8 @@
     <string name="sport_record">تسجيل</string>
     <string name="sport_today">اليوم</string>
     <string name="sport_tomorrow">غداً</string>
+    <string name="sport_also_on">متوفر أيضاً على</string>
+    <string name="sport_also_on_n">متوفر أيضاً على %1$d</string>
     <string name="sport_empty_live">لا توجد برامج رياضية مباشرة الآن.</string>
     <string name="sport_empty_upcoming">لا توجد برامج رياضية معلنة خلال 48 ساعة القادمة.</string>
     <string name="sport_no_channels">لم يتم العثور على قناة رياضية في مصدرك.</string>

@@ -584,6 +584,8 @@
   "sport.settingD": "Adds a Sport entry to the menu and a “Sport live” row to Home, built from your own guide. Off by default.",
   "sport.liveNow": "Live now",
   "sport.upcoming": "Coming up · 48 h",
+  "sport.alsoOn": "Also on",
+  "sport.alsoOnN": "Also on {n}",
   "sport.channels": "Sports channels",
   "sport.homeRow": "Sport live",
   "sport.fromGuide": "Based on your source’s guide",

@@ -8,6 +8,7 @@ import { useNow } from "@/hooks/misc";
 import { useSportData, useTeamBadges } from "@/hooks/sport";
 import { useT, type Key } from "@/i18n";
 import { progId } from "@/lib/schedule";
+import { alsoOnMap, badgesOf, collapseEvents, entryKey } from "@/lib/sportMatch";
 import {
   dayOffset, liveNow, matchLineOf, ofKind, playMinute, presentKinds, progress, sportKindOf, teamKey, teamNamesOf, upcoming,
   type SportEntry, type SportKind,
@@ -49,6 +50,49 @@ export function TeamCrest({ name, badges }: { name: string; badges: Map<string, 
 }
 
 const play = (source: Source, c: ChannelRow) => usePlayer.getState().open(channelTarget(source, c), "full", null);
+
+const NO_ALSO: SportEntry[] = [];
+
+/** « Aussi sur : … » : les autres chaînes du même événement avec leurs badges (qualité, pays) ; c'est l'utilisateur qui choisit. */
+function AlsoOnList({ source, others }: { source: Source; others: SportEntry[] }) {
+  const t = useT();
+  return (
+    <div className="sp-also-list" role="group" aria-label={t("sport.alsoOn")}>
+      {others.map((o) => {
+        const c = o.channel;
+        const badges = badgesOf(c);
+        return (
+          <button key={c.streamId} className="sp-also-ch" onClick={() => play(source, c)}>
+            <span className="sp-chan-logo" aria-hidden="true"><span className="ini">{initials(c.display)}</span><Img src={c.logo} contain /></span>
+            <span className="tx">
+              <b className="ellipsis">{c.num ? <span className="mono">{c.num} · </span> : null}{c.display}</b>
+              {badges ? <span className="sp-badges">{badges}</span> : null}
+            </span>
+            <Icon name="play" size={14} fill className="go" />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Bouton « Aussi sur N » (déplie la liste des autres chaînes). */
+function AlsoOnToggle({ n, open, onToggle }: { n: number; open: boolean; onToggle: () => void }) {
+  const t = useT();
+  return <button className="btn sm" aria-expanded={open} onClick={onToggle}>{t("sport.alsoOnN", { n })}</button>;
+}
+
+/** Carte d'un direct + « Aussi sur » dessous (la carte est un bouton : la liste ne peut pas être imbriquée dedans). */
+function LiveWithAlso({ source, e, now, badges, others }: { source: Source; e: SportEntry; now: number; badges: Map<string, string>; others: SportEntry[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sp-live-wrap">
+      <SportLiveCard source={source} e={e} now={now} badges={badges} />
+      {others.length > 0 && <AlsoOnToggle n={others.length} open={open} onToggle={() => setOpen((v) => !v)} />}
+      {open && others.length > 0 && <AlsoOnList source={source} others={others} />}
+    </div>
+  );
+}
 
 /** Carte d'un direct : compétition + minute, équipes (écussons), chaîne, progression. */
 export const SportLiveCard = memo(function SportLiveCard({ source, e, now, badges }: { source: Source; e: SportEntry; now: number; badges: Map<string, string> }) {
@@ -98,8 +142,11 @@ function SportInner({ source }: { source: Source }) {
   const reminded = useReminderIds();
   const recorded = useRecordingIds();
 
-  const live = useMemo(() => (data ? liveNow(data.entries, now) : []), [data, now]);
-  const days = useMemo(() => (data ? upcoming(data.entries, now) : []), [data, now]);
+  // Un même événement vu sur plusieurs chaînes (titres différents compris) : une carte, les autres chaînes dans « Aussi sur ».
+  const live = useMemo(() => (data ? collapseEvents(liveNow(data.entries, now)) : []), [data, now]);
+  const days = useMemo(() => (data ? upcoming(data.entries, now).map((d) => ({ ...d, entries: collapseEvents(d.entries) })) : []), [data, now]);
+  const also = useMemo(() => (data ? alsoOnMap(data.entries) : new Map<string, SportEntry[]>()), [data]);
+  const [openAlso, setOpenAlso] = useState<string | null>(null);
   const kinds = useMemo(() => presentKinds([...live, ...days.flatMap((d) => d.entries)]), [live, days]);
   const k = kind && kinds.includes(kind) ? kind : null;
   const liveShown = useMemo(() => ofKind(live, k), [live, k]);
@@ -130,7 +177,7 @@ function SportInner({ source }: { source: Source }) {
               <h2 className="section-title sp-sec"><span><span className="sp-dot" aria-hidden="true" />{t("sport.liveNow")}{liveShown.length > 0 && <span className="sp-count"> · {liveShown.length}</span>}</span></h2>
               {liveShown.length === 0 ? <p className="sp-empty">{t("sport.emptyLive")}</p> : (
                 <HScroll className="row-scroll">
-                  {liveShown.map((e) => <SportLiveCard key={`l${e.channel.streamId}`} source={source} e={e} now={now} badges={badges} />)}
+                  {liveShown.map((e) => <LiveWithAlso key={`l${e.channel.streamId}`} source={source} e={e} now={now} badges={badges} others={also.get(entryKey(e)) ?? NO_ALSO} />)}
                 </HScroll>
               )}
             </section>
@@ -147,6 +194,8 @@ function SportInner({ source }: { source: Source }) {
                       const kd = sportKindOf(e.prog.title, e.prog.desc);
                       const ref = progRef(source, e.channel, e.prog);
                       const id = progId(ref);
+                      const ek = entryKey(e);
+                      const others = also.get(ek) ?? NO_ALSO;
                       return (
                         <div key={`u${e.channel.streamId}-${e.prog.start}`} className="sp-row" role="listitem">
                           <span className="sp-day">{dayLabel(t, day, now, lang)}</span>
@@ -155,7 +204,11 @@ function SportInner({ source }: { source: Source }) {
                             <b className="ellipsis">{line.home && line.away ? `${line.home} – ${line.away}` : line.title}</b>
                             <span className="ellipsis">{[line.competition ?? (kd ? t(KIND_LABEL[kd]) : null), e.channel.display].filter(Boolean).join(" · ")}</span>
                           </span>
-                          <span className="sp-acts"><ProgActions source={source} prog={ref} now={now} reminded={reminded.has(id)} recorded={recorded.has(id)} /></span>
+                          <span className="sp-acts">
+                            {others.length > 0 && <AlsoOnToggle n={others.length} open={openAlso === ek} onToggle={() => setOpenAlso(openAlso === ek ? null : ek)} />}
+                            <ProgActions source={source} prog={ref} now={now} reminded={reminded.has(id)} recorded={recorded.has(id)} />
+                          </span>
+                          {openAlso === ek && others.length > 0 && <div className="sp-also"><AlsoOnList source={source} others={others} /></div>}
                         </div>
                       );
                     })}
@@ -193,14 +246,15 @@ export function SportHomeRow({ source }: { source: Source }) {
   const nav = useNavigate();
   const now = useNow(30_000);
   const data = useSportData(source);
-  const live = useMemo(() => (data ? liveNow(data.entries, now, 12) : []), [data, now]);
+  const live = useMemo(() => (data ? collapseEvents(liveNow(data.entries, now, 12)) : []), [data, now]);
   const badges = useTeamBadges(useMemo(() => teamNamesOf(live), [live]));
+  const also = useMemo(() => (data ? alsoOnMap(data.entries) : new Map<string, SportEntry[]>()), [data]);
   if (!live.length) return null;
   return (
     <section aria-label={t("sport.homeRow")}>
       <h2 className="section-title"><span><span className="sp-dot" aria-hidden="true" />{t("sport.homeRow")}</span><button className="btn sm" onClick={() => nav("/sport")}>{t("common.all")}</button></h2>
       <HScroll className="row-scroll">
-        {live.map((e) => <SportLiveCard key={`h${e.channel.streamId}`} source={source} e={e} now={now} badges={badges} />)}
+        {live.map((e) => <LiveWithAlso key={`h${e.channel.streamId}`} source={source} e={e} now={now} badges={badges} others={also.get(entryKey(e)) ?? NO_ALSO} />)}
       </HScroll>
     </section>
   );

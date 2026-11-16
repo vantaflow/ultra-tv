@@ -58,6 +58,8 @@ data class SportState(
     val live: List<SportEntry> = emptyList(),
     val upcoming: List<SportDay> = emptyList(),
     val channels: List<ChannelEntity> = emptyList(),
+    /** « Aussi sur » : pour chaque programme (chaîne, début) dont l'événement passe ailleurs, les autres chaînes. */
+    val alsoOn: Map<Pair<Long, Long>, List<SportEntry>> = emptyMap(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -98,6 +100,7 @@ class SportViewModel @Inject constructor(
                             live = SportLogic.liveNow(d.entries, now),
                             upcoming = SportLogic.upcoming(d.entries, now),
                             channels = d.channels.take(MAX_CHANNELS_SHOWN),
+                            alsoOn = com.ultratv.tv.nativeapp.data.sport.SportMatching.alsoOnMap(d.entries),
                         )
                     }
                 }.getOrElse { SportState(loading = false, hasSource = true, hasGuide = false) }

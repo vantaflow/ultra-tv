@@ -1562,6 +1562,8 @@
     <string name="sport_record">Εγγραφή</string>
     <string name="sport_today">Σήμερα</string>
     <string name="sport_tomorrow">Αύριο</string>
+    <string name="sport_also_on">Επίσης σε</string>
+    <string name="sport_also_on_n">Επίσης σε %1$d</string>
     <string name="sport_empty_live">Κανένα άθλημα στον αέρα αυτή τη στιγμή.</string>
     <string name="sport_empty_upcoming">Δεν έχει ανακοινωθεί αθλητικό πρόγραμμα για τις επόμενες 48 ώρες.</string>
     <string name="sport_no_channels">Δεν βρέθηκε αθλητικό κανάλι στην πηγή σας.</string>

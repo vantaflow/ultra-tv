@@ -1578,6 +1578,8 @@
     <string name="sport_record">Înregistrează</string>
     <string name="sport_today">Azi</string>
     <string name="sport_tomorrow">Mâine</string>
+    <string name="sport_also_on">Și pe</string>
+    <string name="sport_also_on_n">Și pe %1$d</string>
     <string name="sport_empty_live">Niciun eveniment sportiv în direct acum.</string>
     <string name="sport_empty_upcoming">Niciun eveniment sportiv anunțat în următoarele 48 de ore.</string>
     <string name="sport_no_channels">Niciun canal sportiv găsit în sursa ta.</string>

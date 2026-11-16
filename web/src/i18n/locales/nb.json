@@ -584,6 +584,8 @@
   "sport.settingD": "Legger til en Sport-oppføring i menyen og en «Sport direkte»-rad på startskjermen, bygget fra din egen guide. Av som standard.",
   "sport.liveNow": "Direkte nå",
   "sport.upcoming": "Kommer · 48 t",
+  "sport.alsoOn": "Også på",
+  "sport.alsoOnN": "Også på {n}",
   "sport.channels": "Sportskanaler",
   "sport.homeRow": "Sport direkte",
   "sport.fromGuide": "Basert på guiden til kilden din",

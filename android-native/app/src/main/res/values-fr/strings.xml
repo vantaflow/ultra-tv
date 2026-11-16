@@ -1573,6 +1573,8 @@
     <string name="sport_record">Enregistrer</string>
     <string name="sport_today">Aujourd\'hui</string>
     <string name="sport_tomorrow">Demain</string>
+    <string name="sport_also_on">Aussi sur</string>
+    <string name="sport_also_on_n">Aussi sur %1$d</string>
     <string name="sport_empty_live">Aucun programme de sport en cours.</string>
     <string name="sport_empty_upcoming">Aucun sport annoncé dans les 48 prochaines heures.</string>
     <string name="sport_no_channels">Aucune chaîne de sport trouvée dans votre source.</string>

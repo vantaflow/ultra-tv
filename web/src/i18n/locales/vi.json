@@ -584,6 +584,8 @@
   "sport.settingD": "Thêm một mục Thể thao vào menu và một hàng “Thể thao trực tiếp” vào Trang chủ, tạo từ lịch phát sóng của chính bạn. Mặc định tắt.",
   "sport.liveNow": "Đang phát trực tiếp",
   "sport.upcoming": "Sắp tới · 48 giờ",
+  "sport.alsoOn": "Cũng có trên",
+  "sport.alsoOnN": "Cũng có trên {n}",
   "sport.channels": "Kênh thể thao",
   "sport.homeRow": "Thể thao trực tiếp",
   "sport.fromGuide": "Dựa trên lịch phát sóng của nguồn của bạn",

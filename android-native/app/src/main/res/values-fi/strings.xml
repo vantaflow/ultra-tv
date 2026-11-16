@@ -1511,6 +1511,8 @@
     <string name="sport_record">Tallenna</string>
     <string name="sport_today">Tänään</string>
     <string name="sport_tomorrow">Huomenna</string>
+    <string name="sport_also_on">Myös kanavalla</string>
+    <string name="sport_also_on_n">Myös %1$d kanavalla</string>
     <string name="sport_empty_live">Juuri nyt ei ole urheilua lähetyksessä.</string>
     <string name="sport_empty_upcoming">Seuraavan 48 tunnin aikana ei ole ilmoitettu urheilua.</string>
     <string name="sport_no_channels">Lähteestäsi ei löytynyt urheilukanavaa.</string>

@@ -1564,6 +1564,8 @@
     <string name="sport_record">Grabar</string>
     <string name="sport_today">Hoy</string>
     <string name="sport_tomorrow">Mañana</string>
+    <string name="sport_also_on">También en</string>
+    <string name="sport_also_on_n">También en %1$d</string>
     <string name="sport_empty_live">No hay deporte en emisión ahora.</string>
     <string name="sport_empty_upcoming">No hay deporte anunciado en las próximas 48 horas.</string>
     <string name="sport_no_channels">No se encontró ningún canal deportivo en tu fuente.</string>

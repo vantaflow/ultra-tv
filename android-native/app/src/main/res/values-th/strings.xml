@@ -1545,6 +1545,8 @@
     <string name="sport_record">บันทึก</string>
     <string name="sport_today">วันนี้</string>
     <string name="sport_tomorrow">พรุ่งนี้</string>
+    <string name="sport_also_on">ดูได้ที่ช่องอื่นด้วย</string>
+    <string name="sport_also_on_n">ดูได้อีก %1$d ช่อง</string>
     <string name="sport_empty_live">ตอนนี้ไม่มีกีฬากำลังออกอากาศ</string>
     <string name="sport_empty_upcoming">ไม่มีกีฬาที่ประกาศใน 48 ชั่วโมงข้างหน้า</string>
     <string name="sport_no_channels">ไม่พบช่องกีฬาในแหล่งที่มาของคุณ</string>

@@ -584,6 +584,8 @@
   "sport.settingD": "Lisää valikkoon Urheilu-kohdan ja kotinäkymään ”Urheilu suorana” -rivin, jotka muodostetaan omasta oppaastasi. Oletuksena pois päältä.",
   "sport.liveNow": "Nyt suorana",
   "sport.upcoming": "Tulossa · 48 h",
+  "sport.alsoOn": "Myös kanavalla",
+  "sport.alsoOnN": "Myös {n} kanavalla",
   "sport.channels": "Urheilukanavat",
   "sport.homeRow": "Urheilu suorana",
   "sport.fromGuide": "Perustuu lähteesi oppaaseen",

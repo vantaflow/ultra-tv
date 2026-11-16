@@ -1562,6 +1562,8 @@
     <string name="sport_record">Ta opp</string>
     <string name="sport_today">I dag</string>
     <string name="sport_tomorrow">I morgen</string>
+    <string name="sport_also_on">Også på</string>
+    <string name="sport_also_on_n">Også på %1$d</string>
     <string name="sport_empty_live">Ingen sport på lufta akkurat nå.</string>
     <string name="sport_empty_upcoming">Ingen sport annonsert de neste 48 timene.</string>
     <string name="sport_no_channels">Fant ingen sportskanal i kilden din.</string>

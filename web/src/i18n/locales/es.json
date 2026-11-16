@@ -594,6 +594,8 @@
   "sport.settingD": "Añade una entrada Deportes al menú y una fila «Deporte en directo» al inicio, creadas a partir de tu propia guía. Desactivada por defecto.",
   "sport.liveNow": "En directo ahora",
   "sport.upcoming": "Próximamente · 48 h",
+  "sport.alsoOn": "También en",
+  "sport.alsoOnN": "También en {n}",
   "sport.channels": "Canales deportivos",
   "sport.homeRow": "Deporte en directo",
   "sport.fromGuide": "Según la guía de tu fuente",

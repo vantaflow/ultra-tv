@@ -595,6 +595,8 @@
   "sport.settingD": "Dodaje pozycję Sport do menu i rząd „Sport na żywo” na stronie głównej na podstawie Twojego przewodnika. Domyślnie wyłączone.",
   "sport.liveNow": "Teraz na żywo",
   "sport.upcoming": "Wkrótce · 48 godz.",
+  "sport.alsoOn": "Także na",
+  "sport.alsoOnN": "Także na {n}",
   "sport.channels": "Kanały sportowe",
   "sport.homeRow": "Sport na żywo",
   "sport.fromGuide": "Na podstawie przewodnika Twojego źródła",

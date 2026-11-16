@@ -1545,6 +1545,8 @@
     <string name="sport_record">Ghi</string>
     <string name="sport_today">Hôm nay</string>
     <string name="sport_tomorrow">Ngày mai</string>
+    <string name="sport_also_on">Cũng có trên</string>
+    <string name="sport_also_on_n">Cũng có trên %1$d</string>
     <string name="sport_empty_live">Hiện không có trận thể thao nào đang phát.</string>
     <string name="sport_empty_upcoming">Không có trận thể thao nào được công bố trong 48 giờ tới.</string>
     <string name="sport_no_channels">Không tìm thấy kênh thể thao nào trong nguồn của bạn.</string>
