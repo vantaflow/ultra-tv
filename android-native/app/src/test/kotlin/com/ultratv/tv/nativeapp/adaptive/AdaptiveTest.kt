@@ -163,4 +163,13 @@ class AdaptiveTest {
         assertEquals(com.ultratv.tv.nativeapp.ui.player.engine.DecoderMode.SOFTWARE, r.decoder)
         assertEquals(BufferPreset.STABLE, r.bufferPreset); assertTrue(r.manualEngine && r.manualDecoder && r.manualBuffer)
     }
+
+    // ── Qualité « Maximale » ──
+    @Test fun resolver_qualiteMaximale_leveTousLesPlafonds() {
+        val a = AutoTuner.settings(profile(dev()), NetQuality.POOR, false, 50)   // réseau mesuré faible : plafond 480p / 2 Mb/s en auto
+        val auto = PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(), 256)
+        assertEquals(480, auto.maxVideoHeight); assertFalse(auto.maxQuality)
+        val max = PlaybackResolver.resolve(a, com.ultratv.tv.nativeapp.data.prefs.UserPrefs(videoQuality = "max"), 256)
+        assertTrue(max.maxQuality); assertEquals(Int.MAX_VALUE, max.maxVideoHeight); assertNull(max.maxVideoBitrateBps)
+    }
 }

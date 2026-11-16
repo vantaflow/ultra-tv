@@ -96,6 +96,8 @@ data class UserPrefs(
     /** Auto-switch the TV's refresh rate to match the stream's frame rate
      *  (24/25/29.97/30/50/59.94/60). Avoids judder on motion. */
     val autoFrameRate: Boolean = true,
+    /** Qualité vidéo : "auto" (adaptative, plafonnée selon l'appareil et le réseau) ou "max" (piste la plus haute forcée, sans plafond). */
+    val videoQuality: String = "auto",
     /** Direct plein écran : faux = Gauche / Droite zappent et Haut / Bas affichent les infos (défaut) ; vrai = l'inverse. */
     val zapVertical: Boolean = false,
     /** Rendu vidéo : "auto" (TextureView sur NVIDIA Shield, SurfaceView ailleurs), "surface" ou "texture". */
@@ -202,6 +204,7 @@ class UserPreferencesStore @Inject constructor(
         val syncDisplayPrefs = booleanPreferencesKey("sync_display_prefs")
         val bufferSec = intPreferencesKey("buffer_seconds")
         val autoFrameRate = booleanPreferencesKey("auto_frame_rate")
+        val videoQuality = stringPreferencesKey("video_quality")
         val zapVertical = booleanPreferencesKey("zap_vertical")
         val videoSurface = stringPreferencesKey("video_surface")
         val preferSwDec = booleanPreferencesKey("prefer_software_decoder")
@@ -275,6 +278,7 @@ class UserPreferencesStore @Inject constructor(
             syncDisplayPrefs = p[Keys.syncDisplayPrefs] ?: true,
             bufferSeconds = p[Keys.bufferSec] ?: 30,
             autoFrameRate = p[Keys.autoFrameRate] ?: true,
+            videoQuality = p[Keys.videoQuality] ?: "auto",
             zapVertical = p[Keys.zapVertical] ?: false,
             videoSurface = p[Keys.videoSurface] ?: "auto",
             preferSoftwareDecoder = p[Keys.preferSwDec] ?: false,
@@ -328,6 +332,7 @@ class UserPreferencesStore @Inject constructor(
     suspend fun setBufferSeconds(v: Int) = update { it[Keys.bufferSec] = v.coerceIn(5, 300) }
     suspend fun setAutoFrameRate(v: Boolean) = update { it[Keys.autoFrameRate] = v }
     suspend fun setZapVertical(v: Boolean) = update { it[Keys.zapVertical] = v }
+    suspend fun setVideoQuality(v: String) = update { it[Keys.videoQuality] = v }
     suspend fun setVideoSurface(v: String) = update { it[Keys.videoSurface] = v }
     suspend fun setPreferSoftwareDecoder(v: Boolean) = update { it[Keys.preferSwDec] = v }
     suspend fun setEpgTimeOffsetMin(v: Int) = update { it[Keys.epgOffsetMin] = v.coerceIn(-720, 720) }

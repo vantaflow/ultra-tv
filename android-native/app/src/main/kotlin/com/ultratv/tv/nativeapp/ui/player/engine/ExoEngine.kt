@@ -78,7 +78,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }
         // Les pistes ne sont connues qu'une fois le conteneur analysé (et peuvent arriver plus tard) : le choix
         // automatique se refait à chaque changement, tant que l'utilisateur n'a rien choisi à la main.
-        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); detectHdr(tracks) }
+        override fun onTracksChanged(tracks: androidx.media3.common.Tracks) { autoSelectTracks(); forceHighestVideo(); detectHdr(tracks) }
     }
 
     init {
@@ -129,7 +129,15 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 DecoderMode.AUTO -> setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON)
             }
         }
+        // Débit initial : ExoPlayer démarre à ~1-2 Mb/s sans mesure (donc la variante la plus basse, 240p-360p) ; voir [TrackPolicy].
+        val bandwidth = androidx.media3.exoplayer.upstream.DefaultBandwidthMeter.Builder(ctx)
+            .setInitialBitrateEstimate(TrackPolicy.initialBitrateEstimate(config.maxVideoBitrateBps, config.maxQuality)).build()
+        // Montée de qualité plus tôt (4 s de tampon au lieu de 10 s) ; le reste de l'adaptation est celui de Media3.
+        val trackSelector = androidx.media3.exoplayer.trackselection.DefaultTrackSelector(
+            ctx, androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection.Factory(TrackPolicy.MIN_INCREASE_BUFFER_MS, 25_000, 25_000, 0.7f),
+        )
         player = ExoPlayer.Builder(ctx, renderers).setLoadControl(loadControl).setMediaSourceFactory(mediaSources)
+            .setBandwidthMeter(bandwidth).setTrackSelector(trackSelector)
             // Libération : le fil principal n'attend plus (500 ms par défaut) que le fil de lecture d'ExoPlayer ait détruit
             // les décodeurs — voir [release].
             .setReleaseTimeoutMs(RELEASE_WAIT_MS)
@@ -160,6 +168,8 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
             .setPreferredAudioLanguages(*config.preferredAudio.flatMap { languageVariants(it) }.distinct().toTypedArray())
             .setPreferredTextLanguages(*config.preferredText.flatMap { languageVariants(it) }.distinct().toTypedArray())
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, config.textOff)
+            // Qualité « Maximale » : variante du plus haut débit dès le départ, sans plafond (la piste est ensuite forcée, voir [forceHighestVideo]).
+            .setForceHighestSupportedBitrate(config.maxQuality)
             .build()
     }
 
@@ -194,6 +204,22 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
                 return
             }
         }
+    }
+
+    /** Qualité « Maximale » : piste vidéo la plus haute déjà forcée pour le flux en cours (réarmé à chaque ouverture). */
+    private var videoForced = false
+
+    /** Qualité « Maximale » : force la piste vidéo de plus haute résolution / débit prise en charge (une fois par flux). */
+    private fun forceHighestVideo() {
+        if (!config.maxQuality || videoForced) return
+        val flat = player.currentTracks.groups.filter { it.type == C.TRACK_TYPE_VIDEO }.flatMap { g ->
+            (0 until g.length).map { ti -> val f = g.getTrackFormat(ti); Triple(g, ti, TrackPolicy.VideoCandidate(f.width.coerceAtLeast(0), f.height.coerceAtLeast(0), f.bitrate.coerceAtLeast(0), g.isTrackSupported(ti))) }
+        }
+        if (flat.size < 2) return   // une seule piste : rien à forcer (les pistes d'un HLS arrivent parfois en deux temps)
+        val best = TrackPolicy.highestIndex(flat.map { it.third })?.let { flat[it] } ?: return
+        videoForced = true
+        player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
+            .setOverrideForType(TrackSelectionOverride(best.first.mediaTrackGroup, best.second)).build()
     }
 
     private var audioManual = false
@@ -263,7 +289,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         if (released) return
         streamHeaders = props?.let { DrmMedia.streamHeaders(it) } ?: emptyMap()
         // Flux précédent arrêté et libéré AVANT d'ouvrir le suivant (connexion unique du fournisseur).
-        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false
+        audioManual = false; textManual = false; lastAutoAudio = null; lastAutoText = null; hdrSignalled = false; videoForced = false
         ccProbe.clear()   // chaîne suivante : les CC vus sur la précédente ne comptent plus
         if (player.mediaItemCount > 0) {
             player.stop()
@@ -342,6 +368,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
     override fun setMuted(muted: Boolean) { player.volume = if (muted) 0f else 1f }
     override val hasVideo get() = player.currentTracks.groups.any { it.type == C.TRACK_TYPE_VIDEO && it.length > 0 }
     override fun limitQuality(maxHeight: Int, maxBitrateBps: Int?) {
+        if (config.maxQuality) return   // qualité « Maximale » : aucun plafond, même après des remises en mémoire tampon
         player.trackSelectionParameters = player.trackSelectionParameters.buildUpon()
             .setMaxVideoSize(Int.MAX_VALUE, maxHeight.coerceAtLeast(240))
             .setMaxVideoBitrate(maxBitrateBps ?: Int.MAX_VALUE)

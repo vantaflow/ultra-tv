@@ -389,6 +389,9 @@
     <string name="ds_compat_video">Tryb zgodności obrazu wideo</string>
     <string name="ds_compat_video_hint">Włącz, jeśli słyszysz dźwięk, ale nie widzisz obrazu. Domyślnie włączone na smartfonach, tabletach i NVIDIA Shield.</string>
     <string name="ds_auto_fps">Dopasuj do częstotliwości ekranu</string>
+    <string name="ds_playback_quality">Jakość odtwarzania</string>
+    <string name="ds_playback_quality_hint">Auto dopasowuje się do sieci i urządzenia. Maksymalna zawsze wybiera najwyższą rozdzielczość i przepływność (więcej danych, możliwe zacinanie przy wolnym łączu).</string>
+    <string name="ds_quality_max">Maksymalna</string>
     <string name="ds_on">Wł.</string>
     <string name="ds_off_state">Wył.</string>
     <string name="ds_app_language">Język aplikacji</string>

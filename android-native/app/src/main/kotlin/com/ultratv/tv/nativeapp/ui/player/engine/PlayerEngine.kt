@@ -76,6 +76,10 @@ data class EngineConfig(
     val textureView: Boolean = false,
     /** En-têtes de requête ajoutés à chaque requête du flux (portail Stalker : Cookie mac, Bearer…). */
     val headers: Map<String, String> = emptyMap(),
+    /** Qualité « Maximale » (Réglages › Lecture) : piste vidéo la plus haute forcée, aucun plafond de résolution ni de débit. */
+    val maxQuality: Boolean = false,
+    /** Plafond de débit vidéo (bits/s) en qualité automatique : sert à l'estimation initiale du débit d'ExoPlayer. */
+    val maxVideoBitrateBps: Int? = null,
 )
 
 /**
