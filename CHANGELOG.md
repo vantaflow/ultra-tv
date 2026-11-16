@@ -11,11 +11,22 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Site ultratv.dpdns.org entièrement multilingue (anglais, français, espagnol, arabe, polonais) : connexion, inscription, tableau de bord, appairage, téléchargement ; sélecteur de langue en pied de page.
+- Lecture : réglage « Qualité de lecture » (Auto / Maximale) ; le lecteur ne démarre plus sur la variante la plus basse (240p-360p) grâce à un débit initial réaliste et une montée plus rapide.
+- Lecture : option « Lecture tunnelisée » (désactivée par défaut) pour les décodeurs matériels Google TV / Fire TV ; sans effet avec VLC.
+- Le lecteur publie une session média système (titre, chaîne ou série, image, durée) et répond aux commandes lecture / pause / avance / retour de Google TV, Fire TV et des touches média.
+- Favoris : export des chaînes en M3U (Android : fichier ou partage ; bureau : téléchargement), avec avertissement sur les identifiants contenus dans les liens.
+- Réglages › Ouvrir sur : explication des choix, dont « Dernier écran ».
 
 ### Modifié
 - Dons : seulement Ko-fi et Liberapay. Le paiement par carte marocaine (ChariPay) est retiré de la page /donate ; l'ancienne adresse /donate/merci renvoie vers /donate.
 - Worker : tout le stockage (comptes, appareils, synchro, télémétrie) passe de Cloudflare D1 + KV à Turso (région Francfort), sans perte : double écriture, copie et vérification à zéro écart avant la bascule. Les lignes de télémétrie d'info sont échantillonnées (1 sur 10) et dédoublonnées ; erreurs et plantages toujours gardés.
 - Site : icônes, polices, manifeste, service worker et lecteur de QR servis comme fichiers statiques par Cloudflare, sans passer par le Worker (hors quota de requêtes).
+- Changement automatique de fréquence d'écran plus fiable : cadence réelle détectée avant de changer de mode (23,976 à 60), aucun changement si elle est inconnue.
+- Appairage et envoi : interrogation toutes les 5 s au lieu de 3 s.
+- Journaux envoyés par lots (nouvelle route /api/events : un envoi toutes les 5 min, en arrière-plan ou à 50 lignes, erreurs sous 60 s) ; lignes d'info échantillonnées dès l'appareil.
+- Synchro du compte adaptative : toutes les 2 min pendant 10 min après un changement, puis toutes les 10 min ; synchro au retour sur l'appli ; profils, favoris et reprises renvoyés seulement s'ils ont changé.
+- Android : recherches TMDB économes pendant le défilement (anti-rebond, titres qui ne sont pas des films ignorés, « rien trouvé » mémorisé 30 jours, pause selon Retry-After).
+- Android TV : caches vidés quand la mémoire manque, cache d'images selon la mémoire de l'appareil, tas et mémoire libre joints aux rapports de plantage.
 
 ### Corrigé
 - Tailles des APK à jour sur la page /apk et dans le README (arm64 ≈ 36 Mo, 32 bits ≈ 34 Mo, universel ≈ 58 Mo, au lieu de 67, 52 et 227 Mo).
@@ -27,6 +38,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Android : manque de mémoire possible sur les TV à petit tas (128 Mo) en gérant les catégories ; l'appli demande désormais un tas élargi et l'ordre des catégories est appliqué sans allocation par comparaison.
 - Worker (Turso) : les clés expirées (anciens caches KV) sont purgées chaque nuit, comme le faisait KV ; outil de migration des anciens comptes paginé pour rester sous la limite de sous-requêtes.
 - Recherche Films / Séries : les titres des catégories désactivées ou masquées par le profil n'apparaissent plus (filtrage en mémoire, sans limite de paramètres SQL) ; réglages : chaque volet repart en haut ; annonces relues au retour sur l'appli.
+- Plantage à l'ouverture du lecteur quand le titre ou l'adresse contient un « % » littéral (box waipu.tv) : décodage tolérant.
+- Supprimer une source sur un appareil ou depuis le tableau de bord la retire partout ; une suppression faite hors ligne est renvoyée plus tard.
+- Affectation des playlists aux appareils réparée (Android et bureau) : la fenêtre de partage affiche l'affectation actuelle, une même playlist peut aller sur plusieurs appareils, aussi depuis le tableau de bord.
+- Fire TV : filtres de lancement séparés, bannière et icône déclarées sur l'activité, fonction Fire TV marquée facultative.
 
 ## [1.3.37] — 2026-11-14 (Android)
 
