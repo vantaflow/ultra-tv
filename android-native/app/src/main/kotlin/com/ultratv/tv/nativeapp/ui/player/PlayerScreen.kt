@@ -1070,8 +1070,10 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
     val isFavNow by vm.isFavoriteNow.collectAsState()
     val pipSupported = remember { context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE) }
     val currentKey = item?.let { "${it.providerId}:${it.remoteId}" }
-    val osdRecents = remember(zapRecent, currentKey, item?.title) {
-        OsdModel.recents(zapRecent.map { OsdRecent("${it.channel.providerId}:${it.channel.remoteId}", it.channel.logo, it.number.takeIf { n -> n > 0 }, it.channel.title, it.now) }, currentKey, item?.title)
+    // Réglage « Numéros de chaîne » désactivé : l'OSD (tactile et TV) n'affiche aucun numéro.
+    val showNumbers = com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers
+    val osdRecents = remember(zapRecent, currentKey, item?.title, showNumbers) {
+        OsdModel.recents(zapRecent.map { OsdRecent("${it.channel.providerId}:${it.channel.remoteId}", it.channel.logo, it.number.takeIf { n -> showNumbers && n > 0 }, it.channel.title, it.now) }, currentKey, item?.title)
     }
     val osdActions = if (!isLive) emptyList() else OsdActions.build(
         OsdActionInputs(
@@ -1132,7 +1134,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
         }
     }
     val osdCurrentChannel =if (isLive) vm.queue.collectAsState().value.firstOrNull { it.isCurrent }?.channel else null
-    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { it > 0 }
+    val osdChannelNumber = osdCurrentChannel?.let { com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(it) }?.takeIf { showNumbers && it > 0 }
     val osdSchedule by vm.schedule.collectAsState()
     // Pastille HDR : type du flux lu dans les statistiques du moteur (quelques relectures après le début de la lecture, pas en continu).
     var liveHdr by remember { mutableStateOf<String?>(null) }

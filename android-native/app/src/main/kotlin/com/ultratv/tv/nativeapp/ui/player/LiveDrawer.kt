@@ -312,7 +312,7 @@ private fun ChannelRow(r: DrawerRowUi, onAirLabel: String, onFocus: () -> Unit, 
             Modifier.fillMaxWidth().padding(horizontal = 18.design, vertical = 12.design),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.design),
         ) {
-            Text("${r.number}", color = if (f) P.focusText else P.text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 24.spx, maxLines = 1, textAlign = TextAlign.End, modifier = Modifier.width(44.design))
+            if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) Text("${r.number}", color = if (f) P.focusText else P.text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 24.spx, maxLines = 1, textAlign = TextAlign.End, modifier = Modifier.width(44.design))
             LogoBox(r.logo, r.name, Modifier.size(56.design), radius = 14, pad = 6, bg = if (f) P.focusText else P.tile)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
                 Text(r.name, color = if (f) P.focusText else P.text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

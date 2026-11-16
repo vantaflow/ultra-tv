@@ -76,7 +76,7 @@ fun ZapRecentStrip(entries: List<RecentEntry>, currentRemoteId: String?, X: Play
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
                         LogoBox(r.channel.logo, r.channel.title, Modifier.width(64.design).height(42.design), radius = 8, pad = 4, bg = if (cur) Color(0xFFE4E4E7) else Ux.Surface)
-                        if (r.number > 0) Text(r.number.toString(), color = if (cur) Color(0xFF3F3F46) else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
+                        if (r.number > 0 && com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) Text(r.number.toString(), color = if (cur) Color(0xFF3F3F46) else Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1)
                     }
                     Text(r.channel.title, color = if (cur) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(r.now.orEmpty(), color = if (cur) Color(0xFF3F3F46) else Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)

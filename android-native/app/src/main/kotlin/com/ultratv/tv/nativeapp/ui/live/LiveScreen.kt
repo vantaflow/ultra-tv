@@ -637,8 +637,10 @@ private fun ChannelRow(
     ) { f ->
         val sub = if (f) Ux.OnFocus2 else Ux.Text3
         Row(Modifier.fillMaxSize().padding(horizontal = 20.design), verticalAlignment = Alignment.CenterVertically) {
-            Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(52.design))
-            Spacer(Modifier.width(16.design))
+            if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) {
+                Text(position.toString(), color = if (f) Ux.TextOnLight else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false, modifier = Modifier.width(52.design))
+                Spacer(Modifier.width(16.design))
+            }
             // Logo à taille de décodage explicite ; sans logo : initiales sur fond neutre (SlotImage).
             if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showLogos) {
                 LogoBox(c.logo, c.title, Modifier.width(88.design).height(60.design), radius = 10, pad = 5, bg = if (f) Color(0xFFE4E4E7) else Ux.Surface2, decodeSize = androidx.compose.ui.unit.DpSize(88.design, 60.design))
@@ -710,12 +712,12 @@ private fun Preview(
     Column(modifier.padding(start = 32.design, end = 72.design, top = 54.design, bottom = 54.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
         if (channel == null) return@Column
         if (withVideo) Box(Modifier.fillMaxWidth().height(330.design).clip(RoundedCornerShape(24.design)).background(Ux.Tone), contentAlignment = Alignment.Center) {
-            video?.invoke { com.ultratv.tv.nativeapp.ui.common.ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.channelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
+            video?.invoke { com.ultratv.tv.nativeapp.ui.common.ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 24, pad = 80, bg = Ux.Tone) }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
             if (!withVideo) {
                 if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showLogos) LogoBox(channel.logo, channel.title, Modifier.width(96.design).height(64.design), radius = 12, pad = 6, bg = Ux.Tone, decodeSize = androidx.compose.ui.unit.DpSize(96.design, 64.design))
-                else com.ultratv.tv.nativeapp.ui.common.channelNumber(channel.seq, channel.num)?.let { Text(it.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false) }
+                else com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel.seq, channel.num)?.let { Text(it.toString(), color = Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 22.spx, maxLines = 1, softWrap = false) }
             }
             if (now != null) LiveBadge(D.live)
             Text(
@@ -775,7 +777,8 @@ private fun TouchChannelRow(c: ChannelEntity, position: Int, locked: Boolean, fa
         modifier = Modifier.fillMaxWidth().height(64.dp),
     ) { _ ->
         Row(Modifier.fillMaxSize().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(position.toString(), color = if (selected) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.width(30.dp))
+            // Réglage « Numéros de chaîne » désactivé : ni numéro ni colonne réservée.
+            if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) Text(position.toString(), color = if (selected) Ux.OnFocus2 else Ux.Muted, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1, softWrap = false, modifier = Modifier.width(30.dp))
             if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showLogos) LogoBox(c.logo, c.title, Modifier.width(48.dp).height(32.dp), radius = 12, pad = 4, bg = if (selected) Color(0xFFE4E4E7) else Ux.Surface2)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text((if (locked) "🔒 " else "") + c.title, color = ink, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, style = androidx.compose.ui.text.TextStyle(textDirection = androidx.compose.ui.text.style.TextDirection.Content))
@@ -848,7 +851,7 @@ private fun MobilePreview(channel: ChannelEntity?, now: EpgEntity?, favorite: Bo
         Box(
             Modifier.fillMaxWidth().aspectRatio(16f / 9f).clip(RoundedCornerShape(20.dp)).background(Ux.Tone).clickable(onClickLabel = M.tapToWatchFull) { onWatch(channel) },
             contentAlignment = Alignment.Center,
-        ) { com.ultratv.tv.nativeapp.ui.common.ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.channelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 40, pad = 96, bg = Ux.Tone, touchScale = true) }
+        ) { com.ultratv.tv.nativeapp.ui.common.ChannelBigMark(channel, com.ultratv.tv.nativeapp.ui.common.shownChannelNumber(channel.seq, channel.num), Modifier.fillMaxSize(), radius = 40, pad = 96, bg = Ux.Tone, touchScale = true) }
         if (now != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             LiveBadge(D.live)
             Text("${EpgClock.hm(now.startMs)} – ${EpgClock.hm(now.endMs)}", color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 1)

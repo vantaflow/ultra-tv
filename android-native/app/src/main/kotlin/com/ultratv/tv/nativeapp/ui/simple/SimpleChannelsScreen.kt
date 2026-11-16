@@ -136,7 +136,7 @@ private fun ChannelBigRow(r: SimpleChannelRow, now: String?, onFocus: () -> Unit
         modifier = Modifier.fillMaxWidth().height(120.designT).onFocusChanged { if (it.isFocused) onFocus() },
     ) { f ->
         Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
-            val n = com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(r.channel)
+            val n = if (com.ultratv.tv.nativeapp.ui.common.LocalChannelDisplay.current.showNumbers) com.ultratv.tv.nativeapp.ui.player.zap.ZapLogic.numberOf(r.channel) else 0
             Text(if (n > 0) "$n" else "", color = if (f) Ux.TextOnLight else Ux.Text2, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 48.spx, maxLines = 1, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.width(110.design))
             com.ultratv.tv.nativeapp.ui.design.LogoBox(r.channel.logo, r.channel.title, Modifier.width(128.design).height(76.design), radius = 16, pad = 8, bg = if (f) Ux.Line else Ux.Surface)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.design)) {
