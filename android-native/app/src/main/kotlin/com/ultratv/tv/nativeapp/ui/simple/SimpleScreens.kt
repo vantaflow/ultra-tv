@@ -201,7 +201,7 @@ fun SimpleMovieDetailScreen(movieId: Long, onPlay: (url: String, title: String) 
             if (movie == null) { Text(S.loading, color = Ux.Text2, fontFamily = Manrope, fontSize = 32.spx); return@Column }
             Text(movie.title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 72.spx, lineHeight = 78.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             val meta = listOfNotNull(movie.year?.toString(), SimpleText.duration(info?.duration ?: movie.duration), (info?.genre ?: movie.genre)?.substringBefore(',')?.trim()?.takeIf { it.isNotBlank() },
-                movie.rating?.takeIf { it > 0 }?.let { "★ ${"%.1f".format(it)}" })
+                movie.rating?.takeIf { it > 0 }?.let { "${"%.1f".format(it)}/10" })
             if (meta.isNotEmpty()) Text(meta.joinToString(" · "), color = Ux.Text2, fontFamily = Manrope, fontWeight = FontWeight.SemiBold, fontSize = 34.spx, maxLines = 1)
             (info?.plot ?: movie.plot)?.takeIf { it.isNotBlank() }?.let { Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 32.spx, lineHeight = 46.spx, maxLines = 4, overflow = TextOverflow.Ellipsis) }
             val first = remember { FocusRequester() }

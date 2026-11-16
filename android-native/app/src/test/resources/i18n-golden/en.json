@@ -1324,7 +1324,7 @@
   "SimpleStrings.getTileFavorites()": "My favorites",
   "SimpleStrings.getTileFavoritesHint()": "Your saved channels and titles",
   "SimpleStrings.getTileLive()": "Live TV",
-  "SimpleStrings.getTileLiveHint()": "Last channel or channel list",
+  "SimpleStrings.getTileLiveHint()": "Channel list",
   "SimpleStrings.getTileMovies()": "Movies",
   "SimpleStrings.getTileMoviesHint()": "Choose a film",
   "SimpleStrings.getTileResume()": "Resume",

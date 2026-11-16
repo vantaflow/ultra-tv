@@ -693,7 +693,7 @@
     <string name="simple_tile_series">TV-sarjat</string>
     <string name="simple_tile_favorites">Omat suosikit</string>
     <string name="simple_tile_search">Haku</string>
-    <string name="simple_tile_live_hint">Viimeisin kanava tai kanavalista</string>
+    <string name="simple_tile_live_hint">Kanavalista</string>
     <string name="simple_tile_resume_hint">Jatka siitä, mihin jäit</string>
     <string name="simple_tile_resume_nothing">Ei vielä mitään jatkettavaa: valitse elokuva</string>
     <string name="simple_tile_movies_hint">Valitse elokuva</string>

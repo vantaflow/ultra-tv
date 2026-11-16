@@ -715,7 +715,7 @@
     <string name="simple_tile_series">Σειρές</string>
     <string name="simple_tile_favorites">Τα αγαπημένα μου</string>
     <string name="simple_tile_search">Αναζήτηση</string>
-    <string name="simple_tile_live_hint">Τελευταίο κανάλι ή λίστα καναλιών</string>
+    <string name="simple_tile_live_hint">Λίστα καναλιών</string>
     <string name="simple_tile_resume_hint">Συνεχίστε από εκεί που σταματήσατε</string>
     <string name="simple_tile_resume_nothing">Δεν υπάρχει τίποτα για συνέχεια ακόμα: επιλέξτε μια ταινία</string>
     <string name="simple_tile_movies_hint">Επιλέξτε μια ταινία</string>

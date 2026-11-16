@@ -715,7 +715,7 @@
     <string name="simple_tile_series">Serier</string>
     <string name="simple_tile_favorites">Mine favoritter</string>
     <string name="simple_tile_search">Søk</string>
-    <string name="simple_tile_live_hint">Siste kanal eller kanalliste</string>
+    <string name="simple_tile_live_hint">Kanalliste</string>
     <string name="simple_tile_resume_hint">Fortsett der du slapp</string>
     <string name="simple_tile_resume_nothing">Ingenting å fortsette på ennå: velg en film</string>
     <string name="simple_tile_movies_hint">Velg en film</string>

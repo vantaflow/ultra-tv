@@ -768,7 +768,7 @@
     <string name="simple_tile_series">المسلسلات</string>
     <string name="simple_tile_favorites">مفضلتي</string>
     <string name="simple_tile_search">بحث</string>
-    <string name="simple_tile_live_hint">آخر قناة أو قائمة القنوات</string>
+    <string name="simple_tile_live_hint">قائمة القنوات</string>
     <string name="simple_tile_resume_hint">تابع من حيث توقفت</string>
     <string name="simple_tile_resume_nothing">لا شيء لمتابعته بعد: اختر فيلمًا</string>
     <string name="simple_tile_movies_hint">اختر فيلمًا</string>

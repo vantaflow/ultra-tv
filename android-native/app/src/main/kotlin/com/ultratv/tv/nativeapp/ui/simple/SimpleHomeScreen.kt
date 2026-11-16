@@ -87,20 +87,12 @@ fun SimpleHomeScreen(
     val S = SimpleStrings(D.lang)
     val hasSource by vm.hasSource.collectAsStateWithLifecycle()
     val resume by vm.resume.collectAsStateWithLifecycle()
-    val lastLive by vm.lastLive.collectAsStateWithLifecycle()
-    val locked by vm.locked.collectAsStateWithLifecycle()
     val multiProfiles by vm.multipleProfiles.collectAsStateWithLifecycle()
     val profileName by vm.profileName.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var pinFor by remember { mutableStateOf<WatchHistoryEntity?>(null) }
 
-    val playLive: (WatchHistoryEntity) -> Unit = { h -> scope.launch { vm.prepareLastLive(h); onPlay(h.streamUrl, h.title) } }
     val onTile: (SimpleTile) -> Unit = { tile ->
         when (tile) {
-            SimpleTile.LIVE -> when (val a = SimpleHome.liveAction(lastLive, locked)) {
-                is SimpleHome.LiveAction.PlayLast -> if (a.needsPin) pinFor = a.item else playLive(a.item)
-                SimpleHome.LiveAction.ShowList -> onNavigate(Routes.SIMPLE_CHANNELS)
-            }
             SimpleTile.RESUME -> when (val a = SimpleHome.resumeAction(resume)) {
                 is SimpleHome.ResumeAction.Play -> { vm.prepareResume(a.item); onPlay(a.item.streamUrl, a.item.title) }
                 is SimpleHome.ResumeAction.Browse -> onNavigate(a.route)
@@ -173,10 +165,6 @@ fun SimpleHomeScreen(
             PillButton(S.settings, onGoSettings, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Settings)
             if (multiProfiles) PillButton(S.switchProfile, { vm.requestProfileSwitch() }, heightPx = 72, hPadPx = 36, fontPx = 28, bg = Ux.Surface2, iconPath = Icons.Account)
         }
-    }
-
-    pinFor?.let { h ->
-        PinPromptDialog(title = h.title, onUnlocked = { pinFor = null; playLive(h) }, onCancel = { pinFor = null })
     }
 }
 
@@ -252,12 +240,29 @@ private fun BigTile(label: String, hint: String, iconPath: String, onClick: () -
     }
 }
 
-/** Rappel de touche en grand : « [OK] Ouvrir ». */
+/** Flèche de retour dessinée (chemin SVG 24×24) : remplace le glyphe « ↩ » de la police, absent sur beaucoup de TV. */
+internal const val BACK_ICON = "M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"
+
+/** Symbole d'une touche à dessiner plutôt qu'à écrire : « ↩ » (retour) et « OK ⏵ » (appui long) n'ont pas de glyphe fiable sur TV. */
+internal fun keyGlyphKind(key: String): String = when {
+    key == "↩" -> "back"
+    key.endsWith("⏵") -> "hold"
+    else -> "text"
+}
+
+/** Rappel de touche en grand : « [OK] Ouvrir ». Les symboles sont dessinés (voir [keyGlyphKind]), jamais écrits en police. */
 @Composable
 internal fun KeyHintBig(key: String, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
-        Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1,
-            modifier = Modifier.border(3.design, Ux.Text3, RoundedCornerShape(12.design)).padding(horizontal = 14.design, vertical = 2.design))
+        val box = Modifier.border(3.design, Ux.Text3, RoundedCornerShape(12.design)).padding(horizontal = 14.design, vertical = 2.design)
+        when (keyGlyphKind(key)) {
+            "back" -> Box(box.padding(vertical = 3.design)) { DIcon(BACK_ICON, 30.design, Ux.Text, strokeWidth = 2.4f) }
+            "hold" -> Row(box, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.design)) {
+                Text("OK", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1)
+                DIcon(Icons.Play, 22.design, Ux.Text, fill = true)
+            }
+            else -> Text(key, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 28.spx, maxLines = 1, modifier = box)
+        }
         Text(label, color = Ux.Text2, fontFamily = Manrope, fontSize = 30.spx, maxLines = 1)
     }
 }

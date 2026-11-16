@@ -16,7 +16,16 @@ import com.ultratv.tv.nativeapp.nav.startupTarget
 /** Écran de la destination « accueil » : l'accueil habituel, ou l'écran des grandes tuiles. */
 enum class HomeKind { STANDARD, SIMPLE }
 
-fun homeKindFor(prefs: UserPrefs): HomeKind = if (prefs.simpleMode) HomeKind.SIMPLE else HomeKind.STANDARD
+/**
+ * Le mode simple est fait pour la télécommande : sur un appareil tactile (téléphone, tablette) il n'est ni proposé dans
+ * les réglages ni appliqué, même si le réglage (synchronisé depuis une TV, ou posé avant) est actif.
+ */
+fun simpleModeAvailable(touch: Boolean): Boolean = !touch
+
+/** Mode simple réellement appliqué : réglage actif ET appareil non tactile. */
+fun simpleModeApplies(simpleMode: Boolean, touch: Boolean): Boolean = simpleMode && simpleModeAvailable(touch)
+
+fun homeKindFor(prefs: UserPrefs, touch: Boolean = false): HomeKind = if (simpleModeApplies(prefs.simpleMode, touch)) HomeKind.SIMPLE else HomeKind.STANDARD
 
 /** Les grandes tuiles de l'écran simple, dans l'ordre de lecture (gauche → droite, haut → bas). */
 enum class SimpleTile(val route: String?) {
@@ -73,22 +82,6 @@ object SimpleHome {
     fun resumeAction(item: WatchHistoryEntity?): ResumeAction =
         if (item == null) ResumeAction.Browse(Routes.MOVIES) else ResumeAction.Play(item)
 
-    /** Dernière chaîne regardée jouable (adresse connue). */
-    fun lastLive(recentLive: List<WatchHistoryEntity>): WatchHistoryEntity? =
-        recentLive.firstOrNull { it.kind == "LIVE" && it.streamUrl.isNotBlank() }
-
-    /** Ce que fait la tuile « Télé en direct ». */
-    sealed interface LiveAction {
-        /** Lance directement la dernière chaîne ; [needsPin] si elle est verrouillée (code parental d'abord). */
-        data class PlayLast(val item: WatchHistoryEntity, val needsPin: Boolean) : LiveAction
-        /** Aucune chaîne regardée : liste à gros caractères (favoris d'abord). */
-        data object ShowList : LiveAction
-    }
-
-    fun liveAction(lastLive: WatchHistoryEntity?, locked: Set<String>): LiveAction =
-        if (lastLive == null) LiveAction.ShowList
-        else LiveAction.PlayLast(lastLive, needsPin = "${lastLive.providerId}:${lastLive.remoteId}" in locked)
-
     /** Liste de chaînes du mode simple : favoris d'abord, puis le reste, sans doublon ni séparateur, plafonnée à [max]. */
     fun orderChannels(favorites: List<ChannelEntity>, others: List<ChannelEntity>, max: Int = MAX_CHANNELS): List<ChannelEntity> =
         (favorites + others).filter { !it.isSeparator }.distinctBy { it.id }.take(max)
@@ -97,14 +90,20 @@ object SimpleHome {
     fun isFavorite(c: ChannelEntity, favoriteIds: Set<Long>): Boolean = c.id in favoriteIds
 
     /**
-     * Écran d'ouverture : en mode simple, l'écran des tuiles est TOUJOURS le point de départ (une rubrique ouverte
-     * d'office ferait perdre une personne peu à l'aise) ; seul « dernière chaîne » est respecté, c'est un choix explicite
-     * de lecture automatique.
+     * Écran d'ouverture : Réglages › Ouvrir sur est respecté en mode simple aussi (« Dernière chaîne », « Dernier écran »
+     * compris). Seule adaptation : une rubrique sans équivalent simple (guide, sport, enregistrements…) retombe sur l'écran
+     * des tuiles, et « Direct » ouvre la liste de chaînes à gros caractères. L'accueil simple reste sous la rubrique
+     * ouverte (Retour y ramène).
      */
     fun startupTarget(simple: Boolean, screen: StartScreen, lastScreen: String? = null): StartupTarget {
         val t = startupTarget(screen, lastScreen)
-        return if (simple && t is StartupTarget.Route) StartupTarget.Stay else t
+        if (!simple || t !is StartupTarget.Route) return t
+        val route = if (t.route == Routes.LIVE) Routes.SIMPLE_CHANNELS else t.route
+        return if (route in SIMPLE_START_ROUTES) StartupTarget.Route(route) else StartupTarget.Stay
     }
+
+    /** Rubriques que le mode simple sait ouvrir au lancement (leur écran simple existe, sans fiche ni réglages). */
+    private val SIMPLE_START_ROUTES = setOf(Routes.SIMPLE_CHANNELS, Routes.MOVIES, Routes.SERIES, Routes.FAVORITES)
 
     /** Le rail de navigation est masqué sur l'écran des tuiles (les tuiles remplacent le menu) ; ailleurs il reste. */
     fun railHidden(simple: Boolean, route: String?): Boolean = simple && route in SIMPLE_ROUTES

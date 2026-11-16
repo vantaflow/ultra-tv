@@ -725,7 +725,7 @@
     <string name="simple_tile_series">Seriály</string>
     <string name="simple_tile_favorites">Moje oblíbené</string>
     <string name="simple_tile_search">Hledat</string>
-    <string name="simple_tile_live_hint">Poslední kanál nebo seznam kanálů</string>
+    <string name="simple_tile_live_hint">Seznam kanálů</string>
     <string name="simple_tile_resume_hint">Pokračujte, kde jste skončili</string>
     <string name="simple_tile_resume_nothing">Zatím není co obnovit: vyberte film</string>
     <string name="simple_tile_movies_hint">Vyberte film</string>

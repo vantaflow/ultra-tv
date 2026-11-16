@@ -27,7 +27,7 @@ sealed interface StartupTarget {
  */
 fun rememberableScreen(route: String?): String? = route?.takeIf { it in REMEMBERABLE }
 
-private val REMEMBERABLE = setOf(Routes.HOME, Routes.LIVE, Routes.MOVIES, Routes.SERIES, Routes.GUIDE, Routes.FAVORITES, Routes.SPORT, Routes.RECORDINGS, Routes.DOWNLOADS)
+private val REMEMBERABLE = setOf(Routes.HOME, Routes.LIVE, Routes.MOVIES, Routes.SERIES, Routes.GUIDE, Routes.SIMPLE_CHANNELS, Routes.FAVORITES, Routes.SPORT, Routes.RECORDINGS, Routes.DOWNLOADS)
 
 /** Correspondance écran d'ouverture → action. L'accueil reste toujours sous la rubrique ouverte (Retour y ramène). */
 fun startupTarget(s: StartScreen, lastScreen: String? = null): StartupTarget = when (s) {
@@ -38,5 +38,6 @@ fun startupTarget(s: StartScreen, lastScreen: String? = null): StartupTarget = w
     StartScreen.GUIDE -> StartupTarget.Route(Routes.GUIDE)
     StartScreen.LAST_CHANNEL -> StartupTarget.LastChannel
     // Dernière rubrique ouverte à la fermeture ; l'accueil (ou rien de mémorisé) : on reste sur l'accueil.
-    StartScreen.LAST_SCREEN -> rememberableScreen(lastScreen)?.takeIf { it != Routes.HOME }?.let { StartupTarget.Route(it) } ?: StartupTarget.Stay
+    // La liste de chaînes du mode simple (mémorisée en mode simple) devient le Direct si le mode simple a été quitté depuis.
+    StartScreen.LAST_SCREEN -> rememberableScreen(lastScreen)?.takeIf { it != Routes.HOME }?.let { StartupTarget.Route(if (it == Routes.SIMPLE_CHANNELS) Routes.LIVE else it) } ?: StartupTarget.Stay
 }

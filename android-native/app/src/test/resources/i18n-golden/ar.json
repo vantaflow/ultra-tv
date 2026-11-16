@@ -1324,7 +1324,7 @@
   "SimpleStrings.getTileFavorites()": "مفضلتي",
   "SimpleStrings.getTileFavoritesHint()": "قنواتك وعناوينك المحفوظة",
   "SimpleStrings.getTileLive()": "التلفاز المباشر",
-  "SimpleStrings.getTileLiveHint()": "آخر قناة أو قائمة القنوات",
+  "SimpleStrings.getTileLiveHint()": "قائمة القنوات",
   "SimpleStrings.getTileMovies()": "الأفلام",
   "SimpleStrings.getTileMoviesHint()": "اختر فيلمًا",
   "SimpleStrings.getTileResume()": "متابعة المشاهدة",

@@ -42,9 +42,7 @@ class SimpleHomeViewModel @Inject constructor(
     private val playback: PlaybackContext,
     private val channelDao: ChannelDao,
     private val queue: LivePlaybackQueue,
-    lockedStore: LockedChannelsStore,
     private val profiles: ProfileRepository,
-    private val liveZap: com.ultratv.tv.nativeapp.data.repo.LiveZapContext,
 ) : ViewModel() {
     private val pid = provider.activeId()
 
@@ -56,14 +54,6 @@ class SimpleHomeViewModel @Inject constructor(
         .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.continueWatching(id, 12) }
         .map { SimpleHome.resumeItem(it) }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val lastLive: StateFlow<WatchHistoryEntity?> = pid
-        .flatMapLatest { id -> if (id == null) flowOf(emptyList()) else history.recentByKind(id, "LIVE", 3) }
-        .map { SimpleHome.lastLive(it) }.distinctUntilChanged()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val locked: StateFlow<Set<String>> = lockedStore.locked
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     /** Plusieurs profils : le bouton « Changer de profil » n'est proposé que s'il a un sens. */
     val multipleProfiles: StateFlow<Boolean> = profiles.profiles.map { it.size > 1 }
@@ -83,13 +73,6 @@ class SimpleHomeViewModel @Inject constructor(
             poster = h.poster, streamUrl = h.streamUrl, parentRemoteId = h.parentRemoteId,
         ))
     }
-
-    /**
-     * Contexte de lecture de la dernière chaîne. File de zapping : les favoris si la chaîne en fait partie (haut / bas
-     * du lecteur passe d'une chaîne favorite à l'autre), sinon SA catégorie dans l'ordre du Direct. Avant, une chaîne hors
-     * favoris n'avait aucune file : haut / bas ne changeaient plus de chaîne (retour Reddit).
-     */
-    suspend fun prepareLastLive(h: WatchHistoryEntity) = liveZap.prepare(h.providerId, h.remoteId, h.title, h.poster, h.streamUrl)
 }
 
 /** Ligne de la liste de chaînes à gros caractères. */
