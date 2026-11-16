@@ -81,14 +81,20 @@ object SimpleHome {
     fun isFavorite(c: ChannelEntity, favoriteIds: Set<Long>): Boolean = c.id in favoriteIds
 
     /**
-     * Écran d'ouverture : en mode simple, l'écran des tuiles est TOUJOURS le point de départ (une rubrique ouverte
-     * d'office ferait perdre une personne peu à l'aise) ; seul « dernière chaîne » est respecté, c'est un choix explicite
-     * de lecture automatique.
+     * Écran d'ouverture : Réglages › Ouvrir sur est respecté en mode simple aussi (« Dernière chaîne », « Dernier écran »
+     * compris). Seule adaptation : une rubrique sans équivalent simple (guide, sport, enregistrements…) retombe sur l'écran
+     * des tuiles, et « Direct » ouvre la liste de chaînes à gros caractères. L'accueil simple reste sous la rubrique
+     * ouverte (Retour y ramène).
      */
     fun startupTarget(simple: Boolean, screen: StartScreen, lastScreen: String? = null): StartupTarget {
         val t = startupTarget(screen, lastScreen)
-        return if (simple && t is StartupTarget.Route) StartupTarget.Stay else t
+        if (!simple || t !is StartupTarget.Route) return t
+        val route = if (t.route == Routes.LIVE) Routes.SIMPLE_CHANNELS else t.route
+        return if (route in SIMPLE_START_ROUTES) StartupTarget.Route(route) else StartupTarget.Stay
     }
+
+    /** Rubriques que le mode simple sait ouvrir au lancement (leur écran simple existe, sans fiche ni réglages). */
+    private val SIMPLE_START_ROUTES = setOf(Routes.SIMPLE_CHANNELS, Routes.MOVIES, Routes.SERIES, Routes.FAVORITES)
 
     /** Le rail de navigation est masqué sur l'écran des tuiles (les tuiles remplacent le menu) ; ailleurs il reste. */
     fun railHidden(simple: Boolean, route: String?): Boolean = simple && route in SIMPLE_ROUTES

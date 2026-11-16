@@ -155,10 +155,26 @@ class SimpleHomeLogicTest {
 
     // ── Ouverture, rail, sortie ──
 
-    @Test fun ouverture_modeSimple_rubriqueRemplaceeParLesTuiles() {
-        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.MOVIES))
-        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.GUIDE))
+    @Test fun ouverture_modeSimple_respecteLesRubriquesSimples() {
+        assertEquals(StartupTarget.Route(Routes.MOVIES), SimpleHome.startupTarget(true, StartScreen.MOVIES))
+        assertEquals(StartupTarget.Route(Routes.SERIES), SimpleHome.startupTarget(true, StartScreen.SERIES))
+        // Direct : la liste de chaînes simple.
+        assertEquals(StartupTarget.Route(Routes.SIMPLE_CHANNELS), SimpleHome.startupTarget(true, StartScreen.LIVE))
         assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.HOME))
+    }
+
+    @Test fun ouverture_modeSimple_rubriqueSansEquivalentSimple_tuiles() {
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.GUIDE))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.SPORT))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.RECORDINGS))
+    }
+
+    @Test fun ouverture_modeSimple_dernierEcran() {
+        assertEquals(StartupTarget.Route(Routes.FAVORITES), SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.FAVORITES))
+        assertEquals(StartupTarget.Route(Routes.SIMPLE_CHANNELS), SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.SIMPLE_CHANNELS))
+        assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, null))
+        // Mode simple quitté depuis : la liste de chaînes simple devient le Direct habituel.
+        assertEquals(StartupTarget.Route(Routes.LIVE), SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.SIMPLE_CHANNELS))
     }
 
     @Test fun ouverture_modeSimple_derniereChaineRespectee() {
@@ -177,7 +193,7 @@ class SimpleHomeLogicTest {
         // Fiche, lecteur, réglages : jamais rouverts au lancement.
         assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.SETTINGS))
         assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(false, StartScreen.LAST_SCREEN, Routes.PLAYER))
-        // Mode simple : les tuiles restent l'écran d'ouverture.
+        // Mode simple : le guide n'a pas d'écran simple, on reste sur les tuiles.
         assertEquals(StartupTarget.Stay, SimpleHome.startupTarget(true, StartScreen.LAST_SCREEN, Routes.GUIDE))
         assertEquals(StartScreen.LAST_SCREEN, StartScreen.parse("last_screen", false))
     }
