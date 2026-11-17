@@ -28,7 +28,7 @@ import {
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
-import { setProfileSources, parsePlexProvider, MEDIA_KINDS } from "./store.js";
+import { setProfileSources, parsePlexProvider, mediaKey, MEDIA_KINDS } from "./store.js";
 import { PLEX_PIN_TTL_S, plexAuthUrl, plexCreatePin, plexPinKey, plexPinToken, plexServers } from "./plexweb.js";
 import { autoTranslate } from "./annautotr.js";
 import { parseHandoff, pushHandoff, loadHandoffs, handoffHeader } from "./store.js";
@@ -820,7 +820,8 @@ async function plexWeb(env, acct, path) {
     st.servers = servers;
     await docs.put(env, key, await encryptJson(keysFromEnv(env), st, acct.login), { expirationTtl: PLEX_PIN_TTL_S });
   }
-  return jsonNoStore({ state: "ok", servers: st.servers.map((s) => ({ id: s.id, name: s.name, owned: s.owned, conn: s.conns[0]?.relay ? "relay" : s.conns[0]?.local ? "local" : "remote" })) });
+  const have = new Set((await loadProviders(env, acct)).filter((p) => p.kind === "PLEX").map((p) => p.username));
+  return jsonNoStore({ state: "ok", servers: st.servers.map((s) => ({ id: s.id, name: s.name, owned: s.owned, added: have.has(s.id), conn: s.conns[0]?.relay ? "relay" : s.conns[0]?.local ? "local" : "remote" })) });
 }
 
 async function addProvider(env, acct, form) {
@@ -833,15 +834,24 @@ async function addProvider(env, acct, form) {
     const st = raw ? await decryptJson(keysFromEnv(env), raw, acct.login).catch(() => null) : null;
     const server = st?.servers?.find((s) => s.id === String(form.get("server") || ""));
     if (!server) return redirect("/?e=plex#serveurs");
+    // Même machine Plex déjà configurée : pas de doublon.
+    if (providers.some((p) => p.kind === "PLEX" && p.username === server.id)) return redirect(`/?m=srvdup&k=PLEX&s=${encodeURIComponent(cleanName(server.name))}#serveurs`);
     r = parsePlexProvider(server, form.get("name"));
     if (!r.error) await docs.delete(env, plexPinKey(acct.login));
   } else r = parseProvider(form, { deviceId: "", name: "dashboard" });
   if (r.error) return redirect(`/?e=${r.error}${MEDIA_KINDS.includes(String(form.get("kind") || "").toUpperCase()) ? "#serveurs" : ""}`);
+  const media = MEDIA_KINDS.includes(r.provider.kind);
+  if (media && r.provider.kind !== "PLEX" && providers.some((p) => p.kind === r.provider.kind && mediaKey(p) === mediaKey(r.provider))) {
+    return redirect(`/?m=srvdup&k=${r.provider.kind}&s=${encodeURIComponent(cleanName(r.provider.name))}#serveurs`);
+  }
   providers.push(r.provider);
   await saveProviders(env, acct, providers);
   await putAccount(env, acct);
+  if (media) return redirect(`/?m=srvadded&k=${r.provider.kind}&s=${encodeURIComponent(cleanName(r.provider.name))}#serveurs`);
   return redirect("/?m=added");
 }
+
+const cleanName = (x) => String(x || "Plex").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 64) || "Plex";
 
 async function changePassword(env, acct, form, req) {
   const lock = await lockedOut(env, `lock:acct:${acct.login}`);
