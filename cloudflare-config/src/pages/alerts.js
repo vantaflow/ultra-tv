@@ -2,6 +2,8 @@
 import { escapeHtml as e } from "../http.js";
 import { ANN_LANGS } from "../announcements.js";
 
+const SRC_NAMES = { en: "English", ...ANN_LANGS };
+
 export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}) {
   const d = (t) => (t ? new Date(t).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "");
   const LEVEL = { info: "Information", warning: "Avertissement", urgent: "Urgent" };
@@ -18,7 +20,7 @@ export function announcementsPanel(list, csrfInput, now = Date.now(), stats = {}
     const [st, label] = state(a);
     return `<article class="card ann ann-${e(a.level)}"><div class="card-title"><span class="kind ann-st ann-${st}">${e(label)}</span><span class="kind">${e(LEVEL[a.level] || a.level)}</span>${e(a.title || "(sans titre)")}</div>
 <p class="ann-msg">${e(a.message)}</p>
-<div class="card-meta">${a.i18n && Object.keys(a.i18n).length ? `Traduit : ${e(Object.keys(a.i18n).join(", "))} · ` : "Anglais seulement · "}${e(AUD[a.audience || "all"] || a.audience)}${a.below ? ` · versions antérieures à ${e(a.below)}` : ""}${a.action === "update" ? " · bouton « Mettre à jour »" : ""} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
+<div class="card-meta">${a.i18n && Object.keys(a.i18n).length ? `Traduit : ${e(Object.entries(a.i18n).map(([l, v]) => (v && v.auto ? `${l} (auto)` : l)).join(", "))} · ` : "Anglais seulement · "}${e(AUD[a.audience || "all"] || a.audience)}${a.below ? ` · versions antérieures à ${e(a.below)}` : ""}${a.action === "update" ? " · bouton « Mettre à jour »" : ""} · du ${e(d(a.startAt))}${a.endAt ? ` au ${e(d(a.endAt))}` : " · sans fin"}${a.by ? ` · par ${e(a.by)}` : ""}</div>
 ${statLine(a)}
 <div class="actions">${st !== "ended" ? `<form method="post" action="/admin/announcements/${e(a.id)}/end" data-confirm="Arrêter la diffusion de cette alerte maintenant ?">${csrfInput}<button class="secondary" type="submit">Arrêter</button></form>` : ""}
 <form method="post" action="/admin/announcements/${e(a.id)}/delete" data-confirm="Supprimer cette alerte ?">${csrfInput}<button class="danger" type="submit">Supprimer</button></form></div></article>`;
@@ -29,6 +31,8 @@ ${statLine(a)}
 <form method="post" action="/admin/announcements" class="ann-form">${csrfInput}
 <label for="ann-title">Titre <span class="muted">(anglais : affiché quand la langue de l'appli n'a pas de traduction)</span></label><input id="ann-title" name="title" maxlength="80" placeholder="Service maintenance"/>
 <label for="ann-msg">Message <span class="muted">(anglais)</span></label><textarea id="ann-msg" name="message" maxlength="600" rows="3" required placeholder="The service will be unavailable on Sunday from 2 to 4 am."></textarea>
+<div class="row"><div class="grow"><label for="ann-src">Langue du titre et du message</label><select id="ann-src" name="srclang">${Object.entries(SRC_NAMES).map(([k, v]) => `<option value="${e(k)}"${k === "en" ? " selected" : ""}>${e(v)}</option>`).join("")}</select></div></div>
+<label class="check"><input type="checkbox" name="autotr" value="1" checked/> Traduire automatiquement les langues laissées vides <span class="muted">(Workers AI, gratuit ; une traduction saisie ci-dessous reste prioritaire)</span></label>
 <details class="ann-i18n"><summary>Traductions <span class="muted">(facultatif : chaque appareil reçoit le texte dans sa langue)</span></summary>
 ${Object.entries(ANN_LANGS).map(([l, name]) => `<fieldset class="ann-lang"><legend>${e(name)}</legend><input name="title_${l}" maxlength="80" placeholder="Titre" aria-label="Titre ${e(name)}"${l === "ar" ? ' dir="rtl"' : ""}/><textarea name="message_${l}" maxlength="600" rows="2" placeholder="Message" aria-label="Message ${e(name)}"${l === "ar" ? ' dir="rtl"' : ""}></textarea></fieldset>`).join("")}
 </details>

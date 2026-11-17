@@ -260,6 +260,10 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 #t-xtream:checked~.seg label[for=t-xtream],#t-m3u:checked~.seg label[for=t-m3u],#t-stalker:checked~.seg label[for=t-stalker]{background:var(--acc);color:var(--on-acc)}
 #t-xtream:focus-visible~.seg label[for=t-xtream],#t-m3u:focus-visible~.seg label[for=t-m3u],#t-stalker:focus-visible~.seg label[for=t-stalker]{outline:3px solid var(--ring);outline-offset:2px}
 .tabbed form{display:none} #t-xtream:checked~#form-xtream,#t-m3u:checked~#form-m3u,#t-stalker:checked~#form-stalker{display:block}
+#t-jf:checked~.seg label[for=t-jf],#t-emby:checked~.seg label[for=t-emby],#t-plex:checked~.seg label[for=t-plex],#t-nas:checked~.seg label[for=t-nas]{background:var(--acc);color:var(--on-acc)}
+#t-jf:focus-visible~.seg label[for=t-jf],#t-emby:focus-visible~.seg label[for=t-emby],#t-plex:focus-visible~.seg label[for=t-plex],#t-nas:focus-visible~.seg label[for=t-nas]{outline:3px solid var(--ring);outline-offset:2px}
+#t-jf:checked~#form-jf,#t-emby:checked~#form-emby,#t-plex:checked~#form-plex,#t-nas:checked~#form-nas{display:block}
+.plex-servers label{display:flex;gap:10px;align-items:center;margin:6px 0}
 .danger-zone{border-color:color-mix(in srgb,var(--dng) 45%,var(--bd))}
 .danger-zone h2{color:var(--dng)}
 /* ---- Chiffres clés ---- */
