@@ -4,6 +4,12 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.45] — 2026-11-17 (Android)
+
+### Ajouté
+- Sport : scores et minute en direct de tout le football du jour (sélections nationales, qualifications CAN et Coupe du monde, matchs amicaux, championnats étrangers) via une source gratuite, pour les directs du guide qu'aucune ligue suivie ne couvre ; feuille de match avec temps forts et statistiques ; noms des sélections reconnus en français, anglais, espagnol et arabe
+- Thème Turquoise (fond ardoise, accent bleu-vert des maquettes)
+
 ## [1.3.44] — 2026-11-17 (Android)
 
 ### Corrigé
