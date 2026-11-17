@@ -7,6 +7,7 @@ import "./styles/v2.css";
 import "./styles/v2-player.css";
 import "./styles/v2-screens.css";
 import "./styles/v2-sport.css";
+import "./styles/v2-library.css";
 
 // Plateformes TV (Tizen Samsung, webOS LG) : polyfills Chromium 76 et touches de la télécommande.
 // No-op en dehors d'une TV — voir lib/tv.ts et docs/tv.md.

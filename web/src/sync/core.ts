@@ -18,6 +18,7 @@ import { StalkerClient, absoluteUrl, normalizeMac, stalkerLink, unpackCreds, typ
 import { StalkerSyncLog, type SyncType } from "@/net/stalkerLog";
 import { MediaClient, isMediaType, mediaLink, numericId, type MediaApi } from "@/net/mediaServer";
 import { PlexClient } from "@/net/plex";
+import { libraryWanted } from "@/lib/mediaWizard";
 import { buildNasCatalog, isNasType, nasRootName, nasSeriesInfo, scanNas } from "@/net/nas";
 import {
   handshake, xtreamArray, xtreamStream,
@@ -680,8 +681,9 @@ async function syncMedia(ctx: Ctx, t: Transport, signal?: AbortSignal) {
   const libs = await mc.libraries();
   const cats: CategoryRow[] = libs.map((l, i) => ({
     sourceId, kind: l.type === "movies" ? "movie" : "series", extId: l.id, name: l.name, label: prettyCategoryName(l.name), badge: null,
-    count: 0, enabled: 1, adult: 0, ord: i,
+    count: 0, enabled: libraryWanted(source.libs, l.id) ? 1 : 0, adult: 0, ord: i,
   } satisfies CategoryRow));
+  // Choix de l'utilisateur lors d'une synchro précédente (cases des catégories) : prioritaire sur la sélection de l'assistant.
   if (flags) for (const cat of cats) { const f = flags.get(`${cat.kind}:${cat.extId}`); if (f !== undefined) cat.enabled = f; }
   const catIds = await db.categories.bulkAdd(cats, { allKeys: true });
   const catCount: Record<string, number> = {};

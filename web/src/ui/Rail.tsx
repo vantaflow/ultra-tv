@@ -2,7 +2,8 @@ import { useEffect } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import { db } from "@/db/db";
 import { useFavorites } from "@/hooks/data";
-import { useActiveSource } from "@/state/sources";
+import { useActiveSource, useSources } from "@/state/sources";
+import { isLibrarySource } from "@/lib/mediaWizard";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useT, type Key } from "@/i18n";
 import { usePrefs } from "@/state/prefs";
@@ -22,6 +23,8 @@ const WATCH: Item[] = [
   { to: "/series", icon: "series", label: "nav.series", match: "/serie" },
 ];
 /** Rubrique facultative (Réglages › Affichage), placée après le Guide. */
+/** Bibliothèques personnelles (Jellyfin, Emby, Plex, NAS) : affichée seulement quand au moins une est ajoutée. */
+const LIBRARIES: Item = { to: "/libraries", icon: "source", label: "nav.libraries", match: "/libraries" };
 const SPORT: Item = { to: "/sport", icon: "trophy", label: "nav.sport", match: "/sport" };
 /** « Ma liste » : ce que l'utilisateur a gardé. */
 const MINE: Item[] = [
@@ -71,7 +74,9 @@ export function Rail() {
   const loc = useLocation();
   const nav = useNavigate();
   const { profiles, profileId, sportSection, railCollapsed, set } = usePrefs();
-  const watch = sportSection ? [...WATCH.slice(0, 3), SPORT, ...WATCH.slice(3)] : WATCH;
+  const hasLibrary = useSources((st) => st.list.some((x) => isLibrarySource(x.type)));
+  const base = hasLibrary ? [...WATCH, LIBRARIES] : WATCH;
+  const watch = sportSection ? [...base.slice(0, 3), SPORT, ...base.slice(3)] : base;
   const syncing = useSync((s) => s.running);
   const progress = useSync((s) => s.progress);
   const pct = syncPercent(progress);

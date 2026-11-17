@@ -1,0 +1,97 @@
+/* Assistant « ma bibliothèque » (Ajout guidé, variante B) et écran « Mes bibliothèques » (Bibliothèques par serveur, variante B). */
+
+.wz-logo { display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 18px; color: #fff; font-family: var(--font-title); font-weight: 800; }
+.wz-chip { padding: 0.25rem 0.75rem; border-radius: 0.625rem; background: var(--surface-3); color: var(--text-2); font-size: 0.75rem; font-weight: 800; }
+.wz-dot { width: 0.75rem; height: 0.75rem; border-radius: 50%; background: var(--accent); flex: none; }
+.wz-dot.pulse { animation: wz-pulse 1.2s ease-in-out infinite; }
+@keyframes wz-pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .wz-dot.pulse { animation: none; } }
+
+/* Étape 1 : grandes cartes de serveurs. */
+.wz-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 1.25rem; }
+.wz-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; text-align: start; padding: 1.5rem; border-radius: 1.75rem; background: var(--surface); color: var(--text); border: 1px solid var(--surface-3); }
+.wz-card-top { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.wz-card-name { font-family: var(--font-title); font-size: 1.5rem; font-weight: 800; }
+.wz-card-addr { font-size: 0.875rem; opacity: 0.75; overflow-wrap: anywhere; }
+.wz-card-libs { font-size: 0.875rem; font-weight: 700; opacity: 0.85; }
+.wz-card:hover, .wz-card:focus-visible { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 0 0 4px var(--accent); }
+.wz-card:hover .wz-chip, .wz-card:focus-visible .wz-chip { background: rgba(0, 0, 0, 0.12); color: inherit; }
+.wz-scan { display: flex; align-items: center; gap: 0.75rem; color: var(--text-2); font-size: 0.9375rem; flex-wrap: wrap; }
+.wz-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+
+/* Étape 2 : panneaux (formulaire Jellyfin / Emby, code Plex). */
+.wz-connect { max-width: 34rem !important; }
+.wz-panel { display: flex; flex-direction: column; gap: 1.125rem; padding: 2rem; border-radius: 2rem; background: var(--surface); min-width: 0; }
+.wz-panel h1, .wz-panel h2 { margin: 0; font-family: var(--font-title); font-size: 1.75rem; }
+.wz-head { display: flex; align-items: center; gap: 1rem; }
+.wz-field { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.9375rem; font-weight: 700; }
+.wz-seg { display: flex; gap: 0.5rem; }
+.wz-seg button { flex: 1; padding: 0.75rem; border-radius: 0.875rem; border: 1px solid var(--surface-3); background: transparent; color: var(--text-2); font-weight: 700; }
+.wz-seg button.on { background: var(--sel-bg); color: var(--sel-ink); border-color: transparent; font-weight: 800; }
+.wz-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wz-note { margin: 0; display: flex; gap: 0.75rem; align-items: flex-start; color: var(--text-3); font-size: 0.875rem; line-height: 1.45; }
+.wz-note svg { flex: none; margin-top: 0.1rem; }
+
+.wz-plex { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem; align-items: stretch; }
+@media (max-width: 900px) { .wz-plex { grid-template-columns: minmax(0, 1fr); } }
+.wz-steps-list { margin: 0; padding-inline-start: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; color: var(--text-2); line-height: 1.4; }
+.wz-code-row { display: flex; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.wz-code { display: flex; gap: 0.5rem; direction: ltr; }
+.wz-code span { width: 3.5rem; height: 4.5rem; border-radius: 1rem; border: 2px solid var(--surface-3); background: var(--bg); display: flex; align-items: center; justify-content: center; font-family: var(--font-title); font-weight: 800; font-size: 2.25rem; }
+.wz-qr { border-radius: 1rem; flex: none; }
+.wz-server { display: flex; align-items: center; gap: 1rem; width: 100%; padding: 1rem 1.25rem; border-radius: 1.25rem; border: 1px solid var(--surface-3); background: var(--surface-2, var(--surface)); color: var(--text); text-align: start; }
+.wz-server b { display: block; font-size: 1.125rem; }
+.wz-server .s { display: block; font-size: 0.8125rem; opacity: 0.75; }
+.wz-server:hover, .wz-server:focus-visible { background: var(--sel-bg); color: var(--sel-ink); box-shadow: 0 0 0 3px var(--accent); }
+.wz-badge { flex: none; padding: 0.25rem 0.75rem; border-radius: 0.625rem; font-weight: 800; font-size: 0.75rem; background: var(--surface-3); color: var(--text); }
+.wz-badge.local { background: var(--accent); color: var(--on-accent); }
+.wz-badge.remote { background: #7FA8FF; color: #0A0F1E; }
+.wz-badge.relay { background: #A9B4C8; color: #0A0F1E; }
+
+/* Étape 3 : bibliothèques à importer. */
+.wz-libs { display: flex; flex-direction: column; gap: 1.25rem; }
+.wz-libgroup { display: flex; flex-direction: column; gap: 0.5rem; padding: 1.25rem 1.5rem; border-radius: 1.5rem; background: var(--surface); }
+.wz-libgroup h2 { margin: 0 0 0.25rem; font-size: 0.8125rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.wz-lib { display: flex; align-items: center; gap: 0.875rem; padding: 0.75rem 1rem; border-radius: 1rem; background: var(--bg); font-weight: 700; cursor: pointer; }
+.wz-lib:hover, .wz-lib:focus-within { background: var(--sel-bg); color: var(--sel-ink); }
+
+/* Écran « Mes bibliothèques ». */
+.lib-screen { padding: 1.5rem 2rem 3rem; display: flex; flex-direction: column; gap: 1.75rem; overflow-y: auto; height: 100%; }
+.lib-screen h1 { margin: 0; font-size: clamp(1.75rem, 3vw, 2.5rem); }
+.lib-head { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.lib-section { display: flex; flex-direction: column; gap: 0.75rem; }
+.lib-title { display: flex; align-items: center; gap: 0.875rem; flex-wrap: wrap; }
+.lib-title h2 { margin: 0; font-size: 1.25rem; }
+.lib-title .open { text-align: start; display: flex; align-items: center; gap: 0.875rem; color: inherit; border-radius: 1rem; }
+.lib-title .open:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.lib-state { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0.75rem; border-radius: 999px; background: var(--surface); font-size: 0.75rem; font-weight: 800; color: var(--text-2); }
+.lib-state i { width: 0.625rem; height: 0.625rem; border-radius: 50%; background: var(--accent); }
+.lib-state.relay i { background: #A9B4C8; }
+.lib-state.offline { color: #F5C451; }
+.lib-state.offline i { background: #F5A524; }
+.lib-state.checking i { background: var(--text-3); }
+.lib-count { color: var(--text-3); font-size: 0.875rem; }
+.lib-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 1rem; }
+.lib-empty { color: var(--text-3); }
+.lib-nas { display: grid; grid-template-columns: minmax(16rem, 26rem) minmax(0, 1fr); gap: 1.5rem; min-height: 0; }
+@media (max-width: 900px) { .lib-nas { grid-template-columns: minmax(0, 1fr); } }
+.lib-panel { display: flex; flex-direction: column; gap: 0.625rem; padding: 1.5rem; border-radius: 1.75rem; background: var(--surface); min-width: 0; }
+.lib-panel h3 { margin: 0 0 0.25rem; font-size: 0.9375rem; color: var(--text-2); }
+.lib-folder { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 1rem; background: var(--bg); font-weight: 700; }
+.lib-folder .n { margin-inline-start: auto; opacity: 0.7; font-size: 0.875rem; }
+.lib-found { display: grid; grid-template-columns: minmax(0, 1fr) 1.5rem minmax(0, 1fr); align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 1rem; background: var(--bg); }
+.lib-found code { font-size: 0.8125rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: ltr; text-align: start; }
+.lib-found b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-found svg { color: var(--accent); }
+[dir="rtl"] .lib-found svg { transform: scaleX(-1); }
+
+@media (max-width: 700px) {
+  .lib-screen { padding: 1rem 1rem 2rem; }
+  .lib-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.625rem; }
+  .wz-panel { padding: 1.25rem; border-radius: 1.5rem; }
+  .wz-code span { width: 2.75rem; height: 3.5rem; font-size: 1.75rem; }
+}
+
+/* Choix du type de source : titres de groupes (IPTV / ma bibliothèque) et logos colorés. */
+.wz-group { margin: 0.5rem 0 -0.75rem; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); }
+.choice .wz-logo { border-radius: 1.125rem; }

@@ -33,6 +33,8 @@ export interface Source {
   cid: number;
   /** Langues (codes pays) à synchroniser ; null = toutes. */
   langs: string[] | null;
+  /** Jellyfin / Emby / Plex : identifiants des bibliothèques à importer (3e étape de l'assistant) ; absent ou null = toutes. */
+  libs?: string[] | null;
   createdAt: number;
   lastSyncAt: number;
   counts: { live: number; movie: number; series: number };

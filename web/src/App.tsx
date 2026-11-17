@@ -28,6 +28,7 @@ import { Search } from "@/screens/Search";
 import { Favorites } from "@/screens/Favorites";
 import { Settings } from "@/screens/Settings";
 import { Sport } from "@/screens/Sport";
+import { Libraries } from "@/screens/Libraries";
 import { Recordings } from "@/screens/Recordings";
 import { ReminderBanners } from "@/ui/ReminderBanners";
 import { HandoffPrompt } from "@/ui/HandoffPrompt";
@@ -235,6 +236,7 @@ function Shell() {
           <Route path="/movies" element={<VodScreen kind="movie" />} />
           <Route path="/movie/:id" element={<MovieDetail />} />
           <Route path="/series" element={<VodScreen kind="series" />} />
+          <Route path="/libraries" element={<Libraries />} />
           <Route path="/serie/:id" element={<SeriesDetail />} />
           <Route path="/person/:name" element={<Person />} />
           <Route path="/search" element={<Search />} />
