@@ -113,6 +113,7 @@ fun tmdbLang(appLang: AppLang): String = when (appLang) {
     AppLang.Greek -> "el-GR"
     AppLang.Thai -> "th-TH"
     AppLang.Vietnamese -> "vi-VN"
+    AppLang.Turkish -> "tr-TR"
     else -> "en-US"
 }
 
