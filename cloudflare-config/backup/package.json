@@ -3,6 +3,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node build.mjs"
+    "bundle": "node build.mjs"
   }
 }

@@ -13,6 +13,7 @@
 // Dans Electron, les requêtes sont faites par le processus principal (`window.ultratv.cloudRequest`).
 
 import { bridge } from "@/net/transport";
+import { BackupBreaker, backupAccepted, backupEligible, isOutageStatus, toBackupUrl } from "./backup";
 
 export const PRIMARY_HOST = "tv.weedy.dpdns.org";
 export const LEGACY_HOST = "ultratv-config.khalilbenaz.workers.dev";
@@ -33,7 +34,8 @@ export function alternateHost(host: string): string | null {
 
 /** Dernier hôte qui a répondu (mémoire du processus). */
 let lastWorkingHost: string | null = null;
-export function resetFallbackMemory() { lastWorkingHost = null; }
+const breaker = new BackupBreaker();
+export function resetFallbackMemory() { lastWorkingHost = null; breaker.reset(); }
 
 function withHost(url: string, host: string): string {
   try { const u = new URL(url); u.host = host; return u.toString(); } catch { return url; }
@@ -44,6 +46,35 @@ function withHost(url: string, host: string): string {
  * sur l'autre hôte du Worker ; l'hôte qui répond est retenu pour les appels suivants.
  */
 export function withFallback(inner: (req: HttpRequest) => Promise<HttpResult>): (req: HttpRequest) => Promise<HttpResult> {
+  const hosts = withHostFallback(inner);
+  return async (req) => {
+    let host: string;
+    try { host = new URL(req.url).host; } catch { return inner(req); }
+    // Adresse de Worker choisie par l'utilisateur : pas de secours (le jeton ne part jamais ailleurs).
+    if (!alternateHost(host) || !backupEligible(req.method, req.url)) return hosts(req);
+    return withBackup(inner, hosts, req);
+  };
+}
+
+/** Secours Vercel : lecture seule, seulement si le principal (et son repli workers.dev) est en panne (réseau ou 5xx). */
+async function withBackup(inner: (req: HttpRequest) => Promise<HttpResult>, primary: (req: HttpRequest) => Promise<HttpResult>, req: HttpRequest): Promise<HttpResult> {
+  const viaBackup = async (): Promise<HttpResult | null> => {
+    try { const b = await inner({ ...req, url: toBackupUrl(req.url) }); return backupAccepted(b.status) ? b : null; } catch { return null; }
+  };
+  const triedFirst = breaker.preferBackup();
+  if (triedFirst) { const b = await viaBackup(); if (b) return b; }
+  let res: HttpResult | undefined;
+  let err: unknown;
+  try { res = await primary(req); } catch (e) { err = e; }
+  if (res && !isOutageStatus(res.status)) { breaker.success(); return res; }
+  breaker.failure();
+  const b = triedFirst ? null : await viaBackup();
+  if (b) return b;
+  if (res) return res;
+  throw err;
+}
+
+function withHostFallback(inner: (req: HttpRequest) => Promise<HttpResult>): (req: HttpRequest) => Promise<HttpResult> {
   return async (req) => {
     let host: string;
     try { host = new URL(req.url).host; } catch { return inner(req); }

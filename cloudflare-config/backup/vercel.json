@@ -1,4 +1,5 @@
 {
+  "buildCommand": "",
   "functions": { "api/index.js": { "maxDuration": 20 } },
   "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }]
 }

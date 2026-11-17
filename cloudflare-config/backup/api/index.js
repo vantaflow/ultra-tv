@@ -1,5 +1,5 @@
 // Fonction Vercel du serveur de secours (voir ../src/handler.js et docs/plan-secours-vercel.md).
-// Le bundle dist/worker.mjs est produit par `npm run build` (node build.mjs) avant `vercel deploy`.
+// Le bundle dist/worker.mjs est produit par `npm run bundle` (node build.mjs) avant `vercel deploy`.
 let cached;
 async function load() {
   if (!cached) {
