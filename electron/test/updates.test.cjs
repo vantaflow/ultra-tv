@@ -40,7 +40,7 @@ test("famille de paquet et lien de téléchargement", () => {
   assert.strictEqual(linuxPackageKind((f) => f === "/etc/debian_version"), "deb");
   assert.strictEqual(linuxPackageKind((f) => f === "/etc/fedora-release"), "rpm");
   assert.strictEqual(linuxPackageKind(() => false), null);
-  assert.strictEqual(manualUpdateUrl("deb", "desktop-v1.3.1"), "https://tv.weedy.dpdns.org/download/linux-deb");
-  assert.strictEqual(manualUpdateUrl("rpm", "desktop-v1.3.1"), "https://tv.weedy.dpdns.org/download/linux-rpm");
+  assert.strictEqual(manualUpdateUrl("deb", "desktop-v1.3.1"), "https://ultratv.dpdns.org/download/linux-deb");
+  assert.strictEqual(manualUpdateUrl("rpm", "desktop-v1.3.1"), "https://ultratv.dpdns.org/download/linux-rpm");
   assert.strictEqual(manualUpdateUrl(null, "desktop-v1.3.1"), "https://github.com/vantaflow/ultra-tv/releases/tag/desktop-v1.3.1");
 });
