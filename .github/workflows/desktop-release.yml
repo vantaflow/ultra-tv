@@ -94,7 +94,7 @@ jobs:
       matrix:
         include:
           - name: macOS (universal)
-            os: macos-latest
+            os: macos-15
             artifact: desktop-mac
             builder_args: "--mac dmg zip --universal"
           - name: Windows (x64)
