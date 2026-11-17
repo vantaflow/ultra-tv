@@ -527,6 +527,12 @@
     <string name="dsb1_ms_checking">Připojování k serveru…</string>
     <string name="dsb1_ms_failed">K serveru se nepodařilo připojit. Zkontrolujte adresu, uživatelské jméno a heslo.</string>
     <string name="dsb1_ms_hint">Přehrávání je přímé a váš postup se ukládá na server. Přihlašovací údaje zůstávají v tomto zařízení šifrované.</string>
+    <string name="dsb1_nas_sub">Sdílená složka ve vaší síti (NAS, počítač, router): její videosoubory se stanou filmy a seriály</string>
+    <string name="dsb1_nas_url">Adresa sdílené složky</string>
+    <string name="dsb1_nas_user">Uživatelské jméno (prázdné = host)</string>
+    <string name="dsb1_nas_checking">Připojování ke sdílené složce…</string>
+    <string name="dsb1_nas_failed">Sdílenou složku se nepodařilo otevřít. Zkontrolujte adresu (smb://hostitel/sdilena), uživatelské jméno a heslo.</string>
+    <string name="dsb1_nas_hint">SMB 2 a 3. Soubory se přehrávají přímo ze sdílené složky, bez kopírování. Přihlašovací údaje zůstávají v tomto zařízení šifrované.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIÁL</string>
     <string name="dsb1_director_label">Režie</string>

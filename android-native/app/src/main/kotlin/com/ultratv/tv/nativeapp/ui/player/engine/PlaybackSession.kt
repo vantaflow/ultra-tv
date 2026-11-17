@@ -288,7 +288,7 @@ class PlaybackSession(
     private val isStalkerUrl get() = StalkerLink.isStalker(url)
 
     /** Adresse à résoudre avant ouverture : portail Stalker (lien frais) ou serveur Jellyfin / Emby (adresse directe + jeton en en-tête). */
-    private val needsOpener get() = isStalkerUrl || com.ultratv.tv.nativeapp.data.mediaserver.MediaLink.isMedia(url)
+    private val needsOpener get() = isStalkerUrl || com.ultratv.tv.nativeapp.data.mediaserver.MediaLink.isMedia(url) || com.ultratv.tv.nativeapp.data.nas.Nas.NasLink.isNas(url)
 
     /** (Re)lance ou arrête la boucle de présence selon l'adresse courante. */
     private fun syncPresence() {

@@ -13,6 +13,7 @@ import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.sync.SyncPolicy
 import com.ultratv.tv.nativeapp.data.m3u.M3uParser
 import com.ultratv.tv.nativeapp.data.mediaserver.MediaServer
+import com.ultratv.tv.nativeapp.data.nas.Nas
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
 import com.ultratv.tv.nativeapp.data.xmltv.EmptyGuideException
 import com.ultratv.tv.nativeapp.data.xmltv.EpgErrors
@@ -52,6 +53,7 @@ class ProviderRepository @Inject constructor(
     private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
     private val hiddenChannels: com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore,
     private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient = com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient(okhttp3.OkHttpClient(), { "ultra-tv" }),
+    private val nas: com.ultratv.tv.nativeapp.data.nas.NasClient = com.ultratv.tv.nativeapp.data.nas.NasClient(com.ultratv.tv.nativeapp.data.nas.NasSmb()) { null },
 ) {
     /** Retire les chaînes masquées par l'utilisateur d'un lot à écrire (voir HiddenChannelsStore). */
     private fun withoutHidden(rows: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
@@ -742,9 +744,9 @@ class ProviderRepository @Inject constructor(
 
     private fun vodPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
         "MOVIE",
-        { p -> if (MediaServer.isMediaKind(kind)) mediaCategories(p, "MOVIE") else if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
-        { p, blk -> if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "MOVIE").flatMap { mediaServer.movies(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
-        { p, c -> if (MediaServer.isMediaKind(kind)) mediaServer.movies(p, c) else if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
+        { p -> if (Nas.isNasKind(kind)) nas.categories(p, "MOVIE") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "MOVIE") else if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "MOVIE").flatMap { nas.movies(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "MOVIE").flatMap { mediaServer.movies(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.movies(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.movies(p, c) else if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
         { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
@@ -754,9 +756,9 @@ class ProviderRepository @Inject constructor(
 
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
         "SERIES",
-        { p -> if (MediaServer.isMediaKind(kind)) mediaCategories(p, "SERIES") else if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
-        { p, blk -> if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "SERIES").flatMap { mediaServer.series(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
-        { p, c -> if (MediaServer.isMediaKind(kind)) mediaServer.series(p, c) else if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
+        { p -> if (Nas.isNasKind(kind)) nas.categories(p, "SERIES") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "SERIES") else if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "SERIES").flatMap { nas.series(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "SERIES").flatMap { mediaServer.series(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.series(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.series(p, c) else if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
         { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
@@ -788,6 +790,25 @@ class ProviderRepository @Inject constructor(
             ProviderEntity(
                 name = name.ifBlank { hostOf(base) ?: if (kind == MediaServer.EMBY) "Emby" else "Jellyfin" },
                 kind = kind, baseUrl = base, username = login.userId, password = login.token,
+                active = false,    // explicit default is set in Settings; see setDefault
+            ),
+        )
+    }
+
+    /**
+     * Ajoute un partage NAS (SMB) : adresse `smb://hôte/partage[/dossier]`, identifiant et mot de passe (vides = invité). La connexion
+     * est vérifiée d'abord : une erreur remonte à l'appelant et RIEN n'est enregistré. Le mot de passe est chiffré au repos comme
+     * celui de toute source ; l'adresse stockée n'en contient jamais.
+     */
+    suspend fun addNas(name: String, address: String, username: String, password: String): Long {
+        val a = Nas.parseAddress(address) ?: throw IllegalArgumentException("url")
+        nas.test(a, username.trim(), password)
+        providerDao.findByIdentity(Nas.KIND, a.url(), username.trim())?.let { existing ->
+            providerDao.upsert(existing.copy(password = password)); providerDao.resetSyncAt(existing.id); return existing.id
+        }
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { a.rootName }, kind = Nas.KIND, baseUrl = a.url(), username = username.trim(), password = password,
                 active = false,    // explicit default is set in Settings; see setDefault
             ),
         )

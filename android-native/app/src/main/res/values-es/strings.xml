@@ -512,6 +512,12 @@
     <string name="dsb1_ms_checking">Conectando con el servidor…</string>
     <string name="dsb1_ms_failed">No se pudo conectar con el servidor. Revisa la dirección, el nombre de usuario y la contraseña.</string>
     <string name="dsb1_ms_hint">La reproducción es directa y tu progreso se guarda en el servidor. Las credenciales permanecen cifradas en este dispositivo.</string>
+    <string name="dsb1_nas_sub">Una carpeta compartida de tu red (NAS, PC, router): sus archivos de vídeo se convierten en películas y series</string>
+    <string name="dsb1_nas_url">Dirección del recurso compartido</string>
+    <string name="dsb1_nas_user">Nombre de usuario (vacío = invitado)</string>
+    <string name="dsb1_nas_checking">Conectando con el recurso compartido…</string>
+    <string name="dsb1_nas_failed">No se pudo abrir el recurso compartido. Comprueba la dirección (smb://host/recurso), el usuario y la contraseña.</string>
+    <string name="dsb1_nas_hint">SMB 2 y 3. Los archivos se reproducen directamente desde el recurso, sin copiarlos. Las credenciales permanecen cifradas en este dispositivo.</string>
     <string name="dsb1_type_movie">PELÍCULA</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Dirigida por</string>

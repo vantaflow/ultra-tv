@@ -517,6 +517,12 @@
     <string name="dsb1_ms_checking">Σύνδεση με τον διακομιστή…</string>
     <string name="dsb1_ms_failed">Δεν ήταν δυνατή η σύνδεση με τον διακομιστή. Ελέγξτε τη διεύθυνση, το όνομα χρήστη και τον κωδικό.</string>
     <string name="dsb1_ms_hint">Η αναπαραγωγή είναι άμεση και η πρόοδός σας αποθηκεύεται στον διακομιστή. Τα διαπιστευτήρια παραμένουν κρυπτογραφημένα σε αυτή τη συσκευή.</string>
+    <string name="dsb1_nas_sub">Ένας κοινόχρηστος φάκελος του δικτύου σας (NAS, υπολογιστής, router): τα αρχεία βίντεό του γίνονται ταινίες και σειρές</string>
+    <string name="dsb1_nas_url">Διεύθυνση κοινόχρηστου φακέλου</string>
+    <string name="dsb1_nas_user">Όνομα χρήστη (κενό = επισκέπτης)</string>
+    <string name="dsb1_nas_checking">Σύνδεση με τον κοινόχρηστο φάκελο…</string>
+    <string name="dsb1_nas_failed">Δεν ήταν δυνατό το άνοιγμα του φακέλου. Ελέγξτε τη διεύθυνση (smb://host/share), το όνομα χρήστη και τον κωδικό.</string>
+    <string name="dsb1_nas_hint">SMB 2 και 3. Τα αρχεία αναπαράγονται απευθείας από τον φάκελο, χωρίς αντιγραφή. Τα διαπιστευτήρια παραμένουν κρυπτογραφημένα σε αυτή τη συσκευή.</string>
     <string name="dsb1_type_movie">ΤΑΙΝΙΑ</string>
     <string name="dsb1_type_series">ΣΕΙΡΑ</string>
     <string name="dsb1_director_label">Σκηνοθέτης</string>

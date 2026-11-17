@@ -10,6 +10,7 @@ bibliothèques ci-dessous, chacune sous sa propre licence.
 | AndroidX Media3 (ExoPlayer) | Apache-2.0 | moteur de lecture principal |
 | Décodeur audio FFmpeg de Media3 (`androidx.media3.decoder.ffmpeg`) | Apache-2.0 (extension) + FFmpeg LGPL-2.1+ | voir ci-dessous |
 | LibVLC (`org.videolan.android:libvlc-all`) | LGPL-2.1+ (libVLC) | second moteur ; certains modules VLC ont leur propre licence, voir videolan.org |
+| smbj (`com.hierynomus:smbj` 0.14.0) | Apache-2.0 | partages réseau NAS (SMB 2/3, NTLM) ; dépendances : Bouncy Castle `bcprov-jdk18on` (licence MIT), SLF4J API (MIT), mbassador (MIT), asn-one (Apache-2.0) |
 
 ### FFmpeg
 

@@ -79,6 +79,14 @@ val DesignStrings.mediaChecking get() = tx(R.string.dsb1_ms_checking)
 val DesignStrings.mediaFailed get() = tx(R.string.dsb1_ms_failed)
 val DesignStrings.mediaHint get() = tx(R.string.dsb1_ms_hint)
 
+// Partage réseau (NAS, SMB) : « NAS » et « SMB » sont des sigles, jamais traduits
+val DesignStrings.formSubNas get() = tx(R.string.dsb1_nas_sub)
+val DesignStrings.fieldNasUrl get() = tx(R.string.dsb1_nas_url)
+val DesignStrings.fieldNasUser get() = tx(R.string.dsb1_nas_user)
+val DesignStrings.nasChecking get() = tx(R.string.dsb1_nas_checking)
+val DesignStrings.nasFailed get() = tx(R.string.dsb1_nas_failed)
+val DesignStrings.nasHint get() = tx(R.string.dsb1_nas_hint)
+
 // Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
 val DesignStrings.typeMovie get() = tx(R.string.dsb1_type_movie)
 val DesignStrings.typeSeries get() = tx(R.string.dsb1_type_series)

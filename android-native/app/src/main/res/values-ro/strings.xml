@@ -525,6 +525,12 @@
     <string name="dsb1_ms_checking">Se conectează la server…</string>
     <string name="dsb1_ms_failed">Nu s-a putut face conexiunea la server. Verifică adresa, numele de utilizator și parola.</string>
     <string name="dsb1_ms_hint">Redarea este directă, iar progresul tău este salvat pe server. Datele de autentificare rămân criptate pe acest dispozitiv.</string>
+    <string name="dsb1_nas_sub">Un dosar partajat din rețeaua ta (NAS, PC, router): fișierele video devin filme și seriale</string>
+    <string name="dsb1_nas_url">Adresa partajării</string>
+    <string name="dsb1_nas_user">Nume de utilizator (gol = invitat)</string>
+    <string name="dsb1_nas_checking">Conectare la partajare…</string>
+    <string name="dsb1_nas_failed">Nu s-a putut deschide partajarea. Verifică adresa (smb://gazda/partajare), numele de utilizator și parola.</string>
+    <string name="dsb1_nas_hint">SMB 2 și 3. Fișierele sunt redate direct din partajare, fără copiere. Datele de autentificare rămân criptate pe acest dispozitiv.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIAL</string>
     <string name="dsb1_director_label">Regizor</string>

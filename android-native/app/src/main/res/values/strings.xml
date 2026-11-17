@@ -516,6 +516,12 @@
     <string name="dsb1_ms_checking">Connecting to the server…</string>
     <string name="dsb1_ms_failed">Could not connect to the server. Check the address, the user name and the password.</string>
     <string name="dsb1_ms_hint">Playback is direct and your progress is saved on the server. Credentials stay encrypted on this device.</string>
+    <string name="dsb1_nas_sub">A shared folder on your network (NAS, PC, router): its video files become Movies and Series</string>
+    <string name="dsb1_nas_url">Share address</string>
+    <string name="dsb1_nas_user">User name (empty for guest)</string>
+    <string name="dsb1_nas_checking">Connecting to the share…</string>
+    <string name="dsb1_nas_failed">Could not open the share. Check the address (smb://host/share), the user name and the password.</string>
+    <string name="dsb1_nas_hint">SMB 2 and 3. Files are played straight from the share, never copied. Credentials stay encrypted on this device.</string>
     <string name="dsb1_type_movie">MOVIE</string>
     <string name="dsb1_type_series">SERIES</string>
     <string name="dsb1_director_label">Director</string>

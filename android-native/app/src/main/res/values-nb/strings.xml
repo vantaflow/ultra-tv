@@ -517,6 +517,12 @@
     <string name="dsb1_ms_checking">Kobler til serveren…</string>
     <string name="dsb1_ms_failed">Kunne ikke koble til serveren. Kontroller adressen, brukernavnet og passordet.</string>
     <string name="dsb1_ms_hint">Avspillingen er direkte, og fremdriften din lagres på serveren. Påloggingsopplysningene forblir kryptert på denne enheten.</string>
+    <string name="dsb1_nas_sub">En delt mappe på nettverket ditt (NAS, PC, ruter): videofilene blir til filmer og serier</string>
+    <string name="dsb1_nas_url">Adresse til delingen</string>
+    <string name="dsb1_nas_user">Brukernavn (tomt = gjest)</string>
+    <string name="dsb1_nas_checking">Kobler til delingen …</string>
+    <string name="dsb1_nas_failed">Kunne ikke åpne delingen. Sjekk adressen (smb://vert/deling), brukernavnet og passordet.</string>
+    <string name="dsb1_nas_hint">SMB 2 og 3. Filene spilles direkte fra delingen uten å kopieres. Påloggingsopplysningene forblir kryptert på denne enheten.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIE</string>
     <string name="dsb1_director_label">Regissør</string>

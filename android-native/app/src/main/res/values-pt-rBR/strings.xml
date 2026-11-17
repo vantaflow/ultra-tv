@@ -524,6 +524,12 @@
     <string name="dsb1_ms_checking">Conectando ao servidor…</string>
     <string name="dsb1_ms_failed">Não foi possível conectar ao servidor. Confira o endereço, o nome de usuário e a senha.</string>
     <string name="dsb1_ms_hint">A reprodução é direta e seu progresso é salvo no servidor. As credenciais continuam criptografadas neste dispositivo.</string>
+    <string name="dsb1_nas_sub">Uma pasta compartilhada da sua rede (NAS, PC, roteador): seus arquivos de vídeo viram filmes e séries</string>
+    <string name="dsb1_nas_url">Endereço do compartilhamento</string>
+    <string name="dsb1_nas_user">Nome de usuário (vazio = convidado)</string>
+    <string name="dsb1_nas_checking">Conectando ao compartilhamento…</string>
+    <string name="dsb1_nas_failed">Não foi possível abrir o compartilhamento. Verifique o endereço (smb://host/pasta), o usuário e a senha.</string>
+    <string name="dsb1_nas_hint">SMB 2 e 3. Os arquivos são reproduzidos direto do compartilhamento, sem cópia. As credenciais ficam criptografadas neste dispositivo.</string>
     <string name="dsb1_type_movie">FILME</string>
     <string name="dsb1_type_series">SÉRIE</string>
     <string name="dsb1_director_label">Direção</string>

@@ -57,3 +57,16 @@
 -keepclassmembers class com.ultratv.tv.nativeapp.ui.trailer.TrailerBridge {
     @android.webkit.JavascriptInterface <methods>;
 }
+
+# Partages NAS (smbj) : chargement de classes par leur nom (authentificateurs, dialectes, paquets SMB2) ; Bouncy Castle en API légère.
+# Kerberos / SPNEGO (org.ietf.jgss, javax.security.auth.kerberos…) ne sont pas dans Android : l'appli n'utilise que NTLM.
+-keep class com.hierynomus.** { *; }
+-keep class net.engio.mbassy.** { *; }
+-keep class org.bouncycastle.crypto.** { *; }
+-dontwarn org.ietf.jgss.**
+-dontwarn javax.security.auth.kerberos.**
+-dontwarn javax.el.**
+-dontwarn org.slf4j.**
+-dontwarn com.hierynomus.**
+-dontwarn org.bouncycastle.**
+-dontwarn net.engio.mbassy.**

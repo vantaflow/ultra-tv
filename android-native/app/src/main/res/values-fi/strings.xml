@@ -511,6 +511,12 @@
     <string name="dsb1_ms_checking">Yhdistetään palvelimeen…</string>
     <string name="dsb1_ms_failed">Palvelimeen ei saatu yhteyttä. Tarkista osoite, käyttäjätunnus ja salasana.</string>
     <string name="dsb1_ms_hint">Toisto on suoraa, ja katselun edistyminen tallentuu palvelimelle. Tunnukset pysyvät salattuina tällä laitteella.</string>
+    <string name="dsb1_nas_sub">Verkkosi jaettu kansio (NAS, tietokone, reititin): sen videotiedostoista tulee elokuvia ja sarjoja</string>
+    <string name="dsb1_nas_url">Jaon osoite</string>
+    <string name="dsb1_nas_user">Käyttäjänimi (tyhjä = vieras)</string>
+    <string name="dsb1_nas_checking">Yhdistetään jakoon…</string>
+    <string name="dsb1_nas_failed">Jakoa ei voitu avata. Tarkista osoite (smb://palvelin/jako), käyttäjänimi ja salasana.</string>
+    <string name="dsb1_nas_hint">SMB 2 ja 3. Tiedostot toistetaan suoraan jaosta ilman kopiointia. Tunnukset pysyvät salattuina tällä laitteella.</string>
     <string name="dsb1_type_movie">ELOKUVA</string>
     <string name="dsb1_type_series">SARJA</string>
     <string name="dsb1_director_label">Ohjaaja</string>
