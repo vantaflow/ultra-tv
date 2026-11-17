@@ -45,6 +45,10 @@ export interface UltraTvBridge {
   recList?(): Promise<{ active: Array<{ id: string; bytes: number; path: string }>; finished: RecEvent[] }>;
   recDir?(): Promise<string>;
   recChooseDir?(): Promise<string | null>;
+  /** Partages réseau montés par le système (electron/nas.cjs) : choix du dossier, parcours borné (`probe` : racine seule), déclaration de la racine au proxy. */
+  nasChoose?(): Promise<string | null>;
+  nasScan?(root: string, probe?: boolean): Promise<{ id: string; files: Array<{ path: string; size: number; mtime: number }>; truncated: boolean }>;
+  nasRegister?(root: string): Promise<string | null>;
   recOpenDir?(): Promise<boolean>;
   recReveal?(path: string): Promise<boolean>;
   recOpen?(path: string): Promise<boolean>;

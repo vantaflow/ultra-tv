@@ -4,11 +4,12 @@ import type { Source } from "@/db/types";
 import { Icon } from "@/ui/Icon";
 import { Seg } from "@/ui/common";
 import { checkGuideAddress } from "@/lib/guideAddress";
-import { currentTransport } from "@/net/transport";
+import { bridge, currentTransport } from "@/net/transport";
+import { nasAvailable } from "@/net/nas";
 import { parseXtreamUrl } from "@/lib/xtreamUrl";
 import { formatMacTyping, packCreds, unpackCreds } from "@/net/stalker";
 
-export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker" | "jellyfin" | "emby";
+export type SourceKind = "xtream" | "m3u-link" | "m3u-file" | "stalker" | "jellyfin" | "emby" | "nas";
 
 export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
   kind: SourceKind; value: Source; onChange: (s: Source) => void; fileInfo?: string; onPickFile?: (f: File) => void;
@@ -57,6 +58,22 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
           <span className="muted full">{t("src.mediaHint")}</span>
         </>
       )}
+      {kind === "nas" && (
+        <>
+          <div className="field full">
+            <label htmlFor="f-nas">{t("src.nasPath")}</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input id="f-nas" className="input" style={{ flex: 1 }} value={value.server} placeholder={bridge()?.platform === "win32" ? "\\\\NAS\\video" : "/Volumes/video"} autoCapitalize="off" spellCheck={false} onChange={(e) => set({ server: e.target.value })} />
+              {bridge()?.nasChoose && (
+                <button type="button" className="btn" onClick={async () => { const d = await bridge()!.nasChoose!().catch(() => null); if (d) set({ server: d, name: value.name || d.split(/[\\/]+/).filter(Boolean).pop() || "" }); }}>
+                  <Icon name="file" size={18} />{t("src.nasChoose")}
+                </button>
+              )}
+            </div>
+          </div>
+          <span className="muted full">{nasAvailable() ? t("src.nasHint") : t("src.err.nasDesktop")}</span>
+        </>
+      )}
       {kind === "stalker" && (() => {
         // Identifiant / mot de passe facultatifs du portail : rangés ensemble dans `password` (voir net/stalker.ts).
         const creds = unpackCreds(value.password);
@@ -98,10 +115,10 @@ export function SourceForm({ kind, value, onChange, fileInfo, onPickFile }: {
           </label>
         </div>
       )}
-      <div className="full">
+      {kind !== "nas" && <div className="full">
         <button type="button" className="btn sm" onClick={() => setAdv(!adv)} aria-expanded={adv}>{t("src.advanced")} {adv ? "▴" : "▾"}</button>
-      </div>
-      {adv && (
+      </div>}
+      {adv && kind !== "nas" && (
         <>
           <div className="field full">
             <label htmlFor="f-epg">{t("src.epg")}</label>

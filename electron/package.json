@@ -73,6 +73,7 @@
       "windowfit.cjs",
       "trailer.cjs",
       "recorder.cjs",
+      "nas.cjs",
       "web-dist/**/*",
       "package.json"
     ],

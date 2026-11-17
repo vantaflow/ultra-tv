@@ -126,10 +126,10 @@ function SourcesPane() {
         const isActive = active?.id === s.id;
         return (
           <div key={s.id} className={`src-card${isActive ? " active" : ""}`}>
-            <span className="ico"><Icon name={s.type === "xtream" || s.type === "jellyfin" || s.type === "emby" ? "source" : s.type === "stalker" ? "tv" : "list"} size={26} /></span>
+            <span className="ico"><Icon name={s.type === "xtream" || isMediaType(s.type) || s.type === "nas" ? "source" : s.type === "stalker" ? "tv" : "list"} size={26} /></span>
             <span className="grow">
               <b className="ellipsis" style={{ display: "block" }}>{s.name}</b>
-              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : s.type === "jellyfin" ? "Jellyfin" : s.type === "emby" ? "Emby" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
+              <div className="meta">{t("set.sourceMeta", { type: s.type === "xtream" ? "Xtream Codes" : s.type === "stalker" ? "Stalker" : s.type === "jellyfin" ? "Jellyfin" : s.type === "emby" ? "Emby" : s.type === "nas" ? "NAS" : "M3U", n: s.counts.live.toLocaleString(), m: s.counts.movie.toLocaleString(), s: s.counts.series.toLocaleString() })}{isActive ? ` · ${t("set.active")}` : ""}</div>
               {(s.cloudId || cloud.paired) && <div className="meta" style={{ fontWeight: 700 }}>{cloudBadge(s, t)}</div>}
             </span>
             {!isActive && <button className="btn sm" onClick={() => {
@@ -138,7 +138,7 @@ function SourcesPane() {
               const hidden = !!cur?.length && !visibleSources(list, cur).some((v) => v.id === s.id);
               prefs.set({ activeSourceId: s.id!, ...(hidden ? { profiles: prefs.profiles.map((x) => (x.id === prefs.profileId ? { ...x, sources: [...cur!, s.name] } : x)) } : {}) });
             }}>{t("set.makeActive")}</button>}
-            {cloud.paired && cloud.pushAvailable !== false && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && !isMediaType(s.type) && (
+            {cloud.paired && cloud.pushAvailable !== false && !(s.type === "m3u" && s.m3uUrl.startsWith("file:")) && !isMediaType(s.type) && s.type !== "nas" && (
               <button className="btn sm" onClick={() => setShare(s)}><Icon name="globe" size={14} />{t("cloud.share")}</button>
             )}
             {s.cloudOrigin === "local" && <button className="btn sm" onClick={async () => { if (await unshareSource(s)) useUi.getState().toast(t("cloud.unshare")); }}>{t("cloud.unshare")}</button>}
@@ -258,7 +258,7 @@ function EditSource({ source, onClose }: { source: Source; onClose: () => void }
   const [s, setS] = useState(source);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.type === "stalker" ? "stalker" : s.type === "jellyfin" || s.type === "emby" ? s.type : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
+  const kind: SourceKind = s.type === "xtream" ? "xtream" : s.type === "stalker" ? "stalker" : s.type === "jellyfin" || s.type === "emby" || s.type === "nas" ? s.type : s.m3uUrl.startsWith("file:") ? "m3u-file" : "m3u-link";
   return (
     <Modal wide title={t("common.edit")} onClose={onClose} foot={
       <>

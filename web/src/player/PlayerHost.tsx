@@ -38,7 +38,7 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
-import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, type Candidate } from "./resolve";
+import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
 import { isMediaType, type MediaClient, type ReportKind } from "@/net/mediaServer";
 import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
@@ -321,6 +321,21 @@ export function PlayerHost() {
       silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
       setNoAudio(false);
       void stalkerCandidate(source, target).then((c) => {
+        if (dead) return;
+        if (!c) { setError(true); setState("error"); return; }
+        candRef.current = { list: [c], i: 0 };
+        void startCandidate(c);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
+    if (source.type === "nas") {
+      // Partage NAS monté par le système : fichier servi par le proxy local (lecture par plages) ; reprise = historique local.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void nasCandidate(source, target).then((c) => {
         if (dead) return;
         if (!c) { setError(true); setState("error"); return; }
         candRef.current = { list: [c], i: 0 };
