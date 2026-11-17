@@ -88,6 +88,14 @@ import com.ultratv.tv.nativeapp.i18n.plexOpen
 import com.ultratv.tv.nativeapp.i18n.plexRetry
 import com.ultratv.tv.nativeapp.i18n.plexUnreachable
 import com.ultratv.tv.nativeapp.i18n.plexWaiting
+import com.ultratv.tv.nativeapp.i18n.mlibConnect
+import com.ultratv.tv.nativeapp.i18n.mlibModeKey
+import com.ultratv.tv.nativeapp.i18n.mlibModeLogin
+import com.ultratv.tv.nativeapp.i18n.mlibPwNote
+import com.ultratv.tv.nativeapp.i18n.mlibPlexExpires
+import com.ultratv.tv.nativeapp.i18n.mlibPlexS1
+import com.ultratv.tv.nativeapp.i18n.mlibPlexS2
+import com.ultratv.tv.nativeapp.i18n.mlibPlexTitle
 import com.ultratv.tv.nativeapp.i18n.fieldPortalLogin
 import com.ultratv.tv.nativeapp.i18n.fieldPortalPassword
 import com.ultratv.tv.nativeapp.i18n.fieldPortalUrl
@@ -132,6 +140,8 @@ fun AddProviderDialog(
     submitLabel: String? = null,
     /** Retour télécommande (par défaut : comme « Annuler »). */
     onBack: (() -> Unit)? = null,
+    /** Étape de l'assistant « Ma bibliothèque » (1 à 3) : affiche le bandeau d'étapes en tête ; null = dialogue ordinaire. */
+    step: Int? = null,
     content: @Composable () -> Unit,
 ) {
     val S = LocalStrings.current
@@ -159,6 +169,7 @@ fun AddProviderDialog(
                     Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).padding(start = 20.dp, end = 20.dp, top = 20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
+                    if (step != null) WizardSteps(step)
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Box(Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(Ux.Accent), contentAlignment = Alignment.Center) { DIcon(icon, 22.dp, Ux.White, strokeWidth = 2f) }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -229,6 +240,7 @@ fun AddProviderDialog(
                         .padding(horizontal = 56.design, vertical = if (compact) 20.design else 40.design),
                     verticalArrangement = Arrangement.spacedBy(if (compact) 14.design else 24.design),
                 ) {
+                    if (step != null && !compact) WizardSteps(step)
                     if (compact) {
                         Text(title, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 28.spx, color = Ux.Text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     } else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.design)) {
@@ -539,39 +551,55 @@ fun StalkerDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> U
 }
 
 /**
- * Serveur Jellyfin ou Emby ([title] = nom propre du serveur) : adresse, identifiant et mot de passe — ou clé API seule. Le dialogue
- * reste ouvert pendant la connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
+ * Serveur Jellyfin ou Emby ([title] = nom propre du serveur), étape 2 de l'assistant : adresse (préremplie par [initialUrl] quand le
+ * serveur a été détecté), bascule Identifiant / Clé API, puis les champs correspondants. Le dialogue reste ouvert pendant la
+ * connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
  */
 @Composable
-fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, server: String, user: String, pass: String, apiKey: String) -> Unit) {
+fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, initialUrl: String = "", onSubmit: (name: String, server: String, user: String, pass: String, apiKey: String) -> Unit) {
     var name by remember { mutableStateOf("") }
-    var url by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf(initialUrl) }
     var user by remember { mutableStateOf("") }
     var pass by remember { mutableStateOf("") }
     var key by remember { mutableStateOf("") }
+    // Identifiant + mot de passe, ou clé API seule.
+    var useKey by remember { mutableStateOf(false) }
     val S = LocalStrings.current
     val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val urlOk = url.isBlank() || com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null
-    // Identifiant + mot de passe, ou clé API seule.
-    val credsOk = key.isNotBlank() || (user.isNotBlank() && pass.isNotBlank())
+    val credsOk = if (useKey) key.isNotBlank() else (user.isNotBlank() && pass.isNotBlank())
     AddProviderDialog(
         title = title,
         subtitle = D.formSubMediaServer,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
-        onSubmit = { if (!busy) onSubmit(name, url.trim(), user.trim(), pass, key.trim()) },
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), if (useKey) "" else user.trim(), if (useKey) "" else pass, if (useKey) key.trim() else "") },
         canSubmit = com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.normalizeServerUrl(url) != null && credsOk && !busy,
-        submitLabel = if (busy) D.mediaChecking else null,
+        submitLabel = if (busy) D.mediaChecking else D.mlibConnect,
         onBack = onBack,
+        step = 2,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(D.fieldMediaUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
-            placeholder = "http://192.168.1.10:8096", autoFocus = true, required = true,
+            placeholder = "http://192.168.1.10:8096", autoFocus = initialUrl.isBlank(), required = true,
             error = if (urlOk) null else S.wiz.invalidUrl, testTag = "field-url")
-        FormField(D.fieldMediaUser, user, { user = it }, testTag = "field-user")
-        FormField(D.fieldMediaPass, pass, { pass = it }, password = true, placeholder = "••••••••", testTag = "field-pass")
-        FormField(D.fieldMediaKey, key, { key = it }, password = true, last = true, testTag = "field-key")
-        Text(D.mediaHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 10.design)) {
+            for ((isKey, label) in listOf(false to D.mlibModeLogin, true to D.mlibModeKey)) {
+                FocusSurface(onClick = { useKey = isKey }, shape = RoundedCornerShape(if (touch) 12.dp else 14.design), bg = if (useKey == isKey) Ux.Cta else Ux.Surface2, modifier = Modifier.weight(1f).testTag(if (isKey) "mode-key" else "mode-login")) { f ->
+                    Box(Modifier.fillMaxWidth().padding(vertical = if (touch) 10.dp else 14.design), contentAlignment = Alignment.Center) {
+                        Text(label, fontFamily = Manrope, fontWeight = if (useKey == isKey) FontWeight.ExtraBold else FontWeight.Bold, fontSize = if (touch) 14.sp else 20.spx,
+                            color = if (useKey == isKey || f) Ux.TextOnLight else Ux.Text, maxLines = 1)
+                    }
+                }
+            }
+        }
+        if (useKey) FormField(D.fieldMediaKey, key, { key = it }, password = true, last = true, testTag = "field-key")
+        else {
+            FormField(D.fieldMediaUser, user, { user = it }, testTag = "field-user")
+            FormField(D.fieldMediaPass, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
+        }
+        Text(D.mlibPwNote, fontFamily = Manrope, fontSize = if (touch) 12.sp else 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }
 
@@ -583,25 +611,45 @@ fun MediaServerDialog(title: String, onDismiss: () -> Unit, busy: Boolean = fals
 @Composable
 fun PlexDialog(state: PlexUi, onDismiss: () -> Unit, onRetry: () -> Unit) {
     val D = LocalDs.current
+    val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val retry = state is PlexUi.Expired || state is PlexUi.Failed || state is PlexUi.NoServer || state is PlexUi.Unreachable
     AddProviderDialog(
-        title = "Plex",
+        title = D.mlibPlexTitle,
         subtitle = D.formSubPlex,
         icon = Icons.Monitor,
         onDismiss = onDismiss,
-        onSubmit = { if (retry) onRetry() },
-        canSubmit = retry,
-        submitLabel = if (retry) D.plexRetry else if (state is PlexUi.Adding) D.mediaChecking else null,
+        onSubmit = { if (retry || state is PlexUi.Waiting) onRetry() },
+        // « Nouveau code » est toujours possible tant que la connexion n'est pas en cours d'ajout.
+        canSubmit = retry || state is PlexUi.Waiting,
+        submitLabel = if (retry || state is PlexUi.Waiting) D.plexRetry else if (state is PlexUi.Adding) D.mediaChecking else null,
         onBack = onDismiss,
+        step = 2,
     ) {
         when (state) {
-            is PlexUi.Waiting -> androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(32.design), verticalAlignment = Alignment.CenterVertically) {
-                com.ultratv.tv.nativeapp.ui.design.QrCode(com.ultratv.tv.nativeapp.data.mediaserver.Plex.LINK_URL, 200.design)
-                Column(verticalArrangement = Arrangement.spacedBy(10.design)) {
-                    Text(D.plexOpen, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
-                    Text(state.code, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 64.spx, color = Ux.Text, maxLines = 1)
-                    Text(D.plexWaiting, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 1)
+            is PlexUi.Waiting -> {
+                Text("1. " + D.mlibPlexS1, fontFamily = Manrope, fontSize = if (touch) 14.sp else 24.spx, color = Ux.Text2, maxLines = 3)
+                Text("2. " + D.mlibPlexS2, fontFamily = Manrope, fontSize = if (touch) 14.sp else 24.spx, color = Ux.Text2, maxLines = 2)
+                val code: @Composable () -> Unit = {
+                    // Code en grand : une case par caractère (maquette Plex).
+                    Row(horizontalArrangement = Arrangement.spacedBy(if (touch) 6.dp else 12.design), modifier = Modifier.testTag("plex-code")) {
+                        state.code.forEach { c ->
+                            Box(
+                                Modifier.size(width = if (touch) 44.dp else 92.design, height = if (touch) 58.dp else 120.design)
+                                    .clip(RoundedCornerShape(if (touch) 12.dp else 20.design)).background(Ux.Bg).border(2.design, Ux.Line, RoundedCornerShape(if (touch) 12.dp else 20.design)),
+                                contentAlignment = Alignment.Center,
+                            ) { Text(c.toString(), fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = if (touch) 28.sp else 64.spx, color = Ux.Text, maxLines = 1) }
+                        }
+                    }
                 }
+                val qr: @Composable () -> Unit = { com.ultratv.tv.nativeapp.ui.design.QrCode(com.ultratv.tv.nativeapp.data.mediaserver.Plex.LINK_URL, if (touch) 120.dp else 200.design) }
+                if (touch) Column(verticalArrangement = Arrangement.spacedBy(12.dp)) { code(); qr() }
+                else Row(horizontalArrangement = Arrangement.spacedBy(40.design), verticalAlignment = Alignment.CenterVertically) { code(); qr() }
+                // Compte à rebours d'expiration du code (15 min côté plex.tv).
+                val startedAt = remember(state.code) { System.currentTimeMillis() }
+                var now by remember(state.code) { mutableStateOf(startedAt) }
+                androidx.compose.runtime.LaunchedEffect(state.code) { while (true) { kotlinx.coroutines.delay(1_000); now = System.currentTimeMillis() } }
+                Text(D.mlibPlexExpires(com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.countdown(com.ultratv.tv.nativeapp.data.mediaserver.Plex.PIN_TTL_MS - (now - startedAt))),
+                    fontFamily = Manrope, fontSize = if (touch) 13.sp else 21.spx, color = Ux.Text3, maxLines = 2)
             }
             PlexUi.Expired -> Text(D.plexExpired, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
             PlexUi.NoServer -> Text(D.plexNoServer, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
@@ -609,7 +657,7 @@ fun PlexDialog(state: PlexUi, onDismiss: () -> Unit, onRetry: () -> Unit) {
             PlexUi.Failed -> Text(D.plexFailed, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 3)
             else -> Text(D.mediaChecking, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
         }
-        Text(D.plexHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
+        Text(D.plexHint, fontFamily = Manrope, fontSize = if (touch) 12.sp else 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }
 
@@ -635,6 +683,7 @@ fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)
         canSubmit = parsed != null && !busy,
         submitLabel = if (busy) D.nasChecking else null,
         onBack = onBack,
+        step = 2,
     ) {
         FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
         FormField(D.fieldNasUrl, url, { url = it }, keyboardType = KeyboardType.Uri,

@@ -841,6 +841,32 @@ class ProviderRepository @Inject constructor(
         )
     }
 
+    // ───────────── Assistant « Ma bibliothèque » : étape 3 (choix des bibliothèques) ─────────────
+
+    /**
+     * Bibliothèques de films et de séries d'un serveur Jellyfin / Emby / Plex qui vient d'être ajouté, pour l'étape 3 de l'assistant.
+     * Null pour un partage NAS (dossiers connus seulement après le parcours du partage) ou si le serveur ne répond pas : l'appelant
+     * lance alors directement la synchro.
+     */
+    suspend fun mediaLibraryChoices(providerId: Long): List<com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice>? {
+        val p = providerDao.byId(providerId) ?: return null
+        if (!MediaServer.isMediaKind(p.kind)) return null
+        return runCatching {
+            mediaServer.libraries(p).map {
+                com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice(if (it.type == "movies") "MOVIE" else "SERIES", it.id, it.name)
+            }
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Désactive les bibliothèques décochées AVANT la première synchro : la fusion des catégories ([CatalogPlan.merge]) conserve
+     * l'état `enabled` déjà enregistré, donc leurs titres ne sont jamais téléchargés.
+     */
+    suspend fun disableLibraries(providerId: Long, libs: List<com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice>) {
+        if (libs.isEmpty()) return
+        categoryDao.upsertAll(libs.map { CategoryEntity(providerId = providerId, kind = it.kind, remoteId = it.remoteId, name = it.name, enabled = false) })
+    }
+
     // ───────────── Portail Stalker : films et séries partagent la même liste VOD ─────────────
 
     /**

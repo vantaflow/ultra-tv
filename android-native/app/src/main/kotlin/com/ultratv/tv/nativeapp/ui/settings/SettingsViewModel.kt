@@ -53,6 +53,7 @@ data class SettingsState(
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: android.content.Context,
     private val repo: ProviderRepository,
     private val remoteConfig: com.ultratv.tv.nativeapp.data.config.RemoteConfigImporter,
     private val deviceMac: com.ultratv.tv.nativeapp.data.config.DeviceMac,
@@ -426,6 +427,66 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    // ───────────── Assistant « Ma bibliothèque » : détection réseau et étape 3 ─────────────
+
+    /** État de la recherche de serveurs (étape 1) : [found] s'enrichit au fil des réponses, [searching] vaut false à la fin des 3 s. */
+    data class DiscoveryUi(val found: List<com.ultratv.tv.nativeapp.data.discovery.MediaDiscovery.Found> = emptyList(), val searching: Boolean = false)
+
+    private val _discovery = MutableStateFlow(DiscoveryUi())
+    val discovery: StateFlow<DiscoveryUi> = _discovery.asStateFlow()
+    private var discoveryJob: kotlinx.coroutines.Job? = null
+
+    /** Lance (ou relance) la recherche ; jamais bloquant, jamais d'exception. Les résultats déjà trouvés restent affichés pendant la relance. */
+    fun startDiscovery() {
+        discoveryJob?.cancel()
+        _discovery.value = _discovery.value.copy(searching = true)
+        discoveryJob = viewModelScope.launch {
+            try {
+                com.ultratv.tv.nativeapp.data.discovery.MediaDiscovery.scan(appContext).collect { list ->
+                    _discovery.value = DiscoveryUi(list, true)
+                }
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (_: Throwable) {
+                // Recherche impossible (pas de réseau local) : liste vide.
+            } finally {
+                _discovery.value = _discovery.value.copy(searching = false)
+            }
+        }
+    }
+
+    fun stopDiscovery() { discoveryJob?.cancel(); discoveryJob = null; _discovery.value = _discovery.value.copy(searching = false) }
+
+    /** Source tout juste ajoutée dont l'utilisateur choisit les bibliothèques (étape 3) avant la première synchro. */
+    data class PendingLibraries(val providerId: Long, val libraries: List<com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice>)
+
+    private val _pendingLibs = MutableStateFlow<PendingLibraries?>(null)
+    val pendingLibraries: StateFlow<PendingLibraries?> = _pendingLibs.asStateFlow()
+
+    /**
+     * Fin d'ajout d'une bibliothèque (Jellyfin / Emby / Plex / NAS) : source par défaut si aucune, puis soit l'étape 3 (au moins
+     * deux bibliothèques), soit la première synchro directement (une seule, NAS, serveur muet).
+     */
+    private suspend fun finishMediaAdd(id: Long) {
+        makeDefaultIfNone(id)
+        val libs = repo.mediaLibraryChoices(id)
+        if (libs != null && libs.size > 1) _pendingLibs.value = PendingLibraries(id, libs)
+        else sync.request(id, force = true)
+    }
+
+    /** Valide l'étape 3 : les bibliothèques décochées sont désactivées AVANT la première synchro. */
+    fun confirmLibraries(checked: Set<String>) {
+        val pending = _pendingLibs.value ?: return
+        _pendingLibs.value = null
+        viewModelScope.launch {
+            repo.disableLibraries(pending.providerId, com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.toDisable(pending.libraries, checked))
+            sync.request(pending.providerId, force = true)
+        }
+    }
+
+    /** Étape 3 fermée sans choix : toutes les bibliothèques sont importées. */
+    fun skipLibraries() = confirmLibraries(com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.allChecked(_pendingLibs.value?.libraries.orEmpty()))
+
     // ───────────── Plex : connexion par code PIN ─────────────
 
     private val _plex = MutableStateFlow<PlexUi>(PlexUi.Idle)
@@ -470,8 +531,7 @@ class SettingsViewModel @Inject constructor(
             _syncing.value = true
             try {
                 val id = repo.addPlexServer(server)
-                makeDefaultIfNone(id)
-                sync.request(id, force = true)
+                finishMediaAdd(id)
                 _plex.value = PlexUi.Done
             } catch (c: kotlinx.coroutines.CancellationException) {
                 throw c
@@ -494,8 +554,7 @@ class SettingsViewModel @Inject constructor(
             _syncing.value = true
             try {
                 val id = repo.addMediaServer(kind, name, server, user, password, apiKey)
-                makeDefaultIfNone(id)
-                sync.request(id, force = true)
+                finishMediaAdd(id)
                 onDone(true)
             } catch (c: kotlinx.coroutines.CancellationException) {
                 throw c
@@ -517,8 +576,7 @@ class SettingsViewModel @Inject constructor(
             _syncing.value = true
             try {
                 val id = repo.addNas(name, address, user, password)
-                makeDefaultIfNone(id)
-                sync.request(id, force = true)
+                finishMediaAdd(id)
                 onDone(true)
             } catch (c: kotlinx.coroutines.CancellationException) {
                 throw c

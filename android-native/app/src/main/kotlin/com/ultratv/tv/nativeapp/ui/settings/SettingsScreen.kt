@@ -9,7 +9,9 @@ import com.ultratv.tv.nativeapp.i18n.sportSectionHint
 import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.mediaFailed
-import com.ultratv.tv.nativeapp.i18n.plexPick
+import com.ultratv.tv.nativeapp.i18n.mlibHubRowHint
+import com.ultratv.tv.nativeapp.i18n.mlibHubTitle
+import com.ultratv.tv.nativeapp.i18n.mlibMy
 import com.ultratv.tv.nativeapp.i18n.nasFailed
 import com.ultratv.tv.nativeapp.i18n.guideCheckMessage
 import com.ultratv.tv.nativeapp.i18n.guideCustomLabel
@@ -126,7 +128,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, MEDIA_FIND, MEDIA_KIND, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -174,7 +176,7 @@ fun SettingsScreen(onNavigate: (String) -> Unit = {}, vm: SettingsViewModel = hi
     )
     val pane: @Composable () -> Unit = {
             when (Rub.entries[rub]) {
-                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes) }
+                Rub.SOURCES -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SourcesPane(vm, panes, onNavigate) }
                 Rub.SYNC -> TechnicalGate(onDeny = { rub = Rub.DISPLAY.ordinal }) { SyncPane(vm, panes, onNavigate) }
                 Rub.CATEGORIES -> CategoriesPane(panes, onNavigate)
                 Rub.DISPLAY -> DisplayPane(vm, panes, app)
@@ -317,7 +319,7 @@ private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: Strin
 // ───────────────────────── Sources ─────────────────────────
 
 @Composable
-private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
+private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, onNavigate: (String) -> Unit = {}) {
     val D = LocalDs.current
     val S = LocalStrings.current
     val providers by vm.providers.collectAsState()
@@ -337,6 +339,8 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var dialog by remember { mutableStateOf(OpenDialog.NONE) }
+    // Adresse du serveur choisi à l'étape 1 de l'assistant « Ma bibliothèque » (préremplit l'étape 2).
+    var mediaPrefill by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf<ProviderEntity?>(null) }
     val C = rememberCloudStrings()
     val cloud by vm.cloud.collectAsState()
@@ -376,6 +380,11 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         val searchAll by vm.searchAllSources.collectAsState()
         com.ultratv.tv.nativeapp.ui.design.SettingsCard {
             SwitchPrefRow(PS.searchAllSources, searchAll, hint = PS.searchAllSourcesHint) { vm.setSearchAllSources(it) }
+        }
+    }
+    if (providers.any { com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(it.kind) || com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(it.kind) }) {
+        com.ultratv.tv.nativeapp.ui.design.SettingsCard {
+            PrefRow(D.mlibHubTitle, "", hint = D.mlibHubRowHint) { onNavigate(com.ultratv.tv.nativeapp.nav.Routes.LIBRARIES) }
         }
     }
     Column(verticalArrangement = Arrangement.spacedBy(14.design)) {
@@ -455,10 +464,10 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.JELLYFIN to "Jellyfin", OpenDialog.EMBY to "Emby", OpenDialog.PLEX to "Plex", OpenDialog.NAS to "NAS (SMB)", OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.MEDIA_FIND to D.mlibMy, OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
             // « Depuis le téléphone » : pour TV et box seulement (sur un téléphone, on est déjà sur l'appareil qui saisirait).
             + (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) emptyList() else listOf(OpenDialog.PHONE to D.cardPhone)), null,
-            onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launchOrToast(arrayOf("*/*"), D.filePickerUnavailable) } else { if (k == OpenDialog.PLEX) vm.startPlexLink(); dialog = k } }, onDismiss = { dialog = OpenDialog.NONE })
+            onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launchOrToast(arrayOf("*/*"), D.filePickerUnavailable) } else { mediaPrefill = ""; dialog = k } }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.CLOUD -> { dialog = OpenDialog.NONE; vm.startPairing() }
         OpenDialog.REMOTE -> PhoneRemoteDialog(hiltViewModel(), onClose = { dialog = OpenDialog.NONE })
         OpenDialog.PHONE -> { dialog = OpenDialog.NONE; vm.startWebSend(phoneReceived, stalkerFailed) }
@@ -490,7 +499,8 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
                 title = if (isEmby) "Emby" else "Jellyfin",
                 onDismiss = { dialog = OpenDialog.NONE },
                 busy = checking,
-                onBack = { dialog = OpenDialog.NONE },
+                onBack = { dialog = OpenDialog.MEDIA_FIND },
+                initialUrl = mediaPrefill,
             ) { n, u, user, pw, key ->
                 checking = true
                 vm.addMediaServerAndSync(if (isEmby) "EMBY" else "JELLYFIN", n, u, user, pw, key, D.mediaFailed) { ok -> checking = false; if (ok) dialog = OpenDialog.NONE }
@@ -502,7 +512,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             val closePlex = { vm.cancelPlexLink(); dialog = OpenDialog.NONE }
             androidx.compose.runtime.LaunchedEffect(plexUi) { if (plexUi is PlexUi.Done) closePlex() }
             val choosing = plexUi as? PlexUi.Choosing
-            if (choosing != null) ChoiceDialog(D.plexPick, choosing.servers.map { it to it.name }, null, onPick = { vm.choosePlexServer(it) }, onDismiss = closePlex)
+            if (choosing != null) PlexServerPickDialog(choosing.servers, onPick = { vm.choosePlexServer(it) }, onDismiss = closePlex)
             else PlexDialog(plexUi, onDismiss = closePlex, onRetry = { vm.startPlexLink() })
         }
         // Partage réseau NAS : connexion vérifiée avant l'ajout, le dialogue reste ouvert jusqu'au verdict.
@@ -511,12 +521,33 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             NasDialog(
                 onDismiss = { dialog = OpenDialog.NONE },
                 busy = checking,
-                onBack = { dialog = OpenDialog.NONE },
+                onBack = { dialog = OpenDialog.MEDIA_FIND },
             ) { n, addr, user, pw ->
                 checking = true
                 vm.addNasAndSync(n, addr, user, pw, D.nasFailed) { ok -> checking = false; if (ok) dialog = OpenDialog.NONE }
             }
         }
+        // Assistant « Ma bibliothèque », étape 1 : serveurs détectés sur le réseau local + accès manuels.
+        OpenDialog.MEDIA_FIND -> {
+            val disc by vm.discovery.collectAsState()
+            androidx.compose.runtime.DisposableEffect(Unit) { vm.startDiscovery(); onDispose { vm.stopDiscovery() } }
+            FindServerDialog(
+                found = disc.found, searching = disc.searching,
+                onSearch = { vm.startDiscovery() },
+                onPick = { f ->
+                    when (f.kind) {
+                        com.ultratv.tv.nativeapp.data.discovery.MediaDiscovery.Kind.PLEX -> { vm.startPlexLink(); dialog = OpenDialog.PLEX }
+                        com.ultratv.tv.nativeapp.data.discovery.MediaDiscovery.Kind.EMBY -> { mediaPrefill = f.address; dialog = OpenDialog.EMBY }
+                        com.ultratv.tv.nativeapp.data.discovery.MediaDiscovery.Kind.JELLYFIN -> { mediaPrefill = f.address; dialog = OpenDialog.JELLYFIN }
+                    }
+                },
+                onManual = { dialog = OpenDialog.MEDIA_KIND },
+                onNas = { dialog = OpenDialog.NAS },
+                onPlex = { vm.startPlexLink(); dialog = OpenDialog.PLEX },
+                onDismiss = { dialog = OpenDialog.NONE },
+            )
+        }
+        OpenDialog.MEDIA_KIND -> MediaKindChoice(onPick = { k -> mediaPrefill = ""; dialog = if (k == "EMBY") OpenDialog.EMBY else OpenDialog.JELLYFIN }, onDismiss = { dialog = OpenDialog.MEDIA_FIND })
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
             val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U" || p.kind == "STALKER")
@@ -547,6 +578,9 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
         OpenDialog.RENAME_DEVICE -> RenameDeviceDialog(cloud.selfName, onSave = { vm.renameThisDevice(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         else -> Unit
     }
+    // Étape 3 de l'assistant « Ma bibliothèque » : choix des bibliothèques avant la première synchro.
+    val pendingLibs by vm.pendingLibraries.collectAsState()
+    pendingLibs?.let { pl -> LibraryPickDialog(pl.libraries, onConfirm = { vm.confirmLibraries(it) }, onDismiss = { vm.skipLibraries() }) }
     // Après l'ajout d'une source sur un appareil appairé : proposition (jamais d'envoi automatique).
     offer?.let { id ->
         OfferShareDialog(onShare = { vm.dismissOffer(); scope.launch { selected = vm.providerById(id) }; dialog = OpenDialog.SHARE }, onLater = { vm.dismissOffer() })
