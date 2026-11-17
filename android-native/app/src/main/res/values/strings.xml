@@ -1883,4 +1883,14 @@
     <string name="sport_ok_hint">OK on a match: match sheet or playback</string>
     <string name="sport_no_events">No key moments yet.</string>
     <string name="sport_table_hidden">Standings hidden in no-spoiler mode.</string>
+    <string name="rec_location">Recordings location</string>
+    <string name="rec_location_hint">Where new recordings are saved. A NAS share receives the file once the recording ends.</string>
+    <string name="rec_loc_internal">Internal memory</string>
+    <string name="rec_loc_device">Device storage</string>
+    <string name="rec_loc_usb">USB drive: %1$s</string>
+    <string name="rec_loc_nas">NAS: %1$s</string>
+    <plurals name="rec_conflict" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Another recording already uses your only connection at that time</item>
+        <item quantity="other">Your subscription allows %1$s connections: they are all taken by recordings at that time</item>
+    </plurals>
 </resources>

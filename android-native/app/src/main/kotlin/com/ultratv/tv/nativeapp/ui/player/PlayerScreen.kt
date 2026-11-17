@@ -1259,6 +1259,7 @@ fun PlayerScreen(url: String, title: String, onBack: () -> Unit, onHome: (() -> 
                     when (r) {
                         is com.ultratv.tv.nativeapp.data.recording.ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
                         com.ultratv.tv.nativeapp.data.recording.ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
+                is com.ultratv.tv.nativeapp.data.recording.ScheduleResult.Conflict -> Toaster.err(com.ultratv.tv.nativeapp.i18n.recConflict(D, r.maxConnections))
                         com.ultratv.tv.nativeapp.data.recording.ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
                     }
                 }

@@ -967,6 +967,14 @@ interface RecordingDao {
     @Query("SELECT COUNT(*) FROM recording WHERE status = 'running'")
     suspend fun runningCount(): Int
 
+    /** Enregistrements programmés ou en cours de la source [pid] qui chevauchent [startMs, endMs). */
+    @Query("SELECT COUNT(*) FROM recording WHERE providerId = :pid AND status IN ('scheduled', 'queued', 'running') AND scheduledEndMs > :startMs AND scheduledStartMs < :endMs")
+    suspend fun countOverlapping(pid: Long, startMs: Long, endMs: Long): Int
+
+    /** Enregistrements en cours (ou lancés) de la source [pid], hors [exceptId]. */
+    @Query("SELECT COUNT(*) FROM recording WHERE providerId = :pid AND status IN ('queued', 'running') AND id != :exceptId")
+    suspend fun countActive(pid: Long, exceptId: Long): Int
+
     @Query("UPDATE recording SET status = :status, errorMessage = :err WHERE id = :id")
     suspend fun setStatus(id: Long, status: String, err: String?)
 }

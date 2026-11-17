@@ -381,6 +381,7 @@ fun GuideGridScreen(onPlayChannel: (ChannelEntity) -> Unit, onPlayUrl: (url: Str
             when (r) {
                 is ScheduleResult.Scheduled -> Toaster.ok(D.recScheduled(r.count))
                 ScheduleResult.NoSpace -> Toaster.err(D.recNoSpace)
+                is ScheduleResult.Conflict -> Toaster.err(com.ultratv.tv.nativeapp.i18n.recConflict(D, r.maxConnections))
                 ScheduleResult.NothingToSchedule -> Toaster.show(D.recNothing)
             }
         }

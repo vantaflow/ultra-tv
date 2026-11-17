@@ -1897,4 +1897,15 @@
     <string name="sport_ok_hint">OK sur un match : feuille de match ou lecture</string>
     <string name="sport_no_events">Aucun temps fort pour le moment.</string>
     <string name="sport_table_hidden">Classement masqué en mode sans spoiler.</string>
+    <string name="rec_location">Emplacement des enregistrements</string>
+    <string name="rec_location_hint">Où sont enregistrés les nouveaux enregistrements. Un partage NAS reçoit le fichier à la fin de l’enregistrement.</string>
+    <string name="rec_loc_internal">Mémoire interne</string>
+    <string name="rec_loc_device">Stockage de l’appareil</string>
+    <string name="rec_loc_usb">Clé USB : %1$s</string>
+    <string name="rec_loc_nas">NAS : %1$s</string>
+    <plurals name="rec_conflict" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Un autre enregistrement utilise déjà votre seule connexion à ce moment-là</item>
+        <item quantity="many">Votre abonnement autorise %1$s connexions : elles sont toutes prises par des enregistrements à ce moment-là</item>
+        <item quantity="other">Votre abonnement autorise %1$s connexions : elles sont toutes prises par des enregistrements à ce moment-là</item>
+    </plurals>
 </resources>

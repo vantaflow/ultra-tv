@@ -37,9 +37,36 @@ class RecordingWorker @AssistedInject constructor(
     private val ok: OkHttpClient,
     private val dao: RecordingDao,
     private val urls: com.ultratv.tv.nativeapp.data.stalker.StreamUrlResolver,
+    private val providers: com.ultratv.tv.nativeapp.data.db.ProviderDao,
+    private val smb: com.ultratv.tv.nativeapp.data.nas.NasSmb,
 ) : CoroutineWorker(appContext, params) {
 
-    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext)
+    private val recId: Long get() = inputData.getLong(KEY_RECORDING_ID, -1L)
+
+    override suspend fun getForegroundInfo(): ForegroundInfo = foregroundInfo(applicationContext, recId)
+
+    /**
+     * Enregistrement terminé et partage NAS choisi : copie du fichier sur le partage puis suppression locale ; la ligne
+     * pointe alors vers le partage (lu par le relais NAS). Échec (NAS éteint, droits) : le fichier reste en local, lisible.
+     */
+    private suspend fun moveToNas(id: Long) {
+        val nasId = inputData.getLong(KEY_NAS_ID, 0L).takeIf { it > 0 } ?: return
+        val r = dao.byId(id)?.takeIf { it.status == "done" } ?: return
+        val file = File(r.filePath).takeIf { it.isFile && it.length() > 0 } ?: return
+        val p = providers.byId(nasId)?.takeIf { com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(it.kind) } ?: return
+        try {
+            val path = withContext(Dispatchers.IO) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                    smb.upload(p, RecordingLocation.NAS_DIR, RecordingLocation.nasFileName(file.name), file)
+                }
+            }
+            dao.upsert(r.copy(filePath = com.ultratv.tv.nativeapp.data.nas.Nas.NasLink.build(nasId, path)))
+            file.delete()
+        } catch (t: Throwable) {
+            if (t is kotlinx.coroutines.CancellationException) throw t
+            dao.setStatus(id, "done", "nas_copy_failed")
+        }
+    }
 
     override suspend fun doWork(): Result {
         val id = inputData.getLong(KEY_RECORDING_ID, -1L)
@@ -58,14 +85,14 @@ class RecordingWorker @AssistedInject constructor(
             val remaining = deadline - System.currentTimeMillis()
             if (remaining <= 0) {
                 val len = File(r.filePath).length()
-                if (len > 0) dao.updateProgress(id, "done", len, len, null, System.currentTimeMillis()) else dao.setStatus(id, "failed", "missed")
+                if (len > 0) { dao.updateProgress(id, "done", len, len, null, System.currentTimeMillis()); moveToNas(id) } else dao.setStatus(id, "failed", "missed")
                 return Result.success()
             }
             maxDurationMs = minOf(maxDurationMs, remaining)
         }
         val live = r.kind == "LIVE"
         // Service de premier plan (dataSync) : une émission de deux heures ne doit pas être tuée par le système.
-        runCatching { setForeground(foregroundInfo(applicationContext)) }
+        runCatching { setForeground(foregroundInfo(applicationContext, id)) }
 
         return withContext(Dispatchers.IO) {
             val file = File(r.filePath).apply { parentFile?.mkdirs() }
@@ -87,12 +114,10 @@ class RecordingWorker @AssistedInject constructor(
                 // The download path may have short-circuited on user cancel and
                 // already written the "cancelled" status — don't clobber it with
                 // "done".
-                if (cancelled) {
-                    Result.success()
-                } else {
-                    dao.updateProgress(id, "done", file.length(), file.length(), null, System.currentTimeMillis())
-                    Result.success()
-                }
+                if (!cancelled) dao.updateProgress(id, "done", file.length(), file.length(), null, System.currentTimeMillis())
+                // Arrêté par l'utilisateur avec un début enregistré (« done ») ou terminé : copie sur le NAS choisi.
+                moveToNas(id)
+                Result.success()
             } catch (t: Throwable) {
                 // Distinguish transient I/O hiccups (worth a WorkManager retry)
                 // from terminal errors (bad playlist, 404, disk full) that will
@@ -184,7 +209,12 @@ class RecordingWorker @AssistedInject constructor(
         private const val CHANNEL_ID = "recording_active"
         private const val NOTIF_ID = 4102
 
-        private fun foregroundInfo(ctx: Context): ForegroundInfo {
+        /**
+         * Une notification PAR enregistrement : avec un identifiant commun, la fin du premier de deux enregistrements
+         * simultanés retirait le service de premier plan du second (tué par le système en arrière-plan).
+         */
+        private fun foregroundInfo(ctx: Context, recordingId: Long): ForegroundInfo {
+            val notifId = NOTIF_ID + (recordingId.coerceAtLeast(0) % 10_000).toInt()
             val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 nm.createNotificationChannel(android.app.NotificationChannel(CHANNEL_ID, "Recording", android.app.NotificationManager.IMPORTANCE_LOW))
@@ -192,13 +222,15 @@ class RecordingWorker @AssistedInject constructor(
             val n = androidx.core.app.NotificationCompat.Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(ctx.applicationInfo.icon).setContentTitle("REC").setOngoing(true).build()
             return if (android.os.Build.VERSION.SDK_INT >= 29)
-                ForegroundInfo(NOTIF_ID, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-            else ForegroundInfo(NOTIF_ID, n)
+                ForegroundInfo(notifId, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            else ForegroundInfo(notifId, n)
         }
 
         const val KEY_RECORDING_ID = "recording_id"
         const val KEY_MAX_DURATION_MS = "max_duration_ms"
         /** Heure de fin absolue (ms) d'un direct lancé maintenant ; 0 = aucune. */
         const val KEY_DEADLINE_MS = "deadline_ms"
+        /** Source NAS qui reçoit le fichier à la fin (0 = aucune). */
+        const val KEY_NAS_ID = "nas_id"
     }
 }

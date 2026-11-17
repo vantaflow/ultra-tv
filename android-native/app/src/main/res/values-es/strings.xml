@@ -1888,4 +1888,15 @@
     <string name="sport_ok_hint">OK en un partido: ficha del partido o reproducción</string>
     <string name="sport_no_events">Aún no hay jugadas destacadas.</string>
     <string name="sport_table_hidden">Clasificación oculta en el modo sin spoilers.</string>
+    <string name="rec_location">Ubicación de las grabaciones</string>
+    <string name="rec_location_hint">Dónde se guardan las nuevas grabaciones. Una carpeta NAS recibe el archivo al terminar la grabación.</string>
+    <string name="rec_loc_internal">Memoria interna</string>
+    <string name="rec_loc_device">Almacenamiento del dispositivo</string>
+    <string name="rec_loc_usb">Memoria USB: %1$s</string>
+    <string name="rec_loc_nas">NAS: %1$s</string>
+    <plurals name="rec_conflict" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Otra grabación ya usa tu única conexión a esa hora</item>
+        <item quantity="many">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
+        <item quantity="other">Tu suscripción permite %1$s conexiones: todas están ocupadas por grabaciones a esa hora</item>
+    </plurals>
 </resources>

@@ -1949,4 +1949,18 @@
     <string name="sport_ok_hint">موافق على مباراة: بطاقة المباراة أو التشغيل</string>
     <string name="sport_no_events">لا توجد لحظات بارزة بعد.</string>
     <string name="sport_table_hidden">الترتيب مخفي في وضع بدون حرق.</string>
+    <string name="rec_location">مكان التسجيلات</string>
+    <string name="rec_location_hint">مكان حفظ التسجيلات الجديدة. يستقبل مجلد NAS الملف عند انتهاء التسجيل.</string>
+    <string name="rec_loc_internal">الذاكرة الداخلية</string>
+    <string name="rec_loc_device">تخزين الجهاز</string>
+    <string name="rec_loc_usb">ذاكرة USB: %1$s</string>
+    <string name="rec_loc_nas">NAS: %1$s</string>
+    <plurals name="rec_conflict" tools:ignore="ImpliedQuantity">
+        <item quantity="zero">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
+        <item quantity="one">تسجيل آخر يستخدم اتصالك الوحيد في ذلك الوقت</item>
+        <item quantity="two">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
+        <item quantity="few">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
+        <item quantity="many">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
+        <item quantity="other">يسمح اشتراكك بـ %1$s اتصالات: كلها مشغولة بتسجيلات في ذلك الوقت</item>
+    </plurals>
 </resources>
