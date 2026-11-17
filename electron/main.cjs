@@ -13,7 +13,8 @@ const { app, BrowserWindow, Menu, Notification, dialog, protocol, session, shell
 const path = require("node:path");
 const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
-const { findFfmpeg } = require("./transcode.cjs");
+const { findFfmpeg, findVideoFfmpeg } = require("./transcode.cjs");
+const externalPlayer = require("./externalplayer.cjs");
 const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
@@ -70,6 +71,9 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow = null;
 let proxy = null;
 let ffmpegPath = null;
+// ffmpeg avec encodeur H.264 ({ path, encoder }) : conversion vidéo des flux que Chromium ne décode pas.
+let videoFfmpeg = null;
+let vlc = null;
 let updater = null;
 const secrets = createSecrets(safeStorage);
 
@@ -357,6 +361,9 @@ function registerIpc() {
       proxyBase: proxy ? proxy.base : "",
       // Conversion audio AC-3 / DTS disponible (ffmpeg embarqué ou installé).
       transcode: !!(proxy && ffmpegPath),
+      // Conversion vidéo H.264 possible, et VLC installé (« Ouvrir dans VLC »).
+      videoTranscode: !!(proxy && videoFfmpeg),
+      vlc: !!vlc,
       secretsSecure: secrets.isSecure(),
     };
   });
@@ -397,6 +404,16 @@ function registerIpc() {
     if (typeof url !== "string" || url.length > 4096 || !isHttpUrl(url)) throw new Error("invalid-url");
     await shell.openExternal(url);
     return true;
+  });
+  // « Ouvrir dans VLC » : l'adresse (avec les identifiants du fournisseur) n'est jamais journalisée.
+  handle("ut:vlc:open", (req) => {
+    if (!vlc || !req || typeof req !== "object") return false;
+    return externalPlayer.launchVlc(vlc, {
+      url: req.url,
+      userAgent: typeof req.userAgent === "string" ? req.userAgent : null,
+      referer: typeof req.referer === "string" ? req.referer : null,
+      title: typeof req.title === "string" ? req.title : null,
+    });
   });
   handle("ut:dns:get", () => ({ settings: dnsSettings, appliesToChromium: dnsMod.chromiumResolverConfig(dnsSettings).appliesToChromium }));
   handle("ut:dns:set", (raw) => setDnsSettings(raw));
@@ -647,8 +664,12 @@ if (!app.requestSingleInstanceLock()) {
     autoUpdateEnabled = autoUpdateMod.loadAutoUpdate(autoUpdateFile());
     applyChromiumDns();
     ffmpegPath = findFfmpeg({ resourcesPath: app.isPackaged ? process.resourcesPath : null });
+    const ffOpts = { resourcesPath: app.isPackaged ? process.resourcesPath : null };
+    videoFfmpeg = ffmpegPath ? findVideoFfmpeg(ffOpts) : null;
+    vlc = externalPlayer.findVlc({ home: app.getPath("home") });
     proxy = createProxyServer({
       ffmpeg: ffmpegPath,
+      videoFfmpeg,
       nas: nasRegistry,
       allowedOrigin: ALLOWED_ORIGIN,
       lookup: resolver.lookup,

@@ -70,6 +70,7 @@
       "cloudfetch.cjs",
       "dns.cjs",
       "transcode.cjs",
+      "externalplayer.cjs",
       "windowfit.cjs",
       "trailer.cjs",
       "recorder.cjs",
