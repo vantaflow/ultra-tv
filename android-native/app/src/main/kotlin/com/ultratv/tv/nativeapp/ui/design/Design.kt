@@ -263,13 +263,23 @@ object Icons {
     const val Account = "M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20a8 8 0 0 1 16 0"
 }
 
-/** Logo Ultra TV (icône « écran » : fond #0A0A0C, écran blanc, lecture rouge, pied), dessiné en vectoriel sur la grille 512 de l'icône. */
+/**
+ * Logo Ultra TV (icône « écran » : fond #0A0A0C, écran blanc, lecture rouge, pied), dessiné en vectoriel sur la grille 512
+ * de l'icône. Un liseré aux couleurs du thème ([Ux.Text3], lisible sur tous les fonds) détoure la tuile : sans lui, elle
+ * se fondait dans les fonds sombres (Noir OLED, Bleu nuit, Forêt…) et seul le contour de l'écran restait visible.
+ */
 @Composable
 fun LogoMark(sizePx: Int = 56) {
+    val ring = Ux.Text3
     androidx.compose.foundation.Canvas(Modifier.size(sizePx.design)) {
         val k = size.width / 512f
         val bg = Color(0xFF0A0A0C); val fg = Color(0xFFF5F5F7); val red = Color(0xFFD91E2B)
         drawRoundRect(bg, cornerRadius = androidx.compose.ui.geometry.CornerRadius(116f * k))
+        val w = maxOf(16f * k, 1.5f)
+        drawRoundRect(
+            ring, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2), size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(116f * k - w / 2), style = androidx.compose.ui.graphics.drawscope.Stroke(w),
+        )
         drawRoundRect(
             fg, topLeft = androidx.compose.ui.geometry.Offset(96f * k, 120f * k), size = androidx.compose.ui.geometry.Size(320f * k, 216f * k),
             cornerRadius = androidx.compose.ui.geometry.CornerRadius(40f * k), style = androidx.compose.ui.graphics.drawscope.Stroke(28f * k),
