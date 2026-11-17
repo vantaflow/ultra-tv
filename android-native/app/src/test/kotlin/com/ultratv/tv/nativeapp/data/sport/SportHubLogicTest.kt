@@ -177,4 +177,13 @@ class SportHubLogicTest {
         LeagueRepository(api).sheet("jo/2026 12", finished = true, now = NOW)
         assertEquals("sports/match?id=jo%2F2026+12", calls.last())
     }
+
+    @Test fun guideMatch_carteSansScore_equipesDuTitreEtEnDirect() {
+        val e = SportEntry(ch(1, "Stade 1", 3), EpgEntity(id = 1, channelId = 1, title = "Foot : A / B", description = null, startMs = NOW - 10 * M, endMs = NOW + 80 * M), true, true)
+        val c = LiveCardModel("gk", "CAN", null, "A", "B", "Foot : A / B", null, null, null, listOf(e), 0.1f)
+        val m = SportHubLogic.guideMatch(c)
+        assertEquals("gk", m.id); assertEquals("A", m.home); assertEquals("B", m.away)
+        assertEquals(MatchState.LIVE, m.state); assertEquals(NOW - 10 * M, m.startMs)
+        assertNull(m.homeScore)
+    }
 }

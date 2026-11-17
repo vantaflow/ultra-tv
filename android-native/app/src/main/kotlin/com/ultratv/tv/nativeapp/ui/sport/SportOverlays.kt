@@ -50,6 +50,7 @@ import com.ultratv.tv.nativeapp.data.sport.SpoilerLogic
 import com.ultratv.tv.nativeapp.data.sport.StandingRow
 import com.ultratv.tv.nativeapp.data.sport.StandingZones
 import com.ultratv.tv.nativeapp.data.sport.Zone
+import com.ultratv.tv.nativeapp.i18n.sportProgramme
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.sportBack
 import com.ultratv.tv.nativeapp.i18n.sportEventsHidden
@@ -123,6 +124,7 @@ private fun Panel(title: String, modifier: Modifier, content: @Composable Column
 internal fun MatchSheetScreen(
     D: DesignStrings, m: LeagueMatch, sheet: MatchSheet?, loading: Boolean, noSpoiler: Boolean, revealed: Boolean,
     channels: List<SportEntry>, onReveal: () -> Unit, onPlay: (ChannelEntity) -> Unit, onClose: () -> Unit,
+    league: String? = null, programme: SportEntry? = null,
 ) {
     val touch = LocalTouch.current
     val show = !noSpoiler || revealed
@@ -136,7 +138,7 @@ internal fun MatchSheetScreen(
                 Text(D.sportBack, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 20.spx, maxLines = 1,
                     modifier = Modifier.border(1.dp, Ux.Line, RoundedCornerShape(10.design)).padding(horizontal = 12.design, vertical = 4.design))
                 Text(
-                    listOfNotNull(m.round?.let { D.sportMatchRound(it) }, sheet?.venue, m.startMs?.takeIf { m.state != MatchState.LIVE }?.let { fmt.format(Date(it)) }).joinToString(" · "),
+                    listOfNotNull(league, m.round?.let { D.sportMatchRound(it) }, sheet?.venue, m.startMs?.takeIf { m.state != MatchState.LIVE }?.let { fmt.format(Date(it)) }).joinToString(" · "),
                     color = Ux.Text2, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
                 )
                 if (m.state == MatchState.LIVE) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
@@ -147,7 +149,16 @@ internal fun MatchSheetScreen(
             // ── Score ──
             ScoreBanner(D, m, show, touch, onReveal)
             // ── Colonnes ──
-            if (touch) {
+            if (programme != null) {
+                // Aucun score relié (compétition non couverte) : le programme du guide et le choix de la chaîne.
+                if (touch) {
+                    WatchPanel(D, m, channels, onPlay, Modifier.fillMaxWidth())
+                    ProgrammePanel(D, programme, Modifier.fillMaxWidth())
+                } else Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.design)) {
+                    ProgrammePanel(D, programme, Modifier.weight(1f).fillMaxHeight())
+                    WatchPanel(D, m, channels, onPlay, Modifier.weight(1f).fillMaxHeight())
+                }
+            } else if (touch) {
                 Moments(D, m, sheet, loading, show, Modifier.fillMaxWidth())
                 StatsPanel(D, sheet, loading, show, Modifier.fillMaxWidth())
                 WatchPanel(D, m, channels, onPlay, Modifier.fillMaxWidth())
@@ -262,6 +273,21 @@ private fun WatchPanel(D: DesignStrings, m: LeagueMatch, channels: List<SportEnt
         }
         Spacer(Modifier.weight(1f, fill = false))
         Text(D.sportWatchHint, color = Ux.Text2, fontFamily = Manrope, fontSize = 18.spx, lineHeight = 27.spx)
+    }
+}
+
+/** Programme du guide (feuille sans score relié) : titre, horaire et chaîne, résumé. */
+@Composable
+private fun ProgrammePanel(D: DesignStrings, e: SportEntry, modifier: Modifier) {
+    Panel(D.sportProgramme, modifier) {
+        Text(e.prog.title, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 24.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
+        Text(
+            "${com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(e.prog.startMs)} – ${com.ultratv.tv.nativeapp.ui.common.EpgClock.hm(e.prog.endMs)} · ${e.channel.title}",
+            color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        e.prog.description?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 20.spx, lineHeight = 30.spx, maxLines = 10, overflow = TextOverflow.Ellipsis)
+        }
     }
 }
 

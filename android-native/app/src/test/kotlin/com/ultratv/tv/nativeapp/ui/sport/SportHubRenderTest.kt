@@ -165,6 +165,21 @@ class SportHubRenderTest {
         assertTrue(rule.onAllNodesWithText("Dembélé").fetchSemanticsNodes().isEmpty())
     }
 
+    @Test fun feuilleProgramme_sansScore_choixDeLaChaine() {
+        val cm = com.ultratv.tv.nativeapp.data.sport.LiveCardModel(
+            "g1", "Qualifications de la CAN", null, "RD Congo", "Sierra Leone", "Football : Qualifications de la CAN | RD Congo / Sierra Leone",
+            null, null, null, listOf(all[0], all[1], all[2]), 0.5f,
+        )
+        capture("sport-hub-programme.png") {
+            MatchSheetScreen(
+                LocalDs.current, com.ultratv.tv.nativeapp.data.sport.SportHubLogic.guideMatch(cm), null, false, noSpoiler = false, revealed = false,
+                channels = cm.channels, onReveal = {}, onPlay = {}, onClose = {}, league = cm.league, programme = cm.channels.first(),
+            )
+        }
+        assertTrue(rule.onAllNodesWithText("RD Congo").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Stade 1 SD").fetchSemanticsNodes().isNotEmpty())
+    }
+
     @Test fun classementComplet_etMesLigues() {
         capture("sport-hub-standings.png") {
             StandingsScreen(LocalDs.current, lgState(), LeagueActions({}, { _, _ -> }, { _, _ -> }, {}), customize = false, onClose = {})
