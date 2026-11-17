@@ -202,20 +202,20 @@ private fun V2RatingsRow(cells: List<RatingCell>) {
 /** Distribution : avatars ronds, nom et rôle ; OK ouvre la page de la personne. */
 @Composable
 fun V2CastRow(
-    title: String, people: List<CastUi>, onOpenPerson: (String) -> Unit, modifier: Modifier = Modifier,
+    title: String, people: List<CastUi>, onOpenPerson: (String) -> Unit, modifier: Modifier = Modifier, rowModifier: Modifier = Modifier,
     avatarPx: Int = 88, cellPx: Int = 120, namePx: Int = 16, rolePx: Int = 14,
 ) {
     if (people.isEmpty()) return
     Column(modifier, verticalArrangement = Arrangement.spacedBy(14.design)) {
         Text(title, color = Ux.Text, fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 24.spx, maxLines = 1)
-        Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
+        Row(rowModifier, horizontalArrangement = Arrangement.spacedBy(16.design)) {
             for (p in people) FocusSurface(
                 onClick = { onOpenPerson(p.name) }, shape = RoundedCornerShape(20.design), bg = Color.Transparent, focusedBg = Ux.Button,
                 focusedScale = 1f, ringWidth = 0.dp, modifier = Modifier.width(cellPx.design),
             ) { _ ->
                 Column(Modifier.fillMaxWidth().padding(vertical = 6.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.design)) {
                     AvatarImage(p.photo, p.name, Modifier.size(avatarPx.design))
-                    Text(p.name, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = namePx.spx, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(p.name, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = namePx.spx, textAlign = TextAlign.Center, lineHeight = (namePx * 6 / 5).spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     if (!p.role.isNullOrBlank()) Text(p.role, color = Ux.Text3, fontFamily = Manrope, fontSize = rolePx.spx, textAlign = TextAlign.Center, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }

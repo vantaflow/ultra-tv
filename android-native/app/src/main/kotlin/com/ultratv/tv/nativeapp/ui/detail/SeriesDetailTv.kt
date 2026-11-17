@@ -157,8 +157,10 @@ fun SeriesDetailTvContent(
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val scope = rememberCoroutineScope()
     val playRequester = remember { FocusRequester() }
+    val firstBtn = remember { FocusRequester() }
     var playFocused by remember { mutableStateOf(false) }
-    RequestInitialFocus(playRequester, hasFocus = { playFocused }, key = series.remoteId to (data.target != null))
+    // Focus initial : « Reprendre » ; sans lui, le premier bouton de la rangée suivante (bande-annonce).
+    RequestInitialFocus(if (data.target != null) playRequester else firstBtn, hasFocus = { playFocused }, key = series.remoteId to (data.target != null))
 
     val shown = remember(data.episodes, data.activeSeason) { data.episodes.filter { it.season == data.activeSeason } }
     val T = TitleCleaner
@@ -194,6 +196,14 @@ fun SeriesDetailTvContent(
     // Nouvelle saison : la liste repart de son point d'entrée (la reprise si elle y est, sinon le haut).
     LaunchedEffect(data.activeSeason) { listState.scrollToItem(entryNow) }
 
+    val rowExit = Modifier.focusProperties {
+        exit = { dir ->
+            if (dir == awayFromSeasons2(ltr) && shown.isNotEmpty()) { scope.launch { focusEntry() }; FocusRequester.Cancel }
+            else FocusRequester.Default
+        }
+    }.focusGroup()
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
     Row(Modifier.fillMaxSize().background(Ux.Bg)) {
         // ─── Colonne gauche ───
         Column(
@@ -218,27 +228,26 @@ fun SeriesDetailTvContent(
             T.presentable(series.plot)?.let {
                 Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 21.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
-            // Navigation purement géométrique (aucune redirection forcée) : Reprendre, bande-annonce, cœur et étoile sont sur une
-            // même rangée, Droite va à l'élément le plus proche à droite, Bas à celui du dessous. La rangée passe à la ligne si
-            // elle ne tient pas (libellés longs selon la langue) : le cœur et l'étoile restent ensemble.
-            @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-            androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design), itemVerticalAlignment = Alignment.CenterVertically) {
-                if (data.target != null) V2Pill(
+            // Une ligne = un focusGroup : Droite/Gauche restent dans la ligne (jamais de descente vers une autre ligne) et,
+            // depuis le dernier élément, mènent à l'épisode d'entrée (exception voulue : la géométrie choisirait l'épisode le plus
+            // proche en hauteur, pas la reprise). Haut/Bas restent géométriques.
+            if (data.target != null) Box(rowExit) {
+                V2Pill(
                     if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
                     onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
                     modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
                 )
-                if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26)
-                Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
-                    favorite()
-                    trakt()
-                }
+            }
+            Row(rowExit, horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
+                if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26, modifier = Modifier.focusRequester(firstBtn).onFocusChanged { if (data.target == null) playFocused = it.isFocused })
+                favorite()
+                trakt()
             }
             val cast = remember(series.cast) {
                 T.presentable(series.cast).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() && T.presentable(it) != null }.distinct().take(6)
                     .map { CastUi(it, null, null) }
             }
-            V2CastRow(D.castTitle, cast, onOpenPerson, Modifier.padding(top = 4.design), avatarPx = 80, cellPx = 100, namePx = 15, rolePx = 13)
+            V2CastRow(D.castTitle, cast, onOpenPerson, Modifier.padding(top = 4.design), rowModifier = rowExit, avatarPx = 80, cellPx = 100, namePx = 15, rolePx = 13)
         }
 
         // ─── Colonne droite : saisons puis épisodes ───
@@ -261,6 +270,16 @@ fun SeriesDetailTvContent(
                 shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 else -> LazyColumn(
                     Modifier.fillMaxSize()
+                        // Gauche (Droite en RTL) depuis un épisode : « Reprendre », sinon le premier bouton de la colonne de gauche.
+                        .onPreviewKeyEvent { ev ->
+                            if (ev.key != towardSeasons) false
+                            else {
+                                if (ev.type == KeyEventType.KeyDown && !(runCatching { playRequester.requestFocus() }.getOrDefault(false) || (trailerKey != null && runCatching { firstBtn.requestFocus() }.getOrDefault(false)))) {
+                                    focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)
+                                }
+                                true
+                            }
+                        }
                         .focusGroup(),
                     state = listState, verticalArrangement = Arrangement.spacedBy(12.design),
                 ) {
@@ -383,3 +402,6 @@ private fun EpisodeCard(
     }
 }
 
+
+/** Direction qui mène de la colonne de gauche vers les épisodes : Droite en LTR, Gauche en RTL. */
+internal fun awayFromSeasons2(ltr: Boolean) = if (ltr) androidx.compose.ui.focus.FocusDirection.Right else androidx.compose.ui.focus.FocusDirection.Left
