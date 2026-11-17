@@ -4,6 +4,14 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.48] — 2026-11-17 (Android)
+
+### Ajouté
+- Enregistrements : emplacement au choix (mémoire interne, stockage de l'appareil, clé USB ou disque branché, partage NAS où le fichier est copié à la fin) ; deux enregistrements en même temps quand l'abonnement autorise deux connexions, programmation refusée avec un message au-delà (#180)
+
+### Corrigé
+- Deux enregistrements simultanés : la fin du premier ne coupe plus le second
+
 ## [1.3.47] — 2026-11-17 (Android)
 
 ### Ajouté
