@@ -5,7 +5,7 @@
 export const TX_LABEL = "AAC";
 
 /** Conversion en cours : URL d'origine, position de départ (s) et durée connue du média (s, 0 = direct / inconnue). */
-export interface TxState { orig: string; offset: number; duration: number; /** Piste audio source convertie (0 = première). */ audio?: number }
+export interface TxState { orig: string; offset: number; duration: number; /** Vidéo convertie en H.264 (Chromium ne sait pas décoder l'originale). */ video?: boolean; /** Piste audio source convertie (0 = première). */ audio?: number }
 
 /** Pistes lisibles dans le fichier (route /txi du proxy) : `i` = index dans son type pour ffmpeg. */
 export interface TxTrack { i: number; lang: string; title: string; codec: string }
@@ -27,9 +27,9 @@ export function parseTxInfo(raw: unknown): TxInfo | null {
 const b64url = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 
 /** `proxyBase` = « http://127.0.0.1:PORT/TOKEN/ ». */
-export function txUrl(proxyBase: string, orig: string, ss: number, live = false, audio = 0): string {
+export function txUrl(proxyBase: string, orig: string, ss: number, live = false, audio = 0, video = false): string {
   const s = Math.max(0, Math.round(ss * 1000) / 1000);
-  const q = [s > 0 ? `ss=${s}` : "", audio > 0 ? `a=${Math.floor(audio)}` : "", live ? "live=1" : ""].filter(Boolean).join("&");
+  const q = [s > 0 ? `ss=${s}` : "", audio > 0 ? `a=${Math.floor(audio)}` : "", live ? "live=1" : "", video ? "v=h264" : ""].filter(Boolean).join("&");
   return `${proxyBase}tx/${b64url(orig)}${q ? `?${q}` : ""}`;
 }
 
@@ -49,3 +49,30 @@ export function clampSeek(target: number, duration: number): number {
 export const txInfoUrl = (proxyBase: string, orig: string): string => `${proxyBase}txi/${b64url(orig)}`;
 /** Adresse d'un sous-titre texte (index dans les sous-titres du fichier), servi en WebVTT. */
 export const txSubUrl = (proxyBase: string, orig: string, s: number): string => `${proxyBase}txs/${b64url(orig)}?s=${Math.max(0, Math.floor(s))}`;
+
+/** Diagnostic d'un flux qui ne s'affiche pas (le proxy sonde avec ffmpeg) ; `hevc` : Chromium sait décoder le HEVC ici. */
+export const txDiagUrl = (proxyBase: string, orig: string, hevc: boolean): string => `${proxyBase}txd/${b64url(orig)}?hevc=${hevc ? 1 : 0}`;
+
+export interface TxDiag {
+  reason: "ok" | "http" | "network" | "other";
+  status: number | null;
+  codec: string;
+  /** Vidéo illisible par Chromium : à convertir en H.264. */
+  convert: boolean;
+  /** ffmpeg avec encodeur H.264 disponible. */
+  canEncode: boolean;
+}
+
+/** Valide la réponse JSON de /txd ; null si inutilisable. */
+export function parseTxDiag(raw: unknown): TxDiag | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as { reason?: unknown; status?: unknown; video?: { codec?: unknown } | null; convert?: unknown; canEncode?: unknown };
+  if (r.reason !== "ok" && r.reason !== "http" && r.reason !== "network" && r.reason !== "other") return null;
+  const status = typeof r.status === "number" && r.status >= 100 && r.status < 600 ? r.status : null;
+  return { reason: r.reason, status, codec: typeof r.video?.codec === "string" ? r.video.codec.slice(0, 20) : "", convert: r.convert === true, canEncode: r.canEncode === true };
+}
+
+/** Le décodeur HEVC de la plateforme est-il présent ? (Chromium : MSE hvc1.) */
+export function canDecodeHevc(): boolean {
+  try { return typeof MediaSource !== "undefined" && MediaSource.isTypeSupported('video/mp4; codecs="hvc1.1.6.L93.B0"'); } catch { return false; }
+}

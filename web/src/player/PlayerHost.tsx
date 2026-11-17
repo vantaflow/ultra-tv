@@ -49,7 +49,8 @@ import { sendToDevice } from "@/cloud/handoff";
 import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
-import { clampSeek, parseTxInfo, TX_LABEL, txClock, txInfoUrl, txSubUrl, txUrl, type TxInfo, type TxState } from "./transcode";
+import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
+import { classifyFailure, type Failure } from "./failure";
 import { parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
@@ -73,6 +74,18 @@ async function isOsFullscreen(): Promise<boolean> {
   const b = bridge();
   if (b?.isFullscreen) return !!(await b.isFullscreen());
   return !!document.fullscreenElement;
+}
+
+/** Texte de la cause réelle de l'échec, dans la langue de l'interface. */
+function failureText(f: Failure | null, t: (k: never, v?: Record<string, string | number>) => string): string {
+  const tr = t as (k: string, v?: Record<string, string | number>) => string;
+  switch (f?.kind) {
+    case "account": return tr("player.errAccount", { status: f.status });
+    case "http": return tr("player.errHttp", { status: f.status || "?" });
+    case "codec": return tr("player.errCodec", { codec: f.codec || "?" }) + (f.install ? " " + tr("player.errCodecInstall", { cmd: f.install }) : "");
+    case "network": return tr("player.errNetwork");
+    default: return tr("player.errorHint");
+  }
 }
 
 export function PlayerHost() {
@@ -157,6 +170,14 @@ export function PlayerHost() {
   liveRef.current = live;
   const [reconnecting, setReconnecting] = useState(false);
   /** Limite de connexions simultanées du fournisseur atteinte : compteurs x/y si connus (null dedans = inconnus). */
+  /** Cause réelle de l'échec (statut HTTP, codec…) quand ce n'est pas la limite de connexions chiffrée. */
+  const [failure, setFailure] = useState<Failure | null>(null);
+  /** Dernier statut HTTP refusé par le fournisseur pendant cette lecture. */
+  const statusRef = useRef<number | null>(null);
+  /** Conversion vidéo H.264 déjà tentée pour cette lecture. */
+  const videoTriedRef = useRef(false);
+  const diagRef = useRef<TxDiag | null>(null);
+  const tryVideoRef = useRef<(() => Promise<boolean>) | null>(null);
   const [limit, setLimit] = useState<{ a: number; b: number } | null | false>(false);
   /** Nouvelle tentative unique après une limite de connexions (le fournisseur compte parfois encore l'ancienne). */
   const limitRetriedRef = useRef(false);
@@ -174,16 +195,29 @@ export function PlayerHost() {
     const v = videoRef.current!;
     const recon = new LiveReconnect({
       reload: () => { const c = candRef.current; const a = c.list[c.i]; if (a) void startCandidate(a); },
-      giveUp: () => { setReconnecting(false); setError(true); setState("error"); },
+      giveUp: () => { setReconnecting(false); void finalFail(); },
       onReconnecting: () => setReconnecting(true),
     });
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
       onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
       onError: (_code, status) => {
-        // Limite de connexions : inutile d'enchaîner les replis (chacun rouvrirait une connexion refusée).
-        if (isConnectionLimit({ status })) { void onLimit(); return; }
+        if (status) statusRef.current = status;
+        // Refus du fournisseur (403, 458…) : souvent un User-Agent ou un format refusé, pas seulement la limite de connexions.
+        // On essaie d'abord l'autre format (m3u8 / ts) ; la limite n'est annoncée qu'au dernier candidat.
+        if (isConnectionLimit({ status })) {
+          const c = candRef.current;
+          if (c.i + 1 < c.list.length) { eng.stop(); fallback(); return; }
+          void onLimit();
+          return;
+        }
         if (recon.onError(liveRef.current)) return;
+        // Bureau : image illisible (MPEG-2, HEVC sans décodeur, H.264 10 bits…) → on sonde avec ffmpeg et on convertit la vidéo.
+        if (status === undefined && !videoTriedRef.current && bridge()?.transcode) {
+          eng.stop();
+          void tryVideoFallback().then((handled) => { if (engineRef.current === eng && !handled) fallback(); });
+          return;
+        }
         if (status === undefined && !probedRef.current && (_code.startsWith("media:") || _code === "mpegts")) {
           // Échec sans statut (lecture native, MPEG-TS) : on libère la connexion, puis on sonde le fournisseur.
           probedRef.current = true;
@@ -205,9 +239,62 @@ export function PlayerHost() {
         // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
         const back = revertToSilent(silentIdxRef.current, c.list.length);
         if (back >= 0) { c.i = back; skipProbeRef.current = true; setNoAudio(true); void startCandidate(c.list[back]!); return; }
-        setError(true); setState("error");
+        void finalFail();
       }
     };
+    /** Cause réelle de l'échec : statut HTTP du fournisseur, sinon diagnostic ffmpeg (bureau) ; puis écran d'erreur. */
+    const finalFail = async () => {
+      eng.stop();
+      let status = statusRef.current;
+      let diag: TxDiag | null = diagRef.current;
+      if (!status && !diag && bridge()?.transcode) diag = await runDiag();
+      if (!status && !diag?.status) { try { status = (await probeCurrent()).status ?? null; } catch { /* inconnu */ } }
+      if (engineRef.current !== eng) return;
+      setFailure(classifyFailure({ status, diag, platform: bridge()?.platform }));
+      setError(true); setState("error");
+    };
+    /** Diagnostic ffmpeg du flux d'origine (connexion du lecteur déjà fermée). */
+    const runDiag = async (): Promise<TxDiag | null> => {
+      const base = bridge()?.proxyBase;
+      const cur = txRef.current?.orig ?? candRef.current.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url;
+      if (!base || !cur) return null;
+      try {
+        const r = await fetch(txDiagUrl(base, cur, canDecodeHevc()), { headers: proxyHeaders() });
+        if (!r.ok) return null;
+        const d = parseTxDiag(await r.json());
+        diagRef.current = d;
+        return d;
+      } catch { return null; }
+    };
+    /** Vidéo illisible : relance la lecture avec une conversion H.264 (ffmpeg). Renvoie true si l'écran a été pris en charge. */
+    const tryVideoFallback = async (): Promise<boolean> => {
+      if (videoTriedRef.current) return false;
+      videoTriedRef.current = true;
+      const d = await runDiag();
+      if (engineRef.current !== eng || !d) return false;
+      if (d.reason === "http" && d.status) statusRef.current = d.status;
+      if (d.reason !== "ok" || !d.convert) return false;
+      const base = bridge()?.proxyBase;
+      const v = videoRef.current;
+      const c = candRef.current;
+      const orig = txRef.current?.orig ?? c.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url;
+      if (!d.canEncode || !base || !orig) {
+        setFailure(classifyFailure({ diag: d, platform: bridge()?.platform }));
+        setError(true); setState("error");
+        return true;
+      }
+      const tg = usePlayer.getState().target;
+      const isLive = tg?.kind === "live" && !tg.replay;
+      const offset = isLive ? 0 : v?.currentTime ?? 0;
+      const tx: TxState = { orig, offset, duration: isLive || !v || !Number.isFinite(v.duration) ? 0 : v.duration, video: true };
+      txRef.current = tx;
+      skipProbeRef.current = true;
+      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, 0, true), format: "ts", label: TX_LABEL }];
+      c.i = c.list.length - 1;
+      void startCandidate(c.list[c.i]!);
+      return true;
+    };
+    tryVideoRef.current = tryVideoFallback;
     /** Sonde le flux courant (connexion précédente déjà fermée) : statut et début du corps de la réponse. */
     const probeCurrent = async () => {
       const c = candRef.current.list[candRef.current.i];
@@ -239,7 +326,9 @@ export function PlayerHost() {
         try { counts = limitCounts(connCounts((await handshake(await currentTransport(), credsOf(src))).user_info)); } catch { /* compteurs inconnus */ }
       }
       if (engineRef.current !== eng) return;
-      setLimit(counts); setError(true); setState("error");
+      // Compteurs connus : « Limite atteinte (x/y) » ; sinon on affiche le code HTTP réel du fournisseur.
+      if (counts) setLimit(counts); else setFailure(classifyFailure({ status: statusRef.current ?? 403 }));
+      setError(true); setState("error");
     };
     engineRef.current = eng;
     eng.uiLang = usePrefs.getState().lang;
@@ -278,6 +367,20 @@ export function PlayerHost() {
     return requestHeaders(transportSync(), { userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null });
   }, []);
 
+  /** « Ouvrir dans VLC » : adresse d'origine du flux, identité (User-Agent / Referer) de la source. */
+  const openInVlc = useCallback(async () => {
+    const tg = usePlayer.getState().target;
+    const src = useSources.getState().list.find((x) => x.id === tg?.sourceId);
+    const orig = txRef.current?.orig ?? candRef.current.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url;
+    const b = bridge();
+    const lang = usePrefs.getState().lang;
+    if (!b?.openInVlc || !orig) return;
+    let ok = false;
+    try { ok = await b.openInVlc({ url: orig, userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null, title: tg?.title ?? null }); } catch { /* refusé */ }
+    if (ok) engineRef.current?.stop();
+    else useUi.getState().toast(translate(lang, "player.vlcFailed"));
+  }, []);
+
   const startCandidate = useCallback(async (c: Candidate) => {
     const tg = usePlayer.getState().target;
     const src = useSources.getState().list.find((s) => s.id === tg?.sourceId);
@@ -302,7 +405,8 @@ export function PlayerHost() {
     setReconnecting(false);
     clearTimeout(limitTimerRef.current);
     limitRetriedRef.current = false; probedRef.current = false;
-    setLimit(false);
+    statusRef.current = null; videoTriedRef.current = false; diagRef.current = null;
+    setLimit(false); setFailure(null);
     if (!target || !source) { engineRef.current?.stop(); return; }
     setTracks(NO_TRACKS);
     setXinfo(null); xinfoKeyRef.current = ""; setXAudio(0); setXText(-1); setSubFail(false); subCuesRef.current = null; applySubs();
@@ -378,6 +482,24 @@ export function PlayerHost() {
     void startCandidate(list[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, nonce, source?.id]);
+
+  // Bureau : lecture « en cours » mais aucune image (0×0) alors que des données arrivent (HEVC sans décodeur, MPEG-2…) :
+  // on sonde avec ffmpeg et on relance avec une conversion vidéo.
+  useEffect(() => {
+    if (state !== "playing" || !target || !bridge()?.transcode || videoTriedRef.current || txRef.current?.video) return;
+    const to = setTimeout(() => {
+      const v = videoRef.current;
+      if (!v || v.videoWidth > 0 || v.readyState < 2 || videoTriedRef.current) return;
+      engineRef.current?.stop();
+      void tryVideoRef.current?.().then((handled) => {
+        if (handled) return;
+        const c = candRef.current;
+        if (c.i + 1 < c.list.length) { c.i += 1; void startCandidate(c.list[c.i]!); } else { setFailure(classifyFailure({ status: statusRef.current, diag: diagRef.current, platform: bridge()?.platform })); setError(true); setState("error"); }
+      });
+    }, 6000);
+    return () => clearTimeout(to);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, target?.refId, target?.kind]);
 
   // Sonde audio (VOD) : image qui défile mais aucun octet audio décodé -> candidat suivant, à la même position.
   useEffect(() => {
@@ -1076,8 +1198,9 @@ export function PlayerHost() {
         <div className="pstate">
           <div className="msg">
             <b>{limit !== false ? (limit ? t("player.limit", limit) : t("player.limitNoCount")) : t(drmBlocked ? "player.drmUnsupported" : "player.error")}</b>
-            {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{t("player.errorHint")}</p>}
+            {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{failureText(failure, t)}</p>}
             {!drmBlocked && <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>}
+            {!drmBlocked && bridge()?.vlc && <button className="btn sm" style={{ marginLeft: "0.5rem" }} onClick={() => void openInVlc()}>{t("player.openVlc")}</button>}
           </div>
         </div>
       )}
@@ -1340,6 +1463,7 @@ export function PlayerHost() {
                     : otherDevices.map((d) => <button key={d.id} className="opt" onClick={() => void sendTo(d)}>{d.name}{d.model ? <span className="h">{d.model}</span> : null}</button>)}
                 </>
               )}
+              {bridge()?.vlc && <button className="opt" onClick={() => void openInVlc()}>{t("player.openVlc")}</button>}
               <div className="grp-t">{t("player.shortcuts")}</div>
               <div className="hotkeys">
                 <span><span className="kbd">{t("key.space")}</span></span><span>{t("player.sk.space")}</span>

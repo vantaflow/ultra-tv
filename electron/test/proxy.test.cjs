@@ -313,3 +313,12 @@ test("proxy : nouvelle ouverture de flux direct => ancien amont fermé avant la 
     await new Promise((r) => upstream.close(r));
   }
 });
+
+test("effectiveUserAgent : celui de la source, sinon celui de VLC (jamais Chromium / Electron)", () => {
+  const { effectiveUserAgent, FALLBACK_UA } = require("../proxy.cjs");
+  assert.strictEqual(effectiveUserAgent("MonUA/1", "Mozilla/5.0 Chrome/140 Electron/45"), "MonUA/1");
+  assert.strictEqual(effectiveUserAgent(undefined, "Mozilla/5.0 (Windows) Chrome/140 Electron/45 Ultra TV/1.2"), FALLBACK_UA);
+  assert.strictEqual(effectiveUserAgent(undefined, undefined), FALLBACK_UA);
+  assert.match(FALLBACK_UA, /^VLC\//);
+  assert.strictEqual(effectiveUserAgent(undefined, "Lecteur/2"), "Lecteur/2");
+});
