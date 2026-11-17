@@ -390,6 +390,10 @@ private fun HomeSection(
         HomeSectionId.TOP10 -> Section(D.homeTop10) { Top10Row(rows.top10, openPoster) }
         HomeSectionId.RESUME -> Section(D.continueWatching) { ResumeRow(rows.resume, playHistory) }
         // Trakt : seulement ce qui est disponible dans la playlist (rien si le compte n'est pas lié).
+        HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6 ->
+            rows.libraries.getOrNull(id.libraryIndex)?.let { l ->
+                Section(D.catalogSortName(com.ultratv.tv.nativeapp.ui.catalog.CatalogFilter.Sort.RECENT) + " \u00B7 " + l.name) { PosterRow(l.cards, openPoster) }
+            }
         HomeSectionId.TRAKT_AVAILABLE -> Section(D.traktAvailable) { PosterRow(rows.availableNow, openPoster) }
         HomeSectionId.TRAKT_WATCHLIST -> Section(D.traktWatchlist) { PosterRow(rows.watchlist, openPoster) }
         HomeSectionId.TRAKT_RECOMMENDED -> Section(D.traktRecommended) { PosterRow(rows.recommended, openPoster) }

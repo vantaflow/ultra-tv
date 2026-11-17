@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Accueil : une rangée « Ajouts récents · serveur » par serveur Plex, Jellyfin, Emby ou NAS visible du profil (20 titres au plus, bibliothèques masquées exclues) et reprises de lecture des serveurs mêlées à « Reprendre la lecture »
 ### Modifié
 - Tableau de bord, serveurs multimédias : un clic sur un serveur Plex l'ajoute (sans bouton Add), liste des serveurs configurés (type, badge, date, appareils, partage, suppression), retour sur la carte avec un message clair et refus des doublons (Plex, Jellyfin, Emby, NAS)
 - Tableau de bord : les serveurs Jellyfin, Emby, Plex et NAS ne sont plus listés en double dans « Sources » ; ils n'apparaissent que dans la carte « Media servers ».
