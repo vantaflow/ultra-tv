@@ -287,6 +287,8 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
   let base = "";
   // Flux direct en cours, par hôte : au zapping on ferme l'ancien amont (et on attend sa fermeture) avant d'ouvrir le suivant.
   const activeLive = new Map();
+  // Conversions ffmpeg vivantes par hôte : seule la plus récente est utile (route /tx).
+  const txActive = new Map();
 
   function trackLive(host, state, res) {
     const entry = { state, res, closed: false, waiters: [] };
@@ -491,7 +493,20 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       if (tx.kind === "sub") return serveSubtitle(req, res, { ffmpeg, target: txTarget, s: tx.s, headers: corsHeaders(req), report });
       // Comptes à connexion unique : l'ancien flux du même hôte est libéré avant que ffmpeg ouvre le sien.
       await releaseEntry(activeLive.get(txTarget.host.toLowerCase()));
-      return serveTranscode(req, res, { ffmpeg, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report });
+      // Une seule conversion ffmpeg vivante par hôte : le lecteur relance une conversion (saut, piste, tentative
+      // suivante) sans toujours fermer la requête suspendue qui la précédait ; chaque ffmpeg orphelin garde une
+      // connexion du compte (souvent limité en connexions) et le fournisseur finit par ne plus rien servir.
+      // La nouvelle conversion remplace l'ancienne du même hôte.
+      const txKey = txTarget.host.toLowerCase();
+      const prevStop = txActive.get(txKey);
+      if (prevStop) { prevStop(); txActive.delete(txKey); }
+      const cur = { stop: null };
+      const curStop = () => { try { cur.stop?.(); } catch { /* déjà parti */ } };
+      txActive.set(txKey, curStop);
+      return serveTranscode(req, res, { ffmpeg, target: txTarget, ss: tx.ss, live: tx.live, audio: tx.a, headers: corsHeaders(req), report, onSpawn: (stop) => {
+        if (cur.stop) stop(); // remplacée déjà : partie aussitôt née
+        else cur.stop = stop;
+      } });
     }
     const parsed = parseProxyPath(parsedUrl.pathname, secret);
     if (parsed.error) return fail(res, req, parsed.error);

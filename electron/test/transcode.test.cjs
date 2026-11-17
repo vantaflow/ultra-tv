@@ -76,6 +76,16 @@ test("serveTranscode : échec de ffmpeg sans sortie → 502", async () => {
   assert.ok(res.writableEnded);
 });
 
+test("serveTranscode : onSpawn expose l'arrêt de ffmpeg (une conversion vivante par hôte côté proxy)", async () => {
+  const child = fakeChild();
+  const res = fakeRes();
+  let stop = null;
+  serveTranscode({ headers: {} }, res, { ffmpeg: "ffmpeg", target: new URL("http://h/1.mkv"), ss: 0, headers: {}, spawnFn: () => child, onSpawn: (s) => { stop = s; } });
+  assert.strictEqual(typeof stop, "function");
+  stop();
+  assert.ok(child.killed);
+});
+
 test("parseTranscodePath : routes pistes (txi) et sous-titres (txs), index bornés", () => {
   assert.strictEqual(parseTranscodePath("/tok/txi/aGVsbG8", "")?.kind, "info");
   assert.deepStrictEqual(parseTranscodePath("/tok/txs/aGVsbG8", "?s=3"), { kind: "sub", token: "tok", b64: "aGVsbG8", ss: 0, live: false, a: 0, s: 3 });
