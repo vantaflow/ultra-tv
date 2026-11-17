@@ -972,6 +972,20 @@ export function PlayerHost() {
 
   const nn = useNowNext(source, target?.channel?.epg, target?.kind === "live" ? target.refId : undefined);
 
+  // « Depuis le début » : rattrapage du programme en cours (Xtream avec archive ; une playlist M3U garde son URL directe).
+  const nowProg = nn.now;
+  const canRestart = live && !!target?.channel?.archive && !target.url && !!nowProg && nowProg.start <= Date.now();
+  const restartProg = useCallback(() => {
+    const tg = usePlayer.getState().target;
+    if (!tg || !nowProg) return;
+    usePlayer.getState().open({ ...tg, replay: { start: nowProg.start, minutes: Math.ceil((nowProg.end - nowProg.start) / 60000) + 2 } }, "full");
+  }, [nowProg]);
+  // « Direct » : retire le rattrapage ; la même chaîne repart sur son flux en direct.
+  const backToLive = useCallback(() => {
+    const tg = usePlayer.getState().target;
+    if (tg) usePlayer.getState().open({ ...tg, replay: undefined }, "full");
+  }, []);
+
   // Étage « Chaînes récentes » : programme en cours de chaque chaîne, lu au guide local quand l'OSD est visible.
   const curId = target?.kind === "live" ? target.refId : undefined;
   const shownRecents = useMemo(() => recentsToShow(recents, curId), [recents, curId]);
@@ -1162,6 +1176,9 @@ export function PlayerHost() {
             <button className={`dbtn${panel === "tracks" ? " on" : ""}`} aria-label={t("player.tracks")} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={22} /><span className="lbl">{t("player.tracks")}</span></button>
             <button className={`dbtn${panel === "display" ? " on" : ""}`} aria-label={t("player.display")} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={22} /><span className="lbl">{t("player.display")}</span></button>
             <button className={`dbtn${panel === "channels" ? " on" : ""}`} aria-label={t("player.channels")} onClick={() => setPanel(panel === "channels" ? null : "channels")}><Icon name="list" size={22} /><span className="lbl">{t("player.channels")}</span></button>
+            {canRestart && (
+              <button className="dbtn" aria-label={t("player.fromStart")} onClick={restartProg}><Icon name="rew" size={22} /><span className="lbl">{t("player.fromStart")}</span></button>
+            )}
             {source?.id != null && target.channel && (
               <button
                 className={`dbtn${isFav ? " fav" : ""}`} aria-pressed={isFav} aria-label={t(isFav ? "common.removeFav" : "common.addFav")}
@@ -1229,6 +1246,9 @@ export function PlayerHost() {
                 <>
                   {target.kind === "episode" && target.seriesId != null && (
                     <button className={`popt${panel === "episodes" ? " on" : ""}`} aria-expanded={panel === "episodes"} onClick={() => setPanel(panel === "episodes" ? null : "episodes")}><Icon name="series" size={18} />{t("player.episodes")}</button>
+                  )}
+                  {target.kind === "live" && target.replay && (
+                    <button className="popt" onClick={backToLive}><Icon name="play" size={18} fill />{t("player.backToLive")}</button>
                   )}
                   <button className={`popt${panel === "tracks" ? " on" : ""}`} onClick={() => setPanel(panel === "tracks" ? null : "tracks")}><Icon name="sliders" size={18} />{t("player.tracks")}</button>
                   <button className={`popt${panel === "display" ? " on" : ""}`} onClick={() => setPanel(panel === "display" ? null : "display")}><Icon name="display" size={18} />{t("player.display")}</button>

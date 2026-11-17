@@ -209,6 +209,7 @@ function Inner({ source }: { source: Source }) {
               {shown.prog.desc && <p className="g-desc clamp-2">{shown.prog.desc}</p>}
               <div className="g-actions">
                 {shown.prog.end > now && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, false)}><Icon name="play" size={16} fill />{t("guide.watchLive")}</button>}
+                {shownLive && !!shown.chan.archive && !shown.chan.url && <button className="btn lg" onClick={() => watch(shown.chan, shown.prog, true)}><Icon name="rew" size={16} />{t("guide.replayNow")}</button>}
                 {shown.prog.end <= now && !!shown.chan.archive && <button className="btn accent lg" onClick={() => watch(shown.chan, shown.prog, true)}><Icon name="play" size={16} fill />{t("guide.replay")}</button>}
                 {shownRef && <ProgActions source={source} prog={shownRef} now={now} size="lg" reminded={reminded.has(progId(shownRef))} recorded={recorded.has(progId(shownRef))} />}
               </div>
