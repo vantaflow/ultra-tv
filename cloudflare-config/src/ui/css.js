@@ -270,6 +270,21 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 .plex-servers input[type=radio]{width:18px;height:18px;min-width:18px;min-height:0;padding:0;margin:0;flex:none;accent-color:var(--acc)}
 .plex-servers .nm{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-weight:600}
 .plex-servers .chip{flex:none}
+.plex-servers .plex-row{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:flex-start;width:100%;min-height:48px;padding:10px 2px;background:transparent;color:var(--fg);border:0;border-radius:0;font:inherit;text-align:start}
+.plex-servers .plex-row+.plex-row{border-top:1px solid var(--bd)}
+.plex-servers .plex-row:hover:not(:disabled){background:var(--s2)}
+.plex-servers .plex-row:disabled{opacity:.7}
+.msrv-h{font-size:var(--t-sm,15px);margin:var(--sp-4) 0 6px}
+.msrv-list{list-style:none;margin:0 0 var(--sp-4);padding:0;border:1px solid var(--bd);border-radius:var(--r-md)}
+.msrv{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:10px 12px;min-width:0}
+.msrv+.msrv{border-top:1px solid var(--bd)}
+.msrv .nm{flex:1 1 140px;min-width:0;overflow-wrap:anywhere;font-weight:600}
+.msrv .chip{flex:none}
+.msrv .dt{flex:0 1 auto}
+.msrv form{margin:0;flex:none}
+.msrv button{min-height:44px}
+.msrv-dev{flex:1 1 100%;min-width:0}
+.msrv-dev .chips{margin:0 0 6px}
 .danger-zone{border-color:color-mix(in srgb,var(--dng) 45%,var(--bd))}
 .danger-zone h2{color:var(--dng)}
 /* ---- Chiffres clés ---- */
