@@ -113,7 +113,7 @@ class ThemeResolutionTest {
         val all = listOf(
             com.ultratv.tv.nativeapp.ui.design.MidnightPalette, com.ultratv.tv.nativeapp.ui.design.ForestPalette,
             com.ultratv.tv.nativeapp.ui.design.PlumPalette, com.ultratv.tv.nativeapp.ui.design.SandPalette,
-            com.ultratv.tv.nativeapp.ui.design.ContrastPalette,
+            com.ultratv.tv.nativeapp.ui.design.ContrastPalette, com.ultratv.tv.nativeapp.ui.design.TealPalette,
         )
         for (p in all) {
             assertTrue("texte sur fond", ratio(p.text, p.bg) >= 7.0)

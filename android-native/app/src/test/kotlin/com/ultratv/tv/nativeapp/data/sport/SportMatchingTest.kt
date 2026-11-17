@@ -158,4 +158,16 @@ class SportMatchingTest {
         assertEquals("", SportMatching.badgesOf(ch(1)))
         assertEquals("4K", SportMatching.badgesOf(ch(1).copy(quality = 4)))
     }
+
+    @Test fun selections_nomsFrancaisEtAnglais() {
+        assertEquals(SportMatching.canonTeam("Congo DR"), SportMatching.canonTeam("RD Congo"))
+        assertEquals(SportMatching.canonTeam("Egypt"), SportMatching.canonTeam("Égypte"))
+        assertEquals(SportMatching.canonTeam("Ivory Coast"), SportMatching.canonTeam("Côte d'Ivoire"))
+        assertEquals(SportMatching.canonTeam("Equatorial Guinea"), SportMatching.canonTeam("Guinée équatoriale"))
+        org.junit.Assert.assertNotEquals(SportMatching.canonTeam("Guinea"), SportMatching.canonTeam("Guinée équatoriale"))
+        org.junit.Assert.assertNotEquals(SportMatching.canonTeam("Congo"), SportMatching.canonTeam("RD Congo"))
+        assertEquals("ok", SportMatching.parse("Football : Qualifications de la CAN | RD Congo / Sierra Leone").key.let { k ->
+            if (k == listOf(SportMatching.canonTeam("Congo DR"), SportMatching.canonTeam("Sierra Leone")).sorted().joinToString("|")) "ok" else k
+        })
+    }
 }

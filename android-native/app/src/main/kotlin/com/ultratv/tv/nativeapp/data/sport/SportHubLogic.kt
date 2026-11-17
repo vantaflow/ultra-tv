@@ -126,7 +126,7 @@ object SportHubLogic {
             val others = alsoOn[SportMatching.entryKey(e)].orEmpty()
             val ch = SportMatching.orderChannels(listOf(e) + others)
             LiveCardModel(
-                "g${entryKey(e)}", if (m != null) lgName else line.competition ?: programmeLabel(e),
+                "g${entryKey(e)}", lgName.ifEmpty { line.competition ?: programmeLabel(e) },
                 m?.let(::minuteOf), m?.home ?: line.home, m?.away ?: line.away, line.title, m?.homeScore, m?.awayScore, m, ch,
                 SportLogic.progress(e.prog.startMs, e.prog.endMs, nowMs),
             )

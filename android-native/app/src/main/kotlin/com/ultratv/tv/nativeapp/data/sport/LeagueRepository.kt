@@ -53,6 +53,10 @@ class LeagueRepository @Inject constructor(private val api: ExtMetaApi) {
     suspend fun live(league: String, now: Long = System.currentTimeMillis()) =
         load("l/$league", "sports/league?id=$league&view=live", LIVE_MS, now, LeagueParser::events)
 
+    /** Tout le football en cours ou terminé du jour (sélections, qualifications…) : scores des directs hors ligues suivies. */
+    suspend fun day(now: Long = System.currentTimeMillis()) =
+        load("d/all", "sports/day", LIVE_MS, now, LeagueParser::events)
+
     suspend fun table(league: String, now: Long = System.currentTimeMillis()) =
         load("t/$league", "sports/league?id=$league&view=table", TABLE_MS, now, LeagueParser::table)
 

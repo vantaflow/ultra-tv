@@ -19,7 +19,7 @@ enum class SidebarPosition { LEFT, TOP }
 enum class AppTheme {
     DARK, LIGHT, AUTO, OLED,
     /** Thèmes de couleur complets (fond, surfaces, focus et accent propres). SAND est clair, les autres sombres. */
-    MIDNIGHT, FOREST, PLUM, SAND, CONTRAST;
+    MIDNIGHT, FOREST, PLUM, SAND, CONTRAST, TEAL;
 
     companion object {
         /** Tolérant : une valeur inconnue (autre appareil, version future) retombe sur Sombre, jamais d'erreur. */
@@ -32,6 +32,7 @@ enum class AppTheme {
             "PLUM" -> PLUM
             "SAND" -> SAND
             "CONTRAST" -> CONTRAST
+            "TEAL" -> TEAL
             else -> DARK
         }
     }

@@ -352,11 +352,31 @@ export async function sportsLeagueProxy(searchParams, env, opts = {}) {
   }
 }
 
+/**
+ * /api/sports/day : tout le football du jour (ESPN, un appel par minute au plus, partagé par tous les appareils).
+ * L'appli y cherche le score des directs du guide qu'aucune ligue suivie ne couvre (sélections, qualifications CAN…).
+ * Seuls les matchs en cours, ou terminés et commencés il y a moins de 5 h, sont renvoyés.
+ */
+export async function sportsDayProxy(env, opts = {}) {
+  const ctx = wrapOpts(env, opts);
+  try {
+    return await through(ctx.cache, "day/es", TTL.live, async () => {
+      if (!(await ctx.canUse("es", "live"))) return null;
+      const list = await PROVIDERS.es.adapter.day(ctx);
+      if (!list) return null;
+      const events = list.filter((e) => e.st === "live" || (e.st === "post" && e.t !== null && ctx.now - e.t <= 5 * 3600000)).slice(0, 150);
+      return { events };
+    }, ctx);
+  } finally {
+    await ctx.flush();
+  }
+}
+
 // ---- feuille de match -----------------------------------------------------------------------------------------------
 
-/** Identifiants : numérique = TheSportsDB (historique) ; fd-N football-data ; af-N API-Football ; jo-AAAA-N Jolpica. */
+/** Identifiants : numérique = TheSportsDB (historique) ; fd-N football-data ; af-N API-Football ; es-N ESPN ; jo-AAAA-N Jolpica. */
 function parseMatchId(id) {
-  let m = /^(?:(fd|af)-)?([1-9][0-9]{0,9})$/.exec(id);
+  let m = /^(?:(fd|af|es)-)?([1-9][0-9]{0,9})$/.exec(id);
   if (m) return { prov: m[1] || "sdb", raw: m[2] };
   m = /^jo-(20[0-9]{2}-[1-9][0-9]?)$/.exec(id);
   return m ? { prov: "jo", raw: m[1] } : null;

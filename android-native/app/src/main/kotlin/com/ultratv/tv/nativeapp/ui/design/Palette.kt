@@ -78,6 +78,18 @@ val ForestPalette = UxPalette(
     scrim = Color(0xB807110D), onAccent = Color(0xFF04140D),
 )
 
+/** Turquoise (maquettes Claude Design) : fond ardoise neutre, accent bleu-vert. */
+val TealPalette = UxPalette(
+    light = false,
+    bg = Color(0xFF0A1113), rail = Color(0xFF0D171A), card = Color(0xFF132024), card2 = Color(0xFF0F1B1E),
+    button = Color(0xFF18292D), tile = Color(0xFF22383D),
+    text = Color(0xFFF1F7F7), text2 = Color(0xFFC3D3D4), text3 = Color(0xFF9AB0B2), muted = Color(0xFF6E8689),
+    accent = Color(0xFF2DD4BF), accentText = Color(0xFF5EEAD4), nowTint = Color(0xFF0E2A2A),
+    focusFill = Color(0xFFF1F7F7), focusText = Color(0xFF0A1113), focusText2 = Color(0xFF2C3E40),
+    line = Color(0xFF22383D), lineKey = Color(0xFF3F5A5E), muted2 = Color(0xFF51696C), err = Color(0xFFFF8A8A),
+    scrim = Color(0xB80A1113), onAccent = Color(0xFF042F2E),
+)
+
 /** Prune : fond aubergine, accent mauve. */
 val PlumPalette = UxPalette(
     light = false,
@@ -129,6 +141,7 @@ fun paletteFor(light: Boolean, theme: AppTheme): UxPalette {
         AppTheme.FOREST -> ForestPalette
         AppTheme.PLUM -> PlumPalette
         AppTheme.CONTRAST -> ContrastPalette
+        AppTheme.TEAL -> TealPalette
         else -> DarkPalette
     }
 }

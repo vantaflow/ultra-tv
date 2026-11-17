@@ -10,6 +10,7 @@
 // cache, une réponse ou un journal.
 
 import { httpsOrNull, num, stateOf, str } from "./sportscommon.js";
+import { es } from "./sportsespn.js";
 
 const ms = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? t : null; };
 const MIN = 60000;
@@ -286,6 +287,12 @@ export const PROVIDERS = {
     id: "af", name: "API-Football", caps: ["live", "schedule", "table", "match", "lineups", "players"], leagues: afLeagues, adapter: af,
     hasKey: (env) => Boolean(env?.API_FOOTBALL_KEY), budget: () => ({ perMin: 8, perDay: 90, perCapDay: { live: 25, match: 40, schedule: 15, table: 10 } }),
     failed: afFailed,
+  },
+  es: {
+    // ESPN : aucune ligue de la liste blanche (jamais candidat) ; sert au direct « tout le football du jour » et aux
+    // feuilles de match es-N des compétitions non couvertes ailleurs. Sans clé, plafond volontairement bas.
+    id: "es", name: "ESPN", caps: ["live", "match"], leagues: null, adapter: es,
+    hasKey: () => true, budget: () => ({ perMin: 20 }),
   },
   sdb: {
     // adaptateur fourni par sportsdata.js (historique) ; la clé publique « 123 » suffit
