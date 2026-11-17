@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.49] — 2026-11-17 (Android) · Bureau 1.2.68 · Worker
+
 ### Corrigé
 - Plex, Jellyfin, Emby et NAS : « Mes bibliothèques » dans le menu latéral, rangées courtes par serveur avec « Tout voir », serveurs choisissables dans Films et Séries, indexation toujours faite (même si Films/Séries IPTV sont désactivés), serveur ajouté sur le site réessayé à chaque synchro avec message d'erreur, un même serveur Plex lié sur la TV et le site n'est plus dupliqué, liste des serveurs Plex du site mieux présentée
 - Bureau : la lecture n'affichait aucune image quand la vidéo est en MPEG-2, en HEVC sans décodeur matériel ou en H.264 10 bits / 4:2:2 ; avec ffmpeg, la vidéo est maintenant convertie en H.264 (1080p maximum) et le son AAC reste converti à part. Une seule conversion ffmpeg reste vivante par hôte
