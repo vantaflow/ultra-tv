@@ -56,7 +56,7 @@ export function IptvAccountCard() {
   const fmt = (ms: number) => new Date(ms).toLocaleDateString(lang, { day: "numeric", month: "long", year: "numeric" });
 
   const load = async () => {
-    if (!source || source.type === "m3u") return;
+    if (!source || source.type === "m3u" || source.type === "jellyfin" || source.type === "emby" || source.type === "plex" || source.type === "nas") return;
     setBusy(true);
     try {
       if (source.type === "stalker") {

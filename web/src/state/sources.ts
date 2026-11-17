@@ -6,6 +6,7 @@ import { purgeOrphanGenerations } from "@/db/db";
 import { listSources, migrateCategoryLabels, migrateM3uToXtream } from "@/db/sources";
 import { activeToSet } from "@/lib/profileSources";
 import { usePrefs } from "./prefs";
+import { registerPlexTokens } from "@/net/plex";
 
 interface SourcesStore { ready: boolean; list: Source[] }
 export const useSources = create<SourcesStore>(() => ({ ready: false, list: [] }));
@@ -37,6 +38,7 @@ export function startSourcesWatcher() {
     .then(() => purgeOrphanGenerations({ startup: true }).catch(() => []))
     .then(() => liveQuery(() => listSources()).subscribe({
     next: (list) => {
+      registerPlexTokens(list);   // jetons Plex en mémoire seulement (affiches) : voir net/plex.ts
       useSources.setState({ ready: true, list });
       const { activeSourceId, set } = usePrefs.getState();
       if (list.length && !list.some((s) => s.id === activeSourceId)) set({ activeSourceId: list[0]!.id! });

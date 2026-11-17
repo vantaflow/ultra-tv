@@ -69,6 +69,35 @@ val DesignStrings.fieldPortalPassword get() = tx(R.string.dsb1_field_portal_pass
 val DesignStrings.stalkerChecking get() = tx(R.string.dsb1_stalker_checking)
 val DesignStrings.stalkerFailed get() = tx(R.string.dsb1_stalker_failed)
 
+// Serveurs multimédias personnels (Jellyfin / Emby) : « Jellyfin » et « Emby » sont des noms propres, jamais traduits
+val DesignStrings.formSubMediaServer get() = tx(R.string.dsb1_ms_sub)
+val DesignStrings.fieldMediaUrl get() = tx(R.string.dsb1_ms_url)
+val DesignStrings.fieldMediaUser get() = tx(R.string.dsb1_ms_user)
+val DesignStrings.fieldMediaPass get() = tx(R.string.dsb1_ms_pass)
+val DesignStrings.fieldMediaKey get() = tx(R.string.dsb1_ms_key)
+val DesignStrings.mediaChecking get() = tx(R.string.dsb1_ms_checking)
+val DesignStrings.mediaFailed get() = tx(R.string.dsb1_ms_failed)
+val DesignStrings.mediaHint get() = tx(R.string.dsb1_ms_hint)
+
+// Plex (connexion par code PIN) : « Plex » est un nom propre, jamais traduit
+val DesignStrings.formSubPlex get() = tx(R.string.dsb1_plex_sub)
+val DesignStrings.plexOpen get() = tx(R.string.dsb1_plex_open)
+val DesignStrings.plexWaiting get() = tx(R.string.dsb1_plex_waiting)
+val DesignStrings.plexExpired get() = tx(R.string.dsb1_plex_expired)
+val DesignStrings.plexFailed get() = tx(R.string.dsb1_plex_failed)
+val DesignStrings.plexNoServer get() = tx(R.string.dsb1_plex_none)
+val DesignStrings.plexUnreachable get() = tx(R.string.dsb1_plex_unreach)
+val DesignStrings.plexRetry get() = tx(R.string.dsb1_plex_retry)
+val DesignStrings.plexPick get() = tx(R.string.dsb1_plex_pick)
+val DesignStrings.plexHint get() = tx(R.string.dsb1_plex_hint)
+// Partage réseau (NAS, SMB) : « NAS » et « SMB » sont des sigles, jamais traduits
+val DesignStrings.formSubNas get() = tx(R.string.dsb1_nas_sub)
+val DesignStrings.fieldNasUrl get() = tx(R.string.dsb1_nas_url)
+val DesignStrings.fieldNasUser get() = tx(R.string.dsb1_nas_user)
+val DesignStrings.nasChecking get() = tx(R.string.dsb1_nas_checking)
+val DesignStrings.nasFailed get() = tx(R.string.dsb1_nas_failed)
+val DesignStrings.nasHint get() = tx(R.string.dsb1_nas_hint)
+
 // Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
 val DesignStrings.typeMovie get() = tx(R.string.dsb1_type_movie)
 val DesignStrings.typeSeries get() = tx(R.string.dsb1_type_series)

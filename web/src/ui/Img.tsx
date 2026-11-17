@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { transportSync, wrapUrl } from "@/net/transport";
+import { withImageToken } from "@/net/plex";
 import { useOptimizedSrc } from "./useOptimizedSrc";
 
 /** Image distante : passe par le transport (obligatoire sous CSP stricte d'Electron), repli neutre en cas d'échec. */
@@ -11,7 +12,7 @@ export function Img({ src, alt = "", contain = false, className = "", onFail }: 
   return (
     <img
       className={`img${contain ? " contain" : ""} ${className}`}
-      src={wrapUrl(transportSync(), opt.src ?? src)}
+      src={wrapUrl(transportSync(), withImageToken(opt.src ?? src))}
       alt={alt}
       loading={opt.src !== src ? "eager" : "lazy"}
       decoding="async"

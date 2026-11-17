@@ -148,3 +148,5 @@ fr|st_unlock_extra
 es|st_minutes
 es|handoff_no
 fr|prof_sources
+es|mlib_conn_local
+es|mlib_libs_series

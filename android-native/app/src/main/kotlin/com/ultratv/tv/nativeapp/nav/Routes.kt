@@ -16,6 +16,8 @@ object Routes {
     /** Réglages complets ouverts depuis le mode simple (sinon « settings » y affiche les réglages simples). */
     const val SETTINGS_ALL = "settings/all"
     const val DOWNLOADS = "downloads"
+    /** « Mes bibliothèques » : une rangée d'affiches par serveur Jellyfin / Emby / Plex / NAS (ouvert depuis Réglages › Sources). */
+    const val LIBRARIES = "libraries"
     const val RECORDINGS = "recordings"
     /** Mode simple : liste de chaînes à gros caractères (favoris d'abord), ouverte par la tuile « Télé en direct ». */
     const val SIMPLE_CHANNELS = "simple-channels"

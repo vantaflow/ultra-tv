@@ -12,6 +12,8 @@ import com.ultratv.tv.nativeapp.data.db.SyncPart
 import com.ultratv.tv.nativeapp.data.prefs.UserPreferencesStore
 import com.ultratv.tv.nativeapp.data.sync.SyncPolicy
 import com.ultratv.tv.nativeapp.data.m3u.M3uParser
+import com.ultratv.tv.nativeapp.data.mediaserver.MediaServer
+import com.ultratv.tv.nativeapp.data.nas.Nas
 import com.ultratv.tv.nativeapp.data.parental.ParentalStore
 import com.ultratv.tv.nativeapp.data.xmltv.EmptyGuideException
 import com.ultratv.tv.nativeapp.data.xmltv.EpgErrors
@@ -50,6 +52,8 @@ class ProviderRepository @Inject constructor(
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val langDisabled: com.ultratv.tv.nativeapp.data.prefs.LangDisabledStore,
     private val hiddenChannels: com.ultratv.tv.nativeapp.data.prefs.HiddenChannelsStore,
+    private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient = com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient(okhttp3.OkHttpClient(), { "ultra-tv" }),
+    private val nas: com.ultratv.tv.nativeapp.data.nas.NasClient = com.ultratv.tv.nativeapp.data.nas.NasClient(com.ultratv.tv.nativeapp.data.nas.NasSmb()) { null },
 ) {
     /** Retire les chaînes masquées par l'utilisateur d'un lot à écrire (voir HiddenChannelsStore). */
     private fun withoutHidden(rows: List<com.ultratv.tv.nativeapp.data.db.ChannelEntity>): List<com.ultratv.tv.nativeapp.data.db.ChannelEntity> {
@@ -740,9 +744,9 @@ class ProviderRepository @Inject constructor(
 
     private fun vodPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.MovieEntity>(
         "MOVIE",
-        { p -> if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
-        { p, blk -> if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
-        { p, c -> if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
+        { p -> if (Nas.isNasKind(kind)) nas.categories(p, "MOVIE") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "MOVIE") else if (kind == "STALKER") stalker.vodCategories(p, "MOVIE") else xtream.fetchVodCategories(p) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "MOVIE").flatMap { nas.movies(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "MOVIE").flatMap { mediaServer.movies(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "MOVIE") { it.movies }.asSequence()) else xtream.withVodStreams(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.movies(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.movies(p, c) else if (kind == "STALKER") stalkerVod(p, c).movies else xtream.vodOfCategory(p, c) },
         { it.categoryId }, { m, lang -> m.copy(lang = LanguageDetector.forItem(m.name, lang)) },
         { movieDao.deleteForProvider(it) }, { pid, ids -> movieDao.deleteForCategories(pid, ids) }, { pid, id -> movieDao.deleteForCategory(pid, id) },
         { movieDao.upsertAll(it) },
@@ -752,15 +756,116 @@ class ProviderRepository @Inject constructor(
 
     private fun seriesPart(kind: String = "XTREAM") = PartSpec<com.ultratv.tv.nativeapp.data.db.SeriesEntity>(
         "SERIES",
-        { p -> if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
-        { p, blk -> if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
-        { p, c -> if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
+        { p -> if (Nas.isNasKind(kind)) nas.categories(p, "SERIES") else if (MediaServer.isMediaKind(kind)) mediaCategories(p, "SERIES") else if (kind == "STALKER") stalkerSeriesCategories(p) else xtream.fetchSeriesCategories(p) },
+        { p, blk -> if (Nas.isNasKind(kind)) blk(nas.categories(p, "SERIES").flatMap { nas.series(p, it.remoteId) }.asSequence()) else if (MediaServer.isMediaKind(kind)) blk(mediaCategories(p, "SERIES").flatMap { mediaServer.series(p, it.remoteId) }.asSequence()) else if (kind == "STALKER") blk(stalkerVodAll(p, "SERIES") { s -> s.series.map { it.series } }.asSequence()) else xtream.withSeries(p, blk) },
+        { p, c -> if (Nas.isNasKind(kind)) nas.series(p, c) else if (MediaServer.isMediaKind(kind)) mediaServer.series(p, c) else if (kind == "STALKER") stalkerVod(p, c).series.map { it.series } else xtream.seriesOfCategory(p, c) },
         { it.categoryId }, { s2, lang -> s2.copy(lang = LanguageDetector.forItem(s2.name, lang)) },
         { seriesDao.deleteForProvider(it) }, { pid, ids -> seriesDao.deleteForCategories(pid, ids) }, { pid, id -> seriesDao.deleteForCategory(pid, id) },
         { seriesDao.upsertAll(it) },
         incremental = IncrementalTable.SERIES,
         keepCats = { pid -> stalkerFailedCats(pid, "SERIES") },
     )
+
+    // ───────────── Serveurs Jellyfin / Emby : bibliothèques = catégories ─────────────
+
+    /** Bibliothèques de films (`MOVIE`) ou de séries (`SERIES`) du serveur, sous forme de catégories du catalogue. */
+    private suspend fun mediaCategories(p: ProviderEntity, kind: String): List<CategoryEntity> {
+        val type = if (kind == "MOVIE") "movies" else "tvshows"
+        return mediaServer.libraries(p).filter { it.type == type }.map { CategoryEntity(providerId = p.id, kind = kind, remoteId = it.id, name = it.name) }
+    }
+
+    /**
+     * Ajoute un serveur Jellyfin ou Emby : se connecte (identifiant + mot de passe, ou clé API), puis enregistre l'adresse, l'identifiant
+     * interne de l'utilisateur (`username`) et le jeton (`password`, chiffré au repos). Une erreur de connexion remonte à l'appelant
+     * et RIEN n'est enregistré. Un serveur déjà ajouté pour le même utilisateur renvoie sa source (jeton rafraîchi).
+     */
+    suspend fun addMediaServer(kind: String, name: String, server: String, username: String, password: String, apiKey: String = ""): Long {
+        require(MediaServer.isMediaKind(kind))
+        val base = MediaServer.normalizeServerUrl(server) ?: throw IllegalArgumentException("url")
+        val login = mediaServer.login(base, username.trim(), password, apiKey)
+        providerDao.findByIdentity(kind, base, login.userId)?.let { existing ->
+            providerDao.upsert(existing.copy(password = login.token)); providerDao.resetSyncAt(existing.id); return existing.id
+        }
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { hostOf(base) ?: if (kind == MediaServer.EMBY) "Emby" else "Jellyfin" },
+                kind = kind, baseUrl = base, username = login.userId, password = login.token,
+                active = false,    // explicit default is set in Settings; see setDefault
+            ),
+        )
+    }
+
+    // ───────────── Plex : connexion par code PIN ─────────────
+
+    /** Demande un code à saisir sur plex.tv/link. */
+    suspend fun plexCreatePin() = mediaServer.plex.createPin()
+
+    /** Jeton du compte une fois le code validé, null avant. */
+    suspend fun plexPollPin(id: Long) = mediaServer.plex.pollPin(id)
+
+    /** Serveurs du compte Plex. */
+    suspend fun plexServers(accountToken: String) = mediaServer.plex.servers(accountToken)
+
+    /**
+     * Ajoute un serveur Plex : choisit la meilleure connexion qui répond (locale, puis distante, puis relais) et enregistre
+     * adresse, identifiant de machine (`username`) et jeton DU SERVEUR (`password`, chiffré au repos). Aucune connexion
+     * joignable : [java.io.IOException] et RIEN n'est enregistré. Un serveur déjà ajouté renvoie sa source (jeton rafraîchi).
+     */
+    suspend fun addPlexServer(server: com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server): Long {
+        val conn = mediaServer.plex.bestConnection(server) ?: throw java.io.IOException("plex: no reachable connection")
+        val kind = com.ultratv.tv.nativeapp.data.mediaserver.Plex.KIND
+        providerDao.findByIdentity(kind, conn.uri, server.machineId)?.let { existing ->
+            providerDao.upsert(existing.copy(password = server.accessToken)); providerDao.resetSyncAt(existing.id); return existing.id
+        }
+        return providerDao.upsert(
+            ProviderEntity(name = server.name.ifBlank { "Plex" }, kind = kind, baseUrl = conn.uri, username = server.machineId, password = server.accessToken, active = false),
+        )
+    }
+
+    /**
+     * Ajoute un partage NAS (SMB) : adresse `smb://hôte/partage[/dossier]`, identifiant et mot de passe (vides = invité). La connexion
+     * est vérifiée d'abord : une erreur remonte à l'appelant et RIEN n'est enregistré. Le mot de passe est chiffré au repos comme
+     * celui de toute source ; l'adresse stockée n'en contient jamais.
+     */
+    suspend fun addNas(name: String, address: String, username: String, password: String): Long {
+        val a = Nas.parseAddress(address) ?: throw IllegalArgumentException("url")
+        nas.test(a, username.trim(), password)
+        providerDao.findByIdentity(Nas.KIND, a.url(), username.trim())?.let { existing ->
+            providerDao.upsert(existing.copy(password = password)); providerDao.resetSyncAt(existing.id); return existing.id
+        }
+        return providerDao.upsert(
+            ProviderEntity(
+                name = name.ifBlank { a.rootName }, kind = Nas.KIND, baseUrl = a.url(), username = username.trim(), password = password,
+                active = false,    // explicit default is set in Settings; see setDefault
+            ),
+        )
+    }
+
+    // ───────────── Assistant « Ma bibliothèque » : étape 3 (choix des bibliothèques) ─────────────
+
+    /**
+     * Bibliothèques de films et de séries d'un serveur Jellyfin / Emby / Plex qui vient d'être ajouté, pour l'étape 3 de l'assistant.
+     * Null pour un partage NAS (dossiers connus seulement après le parcours du partage) ou si le serveur ne répond pas : l'appelant
+     * lance alors directement la synchro.
+     */
+    suspend fun mediaLibraryChoices(providerId: Long): List<com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice>? {
+        val p = providerDao.byId(providerId) ?: return null
+        if (!MediaServer.isMediaKind(p.kind)) return null
+        return runCatching {
+            mediaServer.libraries(p).map {
+                com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice(if (it.type == "movies") "MOVIE" else "SERIES", it.id, it.name)
+            }
+        }.getOrNull()?.takeIf { it.isNotEmpty() }
+    }
+
+    /**
+     * Désactive les bibliothèques décochées AVANT la première synchro : la fusion des catégories ([CatalogPlan.merge]) conserve
+     * l'état `enabled` déjà enregistré, donc leurs titres ne sont jamais téléchargés.
+     */
+    suspend fun disableLibraries(providerId: Long, libs: List<com.ultratv.tv.nativeapp.data.discovery.MediaLibraryLogic.LibraryChoice>) {
+        if (libs.isEmpty()) return
+        categoryDao.upsertAll(libs.map { CategoryEntity(providerId = providerId, kind = it.kind, remoteId = it.remoteId, name = it.name, enabled = false) })
+    }
 
     // ───────────── Portail Stalker : films et séries partagent la même liste VOD ─────────────
 

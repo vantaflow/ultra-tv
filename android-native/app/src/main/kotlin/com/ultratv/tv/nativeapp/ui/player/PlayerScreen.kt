@@ -190,7 +190,21 @@ class PlayerViewModel @Inject constructor(
     private val reminders: com.ultratv.tv.nativeapp.data.reminders.RemindersScheduler,
     private val recScheduler: com.ultratv.tv.nativeapp.data.recording.RecordingScheduler,
     private val handoffSender: com.ultratv.tv.nativeapp.data.config.HandoffSender,
+    private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient,
 ) : ViewModel() {
+
+    /**
+     * Rapport de lecture vers le serveur Jellyfin / Emby de l'élément en cours (reprise « Continuer à regarder » côté serveur).
+     * Sans effet pour toute autre source ; jamais bloquant ni fatal.
+     */
+    private fun mediaReport(kind: com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.Report, positionMs: Long, paused: Boolean) {
+        val c = playback.current.value ?: return
+        if (c.kind == "LIVE" || !com.ultratv.tv.nativeapp.data.mediaserver.MediaLink.isMedia(c.streamUrl)) return
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) {
+            val p = provider.byId(c.providerId)?.takeIf { com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(it.kind) } ?: return@launch
+            mediaServer.report(p, kind, c.remoteId, positionMs, paused)
+        }
+    }
 
     /** « Envoyer vers… » : autres appareils du compte (liste reçue avec la dernière synchro). */
     fun handoffDevices(): List<com.ultratv.tv.nativeapp.data.config.CloudDevice> = handoffSender.otherDevices()
@@ -576,17 +590,31 @@ class PlayerViewModel @Inject constructor(
         if (c.kind == "LIVE") return 0L
         // Reprise venue d'un autre appareil (« Reprendre sur cet appareil ? ») : sa position prime sur l'historique local.
         playback.pendingStartMs?.let { playback.pendingStartMs = null; return it }
-        return history.resumePositionMs(c.providerId, c.kind, c.remoteId)
+        val local = history.resumePositionMs(c.providerId, c.kind, c.remoteId)
+        // Serveur Jellyfin / Emby : la position enregistrée sur le serveur prime (elle suit l'utilisateur d'un appareil à l'autre).
+        if (com.ultratv.tv.nativeapp.data.mediaserver.MediaLink.isMedia(c.streamUrl)) {
+            val p = provider.byId(c.providerId)?.takeIf { com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(it.kind) }
+            if (p != null) {
+                val pos = kotlinx.coroutines.withTimeoutOrNull(4_000) { mediaServer.resumeMs(p, c.remoteId, local) } ?: local
+                mediaReport(com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.Report.START, pos, false)
+                return pos
+            }
+        }
+        return local
     }
 
     /** Scrobble Trakt (film / épisode seulement ; sans effet sur le direct). Jamais bloquant. */
     fun scrobbleTick(playing: Boolean, positionMs: Long, durationMs: Long) = trakt.onTick(playback.current.value, playing, positionMs, durationMs)
     fun scrobblePause(positionMs: Long, durationMs: Long) = trakt.onPause(playback.current.value, positionMs, durationMs)
-    fun scrobbleStop(positionMs: Long, durationMs: Long) = trakt.onStop(playback.current.value, positionMs, durationMs)
+    fun scrobbleStop(positionMs: Long, durationMs: Long) {
+        mediaReport(com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.Report.STOP, positionMs, true)
+        trakt.onStop(playback.current.value, positionMs, durationMs)
+    }
 
     fun recordProgress(positionMs: Long, durationMs: Long) {
         val c = playback.current.value ?: return
         if (positionMs < 5_000 && c.kind != "LIVE") return
+        mediaReport(com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.Report.PROGRESS, positionMs, false)
         // NonCancellable : à la sortie du lecteur le ViewModel est détruit juste après onDispose et son viewModelScope annulé —
         // la dernière position (celle qui alimente « Continuer à regarder ») pouvait être perdue avant d'être écrite.
         viewModelScope.launch(kotlinx.coroutines.NonCancellable) {

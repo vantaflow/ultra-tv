@@ -51,6 +51,11 @@ object SyncPolicy {
                 if (force || stale(p.lastVodSyncAt, ttl.vodMs)) parts += SyncPart.VOD
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
             }
+            // Serveur Jellyfin / Emby : films et séries (bibliothèques indexées dans le catalogue local) ; ni direct ni guide.
+            "JELLYFIN", "EMBY", "PLEX", "NAS" -> {
+                if (force || stale(p.lastVodSyncAt, ttl.vodMs)) parts += SyncPart.VOD
+                if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
+            }
         }
         // Contenus désactivés par l'utilisateur ; VOD / séries / guide seulement si le réseau le permet (non facturé) sauf demande explicite.
         return parts.filter { it in enabled && (heavyAllowed || force || it == SyncPart.LIVE) }

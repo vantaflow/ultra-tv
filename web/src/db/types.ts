@@ -2,8 +2,9 @@
 // doit tenir sur disque, pas en mémoire. Les URL de flux ne sont JAMAIS stockées : elles sont
 // reconstruites à la lecture depuis la source (identifiants chiffrés) et l'identifiant du flux.
 
-/** "stalker" : portail Stalker / Ministra (MAC dans `username`, identifiants facultatifs empaquetés dans `password`, voir net/stalker.ts). */
-export type SourceType = "xtream" | "m3u" | "stalker";
+/** "plex" : serveur Plex (adresse de la connexion choisie, identifiant de machine, jeton du serveur ; voir net/plex.ts).
+ * "nas" : partage réseau déjà monté par le système (chemin du dossier dans `server`, aucun identifiant ; voir net/nas.ts, bureau seulement). "jellyfin" / "emby" : serveur multimédia personnel (identifiant + mot de passe, ou clé API si l'identifiant est vide ; voir net/mediaServer.ts). "stalker" : portail Stalker / Ministra (MAC dans `username`, identifiants facultatifs empaquetés dans `password`, voir net/stalker.ts). */
+export type SourceType = "xtream" | "m3u" | "stalker" | "jellyfin" | "emby" | "plex" | "nas";
 export type Kind = "live" | "movie" | "series";
 
 export interface Source {
@@ -32,6 +33,8 @@ export interface Source {
   cid: number;
   /** Langues (codes pays) à synchroniser ; null = toutes. */
   langs: string[] | null;
+  /** Jellyfin / Emby / Plex : identifiants des bibliothèques à importer (3e étape de l'assistant) ; absent ou null = toutes. */
+  libs?: string[] | null;
   createdAt: number;
   lastSyncAt: number;
   counts: { live: number; movie: number; series: number };

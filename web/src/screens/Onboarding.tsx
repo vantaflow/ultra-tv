@@ -6,6 +6,7 @@ import { emptySource, getSource, saveSource } from "@/db/sources";
 import type { Source } from "@/db/types";
 import { useT, type TFn } from "@/i18n";
 import { HttpError, currentTransport, isElectron } from "@/net/transport";
+import { nasAvailable, nasRootName } from "@/net/nas";
 import { guideErrorForSave } from "@/lib/guideAddress";
 import { usePrefs } from "@/state/prefs";
 import { useSync } from "@/state/sync";
@@ -14,6 +15,9 @@ import { OTHER_LANG, type DetectedLanguage } from "@/sync/core";
 import { AppMark, Icon, type IconName } from "@/ui/Icon";
 import { SourceForm, type SourceKind as FormKind } from "./SourceForm";
 import { PairingView } from "./Pairing";
+import { FindStep, LibsStep, MediaConnectForm, PlexStep, ServerLogo, WizardSteps } from "./MediaWizard";
+import { isMediaType } from "@/net/mediaServer";
+import type { FoundServer } from "@/net/discovery";
 import { cloudAvailable } from "@/cloud/client";
 import { listSources } from "@/db/sources";
 import { langsToSync } from "@/lib/syncPolicy";
@@ -22,7 +26,7 @@ import { MAC_PREFIX } from "@/net/stalker";
 
 type SourceKind = FormKind | "cloud";
 
-type Step = "type" | "form" | "langs" | "sync" | "cloud";
+type Step = "type" | "form" | "langs" | "sync" | "cloud" | "find" | "plex" | "libs";
 
 export function errorKey(e: unknown, t: TFn, type?: Source["type"]): string {
   const err = e as Error;
@@ -30,6 +34,8 @@ export function errorKey(e: unknown, t: TFn, type?: Source["type"]): string {
   if (err.message === "auth") return t("src.err.auth");
   if (err.message === "expired") return t("src.err.expired");
   if (err.message === "not-m3u") return t("src.err.notm3u");
+  if (err.message === "nas-unavailable") return t("src.err.nasDesktop");
+  if (type === "nas") return t("src.err.nas");
   return isElectron() ? t("src.err.network") : t("src.err.cors");
 }
 
@@ -72,7 +78,8 @@ export function Onboarding() {
   const prefs = usePrefs();
   const [step, setStep] = useState<Step>(params.get("cloud") === "1" && cloudAvailable() ? "cloud" : "type");
   const [kind, setKind] = useState<SourceKind>("xtream");
-  const [src, setSrc] = useState<Source>(() => emptySource());
+  const [srcState, setSrc] = useState<Source>(() => emptySource());
+  const src = srcState;
   const [fileText, setFileText] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState("");
   const [busy, setBusy] = useState(false);
@@ -80,22 +87,44 @@ export function Onboarding() {
   const [detected, setDetected] = useState<DetectedLanguage[]>([]);
   const [chosen, setChosen] = useState<Set<string>>(new Set());
   const [savedId, setSavedId] = useState<number | null>(null);
+  // Assistant « ma bibliothèque » : d'où l'on vient (pour « Retour ») et serveur Plex détecté à retrouver dans le compte.
+  const [origin, setOrigin] = useState<Step>("type");
+  const [preferMachine, setPreferMachine] = useState<string | undefined>(undefined);
   const sync = useSync();
   const started = useRef(false);
 
   const pickType = (k: SourceKind) => {
     setKind(k);
     if (k === "cloud") { setStep("cloud"); return; }
-    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : k === "stalker" ? "stalker" : "m3u", username: k === "stalker" ? MAC_PREFIX : "" });
+    setOrigin("type");
+    setPreferMachine(undefined);
+    setSrc({ ...emptySource(), type: k === "xtream" ? "xtream" : k === "stalker" ? "stalker" : k === "jellyfin" || k === "emby" || k === "plex" || k === "nas" ? k : "m3u", username: k === "stalker" ? MAC_PREFIX : "" });
     setFileText(null); setFileInfo(""); setErr(null);
-    setStep("form");
+    // Jellyfin / Emby : on cherche d'abord le serveur sur le réseau ; Plex : code du compte ; NAS et IPTV : formulaire.
+    setStep(k === "jellyfin" || k === "emby" ? "find" : k === "plex" ? "plex" : "form");
   };
 
-  const submit = async () => {
+  /** Carte d'un serveur détecté (étape 1) : Jellyfin / Emby → formulaire à l'adresse préremplie ; Plex → code du compte. */
+  const pickFound = (f: FoundServer) => {
     setErr(null);
+    if (f.kind === "plex") { setKind("plex"); setSrc({ ...emptySource(), type: "plex", name: f.name }); setPreferMachine(f.id); setOrigin("find"); setStep("plex"); return; }
+    setKind(f.kind);
+    setSrc({ ...emptySource(), type: f.kind, server: f.address, name: f.name });
+    setOrigin("find");
+    setStep("form");
+  };
+  const goManual = (k: "jellyfin" | "emby" | "plex" | "nas") => {
+    setErr(null); setPreferMachine(undefined); setKind(k); setOrigin("find");
+    setSrc({ ...emptySource(), type: k });
+    setStep(k === "plex" ? "plex" : "form");
+  };
+
+  const submit = async (override?: Source) => {
+    setErr(null);
+    const src = override ?? srcState;
     // Adresse get.php / player_api.php collée en M3U : c'est une source Xtream Codes (get.php est souvent bloqué).
     const xt = kind === "m3u-link" ? convertToXtream(src) : null;
-    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "xtream" || kind === "stalker" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
+    const s = { ...(xt ?? src), name: src.name.trim() || (kind === "nas" ? nasRootName(src.server) : kind === "xtream" || kind === "stalker" || kind === "jellyfin" || kind === "emby" || kind === "plex" || xt ? (xt ?? src).server.replace(/^https?:\/\//, "").split(/[:/]/)[0]! : t("src.m3uLink")) };
     // On valide la source EFFECTIVE (après conversion) : une adresse get.php devient Xtream, m3uUrl est alors vide.
     if (missingRequired(kind, s)) { setErr(t("src.err.required")); return; }
     if (kind === "m3u-file" && fileText == null) { setErr(t("src.err.required")); return; }
@@ -123,7 +152,8 @@ export function Onboarding() {
         const pre = d.languages.filter((l) => l.code === ui || l.code === OTHER_LANG).map((l) => l.code);
         setChosen(new Set(pre.length ? pre : d.languages.map((l) => l.code)));
         setStep("langs");
-      } else setStep("sync");
+      } else if (isMediaType(s.type)) setStep("libs");   // Jellyfin / Emby / Plex : 3e étape = bibliothèques à importer
+      else setStep("sync");
     } catch (e) {
       setErr(errorKey(e, t, s.type));
     } finally {
@@ -149,13 +179,16 @@ export function Onboarding() {
   const done = step === "sync" && !sync.running && !sync.error && !!sync.progress;
   useEffect(() => { if (done) { const id = setTimeout(() => nav("/", { replace: true }), 900); return () => clearTimeout(id); } }, [done, nav]);
 
+  // Parcours « ma bibliothèque » : bandeau en 3 étapes (trouver, se connecter, bibliothèques).
+  const isLibraryFlow = step === "find" || step === "plex" || step === "libs" || (step === "form" && (isMediaType(kind) || kind === "nas"));
+
   const catsTotal = useMemo(() => detected.filter((l) => chosen.has(l.code)).reduce((a, l) => a + l.categories, 0), [detected, chosen]);
 
   return (
     <div className="stage">
       <header>
         <Brand />
-        {step !== "sync" && <Steps n={step === "langs" ? 1 : 0} />}
+        {step !== "sync" && (isLibraryFlow ? <WizardSteps n={step === "find" ? 0 : step === "libs" ? 2 : 1} /> : <Steps n={step === "langs" ? 1 : 0} />)}
         {adding && step !== "sync" ? <button className="btn sm" onClick={() => nav("/settings/sources")}>{t("common.cancel")}</button> : <span />}
       </header>
 
@@ -166,10 +199,20 @@ export function Onboarding() {
             <h1 style={{ marginTop: 8 }}>{t("src.which")}</h1>
             <p className="lead" style={{ marginTop: 12 }}>{t("src.whichLead")}</p>
           </div>
+          <h2 className="wz-group">IPTV</h2>
           <div className="choice-grid">
             {([...(cloudAvailable() ? [["cloud", "globe", "src.cloud", "src.cloudD"]] : []), ["xtream", "source", "src.xtream", "src.xtreamD"], ["stalker", "tv", "src.stalker", "src.stalkerD"], ["m3u-link", "link", "src.m3uLink", "src.m3uLinkD"], ["m3u-file", "file", "src.m3uFile", "src.m3uFileD"]] as [SourceKind, IconName, "src.xtream", "src.xtreamD"][]).map(([k, ic, l, d], i) => (
               <button key={k} className={`choice${i === 0 ? " first" : ""}`} onClick={() => pickType(k)}>
                 <span className="ico"><Icon name={ic} size={30} /></span>
+                <span><b>{t(l)}</b><span className="s">{t(d)}</span></span>
+              </button>
+            ))}
+          </div>
+          <h2 className="wz-group">{t("src.groupMedia")}</h2>
+          <div className="choice-grid">
+            {([["jellyfin", "src.jellyfin", "src.jellyfinD"], ["emby", "src.emby", "src.embyD"], ["plex", "src.plex", "src.plexD"], ["nas", "src.nas", "src.nasD"]] as const).map(([k, l, d]) => (
+              <button key={k} className="choice" onClick={() => pickType(k)}>
+                <ServerLogo kind={k} size={64} />
                 <span><b>{t(l)}</b><span className="s">{t(d)}</span></span>
               </button>
             ))}
@@ -191,18 +234,40 @@ export function Onboarding() {
       )}
       {step === "type" && err && <div className="alert err" style={{ maxWidth: "56rem", margin: "0 auto" }} role="alert">{err}</div>}
 
-      {step === "form" && (
+      {step === "find" && (
+        <FindStep onPick={pickFound} onManual={() => goManual(kind === "emby" ? "emby" : "jellyfin")} onNas={() => goManual("nas")} onPlex={() => goManual("plex")} />
+      )}
+
+      {step === "plex" && (
+        <>
+          <PlexStep preferMachineId={preferMachine} onCancel={() => setStep(origin)}
+            onChosen={(r) => { const base = { ...src, type: "plex" as const }; void submit({ ...base, server: r.server, username: r.username, password: r.password, name: src.name.trim() || r.name }); }} />
+          {err && <div className="alert err" style={{ maxWidth: "56rem", margin: "0 auto" }} role="alert">{err}</div>}
+        </>
+      )}
+
+      {step === "form" && (kind === "jellyfin" || kind === "emby") && (
+        <MediaConnectForm kind={kind} value={src} onChange={setSrc} busy={busy} err={err} onSubmit={() => void submit()} onBack={() => setStep(origin === "find" ? "find" : "type")}
+          onKind={(k) => { setKind(k); setSrc((x) => ({ ...x, type: k })); }} />
+      )}
+
+      {step === "libs" && savedId != null && (
+        <LibsStep source={{ ...src, id: savedId }}
+          onDone={async (libs) => { const row = await getSource(savedId); if (row) await saveSource({ ...row, libs }); setStep("sync"); }} />
+      )}
+
+      {step === "form" && !(kind === "jellyfin" || kind === "emby") && (
         <main onKeyDown={(e) => { if (e.key === "Enter" && !busy && (e.target as HTMLElement).tagName === "INPUT") void submit(); }}>
           <div>
             <div className="eyebrow">{t("src.step", { a: 2, b: 3 })}</div>
-            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "stalker" ? "src.stalker" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
+            <h1 style={{ marginTop: 8 }}>{t(kind === "xtream" ? "src.xtream" : kind === "stalker" ? "src.stalker" : kind === "plex" ? "src.plex" : kind === "nas" ? "src.nas" : kind === "m3u-link" ? "src.m3uLink" : "src.m3uFile")}</h1>
           </div>
           <SourceForm kind={kind as FormKind} value={src} onChange={setSrc} fileInfo={fileInfo}
             onPickFile={async (f) => { setFileText(await f.text()); setFileInfo(t("src.fileChosen", { n: f.name, k: Math.round(f.size / 1024) })); setSrc((s) => ({ ...s, m3uUrl: `file:${f.name}`, name: s.name || f.name.replace(/\.[^.]+$/, "") })); }} />
           {err && <div className="alert err" role="alert"><Icon name="alert" size={20} />{err}</div>}
           {busy && <div className="alert" role="status">{t("src.testing")}</div>}
           <div style={{ display: "flex", gap: 12 }}>
-            <button className="btn" onClick={() => setStep("type")}>{t("common.back")}</button>
+            <button className="btn" onClick={() => setStep(origin === "find" ? "find" : "type")}>{t("common.back")}</button>
             <button className="btn primary lg" disabled={busy} onClick={() => void submit()}>{t("src.connect")}</button>
           </div>
         </main>
@@ -231,7 +296,7 @@ export function Onboarding() {
         </main>
       )}
 
-      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : src.type === "stalker" ? "Stalker" : "M3U"} onRetry={() => { started.current = false; setStep("form"); }} onOpen={() => nav("/", { replace: true })} />}
+      {step === "sync" && <FirstSync name={src.name} kindLabel={src.type === "xtream" ? "Xtream Codes" : src.type === "stalker" ? "Stalker" : src.type === "jellyfin" ? "Jellyfin" : src.type === "emby" ? "Emby" : src.type === "plex" ? "Plex" : src.type === "nas" ? "NAS" : "M3U"} onRetry={() => { started.current = false; setStep(kind === "plex" ? "plex" : "form"); }} onOpen={() => nav("/", { replace: true })} />}
     </div>
   );
 }

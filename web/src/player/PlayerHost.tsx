@@ -38,7 +38,8 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
-import { stalkerCandidate, candidates, type Candidate } from "./resolve";
+import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
+import { isMediaType, type MediaApi, type ReportKind } from "@/net/mediaServer";
 import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
 import { AudioWatcher, nextAudioFallback, readAudioSample, revertToSilent } from "./audio";
@@ -327,6 +328,37 @@ export function PlayerHost() {
       }).catch(() => { if (!dead) { setError(true); setState("error"); } });
       return () => { dead = true; };
     }
+    if (source.type === "nas") {
+      // Partage NAS monté par le système : fichier servi par le proxy local (lecture par plages) ; reprise = historique local.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void nasCandidate(source, target).then((c) => {
+        if (dead) return;
+        if (!c) { setError(true); setState("error"); return; }
+        candRef.current = { list: [c], i: 0 };
+        void startCandidate(c);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
+    if (isMediaType(source.type)) {
+      // Serveur Jellyfin / Emby : adresse de lecture (jeton de session) construite à l'instant, reprise lue sur le serveur.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void mediaPlayback(source, target).then((p) => {
+        if (dead) return;
+        if (!p) { setError(true); setState("error"); return; }
+        candRef.current = { list: p.candidates, i: 0 };
+        resumeAtRef.current = p.resumeAt ?? null;
+        void startCandidate(p.candidates[0]!);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
     const list = candidates(source, target, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4, nativeHls: isTv() });
     candRef.current = { list, i: 0 };
     silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
@@ -397,6 +429,27 @@ export function PlayerHost() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target?.refId, target?.kind, target?.replay?.start, source?.id]);
+
+  // Serveur Jellyfin / Emby : état de lecture envoyé au serveur (début, progression toutes les 10 s, fin) pour que « Continuer à
+  // regarder » suive l'utilisateur sur ses autres appareils. Jamais bloquant : un rapport perdu n'affecte pas la lecture.
+  useEffect(() => {
+    if (!target || !source || !isMediaType(source.type) || target.kind === "live") return;
+    let dead = false;
+    let itemId: string | null = null;
+    let client: MediaApi | null = null;
+    const send = (k: ReportKind, paused: boolean) => {
+      if (!client || !itemId) return;
+      void client.report(k, itemId, videoRef.current?.currentTime ?? 0, paused);
+    };
+    void (async () => {
+      itemId = await mediaItemIdOf(source, target);
+      client = await mediaClientFor(source);
+      if (!dead) send("start", false);
+    })().catch(() => undefined);
+    const iv = setInterval(() => { const v = videoRef.current; if (v && !v.paused) send("progress", false); }, 10_000);
+    return () => { dead = true; clearInterval(iv); send("stop", true); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.refId, target?.kind, source?.id]);
 
   const saveHistory = useCallback(() => {
     const tg = usePlayer.getState().target;

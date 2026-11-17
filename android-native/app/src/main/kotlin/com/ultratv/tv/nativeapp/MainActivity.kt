@@ -791,6 +791,13 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
         screen(Routes.DOWNLOADS) {
             com.ultratv.tv.nativeapp.ui.downloads.DownloadsScreen(onPlay = { url, title -> nav.navigate(Routes.player(url, title)) })
         }
+        // « Mes bibliothèques » : lit la base et sonde brièvement chaque serveur, sans bloquer l'écran.
+        screen(Routes.LIBRARIES) {
+            com.ultratv.tv.nativeapp.ui.library.LibraryHubScreen(
+                onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
+                onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
+            )
+        }
         screen(Routes.FAVORITES) {
             if (simpleHome) com.ultratv.tv.nativeapp.ui.simple.SimpleFavoritesScreen(
                 onPlayChannel = { url, title -> nav.navigate(Routes.player(url, title)) },

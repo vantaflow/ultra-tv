@@ -45,6 +45,11 @@ export interface UltraTvBridge {
   recList?(): Promise<{ active: Array<{ id: string; bytes: number; path: string }>; finished: RecEvent[] }>;
   recDir?(): Promise<string>;
   recChooseDir?(): Promise<string | null>;
+  /** Partages réseau montés par le système (electron/nas.cjs) : choix du dossier, parcours borné (`probe` : racine seule), déclaration de la racine au proxy. */
+  discoverServers?(): Promise<Array<{ kind: "jellyfin" | "emby" | "plex"; name: string; address: string; id: string }>>;
+  nasChoose?(): Promise<string | null>;
+  nasScan?(root: string, probe?: boolean): Promise<{ id: string; files: Array<{ path: string; size: number; mtime: number }>; truncated: boolean }>;
+  nasRegister?(root: string): Promise<string | null>;
   recOpenDir?(): Promise<boolean>;
   recReveal?(path: string): Promise<boolean>;
   recOpen?(path: string): Promise<boolean>;
@@ -123,6 +128,10 @@ export interface ReqOptions {
    * ignoré par le navigateur).
    */
   headers?: Record<string, string>;
+  /** POST JSON (serveurs Jellyfin / Emby : connexion, rapports de lecture) ; GET par défaut. Relayé par le proxy Electron et le mode direct. */
+  post?: string;
+  /** En-tête `Accept` (Plex répond en XML sans `application/json`). Relayé tel quel par le proxy Electron et le mode direct. */
+  accept?: string;
 }
 
 /** En-têtes supplémentaires relayés par le proxy Electron / Cloudflare (liste fermée). */
@@ -176,7 +185,10 @@ export async function transportFetch(t: Transport, url: string, o: ReqOptions = 
   // Sans délai, un fournisseur qui n'envoie plus rien figeait la synchro indéfiniment (modes direct et proxy distant).
   const idle = idleSignal(o.signal, IDLE_TIMEOUT_MS);
   try {
-    const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers: requestHeaders(t, o) });
+    const headers = requestHeaders(t, o);
+    if (o.post !== undefined) headers["Content-Type"] = "application/json";
+    if (o.accept) headers["Accept"] = o.accept;
+    const res = await fetch(wrapUrl(t, url), { signal: idle.signal, headers, ...(o.post !== undefined ? { method: "POST", body: o.post } : {}) });
     if (!res.ok) { idle.stop(); throw new HttpError(res.status); }
     if (!res.body) { idle.stop(); return res; }
     // Corps en flux : le délai est réarmé à chaque morceau reçu (un gros fichier lent n'est pas coupé, un flux muet l'est).

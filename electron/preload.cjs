@@ -56,6 +56,12 @@ contextBridge.exposeInMainWorld("ultratv", {
   recOpen: (p) => ipcRenderer.invoke("ut:rec:open", String(p)),
   recDelete: (p) => ipcRenderer.invoke("ut:rec:delete", String(p)),
   recSetLabels: (l) => ipcRenderer.invoke("ut:rec:labels", l && typeof l === "object" ? { ...l } : null),
+  // Partages réseau montés par le système (nas.cjs) : le main parcourt le dossier et le déclare au proxy local.
+  nasChoose: () => ipcRenderer.invoke("ut:nas:choose"),
+  nasScan: (root, probe) => ipcRenderer.invoke("ut:nas:scan", String(root), !!probe),
+  // Détection des serveurs multimédia du réseau local (discovery.cjs).
+  discoverServers: () => ipcRenderer.invoke("ut:discover"),
+  nasRegister: (root) => ipcRenderer.invoke("ut:nas:register", String(root)),
   onRecEvent: (cb) => subscribe("ut:rec:event", cb),
 });
 

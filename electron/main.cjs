@@ -23,6 +23,10 @@ const { computeWindowFit } = require("./windowfit.cjs");
 const dnsMod = require("./dns.cjs");
 const trailer = require("./trailer.cjs");
 const recorderMod = require("./recorder.cjs");
+const nasMod = require("./nas.cjs");
+const discoveryMod = require("./discovery.cjs");
+// Partages réseau montés par le système (source « NAS ») : racines déclarées par le renderer, servies par le proxy local.
+const nasRegistry = nasMod.createRegistry();
 
 const APP_SCHEME = "app";
 const APP_HOST = "ultratv";
@@ -432,6 +436,27 @@ function registerIpc() {
     setRecDir(r.filePaths[0]);
     return recDir();
   });
+  // Partage réseau monté par le système : choix du dossier, parcours borné, déclaration de la racine (pour la lecture par le proxy).
+  handle("ut:nas:choose", async () => {
+    const w = win();
+    const r = await (w ? dialog.showOpenDialog(w, { properties: ["openDirectory"] }) : dialog.showOpenDialog({ properties: ["openDirectory"] }));
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0];
+  });
+  handle("ut:nas:register", (root) => nasRegistry.register(root));
+  // Serveurs Jellyfin / Emby / Plex du réseau local (UDP, 3 s) : jamais d'exception, liste vide si rien ne répond.
+  handle("ut:discover", () => discoveryMod.discover());
+  handle("ut:nas:scan", async (root, probe) => {
+    const id = nasRegistry.register(root);
+    if (!id) throw new Error("invalid-root");
+    try {
+      // probe : lecture du seul dossier racine (test à l'ajout de la source), sans parcourir tout le partage.
+      const out = await nasMod.scanRoot(nasMod.validRoot(root), probe ? { maxFolders: 1, maxFiles: 1 } : undefined);
+      return { id, files: out.files, truncated: out.truncated };
+    } catch {
+      // Jamais le chemin ni le message système dans l'erreur : un code seulement.
+      throw new Error("scan-failed");
+    }
+  });
   handle("ut:rec:open-dir", async () => {
     try {
       fs.mkdirSync(recDir(), { recursive: true });
@@ -624,6 +649,7 @@ if (!app.requestSingleInstanceLock()) {
     ffmpegPath = findFfmpeg({ resourcesPath: app.isPackaged ? process.resourcesPath : null });
     proxy = createProxyServer({
       ffmpeg: ffmpegPath,
+      nas: nasRegistry,
       allowedOrigin: ALLOWED_ORIGIN,
       lookup: resolver.lookup,
       onError: (code) => console.warn(`[ultra-tv] proxy error ${code}`),
