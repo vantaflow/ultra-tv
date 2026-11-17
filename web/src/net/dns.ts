@@ -102,7 +102,7 @@ export function chromiumScope(s: DnsSettings): "doh-endpoint" | "proxy-only" | "
 
 /** Nom d'hôte du fournisseur actif (pour « Tester ») ; jamais l'URL complète, qui contient des identifiants. */
 export function sourceHost(src: Pick<Source, "type" | "server" | "m3uUrl" | "stalkerApi"> | null | undefined): string | null {
-  if (!src) return null;
+  if (!src || src.type === "nas") return null;   // partage monté : un chemin, pas une adresse réseau
   const raw = src.type === "m3u" ? src.m3uUrl : src.type === "stalker" ? src.stalkerApi || src.server : src.server;
   if (!raw || raw.startsWith("file:")) return null;
   try {

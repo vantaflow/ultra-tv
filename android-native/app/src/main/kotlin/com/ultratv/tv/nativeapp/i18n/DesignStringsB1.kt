@@ -90,6 +90,13 @@ val DesignStrings.plexUnreachable get() = tx(R.string.dsb1_plex_unreach)
 val DesignStrings.plexRetry get() = tx(R.string.dsb1_plex_retry)
 val DesignStrings.plexPick get() = tx(R.string.dsb1_plex_pick)
 val DesignStrings.plexHint get() = tx(R.string.dsb1_plex_hint)
+// Partage réseau (NAS, SMB) : « NAS » et « SMB » sont des sigles, jamais traduits
+val DesignStrings.formSubNas get() = tx(R.string.dsb1_nas_sub)
+val DesignStrings.fieldNasUrl get() = tx(R.string.dsb1_nas_url)
+val DesignStrings.fieldNasUser get() = tx(R.string.dsb1_nas_user)
+val DesignStrings.nasChecking get() = tx(R.string.dsb1_nas_checking)
+val DesignStrings.nasFailed get() = tx(R.string.dsb1_nas_failed)
+val DesignStrings.nasHint get() = tx(R.string.dsb1_nas_hint)
 
 // Fiche film / série (en-tête plein écran, saisons à gauche, épisodes à droite)
 val DesignStrings.typeMovie get() = tx(R.string.dsb1_type_movie)

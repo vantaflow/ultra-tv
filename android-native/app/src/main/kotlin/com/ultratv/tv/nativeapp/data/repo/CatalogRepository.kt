@@ -49,6 +49,7 @@ class CatalogRepository @Inject constructor(
     private val stalker: com.ultratv.tv.nativeapp.data.stalker.StalkerClient,
     private val profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val mediaServer: com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient = com.ultratv.tv.nativeapp.data.mediaserver.MediaServerClient(okhttp3.OkHttpClient(), { "ultra-tv" }),
+    private val nas: com.ultratv.tv.nativeapp.data.nas.NasClient = com.ultratv.tv.nativeapp.data.nas.NasClient(com.ultratv.tv.nativeapp.data.nas.NasSmb()) { null },
 ) {
 
     fun heroSeriesList(pid: Long, limit: Int): Flow<List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>> = seriesDao.observeHeroes(pid, limit)
@@ -178,6 +179,8 @@ class CatalogRepository @Inject constructor(
             "STALKER" -> stalker.episodes(p, s).ifEmpty { return }
             // Serveur Jellyfin / Emby : épisodes de la série (toutes saisons), lus à l'ouverture de la fiche.
             "JELLYFIN", "EMBY", "PLEX" -> mediaServer.episodes(p, s.remoteId, s.id).ifEmpty { return }
+            // Partage NAS : épisodes reconnus par nom de fichier lors du dernier parcours du partage.
+            "NAS" -> nas.episodes(p, s.remoteId, s.id).ifEmpty { return }
             else -> return
         }
         episodesFetchedAt[seriesId] = now

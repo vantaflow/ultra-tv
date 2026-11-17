@@ -18,6 +18,7 @@ const https = require("node:https");
 const crypto = require("node:crypto");
 const zlib = require("node:zlib");
 const { pipeline } = require("node:stream");
+const nasMod = require("./nas.cjs");
 const { parseTranscodePath, serveTranscode, serveStreamInfo, serveSubtitle } = require("./transcode.cjs");
 
 const MAX_MANIFEST_BYTES = 2 * 1024 * 1024;
@@ -271,7 +272,7 @@ function decodeBody(buf, encoding) {
   return null;
 }
 
-function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = null } = {}) {
+function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = null, nas = null } = {}) {
   if (!allowedOrigin) throw new Error("allowedOrigin requis");
   const secret = token || crypto.randomBytes(24).toString("base64url");
   const report = typeof onError === "function" ? onError : () => {};
@@ -464,6 +465,18 @@ function createProxyServer({ allowedOrigin, token, onError, lookup, ffmpeg = nul
       parsedUrl = new URL(req.url, "http://127.0.0.1");
     } catch {
       return fail(res, req, 400);
+    }
+    // Partage réseau monté par le système : /<token>/nas/<racine>/<b64 du chemin> (voir nas.cjs). Fichiers vidéo des racines déclarées seulement.
+    if (nas) {
+      const np = nasMod.parseNasPath(parsedUrl.pathname);
+      if (np) {
+        if (!tokenMatches(secret, np.token)) return fail(res, req, 403);
+        if (req.method === "OPTIONS") { res.writeHead(204, { ...corsHeaders(req), "Content-Length": "0" }); return res.end(); }
+        if (req.method !== "GET" && req.method !== "HEAD") return fail(res, req, 405);
+        const abs = nas.resolve(np.id, np.rel);
+        if (!abs) return fail(res, req, 404);
+        return nasMod.serveFile(req, res, abs, corsHeaders(req));
+      }
     }
     // Conversion audio (AC-3 / DTS → AAC) : /<token>/tx/<b64>?ss=…, seulement si ffmpeg est disponible.
     const tx = ffmpeg ? parseTranscodePath(parsedUrl.pathname, parsedUrl.search) : null;

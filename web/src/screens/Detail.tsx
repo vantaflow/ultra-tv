@@ -67,6 +67,8 @@ function useInfo<T>(source: Source, kind: "vod" | "series", id: number): { info:
         } catch { if (!dead && !hit) setState({ info: null, error: true }); }
         return;
       }
+      // Partage NAS : épisodes rangés à la synchro (aucune fiche distante) ; titre, affiche et résumé viennent du repli TMDB de l'appli.
+      if (source.type === "nas") { if (kind === "vod" && !dead && !hit) setState({ info: {} as T, error: false }); return; }
       if (hit && Date.now() - hit.fetchedAt < WEEK) return;
       if (source.type === "stalker") {
         // Portail Stalker : pas de fiche détaillée ; épisodes lus sur le portail (saisons, ou tableau `series`).

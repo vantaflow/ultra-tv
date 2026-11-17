@@ -5,6 +5,7 @@ import { db } from "@/db/db";
 import { isStalkerLink, parseStalkerLink, stalkerLink, type StalkerClient } from "@/net/stalker";
 import { MediaClient, isMediaLink, isMediaType, numericId, parseMediaLink, resumeSeconds, type MediaApi } from "@/net/mediaServer";
 import { PlexClient } from "@/net/plex";
+import { isNasLink, nasPlayUrl, parseNasLink } from "@/net/nas";
 import { currentTransport } from "@/net/transport";
 import { episodeUrl, liveUrl, movieUrl, timeshiftUrl } from "@/net/xtream";
 import type { Format } from "./engine";
@@ -40,7 +41,7 @@ export interface Candidate { url: string; format: Format; label: string }
 
 export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m3u8" | "ts"; preferMp4: boolean; nativeHls?: boolean }): Candidate[] {
   // Portail Stalker : le lien n'existe qu'au moment de jouer (voir stalkerCandidate, asynchrone).
-  if (source.type === "stalker" || isMediaType(source.type)) return [];
+  if (source.type === "stalker" || isMediaType(source.type) || source.type === "nas") return [];
   if (t.protectedStream) return [];
   const c = credsOf(source);
   const out: Candidate[] = [];
@@ -171,4 +172,29 @@ export async function mediaPlayback(source: Source, t: PlayTarget): Promise<Medi
     ],
     resumeAt: resume && resume > 20 ? resume : undefined,
   };
+}
+
+// ---------------------------------------------------------------- partage NAS (bureau)
+
+/** Chemin relatif (dans le dossier monté) du fichier à jouer : lien de la cible, sinon relu dans le catalogue (film) ou la fiche de la série (épisode). */
+export async function nasRelOf(source: Source, t: PlayTarget): Promise<string | null> {
+  if (isNasLink(t.url)) return parseNasLink(t.url);
+  if (t.kind === "movie") {
+    const url = (await db.movies.where("[sourceId+streamId]").equals([t.cid, t.refId]).first())?.url;
+    return url ? parseNasLink(url) : null;
+  }
+  if (t.kind !== "episode" || t.seriesId == null) return null;
+  const info = (await db.details.get(`series:${t.sourceId}:${t.seriesId}`))?.json as { media?: Array<{ id: number; url: string }> } | undefined;
+  const hit = info?.media?.find((e) => e.id === t.refId)?.url;
+  return hit ? parseNasLink(hit) : null;
+}
+
+/** Lecture d'un fichier du partage : le fichier d'origine servi par le proxy local, par plages (recherche instantanée). */
+export async function nasCandidate(source: Source, t: PlayTarget): Promise<Candidate | null> {
+  const rel = await nasRelOf(source, t);
+  if (!rel) return null;
+  const url = await nasPlayUrl(source.server.trim(), rel);
+  if (!url) return null;
+  const ext = rel.slice(rel.lastIndexOf(".") + 1).toUpperCase();
+  return { url, format: "native", label: ext };
 }

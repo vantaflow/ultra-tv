@@ -508,6 +508,29 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Ajoute un partage NAS (SMB) : connexion vérifiée d'abord (sans quoi rien n'est enregistré et [failedText] est affiché), puis premier
+     * parcours du partage. Jamais proposé au partage cloud : le mot de passe reste sur cet appareil.
+     */
+    fun addNasAndSync(name: String, address: String, user: String, password: String, failedText: String, onDone: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            _syncing.value = true
+            try {
+                val id = repo.addNas(name, address, user, password)
+                makeDefaultIfNone(id)
+                sync.request(id, force = true)
+                onDone(true)
+            } catch (c: kotlinx.coroutines.CancellationException) {
+                throw c
+            } catch (t: Throwable) {
+                com.ultratv.tv.nativeapp.ui.common.Toaster.err(failedText)
+                onDone(false)
+            } finally {
+                _syncing.value = false
+            }
+        }
+    }
+
     /** Télémétrie de la première synchro d'une source Stalker : début, fin, type d'erreur (jamais d'identifiants). */
     private fun watchStalkerSync(id: Long) {
         viewModelScope.launch {

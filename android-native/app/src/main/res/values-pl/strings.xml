@@ -523,6 +523,12 @@
     <string name="dsb1_plex_retry">Nowy kod</string>
     <string name="dsb1_plex_pick">Wybierz serwer Plex</string>
     <string name="dsb1_plex_hint">Odtwarzanie jest bezpośrednie, a Twój postęp zapisuje się na serwerze. Token logowania pozostaje zaszyfrowany na tym urządzeniu.</string>
+    <string name="dsb1_nas_sub">Udostępniony folder w Twojej sieci (NAS, komputer, router): jego pliki wideo stają się filmami i serialami</string>
+    <string name="dsb1_nas_url">Adres udziału</string>
+    <string name="dsb1_nas_user">Nazwa użytkownika (puste = gość)</string>
+    <string name="dsb1_nas_checking">Łączenie z udziałem…</string>
+    <string name="dsb1_nas_failed">Nie udało się otworzyć udziału. Sprawdź adres (smb://host/udzial), nazwę użytkownika i hasło.</string>
+    <string name="dsb1_nas_hint">SMB 2 i 3. Pliki są odtwarzane bezpośrednio z udziału, bez kopiowania. Dane logowania pozostają zaszyfrowane na tym urządzeniu.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SERIAL</string>
     <string name="dsb1_director_label">Reżyser</string>

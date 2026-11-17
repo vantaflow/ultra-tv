@@ -10,6 +10,7 @@ import com.ultratv.tv.nativeapp.i18n.sportSectionLabel
 import com.ultratv.tv.nativeapp.i18n.kindStalker
 import com.ultratv.tv.nativeapp.i18n.mediaFailed
 import com.ultratv.tv.nativeapp.i18n.plexPick
+import com.ultratv.tv.nativeapp.i18n.nasFailed
 import com.ultratv.tv.nativeapp.i18n.guideCheckMessage
 import com.ultratv.tv.nativeapp.i18n.guideCustomLabel
 import com.ultratv.tv.nativeapp.i18n.guideCustomOption
@@ -125,7 +126,7 @@ import kotlinx.coroutines.withContext
 import java.text.NumberFormat
 import com.ultratv.tv.nativeapp.ui.profile.TechnicalGate
 
-private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
+private enum class OpenDialog { NONE, ADD_CHOOSER, XTREAM, M3U_URL, STALKER, JELLYFIN, EMBY, PLEX, NAS, CLOUD, PHONE, REMOTE, WORKER, SOURCE_ACTIONS, SOURCE_GUIDE, WORKER_URL, SHARE, RENAME_DEVICE }
 private enum class Rub(val icon: String) {
     SOURCES("M3 5h18v12H3zM8 21h8M12 17v4"), SYNC("M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"), CATEGORIES("M4 6h16M4 12h16M4 18h10"),
     DISPLAY("M4 6h16M4 12h16M4 18h16"), PLAYBACK("M7 4v16l13-8z"), PARENTAL("M6 10V8a6 6 0 0 1 12 0v2M5 10h14v11H5z"),
@@ -307,11 +308,11 @@ internal fun rubFollowsFocus(modalOpen: Boolean): Boolean =
 internal fun hostOnly(baseUrl: String): String = runCatching { java.net.URI(baseUrl).let { "${it.scheme}://${it.host}" } }.getOrDefault("")
 
 /** Types de source pris en charge ; un type hérité inconnu reste affichable et supprimable. */
-internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL", "STALKER", "JELLYFIN", "EMBY", "PLEX")
+internal val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "M3U_LOCAL", "STALKER", "JELLYFIN", "EMBY", "PLEX", "NAS")
 
 private const val CUSTOM_GUIDE_KEY = "__custom__"
 
-private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; "JELLYFIN" -> "Jellyfin"; "EMBY" -> "Emby"; "PLEX" -> "Plex"; else -> null }
+private fun kindName(S: com.ultratv.tv.nativeapp.i18n.WizardStrings, kind: String) = when (kind) { "XTREAM" -> S.kindXtream; "M3U" -> S.kindM3u; "M3U_LOCAL" -> S.kindM3uFile; "JELLYFIN" -> "Jellyfin"; "EMBY" -> "Emby"; "PLEX" -> "Plex"; "NAS" -> "NAS (SMB)"; else -> null }
 
 // ───────────────────────── Sources ─────────────────────────
 
@@ -382,7 +383,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             FocusSurface(onClick = { selected = p; dialog = OpenDialog.SOURCE_ACTIONS }, shape = RoundedCornerShape(26.design), bg = Ux.SurfaceDeep, ringWidth = 0.design, focusedScale = 1.0f, modifier = Modifier.fillMaxWidth().height(112.design)) { f ->
                 Row(Modifier.fillMaxSize().padding(horizontal = 32.design), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(60.design).clip(RoundedCornerShape(16.design)).background(if (p.active) Ux.Accent else Ux.Surface2), contentAlignment = Alignment.Center) {
-                        DIcon(when (p.kind) { "XTREAM", "STALKER", "JELLYFIN", "EMBY", "PLEX" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, if (p.active) Ux.OnAccent else Ux.White)
+                        DIcon(when (p.kind) { "XTREAM", "STALKER", "JELLYFIN", "EMBY", "PLEX", "NAS" -> Icons.Monitor; "M3U_LOCAL" -> Icons.File; else -> Icons.List }, 30.design, if (p.active) Ux.OnAccent else Ux.White)
                     }
                     Spacer(Modifier.width(24.design))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.design)) {
@@ -454,7 +455,7 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
     }
 
     when (dialog) {
-        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.JELLYFIN to "Jellyfin", OpenDialog.EMBY to "Emby", OpenDialog.PLEX to "Plex", OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
+        OpenDialog.ADD_CHOOSER -> ChoiceDialog(D.addSource, listOf(OpenDialog.XTREAM to S.wiz.cardXtream, OpenDialog.STALKER to D.kindStalker, OpenDialog.JELLYFIN to "Jellyfin", OpenDialog.EMBY to "Emby", OpenDialog.PLEX to "Plex", OpenDialog.NAS to "NAS (SMB)", OpenDialog.M3U_URL to S.wiz.cardM3uUrl, OpenDialog.NONE to S.wiz.cardM3uFile, OpenDialog.CLOUD to (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current.fromCloud else D.cardCloud))
             // « Depuis le téléphone » : pour TV et box seulement (sur un téléphone, on est déjà sur l'appareil qui saisirait).
             + (if (com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) emptyList() else listOf(OpenDialog.PHONE to D.cardPhone)), null,
             onPick = { k -> if (k == OpenDialog.NONE) { dialog = OpenDialog.NONE; pickFile.launchOrToast(arrayOf("*/*"), D.filePickerUnavailable) } else { if (k == OpenDialog.PLEX) vm.startPlexLink(); dialog = k } }, onDismiss = { dialog = OpenDialog.NONE })
@@ -504,13 +505,25 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel) {
             if (choosing != null) ChoiceDialog(D.plexPick, choosing.servers.map { it to it.name }, null, onPick = { vm.choosePlexServer(it) }, onDismiss = closePlex)
             else PlexDialog(plexUi, onDismiss = closePlex, onRetry = { vm.startPlexLink() })
         }
+        // Partage réseau NAS : connexion vérifiée avant l'ajout, le dialogue reste ouvert jusqu'au verdict.
+        OpenDialog.NAS -> {
+            var checking by remember { mutableStateOf(false) }
+            NasDialog(
+                onDismiss = { dialog = OpenDialog.NONE },
+                busy = checking,
+                onBack = { dialog = OpenDialog.NONE },
+            ) { n, addr, user, pw ->
+                checking = true
+                vm.addNasAndSync(n, addr, user, pw, D.nasFailed) { ok -> checking = false; if (ok) dialog = OpenDialog.NONE }
+            }
+        }
         OpenDialog.WORKER_URL -> WorkerUrlDialog(workerBase, onSave = { vm.saveWorkerBase(it); dialog = OpenDialog.NONE }, onDismiss = { dialog = OpenDialog.NONE })
         OpenDialog.SOURCE_ACTIONS -> selected?.let { p ->
             val shareable = paired && (p.kind == "XTREAM" || p.kind == "M3U" || p.kind == "STALKER")
             val linked = vm.cloudIdOf(p.id) != null
             val supported = p.kind in SUPPORTED_KINDS
             val opts = buildList {
-                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow); if (!com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(p.kind)) add("guide" to D.sourceGuide) }
+                if (supported) { add("default" to D.setDefault); add("sync" to D.syncNow); if (!com.ultratv.tv.nativeapp.data.mediaserver.MediaServer.isMediaKind(p.kind) && !com.ultratv.tv.nativeapp.data.nas.Nas.isNasKind(p.kind)) add("guide" to D.sourceGuide) }
                 if (supported && shareable && !linked) add("share" to C.shareSource)
                 if (supported && shareable && linked) { add("share" to C.editSharing); add("stop" to C.stopSharing) }
                 add("delete" to D.deleteSource)

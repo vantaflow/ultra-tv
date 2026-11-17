@@ -530,6 +530,12 @@
     <string name="dsb1_plex_retry">Nouveau code</string>
     <string name="dsb1_plex_pick">Choisissez un serveur Plex</string>
     <string name="dsb1_plex_hint">La lecture est directe et votre progression est enregistrée sur le serveur. Le jeton de connexion reste chiffré sur cet appareil.</string>
+    <string name="dsb1_nas_sub">Un dossier partagé de votre réseau (NAS, PC, box) : ses fichiers vidéo deviennent des films et des séries</string>
+    <string name="dsb1_nas_url">Adresse du partage</string>
+    <string name="dsb1_nas_user">Nom d’utilisateur (vide = invité)</string>
+    <string name="dsb1_nas_checking">Connexion au partage…</string>
+    <string name="dsb1_nas_failed">Impossible d’ouvrir le partage. Vérifiez l’adresse (smb://hôte/partage), le nom d’utilisateur et le mot de passe.</string>
+    <string name="dsb1_nas_hint">SMB 2 et 3. Les fichiers sont lus directement depuis le partage, sans copie. Les identifiants restent chiffrés sur cet appareil.</string>
     <string name="dsb1_type_movie">FILM</string>
     <string name="dsb1_type_series">SÉRIE</string>
     <string name="dsb1_director_label">Réalisateur</string>

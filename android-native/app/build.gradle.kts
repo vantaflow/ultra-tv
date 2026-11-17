@@ -288,6 +288,8 @@ dependencies {
     implementation(libs.okhttp)
     // DNS personnalisé (Réglages › Lecture › DNS) : DNS-over-HTTPS, Apache-2.0 comme OkHttp.
     implementation(libs.okhttp.dnsoverhttps)
+    // Partages réseau NAS (SMB 2/3) : smbj, Apache-2.0 (dépendances : Bouncy Castle — licence MIT, SLF4J — MIT, mbassador — MIT, asn-one — Apache-2.0).
+    implementation(libs.smbj)
 
     // Tests — runs on the local JVM with Robolectric for Android types we
     // can't easily strip out (android.util.Base64).

@@ -52,7 +52,7 @@ object SyncPolicy {
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
             }
             // Serveur Jellyfin / Emby : films et séries (bibliothèques indexées dans le catalogue local) ; ni direct ni guide.
-            "JELLYFIN", "EMBY", "PLEX" -> {
+            "JELLYFIN", "EMBY", "PLEX", "NAS" -> {
                 if (force || stale(p.lastVodSyncAt, ttl.vodMs)) parts += SyncPart.VOD
                 if (force || stale(p.lastSeriesSyncAt, ttl.seriesMs)) parts += SyncPart.SERIES
             }

@@ -68,6 +68,11 @@ import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
 import com.ultratv.tv.nativeapp.i18n.fieldMac
 import com.ultratv.tv.nativeapp.i18n.fieldMediaKey
+import com.ultratv.tv.nativeapp.i18n.fieldNasUrl
+import com.ultratv.tv.nativeapp.i18n.fieldNasUser
+import com.ultratv.tv.nativeapp.i18n.formSubNas
+import com.ultratv.tv.nativeapp.i18n.nasChecking
+import com.ultratv.tv.nativeapp.i18n.nasHint
 import com.ultratv.tv.nativeapp.i18n.fieldMediaPass
 import com.ultratv.tv.nativeapp.i18n.fieldMediaUrl
 import com.ultratv.tv.nativeapp.i18n.fieldMediaUser
@@ -605,5 +610,38 @@ fun PlexDialog(state: PlexUi, onDismiss: () -> Unit, onRetry: () -> Unit) {
             else -> Text(D.mediaChecking, fontFamily = Manrope, fontSize = 22.spx, color = Ux.Text3, maxLines = 1)
         }
         Text(D.plexHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
+    }
+}
+
+/**
+ * Partage réseau NAS (SMB) : adresse `smb://hôte/partage[/dossier]`, identifiant et mot de passe (vides = invité). Le dialogue reste
+ * ouvert pendant la connexion ([busy]) et se ferme quand l'appelant a fini (échec : message, le dialogue reste ouvert).
+ */
+@Composable
+fun NasDialog(onDismiss: () -> Unit, busy: Boolean = false, onBack: (() -> Unit)? = null, onSubmit: (name: String, address: String, user: String, pass: String) -> Unit) {
+    var name by remember { mutableStateOf("") }
+    var url by remember { mutableStateOf("") }
+    var user by remember { mutableStateOf("") }
+    var pass by remember { mutableStateOf("") }
+    val S = LocalStrings.current
+    val D = LocalDs.current
+    val parsed = com.ultratv.tv.nativeapp.data.nas.Nas.parseAddress(url)
+    AddProviderDialog(
+        title = "NAS (SMB)",
+        subtitle = D.formSubNas,
+        icon = Icons.Monitor,
+        onDismiss = onDismiss,
+        onSubmit = { if (!busy) onSubmit(name, url.trim(), user.trim(), pass) },
+        canSubmit = parsed != null && !busy,
+        submitLabel = if (busy) D.nasChecking else null,
+        onBack = onBack,
+    ) {
+        FormField(S.fieldNameOptional, name, { name = it }, placeholder = D.formNamePh, testTag = "field-name")
+        FormField(D.fieldNasUrl, url, { url = it }, keyboardType = KeyboardType.Uri,
+            placeholder = "smb://192.168.1.20/video", autoFocus = true, required = true,
+            error = if (url.isBlank() || parsed != null) null else S.wiz.invalidUrl, testTag = "field-url")
+        FormField(D.fieldNasUser, user, { user = it }, testTag = "field-user")
+        FormField(D.fieldMediaPass, pass, { pass = it }, password = true, last = true, placeholder = "••••••••", testTag = "field-pass")
+        Text(D.nasHint, fontFamily = Manrope, fontSize = 20.spx, color = Ux.Text3, maxLines = 3)
     }
 }

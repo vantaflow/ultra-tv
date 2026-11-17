@@ -518,6 +518,12 @@
     <string name="dsb1_plex_retry">Mã mới</string>
     <string name="dsb1_plex_pick">Chọn máy chủ Plex</string>
     <string name="dsb1_plex_hint">Phát trực tiếp và tiến độ xem của bạn được lưu trên máy chủ. Mã thông báo đăng nhập luôn được mã hóa trên thiết bị này.</string>
+    <string name="dsb1_nas_sub">Một thư mục chia sẻ trong mạng của bạn (NAS, máy tính, router): các tệp video trở thành phim và series</string>
+    <string name="dsb1_nas_url">Địa chỉ thư mục chia sẻ</string>
+    <string name="dsb1_nas_user">Tên người dùng (để trống = khách)</string>
+    <string name="dsb1_nas_checking">Đang kết nối với thư mục chia sẻ…</string>
+    <string name="dsb1_nas_failed">Không mở được thư mục chia sẻ. Kiểm tra địa chỉ (smb://host/share), tên người dùng và mật khẩu.</string>
+    <string name="dsb1_nas_hint">SMB 2 và 3. Tệp được phát trực tiếp từ thư mục chia sẻ, không sao chép. Thông tin đăng nhập luôn được mã hóa trên thiết bị này.</string>
     <string name="dsb1_type_movie">PHIM</string>
     <string name="dsb1_type_series">SERIES</string>
     <string name="dsb1_director_label">Đạo diễn</string>
