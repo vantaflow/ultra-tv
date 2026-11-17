@@ -57,7 +57,8 @@ class LeagueRepository @Inject constructor(private val api: ExtMetaApi) {
         load("t/$league", "sports/league?id=$league&view=table", TABLE_MS, now, LeagueParser::table)
 
     suspend fun sheet(matchId: String, finished: Boolean, now: Long = System.currentTimeMillis()) =
-        load("m/$matchId", "sports/match?id=$matchId", if (finished) SHEET_DONE_MS else SHEET_LIVE_MS, now, LeagueParser::sheet)
+        // L'identifiant est opaque (« 123 », « fd-123 », « jo-2026-12 »…) : jamais validé comme un nombre, seulement encodé.
+        load("m/$matchId", "sports/match?id=${java.net.URLEncoder.encode(matchId, "UTF-8")}",if (finished) SHEET_DONE_MS else SHEET_LIVE_MS, now, LeagueParser::sheet)
 
     companion object {
         const val LIVE_MS = 60_000L

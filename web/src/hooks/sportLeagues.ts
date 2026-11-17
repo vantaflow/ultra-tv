@@ -126,7 +126,7 @@ export function useSheet(matchId: string | null, finished: boolean): { loading: 
     if (!matchId || !paired || !cloudAvailable()) { setState({ id: matchId, sheet: null, loading: false }); return; }
     let dead = false;
     setState({ id: matchId, sheet: null, loading: true });
-    void fetchCached(`m/${matchId}`, `match?id=${matchId}`, finished ? SHEET_DONE_MS : SHEET_LIVE_MS, parseSheet).then((r) => {
+    void fetchCached(`m/${matchId}`, `match?id=${encodeURIComponent(matchId)}`, finished ? SHEET_DONE_MS : SHEET_LIVE_MS, parseSheet).then((r) => {
       if (!dead) setState({ id: matchId, sheet: r.status === "ok" ? r.value : null, loading: false });
     });
     return () => { dead = true; };

@@ -29,9 +29,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Onglets d'une ligue. */
-enum class LeagueTab { RESULTS, FIXTURES, TABLE }
-
 enum class LeagueStatus { LOADING, OK, UNAVAILABLE, NOT_PAIRED }
 
 /** Feuille de match ouverte : chargement, puis contenu (null = indisponible). */
@@ -43,7 +40,6 @@ data class LeaguesState(
     val prefs: LeaguePrefs = LeaguePrefs.DEFAULT,
     val noSpoiler: Boolean = false,
     val selected: String? = null,
-    val tab: LeagueTab = LeagueTab.RESULTS,
     val status: LeagueStatus = LeagueStatus.LOADING,
     val stale: Boolean = false,
     val matches: List<LeagueMatch> = emptyList(),
@@ -65,7 +61,6 @@ class LeaguesViewModel @Inject constructor(
     private val profiles: ProfileRepository,
 ) : ViewModel() {
     private val selected = MutableStateFlow<String?>(null)
-    private val tab = MutableStateFlow(LeagueTab.RESULTS)
     private val revealed = MutableStateFlow(emptySet<String>())
     private val revealedTables = MutableStateFlow(emptySet<String>())
 
@@ -103,19 +98,19 @@ class LeaguesViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to Data(LeagueStatus.LOADING, false, emptyList()))
 
-    /** Classement : lu seulement quand l'onglet est ouvert (et, sans spoiler, une fois affiché). */
-    private val table = combine(effective, tab, noSpoiler, revealedTables) { e, t, ns, rt -> Triple(e.second, t, ns to rt) }
+    /** Classement de la ligue affichée : lu (mémorisé 6 h) sauf, en mode sans spoiler, tant qu'on ne l'a pas affiché. */
+    private val table = combine(effective, noSpoiler, revealedTables) { e, ns, rt -> Triple(e.second, ns, rt) }
         .distinctUntilChanged()
-        .flatMapLatest { (key, t, spoiler) ->
+        .flatMapLatest { (key, ns, rt) ->
             flow {
-                if (key == null || t != LeagueTab.TABLE || (spoiler.first && key !in spoiler.second)) { emit(key to null); return@flow }
+                if (key == null || (ns && key !in rt)) { emit(key to null); return@flow }
                 emit(key to null)
                 emit(key to (repo.table(key) as? LeagueResult.Ok)?.value)
             }
         }
 
-    val state: StateFlow<LeaguesState> = combine(prefs, noSpoiler, data, tab, table) { p, ns, d, t, tb ->
-        LeaguesState(p, ns, d.first, t, d.second.status, d.second.stale, d.second.matches, tb.second.takeIf { tb.first == d.first })
+    val state: StateFlow<LeaguesState> = combine(prefs, noSpoiler, data, table) { p, ns, d, tb ->
+        LeaguesState(p, ns, d.first, d.second.status, d.second.stale, d.second.matches, tb.second.takeIf { tb.first == d.first })
     }.combine(revealed) { s, r -> s.copy(revealed = r) }
         .combine(revealedTables) { s, r -> s.copy(revealedTables = r) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LeaguesState())
@@ -123,8 +118,7 @@ class LeaguesViewModel @Inject constructor(
     private val _sheet = MutableStateFlow<SheetState?>(null)
     val sheet: StateFlow<SheetState?> = _sheet
 
-    fun select(key: String) { selected.value = key; tab.value = LeagueTab.RESULTS }
-    fun selectTab(t: LeagueTab) { tab.value = t }
+    fun select(key: String) { selected.value = key }
 
     fun reveal(id: String) = revealed.update { it + id }
     fun revealTable(key: String) = revealedTables.update { it + key }

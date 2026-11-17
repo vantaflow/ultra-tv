@@ -84,7 +84,8 @@ const https = (v: unknown): string | null => { const s = str(v); return s && s.s
 
 export function parseMatch(o: unknown): LeagueMatch | null {
   if (!isObj(o)) return null;
-  const id = str(o.i);
+  // Identifiant opaque : chaîne (« fd-123 », « jo-2026-12 ») ou nombre (TheSportsDB) ; jamais validé comme un nombre.
+  const id = str(o.i) ?? (typeof o.i === "number" && Number.isFinite(o.i) ? String(o.i) : null);
   if (!id) return null;
   const st = o.st;
   return {
