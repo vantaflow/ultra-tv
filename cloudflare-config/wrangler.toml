@@ -24,6 +24,11 @@ directory = "./public"
 #   wrangler d1 create ultratv-telemetry   (puis coller le database_id ci-dessous)
 #   wrangler d1 migrations apply ultratv-telemetry --remote
 
+# Workers AI : traduction automatique des alertes (modèle m2m100, quota gratuit quotidien). Absente en local et en
+# test : les alertes gardent alors seulement les traductions saisies.
+[ai]
+binding = "AI"
+
 # Purge quotidienne des lignes de télémétrie expirées (journaux 7 j, plantages 30 j, relevés anonymes 180 j).
 [triggers]
 crons = ["17 3 * * *"]

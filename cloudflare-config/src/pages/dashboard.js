@@ -2,7 +2,7 @@
 import { KOFI_URL, LIBERAPAY_URL } from "../donate.js";
 import { escapeHtml as e } from "../http.js";
 import { SITE_DICT } from "../i18n/site.js";
-import { displayUrl, maskMac, xtreamCredsOf } from "../store.js";
+import { displayUrl, maskMac, xtreamCredsOf, MEDIA_KINDS } from "../store.js";
 import { ico, notice } from "../ui/components.js";
 import { ago, frDate } from "../ui/format.js";
 import { shell } from "../ui/layout.js";
@@ -79,7 +79,9 @@ ${p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted">${e(t.
 <div class="actions">${sh.form}
 ${p.managed === "reseller"
     ? `<span class="muted small">${e(t.srcs.resellerCredsNote)}</span>`
-    : `${p.kind === "STALKER"
+    : `${MEDIA_KINDS.includes(p.kind)
+    ? `<span class="muted small">${e(t.srcs.mediaNoLink)}</span>`
+    : p.kind === "STALKER"
     ? `<span class="muted small">${e(t.srcs.stalkerNoLink)}</span>`
     : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">${e(t.srcs.showLink)}</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>`}</div></article>`;
@@ -95,7 +97,19 @@ ${d.edition === "pro" ? licenseLine(d.license, Date.now(), lang) : ""}
   const msg = (err && dMsg.err[err] && notice("err", dMsg.err[err])) || (ok && dMsg.ok[ok] && notice("ok", dMsg.ok[ok])) || "";
 
   const cJs = t.clientJs;
+  const plexJs = `(function(){var go=document.getElementById('plex-go');if(!go)return;var st=document.getElementById('plex-st'),list=document.getElementById('plex-list'),add=document.getElementById('plex-add'),timer=null;
+function post(p){return fetch(p,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body:'csrf='+encodeURIComponent(${JSON.stringify(csrf)})}).then(function(r){if(!r.ok)throw new Error(String(r.status));return r.json();});}
+function fail(){clearInterval(timer);timer=null;go.disabled=false;st.textContent=${JSON.stringify(t.add.mPlexFail)};}
+function show(servers){clearInterval(timer);timer=null;go.disabled=false;list.querySelectorAll('label').forEach(function(l){l.remove();});
+ if(!servers.length){st.textContent=${JSON.stringify(t.add.mPlexNone)};return;}st.textContent='';
+ servers.forEach(function(s,i){var l=document.createElement('label'),r=document.createElement('input');r.type='radio';r.name='server';r.value=s.id;r.required=true;if(i===0)r.checked=true;l.appendChild(r);l.appendChild(document.createTextNode(' '+s.name+(s.owned?'':' ('+${JSON.stringify(t.add.mPlexShared)}+')')));list.appendChild(l);});
+ list.hidden=false;add.hidden=false;}
+go.addEventListener('click',function(){var w=window.open('about:blank','plexauth');go.disabled=true;st.textContent=${JSON.stringify(t.add.mPlexWaiting)};list.hidden=true;add.hidden=true;
+ post('/plex/pin').then(function(j){if(!j.auth)throw new Error('pin');if(w)w.location=j.auth;else window.open(j.auth,'plexauth');var n=0;
+  timer=setInterval(function(){if(++n>300)return fail();post('/plex/check').then(function(c){if(c.state==='ok')show(c.servers||[]);else if(c.state==='expired')fail();}).catch(function(){});},3000);
+ }).catch(function(){if(w)w.close();fail();});});})();`;
   const script = `<script nonce="${n}">
+${plexJs}
 document.querySelectorAll('form[data-confirm]').forEach(function(f){f.addEventListener('submit',function(ev){if(!confirm(f.dataset.confirm))ev.preventDefault();});});
 document.querySelectorAll('.share-form,.prof-form').forEach(function(f){var all=f.querySelector('input[name=all]'),ds=f.querySelectorAll('input[name=d],input[name=src]');
  all.addEventListener('change',function(){ds.forEach(function(d){d.checked=all.checked;});});
@@ -236,6 +250,29 @@ ${profilesPanel(acct, providers, csrfInput, lang)}
 <label for="sp">${e(t.add.stalkerPass)} <span class="hint">${e(t.add.optional)}</span></label><input id="sp" name="password" type="password" maxlength="256" autocomplete="off"/>
 <div class="row"><button type="submit">${ico("plus")}${e(t.add.addSubmit)}</button></div></form></div>
 <p class="secure">${ico("lock")}<span>${e(t.add.secureNote)}</span></p></section>
+
+<section class="panel mt16" id="serveurs" aria-labelledby="h-media"><h2 id="h-media">${e(t.add.mTitle)}</h2><p class="sub">${e(t.add.mSub)}</p>
+<div class="tabbed"><input type="radio" name="mtab" id="t-jf" checked aria-label="Jellyfin"/><input type="radio" name="mtab" id="t-emby" aria-label="Emby"/><input type="radio" name="mtab" id="t-plex" aria-label="Plex"/><input type="radio" name="mtab" id="t-nas" aria-label="NAS"/><div class="seg" aria-hidden="true"><label for="t-jf">Jellyfin</label><label for="t-emby">Emby</label><label for="t-plex">Plex</label><label for="t-nas">NAS</label></div>
+${["JELLYFIN", "EMBY"].map((k) => { const f = k === "JELLYFIN" ? "jf" : "emby"; return `<form method="post" action="/providers" id="form-${f}">${csrfInput}<input type="hidden" name="kind" value="${k}"/>
+<label for="${f}n">${e(t.add.nameLabel)} <span class="hint">${e(t.add.optional)}</span></label><input id="${f}n" name="name" maxlength="64" placeholder="${k === "JELLYFIN" ? "Jellyfin" : "Emby"}"/>
+<label for="${f}u">${e(t.add.mServerUrl)}</label><input id="${f}u" name="url" type="url" required maxlength="2048" placeholder="http://192.168.1.20:${k === "JELLYFIN" ? "8096" : "8096"}" autocapitalize="none" spellcheck="false"/>
+<label for="${f}l">${e(t.add.userLabel)}</label><input id="${f}l" name="username" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+<label for="${f}p">${e(t.add.passLabel)}</label><input id="${f}p" name="password" type="password" maxlength="256" autocomplete="off"/>
+<label for="${f}k">${e(t.add.mApiKey)} <span class="hint">${e(t.add.mApiKeyHint)}</span></label><input id="${f}k" name="apikey" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+<div class="row"><button type="submit">${ico("plus")}${e(t.add.addSubmit)}</button></div></form>`; }).join("")}
+<form method="post" action="/providers" id="form-plex">${csrfInput}<input type="hidden" name="kind" value="PLEX"/>
+<p class="muted small">${e(t.add.mPlexIntro)}</p>
+<div class="row"><button type="button" class="secondary" id="plex-go">${e(t.add.mPlexConnect)}</button></div>
+<p class="muted small" id="plex-st" aria-live="polite"></p>
+<fieldset class="plex-servers" id="plex-list" hidden><legend>${e(t.add.mPlexPick)}</legend></fieldset>
+<div class="row" id="plex-add" hidden><button type="submit">${ico("plus")}${e(t.add.addSubmit)}</button></div></form>
+<form method="post" action="/providers" id="form-nas">${csrfInput}<input type="hidden" name="kind" value="NAS"/>
+<label for="nn">${e(t.add.nameLabel)} <span class="hint">${e(t.add.optional)}</span></label><input id="nn" name="name" maxlength="64" placeholder="NAS"/>
+<label for="nu">${e(t.add.mNasAddr)}</label><input id="nu" name="url" required maxlength="1024" placeholder="smb://192.168.1.10/Films" autocapitalize="none" spellcheck="false"/>
+<label for="nl">${e(t.add.userLabel)} <span class="hint">${e(t.add.mNasGuest)}</span></label><input id="nl" name="username" maxlength="256" autocomplete="off" autocapitalize="none" spellcheck="false"/>
+<label for="np">${e(t.add.passLabel)}</label><input id="np" name="password" type="password" maxlength="256" autocomplete="off"/>
+<div class="row"><button type="submit">${ico("plus")}${e(t.add.addSubmit)}</button></div></form></div>
+<p class="secure">${ico("lock")}<span>${e(t.add.mNote)}</span></p></section>
 
 <div class="section-h" id="integrations"><span id="compte" class="anchor"></span><div class="sh-t"><h2>${e(t.integ.title)}</h2><p class="muted small">${e(t.integ.sub)}</p></div></div>
 <div class="two">

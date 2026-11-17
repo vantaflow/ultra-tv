@@ -468,7 +468,10 @@ class CloudSyncManager @Inject constructor(
 
     private suspend fun apply(cfg: CloudConfig): Summary {
         val locals = repo.observeProviders().first()
-        val localModels = locals.filter { it.kind == "XTREAM" || it.kind == "M3U" || it.kind == "STALKER" }.map { localModel(it) }
+        // Serveurs à jeton (Jellyfin, Emby, Plex) : seulement ceux reçus du site (liés) ; ceux ajoutés sur l'appareil
+        // ne sont jamais rapprochés ni supprimés par la synchro.
+        val localModels = locals.filter { it.kind in SUPPORTED_KINDS }.map { localModel(it) }
+            .filter { it.kind !in TOKEN_KINDS || it.cloudId != null }
         val dependents = localModels.filter { it.cloudId != null }.associate { it.localId to (db.favoriteDao().countForProvider(it.localId) + db.recordingDao().countForProvider(it.localId)) }
         val applied = cfg.providers.mapNotNull { c -> links.appliedName(c.id)?.let { c.id to it } }.toMap() +
             localModels.mapNotNull { l -> l.cloudId?.let { id -> links.appliedName(id)?.let { id to it } } }.toMap()
@@ -481,7 +484,13 @@ class CloudSyncManager @Inject constructor(
                     "XTREAM" -> repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password)
                     // MAC invalide reçue du cloud : la source est ignorée (aucune action sur les autres).
                     "STALKER" -> runCatching { repo.addStalker(a.cloud.name, a.cloud.url, a.cloud.mac, a.cloud.username, a.cloud.password) }.getOrNull() ?: continue
-                    else -> repo.addM3u(a.cloud.name, a.cloud.url)
+                    // Serveurs multimédias ajoutés sur le site : l'appareil s'y connecte lui-même. Serveur injoignable ou
+                    // refus : ignoré pour cette fois, nouvel essai à la prochaine synchro (rien n'est lié).
+                    "JELLYFIN", "EMBY" -> runCatching { repo.addMediaServer(a.cloud.kind, a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password, a.cloud.apiKey) }.getOrNull() ?: continue
+                    "NAS" -> runCatching { repo.addNas(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password) }.getOrNull() ?: continue
+                    "PLEX" -> CloudSyncLogic.plexServerOf(a.cloud)?.let { s -> runCatching { repo.addPlexServer(s) }.getOrNull() } ?: continue
+                    "M3U" -> repo.addM3u(a.cloud.name, a.cloud.url)
+                    else -> continue
                 }
                 links.link(id, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
                 if (repo.firstActive() == null) repo.setDefault(id)
@@ -491,7 +500,11 @@ class CloudSyncManager @Inject constructor(
                 added++
             }
             is SyncAction.Link -> links.link(a.localId, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
-            is SyncAction.Update -> {
+            is SyncAction.Update -> if (a.cloud.kind in TOKEN_KINDS) {
+                // Jeton de session local conservé : seul le nom suit le site.
+                if (a.renameLocal) repo.renameProvider(a.localId, a.cloud.name)
+                links.link(a.localId, a.cloud.id, a.cloud.name, a.cloud.sharedWith(deviceCount))
+            } else {
                 // Locale encore en M3U « get.php » face à sa version cloud normalisée en Xtream : on la convertit d'abord.
                 if (a.cloud.kind == "XTREAM" && repo.canConvertToXtream(a.localId)) repo.convertToXtream(a.localId)
                 if (a.cloud.kind == "STALKER") {

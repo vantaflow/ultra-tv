@@ -28,7 +28,9 @@ import {
   isVisibleTo, assignmentOf, addTombstones, liveTombstones, isSupportedKind, parseAssign, dropDeviceFromAssignments, renameDevice,
   MAX_PROVIDERS, MAX_DEVICES, iptvLink, xtreamAccount, verifyProLicense, setDeviceInfo, parseStateBody, mergeState, loadState, saveState, deleteState, parseProfiles, mergeProfiles,
 } from "./store.js";
-import { setProfileSources } from "./store.js";
+import { setProfileSources, parsePlexProvider, MEDIA_KINDS } from "./store.js";
+import { PLEX_PIN_TTL_S, plexAuthUrl, plexCreatePin, plexPinKey, plexPinToken, plexServers } from "./plexweb.js";
+import { autoTranslate } from "./annautotr.js";
 import { parseHandoff, pushHandoff, loadHandoffs, handoffHeader } from "./store.js";
 import { tmdbProxy } from "./tmdb.js";
 import { downloadRedirect } from "./download.js";
@@ -53,7 +55,7 @@ import {
 } from "./simkl.js";
 import { TRACKING_CHOICES, activeTracker, trackingStatus } from "./tracking.js";
 import { fontResponse } from "./fonts.js";
-import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS } from "./announcements.js";
+import { loadAnnouncements, saveAnnouncements, activeAnnouncements, parseAnnouncementForm, ANN_AUDIENCES, ANN_STAT_KINDS, ANN_LANGS, ANN_SOURCE_LANGS } from "./announcements.js";
 import { pickEnvoyerLang, langFromCookie, fromAcceptLanguage } from "./i18n/envoyer.js";
 import { pickSiteLang, TOO_MANY_TEXT } from "./i18n/site.js";
 import { apkPage, envoyerPage, loginPage, signupPage, pairPage, dashboardPage, offlinePage, donatePage } from "./pages.js";
@@ -321,7 +323,7 @@ async function route(req, env, ctx) {
   const dashboardRoute = (path === "/" || path === "/dashboard") && m === "GET";
   const adminRoute = /^\/admin(\/(accounts|anon|devices|alerts|comptes\.csv))?$/.test(path) && m === "GET";
   const pairRoute = path === "/pair" && m === "GET";
-  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources"].includes(path)
+  const mutating = m === "POST" && ["/pair", "/providers", "/password", "/account/delete", "/logout", "/subtitles/link", "/subtitles/unlink", "/trakt/connect", "/trakt/disconnect", "/simkl/connect", "/simkl/disconnect", "/tracking/service", "/profiles/sources", "/plex/pin", "/plex/check"].includes(path)
     || (m === "POST" && /^\/(devices\/[0-9a-f]+\/(revoke|rename)|providers\/[0-9a-f]+\/(delete|assign|link|account)|admin\/announcements(\/[0-9a-f]+\/(end|delete))?)$/.test(path));
   if (!dashboardRoute && !pairRoute && !adminRoute && !mutating) return new Response("Not found", { status: 404 });
   if (!sess) {
@@ -369,6 +371,14 @@ async function route(req, env, ctx) {
     const p = (await loadProviders(env, sess.acct)).find((x) => x.id === acc[1]);
     if (!p) return new Response("Not found", { status: 404 });
     return new Response(JSON.stringify(await cachedAccount(env, sess.acct.login, p)), { headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+  }
+
+  // Plex : liaison du compte (PIN plex.tv) depuis le tableau de bord. Réponses JSON ; débit propre (l'attente de la
+  // validation interroge /plex/check toutes les 3 s pendant au plus 15 min).
+  if (path === "/plex/pin" || path === "/plex/check") {
+    const rlp = await limited(env, `plex:${sess.acct.login}`, 400, 3600);
+    if (rlp) return rlp;
+    return plexWeb(env, sess.acct, path);
   }
 
   const rl = await limited(env, `dash:${sess.acct.login}`, 120, 3600);
@@ -785,11 +795,48 @@ async function confirmPairing(env, acct, form) {
 
 // ---- opérations du tableau de bord ---------------------------------------------
 
+const jsonNoStore = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff" } });
+
+/**
+ * /plex/pin : nouveau PIN plex.tv (mémorisé 15 min pour ce compte) → { auth } (page plex.tv à ouvrir).
+ * /plex/check : PIN validé ? → { state: "wait" } ou { state: "ok", servers: [{ id, name, owned }] } (sans jetons).
+ */
+async function plexWeb(env, acct, path) {
+  const key = plexPinKey(acct.login);
+  if (path === "/plex/pin") {
+    const pin = await plexCreatePin().catch(() => null);
+    if (!pin) return jsonNoStore({ error: "plex" }, 502);
+    await docs.put(env, key, await encryptJson(keysFromEnv(env), { pin }, acct.login), { expirationTtl: PLEX_PIN_TTL_S });
+    return jsonNoStore({ auth: plexAuthUrl(pin) });
+  }
+  const raw = await docs.get(env, key);
+  const st = raw ? await decryptJson(keysFromEnv(env), raw, acct.login).catch(() => null) : null;
+  if (!st?.pin) return jsonNoStore({ state: "expired" });
+  if (!st.servers) {
+    const token = await plexPinToken(st.pin).catch(() => null);
+    if (!token) return jsonNoStore({ state: "wait" });
+    const servers = await plexServers(token, st.pin.cid).catch(() => null);
+    if (!servers) return jsonNoStore({ error: "plex" }, 502);
+    st.servers = servers;
+    await docs.put(env, key, await encryptJson(keysFromEnv(env), st, acct.login), { expirationTtl: PLEX_PIN_TTL_S });
+  }
+  return jsonNoStore({ state: "ok", servers: st.servers.map((s) => ({ id: s.id, name: s.name, owned: s.owned })) });
+}
+
 async function addProvider(env, acct, form) {
   const providers = await loadProviders(env, acct);
   if (providers.length >= MAX_PROVIDERS) return redirect("/?e=limit");
-  const r = parseProvider(form, { deviceId: "", name: "dashboard" });
-  if (r.error) return redirect(`/?e=${r.error}`);
+  let r;
+  if (String(form.get("kind") || "").toUpperCase() === "PLEX") {
+    // Serveur choisi après liaison du compte : son jeton est relu côté serveur, jamais transmis par le navigateur.
+    const raw = await docs.get(env, plexPinKey(acct.login));
+    const st = raw ? await decryptJson(keysFromEnv(env), raw, acct.login).catch(() => null) : null;
+    const server = st?.servers?.find((s) => s.id === String(form.get("server") || ""));
+    if (!server) return redirect("/?e=plex#serveurs");
+    r = parsePlexProvider(server, form.get("name"));
+    if (!r.error) await docs.delete(env, plexPinKey(acct.login));
+  } else r = parseProvider(form, { deviceId: "", name: "dashboard" });
+  if (r.error) return redirect(`/?e=${r.error}${MEDIA_KINDS.includes(String(form.get("kind") || "").toUpperCase()) ? "#serveurs" : ""}`);
   providers.push(r.provider);
   await saveProviders(env, acct, providers);
   await putAccount(env, acct);
@@ -842,6 +889,13 @@ async function adminAnnouncement(env, acct, path, form) {
   }
   const parsed = parseAnnouncementForm(form, now);
   if (parsed.error) return redirect(`/admin/alerts?e=${parsed.error}`);
+  // Langues laissées vides : traduites par Workers AI (gratuit, jamais bloquant). Texte principal : langue choisie.
+  if (form.get("autotr") === "1") {
+    const src = ANN_SOURCE_LANGS.includes(form.get("srclang")) ? form.get("srclang") : "en";
+    const langs = [...Object.keys(ANN_LANGS), "en"].filter((l) => l !== src);
+    const { i18n } = await autoTranslate(env.AI, parsed.value, langs, src);
+    if (i18n) parsed.value.i18n = i18n;
+  }
   await saveAnnouncements(env, [...list, { ...parsed.value, by: acct.login }], now);
   return redirect("/admin/alerts?m=ann_added");
 }

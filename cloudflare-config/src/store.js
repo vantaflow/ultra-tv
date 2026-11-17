@@ -139,7 +139,31 @@ export async function rotateDevice(env, acct, device) {
 // ---- validation des fournisseurs -------------------------------------------
 
 // Portail Stalker / Ministra : `url` = portail, `mac` = MAC du boîtier (obligatoire), `username` / `password` facultatifs.
-const KINDS = ["XTREAM", "M3U", "STALKER"];
+const KINDS = ["XTREAM", "M3U", "STALKER", "JELLYFIN", "EMBY", "PLEX", "NAS"];
+/**
+ * Serveurs multimédias : ajoutés depuis le tableau de bord seulement (un appareil n'en pousse jamais : il n'en garde
+ * que des jetons de session). L'appareil s'y connecte lui-même à la réception ; le Worker ne les contacte jamais.
+ */
+export const MEDIA_KINDS = ["JELLYFIN", "EMBY", "PLEX", "NAS"];
+
+/**
+ * Dossier partagé SMB : « smb://hôte[:port]/partage[/dossier] », « \\\\hôte\\partage » ou « hôte/partage » → forme
+ * « smb://hôte[:port]/partage/dossier » sans identifiants ni « / » final ; null si invalide.
+ */
+export function nasUrl(raw) {
+  let s = cleanLine(raw, 1024).replace(/\\/g, "/");
+  if (!s) return null;
+  // Autre protocole (http, ftp…) : ce n'est pas un partage SMB.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) && !/^smb:\/\//i.test(s)) return null;
+  if (s.startsWith("//")) s = `smb:${s}`;
+  else if (!/^smb:\/\//i.test(s)) s = `smb://${s.replace(/^\/+/, "")}`;
+  try {
+    const u = new URL(s);
+    const path = decodeURIComponent(u.pathname).replace(/\/+$/, "");
+    if (!u.hostname || u.username || u.password || path.length < 2) return null;
+    return `smb://${u.host}${path}`;
+  } catch { return null; }
+}
 
 /** MAC « 00:1A:79:XX:XX:XX » (séparateurs « : » ou « - » ou aucun) → forme normalisée en majuscules ; null sinon. */
 export function normalizeMac(raw) {
@@ -171,8 +195,10 @@ function validUrl(raw) {
 export function parseProvider(form, origin = null) {
   const kind = String(form.get("kind") || "").toUpperCase();
   if (!KINDS.includes(kind)) return { error: "kind" };
-  const url = validUrl(form.get("url"));
-  if (!url) return { error: "url" };
+  // Plex : seulement par le parcours de liaison du compte (parsePlexProvider), jamais par un formulaire libre.
+  if (kind === "PLEX") return { error: "kind" };
+  const url = kind === "NAS" ? nasUrl(form.get("url")) : validUrl(form.get("url"));
+  if (!url) return { error: kind === "NAS" ? "nas" : "url" };
   const p = {
     id: [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join(""),
     kind, name: cleanLine(form.get("name"), 64) || kind, url, username: "", password: "",
@@ -185,6 +211,18 @@ export function parseProvider(form, origin = null) {
     p.password = cleanLine(form.get("password"), 256);
     if (!p.username || !p.password) return { error: "creds" };
   }
+  if (kind === "JELLYFIN" || kind === "EMBY") {
+    // Utilisateur (+ mot de passe, vide permis) ou clé API (+ utilisateur facultatif pour choisir le profil).
+    p.username = cleanLine(form.get("username"), 256);
+    p.password = cleanLine(form.get("password"), 256);
+    p.apiKey = cleanLine(form.get("apikey"), 256);
+    if (!p.username && !p.apiKey) return { error: "media_creds" };
+  }
+  if (kind === "NAS") {
+    // Vide : accès invité.
+    p.username = cleanLine(form.get("username"), 256);
+    p.password = cleanLine(form.get("password"), 256);
+  }
   if (kind === "STALKER") {
     p.mac = normalizeMac(form.get("mac"));
     if (!p.mac) return { error: "mac" };
@@ -193,6 +231,23 @@ export function parseProvider(form, origin = null) {
     p.password = cleanLine(form.get("password"), 256);
   }
   return { provider: p };
+}
+
+/**
+ * Source Plex à partir d'un serveur choisi après liaison du compte (voir plexweb.js) : `username` = identifiant de la
+ * machine, `password` = jeton du SERVEUR (pas celui du compte), `url` = meilleure connexion ; toutes les connexions
+ * suivent pour que l'appareil choisisse celle qui répond chez lui.
+ */
+export function parsePlexProvider(server, name = "") {
+  const conns = Array.isArray(server?.conns) ? server.conns.filter((c) => c && validUrl(c.uri)) : [];
+  if (!server?.id || !server?.token || !conns.length) return { error: "plex" };
+  return { provider: {
+    id: [...crypto.getRandomValues(new Uint8Array(4))].map((b) => b.toString(16).padStart(2, "0")).join(""),
+    kind: "PLEX", name: cleanLine(name, 64) || cleanLine(server.name, 64) || "Plex", url: conns[0].uri,
+    username: cleanLine(server.id, 128), password: String(server.token).slice(0, 512),
+    plex: { owned: server.owned === true, conns: conns.map((c) => ({ uri: c.uri, local: c.local === true, relay: c.relay === true })) },
+    createdAt: Date.now(), updatedAt: Date.now(), originDeviceId: "", originName: "dashboard",
+  } };
 }
 
 /** Forme renvoyée à l'application (sans l'identifiant interne). */
@@ -211,6 +266,9 @@ export function syncProvider(p) {
     id: p.id, kind: p.kind, name: p.name, url: p.url, username: p.username || "", password: p.password || "",
     // MAC du portail Stalker : envoyée aux appareils comme un identifiant (jamais réaffichée sur le tableau de bord).
     ...(p.kind === "STALKER" ? { mac: p.mac || "" } : {}),
+    // Jellyfin / Emby : clé API (à la place du mot de passe) ; Plex : toutes les connexions du serveur.
+    ...(p.kind === "JELLYFIN" || p.kind === "EMBY" ? { apiKey: p.apiKey || "" } : {}),
+    ...(p.kind === "PLEX" ? { plex: { owned: p.plex?.owned === true, conns: p.plex?.conns || [] } } : {}),
     originDeviceId: p.originDeviceId || "", originName: p.originName || "", createdAt: p.createdAt || 0, updatedAt: p.updatedAt || p.createdAt || 0,
   };
 }
@@ -224,6 +282,8 @@ export function parseDeviceProvider(body, origin) {
   for (const k of FIELDS) {
     if (body[k] !== undefined && typeof body[k] !== "string") return { error: k };
   }
+  // Serveurs multimédias : tableau de bord seulement (l'appareil n'a que des jetons de session, pas les identifiants).
+  if (MEDIA_KINDS.includes(String(body.kind || "").toUpperCase())) return { error: "kind" };
   const r = parseProvider({ get: (k) => body[k] }, origin);
   // Édition Pro : source posée par le revendeur (seule valeur acceptée).
   if (!r.error && body.managed === "reseller") r.provider.managed = "reseller";

@@ -101,7 +101,10 @@ function parseWhen(ms, local) {
  * Début vide : tout de suite. Fin vide : jusqu'à suppression.
  */
 /** Langues des traductions (code sur 2 lettres, comme la recherche de `i18n` : « pt » sert le portugais du Brésil). */
-export const ANN_LANGS = { fr: "Français", es: "Español", ar: "العربية", pl: "Polski", pt: "Português", ro: "Română", nb: "Norsk", cs: "Čeština", fi: "Suomi", da: "Dansk", el: "Ελληνικά", th: "ไทย", vi: "Tiếng Việt" };
+export const ANN_LANGS = { fr: "Français", es: "Español", ar: "العربية", pl: "Polski", pt: "Português", ro: "Română", nb: "Norsk", cs: "Čeština", fi: "Suomi", da: "Dansk", el: "Ελληνικά", th: "ไทย", vi: "Tiếng Việt", tr: "Türkçe" };
+
+/** Langues possibles du texte principal (traduction automatique) : anglais ou une des langues ci-dessus. */
+export const ANN_SOURCE_LANGS = ["en", ...Object.keys(ANN_LANGS)];
 
 /** Traductions du formulaire (`title_xx`, `message_xx`) : seules celles qui ont un message sont gardées. */
 export function parseAnnouncementI18n(form) {

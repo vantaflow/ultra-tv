@@ -34,6 +34,11 @@ data class CloudProvider(
     val updatedAt: Long,
     /** Réglages d'affichage partagés (langues, catégories désactivées) ; null si jamais publiés. */
     val prefs: CloudPrefs? = null,
+    /** Jellyfin / Emby ajouté sur le site : clé API (à la place du mot de passe), vide sinon. */
+    val apiKey: String = "",
+    /** Plex ajouté sur le site : connexions du serveur (meilleure d'abord) et serveur possédé ou partagé. */
+    val plexConns: List<com.ultratv.tv.nativeapp.data.mediaserver.Plex.Connection> = emptyList(),
+    val plexOwned: Boolean = false,
 ) {
     /** Nombre d'appareils qui reçoivent cette source. */
     fun sharedWith(deviceCount: Int): Int = assign?.size ?: deviceCount
@@ -76,9 +81,28 @@ sealed interface SyncAction {
  * Types échangés avec le cloud. Portail Stalker : `url` = portail, `mac` = MAC du boîtier, `username` / `password` =
  * identifiant et mot de passe FACULTATIFS du portail (localement : MAC dans `username`, les deux autres empaquetés).
  */
-val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "STALKER")
+val SUPPORTED_KINDS = setOf("XTREAM", "M3U", "STALKER", "JELLYFIN", "EMBY", "PLEX", "NAS")
+
+/**
+ * Serveurs ajoutés sur le site dont l'appareil ne garde qu'un JETON de session (Jellyfin / Emby : identifiant
+ * utilisateur + jeton ; Plex : machine + jeton du serveur) : identifiants locaux et cloud diffèrent par nature, donc
+ * jamais comparés ni réécrits ; seul le nom suit le site. Modifier l'accès = supprimer puis rajouter sur le site.
+ */
+val TOKEN_KINDS = setOf("JELLYFIN", "EMBY", "PLEX")
 
 object CloudSyncLogic {
+
+    /**
+     * Serveur Plex ajouté sur le site → serveur de l'appli (connexions classées comme une liaison faite sur l'appareil) ;
+     * null sans jeton, machine ou connexion.
+     */
+    fun plexServerOf(c: CloudProvider): com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server? {
+        if (c.kind != "PLEX" || c.username.isBlank() || c.password.isBlank()) return null
+        val conns = com.ultratv.tv.nativeapp.data.mediaserver.Plex.orderConnections(c.plexConns.ifEmpty {
+            listOf(com.ultratv.tv.nativeapp.data.mediaserver.Plex.Connection(c.url, false, false, c.url.startsWith("https://", true), false))
+        })
+        return com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server(c.name, c.username, c.password, c.plexOwned, conns)
+    }
 
     /** Identité d'une source : même type, même serveur (sans « / » final), même compte (la MAC pour un portail Stalker). */
     fun identity(kind: String, url: String, username: String): String =
@@ -99,6 +123,12 @@ object CloudSyncLogic {
                 assign = if (a is JSONArray) (0 until a.length()).map { a.optString(it) } else null,
                 originName = p.optString("originName"), updatedAt = p.optLong("updatedAt"),
                 prefs = DisplayPrefs.parse(p.optJSONObject("prefs")),
+                apiKey = p.optString("apiKey"),
+                plexConns = p.optJSONObject("plex")?.optJSONArray("conns").toList { c ->
+                    val uri = c.optString("uri")
+                    com.ultratv.tv.nativeapp.data.mediaserver.Plex.Connection(uri, c.optBoolean("local"), c.optBoolean("relay"), uri.startsWith("https://", ignoreCase = true), false)
+                }.filter { it.uri.startsWith("http://") || it.uri.startsWith("https://") },
+                plexOwned = p.optJSONObject("plex")?.optBoolean("owned") ?: false,
             )
         }.filter { it.id.isNotBlank() }
         return CloudConfig(o.optLong("version"), o.optString("self").ifBlank { null } ?: selfFromDevices, devices, providers)
@@ -159,6 +189,7 @@ object CloudSyncLogic {
     }
 
     private fun differs(l: LocalProvider, c: CloudProvider): Boolean =
+        if (c.kind in TOKEN_KINDS) false else
         l.url.trim().trimEnd('/') != c.url.trim().trimEnd('/') || l.username != c.username || l.password != c.password ||
             (c.kind == "STALKER" && !l.mac.equals(c.mac, ignoreCase = true))
 

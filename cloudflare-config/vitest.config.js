@@ -12,6 +12,8 @@ export default defineConfig({
   plugins: [
     cloudflareTest({
       wrangler: { configPath: "./wrangler.toml" },
+      // Liaisons distantes (Workers AI) jamais appelées en test ni en CI : pas de compte Cloudflare requis.
+      remoteBindings: false,
       miniflare: {
         // Bases locales des tests (les liaisons de production D1 / KV ont quitté wrangler.toml : stockage Turso).
         d1Databases: ["DB"],
