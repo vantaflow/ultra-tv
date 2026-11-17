@@ -1837,7 +1837,9 @@
     <string name="sport_tbl_pts">Điểm</string>
     <string name="sport_subtitle">Trận đấu và chương trình thể thao từ các kênh của bạn</string>
     <string name="sport_nospoiler_short">Không spoiler</string>
-    <string name="sport_live_count">%1$d trận</string>
+    <plurals name="sport_matches_count">
+        <item quantity="other">%1$d trận</item>
+    </plurals>
     <string name="sport_upcoming_short">Sắp diễn ra</string>
     <string name="sport_upcoming_sub">hôm nay và ngày mai</string>
     <string name="sport_also_on_chan">Còn phát trên %1$d kênh</string>

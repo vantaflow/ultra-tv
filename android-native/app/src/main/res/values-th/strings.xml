@@ -1837,7 +1837,9 @@
     <string name="sport_tbl_pts">แต้ม</string>
     <string name="sport_subtitle">แมตช์และรายการกีฬาจากช่องของคุณ</string>
     <string name="sport_nospoiler_short">ไม่สปอยล์</string>
-    <string name="sport_live_count">%1$d แมตช์</string>
+    <plurals name="sport_matches_count">
+        <item quantity="other">%1$d แมตช์</item>
+    </plurals>
     <string name="sport_upcoming_short">เร็ว ๆ นี้</string>
     <string name="sport_upcoming_sub">วันนี้และพรุ่งนี้</string>
     <string name="sport_also_on_chan">ออกอากาศอีก %1$d ช่อง</string>

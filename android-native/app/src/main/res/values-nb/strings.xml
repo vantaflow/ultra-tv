@@ -1856,7 +1856,10 @@
     <string name="sport_tbl_pts">P</string>
     <string name="sport_subtitle">Kamper og sportsprogrammer fra kanalene dine</string>
     <string name="sport_nospoiler_short">Uten spoilere</string>
-    <string name="sport_live_count">%1$d kamper</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d kamp</item>
+        <item quantity="other">%1$d kamper</item>
+    </plurals>
     <string name="sport_upcoming_short">Kommende</string>
     <string name="sport_upcoming_sub">i dag og i morgen</string>
     <string name="sport_also_on_chan">Også på %1$d kanaler</string>

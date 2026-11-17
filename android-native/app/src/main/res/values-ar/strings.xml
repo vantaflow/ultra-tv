@@ -1917,7 +1917,14 @@
     <string name="sport_tbl_pts">نقاط</string>
     <string name="sport_subtitle">مباريات وبرامج رياضية من قنواتك</string>
     <string name="sport_nospoiler_short">بدون حرق</string>
-    <string name="sport_live_count">%1$d مباريات</string>
+    <plurals name="sport_matches_count">
+        <item quantity="zero">%1$d مباراة</item>
+        <item quantity="one">مباراة واحدة</item>
+        <item quantity="two">مباراتان</item>
+        <item quantity="few">%1$d مباريات</item>
+        <item quantity="many">%1$d مباراة</item>
+        <item quantity="other">%1$d مباراة</item>
+    </plurals>
     <string name="sport_upcoming_short">قريبًا</string>
     <string name="sport_upcoming_sub">اليوم وغدًا</string>
     <string name="sport_also_on_chan">متوفر أيضًا على %1$d قنوات</string>

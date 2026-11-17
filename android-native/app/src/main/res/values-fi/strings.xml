@@ -1801,7 +1801,10 @@
     <string name="sport_tbl_pts">P</string>
     <string name="sport_subtitle">Ottelut ja urheiluohjelmat kanavistasi</string>
     <string name="sport_nospoiler_short">Ei spoilereita</string>
-    <string name="sport_live_count">%1$d ottelua</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d ottelu</item>
+        <item quantity="other">%1$d ottelua</item>
+    </plurals>
     <string name="sport_upcoming_short">Tulossa</string>
     <string name="sport_upcoming_sub">tänään ja huomenna</string>
     <string name="sport_also_on_chan">Myös %1$d kanavalla</string>

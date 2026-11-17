@@ -1856,7 +1856,10 @@
     <string name="sport_tbl_pts">Βθ</string>
     <string name="sport_subtitle">Αγώνες και αθλητικά προγράμματα από τα κανάλια σας</string>
     <string name="sport_nospoiler_short">Χωρίς spoilers</string>
-    <string name="sport_live_count">%1$d αγώνες</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d αγώνας</item>
+        <item quantity="other">%1$d αγώνες</item>
+    </plurals>
     <string name="sport_upcoming_short">Προσεχώς</string>
     <string name="sport_upcoming_sub">σήμερα και αύριο</string>
     <string name="sport_also_on_chan">Και σε %1$d κανάλια</string>

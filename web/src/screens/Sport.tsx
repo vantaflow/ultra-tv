@@ -221,7 +221,7 @@ function SportInner({ source }: { source: Source }) {
         <div className="sh-grid">
           <div className="sh-main">
             <section aria-label={t("sport.lg.live")}>
-              <h2 className="sh-h"><i className="sh-dot" aria-hidden="true" />{t("sport.lg.live")}{cards.length > 0 && <span className="sh-count">{t("sport.liveCount", { n: cards.length })}</span>}</h2>
+              <h2 className="sh-h"><i className="sh-dot" aria-hidden="true" />{t("sport.lg.live")}{cards.length > 0 && <span className="sh-count">{t("sport.liveCount", { count: cards.length })}</span>}</h2>
               {cards.length === 0 ? <p className="sp-empty">{t("sport.emptyLive")}</p> : (
                 <div className="sh-cards">{cards.map((c) => <HubLiveCard key={c.key} card={c} hub={hub} badges={badges} onOpen={() => open(c)} />)}</div>
               )}

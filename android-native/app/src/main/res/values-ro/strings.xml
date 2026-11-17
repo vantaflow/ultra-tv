@@ -1874,7 +1874,11 @@
     <string name="sport_tbl_pts">Pct</string>
     <string name="sport_subtitle">Meciuri și emisiuni sportive de pe canalele tale</string>
     <string name="sport_nospoiler_short">Fără spoilere</string>
-    <string name="sport_live_count">%1$d meciuri</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d meci</item>
+        <item quantity="few">%1$d meciuri</item>
+        <item quantity="other">%1$d de meciuri</item>
+    </plurals>
     <string name="sport_upcoming_short">În curând</string>
     <string name="sport_upcoming_sub">azi și mâine</string>
     <string name="sport_also_on_chan">Și pe %1$d canale</string>

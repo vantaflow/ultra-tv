@@ -56,7 +56,7 @@ val DesignStrings.sportTblPts get() = tx(R.string.sport_tbl_pts)
 // Accueil Sport unifié (maquette : direct, à venir, classement court, feuille de match, classement complet, « Mes ligues »).
 val DesignStrings.sportSubtitle get() = tx(R.string.sport_subtitle)
 val DesignStrings.sportNoSpoilerShort get() = tx(R.string.sport_nospoiler_short)
-fun DesignStrings.sportLiveCount(n: Int) = tx(R.string.sport_live_count, n)
+fun DesignStrings.sportLiveCount(n: Int): String = I18n.plural(lang, R.plurals.sport_matches_count, n, n)
 val DesignStrings.sportUpcomingShort get() = tx(R.string.sport_upcoming_short)
 val DesignStrings.sportUpcomingSub get() = tx(R.string.sport_upcoming_sub)
 fun DesignStrings.sportAlsoOnChan(n: Int) = tx(R.string.sport_also_on_chan, n)

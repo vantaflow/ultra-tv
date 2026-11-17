@@ -1837,7 +1837,12 @@
     <string name="sport_tbl_pts">B</string>
     <string name="sport_subtitle">Zápasy a sportovní pořady z vašich kanálů</string>
     <string name="sport_nospoiler_short">Bez spoilerů</string>
-    <string name="sport_live_count">Zápasů: %1$d</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d zápas</item>
+        <item quantity="few">%1$d zápasy</item>
+        <item quantity="many">%1$d zápasu</item>
+        <item quantity="other">%1$d zápasů</item>
+    </plurals>
     <string name="sport_upcoming_short">Brzy</string>
     <string name="sport_upcoming_sub">dnes a zítra</string>
     <string name="sport_also_on_chan">Také na %1$d kanálech</string>

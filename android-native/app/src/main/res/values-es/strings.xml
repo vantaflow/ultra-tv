@@ -1859,7 +1859,11 @@
     <string name="sport_tbl_pts">Pts</string>
     <string name="sport_subtitle">Partidos y programas deportivos de tus canales</string>
     <string name="sport_nospoiler_short">Sin spoilers</string>
-    <string name="sport_live_count">%1$d partidos</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d partido</item>
+        <item quantity="many">%1$d de partidos</item>
+        <item quantity="other">%1$d partidos</item>
+    </plurals>
     <string name="sport_upcoming_short">Próximamente</string>
     <string name="sport_upcoming_sub">hoy y mañana</string>
     <string name="sport_also_on_chan">También en %1$d canales</string>

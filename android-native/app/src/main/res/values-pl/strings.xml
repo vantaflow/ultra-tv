@@ -1809,7 +1809,12 @@
     <string name="sport_tbl_pts">Pkt</string>
     <string name="sport_subtitle">Mecze i programy sportowe z twoich kanałów</string>
     <string name="sport_nospoiler_short">Bez spoilerów</string>
-    <string name="sport_live_count">Mecze: %1$d</string>
+    <plurals name="sport_matches_count">
+        <item quantity="one">%1$d mecz</item>
+        <item quantity="few">%1$d mecze</item>
+        <item quantity="many">%1$d meczów</item>
+        <item quantity="other">%1$d meczu</item>
+    </plurals>
     <string name="sport_upcoming_short">Wkrótce</string>
     <string name="sport_upcoming_sub">dziś i jutro</string>
     <string name="sport_also_on_chan">Także na %1$d kanałach</string>

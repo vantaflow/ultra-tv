@@ -866,7 +866,7 @@
   "sport.lg.down": "เลื่อนลง",
   "sport.subtitle": "แมตช์และรายการกีฬาจากช่องของคุณ",
   "sport.noSpoilerShort": "ไม่สปอยล์",
-  "sport.liveCount": "{n} แมตช์",
+  "sport.liveCount_other": "{count} แมตช์",
   "sport.upcomingShort": "เร็ว ๆ นี้",
   "sport.upcomingSub": "วันนี้และพรุ่งนี้",
   "sport.alsoOnChan": "ออกอากาศอีก {n} ช่อง",
