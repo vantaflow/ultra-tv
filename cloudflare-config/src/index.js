@@ -216,6 +216,12 @@ async function route(req, env, ctx) {
   const { pathname: path } = url;
   const m = req.method;
 
+  // Pages publiques ouvertes depuis un QR code ou tapées à la main : « /envoyer/ », « /Envoyer » ou « /PAIR » répondaient
+  // 404. Redirection vers la forme canonique, paramètres conservés.
+  if ((m === "GET" || m === "HEAD") && /^\/(envoyer|pair|donate|apk|download|login|signup)\/?$/i.test(path) && path !== path.toLowerCase().replace(/\/$/, "")) {
+    return redirect(path.toLowerCase().replace(/\/$/, "") + url.search);
+  }
+
   // Ancienne adresse : les pages ouvertes dans un navigateur partent vers la nouvelle (l'API reste servie ici).
   { const d = legacyDecision(m, req.url, env.SITE_HOST || API_HOST);
     if (d.kind === "redirect") return new Response(null, { status: d.status, headers: { location: d.to, "cache-control": "no-store" } }); }
