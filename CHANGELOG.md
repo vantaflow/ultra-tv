@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.44] — 2026-11-17 (Android)
+
+### Corrigé
+- Sport : OK sur n'importe quelle carte « En direct » ouvre la feuille avec « Regarder sur vos chaînes » (meilleure qualité d'abord), y compris pour les compétitions sans score relié (qualifications CAN, etc.) : équipes, programme du guide et choix de la chaîne au lieu de lancer directement la première ; la feuille d'un match relié liste toutes les chaînes trouvées et affiche le nom de la compétition
+
 ## [1.3.43] — 2026-11-17 (Android)
 
 ### Corrigé
