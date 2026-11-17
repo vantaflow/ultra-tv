@@ -66,6 +66,8 @@ class CloudSyncManager @Inject constructor(
     private val profileSources: dagger.Lazy<com.ultratv.tv.nativeapp.data.profile.ProfileSources>,
 ) {
     private val mutex = Mutex()
+    /** Premier relevé de chaque lancement : toujours complet (jamais en 304), pour réparer un état où une source du site manque ici. */
+    @Volatile private var fullFetchDone = false
     /** Cadence adaptative (2 min après un changement, puis 10 min) et empreintes de ce qui a déjà été envoyé. */
     private val cadence = SyncCadence()
     private val pushGate = SyncPushGate()
@@ -110,11 +112,14 @@ class CloudSyncManager @Inject constructor(
         try {
             // Suppressions faites hors ligne : transmises d'abord ; la configuration est alors relue en entier.
             links.migrateEtag()
+            val firstFullFetch = !fullFetchDone
+            fullFetchDone = true
             val flushed = flushPendingDeletes(base)
-            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed) null else links.etag()) }
+            val fetched = source.withToken(base) { t -> client.fetch(base, t, if (force || flushed || firstFullFetch) null else links.etag()) }
             // Demande « Reprendre sur cet appareil » déposée par un autre appareil : en-tête de la réponse (200 comme 304).
             handoffs.note(fetched.handoff)
             if (fetched.notModified) {
+                com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "304: configuration inchangée (etag=${links.etag() ?: "-"}), aucun plan à appliquer")
                 links.lastSyncAt = System.currentTimeMillis()
                 // Configuration inchangée : les profils, favoris et reprises peuvent avoir changé ailleurs, on les échange
                 // quand même (avant : seulement 60 s après un changement local ou toutes les 10 min, donc parfois jamais
@@ -484,6 +489,8 @@ class CloudSyncManager @Inject constructor(
         val failed = mutableListOf<CloudProvider>()
         val deviceCount = cfg.devices.size
         val plan = CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)
+        val dups = CloudSyncLogic.duplicateCloudIds(cfg.providers, localModels.mapNotNull { it.cloudId }.toSet())
+        if (dups.isNotEmpty()) com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "doublons cloud ignorés (même serveur Plex): ${dups.joinToString(",")} — à supprimer sur le tableau de bord")
         com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "plan: cloud=${cfg.providers.size} locaux=${localModels.size} actions=" +
             plan.joinToString(",") { a -> when (a) { is SyncAction.Add -> "Add:${a.cloud.kind}"; is SyncAction.Link -> "Link:${a.cloud.kind}"; is SyncAction.Update -> "Update:${a.cloud.kind}"; is SyncAction.Remove -> "Remove" } }.ifEmpty { "aucune" })
         for (a in plan) when (a) {
