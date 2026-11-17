@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.50] — 2026-11-17 (Android) · Worker
+
 ### Ajouté
 - Accueil : une rangée « Ajouts récents · serveur » par serveur Plex, Jellyfin, Emby ou NAS visible du profil (20 titres au plus, bibliothèques masquées exclues) et reprises de lecture des serveurs mêlées à « Reprendre la lecture »
 ### Modifié
@@ -13,6 +15,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ### Corrigé
 - Tableau de bord : sur les cartes des serveurs multimédias et des sources Stalker, la note passe au-dessus des boutons ; Partager et Supprimer restent alignés sur une ligne.
 - Synchro cloud : un même serveur Plex ajouté deux fois sur le site n'est plus lié deux fois, supprimer l'un des deux ne retire plus la source de la TV, une source du site absente de la TV est rajoutée même après une suppression (première lecture complète à chaque lancement), journal UtvCloud toujours écrit, même en 304
+- Fiche série (TV) : Droite depuis « Reprendre », les boutons ou la distribution mène directement à l'épisode en cours, sans parcourir les acteurs un par un.
 
 ## [1.3.49] — 2026-11-17 (Android) · Bureau 1.2.68 · Worker
 
