@@ -8,6 +8,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Bureau : films et séries sans son quand le MP4 est refusé (HTTP 551) puis lus en MKV : la sonde ffmpeg est refaite sur l'adresse courante et l'audio est converti en AAC (remux), même si la sonde est impossible ; le container_extension annoncé passe avant un .mp4 deviné ; « Ouvrir dans VLC » reçoit l'adresse qui fonctionne (#202)
+- Tableau de bord : le QR code d'appairage scanné sur la TV ouvre directement la confirmation quand on est déjà connecté sur le téléphone (cookie de session SameSite=Lax au lieu de Strict).
+
 ## [1.3.54] — 2026-11-17 (Android)
 
 ### Modifié

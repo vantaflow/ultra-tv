@@ -313,8 +313,8 @@ async function route(req, env, ctx) {
   if (path === "/signup" && m === "GET") { const n = nonce(); return signupPage(n, url.searchParams.get("e"), safeNext(url.searchParams.get("next")), { lang: siteLangOf(req, url), url: req.url }); }
   if (path === "/signup" && m === "POST") return doSignup(req, env);
 
-  // Retour de Trakt : AVANT la session. Le cookie de session est SameSite=Strict, donc absent d'une navigation venue
-  // de trakt.tv ; le retour est authentifié par l'état à usage unique ET le cookie SameSite=Lax posé au départ.
+  // Retour de Trakt : AVANT la session. Le retour ne dépend pas du cookie de session (longtemps SameSite=Strict, absent d.une navigation venue
+  // de trakt.tv ; le retour est authentifié par l'état à usage unique ET le cookie SameSite=Lax posé au départ).
   if (path === "/trakt/callback" && m === "GET") return traktFinish(req, env, url);
   if (path === "/simkl/callback" && m === "GET") return simklFinish(req, env, url);
 
