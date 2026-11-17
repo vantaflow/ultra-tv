@@ -104,7 +104,7 @@ class LeaguesViewModel @Inject constructor(
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to Data(LeagueStatus.LOADING, false, emptyList()))
 
     /**
-     * Directs de toutes les ligues visibles, relus à la minute (le dépôt les mémorise 60 s) hors du thread principal : le guide
+     * Directs de toutes les ligues visibles, relus toutes les 3 min hors du thread principal : le guide
      * du filtre « Tout » mélange les compétitions, leurs scores ne se trouvent pas dans la seule ligue affichée.
      */
     private val liveAll: StateFlow<Map<String, List<LeagueMatch>>> = prefs.flatMapLatest { p ->
@@ -117,7 +117,8 @@ class LeaguesViewModel @Inject constructor(
                         .map { it.await() }
                 }.filter { it.second.isNotEmpty() }.toMap()
                 emit(res)
-                delay(LeagueRepository.LIVE_MS)
+                // Une requête par ligue visible : toutes les 3 min pour rester sous la limite du Worker (120 / 10 min / appareil).
+                delay(ALL_LIVE_MS)
             }
         }
     }.flowOn(kotlinx.coroutines.Dispatchers.Default)
@@ -170,5 +171,6 @@ class LeaguesViewModel @Inject constructor(
     private companion object {
         const val IDLE_MS = 10 * 60_000L
         const val RETRY_MS = 60_000L
+        const val ALL_LIVE_MS = 3 * 60_000L
     }
 }
