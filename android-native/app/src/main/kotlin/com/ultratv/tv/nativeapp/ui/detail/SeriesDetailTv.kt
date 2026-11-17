@@ -156,7 +156,6 @@ fun SeriesDetailTvContent(
     val D = LocalDs.current
     val M = com.ultratv.tv.nativeapp.ui.mobile.LocalMobileStrings.current
     val scope = rememberCoroutineScope()
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
     val playRequester = remember { FocusRequester() }
     var playFocused by remember { mutableStateOf(false) }
     RequestInitialFocus(playRequester, hasFocus = { playFocused }, key = series.remoteId to (data.target != null))
@@ -177,8 +176,6 @@ fun SeriesDetailTvContent(
     val listState = rememberLazyListState()
     val entry = remember { FocusRequester() }
     val seasonEntry = remember { FocusRequester() }
-    // Barre « Aller à l'épisode » / « Télécharger la saison » : Haut depuis le 1er épisode y mène.
-    val toolbarReq = remember { FocusRequester() }
     var jumpOpen by remember { mutableStateOf(false) }
     // Bande-annonce : clé YouTube (TMDB), lue dans l'appli par le lecteur intégré.
     val trailerKey = remember(data.trailerUrl) { data.trailerUrl?.let(TmdbTrailer::keyOf) }
@@ -197,20 +194,10 @@ fun SeriesDetailTvContent(
     // Nouvelle saison : la liste repart de son point d'entrée (la reprise si elle y est, sinon le haut).
     LaunchedEffect(data.activeSeason) { listState.scrollToItem(entryNow) }
 
-    // Exception voulue : quand rien n'est plus loin dans la colonne de gauche vers les épisodes (recherche 2D sans
-    // candidat), la touche mène à l'épisode d'entrée (qui défile jusqu'à lui) au lieu du plus proche voisin de l'autre
-    // colonne (onglet de saison). Le reste (Haut/Bas/Gauche, et Droite entre les boutons) reste le focus 2D de Compose.
-    val leftExit = Modifier.focusProperties {
-        exit = { dir ->
-            if (leftColumnExitsToEpisodes(dir, ltr, shown.isNotEmpty())) { scope.launch { focusEntry() }; FocusRequester.Cancel }
-            else FocusRequester.Default
-        }
-    }
-
     Row(Modifier.fillMaxSize().background(Ux.Bg)) {
         // ─── Colonne gauche ───
         Column(
-            Modifier.width(780.design).fillMaxHeight().padding(start = 72.design, top = 56.design, bottom = 48.design).then(leftExit).focusGroup(),
+            Modifier.width(780.design).fillMaxHeight().padding(start = 72.design, top = 56.design, bottom = 48.design).focusGroup(),
             verticalArrangement = Arrangement.spacedBy(22.design),
         ) {
             V2BackButton(M.a11yBack, onBack)
@@ -231,18 +218,17 @@ fun SeriesDetailTvContent(
             T.presentable(series.plot)?.let {
                 Text(it, color = Ux.Text2, fontFamily = Manrope, fontSize = 21.spx, lineHeight = 32.spx, maxLines = 3, overflow = TextOverflow.Ellipsis)
             }
-            // « Reprendre » seul sur sa rangée : Droite y mène aux épisodes, Bas à la rangée suivante (bande-annonce, cœur,
-            // étoile), qui reste accessible en géométrie.
-            if (data.target != null) V2Pill(
-                if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
-                onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
-                modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
-            )
-            // Rangée qui passe à la ligne si elle ne tient pas (libellés longs selon la langue) : le cœur et l'étoile restent ensemble.
+            // Navigation purement géométrique (aucune redirection forcée) : Reprendre, bande-annonce, cœur et étoile sont sur une
+            // même rangée, Droite va à l'élément le plus proche à droite, Bas à celui du dessous. La rangée passe à la ligne si
+            // elle ne tient pas (libellés longs selon la langue) : le cœur et l'étoile restent ensemble.
             @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
             androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(12.design), verticalArrangement = Arrangement.spacedBy(12.design), itemVerticalAlignment = Alignment.CenterVertically) {
+                if (data.target != null) V2Pill(
+                    if (data.resuming) D.resumeEpisode(data.target.season, data.target.episode) else D.playEpisodeLabel(data.target.season, data.target.episode),
+                    onPlayTarget, primary = true, heightPx = 62, fontPx = 20, hPadPx = 28, iconPath = Icons.Play, iconFill = true,
+                    modifier = Modifier.focusRequester(playRequester).onFocusChanged { playFocused = it.isFocused },
+                )
                 if (trailerKey != null) V2Pill(D.trailerLabel, { trailerOpen = true }, heightPx = 62, fontPx = 19, hPadPx = 26)
-                // Étoile (Trakt) à droite du cœur : seule sur sa ligne, elle passait sous les boutons.
                 Row(horizontalArrangement = Arrangement.spacedBy(12.design), verticalAlignment = Alignment.CenterVertically) {
                     favorite()
                     trakt()
@@ -266,7 +252,7 @@ fun SeriesDetailTvContent(
                     onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } }, modifier = Modifier.weight(1f),
                 )
                 if (shown.isNotEmpty()) {
-                    V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22, modifier = Modifier.focusRequester(toolbarReq))
+                    V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22)
                     V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download)
                 }
             }
@@ -275,19 +261,6 @@ fun SeriesDetailTvContent(
                 shown.isEmpty() -> Text(if (data.loading) S.detailLoading else S.seriesNoEpisodes, color = Ux.Text3, fontFamily = Manrope, fontSize = 24.spx)
                 else -> LazyColumn(
                     Modifier.fillMaxSize()
-                        .onPreviewKeyEvent { ev ->
-                            if (ev.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                            when (ev.key) {
-                                awayFromSeasons -> {
-                                    // Droite : saison suivante, focus sur son point d'entrée. Pas de saison suivante : rien ne bouge.
-                                    stepSeason(seasonsNow, activeNow, +1)?.let { n -> onSeason(n); scope.launch { focusEntry() } }
-                                    true
-                                }
-                                // Gauche depuis un épisode : retour sur « Reprendre » (colonne de gauche), sinon voisin géométrique.
-                                towardSeasons -> { if (!(data.target != null && runCatching { playRequester.requestFocus() }.getOrDefault(false))) focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Left); true }
-                                else -> false
-                            }
-                        }
                         .focusGroup(),
                     state = listState, verticalArrangement = Arrangement.spacedBy(12.design),
                 ) {
@@ -295,9 +268,7 @@ fun SeriesDetailTvContent(
                         EpisodeCard(
                             ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
                             seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
-                            modifier = Modifier
-                                .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
-                                .then(if (i == 0) Modifier.focusProperties { up = toolbarReq } else Modifier),
+                            modifier = if (i == entryIdx) Modifier.focusRequester(entry) else Modifier,
                             onLongClick = { onLongPressEpisode(ep) },
                             onClick = { onPlayEpisode(ep) },
                         )
@@ -344,8 +315,9 @@ private fun SeasonTabs(
         modifier
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionDown) {
+                    // Valide la saison survolée, puis laisse le focus 2D choisir l'épisode le plus proche en dessous.
                     pending?.takeIf { it != active }?.let(onSeason)
-                    onEnterEpisodes(); true
+                    false
                 } else false
             }
             .focusGroup(),
@@ -411,6 +383,3 @@ private fun EpisodeCard(
     }
 }
 
-/** Direction de sortie de la colonne de gauche qui mène aux épisodes : Droite en LTR, Gauche en RTL. */
-internal fun leftColumnExitsToEpisodes(dir: androidx.compose.ui.focus.FocusDirection, ltr: Boolean, hasEpisodes: Boolean): Boolean =
-    hasEpisodes && dir == (if (ltr) androidx.compose.ui.focus.FocusDirection.Right else androidx.compose.ui.focus.FocusDirection.Left)

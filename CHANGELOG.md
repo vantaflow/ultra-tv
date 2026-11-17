@@ -5,7 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
-- Fiche série (TV) : Droite depuis « Reprendre » ou la colonne de gauche mène à l'épisode en cours, Gauche depuis un épisode revient sur « Reprendre » ; Haut et Bas restent géométriques
+- Télécommande : les flèches vont à l'élément le plus proche dans leur direction (navigation 2D), sans passer au bouton suivant ; redirections forcées retirées de la fiche série, du catalogue, de la recherche et du bandeau du Direct
 
 ## [1.3.50] — 2026-11-17 (Android) · Worker
 

@@ -544,7 +544,7 @@ private fun TouchFilterRow(vm: CatalogGridViewModel, chips: List<CategoryChip>, 
 @Composable
 private fun ChoiceBar(vm: CatalogGridViewModel, lp: CatalogLayoutPrefs, filter: CatalogFilter, split: Boolean, touch: Boolean, categoryCount: Int, down: FocusRequester?) {
     val D = LocalDs.current
-    val m = if (down != null) Modifier.focusProperties { this.down = down } else Modifier
+    val m = Modifier
     LazyRow(Modifier.rowBleedStart(RowBleed), horizontalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), contentPadding = PaddingValues(start = RowBleed), verticalAlignment = Alignment.CenterVertically) {
         // Barre d'origine : tri · note minimale · période, chaque option en pastille (sélection en surbrillance).
         // Catégories du fournisseur à gauche ; ni source, ni affichage, ni colonnes à régler.
@@ -602,7 +602,6 @@ private fun SplitBody(
                 CategoryRow(
                     label = categoryLabel(c), count = c.count, selected = isSel,
                     modifier = (if (isSel) Modifier.focusRequester(selReq) else Modifier)
-                        .focusProperties { right = gridReq }
                         // Droite : la catégorie focalisée devient tout de suite la catégorie choisie (sans attendre la
                         // pause de l'aperçu), la grille affichée est donc la sienne et Gauche y revient.
                         .onPreviewKeyEvent { e -> if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && e.key == androidx.compose.ui.input.key.Key.DirectionRight) vm.select(c.remoteId); false }
@@ -635,11 +634,7 @@ private fun SplitBody(
                 ) {
                     items(count = items.itemCount, key = safeKey, contentType = { "poster" }) { i ->
                         val it = items.getOrNull(i)
-                        if (it != null) PosterCell(it, if (CatalogLayoutRules.isFirstColumn(i, columns)) Modifier.onPreviewKeyEvent { e ->
-                            // Gauche depuis la 1re colonne : retour sur la catégorie CHOISIE (et non la ligne voisine à l'écran).
-                            if (e.key != androidx.compose.ui.input.key.Key.DirectionLeft) false
-                            else { if (e.type == androidx.compose.ui.input.key.KeyEventType.KeyDown && runCatching { selReq.requestFocus() }.isFailure) runCatching { listReq.requestFocus() }; true }
-                        } else Modifier, imageWidth = cellW) { onOpen(it.id) }
+                        if (it != null) PosterCell(it, Modifier, imageWidth = cellW) { onOpen(it.id) }
                         else androidx.compose.foundation.layout.Spacer(Modifier.height(1.design))
                     }
                 }
