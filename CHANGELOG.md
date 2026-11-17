@@ -5,6 +5,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 ## [Non publié]
 
 ### Corrigé
+- Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
 - Admin › Journaux : messages sur plusieurs lignes, identifiants et empreintes réduits ; le tableau ne déborde plus.
 
 ## [1.3.53] — 2026-11-17 (Android)
