@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [Bureau 1.2.67] — 2026-11-17
+
+### Corrigé
+- Windows, macOS et Linux : l'application démarre de nouveau (« Cannot find module './discovery.cjs' » en 1.2.66) ; le module de détection des serveurs du réseau local manquait dans l'installeur. Un test vérifie désormais que chaque module chargé au démarrage est empaqueté (#187)
+
 ## [1.3.46] — 2026-11-17 (Android)
 
 ### Corrigé
