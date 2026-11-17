@@ -66,7 +66,7 @@ import com.ultratv.tv.nativeapp.ui.settings.MediaLogo
  * Téléphone : sections empilées, rangées défilantes.
  */
 @Composable
-fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (providerId: Long, series: Boolean) -> Unit = { _, _ -> }, vm: LibraryHubViewModel = hiltViewModel()) {
+fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (providerId: Long, series: Boolean, libraryId: String?) -> Unit = { _, _, _ -> }, vm: LibraryHubViewModel = hiltViewModel()) {
     val D = LocalDs.current
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
     val rows by vm.rows.collectAsState()
@@ -91,7 +91,7 @@ fun LibraryHubScreen(onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, 
 }
 
 @Composable
-private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (Long, Boolean) -> Unit, onOpenNas: () -> Unit) {
+private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) -> Unit, onOpenSeries: (Long) -> Unit, onSeeAll: (Long, Boolean, String?) -> Unit, onOpenNas: () -> Unit) {
     val D = LocalDs.current
     val isNas = Nas.isNasKind(r.provider.kind)
     Column(verticalArrangement = Arrangement.spacedBy(if (touch) 8.dp else 14.design), modifier = Modifier.testTag("library-section")) {
@@ -123,7 +123,7 @@ private fun LibrarySection(r: LibraryRow, touch: Boolean, onOpenMovie: (Long) ->
             LazyRow(horizontalArrangement = Arrangement.spacedBy(if (touch) 10.dp else 18.design)) {
                 items(sh.tiles, key = { "${sh.kind}:${sh.title}:${it.isSeries}:${it.id}" }) { t -> PosterTile(t, touch) { if (t.isSeries) onOpenSeries(t.id) else onOpenMovie(t.id) } }
                 // « Tout voir » : grille paginée de Films / Séries filtrée sur ce serveur (catégories = bibliothèques, genre, année, tri).
-                sh.seeAllSeries?.let { ser -> item(key = "all:${sh.kind}:${sh.title}") { SeeAllTile(touch) { onSeeAll(r.provider.id, ser) } } }
+                sh.seeAllSeries?.let { ser -> item(key = "all:${sh.kind}:${sh.title}") { SeeAllTile(touch) { onSeeAll(r.provider.id, ser, sh.libraryId) } } }
             }
         }
     }

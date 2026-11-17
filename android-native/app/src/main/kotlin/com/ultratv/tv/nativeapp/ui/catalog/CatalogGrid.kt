@@ -130,6 +130,7 @@ private const val PREVIEW_DELAY_MS = 280L
 @HiltViewModel
 class CatalogGridViewModel @Inject constructor(
     providerRepo: ProviderRepository,
+    profileRepo: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val catalog: CatalogRepository,
     private val hiddenStore: HiddenCategoriesStore,
     private val movieDao: MovieDao,
@@ -197,7 +198,10 @@ class CatalogGridViewModel @Inject constructor(
     /** Synchro en cours : compteurs et rangées lus une seule fois au lieu d'être relancés à chaque lot inséré. */
     private val syncing = syncBus.status.map { it != null }.distinctUntilChanged()
 
-    private val providersFlow = providerRepo.observeProviders()
+    // Sources visibles pour le profil courant (choix du profil) : les serveurs masqués n'apparaissent ni en filtre ni en choix.
+    private val providersFlow = combine(providerRepo.observeProviders(), profileRepo.currentSources) { ps, names ->
+        com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(ps, names)
+    }
     private val pid = combine(providersFlow, CatalogSourceChoice.id) { ps, choice -> CatalogSourceChoice.resolve(ps.map { it.id to it.active }, choice) }.distinctUntilChanged()
 
     /** Sources proposées en filtre dans Films / Séries : la source IPTV active + chaque serveur multimédia / NAS (null = un seul choix, rien à afficher). */
@@ -350,7 +354,11 @@ private fun categoryLabel(c: CategoryChip): String = if (c.isGenre) LocalDs.curr
 fun CatalogGridScreen(kind: CatalogKind, onOpen: (Long) -> Unit) {
     val vm: CatalogGridViewModel = hiltViewModel(key = kind.name)
     val touch = com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current
-    LaunchedEffect(kind) { vm.bind(kind) }
+    LaunchedEffect(kind) {
+        vm.bind(kind)
+        // « Tout voir » d'une bibliothèque : on arrive directement sur cette bibliothèque (catégorie du serveur).
+        CatalogSourceChoice.pendingCategory.value?.let { vm.select(it); CatalogSourceChoice.pendingCategory.value = null }
+    }
     LaunchedEffect(touch) { vm.setSplitCapable(!touch) }
     val D = LocalDs.current
     val chipsOrNull by vm.chips.collectAsState()

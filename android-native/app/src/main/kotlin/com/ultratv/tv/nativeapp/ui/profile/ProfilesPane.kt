@@ -150,21 +150,31 @@ fun ProfileEditDialog(profile: ProfileEntity?, vm: ProfileViewModel, onDismiss: 
 private fun SourcesDialog(p: ProfileEntity, names: List<String>, vm: ProfileViewModel, S: ProfileStrings, onClose: () -> Unit) {
     var chosen by remember { mutableStateOf<List<String>?>(null) }
     var loaded by remember { mutableStateOf(false) }
-    androidx.compose.runtime.LaunchedEffect(p.id) { chosen = vm.sourcesOf(p.id); loaded = true }
+    var libs by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+    androidx.compose.runtime.LaunchedEffect(p.id) { chosen = vm.sourcesOf(p.id); libs = runCatching { vm.libraryNames() }.getOrDefault(emptyMap()); loaded = true }
     if (!loaded) return
-    val picked = chosen?.map { it.trim().lowercase() }?.toSet()
+    val rules = com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules
+    val picked = rules.sourceNames(chosen)?.map { it.trim().lowercase() }?.toSet()
     val ALL = "\u0000all"
     val DONE = "\u0000done"
     val opts = buildList<Pair<String, String>> {
         add(ALL to ((if (picked == null) "\u2713 " else "    ") + S.sourcesAll))
-        names.forEach { n -> add(n to ((if (picked == null || n.trim().lowercase() in picked) "\u2713 " else "    ") + n)) }
+        names.forEach { n ->
+            add(n to ((if (picked == null || n.trim().lowercase() in picked) "\u2713 " else "    ") + n))
+            // Serveurs multimédias : leurs bibliothèques (sections), cochées = visibles.
+            libs[n].orEmpty().forEach { l -> add("\u0001$n\u0001$l" to ("      \u21B3 " + (if (rules.libraryVisible(chosen, n, l)) "\u2713 " else "    ") + l)) }
+        }
         add(DONE to S.done)
     }
     ChoiceDialog(p.name, opts, null, onPick = { k ->
         when (k) {
             DONE -> onClose()
-            ALL -> { chosen = null; vm.setSources(p.id, null) }
-            else -> {
+            ALL -> { chosen = rules.withSources(chosen, null); vm.setSources(p.id, chosen) }
+            else -> if (k.startsWith("\u0001")) {
+                val (server, lib) = k.drop(1).split('\u0001', limit = 2).let { it[0] to it.getOrElse(1) { "" } }
+                val next = rules.toggleLibrary(chosen, server, lib)
+                chosen = next; vm.setSources(p.id, next)
+            } else {
                 val next = com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.toggle(names, chosen, k)
                 chosen = next; vm.setSources(p.id, next)
             }

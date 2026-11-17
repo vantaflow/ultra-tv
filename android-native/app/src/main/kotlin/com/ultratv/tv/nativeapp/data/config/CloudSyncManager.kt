@@ -131,6 +131,7 @@ class CloudSyncManager @Inject constructor(
             if (summary.added + summary.updated + summary.removed > 0 || summary.pending.isNotEmpty()) cadence.noteChange()
             // Serveur multimédia du site non ajouté : ETag non retenu, la configuration est relue (et réessayée) à la prochaine synchro.
             if (summary.failedMedia == 0) links.setEtag(fetched.etag)
+            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "synchro: +${summary.added} ~${summary.updated} -${summary.removed} échecsMedia=${summary.failedMedia} etag=${if (summary.failedMedia == 0) "retenu" else "NON retenu"}")
             links.lastSyncAt = System.currentTimeMillis()
             stateScope.launch { syncSharedState() }
             _state.value = CloudSyncState(
@@ -482,7 +483,10 @@ class CloudSyncManager @Inject constructor(
         val pending = mutableListOf<PendingRemoval>()
         val failed = mutableListOf<CloudProvider>()
         val deviceCount = cfg.devices.size
-        for (a in CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)) when (a) {
+        val plan = CloudSyncLogic.plan(localModels, cfg.providers, dependents, applied)
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "plan: cloud=${cfg.providers.size} locaux=${localModels.size} actions=" +
+            plan.joinToString(",") { a -> when (a) { is SyncAction.Add -> "Add:${a.cloud.kind}"; is SyncAction.Link -> "Link:${a.cloud.kind}"; is SyncAction.Update -> "Update:${a.cloud.kind}"; is SyncAction.Remove -> "Remove" } }.ifEmpty { "aucune" })
+        for (a in plan) when (a) {
             is SyncAction.Add -> {
                 val id = when (a.cloud.kind) {
                     "XTREAM" -> repo.addXtream(a.cloud.name, a.cloud.url, a.cloud.username, a.cloud.password)
@@ -547,7 +551,9 @@ class CloudSyncManager @Inject constructor(
      * si la configuration est incomplète. Nouvel essai à la prochaine synchro (l'ETag n'est pas retenu, voir [sync]).
      */
     private suspend inline fun mediaAdd(c: CloudProvider, failed: MutableList<CloudProvider>, add: () -> Long): Long? =
-        try { add() } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Throwable) { failed += c; null }
+        try { add().also { com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}': ok") } }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (t: Throwable) { failed += c; com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.CLOUD, "ajout ${c.kind} '${c.name}' échoué: ${com.ultratv.tv.nativeapp.UtvLog.why(t)} (réessai à la prochaine synchro)"); null }
 
     private suspend fun notifyMediaFailures(failed: List<CloudProvider>) {
         val fresh = failed.filter { announcedFailures.add(it.id) }
