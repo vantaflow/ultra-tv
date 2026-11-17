@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { classifyFailure, ffmpegInstallCommand } from "./failure";
+import { classifyFailure, ffmpegInstallCommand, planFallback } from "./failure";
 import { parseTxDiag, txDiagUrl, txUrl, type TxDiag } from "./transcode";
 
-const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, ...o });
+const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, duration: 0, container: "", audio: "", ...o });
 
 describe("classifyFailure : la vraie cause", () => {
   it("statuts du fournisseur : compte / connexions vs autre erreur HTTP", () => {
@@ -41,7 +41,23 @@ describe("conversion vidéo : URL et diagnostic", () => {
   it("réponse /txd validée", () => {
     expect(parseTxDiag(null)).toBeNull();
     expect(parseTxDiag({ reason: "boum" })).toBeNull();
-    expect(parseTxDiag({ reason: "http", status: 458 })).toEqual({ reason: "http", status: 458, codec: "", convert: false, canEncode: false });
-    expect(parseTxDiag({ reason: "ok", video: { codec: "mpeg2video" }, convert: true, canEncode: true })).toEqual({ reason: "ok", status: null, codec: "mpeg2video", convert: true, canEncode: true });
+    expect(parseTxDiag({ reason: "http", status: 458 })).toEqual({ reason: "http", status: 458, codec: "", convert: false, canEncode: false, duration: 0, container: "", audio: "" });
+    expect(parseTxDiag({ reason: "ok", video: { codec: "mpeg2video" }, convert: true, canEncode: true, duration: 5530.5 })).toEqual({ reason: "ok", status: null, codec: "mpeg2video", convert: true, canEncode: true, duration: 5530.5, container: "", audio: "" });
+  });
+});
+
+describe("planFallback : remux, copie ou conversion", () => {
+  it("vidéo illisible : conversion H.264 (ou installation de ffmpeg)", () => {
+    expect(planFallback(diag({ codec: "hevc", convert: true }), { vod: true })).toBe("convert");
+    expect(planFallback(diag({ codec: "mpeg2video", convert: true }), { vod: false })).toBe("convert");
+    expect(planFallback(diag({ codec: "hevc", convert: true, canEncode: false }), { vod: true })).toBe("needEncoder");
+  });
+  it("codecs lisibles : film MKV / AC-3 remuxé (vidéo copiée), direct laissé à ses autres formats", () => {
+    expect(planFallback(diag({ codec: "h264", convert: false }), { vod: true })).toBe("remux");
+    expect(planFallback(diag({ codec: "h264", convert: false }), { vod: false })).toBeNull();
+  });
+  it("flux injoignable ou illisible : rien à tenter", () => {
+    expect(planFallback(diag({ reason: "http", status: 403 }), { vod: true })).toBeNull();
+    expect(planFallback(null, { vod: true })).toBeNull();
   });
 });

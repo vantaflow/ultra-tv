@@ -11,6 +11,7 @@ import { OTHER_LANG, categoryLang } from "@/lib/categoryLang";
 import { cleanTitle, prettyCategoryName } from "@/lib/titleCleaner";
 import { firstString, normText, rating10, toNum, wordKeys } from "@/lib/text";
 import { parseM3u } from "@/lib/m3u";
+import { classifyM3uEntry, episodeOf, seriesTitleOf, urlExtension } from "@/lib/m3uKind";
 import { streamObjects, TruncatedError } from "@/net/json";
 import { transportFetch, type Transport } from "@/net/transport";
 import type { Table } from "dexie";
@@ -19,7 +20,7 @@ import { StalkerSyncLog, type SyncType } from "@/net/stalkerLog";
 import { MediaClient, isMediaType, mediaLink, numericId, type MediaApi } from "@/net/mediaServer";
 import { PlexClient } from "@/net/plex";
 import { libraryWanted } from "@/lib/mediaWizard";
-import { buildNasCatalog, isNasType, nasRootName, nasSeriesInfo, scanNas } from "@/net/nas";
+import { buildNasCatalog, isNasType, nasRootName, nasSeriesInfo, scanNas, type NasEpisode } from "@/net/nas";
 import {
   handshake, xtreamArray, xtreamStream,
   type XtreamCategory, type XtreamCreds, type XtreamLive, type XtreamSeries, type XtreamVod,
@@ -773,9 +774,18 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
   // échec franc, l'ancien catalogue reste en place (sinon il était remplacé par un catalogue vide).
   if (!text.includes("#EXTM3U") && !text.includes("#EXTINF")) throw new Error("not-m3u");
   if (entries.length === 0 && source.counts.live > 0) throw new Error("not-m3u");
+  // Playlist mêlant direct et VOD (ou 100 % VOD) : les fichiers vidéo, les chemins /movie/ et /series/ et les types déclarés
+  // vont dans Films et Séries, lus comme de la VOD (position, durée, reprise) ; le reste reste dans le Direct.
+  const liveEntries: Array<{ e: (typeof entries)[number]; i: number }> = [];
+  const movieEntries: Array<{ e: (typeof entries)[number]; i: number }> = [];
+  const epEntries: Array<{ e: (typeof entries)[number]; i: number }> = [];
+  entries.forEach((e, i) => {
+    const k = classifyM3uEntry(e);
+    (k === "movie" ? movieEntries : k === "series" ? epEntries : liveEntries).push({ e, i });
+  });
   const groups = new Map<string, number>();
   const rows: ChannelRow[] = [];
-  entries.forEach((e, i) => {
+  for (const { e, i } of liveEntries) {
     const group = (e.groupTitle ?? "").trim() || "—";
     if (!groups.has(group)) groups.set(group, groups.size);
     const p = parseChannelName(e.name);
@@ -785,7 +795,7 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
       logo: e.tvgLogo, epg: e.tvgId, archive: e.catchUp ? 1 : 0, url: e.url,
       ...(e.protected ? { drm: 1 as const } : {}),
     });
-  });
+  }
   for (let i = 0; i < rows.length; i += 5000) {
     assertNotAborted(signal);
     await db.channels.bulkAdd(rows.slice(i, i + 5000));
@@ -801,6 +811,52 @@ async function syncM3u({ source, cid: sourceId, counts, report }: Ctx, t: Transp
       count: perGroup.get(name) ?? 0, enabled: 1 as const, adult: 0 as const, ord,
     };
   });
-  await db.categories.bulkAdd(cats);
+
+  // --- Films ---
+  const groupOf = (e: { groupTitle: string | null }) => (e.groupTitle ?? "").trim() || "—";
+  const vodCats = new Map<string, CategoryRow>();
+  const vodCat = (kind: "movie" | "series", name: string) => {
+    const key = `${kind}:${name}`;
+    let c = vodCats.get(key);
+    if (!c) {
+      c = { sourceId, kind, extId: name, name, label: prettyCategoryName(name), badge: null, count: 0, enabled: 1 as const, adult: 0 as const, ord: vodCats.size };
+      vodCats.set(key, c);
+    }
+    c.count += 1;
+    return c;
+  };
+  const movies: MovieRow[] = movieEntries.map(({ e, i }, n) => {
+    const name = groupOf(e);
+    vodCat("movie", name);
+    const title = e.name.replace(/\.(?:mp4|mkv|avi|mov|m4v)$/i, "").trim() || e.name;
+    const norm = normText(title);
+    return { sourceId, catExt: name, ord: n, streamId: i + 1, name: e.name, title, norm, words: wordKeys(sourceId, norm), year: null, poster: e.tvgLogo, rating: 0, ext: urlExtension(e.url) || "mp4", added: 0, url: e.url };
+  });
+  // --- Séries : épisodes regroupés d'après le titre ---
+  const bySeries = new Map<string, { title: string; cat: string; logo: string | null; eps: NasEpisode[] }>();
+  for (const { e, i } of epEntries) {
+    const title = seriesTitleOf(e.name);
+    const key = normText(title) || "x";
+    let g = bySeries.get(key);
+    if (!g) bySeries.set(key, (g = { title, cat: groupOf(e), logo: e.tvgLogo, eps: [] }));
+    const ep = episodeOf(e.name);
+    const season = ep?.season ?? 1;
+    g.eps.push({ id: i + 1, season, episode: ep?.episode ?? g.eps.length + 1, title: e.name, ext: urlExtension(e.url) || "mp4", url: e.url });
+  }
+  const series: SeriesRow[] = [];
+  const details: Array<{ key: string; json: object; fetchedAt: number }> = [];
+  for (const g of bySeries.values()) {
+    const seriesId = series.length + 1;
+    vodCat("series", g.cat);
+    const norm = normText(g.title);
+    series.push({ sourceId, catExt: g.cat, ord: series.length, seriesId, name: g.title, title: g.title, norm, words: wordKeys(sourceId, norm), year: null, poster: g.logo, backdrop: null, plot: null, rating: 0, added: 0 });
+    g.eps.sort((x, y) => x.season - y.season || x.episode - y.episode);
+    details.push({ key: `series:${source.id}:${seriesId}`, json: nasSeriesInfo(g.eps), fetchedAt: Date.now() });
+  }
+  for (let i = 0; i < movies.length; i += 5000) await db.movies.bulkAdd(movies.slice(i, i + 5000));
+  for (let i = 0; i < series.length; i += 5000) await db.series.bulkAdd(series.slice(i, i + 5000));
+  for (let i = 0; i < details.length; i += 2000) await db.details.bulkPut(details.slice(i, i + 2000));
+  counts.movie = movies.length; counts.series = series.length;
+  await db.categories.bulkAdd([...cats, ...vodCats.values()].map((c, ord) => ({ ...c, ord: c.kind === "live" ? c.ord : ord })));
   report("live", 1, true);
 }
