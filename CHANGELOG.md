@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.52] — 2026-11-17 (Android)
+
 ### Corrigé
 - Fiche série (TV) : Droite depuis le dernier élément d'une ligne de la colonne gauche (Lecture, étoile, dernier acteur) mène à l'épisode à reprendre (ou au premier), Gauche depuis un épisode revient sur « Lecture » ; plus de descente vers l'acteur ; noms de la distribution sur deux lignes à interligne normal et cellules alignées
 
