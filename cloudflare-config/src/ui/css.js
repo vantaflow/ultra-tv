@@ -263,7 +263,8 @@ details>.drop{margin-top:var(--sp-3);padding-top:4px;flex-basis:100%}
 .danger-zone{border-color:color-mix(in srgb,var(--dng) 45%,var(--bd))}
 .danger-zone h2{color:var(--dng)}
 /* ---- Chiffres clés ---- */
-.tiles{display:grid;gap:var(--sp-3);grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin:var(--sp-5) 0 var(--sp-2)}
+.tiles{display:flex;flex-wrap:wrap;gap:var(--sp-3);margin:var(--sp-5) 0 var(--sp-2)}
+.tiles>.tile{flex:1 1 170px;min-width:0}
 .tile{background:var(--s1);border:1px solid var(--bd);border-radius:var(--r-lg);padding:var(--sp-4) 18px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow)}
 .tile b{font:700 28px var(--fh);color:var(--fg);line-height:1.15}
 .tile span{color:var(--mut);font-size:var(--t-sm);font-weight:600}
@@ -312,6 +313,7 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px var(--mo
 .ann-form .row{gap:12px;align-items:flex-end}
 .ann-i18n{margin:8px 0}.ann-i18n summary{cursor:pointer;padding:6px 0}.ann-lang{border:1px solid var(--line,#333);border-radius:10px;padding:8px 10px;margin:8px 0;display:grid;gap:6px}.ann-lang legend{padding:0 6px;font-weight:600}
 .ann-form .row .grow{min-width:200px}
+.ann-i18n>summary{display:block;min-height:0;padding:6px 0;border:0;background:none;width:100%}
 /* ---- Choix de l'APK (/apk) : gros boutons pour la télécommande ---- */
 .apk-list{display:grid;gap:var(--sp-3);margin:var(--sp-4) 0}
 .apk-list a.button{min-height:68px;padding:12px 18px;line-height:1.35;justify-content:flex-start;text-align:start;font-size:15px}
@@ -319,5 +321,36 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px var(--mo
 .apk-list a.alt-btn:hover{border-color:var(--mut);background:var(--s3)}
 .apk-list small{font-weight:500;opacity:.9}
 .apk-list a.button:focus-visible{outline:3px solid var(--ring);outline-offset:3px}
+/* ---- Finitions de mise en page (passe « zéro vide ») ---- */
+/* L'ancre de section ne doit pas devenir un élément flex du titre (elle le décalait au centre). */
+.section-h{position:relative}
+.section-h>.anchor{position:absolute;inset-inline-start:0;top:calc(-1 * (var(--hdr) + 12px))}
+/* Pages d'une seule carte (connexion, don, APK…) : centrées verticalement dans la hauteur disponible, sans grand vide dessous. */
+.page.narrow,.page.mid{display:flex;flex-direction:column;justify-content:center;padding-top:var(--sp-5)}
+/* Cartes côte à côte : contenu étiré, boutons alignés en bas, quelle que soit la longueur du texte. */
+.cards>.card{display:flex;flex-direction:column}
+.card>.actions{margin-top:auto;padding-top:var(--sp-3)}
+.two>.panel,.agrid>.panel{display:flex;flex-direction:column}
+.two>.panel>form{flex:1;display:flex;flex-direction:column}
+.two>.panel>form>.row:last-child{margin-top:auto;padding-top:var(--sp-4)}
+.agrid>.panel>.note:last-child{margin-top:auto}
+.agrid>.panel>:nth-last-child(2):not(:only-child){margin-bottom:var(--sp-4)}
+.section-h>.sh-t{min-width:0}
+/* Panneau d'appairage : consignes à gauche, formulaire à droite (au lieu d'un champ étiré sur toute la largeur). */
+@media (min-width:1000px){#appairer{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);column-gap:var(--sp-6);grid-template-rows:1fr auto auto auto 1fr}
+ #appairer>h2{grid-column:1;grid-row:2}#appairer>.sub{grid-column:1;grid-row:3}#appairer>.steps{grid-column:1;grid-row:4}
+ #appairer>form{grid-column:2;grid-row:1/-1;margin-top:0}}
+@media (max-width:600px){
+ /* Boutons : rangées pleines plutôt qu'un bouton orphelin à la ligne ; envoi des formulaires en pleine largeur. */
+ .actions>form,.actions>button,.actions>a.button,.actions>details>summary{flex:1 1 auto;justify-content:center}
+ .actions form>button{width:100%}
+ .panel form>button,.panel form>.row>button:only-child,.panel form>.row>a.button:only-child{width:100%}
+ .section-h a.button{width:100%;margin-inline-start:0}
+ .svc-h{flex-wrap:wrap}
+ .svc-h form{margin-inline-start:0;width:100%}.svc-h form button{width:100%}
+ .svc-h .chip{white-space:normal}
+ .seg label{font-size:13px;padding:0 2px}
+ .row>a.button,.row>button{flex:1 1 auto}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
 `;
