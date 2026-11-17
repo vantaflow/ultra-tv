@@ -165,9 +165,17 @@ object CloudSyncLogic {
         appliedNames: Map<String, String>,
     ): List<SyncAction> {
         val actions = mutableListOf<SyncAction>()
-        val supported = cloud.map(::normalized).filter { it.kind in SUPPORTED_KINDS }
-        val byCloudId = local.filter { it.cloudId != null }.associateBy { it.cloudId!! }
-        val unlinkedByIdentity = local.filter { it.cloudId == null }.associateBy { identityOf(it.kind, it.url, it.username, it.mac) }.toMutableMap()
+        val byCloudId0 = local.filter { it.cloudId != null }.associateBy { it.cloudId!! }
+        // Doublons CLOUD (même serveur Plex ajouté deux fois depuis le site) : une seule source retenue, de préférence celle déjà
+        // liée ici ; les autres sont ignorées (jamais liées à la même source locale) — voir [duplicateCloudIds].
+        val supported = dedupeCloud(cloud.map(::normalized).filter { it.kind in SUPPORTED_KINDS }, byCloudId0.keys)
+        val keep = supported.map { it.id }.toSet()
+        val byCloudId = byCloudId0.filterKeys { it in keep }
+        // Sources locales sans lien, ou liées à un id cloud qui n'existe plus (supprimé sur le site) : candidates au rapprochement
+        // par identité AVANT toute suppression. Une pierre tombale ne retire donc pas une source qu'un jumeau cloud vivant réclame.
+        val relinkable = local.filter { it.cloudId == null || it.cloudId !in keep }
+        val unlinkedByIdentity = relinkable.associateBy { identityOf(it.kind, it.url, it.username, it.mac) }.toMutableMap()
+        val rebound = mutableSetOf<Long>()
         for (c in supported) {
             val linked = byCloudId[c.id]
             if (linked != null) {
@@ -181,16 +189,35 @@ object CloudSyncLogic {
             }
             val twin = unlinkedByIdentity.remove(identityOf(c.kind, c.url, c.username, c.mac))
             if (twin != null) {
+                rebound += twin.localId
                 actions += SyncAction.Link(twin.localId, c)
                 if (differs(twin, c)) actions += SyncAction.Update(twin.localId, c, renameLocal = false)
             } else actions += SyncAction.Add(c)
         }
-        val keep = supported.map { it.id }.toSet()
         for (l in local) {
             val id = l.cloudId ?: continue
-            if (id !in keep) actions += SyncAction.Remove(l.localId, l.name, dependents[l.localId] ?: 0)
+            if (id !in keep && l.localId !in rebound) actions += SyncAction.Remove(l.localId, l.name, dependents[l.localId] ?: 0)
         }
         return actions
+    }
+
+    /**
+     * Ids cloud ignorés parce qu'un autre id cloud désigne le MÊME serveur Plex (identifiant de machine identique). Garde celui déjà
+     * lié localement, sinon le premier. Seul Plex est concerné : deux sources Xtream identiques restent distinctes.
+     */
+    fun duplicateCloudIds(cloud: List<CloudProvider>, linkedIds: Set<String> = emptySet()): Set<String> {
+        val live = cloud.map(::normalized).filter { it.kind in SUPPORTED_KINDS }
+        return live.map { it.id }.toSet() - dedupeCloud(live, linkedIds).map { it.id }.toSet()
+    }
+
+    private fun dedupeCloud(list: List<CloudProvider>, linkedIds: Set<String>): List<CloudProvider> {
+        val chosen = HashMap<String, String>()
+        for (c in list) if (c.kind == "PLEX") {
+            val k = identityOf(c.kind, c.url, c.username, c.mac)
+            val cur = chosen[k]
+            if (cur == null || (c.id in linkedIds && cur !in linkedIds)) chosen[k] = c.id
+        }
+        return list.filter { c -> c.kind != "PLEX" || chosen[identityOf(c.kind, c.url, c.username, c.mac)] == c.id }
     }
 
     private fun differs(l: LocalProvider, c: CloudProvider): Boolean =

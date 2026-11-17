@@ -266,6 +266,40 @@ class CloudSyncLogicTest {
         assertEquals(1, plan(listOf(nas), listOf(cloud("n1", url = "smb://nas/films/", user = "u", pass = "p", kind = "NAS"))).count { it is SyncAction.Link })
     }
 
+    // ── Scénario réel : deux sources cloud PLEX pour le même serveur, une supprimée sur le site ──
+    private fun plex(id: String) = cloud(id, name = "JDM Plex Server", url = "https://x.plex.direct:32400", user = "machine-1", pass = "tok", kind = "PLEX")
+    private fun localPlex(cloudId: String?) = local(7, cloudId, name = "JDM Plex Server", url = "http://192.168.0.9:32400", user = "machine-1", pass = "tok", kind = "PLEX")
+
+    @Test fun deuxSourcesCloudPlex_uneSeuleLocale_laPremiereLiee_laSecondeIgnoree() {
+        val a = plan(listOf(localPlex("c1")), listOf(plex("c1"), plex("c2")))
+        assertTrue(a.isEmpty())                                   // ni Add ni Remove ni double lien
+        assertEquals(setOf("c2"), CloudSyncLogic.duplicateCloudIds(listOf(plex("c1"), plex("c2")), setOf("c1")))
+        // Locale liée au second id : c'est lui qui est gardé.
+        assertEquals(setOf("c1"), CloudSyncLogic.duplicateCloudIds(listOf(plex("c1"), plex("c2")), setOf("c2")))
+    }
+
+    @Test fun pierreTombale_dUneDesDeuxSourcesCloud_neRetirePasLaSourceLocale() {
+        // c1 (liée ici) supprimée sur le site ; c2, vivante, désigne le même serveur : la locale est RE-LIÉE, jamais retirée.
+        val a = plan(listOf(localPlex("c1")), listOf(plex("c2")))
+        assertEquals(listOf(SyncAction.Link(7, plex("c2"))), a)
+        assertTrue(a.none { it is SyncAction.Remove })
+    }
+
+    @Test fun sourceCloudVivanteSansCopieLocale_estRajoutee() {
+        // La locale a disparu (retirée à tort avant ce correctif) : la source cloud vivante est ajoutée à la synchro suivante.
+        assertEquals(listOf(SyncAction.Add(plex("c2"))), plan(emptyList(), listOf(plex("c2"))))
+    }
+
+    @Test fun sourceSupprimeeSansJumeau_estBienRetiree() {
+        val a = plan(listOf(localPlex("c1")), emptyList())
+        assertTrue(a.single() is SyncAction.Remove)
+    }
+
+    @Test fun uneSourceLocaleNEstLieeQuaUnSeulIdCloud() {
+        val a = plan(listOf(localPlex(null)), listOf(plex("c1"), plex("c2")))
+        assertEquals(1, a.count { it is SyncAction.Link || it is SyncAction.Add })
+    }
+
     @Test fun serveurAJeton_jamaisReecrit_seulLeNomSuit() {
         val c = CloudProvider("a1", "JELLYFIN", "Maison", "http://jf:8096", "anna", "pw", "", null, "dashboard", 0L)
         // Localement : identifiant utilisateur + jeton (différents des identifiants du site, par nature).
