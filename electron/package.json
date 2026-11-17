@@ -1,6 +1,6 @@
 {
   "name": "ultratv-desktop",
-  "version": "1.2.66",
+  "version": "1.2.67",
   "description": "Ultra TV desktop - Electron shell around the web app.",
   "author": "Ultra TV",
   "license": "MIT",
@@ -74,6 +74,7 @@
       "trailer.cjs",
       "recorder.cjs",
       "nas.cjs",
+      "discovery.cjs",
       "web-dist/**/*",
       "package.json"
     ],
