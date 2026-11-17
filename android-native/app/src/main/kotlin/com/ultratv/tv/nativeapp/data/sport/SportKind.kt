@@ -77,10 +77,15 @@ fun matchLineOf(rawTitle: String): MatchLine {
         val tail = title.substring(colon + 1).trim()
         if (MATCH_SEPARATOR.containsMatchIn(tail)) { competition = title.substring(0, colon).trim(); rest = tail }
     }
-    val m = MATCH_SEPARATOR.find(rest)
-    if (m != null) {
-        val home = rest.substring(0, m.range.first).trim()
-        val away = rest.substring(m.range.last + 1).trim()
+    // « Compétition - A - B » ou « A - B - U21 » : plus de deux morceaux = on garde les deux équipes, sans préfixe ni suffixe.
+    var parts = MATCH_SEPARATOR.split(rest).map { it.trim() }
+    if (parts.size >= 3) {
+        if (SportMatching.competitionOf(parts[0]) != null) { competition = competition ?: parts[0]; parts = parts.drop(1) }
+        if (parts.size == 3 && SportMatching.isSuffix(parts[2])) parts = parts.take(2)
+    }
+    if (parts.size >= 2) {
+        val home = parts[0]
+        val away = parts.drop(1).joinToString(" - ")
         if (home.isNotEmpty() && away.isNotEmpty()) return MatchLine(competition, home, away, title)
     }
     return MatchLine(null, null, null, title)

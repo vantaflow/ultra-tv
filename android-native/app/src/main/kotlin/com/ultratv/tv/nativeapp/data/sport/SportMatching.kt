@@ -130,7 +130,9 @@ object SportMatching {
             }
         }
         var parts = SEP.split(s).map { it.trim() }
-        if (parts.size == 3 && competitionOf(parts[0]) != null) { comp = comp ?: competitionOf(parts[0]); parts = parts.drop(1) }
+        if (parts.size >= 3 && competitionOf(parts[0]) != null) { comp = comp ?: competitionOf(parts[0]); parts = parts.drop(1) }
+        // « Liechtenstein - Azerbaijan - U21 » : un suffixe (catégorie, compétition) après le second séparateur n'est pas une équipe.
+        if (parts.size == 3 && isSuffix(parts[2])) parts = parts.take(2)
         if (parts.size == 2) {
             val a = canonTeam(parts[0]); val b = canonTeam(parts[1])
             if (a.isNotEmpty() && b.isNotEmpty() && a != b) return ParsedEvent(comp, listOf(a, b).sorted().joinToString("|"), true)
@@ -138,6 +140,11 @@ object SportMatching {
         val plain = words(SportDetector.fold(s)).filter { it !in QUALITY_WORDS }.joinToString(" ")
         return ParsedEvent(comp, "t:$plain", false)
     }
+
+    private val SUFFIX = Regex("^(?:u[ -]?\\d{2}|women|woman|feminin|féminin|femmes|hommes|men|w|f|m|[a-z]{1,3}\\d?)$", RegexOption.IGNORE_CASE)
+
+    /** Morceau qui suit le second séparateur d'un titre (« U21 », « Women », nom de compétition) : pas une équipe. */
+    fun isSuffix(part: String): Boolean = SUFFIX.matches(part.trim()) || competitionOf(part) != null
 
     /** Deux programmes (titre + début) décrivent-ils le même événement ? */
     fun sameEvent(a: ParsedEvent, aStartMs: Long, b: ParsedEvent, bStartMs: Long): Boolean {

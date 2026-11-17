@@ -187,7 +187,7 @@ fun SportScreen(
         }
         // Feuille de match (plein écran) : OK sur un match du direct ou de « À venir ».
         sheet?.let { s ->
-            val live = lg.matches.firstOrNull { it.id == s.match.id } ?: s.match
+            val live = lg.matches.firstOrNull { it.id == s.match.id } ?: lg.liveAll.values.firstNotNullOfOrNull { l -> l.firstOrNull { it.id == s.match.id } } ?: s.match
             MatchSheetScreen(
                 D, live, s.sheet, s.loading, lg.noSpoiler, s.match.id in lg.revealed,
                 channels = remember(live, st.entries) { LeagueChannels.channelsFor(live, st.entries) },

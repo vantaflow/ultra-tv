@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -163,25 +164,26 @@ internal fun TeamCrest(name: String?, url: String?, size: Dp) {
     }
 }
 
-/** Puce « chaîne · qualité » : liseré doré (4K), bleu (HD) ou gris (SD / inconnu). */
+/** Puce « chaîne · qualité » : liseré doré (4K), bleu (HD) ou gris (SD / inconnu). Hauteur fixe, une seule ligne ; lisible sur carte focalisée. */
 @Composable
-internal fun ChanChip(c: ChannelEntity, fontSp: Int = 18) {
+internal fun ChanChip(c: ChannelEntity, fontSp: Int = 18, focused: Boolean = false, modifier: Modifier = Modifier) {
     val q = SportHubLogic.qualityOf(c)
     val bar = when (q) { "4K" -> Color(0xFFF5C451); "HD" -> Color(0xFF7FA8FF); else -> Ux.Text3 }
-    Row(Modifier.clip(RoundedCornerShape(10.design)).background(Ux.Button).height(IntrinsicSize.Min)) {
-        Box(Modifier.width(3.design).fillMaxHeight().background(bar))
+    val shape = RoundedCornerShape(10.design)
+    Row(modifier.height(34.designT).clip(shape).background(if (focused) Ux.TextOnLight.copy(alpha = 0.12f) else Ux.Button), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.width(4.design).fillMaxHeight().background(bar))
         Text(
-            if (q.isEmpty()) c.title else "${c.title} · $q", color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = fontSp.spx,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 12.design, vertical = 5.design),
+            if (q.isEmpty()) c.title else "${c.title} · $q", color = if (focused) Ux.TextOnLight else Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = fontSp.spx,
+            maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 12.design),
         )
     }
 }
 
 /** Puces des chaînes d'un événement (au plus [max]) ; une même chaîne n'apparaît qu'une fois par qualité. */
 @Composable
-internal fun ChanChips(channels: List<SportEntry>, max: Int = 3, fontSp: Int = 18) {
+internal fun RowScope.ChanChips(channels: List<SportEntry>, max: Int = 3, fontSp: Int = 18, focused: Boolean = false) {
     val shown = remember(channels, max) { channels.distinctBy { it.channel.title to SportHubLogic.qualityOf(it.channel) }.take(max) }
-    for (e in shown) ChanChip(e.channel, fontSp)
+    for (e in shown) ChanChip(e.channel, fontSp, focused, Modifier.weight(1f, fill = false))
 }
 
 @Composable
@@ -244,7 +246,7 @@ internal fun HubLiveCard(m: LiveCardModel, D: DesignStrings, noSpoiler: Boolean,
         val c2 = if (f) Ux.OnFocus2 else Ux.Text2
         Column(Modifier.fillMaxSize().padding(26.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(m.league, color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(m.league, color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Spacer(Modifier.width(10.design))
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.design)) {
                     Box(Modifier.size(9.design).clip(CircleShape).background(Ux.Err))
@@ -265,9 +267,9 @@ internal fun HubLiveCard(m: LiveCardModel, D: DesignStrings, noSpoiler: Boolean,
             // Chaînes en bas : toutes les cartes ont la même hauteur, quel que soit leur contenu.
             Spacer(Modifier.weight(1f))
             if (m.channels.size >= 2) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
-                Text(D.sportAlsoOnChan(m.channels.size), color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Text(D.sportAlsoOnChan(m.channels.size), color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
-            if (m.channels.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.design)) { ChanChips(m.channels, max = 2, fontSp = 16) }
+            if (m.channels.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(8.design)) { ChanChips(m.channels, max = 2, fontSp = 16, focused = f) }
         }
     }
 }
@@ -276,8 +278,8 @@ internal fun HubLiveCard(m: LiveCardModel, D: DesignStrings, noSpoiler: Boolean,
 private fun LiveTeamRow(name: String, badge: String?, score: Int?, hasScore: Boolean, color: Color) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.design)) {
         TeamCrest(name, badge, 46.design)
-        Text(name, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 26.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Text(score?.toString() ?: if (hasScore) "•" else "–", color = color, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 38.spx, maxLines = 1)
+        Text(name, color = color, fontFamily = Manrope, fontWeight = FontWeight.ExtraBold, fontSize = 22.spx, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Text(score?.toString() ?: if (hasScore) "•" else "–", color = color, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 38.spx, maxLines = 1, softWrap = false)
     }
 }
 
@@ -425,9 +427,10 @@ private fun rememberHubLists(st: SportState, D: DesignStrings, hub: HubState, cl
     val league = hub.lg.selected?.let { LeagueCatalog.of(it) }
     val matches = if (hub.lg.status == LeagueStatus.OK) hub.lg.matches else emptyList()
     val programme = D.sportProgramme
-    return remember(st, hub.lg.selected, hub.all, matches, minute, programme) {
+    val liveAll = hub.lg.liveAll
+    return remember(st, hub.lg.selected, hub.all, matches, liveAll, minute, programme) {
         val now = System.currentTimeMillis()
-        val cards = SportHubLogic.liveCards(leagueKey, league?.name, league?.kind, matches, st.live, st.entries.ifEmpty { st.live + st.upcoming.flatMap { it.entries } }, st.alsoOn, now) { e ->
+        val cards = SportHubLogic.liveCards(leagueKey, league?.name, league?.kind, matches, st.live, st.entries.ifEmpty { st.live + st.upcoming.flatMap { it.entries } }, st.alsoOn, now, liveAll) { e ->
             kindOf(e)?.let { kindLabel(D, it) } ?: programme
         }
         val days = SportHubLogic.filterUpcoming(leagueKey, matches, st.entries, st.upcoming)

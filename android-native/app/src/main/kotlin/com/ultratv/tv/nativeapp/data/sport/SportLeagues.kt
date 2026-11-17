@@ -192,13 +192,27 @@ object LeagueChannels {
         val h = m.home?.let { SportMatching.canonTeam(it) }?.takeIf { it.isNotEmpty() } ?: return emptyList()
         val a = m.away?.let { SportMatching.canonTeam(it) }?.takeIf { it.isNotEmpty() } ?: return emptyList()
         val start = m.startMs ?: return emptyList()
-        val key = listOf(h, a).sorted().joinToString("|")
         // Horaire d'abord (comparaison d'entiers) : l'analyse du titre (expressions régulières) ne porte que sur
         // les quelques programmes proches. Analyser tout le guide pour chaque match figeait l'écran Sport (ANR).
         val hits = entries.filter { e ->
             kotlin.math.abs(e.prog.startMs - start) <= TOLERANCE_MS &&
-                SportMatching.parse(e.prog.title).let { p -> p.isMatch && p.key == key }
+                SportMatching.parse(e.prog.title).let { p -> p.isMatch && sameTeams(p.key, h, a) }
         }
         return SportMatching.orderChannels(hits)
+    }
+
+    /** Même équipe malgré un nom plus court d'un côté (« Rangers » / « New York Rangers ») : mots du plus court inclus dans l'autre. */
+    internal fun sameTeam(x: String, y: String): Boolean {
+        if (x == y) return true
+        val tx = x.split(' ').filter { it.isNotEmpty() }; val ty = y.split(' ').filter { it.isNotEmpty() }
+        val (short, long) = if (tx.size <= ty.size) tx to ty else ty to tx
+        return short.isNotEmpty() && short.all { it in long } && short.sumOf { it.length } >= 5
+    }
+
+    /** [key] (« a|b », ordre indifférent) désigne-t-il les équipes canoniques [h] et [a] ? */
+    internal fun sameTeams(key: String, h: String, a: String): Boolean {
+        val k = key.split('|')
+        if (k.size != 2) return false
+        return (sameTeam(k[0], h) && sameTeam(k[1], a)) || (sameTeam(k[0], a) && sameTeam(k[1], h))
     }
 }

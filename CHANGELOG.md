@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Sport : les cartes « En direct » du filtre Tout affichent le score et la minute de tous les championnats (NHL, Champions League, matchs internationaux…) et ouvrent la feuille de match avec le bouton pour regarder la chaîne ; puces de chaînes de même hauteur et lisibles au focus, noms d'équipes sur une seule ligne, suffixe « - U21 » ignoré dans les titres
+
 ## [1.3.42] — 2026-11-17 (Android)
 
 ### Corrigé

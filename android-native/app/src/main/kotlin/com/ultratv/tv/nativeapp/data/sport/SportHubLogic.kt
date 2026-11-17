@@ -88,7 +88,7 @@ object SportHubLogic {
     fun liveCards(
         leagueKey: String?, leagueName: String?, kind: SportKind?, matches: List<LeagueMatch>,
         guideLive: List<SportEntry>, entries: List<SportEntry>, alsoOn: Map<Pair<Long, Long>, List<SportEntry>>,
-        nowMs: Long, programmeLabel: (SportEntry) -> String,
+        nowMs: Long, liveByLeague: Map<String, List<LeagueMatch>> = emptyMap(), programmeLabel: (SportEntry) -> String,
     ): List<LiveCardModel> {
         val liveMatches = LeagueLogic.live(matches)
         if (leagueKey != null) {
@@ -100,15 +100,24 @@ object SportHubLogic {
                 )
             }
         }
-        val byEntry = HashMap<String, LeagueMatch>()
-        for (m in liveMatches) for (e in LeagueChannels.channelsFor(m, entries)) byEntry[entryKey(e)] = m
+        // « Tout » : le guide mélange toutes les compétitions, donc on rattache les scores des directs de TOUTES les ligues
+        // (pas seulement celle chargée pour le classement), chaque match gardant le nom de sa ligue.
+        val byEntry = HashMap<String, Pair<LeagueMatch, String>>()
+        fun attach(m: LeagueMatch, name: String) {
+            if (m.state != MatchState.LIVE) return
+            for (e in LeagueChannels.channelsFor(m, entries)) byEntry.putIfAbsent(entryKey(e), m to name)
+        }
+        for (m in liveMatches) attach(m, leagueName.orEmpty())
+        for ((k, list) in liveByLeague) { val n = LeagueCatalog.of(k)?.name.orEmpty(); for (m in list) attach(m, n) }
         return guideLive.map { e ->
-            val m = byEntry[entryKey(e)]
+            val hit = byEntry[entryKey(e)]
+            val m = hit?.first
+            val lgName = hit?.second.orEmpty()
             val line = matchLineOf(e.prog.title)
             val others = alsoOn[SportMatching.entryKey(e)].orEmpty()
             val ch = SportMatching.orderChannels(listOf(e) + others)
             LiveCardModel(
-                "g${entryKey(e)}", if (m != null) leagueName.orEmpty() else line.competition ?: programmeLabel(e),
+                "g${entryKey(e)}", if (m != null) lgName else line.competition ?: programmeLabel(e),
                 m?.let(::minuteOf), m?.home ?: line.home, m?.away ?: line.away, line.title, m?.homeScore, m?.awayScore, m, ch,
                 SportLogic.progress(e.prog.startMs, e.prog.endMs, nowMs),
             )

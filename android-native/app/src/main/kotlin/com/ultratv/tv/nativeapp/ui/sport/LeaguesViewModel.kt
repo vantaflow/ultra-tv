@@ -15,6 +15,8 @@ import com.ultratv.tv.nativeapp.data.sport.MatchState
 import com.ultratv.tv.nativeapp.data.sport.StandingRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -46,6 +49,8 @@ data class LeaguesState(
     val table: List<StandingRow>? = null,
     val revealed: Set<String> = emptySet(),
     val revealedTables: Set<String> = emptySet(),
+    /** Matchs en direct de TOUTES les ligues visibles (cartes « En direct » du filtre « Tout »), par clé de ligue. */
+    val liveAll: Map<String, List<LeagueMatch>> = emptyMap(),
 ) {
     val visible: List<League> get() = prefs.visible()
 }
@@ -98,6 +103,26 @@ class LeaguesViewModel @Inject constructor(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null to Data(LeagueStatus.LOADING, false, emptyList()))
 
+    /**
+     * Directs de toutes les ligues visibles, relus à la minute (le dépôt les mémorise 60 s) hors du thread principal : le guide
+     * du filtre « Tout » mélange les compétitions, leurs scores ne se trouvent pas dans la seule ligue affichée.
+     */
+    private val liveAll: StateFlow<Map<String, List<LeagueMatch>>> = prefs.flatMapLatest { p ->
+        flow {
+            val keys = p.visible().map { it.key }
+            while (true) {
+                val now = System.currentTimeMillis()
+                val res = coroutineScope {
+                    keys.map { k -> this@coroutineScope.async { k to ((repo.live(k, now) as? LeagueResult.Ok)?.value?.let(LeagueLogic::live).orEmpty()) } }
+                        .map { it.await() }
+                }.filter { it.second.isNotEmpty() }.toMap()
+                emit(res)
+                delay(LeagueRepository.LIVE_MS)
+            }
+        }
+    }.flowOn(kotlinx.coroutines.Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     /** Classement de la ligue affichée : lu (mémorisé 6 h) sauf, en mode sans spoiler, tant qu'on ne l'a pas affiché. */
     private val table = combine(effective, noSpoiler, revealedTables) { e, ns, rt -> Triple(e.second, ns, rt) }
         .distinctUntilChanged()
@@ -109,8 +134,8 @@ class LeaguesViewModel @Inject constructor(
             }
         }
 
-    val state: StateFlow<LeaguesState> = combine(prefs, noSpoiler, data, table) { p, ns, d, tb ->
-        LeaguesState(p, ns, d.first, d.second.status, d.second.stale, d.second.matches, tb.second.takeIf { tb.first == d.first })
+    val state: StateFlow<LeaguesState> = combine(prefs, noSpoiler, data, table, liveAll) { p, ns, d, tb, la ->
+        LeaguesState(p, ns, d.first, d.second.status, d.second.stale, d.second.matches, tb.second.takeIf { tb.first == d.first }, liveAll = la)
     }.combine(revealed) { s, r -> s.copy(revealed = r) }
         .combine(revealedTables) { s, r -> s.copy(revealedTables = r) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LeaguesState())

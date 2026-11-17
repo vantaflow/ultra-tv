@@ -81,6 +81,51 @@ class SportHubLogicTest {
         assertEquals("Programme", cards[1].league)
     }
 
+    @Test fun carteDirect_toutLeGuide_scoreDUneAutreLigueQueCelleChargee() {
+        // Bug 1.3.42 : « Tout » ne rattachait que les matchs de la ligue sélectionnée (ici Ligue 1) ; un match de
+        // la Champions League diffusé au guide n'avait ni score ni feuille de match.
+        val a = ch(1, "Stade 1", 2); val b = ch(2, "Arena", 2)
+        val fr = entry(a, "France – Türkiye", NOW - 30 * M)
+        val ldc = entry(b, "Champions League : Real Madrid – Bayern", NOW - 40 * M)
+        val l1 = live("7", "Paris SG", "Marseille", 1, 0)
+        val tr = live("u1", "France", "Türkiye", 2, 1, "30").copy(startMs = NOW - 30 * M)
+        val rm = live("u2", "Real Madrid", "Bayern", 0, 3, "40").copy(startMs = NOW - 40 * M)
+        val cards = SportHubLogic.liveCards(
+            null, "Ligue 1", SportKind.FOOTBALL, listOf(l1), listOf(fr, ldc), listOf(fr, ldc), emptyMap(), NOW,
+            mapOf("ligue1" to listOf(l1), "ucl" to listOf(tr, rm)),
+        ) { "Programme" }
+        assertEquals(2, cards.size)
+        assertEquals("u1", cards[0].match?.id); assertEquals(2, cards[0].homeScore); assertEquals(1, cards[0].awayScore)
+        assertEquals("30'", cards[0].minute); assertEquals("Champions League", cards[0].league)
+        assertEquals("u2", cards[1].match?.id); assertEquals(3, cards[1].awayScore)
+    }
+
+    @Test fun carteDirect_toutLeGuide_matchNonLiveOuInconnu_resteSansMatch() {
+        val a = ch(1, "Stade 1", 2)
+        val fr = entry(a, "France – Türkiye", NOW - 30 * M)
+        val fini = live("u1", "France", "Türkiye", 2, 1).copy(state = MatchState.POST)
+        val cards = SportHubLogic.liveCards(null, null, null, emptyList(), listOf(fr), listOf(fr), emptyMap(), NOW, mapOf("ucl" to listOf(fini))) { "Programme" }
+        assertNull(cards[0].match); assertNull(cards[0].homeScore)
+        assertEquals("France", cards[0].home)
+    }
+
+    @Test fun titre_suffixeApresLeSecondTiret_neFaitPasPartieDeLEquipe() {
+        val l = matchLineOf("Liechtenstein - Azerbaijan - U21")
+        assertEquals("Liechtenstein", l.home); assertEquals("Azerbaijan", l.away)
+        val p1 = SportMatching.parse("Liechtenstein - Azerbaijan - U21"); val p2 = SportMatching.parse("Liechtenstein - Azerbaijan")
+        assertEquals(p2.key, p1.key); assertTrue(p1.isMatch)
+        val l2 = matchLineOf("Ligue 1 - PSG - OM")
+        assertEquals("PSG", l2.home); assertEquals("OM", l2.away)
+    }
+
+    @Test fun carteDirect_nhl_nomCourtDuGuideRattacheAuNomCompletDeLApi() {
+        val a = ch(1, "Sport 1", 2)
+        val e = entry(a, "NHL : Rangers - Canadiens", NOW - 20 * M)
+        val m = live("n1", "New York Rangers", "Montréal Canadiens", 3, 2, "P2").copy(startMs = NOW - 20 * M)
+        val cards = SportHubLogic.liveCards(null, null, null, emptyList(), listOf(e), listOf(e), emptyMap(), NOW, mapOf("nhl" to listOf(m))) { "Programme" }
+        assertEquals(3, cards[0].homeScore); assertEquals("NHL", cards[0].league)
+    }
+
     @Test fun aVenir_ligueChoisie_gardeSesMatchsEtSaCompetition_toutGardeLesMagazines() {
         val c = ch(1, "Stade 1", 2)
         val derby = entry(c, "Ligue 1 : Lyon – Lille", NOW + 120 * M)
