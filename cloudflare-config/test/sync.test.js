@@ -292,7 +292,9 @@ describe("POST /api/device/providers : validation et attaques", () => {
   it("limiteDeDebitParAppareil_429", async () => {
     const { phone } = await twoDevices();
     let last = 0;
-    for (let i = 0; i < 40; i++) { last = (await putProv(phone, { kind: "WAT", url: "x" })).status; if (last === 429) break; }
+    // Limiteur natif à fenêtre fixe de 60 s (palier RL_30) : 40 essais ne suffisaient pas quand la fenêtre se réinitialisait
+    // en cours de test. 100 essais dépassent toujours 30 dans une même fenêtre.
+    for (let i = 0; i < 100; i++) { last = (await putProv(phone, { kind: "WAT", url: "x" })).status; if (last === 429) break; }
     expect(last).toBe(429);
   });
   it("miseAJour_conserveOrigineEtCreation_etChangeLesIdentifiants", async () => {
