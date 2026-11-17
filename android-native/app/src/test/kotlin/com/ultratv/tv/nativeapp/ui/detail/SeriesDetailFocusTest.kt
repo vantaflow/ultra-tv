@@ -131,19 +131,19 @@ class SeriesDetailFocusTest {
         focused("bande")
     }
 
-    @Test fun hautDepuisLePremierEpisodeVaALOngletDeLaSaisonActive() {
+    @Test fun ordreVerticalEpisodeBarreOnglet() {
         show(false, seasonCount = 4, active = 2)
         press(Key.DirectionRight); press(Key.DirectionRight)  // bande-annonce -> cœur -> épisodes
         focused("Titre1")
-        press(Key.DirectionUp)
-        focused("Saison 2", exact = true)
-        press(Key.DirectionDown)
-        focused("Titre1")
+        press(Key.DirectionUp); focused("Télécharger")             // barre juste au-dessus
+        press(Key.DirectionUp); focused("Saison 2", exact = true)
+        press(Key.DirectionDown); focused("Télécharger")
+        press(Key.DirectionDown); focused("Titre1")
     }
 
     @Test fun saison4AtteignableEtGaucheDepuisLaPremiereVersLaColonneGauche() {
         show(false, seasonCount = 4, active = 2)
-        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp); press(Key.DirectionUp)
         press(Key.DirectionRight); focused("Saison 3", exact = true)
         press(Key.DirectionRight); focused("Saison 4", exact = true)
         press(Key.DirectionLeft); press(Key.DirectionLeft); press(Key.DirectionLeft)
@@ -154,7 +154,7 @@ class SeriesDetailFocusTest {
 
     @Test fun dixSaisonsToutesAtteignables() {
         show(false, seasonCount = 10, active = 1)
-        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp); press(Key.DirectionUp)
         focused("Saison 1", exact = true)
         for (n in 2..10) { press(Key.DirectionRight); focused("Saison $n", exact = true) }
         for (n in 9 downTo 1) { press(Key.DirectionLeft); focused("Saison $n", exact = true) }
@@ -162,7 +162,8 @@ class SeriesDetailFocusTest {
 
     @Test fun basDepuisLaBarreVaAuPremierEpisode() {
         show(false, seasonCount = 4, active = 2)
-        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
-        press(Key.DirectionDown); focused("Titre1")
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp); press(Key.DirectionUp)
+        // Bas depuis l'onglet : la barre « Aller à l'épisode » (juste en dessous), puis le premier épisode.
+        press(Key.DirectionDown); press(Key.DirectionDown); focused("Titre1")
     }
 }
