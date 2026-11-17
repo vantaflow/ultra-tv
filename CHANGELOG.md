@@ -6,6 +6,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Bureau : films et séries sans son quand le MP4 est refusé (HTTP 551) puis lus en MKV : la sonde ffmpeg est refaite sur l'adresse courante et l'audio est converti en AAC (remux), même si la sonde est impossible ; le container_extension annoncé passe avant un .mp4 deviné ; « Ouvrir dans VLC » reçoit l'adresse qui fonctionne (#202)
+## [1.3.54] — 2026-11-17 (Android)
+
+### Modifié
+- Fiche série (TV) : « Aller à l'épisode » retiré, seul « Télécharger la saison » reste ; Haut et Bas suivent l'ordre de l'écran (onglets de saison, puis Télécharger la saison, puis épisodes).
+### Corrigé
+- Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
+- Admin › Journaux : messages sur plusieurs lignes, identifiants et empreintes réduits ; le tableau ne déborde plus.
 
 ## [1.3.53] — 2026-11-17 (Android)
 
