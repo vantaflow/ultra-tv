@@ -155,12 +155,18 @@ function needsVideoConversion(video, { hevc = false } = {}) {
   return false;
 }
 
+/** Durée du média en secondes d'après « Duration: 01:32:10.50 » ; 0 si inconnue (direct : N/A). */
+function parseDuration(stderr) {
+  const m = /Duration:\s*(\d+):(\d{2}):(\d{2})(?:\.(\d+))?/.exec(String(stderr));
+  return m ? Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + (m[4] ? Number(`0.${m[4]}`) : 0) : 0;
+}
+
 /** Classe la sortie d'erreur de `ffmpeg -i` : { reason: "ok"|"http"|"network"|"other", status?, video?, hasAudio? } (fonction pure, testée). */
 function classifyProbe(stderr, { hevc = false } = {}) {
   const err = String(stderr || "");
   const video = parseVideo(err);
   const hasAudio = /Stream #\d+:\d+[^:]*: Audio:/.test(err);
-  if (video || hasAudio) return { reason: "ok", video, hasAudio, convert: needsVideoConversion(video, { hevc }) };
+  if (video || hasAudio) return { reason: "ok", video, hasAudio, convert: needsVideoConversion(video, { hevc }), duration: parseDuration(err) };
   const h = /(?:HTTP error|Server returned|returned)\s+(\d{3})\b/i.exec(err);
   if (h && Number(h[1]) >= 400) return { reason: "http", status: Number(h[1]) };
   if (/Server returned [45]XX/i.test(err)) return { reason: "http", status: null };
@@ -300,4 +306,4 @@ function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0,
   });
 }
 
-module.exports = { ffmpegCandidates, findFfmpeg, findVideoFfmpeg, pickVideoEncoder, videoEncodeArgs, parseVideo, needsVideoConversion, classifyProbe, probeRaw, diagnoseStream, serveDiagnosis, parseTranscodePath, transcodeArgs, parseStreams, probeStreams, serveStreamInfo, subtitleArgs, serveSubtitle, serveTranscode };
+module.exports = { parseDuration, ffmpegCandidates, findFfmpeg, findVideoFfmpeg, pickVideoEncoder, videoEncodeArgs, parseVideo, needsVideoConversion, classifyProbe, probeRaw, diagnoseStream, serveDiagnosis, parseTranscodePath, transcodeArgs, parseStreams, probeStreams, serveStreamInfo, subtitleArgs, serveSubtitle, serveTranscode };

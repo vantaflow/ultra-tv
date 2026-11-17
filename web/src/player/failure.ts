@@ -33,3 +33,18 @@ export function classifyFailure(i: { status?: number | null; diag?: TxDiag | nul
   if (d?.reason === "network") return { kind: "network" };
   return { kind: "other" };
 }
+
+/**
+ * Que faire d'un flux que Chromium n'a pas pu lire, d'après le diagnostic ffmpeg :
+ * - "convert" : vidéo illisible (MPEG-2, HEVC sans décodeur, H.264 10 bits…) → réencodage H.264 ;
+ * - "remux" : codecs lisibles mais conteneur ou audio non pris en charge (MKV, AVI, AC-3 / E-AC-3 / DTS) → vidéo copiée
+ *   telle quelle, audio en AAC, sortie MPEG-TS ;
+ * - "needEncoder" : conversion nécessaire mais ffmpeg n'a pas d'encodeur H.264 ;
+ * - null : rien à tenter (flux injoignable, rien de lisible). `vod` : fichier (film, épisode) ; le direct en HLS / TS dont les
+ *   codecs sont lisibles garde ses autres formats avant tout remux.
+ */
+export function planFallback(d: TxDiag | null, { vod }: { vod: boolean }): "convert" | "remux" | "needEncoder" | null {
+  if (!d || d.reason !== "ok") return null;
+  if (d.convert) return d.canEncode ? "convert" : "needEncoder";
+  return vod ? "remux" : null;
+}

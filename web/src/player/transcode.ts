@@ -61,15 +61,17 @@ export interface TxDiag {
   convert: boolean;
   /** ffmpeg avec encodeur H.264 disponible. */
   canEncode: boolean;
+  /** Durée du média (s), 0 si inconnue (direct). */
+  duration: number;
 }
 
 /** Valide la réponse JSON de /txd ; null si inutilisable. */
 export function parseTxDiag(raw: unknown): TxDiag | null {
   if (!raw || typeof raw !== "object") return null;
-  const r = raw as { reason?: unknown; status?: unknown; video?: { codec?: unknown } | null; convert?: unknown; canEncode?: unknown };
+  const r = raw as { reason?: unknown; status?: unknown; video?: { codec?: unknown } | null; convert?: unknown; canEncode?: unknown; duration?: unknown };
   if (r.reason !== "ok" && r.reason !== "http" && r.reason !== "network" && r.reason !== "other") return null;
   const status = typeof r.status === "number" && r.status >= 100 && r.status < 600 ? r.status : null;
-  return { reason: r.reason, status, codec: typeof r.video?.codec === "string" ? r.video.codec.slice(0, 20) : "", convert: r.convert === true, canEncode: r.canEncode === true };
+  return { reason: r.reason, status, codec: typeof r.video?.codec === "string" ? r.video.codec.slice(0, 20) : "", convert: r.convert === true, canEncode: r.canEncode === true, duration: typeof r.duration === "number" && r.duration > 0 && r.duration < 1e6 ? r.duration : 0 };
 }
 
 /** Le décodeur HEVC de la plateforme est-il présent ? (Chromium : MSE hvc1.) */

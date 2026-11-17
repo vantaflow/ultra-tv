@@ -38,7 +38,7 @@ import type { SeriesInfo } from "@/net/xtream";
 import { LiveReconnect } from "./reconnect";
 import { effectivePreferred, trackLabel } from "./trackChoice";
 import { PlayerEngine, type PlayState, type Stats, type Tracks } from "./engine";
-import { stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
+import { m3uEpisodeUrl, stalkerCandidate, candidates, mediaClientFor, mediaItemIdOf, mediaPlayback, nasCandidate, type Candidate } from "./resolve";
 import { isMediaType, type MediaApi, type ReportKind } from "@/net/mediaServer";
 import { isTv } from "@/lib/tv";
 import { STALKER_UA } from "@/net/stalker";
@@ -50,7 +50,7 @@ import { useUi } from "@/state/ui";
 import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
-import { classifyFailure, type Failure } from "./failure";
+import { classifyFailure, planFallback, type Failure } from "./failure";
 import { parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
@@ -273,23 +273,28 @@ export function PlayerHost() {
       const d = await runDiag();
       if (engineRef.current !== eng || !d) return false;
       if (d.reason === "http" && d.status) statusRef.current = d.status;
-      if (d.reason !== "ok" || !d.convert) return false;
+      const tg = usePlayer.getState().target;
+      const isLive = tg?.kind === "live" && !tg.replay;
+      const plan = planFallback(d, { vod: !isLive });
+      if (!plan) return false;
       const base = bridge()?.proxyBase;
       const v = videoRef.current;
       const c = candRef.current;
-      const orig = txRef.current?.orig ?? c.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url;
-      if (!d.canEncode || !base || !orig) {
+      const curC = c.list[c.i];
+      const orig = txRef.current?.orig ?? (curC && curC.label !== TX_LABEL && curC.format !== "hlsn" ? curC.url : c.list.find((x) => x.label !== TX_LABEL && x.format !== "hlsn")?.url);
+      if (plan === "needEncoder" || !base || !orig) {
         setFailure(classifyFailure({ diag: d, platform: bridge()?.platform }));
         setError(true); setState("error");
         return true;
       }
-      const tg = usePlayer.getState().target;
-      const isLive = tg?.kind === "live" && !tg.replay;
+      // "convert" : réencodage H.264 ; "remux" : conteneur / audio seulement (MKV, AC-3…), vidéo copiée telle quelle.
+      const convert = plan === "convert";
       const offset = isLive ? 0 : v?.currentTime ?? 0;
-      const tx: TxState = { orig, offset, duration: isLive || !v || !Number.isFinite(v.duration) ? 0 : v.duration, video: true };
+      const duration = isLive ? 0 : d.duration || (v && Number.isFinite(v.duration) ? v.duration : 0);
+      const tx: TxState = { orig, offset, duration, ...(convert ? { video: true } : {}) };
       txRef.current = tx;
       skipProbeRef.current = true;
-      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, 0, true), format: "ts", label: TX_LABEL }];
+      c.list = [...c.list, { url: txUrl(base, orig, offset, isLive, 0, convert), format: "ts", label: TX_LABEL }];
       c.i = c.list.length - 1;
       void startCandidate(c.list[c.i]!);
       return true;
@@ -463,6 +468,22 @@ export function PlayerHost() {
         candRef.current = { list: p.candidates, i: 0 };
         resumeAtRef.current = p.resumeAt ?? null;
         void startCandidate(p.candidates[0]!);
+      }).catch(() => { if (!dead) { setError(true); setState("error"); } });
+      return () => { dead = true; };
+    }
+    if (source.type === "m3u" && target.kind === "episode" && !target.url) {
+      // Playlist M3U : l'épisode est un fichier de la playlist ; son adresse vient de la fiche de la série.
+      let dead = false;
+      engineRef.current?.stop();
+      setState("loading");
+      silentIdxRef.current = null; skipProbeRef.current = false; resumeAtRef.current = null;
+      setNoAudio(false);
+      void m3uEpisodeUrl(target).then((u) => {
+        if (dead) return;
+        const l = u ? candidates(source, { ...target, url: u }, { liveFormat: prefs.liveFormat, preferMp4: prefs.preferMp4, nativeHls: isTv() }) : [];
+        if (!l[0]) { setError(true); setState("error"); return; }
+        candRef.current = { list: l, i: 0 };
+        void startCandidate(l[0]);
       }).catch(() => { if (!dead) { setError(true); setState("error"); } });
       return () => { dead = true; };
     }
