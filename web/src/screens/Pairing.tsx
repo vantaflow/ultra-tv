@@ -62,7 +62,7 @@ export function PairingView({ onDone, onCancel }: { onDone: (s: SyncSummary) => 
             ))}
           </ol>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button className="btn primary" onClick={() => void bridge()?.openExternal?.(worker)}><Icon name="link" size={18} />{t("cloud.openDash")}</button>
+            <button className="btn primary" onClick={() => void bridge()?.openExternal?.(host === worker.replace(/^https?:\/\//, "").replace(/\/.*$/, "").toLowerCase() ? worker : `https://${host}`)}><Icon name="link" size={18} />{t("cloud.openDash")}</button>
             <button className="btn" onClick={start}>{t("cloud.newCode")}</button>
             <button className="btn" onClick={onCancel}>{t("common.cancel")}</button>
           </div>

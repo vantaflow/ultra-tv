@@ -88,6 +88,8 @@
     <string name="ds_loading_label">กำลังโหลด…</string>
     <string name="ds_searching_label">กำลังค้นหา…</string>
     <string name="ds_dashboard_scan">สแกนด้วยโทรศัพท์ของคุณ</string>
+    <string name="ds_dashboard_send_title">ส่งแหล่งที่มาจากโทรศัพท์</string>
+    <string name="ds_dashboard_send_hint">กด OK เพื่อรับรหัส แล้วสแกน QR ด้วยโทรศัพท์ของคุณ</string>
     <string name="ds_pair_scan_auto">สแกนด้วยโทรศัพท์เพื่อจับคู่อัตโนมัติ</string>
     <string name="ds_pair_device_label">ชื่อที่แสดงบนแดชบอร์ด</string>
     <string name="ds_search_pill">ค้นหา</string>

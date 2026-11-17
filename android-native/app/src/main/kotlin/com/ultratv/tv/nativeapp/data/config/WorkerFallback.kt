@@ -22,6 +22,13 @@ object WorkerFallbackLogic {
         return if (host == PRIMARY_HOST || host == LEGACY_HOST) "https://$SITE_HOST" else workerBase
     }
 
+    /** Cible du QR de la carte des Réglages › Sources : appairé → racine du site (tableau de bord) ; non appairé → page
+     *  d'envoi d'une source sans compte (/envoyer), car la racine renvoie vers /login. */
+    fun dashboardQrTarget(workerBase: String, paired: Boolean): String {
+        val base = siteBase(workerBase).trimEnd('/')
+        return if (paired) base else "$base/envoyer"
+    }
+
     /** Dernier hôte qui a répondu (mémoire du processus) ; null = aucun encore. */
     @Volatile var lastWorking: String? = null
 

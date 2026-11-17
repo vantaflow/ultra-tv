@@ -87,6 +87,8 @@
     <string name="ds_loading_label">Ladataan…</string>
     <string name="ds_searching_label">Haetaan…</string>
     <string name="ds_dashboard_scan">Skannaa puhelimellasi</string>
+    <string name="ds_dashboard_send_title">Lähetä lähde puhelimesta</string>
+    <string name="ds_dashboard_send_hint">Saat koodin painamalla OK, skannaa sitten QR-koodi puhelimellasi</string>
     <string name="ds_pair_scan_auto">Skannaa puhelimellasi yhdistääksesi automaattisesti</string>
     <string name="ds_pair_device_label">Hallintapaneelissa näkyvä nimi</string>
     <string name="ds_search_pill">Haku</string>

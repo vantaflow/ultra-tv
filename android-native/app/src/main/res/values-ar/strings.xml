@@ -89,6 +89,8 @@
     <string name="ds_loading_label">جارٍ التحميل…</string>
     <string name="ds_searching_label">جارٍ البحث…</string>
     <string name="ds_dashboard_scan">امسح الرمز بهاتفك</string>
+    <string name="ds_dashboard_send_title">إرسال مصدر من الهاتف</string>
+    <string name="ds_dashboard_send_hint">اضغط موافق للحصول على الرمز، ثم امسح رمز QR بهاتفك</string>
     <string name="ds_pair_scan_auto">امسح الرمز بهاتفك للاقتران تلقائيًا</string>
     <string name="ds_pair_device_label">الاسم الظاهر في لوحة التحكم</string>
     <string name="ds_search_pill">بحث</string>

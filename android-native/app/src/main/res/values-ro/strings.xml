@@ -93,6 +93,8 @@
     <string name="ds_loading_label">Se încarcă…</string>
     <string name="ds_searching_label">Se caută…</string>
     <string name="ds_dashboard_scan">Scanează cu telefonul</string>
+    <string name="ds_dashboard_send_title">Trimite o sursă de pe telefon</string>
+    <string name="ds_dashboard_send_hint">Apasă OK pentru a primi codul, apoi scanează codul QR cu telefonul</string>
     <string name="ds_pair_scan_auto">Scanează cu telefonul pentru asociere automată</string>
     <string name="ds_pair_device_label">Nume afișat în panou</string>
     <string name="ds_search_pill">Caută</string>

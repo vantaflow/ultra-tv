@@ -90,6 +90,8 @@
     <string name="ds_loading_label">Loading…</string>
     <string name="ds_searching_label">Searching…</string>
     <string name="ds_dashboard_scan">Scan with your phone</string>
+    <string name="ds_dashboard_send_title">Send a source from your phone</string>
+    <string name="ds_dashboard_send_hint">Press OK to get a code, then scan the QR code with your phone</string>
     <string name="ds_pair_scan_auto">Scan with your phone to pair automatically</string>
     <string name="ds_pair_device_label">Name shown on the dashboard</string>
     <string name="ds_search_pill">Search</string>

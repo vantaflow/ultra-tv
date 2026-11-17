@@ -90,6 +90,8 @@
     <string name="ds_loading_label">Ładowanie…</string>
     <string name="ds_searching_label">Wyszukiwanie…</string>
     <string name="ds_dashboard_scan">Zeskanuj telefonem</string>
+    <string name="ds_dashboard_send_title">Wyślij źródło z telefonu</string>
+    <string name="ds_dashboard_send_hint">Naciśnij OK, aby otrzymać kod, a następnie zeskanuj kod QR telefonem</string>
     <string name="ds_pair_scan_auto">Zeskanuj telefonem, aby sparować automatycznie</string>
     <string name="ds_pair_device_label">Nazwa widoczna w panelu</string>
     <string name="ds_search_pill">Szukaj</string>

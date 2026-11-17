@@ -55,7 +55,7 @@ internal fun groupPairingCode(code: String): String =
 
 /** Adresse d'appairage automatique encodée dans le QR : `<worker>/pair?code=ABCDEFGH` (sans tiret). */
 internal fun pairingUrl(workerBase: String, code: String): String =
-    workerBase.trimEnd('/') + "/pair?code=" + code.uppercase().filter { it.isLetterOrDigit() }
+    com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase).trimEnd('/') + "/pair?code=" + code.uppercase().filter { it.isLetterOrDigit() }
 
 /** « 9:42 » : temps restant, jamais négatif. */
 internal fun formatRemaining(ms: Long): String {
@@ -89,7 +89,7 @@ fun CloudPairingDialog(state: PairingUi, onCancel: () -> Unit, onRetry: () -> Un
                         val ctxOpen = androidx.compose.ui.platform.LocalContext.current
                         val base = (state as? PairingUi.ShowCode)?.workerBase.orEmpty()
                         Text(Mo.dashboardAddress.uppercase() + " · " + host, color = Ux.Text3, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
-                        PillButton(Mo.openDashboard, onClick = { ctxOpen.openInBrowser(base) }, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+                        PillButton(Mo.openDashboard, onClick = { ctxOpen.openInBrowser(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(base)) }, bg = Ux.Cta, weight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
                     }
                     Column(verticalArrangement = Arrangement.spacedBy(22.design)) {
                         Step(1, D.pairStep1(host))

@@ -88,6 +88,8 @@
     <string name="ds_loading_label">Đang tải…</string>
     <string name="ds_searching_label">Đang tìm…</string>
     <string name="ds_dashboard_scan">Quét bằng điện thoại</string>
+    <string name="ds_dashboard_send_title">Gửi nguồn từ điện thoại</string>
+    <string name="ds_dashboard_send_hint">Nhấn OK để lấy mã, rồi quét mã QR bằng điện thoại của bạn</string>
     <string name="ds_pair_scan_auto">Quét bằng điện thoại để ghép nối tự động</string>
     <string name="ds_pair_device_label">Tên hiển thị trên bảng điều khiển</string>
     <string name="ds_search_pill">Tìm kiếm</string>

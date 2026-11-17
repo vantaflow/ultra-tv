@@ -45,3 +45,14 @@ class WorkerFallbackLogicTest {
         assertEquals("https://$l/api/config?a=1&b=2", WorkerFallbackLogic.withHost(u, l).toString())
     }
 }
+
+class DashboardQrTargetTest {
+    @org.junit.Test fun `appaire QR vers la racine du site`() =
+        org.junit.Assert.assertEquals("https://ultratv.dpdns.org", WorkerFallbackLogic.dashboardQrTarget("https://tv.weedy.dpdns.org", true))
+
+    @org.junit.Test fun `non appaire QR vers envoyer`() =
+        org.junit.Assert.assertEquals("https://ultratv.dpdns.org/envoyer", WorkerFallbackLogic.dashboardQrTarget("https://tv.weedy.dpdns.org/", false))
+
+    @org.junit.Test fun `worker auto-heberge garde son adresse`() =
+        org.junit.Assert.assertEquals("https://w.example.com/envoyer", WorkerFallbackLogic.dashboardQrTarget("https://w.example.com/", false))
+}
