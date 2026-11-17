@@ -854,6 +854,7 @@
   "DesignStrings/PersonalizationStringsKt.homeBlockName(CHANNELS)": "Live",
   "DesignStrings/PersonalizationStringsKt.homeBlockName(LATEST_MOVIES)": "Latest movies",
   "DesignStrings/PersonalizationStringsKt.homeBlockName(NEW_EPISODES)": "New episodes",
+  "DesignStrings/PersonalizationStringsKt.homeBlockName(LIBRARIES)": "My libraries",
   "DesignStrings/PersonalizationStringsKt.homeBlockName(LATEST_SERIES)": "Latest series",
   "DesignStrings/PersonalizationStringsKt.homeBlockName(RECENT_CHANNELS)": "Recently watched",
   "DesignStrings/PersonalizationStringsKt.homeBlockName(RESUME)": "Continue watching",

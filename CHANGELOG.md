@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Ajouté
+- Accueil : une rangée « Ajouts récents · serveur » par serveur Plex, Jellyfin, Emby ou NAS visible du profil (20 titres au plus, bibliothèques masquées exclues) et reprises de lecture des serveurs mêlées à « Reprendre la lecture »
+
 ## [1.3.49] — 2026-11-17 (Android) · Bureau 1.2.68 · Worker
 
 ### Corrigé

@@ -27,6 +27,13 @@ enum class HomeSectionId(val contentType: String) {
     TRAKT_AVAILABLE("posters"),
     /** Séries favorites ou en cours dont un épisode vient de sortir ou sort dans la semaine (TVmaze, appareil appairé). */
     NEW_EPISODES("posters"),
+    // « Ajoutés récemment · <serveur> » : un serveur multimédia (Plex, Jellyfin, Emby, NAS) visible du profil par rangée (6 au plus).
+    LIBRARY_1("posters"),
+    LIBRARY_2("posters"),
+    LIBRARY_3("posters"),
+    LIBRARY_4("posters"),
+    LIBRARY_5("posters"),
+    LIBRARY_6("posters"),
     // Rangées calculées en local (sans Trakt), montées juste sous « Reprendre » pour qu'on les remarque.
     BECAUSE_WATCHED("posters"),
     TOP_MOVIES("posters"),
@@ -60,6 +67,32 @@ val MOBILE_SECTIONS: Set<HomeSectionId> = setOf(
 val TRAKT_LIST_SECTIONS: List<HomeSectionId> = listOf(
     HomeSectionId.TRAKT_LIST_1, HomeSectionId.TRAKT_LIST_2, HomeSectionId.TRAKT_LIST_3, HomeSectionId.TRAKT_LIST_4, HomeSectionId.TRAKT_LIST_5,
 )
+
+/** Rangées « serveur multimédia », dans l'ordre des sources. */
+val LIBRARY_SECTIONS: List<HomeSectionId> = listOf(
+    HomeSectionId.LIBRARY_1, HomeSectionId.LIBRARY_2, HomeSectionId.LIBRARY_3, HomeSectionId.LIBRARY_4, HomeSectionId.LIBRARY_5, HomeSectionId.LIBRARY_6,
+)
+val HomeSectionId.libraryIndex: Int get() = LIBRARY_SECTIONS.indexOf(this)
+
+/** Rangée « Ajoutés récemment » d'un serveur multimédia prête à afficher. */
+@Immutable
+data class LibraryShelfUi(val providerId: Long, val name: String, val cards: List<PosterCardUi>)
+
+/** Affiches mêlées films / séries d'un serveur : alternance, sans doublon, [max] au plus. */
+fun interleaveCards(movies: List<PosterCardUi>, series: List<PosterCardUi>, max: Int): List<PosterCardUi> =
+    buildList { for (i in 0 until maxOf(movies.size, series.size)) { movies.getOrNull(i)?.let(::add); series.getOrNull(i)?.let(::add) } }
+        .distinctBy { it.key }.take(max)
+
+/** Rangées de l'accueil : serveurs sans titre omis, ordre des sources conservé, [LIBRARY_SECTIONS] au plus. */
+fun composeLibraryShelves(shelves: List<LibraryShelfUi>): List<LibraryShelfUi> =
+    shelves.filter { it.cards.isNotEmpty() }.take(LIBRARY_SECTIONS.size)
+
+/**
+ * « Reprendre » : reprises de la source IPTV et des serveurs mêlées par date de visionnage (la plus récente d'abord), une seule
+ * entrée par titre, [max] au plus.
+ */
+fun mergeResume(iptv: List<WatchHistoryEntity>, libraries: List<WatchHistoryEntity>, max: Int): List<WatchHistoryEntity> =
+    (iptv + libraries).sortedByDescending { it.watchedAt }.distinctBy { Triple(it.providerId, it.kind, it.remoteId) }.take(max)
 
 /** Index de la liste Trakt affichée par cette rangée (0..4), ou -1. */
 val HomeSectionId.traktListIndex: Int get() = TRAKT_LIST_SECTIONS.indexOf(this)
@@ -140,6 +173,8 @@ data class HomeRows(
     val upNext: List<PosterCardUi> = emptyList(),
     val traktLists: List<TraktListUi> = emptyList(),
     val recentChannels: List<ResumeCardUi> = emptyList(),
+    /** « Ajoutés récemment · <serveur> » : vide si le profil n'a aucun serveur multimédia visible. */
+    val libraries: List<LibraryShelfUi> = emptyList(),
     val latestMovies: List<PosterCardUi> = emptyList(),
     val latestSeries: List<PosterCardUi> = emptyList(),
     /** « Nouveaux épisodes » : déjà triés (sortis récemment, puis à venir) ; libellés localisés à l'affichage. */
@@ -179,6 +214,7 @@ private fun presentSections(rows: HomeRows): List<HomeSectionId> = buildList {
     if (rows.upNext.isNotEmpty()) add(HomeSectionId.TRAKT_UP_NEXT)
     if (rows.availableNow.isNotEmpty()) add(HomeSectionId.TRAKT_AVAILABLE)
     if (rows.newEpisodes.isNotEmpty()) add(HomeSectionId.NEW_EPISODES)
+    rows.libraries.take(LIBRARY_SECTIONS.size).forEachIndexed { i, l -> if (l.cards.isNotEmpty()) add(LIBRARY_SECTIONS[i]) }
     if (rows.because.size >= MIN_LOCAL_ROW) add(HomeSectionId.BECAUSE_WATCHED)
     if (rows.topMovies.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_MOVIES)
     if (rows.topSeries.size >= MIN_LOCAL_ROW) add(HomeSectionId.TOP_SERIES)

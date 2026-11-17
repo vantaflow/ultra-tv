@@ -90,6 +90,7 @@ fun DesignStrings.homeBlockName(b: HomeBlock): String = when (b) {
     HomeBlock.TRAKT_UP_NEXT -> traktUpNext
     HomeBlock.TRAKT_AVAILABLE -> traktAvailable
     HomeBlock.NEW_EPISODES -> extNewEpisodes
+    HomeBlock.LIBRARIES -> mlibHubTitle
     HomeBlock.TRAKT_WATCHLIST -> traktWatchlist
     HomeBlock.TRAKT_RECOMMENDED -> traktRecommended
     HomeBlock.TRAKT_TRENDING -> traktTrending
