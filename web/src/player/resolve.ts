@@ -63,8 +63,9 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
     if (opts.nativeHls) addNative(liveUrl(c, t.refId, "m3u8"));
     return out;
   }
+  // Le container_extension annoncé par l'API passe en premier : un .mp4 deviné pour un fichier mkv fait répondre 551 (#202).
   const exts = [t.ext || "mp4"];
-  if (opts.preferMp4 && exts[0] !== "mp4") exts.unshift("mp4");
+  if (opts.preferMp4 && !exts.includes("mp4")) exts.push("mp4");
   if (!exts.includes("mkv")) exts.push("mkv");
   const vod = (ext: string) => (t.kind === "movie" ? movieUrl(c, t.refId, ext) : episodeUrl(c, t.refId, ext));
   for (const ext of exts) add(vod(ext), "native", ext.toUpperCase());
