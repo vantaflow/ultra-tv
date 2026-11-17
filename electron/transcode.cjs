@@ -159,14 +159,15 @@ function serveSubtitle(req, res, { ffmpeg, target, s, headers, report = () => {}
 
 /**
  * Sert une requête de conversion : ffmpeg écrit le MPEG-TS dans la réponse ; fermeture du client = arrêt de ffmpeg.
- * `headers` : en-têtes CORS du proxy.
+ * `headers` : en-têtes CORS du proxy. `onSpawn(stop)` : crochet appelé dès le lancement d'ffmpeg (suivi du côté proxy).
  */
-function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, headers, report = () => {}, spawnFn = spawn }) {
+function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, headers, report = () => {}, spawnFn = spawn, onSpawn }) {
   const ua = req.headers["x-ut-ua"] || null;
   const ref = req.headers["x-ut-referer"] || null;
   const child = spawnFn(ffmpeg, transcodeArgs(target.toString(), { ss, userAgent: ua, referer: ref, live, audio }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
   let started = false;
   const stop = () => { try { child.kill("SIGKILL"); } catch { /* déjà terminé */ } };
+  if (typeof onSpawn === "function") onSpawn(stop);
   res.on("close", stop);
   child.stderr.on("data", () => { /* messages ffmpeg ignorés : ils peuvent contenir l'URL */ });
   child.on("error", () => { report("ETRANSCODE"); if (!res.headersSent) { res.writeHead(502, headers); res.end(); } });

@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
+- Bureau : une seule conversion ffmpeg vivante par hôte — le lecteur relançait une conversion (saut, changement de piste, tentative suivante) sans toujours fermer la requête suspendue précédente ; chaque ffmpeg orphelin gardait une connexion du compte (souvent limité en connexions) et le fournisseur finissait par ne plus rien servir. La nouvelle conversion remplace l'ancienne du même hôte.
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.
