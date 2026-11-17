@@ -6,6 +6,10 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Corrigé
 - Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
+## [1.3.53] — 2026-11-17 (Android)
+
+### Corrigé
+- Fiche série (TV) : tous les onglets de saison restent accessibles (rangée pleine largeur qui défile, barre « Aller à l'épisode » / « Télécharger » sur sa ligne), Gauche/Droite passent à la saison voisine, Haut depuis le premier épisode va à l'onglet de la saison active, Bas mène au premier épisode, Gauche depuis la première saison revient à la colonne de gauche
 
 ## [1.3.52] — 2026-11-17 (Android)
 

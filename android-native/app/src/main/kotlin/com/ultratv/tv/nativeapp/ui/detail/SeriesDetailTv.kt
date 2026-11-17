@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -178,6 +179,8 @@ fun SeriesDetailTvContent(
     val listState = rememberLazyListState()
     val entry = remember { FocusRequester() }
     val seasonEntry = remember { FocusRequester() }
+    val firstEp = remember { FocusRequester() }
+    val firstVisIdx by remember { derivedStateOf { listState.firstVisibleItemIndex } }
     var jumpOpen by remember { mutableStateOf(false) }
     // Bande-annonce : clé YouTube (TMDB), lue dans l'appli par le lecteur intégré.
     val trailerKey = remember(data.trailerUrl) { data.trailerUrl?.let(TmdbTrailer::keyOf) }
@@ -203,6 +206,12 @@ fun SeriesDetailTvContent(
         }
     }.focusGroup()
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+
+    fun leaveToLeftColumn() {
+        if (!(runCatching { playRequester.requestFocus() }.getOrDefault(false) || (trailerKey != null && runCatching { firstBtn.requestFocus() }.getOrDefault(false)))) {
+            focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)
+        }
+    }
 
     Row(Modifier.fillMaxSize().background(Ux.Bg)) {
         // ─── Colonne gauche ───
@@ -255,15 +264,21 @@ fun SeriesDetailTvContent(
             Modifier.weight(1f).fillMaxHeight().padding(start = 32.design, top = 56.design, end = 72.design, bottom = 48.design).focusGroup(),
             verticalArrangement = Arrangement.spacedBy(18.design),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.design)) {
-                SeasonTabs(
-                    seasons = data.seasons, active = data.activeSeason, seasonEntry = seasonEntry, D = D,
-                    onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } }, modifier = Modifier.weight(1f),
-                )
-                if (shown.isNotEmpty()) {
-                    V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22)
-                    V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download)
-                }
+            // Onglets sur toute la largeur (défilent, la saison active reste visible : 10 saisons restent atteignables), puis la
+            // barre « Aller à l'épisode » / « Télécharger la saison » sur sa propre ligne : plus rien ne masque une saison.
+            SeasonTabs(
+                seasons = data.seasons, active = data.activeSeason, seasonEntry = seasonEntry, D = D,
+                onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } }, modifier = Modifier.fillMaxWidth(),
+                onDown = { committed -> if (committed) scope.launch { focusEntry() } else runCatching { firstEp.requestFocus() } },
+                // Gauche depuis la première saison : colonne de gauche (Lecture / Reprendre, sinon premier bouton).
+                onLeftEdge = { leaveToLeftColumn() },
+                leftKey = towardSeasons, awayKey = awayFromSeasons,
+            )
+            if (shown.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
+                // Bas : premier épisode visible.
+                val toFirst = Modifier.focusProperties { down = firstEp }
+                V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22, modifier = toFirst)
+                V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, modifier = toFirst)
             }
             if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when {
@@ -273,12 +288,7 @@ fun SeriesDetailTvContent(
                         // Gauche (Droite en RTL) depuis un épisode : « Reprendre », sinon le premier bouton de la colonne de gauche.
                         .onPreviewKeyEvent { ev ->
                             if (ev.key != towardSeasons) false
-                            else {
-                                if (ev.type == KeyEventType.KeyDown && !(runCatching { playRequester.requestFocus() }.getOrDefault(false) || (trailerKey != null && runCatching { firstBtn.requestFocus() }.getOrDefault(false)))) {
-                                    focusManager.moveFocus(androidx.compose.ui.focus.FocusDirection.Left)
-                                }
-                                true
-                            }
+                            else { if (ev.type == KeyEventType.KeyDown) leaveToLeftColumn(); true }
                         }
                         .focusGroup(),
                     state = listState, verticalArrangement = Arrangement.spacedBy(12.design),
@@ -287,7 +297,11 @@ fun SeriesDetailTvContent(
                         EpisodeCard(
                             ep, cleanEpisodeTitle(ep.title, series.name, series.title), series.backdrop ?: series.poster, data.progress[ep.remoteId], D,
                             seen = com.ultratv.tv.nativeapp.data.trakt.TraktLibrary.episodeKey(ep.season, ep.episode) in data.traktSeen,
-                            modifier = if (i == entryIdx) Modifier.focusRequester(entry) else Modifier,
+                            modifier = Modifier
+                                .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
+                                .then(if (i == firstVisIdx) Modifier.focusRequester(firstEp) else Modifier)
+                                // Haut depuis le premier épisode : l'onglet de la saison active (et non la barre d'actions, à droite).
+                                .then(if (i == 0) Modifier.focusProperties { up = seasonEntry } else Modifier),
                             onLongClick = { onLongPressEpisode(ep) },
                             onClick = { onPlayEpisode(ep) },
                         )
@@ -319,6 +333,7 @@ fun SeriesDetailTvContent(
 private fun SeasonTabs(
     seasons: List<Int>, active: Int?, seasonEntry: FocusRequester, D: DesignStrings,
     onSeason: (Int) -> Unit, onEnterEpisodes: () -> Unit, modifier: Modifier,
+    onDown: (committed: Boolean) -> Unit, onLeftEdge: () -> Unit, leftKey: Key, awayKey: Key,
 ) {
     // État local : le survol des saisons ne recompose que cette rangée, pas tout l'écran.
     var pending by remember { mutableStateOf<Int?>(null) }
@@ -329,26 +344,51 @@ private fun SeasonTabs(
         onSeason(p)
     }
     val state = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val reqs = remember(seasons) { seasons.map { FocusRequester() } }
     LaunchedEffect(Unit) { val i = seasons.indexOf(active); if (i > 2) state.scrollToItem(i - 1) }
+    // Gauche/Droite : saison voisine, avec défilement si elle n'est pas encore composée (10 saisons et plus).
+    fun step(from: Int, delta: Int) {
+        val to = from + delta
+        if (to !in seasons.indices) return
+        scope.launch {
+            state.animateScrollToItem(to)
+            repeat(10) {
+                androidx.compose.runtime.withFrameNanos { }
+                if (runCatching { reqs[to].requestFocus() }.getOrDefault(false)) return@launch
+                delay(30)
+            }
+        }
+    }
     LazyRow(
         modifier
             .onPreviewKeyEvent { ev ->
                 if (ev.type == KeyEventType.KeyDown && ev.key == Key.DirectionDown) {
-                    // Valide la saison survolée, puis laisse le focus 2D choisir l'épisode le plus proche en dessous.
-                    pending?.takeIf { it != active }?.let(onSeason)
-                    false
+                    // Valide la saison survolée, puis premier épisode visible (ou épisode d'entrée de la nouvelle saison).
+                    val p = pending?.takeIf { it != active }
+                    p?.let(onSeason)
+                    onDown(p != null); true
                 } else false
             }
             .focusGroup(),
         state = state, horizontalArrangement = Arrangement.spacedBy(10.design),
     ) {
-        items(seasons, key = { it }, contentType = { "season" }) { n ->
+        itemsIndexed(seasons, key = { _, n -> n }, contentType = { _, _ -> "season" }) { idx, n ->
             val sel = n == active
             FocusSurface(
                 onClick = { onSeason(n); onEnterEpisodes() }, shape = RoundedCornerShape(26.design),
                 bg = if (sel) Ux.Cta else Ux.Card, focusedBg = if (sel) Ux.Cta else Ux.Button, ringWidth = 4.design, focusedScale = 1f,
                 modifier = Modifier.height(52.designT)
                     .then(if (sel) Modifier.focusRequester(seasonEntry) else Modifier)
+                    .focusRequester(reqs[idx])
+                    .onPreviewKeyEvent { ev ->
+                        when {
+                            ev.key != leftKey && ev.key != awayKey -> false
+                            ev.type != KeyEventType.KeyDown -> true
+                            ev.key == leftKey -> { if (idx == 0) onLeftEdge() else step(idx, -1); true }
+                            else -> { step(idx, +1); true }
+                        }
+                    }
                     .onFocusChanged { if (it.isFocused) pending = n }
                     .semantics { selected = sel },
             ) { _ ->
