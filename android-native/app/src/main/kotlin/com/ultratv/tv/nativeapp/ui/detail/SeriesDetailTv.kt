@@ -64,7 +64,6 @@ import com.ultratv.tv.nativeapp.ui.trailer.TrailerPlayer
 import com.ultratv.tv.nativeapp.i18n.DesignStrings
 import com.ultratv.tv.nativeapp.i18n.LocalDs
 import com.ultratv.tv.nativeapp.i18n.LocalStrings
-import com.ultratv.tv.nativeapp.i18n.jumpToEpisode
 import com.ultratv.tv.nativeapp.i18n.longPressDownload
 import com.ultratv.tv.nativeapp.i18n.trailerLabel
 import com.ultratv.tv.nativeapp.ui.common.RequestInitialFocus
@@ -181,7 +180,6 @@ fun SeriesDetailTvContent(
     val seasonEntry = remember { FocusRequester() }
     val firstEp = remember { FocusRequester() }
     val firstVisIdx by remember { derivedStateOf { listState.firstVisibleItemIndex } }
-    var jumpOpen by remember { mutableStateOf(false) }
     // Bande-annonce : clé YouTube (TMDB), lue dans l'appli par le lecteur intégré.
     val trailerKey = remember(data.trailerUrl) { data.trailerUrl?.let(TmdbTrailer::keyOf) }
     var trailerOpen by remember { mutableStateOf(false) }
@@ -266,19 +264,26 @@ fun SeriesDetailTvContent(
         ) {
             // Onglets sur toute la largeur (défilent, la saison active reste visible : 10 saisons restent atteignables), puis la
             // barre « Aller à l'épisode » / « Télécharger la saison » sur sa propre ligne : plus rien ne masque une saison.
+            val barReq = remember { FocusRequester() }
             SeasonTabs(
                 seasons = data.seasons, active = data.activeSeason, seasonEntry = seasonEntry, D = D,
                 onSeason = onSeason, onEnterEpisodes = { scope.launch { focusEntry() } }, modifier = Modifier.fillMaxWidth(),
-                onDown = { committed -> if (committed) scope.launch { focusEntry() } else runCatching { firstEp.requestFocus() } },
+                // Bas : « Télécharger la saison » juste en dessous (sinon, sans épisodes, l'épisode d'entrée).
+                onDown = { committed ->
+                    if (!runCatching { barReq.requestFocus() }.getOrDefault(false)) {
+                        if (committed) scope.launch { focusEntry() } else runCatching { firstEp.requestFocus() }
+                    }
+                },
                 // Gauche depuis la première saison : colonne de gauche (Lecture / Reprendre, sinon premier bouton).
                 onLeftEdge = { leaveToLeftColumn() },
                 leftKey = towardSeasons, awayKey = awayFromSeasons,
             )
             if (shown.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(12.design)) {
                 // Bas : premier épisode visible.
-                val toFirst = Modifier.focusProperties { down = firstEp }
-                V2Pill(D.jumpToEpisode, { jumpOpen = true }, heightPx = 52, fontPx = 18, hPadPx = 22, modifier = toFirst)
-                V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, modifier = toFirst)
+                // Ordre vertical de la colonne : onglets → « Télécharger la saison » → épisodes (Haut remonte dans le même ordre).
+                val toFirst = Modifier.focusProperties { down = firstEp; up = seasonEntry }
+                // « Aller à l'épisode » retiré (sans utilité réelle, la liste se parcourt directement) : seul « Télécharger la saison ».
+                V2Pill(downloadLabel, onDownloadSeason, heightPx = 52, fontPx = 18, hPadPx = 22, iconPath = com.ultratv.tv.nativeapp.ui.downloads.DownloadIcons.Download, modifier = toFirst.focusRequester(barReq))
             }
             if (shown.isNotEmpty()) Text(D.longPressDownload, color = Ux.Text3, fontFamily = Manrope, fontSize = 17.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
             when {
@@ -301,7 +306,7 @@ fun SeriesDetailTvContent(
                                 .then(if (i == entryIdx) Modifier.focusRequester(entry) else Modifier)
                                 .then(if (i == firstVisIdx) Modifier.focusRequester(firstEp) else Modifier)
                                 // Haut depuis le premier épisode : l'onglet de la saison active (et non la barre d'actions, à droite).
-                                .then(if (i == 0) Modifier.focusProperties { up = seasonEntry } else Modifier),
+                                .then(if (i == 0) Modifier.focusProperties { up = barReq } else Modifier),
                             onLongClick = { onLongPressEpisode(ep) },
                             onClick = { onPlayEpisode(ep) },
                         )
@@ -311,16 +316,6 @@ fun SeriesDetailTvContent(
         }
     }
 
-    if (jumpOpen) ChoiceDialog(
-        title = D.jumpToEpisode,
-        options = shown.map { ep -> ep.episode to "${ep.episode}. ${cleanEpisodeTitle(ep.title, series.name, series.title).ifEmpty { D.episodeWord(ep.episode) }}" },
-        selected = shown.getOrNull(entryIdx)?.episode,
-        onPick = { n ->
-            jumpOpen = false
-            jumpIndex(shown, n)?.let { i -> jumpIdx = i; scope.launch { focusEntry() } }
-        },
-        onDismiss = { jumpOpen = false },
-    )
     if (trailerOpen && trailerKey != null) TrailerPlayer(trailerKey, T.tidy(series.title), onClose = { trailerOpen = false })
 }
 

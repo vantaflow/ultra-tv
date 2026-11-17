@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Fiche série (TV) : « Aller à l'épisode » retiré, seul « Télécharger la saison » reste ; Haut et Bas suivent l'ordre de l'écran (onglets de saison, puis Télécharger la saison, puis épisodes).
 ### Corrigé
 - Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
 - Admin › Journaux : messages sur plusieurs lignes, identifiants et empreintes réduits ; le tableau ne déborde plus.
