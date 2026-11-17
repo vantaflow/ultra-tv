@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyFailure, ffmpegInstallCommand, planFallback } from "./failure";
+import { classifyFailure, ffmpegInstallCommand, planAudioRepair, planFallback } from "./failure";
 import { parseTxDiag, txDiagUrl, txUrl, type TxDiag } from "./transcode";
 
 const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, duration: 0, container: "", audio: "", ...o });
@@ -59,5 +59,30 @@ describe("planFallback : remux, copie ou conversion", () => {
   it("flux injoignable ou illisible : rien à tenter", () => {
     expect(planFallback(diag({ reason: "http", status: 403 }), { vod: true })).toBeNull();
     expect(planFallback(null, { vod: true })).toBeNull();
+  });
+});
+
+describe("planAudioRepair (#202)", () => {
+  const ok = (over: Partial<TxDiag> = {}): TxDiag => ({ reason: "ok", status: null, codec: "h264", convert: false, canEncode: true, duration: 7000, container: "matroska,webm", audio: "ac3", ...over });
+  const http551: TxDiag = { reason: "http", status: 551, codec: "", convert: false, canEncode: true, duration: 0, container: "", audio: "" };
+  const o = { vod: true, canRemux: true };
+
+  it("enchaînement MP4 551 → MKV → sonde → remux audio", () => {
+    // La sonde du MP4 échoue en 551 : rien de décidé pour le MP4 (ce n'est pas un MKV, le son n'est pas signalé muet).
+    expect(planAudioRepair(http551, { ...o, ext: "mp4", silent: false })).toBeNull();
+    // Repli sur le MKV : nouvelle sonde sur cette adresse → remux avec audio AAC.
+    expect(planAudioRepair(ok(), { ...o, ext: "mkv", silent: true })).toBe("remux");
+  });
+  it("sonde impossible sur un MKV → remux audio quand même", () => {
+    expect(planAudioRepair(http551, { ...o, ext: "mkv", silent: false })).toBe("remux");
+    expect(planAudioRepair(null, { ...o, ext: "mkv", silent: false })).toBe("remux");
+  });
+  it("sonde impossible mais le lecteur signale un son absent → remux", () => {
+    expect(planAudioRepair(http551, { ...o, ext: "mp4", silent: true })).toBe("remux");
+  });
+  it("vidéo illisible → conversion ; ffmpeg absent ou direct → rien", () => {
+    expect(planAudioRepair(ok({ convert: true }), { ...o, ext: "mkv", silent: true })).toBe("convert");
+    expect(planAudioRepair(null, { vod: true, ext: "mkv", silent: true, canRemux: false })).toBeNull();
+    expect(planAudioRepair(null, { vod: false, ext: "ts", silent: true, canRemux: true })).toBeNull();
   });
 });

@@ -48,3 +48,20 @@ export function planFallback(d: TxDiag | null, { vod }: { vod: boolean }): "conv
   if (d.convert) return d.canEncode ? "convert" : "needEncoder";
   return vod ? "remux" : null;
 }
+
+/** Conteneur d'une adresse de film / épisode d'après son extension (mkv, avi, ts… : pas lisibles tels quels avec leur audio). */
+export const isMatroskaLike = (ext: string): boolean => /^(mkv|avi|ts|mov|wmv|flv|webm)$/i.test(ext);
+
+/**
+ * Réparation du son d'un film / épisode lu par Chromium, après un changement de format ou d'adresse (la sonde doit viser
+ * l'adresse COURANTE, pas la première essayée). Comme planFallback, mais quand la sonde est impossible (statut 551, réseau…) :
+ * - le lecteur a signalé « image sans son » (`silent`), ou le conteneur est MKV & co. → remux avec audio AAC quand même
+ *   (`-c:v copy -c:a aac`), plutôt que de jouer sans son ; ffmpeg doit être disponible (`canRemux`).
+ */
+export function planAudioRepair(d: TxDiag | null, { vod, ext, silent, canRemux }: { vod: boolean; ext: string; silent: boolean; canRemux: boolean }): "convert" | "remux" | "needEncoder" | null {
+  if (!canRemux) return null;
+  const plan = planFallback(d, { vod });
+  if (plan) return plan;
+  if (d?.reason === "ok") return silent && vod ? "remux" : null;
+  return vod && (silent || isMatroskaLike(ext)) ? "remux" : null;
+}
