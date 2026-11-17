@@ -38,28 +38,28 @@ import org.robolectric.annotation.GraphicsMode
 class SeriesDetailFocusTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun data(withTarget: Boolean): SeriesDetailData {
+    private fun data(withTarget: Boolean, seasonCount: Int = 1, active: Int = 1): SeriesDetailData {
         val series = SeriesEntity(
             providerId = 1, remoteId = "s1", name = "Les Gardiens du phare", poster = null, categoryId = null, year = 2023, rating = 8.1,
             plot = "Un phare.", genre = "Drame", cast = "Mara Aubin, Yann Kerel, Léa Tanguy",
         )
-        val eps = (1..6).map { n -> EpisodeEntity(seriesId = 1, remoteId = "e$n", season = 1, episode = n, title = "Titre$n", streamUrl = "", container = null, plot = null) }
-        val prog = WatchHistoryEntity(providerId = 1, kind = "EPISODE", remoteId = "e4", title = "Titre4", poster = null, streamUrl = "", positionMs = 1_000_000, durationMs = 2_900_000)
+        val eps = (1..seasonCount).flatMap { sn -> (1..6).map { n -> EpisodeEntity(seriesId = 1, remoteId = "e$sn.$n", season = sn, episode = n, title = "Titre$n", streamUrl = "", container = null, plot = null) } }
+        val prog = WatchHistoryEntity(providerId = 1, kind = "EPISODE", remoteId = "e$active.4", title = "Titre4", poster = null, streamUrl = "", positionMs = 1_000_000, durationMs = 2_900_000)
         return SeriesDetailData(
-            series = series, episodes = eps, seasons = listOf(1), activeSeason = 1,
-            target = if (withTarget) eps[3] else null, resuming = withTarget,
-            progress = mapOf("e4" to prog), traktSeen = emptySet(), ratings = null, trailerUrl = "dQw4w9WgXcQ", downloads = emptyMap(), loading = false,
+            series = series, episodes = eps, seasons = (1..seasonCount).toList(), activeSeason = active,
+            target = if (withTarget) eps.first { it.season == active && it.episode == 4 } else null, resuming = withTarget,
+            progress = mapOf("e$active.4" to prog), traktSeen = emptySet(), ratings = null, trailerUrl = "dQw4w9WgXcQ", downloads = emptyMap(), loading = false,
         )
     }
 
-    private fun show(withTarget: Boolean) {
+    private fun show(withTarget: Boolean, seasonCount: Int = 1, active: Int = 1) {
         I18n.init(ApplicationProvider.getApplicationContext())
         rule.setContent {
             CompositionLocalProvider(LocalDs provides designStringsFor(AppLang.French), LocalStrings provides stringsFor(AppLang.French)) {
                 val inputMode = LocalInputModeManager.current
                 SideEffect { inputMode.requestInputMode(InputMode.Keyboard) }
                 SeriesDetailTvContent(
-                    data = data(withTarget), onSeason = {}, onPlayTarget = {}, onPlayEpisode = {}, onOpenPerson = {}, onBack = {},
+                    data = data(withTarget, seasonCount, active), onSeason = {}, onPlayTarget = {}, onPlayEpisode = {}, onOpenPerson = {}, onBack = {},
                     onLongPressEpisode = {}, downloadLabel = "Télécharger", onDownloadSeason = {},
                     favorite = { V2IconButton("M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z", "Favori", {}) }, trakt = {},
                 )
@@ -78,9 +78,9 @@ class SeriesDetailFocusTest {
     }
 
     /** L'élément focalisé contient le texte (ou la description) donné : comparaison des cadres, le focus portant sur la surface. */
-    private fun focused(text: String) {
+    private fun focused(text: String, exact: Boolean = false) {
         val f = rule.onNode(isFocused()).fetchSemanticsNode().boundsInRoot
-        val hits = rule.onAllNodes(hasText(text, substring = true, ignoreCase = true) or hasContentDescription(text, substring = true, ignoreCase = true))
+        val hits = rule.onAllNodes(hasText(text, substring = !exact, ignoreCase = true) or hasContentDescription(text, substring = true, ignoreCase = true))
             .fetchSemanticsNodes().map { it.boundsInRoot }
         val ok = hits.any { b -> b.left >= f.left - 1 && b.right <= f.right + 1 && b.top >= f.top - 1 && b.bottom <= f.bottom + 1 }
         check(ok) { "Focus attendu sur « $text » ; focus en $f, textes en $hits" }
@@ -129,5 +129,40 @@ class SeriesDetailFocusTest {
         press(Key.DirectionRight); focused("Titre1")
         press(Key.DirectionLeft)
         focused("bande")
+    }
+
+    @Test fun hautDepuisLePremierEpisodeVaALOngletDeLaSaisonActive() {
+        show(false, seasonCount = 4, active = 2)
+        press(Key.DirectionRight); press(Key.DirectionRight)  // bande-annonce -> cœur -> épisodes
+        focused("Titre1")
+        press(Key.DirectionUp)
+        focused("Saison 2", exact = true)
+        press(Key.DirectionDown)
+        focused("Titre1")
+    }
+
+    @Test fun saison4AtteignableEtGaucheDepuisLaPremiereVersLaColonneGauche() {
+        show(false, seasonCount = 4, active = 2)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
+        press(Key.DirectionRight); focused("Saison 3", exact = true)
+        press(Key.DirectionRight); focused("Saison 4", exact = true)
+        press(Key.DirectionLeft); press(Key.DirectionLeft); press(Key.DirectionLeft)
+        focused("Saison 1", exact = true)
+        press(Key.DirectionLeft)
+        focused("bande")
+    }
+
+    @Test fun dixSaisonsToutesAtteignables() {
+        show(false, seasonCount = 10, active = 1)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
+        focused("Saison 1", exact = true)
+        for (n in 2..10) { press(Key.DirectionRight); focused("Saison $n", exact = true) }
+        for (n in 9 downTo 1) { press(Key.DirectionLeft); focused("Saison $n", exact = true) }
+    }
+
+    @Test fun basDepuisLaBarreVaAuPremierEpisode() {
+        show(false, seasonCount = 4, active = 2)
+        press(Key.DirectionRight); press(Key.DirectionRight); press(Key.DirectionUp)
+        press(Key.DirectionDown); focused("Titre1")
     }
 }
