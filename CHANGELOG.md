@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.42] — 2026-11-17 (Android)
+
+### Corrigé
+- Sport (TV) : choisir une ligue figeait l'appli plusieurs secondes jusqu'à sa fermeture (analyse de tout le guide pour chaque match) ; les cartes « En direct » ont toutes la même hauteur.
+
 ## [1.3.41] — 2026-11-17 (Android) · Bureau 1.2.66 · Worker
 
 ### Corrigé

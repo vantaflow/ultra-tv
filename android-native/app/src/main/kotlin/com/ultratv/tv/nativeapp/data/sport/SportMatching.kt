@@ -106,7 +106,16 @@ object SportMatching {
     }
 
     /** Analyse un titre de programme : compétition, équipes (clé indépendante de l'ordre) ou titre replié sans bruit. */
-    fun parse(title: String): ParsedEvent {
+    fun parse(title: String): ParsedEvent = synchronized(parsed) { parsed[title] } ?: parseUncached(title).also { r ->
+        synchronized(parsed) { parsed[title] = r }
+    }
+
+    /** Titres déjà analysés : l'écran Sport recalcule ses listes chaque minute sur les mêmes programmes du guide. */
+    private val parsed = object : LinkedHashMap<String, ParsedEvent>(256, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, ParsedEvent>?) = size > 4096
+    }
+
+    private fun parseUncached(title: String): ParsedEvent {
         var s = BRACKETS.replace(title, " ").trim()
         s = LIVE_PREFIX.replace(s, "")
         var prev: String

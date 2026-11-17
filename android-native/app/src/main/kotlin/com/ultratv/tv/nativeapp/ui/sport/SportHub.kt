@@ -242,7 +242,7 @@ internal fun HubLiveCard(m: LiveCardModel, D: DesignStrings, noSpoiler: Boolean,
     FocusSurface(onClick = onClick, shape = RoundedCornerShape(26.design), bg = Ux.Card, focusedBg = Ux.Cta, focusedScale = 1.02f, ringWidth = 5.design, modifier = modifier) { f ->
         val c1 = if (f) Ux.TextOnLight else Ux.Text
         val c2 = if (f) Ux.OnFocus2 else Ux.Text2
-        Column(Modifier.fillMaxWidth().padding(26.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
+        Column(Modifier.fillMaxSize().padding(26.design), verticalArrangement = Arrangement.spacedBy(20.design)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(m.league, color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 Spacer(Modifier.width(10.design))
@@ -256,12 +256,14 @@ internal fun HubLiveCard(m: LiveCardModel, D: DesignStrings, noSpoiler: Boolean,
                     LiveTeamRow(m.home, m.match?.homeBadge, if (show) m.homeScore else null, m.homeScore != null, c1)
                     LiveTeamRow(m.away, m.match?.awayBadge, if (show) m.awayScore else null, m.awayScore != null, c1)
                 }
-            } else Text(m.title, color = c1, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 26.spx, lineHeight = 32.spx, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            } else Text(m.title, color = c1, fontFamily = Sora, fontWeight = FontWeight.ExtraBold, fontSize = 26.spx, lineHeight = 32.spx, minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (m.progress != null) {
                 Box(Modifier.fillMaxWidth().height(6.design).clip(RoundedCornerShape(50)).background(if (f) Ux.TextOnLight.copy(alpha = 0.14f) else Ux.Line)) {
                     Box(Modifier.fillMaxWidth(m.progress.coerceIn(0.02f, 1f)).fillMaxHeight().clip(RoundedCornerShape(50)).background(Ux.Accent))
                 }
             }
+            // Chaînes en bas : toutes les cartes ont la même hauteur, quel que soit leur contenu.
+            Spacer(Modifier.weight(1f))
             if (m.channels.size >= 2) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.design)) {
                 Text(D.sportAlsoOnChan(m.channels.size), color = c2, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 18.spx, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
@@ -405,6 +407,9 @@ private fun MiniRow(r: StandingRow, zone: Zone) {
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ux.Line.copy(alpha = 0.5f)))
 }
 
+/** Hauteur commune des cartes « En direct » : match (deux équipes) + progression + « Aussi sur » + chaînes. */
+private val LIVE_CARD_H get() = 340.design
+
 internal fun gdText(v: Int?): String = when { v == null -> ""; v > 0 -> "+$v"; v < 0 -> "−${-v}"; else -> "0" }
 
 // ───────────────────────── accueil TV ─────────────────────────
@@ -470,7 +475,7 @@ internal fun SportTvContent(
                         if (lists.live.isEmpty()) Text(D.sportEmptyLive, color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx)
                         else LazyRow(Modifier.focusRestorer().focusGroup(), horizontalArrangement = Arrangement.spacedBy(20.design), contentPadding = PaddingValues(vertical = 8.design, horizontal = 6.design)) {
                             items(lists.live, key = { it.key }, contentType = { "live" }) { m ->
-                                HubLiveCard(m, D, hub.lg.noSpoiler, hub.lg.revealed, Modifier.width(360.design)) { open(m) }
+                                HubLiveCard(m, D, hub.lg.noSpoiler, hub.lg.revealed, Modifier.width(360.design).height(LIVE_CARD_H)) { open(m) }
                             }
                         }
                         // ── À venir ──

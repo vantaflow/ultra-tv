@@ -193,9 +193,11 @@ object LeagueChannels {
         val a = m.away?.let { SportMatching.canonTeam(it) }?.takeIf { it.isNotEmpty() } ?: return emptyList()
         val start = m.startMs ?: return emptyList()
         val key = listOf(h, a).sorted().joinToString("|")
+        // Horaire d'abord (comparaison d'entiers) : l'analyse du titre (expressions régulières) ne porte que sur
+        // les quelques programmes proches. Analyser tout le guide pour chaque match figeait l'écran Sport (ANR).
         val hits = entries.filter { e ->
-            val p = SportMatching.parse(e.prog.title)
-            p.isMatch && p.key == key && kotlin.math.abs(e.prog.startMs - start) <= TOLERANCE_MS
+            kotlin.math.abs(e.prog.startMs - start) <= TOLERANCE_MS &&
+                SportMatching.parse(e.prog.title).let { p -> p.isMatch && p.key == key }
         }
         return SportMatching.orderChannels(hits)
     }
