@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { classifyFailure, ffmpegInstallCommand, planFallback } from "./failure";
 import { parseTxDiag, txDiagUrl, txUrl, type TxDiag } from "./transcode";
 
-const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, duration: 0, ...o });
+const diag = (o: Partial<TxDiag>): TxDiag => ({ reason: "ok", status: null, codec: "", convert: false, canEncode: true, duration: 0, container: "", audio: "", ...o });
 
 describe("classifyFailure : la vraie cause", () => {
   it("statuts du fournisseur : compte / connexions vs autre erreur HTTP", () => {
@@ -41,8 +41,8 @@ describe("conversion vidéo : URL et diagnostic", () => {
   it("réponse /txd validée", () => {
     expect(parseTxDiag(null)).toBeNull();
     expect(parseTxDiag({ reason: "boum" })).toBeNull();
-    expect(parseTxDiag({ reason: "http", status: 458 })).toEqual({ reason: "http", status: 458, codec: "", convert: false, canEncode: false, duration: 0 });
-    expect(parseTxDiag({ reason: "ok", video: { codec: "mpeg2video" }, convert: true, canEncode: true, duration: 5530.5 })).toEqual({ reason: "ok", status: null, codec: "mpeg2video", convert: true, canEncode: true, duration: 5530.5 });
+    expect(parseTxDiag({ reason: "http", status: 458 })).toEqual({ reason: "http", status: 458, codec: "", convert: false, canEncode: false, duration: 0, container: "", audio: "" });
+    expect(parseTxDiag({ reason: "ok", video: { codec: "mpeg2video" }, convert: true, canEncode: true, duration: 5530.5 })).toEqual({ reason: "ok", status: null, codec: "mpeg2video", convert: true, canEncode: true, duration: 5530.5, container: "", audio: "" });
   });
 });
 

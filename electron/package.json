@@ -71,6 +71,7 @@
       "dns.cjs",
       "transcode.cjs",
       "externalplayer.cjs",
+      "logger.cjs",
       "windowfit.cjs",
       "trailer.cjs",
       "recorder.cjs",

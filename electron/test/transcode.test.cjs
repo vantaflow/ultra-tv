@@ -167,7 +167,8 @@ test("needsVideoConversion : lisible directement = jamais convertie", () => {
 });
 
 test("classifyProbe : codec, injoignable (4xx/5xx), réseau, autre", () => {
-  assert.deepStrictEqual(classifyProbe(MPEG2), { reason: "ok", video: parseVideo(MPEG2), hasAudio: true, convert: true, duration: 0 });
+  assert.deepStrictEqual(classifyProbe(MPEG2), { reason: "ok", video: parseVideo(MPEG2), hasAudio: true, convert: true, duration: 0, container: "", audio: "mp2" });
+  assert.strictEqual(classifyProbe(`Input #0, matroska,webm, from 'x':\n${H264}`).container, "matroska,webm");
   assert.strictEqual(classifyProbe(`  Duration: 01:32:10.50, start: 0.0, bitrate: 4000 kb/s\n${H264}`).duration, 5530.5);
   assert.strictEqual(classifyProbe(H264).convert, false);
   assert.deepStrictEqual(classifyProbe("[http @ 0x1] HTTP error 458 \nError opening input"), { reason: "http", status: 458 });

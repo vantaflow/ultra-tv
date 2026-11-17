@@ -166,7 +166,11 @@ function classifyProbe(stderr, { hevc = false } = {}) {
   const err = String(stderr || "");
   const video = parseVideo(err);
   const hasAudio = /Stream #\d+:\d+[^:]*: Audio:/.test(err);
-  if (video || hasAudio) return { reason: "ok", video, hasAudio, convert: needsVideoConversion(video, { hevc }), duration: parseDuration(err) };
+  if (video || hasAudio) {
+    const container = (/Input #\d+,\s*([^,]+(?:,[a-z0-9_]+)*?),\s*from/i.exec(err) || [])[1] || "";
+    const audio = (/Stream #\d+:\d+[^:]*: Audio: ([A-Za-z0-9_]+)/.exec(err) || [])[1] || "";
+    return { reason: "ok", video, hasAudio, convert: needsVideoConversion(video, { hevc }), duration: parseDuration(err), container, audio };
+  }
   const h = /(?:HTTP error|Server returned|returned)\s+(\d{3})\b/i.exec(err);
   if (h && Number(h[1]) >= 400) return { reason: "http", status: Number(h[1]) };
   if (/Server returned [45]XX/i.test(err)) return { reason: "http", status: null };
@@ -239,8 +243,10 @@ async function diagnoseStream(ffmpeg, url, { hevc = false, timeoutMs = 15000, ..
 }
 
 /** GET /txd : diagnostic en JSON, plus la disponibilité de la conversion vidéo. */
-async function serveDiagnosis(req, res, { ffmpeg, target, headers, hevc = false, canEncode = false, diagnose = diagnoseStream }) {
+async function serveDiagnosis(req, res, { ffmpeg, target, headers, hevc = false, canEncode = false, diagnose = diagnoseStream, log = () => {} }) {
+  const t0 = Date.now();
   const d = await diagnose(ffmpeg, target.toString(), { hevc, userAgent: req.headers["x-ut-ua"] || null, referer: req.headers["x-ut-referer"] || null });
+  log("ffmpeg.probe", { reason: d.reason, status: d.status ?? null, container: d.container, video: d.video, audio: d.audio, hasAudio: d.hasAudio, convert: d.convert, duration: d.duration, canEncode: !!canEncode, hevcPlatform: hevc, host: target.host, ms: Date.now() - t0 });
   res.writeHead(200, { ...headers, "Content-Type": "application/json", "Cache-Control": "no-store" });
   res.end(JSON.stringify({ ...d, canEncode: !!canEncode }));
 }
@@ -285,7 +291,8 @@ function serveSubtitle(req, res, { ffmpeg, target, s, headers, report = () => {}
  * Sert une requête de conversion : ffmpeg écrit le MPEG-TS dans la réponse ; fermeture du client = arrêt de ffmpeg.
  * `headers` : en-têtes CORS du proxy. `onSpawn(stop)` : crochet appelé dès le lancement d'ffmpeg (suivi du côté proxy).
  */
-function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, video = "copy", encoder = "libx264", headers, report = () => {}, spawnFn = spawn, onSpawn }) {
+function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0, video = "copy", encoder = "libx264", headers, report = () => {}, spawnFn = spawn, onSpawn, log = () => {} }) {
+  const t0 = Date.now();
   const ua = req.headers["x-ut-ua"] || null;
   const ref = req.headers["x-ut-referer"] || null;
   const child = spawnFn(ffmpeg, transcodeArgs(target.toString(), { ss, userAgent: ua, referer: ref, live, audio, video, encoder }), { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
@@ -295,12 +302,15 @@ function serveTranscode(req, res, { ffmpeg, target, ss, live = false, audio = 0,
   res.on("close", stop);
   child.stderr.on("data", () => { /* messages ffmpeg ignorés : ils peuvent contenir l'URL */ });
   child.on("error", () => { report("ETRANSCODE"); if (!res.headersSent) { res.writeHead(502, headers); res.end(); } });
+  log("ffmpeg.start", { host: target.host, live, video: video === "h264" ? `h264(${encoder})` : "copy", audio: "aac", ss, audioTrack: audio });
   child.stdout.once("data", () => {
     started = true;
+    log("ffmpeg.firstData", { host: target.host, ms: Date.now() - t0 });
     if (!res.headersSent) res.writeHead(200, { ...headers, "Content-Type": "video/mp2t", "Cache-Control": "no-store" });
   });
   child.stdout.on("data", (chunk) => { if (started && !res.writableEnded) res.write(chunk); });
   child.on("close", (code) => {
+    if (!started) log("ffmpeg.failed", { host: target.host, code, video: video === "h264" ? "h264" : "copy", ms: Date.now() - t0 });
     if (!started && !res.headersSent) { report(code === 0 ? "ETRANSCODE_EMPTY" : "ETRANSCODE"); res.writeHead(502, headers); }
     if (!res.writableEnded) res.end();
   });

@@ -51,6 +51,7 @@ import { startScrobble, type Scrobbler } from "./trakt";
 import { loadSkips, skipOfferAt, type SkipSegment } from "./skip";
 import { canDecodeHevc, clampSeek, parseTxDiag, parseTxInfo, TX_LABEL, txClock, txDiagUrl, txInfoUrl, txSubUrl, txUrl, type TxDiag, type TxInfo, type TxState } from "./transcode";
 import { classifyFailure, planFallback, type Failure } from "./failure";
+import { playLog, urlInfo } from "./playlog";
 import { parseVtt, shiftCues, type Cue } from "./subtitles";
 import type { PlayTarget } from "./resolve";
 import { EpisodesPanel } from "./EpisodesPanel";
@@ -177,6 +178,8 @@ export function PlayerHost() {
   /** Conversion vidéo H.264 déjà tentée pour cette lecture. */
   const videoTriedRef = useRef(false);
   const diagRef = useRef<TxDiag | null>(null);
+  /** Horodatage (performance.now) du démarrage de la lecture en cours : délai jusqu'à la première image. */
+  const startAtRef = useRef(0);
   const tryVideoRef = useRef<(() => Promise<boolean>) | null>(null);
   const [limit, setLimit] = useState<{ a: number; b: number } | null | false>(false);
   /** Nouvelle tentative unique après une limite de connexions (le fournisseur compte parfois encore l'ancienne). */
@@ -200,8 +203,9 @@ export function PlayerHost() {
     });
     reconRef.current = recon;
     const eng = new PlayerEngine(v, transportSync, {
-      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); } recon.onState(s, liveRef.current); },
+      onState: (s) => { setState(s); scrobRef.current?.onState(s, v.currentTime, v.duration); if (s === "playing") { setError(false); setReconnecting(false); if (startAtRef.current) { playLog("play.firstFrame", { ms: Math.round(performance.now() - startAtRef.current), width: v.videoWidth, height: v.videoHeight, duration: Number.isFinite(v.duration) ? Math.round(v.duration) : null }); startAtRef.current = 0; } } recon.onState(s, liveRef.current); },
       onError: (_code, status) => {
+        { const cc = candRef.current.list[candRef.current.i]; playLog("play.error", { code: _code, status: status ?? null, format: cc?.format, label: cc?.label, index: candRef.current.i, of: candRef.current.list.length, ...(cc ? urlInfo(cc.url) : {}) }); }
         if (status) statusRef.current = status;
         // Refus du fournisseur (403, 458…) : souvent un User-Agent ou un format refusé, pas seulement la limite de connexions.
         // On essaie d'abord l'autre format (m3u8 / ts) ; la limite n'est annoncée qu'au dernier candidat.
@@ -234,6 +238,7 @@ export function PlayerHost() {
       if (c.i + 1 < c.list.length) {
         c.i += 1;
         const a = c.list[c.i]!;
+        playLog("play.decision", { decision: "autre format", to: a.label, format: a.format });
         void startCandidate(a);
       } else {
         // Les replis ont échoué après un candidat qui jouait sans son : mieux vaut l'image sans son que l'erreur.
@@ -250,7 +255,9 @@ export function PlayerHost() {
       if (!status && !diag && bridge()?.transcode) diag = await runDiag();
       if (!status && !diag?.status) { try { status = (await probeCurrent()).status ?? null; } catch { /* inconnu */ } }
       if (engineRef.current !== eng) return;
-      setFailure(classifyFailure({ status, diag, platform: bridge()?.platform }));
+      const f = classifyFailure({ status, diag, platform: bridge()?.platform });
+      playLog("play.failed", { failure: f.kind, status: "status" in f ? f.status : status ?? null, codec: "codec" in f ? f.codec : undefined, diag: diag?.reason, container: diag?.container });
+      setFailure(f);
       setError(true); setState("error");
     };
     /** Diagnostic ffmpeg du flux d'origine (connexion du lecteur déjà fermée). */
@@ -276,6 +283,7 @@ export function PlayerHost() {
       const tg = usePlayer.getState().target;
       const isLive = tg?.kind === "live" && !tg.replay;
       const plan = planFallback(d, { vod: !isLive });
+      playLog("play.decision", { decision: plan === "convert" ? "conversion vidéo" : plan === "remux" ? "remux" : plan === "needEncoder" ? "conversion impossible (pas d'encodeur)" : "aucune", codec: d.codec, container: d.container, audio: d.audio, reason: d.reason, status: d.status, durationS: Math.round(d.duration) });
       if (!plan) return false;
       const base = bridge()?.proxyBase;
       const v = videoRef.current;
@@ -382,6 +390,7 @@ export function PlayerHost() {
     if (!b?.openInVlc || !orig) return;
     let ok = false;
     try { ok = await b.openInVlc({ url: orig, userAgent: src?.userAgent || (src?.type === "stalker" ? STALKER_UA : null), referer: src?.referer || null, title: tg?.title ?? null }); } catch { /* refusé */ }
+    playLog("play.decision", { decision: "VLC", ok });
     if (ok) engineRef.current?.stop();
     else useUi.getState().toast(translate(lang, "player.vlcFailed"));
   }, []);
@@ -395,6 +404,12 @@ export function PlayerHost() {
     resumeAtRef.current = null;
     const isTx = c.label === TX_LABEL;
     if (!isTx) txRef.current = null;
+    startAtRef.current = performance.now();
+    playLog("play.start", {
+      kind: tg.kind === "live" && !tg.replay ? "live" : tg.replay ? "replay" : "vod", sourceType: src.type, format: c.format, label: c.label, index: candRef.current.i,
+      container: isTx ? "mpegts(ffmpeg)" : urlInfo(c.url).ext, ...urlInfo(c.url), userAgent: src.userAgent ? "source" : "repli VLC", referer: !!src.referer,
+      transcode: isTx ? (txRef.current?.video ? "vidéo H.264 + audio AAC" : "remux + audio AAC") : "aucune", resumeAt: Math.round(resume ?? tg.startAt ?? 0),
+    });
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
       // Conversion du bureau : MPEG-TS continu sans durée annoncée — ouvert comme un flux continu, sinon MSE
@@ -545,6 +560,7 @@ export function PlayerHost() {
           const isLive = target.kind === "live" && !target.replay;
           const tx: TxState = { orig: cur.url, offset: isLive ? 0 : v.currentTime, duration: isLive || !Number.isFinite(v.duration) ? 0 : v.duration };
           txRef.current = tx;
+          playLog("play.decision", { decision: "conversion audio", reason: "image sans son (AC-3 / E-AC-3 / DTS)" });
           c.list = [...c.list, { url: txUrl(base, tx.orig, tx.offset, isLive), format: "ts", label: TX_LABEL }];
           c.i = c.list.length - 1;
           void startCandidate(c.list[c.i]!);
@@ -1222,6 +1238,7 @@ export function PlayerHost() {
             {!drmBlocked && limit === false && <p style={{ margin: "0.5rem 0 1rem", color: "#c4c4cc", fontSize: "0.875rem" }}>{failureText(failure, t)}</p>}
             {!drmBlocked && <button className="btn primary sm" onClick={() => { candRef.current.i = 0; usePlayer.getState().reload(); }}>{t("player.retry")}</button>}
             {!drmBlocked && bridge()?.vlc && <button className="btn sm" style={{ marginLeft: "0.5rem" }} onClick={() => void openInVlc()}>{t("player.openVlc")}</button>}
+            {!drmBlocked && bridge()?.openLogsDir && <button className="btn sm" style={{ marginLeft: "0.5rem" }} onClick={() => void bridge()?.openLogsDir?.()}>{t("player.openLogs")}</button>}
           </div>
         </div>
       )}
