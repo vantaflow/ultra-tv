@@ -447,12 +447,25 @@ private fun SourcesPane(vm: SettingsViewModel, panes: SettingsPanesViewModel, on
     if (paired && connWarn) Text("⚠ " + C.connectionWarning, color = Ux.Err, fontFamily = Manrope, fontSize = 22.spx, lineHeight = 30.spx, modifier = Modifier.padding(horizontal = 8.design, vertical = 6.design))
     // « Tableau de bord » : adresse en clair + QR à scanner avec le téléphone (le Worker choisi par l'utilisateur, sinon celui par défaut).
     if (!com.ultratv.tv.nativeapp.ui.mobile.LocalTouch.current) {
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) {
-            com.ultratv.tv.nativeapp.ui.design.QrCode(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase).trimEnd('/'), 132.design)
+        val dashQr = com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.dashboardQrTarget(workerBase, paired)
+        val dashBody: @Composable () -> Unit = {
+            com.ultratv.tv.nativeapp.ui.design.QrCode(dashQr, 132.design)
             Column(verticalArrangement = Arrangement.spacedBy(6.design)) {
-                Text(D.dashboardTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 1)
+                Text(if (paired) D.dashboardTitle else D.dashboardSendTitle, color = Ux.Text, fontFamily = Manrope, fontWeight = FontWeight.Bold, fontSize = 26.spx, maxLines = 2)
                 Text(hostOnly(com.ultratv.tv.nativeapp.data.config.WorkerFallbackLogic.siteBase(workerBase)).substringAfter("://"), color = Ux.Text2, fontFamily = Manrope, fontSize = 24.spx, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(D.dashboardScan, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 1)
+                Text(if (paired) D.dashboardScan else D.dashboardSendHint, color = Ux.Text3, fontFamily = Manrope, fontSize = 22.spx, maxLines = 2)
+            }
+        }
+        if (paired) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.design)).background(Ux.SurfaceDeep).padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) { dashBody() }
+        } else {
+            // Sans compte : la carte est focusable ; OK lance l'envoi depuis le téléphone (même appel que « Depuis le téléphone »).
+            com.ultratv.tv.nativeapp.ui.design.FocusSurface(
+                onClick = { vm.startWebSend(phoneReceived, stalkerFailed) },
+                shape = RoundedCornerShape(26.design), bg = Ux.SurfaceDeep, focusedScale = 1.0f,
+                modifier = Modifier.fillMaxWidth(),
+            ) { _ ->
+                Row(Modifier.fillMaxWidth().padding(24.design), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(28.design)) { dashBody() }
             }
         }
     }

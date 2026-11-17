@@ -92,6 +92,8 @@
     <string name="ds_loading_label">Carregando…</string>
     <string name="ds_searching_label">Pesquisando…</string>
     <string name="ds_dashboard_scan">Escaneie com o celular</string>
+    <string name="ds_dashboard_send_title">Enviar uma fonte pelo celular</string>
+    <string name="ds_dashboard_send_hint">Pressione OK para obter o código e escaneie o QR com o celular</string>
     <string name="ds_pair_scan_auto">Escaneie com o celular para parear automaticamente</string>
     <string name="ds_pair_device_label">Nome exibido no painel</string>
     <string name="ds_search_pill">Pesquisar</string>

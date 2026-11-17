@@ -194,6 +194,8 @@
   "DesignStrings.getCountSeries()": "%s series",
   "DesignStrings.getCuts()": "Cortes (2 min)",
   "DesignStrings.getDashboardScan()": "Escanea con tu teléfono",
+  "DesignStrings.getDashboardSendHint()": "Pulsa OK para obtener el código y escanea el QR con tu teléfono",
+  "DesignStrings.getDashboardSendTitle()": "Enviar una fuente desde el teléfono",
   "DesignStrings.getDashboardTitle()": "Panel de control",
   "DesignStrings.getDecoding()": "Decodificación",
   "DesignStrings.getDecodingRow()": "Decodificación",

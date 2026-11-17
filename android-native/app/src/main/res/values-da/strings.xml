@@ -91,6 +91,8 @@
     <string name="ds_loading_label">Indlæser…</string>
     <string name="ds_searching_label">Søger…</string>
     <string name="ds_dashboard_scan">Scan med din telefon</string>
+    <string name="ds_dashboard_send_title">Send en kilde fra telefonen</string>
+    <string name="ds_dashboard_send_hint">Tryk på OK for at få koden, og scan derefter QR-koden med din telefon</string>
     <string name="ds_pair_scan_auto">Scan med din telefon for at parre automatisk</string>
     <string name="ds_pair_device_label">Navn vist på dashboardet</string>
     <string name="ds_search_pill">Søg</string>

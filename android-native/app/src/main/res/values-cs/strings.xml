@@ -91,6 +91,8 @@
     <string name="ds_loading_label">Načítání…</string>
     <string name="ds_searching_label">Hledání…</string>
     <string name="ds_dashboard_scan">Naskenujte telefonem</string>
+    <string name="ds_dashboard_send_title">Odeslat zdroj z telefonu</string>
+    <string name="ds_dashboard_send_hint">Stisknutím OK získáte kód, poté naskenujte QR kód telefonem</string>
     <string name="ds_pair_scan_auto">Naskenujte telefonem pro automatické spárování</string>
     <string name="ds_pair_device_label">Název zobrazený na řídicím panelu</string>
     <string name="ds_search_pill">Hledat</string>

@@ -91,6 +91,8 @@
     <string name="ds_loading_label">Φόρτωση…</string>
     <string name="ds_searching_label">Αναζήτηση…</string>
     <string name="ds_dashboard_scan">Σαρώστε με το τηλέφωνό σας</string>
+    <string name="ds_dashboard_send_title">Αποστολή πηγής από το τηλέφωνο</string>
+    <string name="ds_dashboard_send_hint">Πατήστε OK για να λάβετε τον κωδικό και σαρώστε το QR με το τηλέφωνό σας</string>
     <string name="ds_pair_scan_auto">Σαρώστε με το τηλέφωνό σας για αυτόματη σύζευξη</string>
     <string name="ds_pair_device_label">Όνομα που εμφανίζεται στον πίνακα ελέγχου</string>
     <string name="ds_search_pill">Αναζήτηση</string>

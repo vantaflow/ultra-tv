@@ -31,14 +31,14 @@ object WebSendLogic {
      * effective de l'appli, déjà résolu) est prise en charge : la page s'ouvre alors dans la langue de l'appli.
      */
     fun sendUrl(base: String, code: String, lang: String? = null): String {
-        val url = base.trimEnd('/') + "/envoyer?c=" + code.uppercase().filter { it.isLetterOrDigit() }
+        val url = WorkerFallbackLogic.siteBase(base).trimEnd('/') + "/envoyer?c=" + code.uppercase().filter { it.isLetterOrDigit() }
         val l = lang?.trim()?.lowercase()
         return if (l != null && l in PAGE_LANGS) "$url&l=$l" else url
     }
 
-    /** Adresse courte à saisir à la main : `hôte/envoyer`. */
+    /** Adresse courte à saisir (le site, jamais l'adresse de l'API) à la main : `hôte/envoyer`. */
     fun shortAddress(base: String): String =
-        base.trim().substringAfter("://").substringBefore('/').let { if (it.isEmpty()) "" else "$it/envoyer" }
+        WorkerFallbackLogic.siteBase(base.trim()).substringAfter("://").substringBefore('/').let { if (it.isEmpty()) "" else "$it/envoyer" }
 
     /** « K7Q2M9 » → « K7Q-2M9 » (lisible à distance) ; un code déjà groupé ou trop court est conservé. */
     fun groupCode(code: String): String =

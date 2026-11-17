@@ -88,6 +88,8 @@
     <string name="ds_loading_label">Chargement…</string>
     <string name="ds_searching_label">Recherche…</string>
     <string name="ds_dashboard_scan">À scanner avec votre téléphone</string>
+    <string name="ds_dashboard_send_title">Envoyer une source depuis le téléphone</string>
+    <string name="ds_dashboard_send_hint">Appuyez sur OK pour obtenir le code, puis scannez le QR avec votre téléphone</string>
     <string name="ds_pair_scan_auto">Scannez avec votre téléphone pour appairer automatiquement</string>
     <string name="ds_pair_device_label">Nom affiché sur le tableau de bord</string>
     <string name="ds_search_pill">Rechercher</string>
