@@ -6,6 +6,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Modifié
 - Tableau de bord, serveurs multimédias : un clic sur un serveur Plex l'ajoute (sans bouton Add), liste des serveurs configurés (type, badge, date, appareils, partage, suppression), retour sur la carte avec un message clair et refus des doublons (Plex, Jellyfin, Emby, NAS)
+- Tableau de bord : les serveurs Jellyfin, Emby, Plex et NAS ne sont plus listés en double dans « Sources » ; ils n'apparaissent que dans la carte « Media servers ».
 
 ### Corrigé
 - Tableau de bord : sur les cartes des serveurs multimédias et des sources Stalker, la note passe au-dessus des boutons ; Partager et Supprimer restent alignés sur une ligne.

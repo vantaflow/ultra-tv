@@ -64,7 +64,9 @@ export function dashboardPage(n, { acct, providers, csrf, err, ok, admin = false
   const csrfInput = `<input type="hidden" name="csrf" value="${e(csrf)}"/>`;
   const devices = acct.devices || [];
   const when = (ms) => (ms ? frDate(ms, lang) : "");
-  const provRows = providers.map((p) => {
+  // Serveurs multimédias : listés seulement dans leur carte « Media servers », pas en double dans les sources IPTV.
+  const iptv = providers.filter((p) => !MEDIA_KINDS.includes(p.kind));
+  const provRows = iptv.map((p) => {
     const sh = sharing(p, devices, csrfInput, lang);
     const origin = p.originName ? t.srcs.addedFrom(p.originName === "dashboard" ? t.srcs.fromDash : e(p.originName)) : t.srcs.unknownOrigin;
     return `
@@ -244,7 +246,7 @@ ${pairForm(csrfInput, "", lang)}</section>
 ${listbar("dev-list", cJs.searchDevPh)}
 <div class="cards c2 mt16" id="dev-list">${devRows || `<div class="empty"><div class="badge-ico">${ico("tv")}</div><strong>${e(t.devs.emptyTitle)}</strong><span class="small">${e(t.devs.emptySub)}</span></div>`}</div>
 
-<div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">${e(t.srcs.title)} <span class="count">${providers.length}</span></h2><p class="muted small">${e(t.srcs.sub)}</p></div><a class="button secondary" href="#ajouter">${ico("plus")}${e(t.srcs.addBtn)}</a></div>
+<div class="section-h" id="sources"><div class="sh-t"><h2 id="h-src">${e(t.srcs.title)} <span class="count">${iptv.length}</span></h2><p class="muted small">${e(t.srcs.sub)}</p></div><a class="button secondary" href="#ajouter">${ico("plus")}${e(t.srcs.addBtn)}</a></div>
 ${listbar("prov-list", cJs.searchSrcPh)}
 <div class="cards c2" id="prov-list">${provRows || `<div class="empty"><div class="badge-ico">${ico("list")}</div><strong>${e(t.srcs.emptyTitle)}</strong><span class="small">${e(t.srcs.emptySub)}</span></div>`}</div>
 ${profilesPanel(acct, providers, csrfInput, lang)}
