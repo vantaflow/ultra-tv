@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.51] — 2026-11-17 (Android) · Bureau 1.2.69 · Worker
+
 ### Corrigé
 - Sport : le football du jour (scores des directs hors ligues suivies, ex. qualifications CAN) est lu directement chez ESPN depuis la TV, avec un User-Agent honnête, une requête par minute au plus et un recul en cas d'erreur ; la feuille d'un match ESPN est lue de la même façon. La route du Worker reste en secours (ESPN bloque les adresses Cloudflare).
 - Télécommande : les flèches vont à l'élément le plus proche dans leur direction (navigation 2D), sans passer au bouton suivant ; redirections forcées retirées de la fiche série, du catalogue, de la recherche et du bandeau du Direct
