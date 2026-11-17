@@ -4,6 +4,8 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.54] — 2026-11-17 (Android)
+
 ### Modifié
 - Fiche série (TV) : « Aller à l'épisode » retiré, seul « Télécharger la saison » reste ; Haut et Bas suivent l'ordre de l'écran (onglets de saison, puis Télécharger la saison, puis épisodes).
 ### Corrigé
