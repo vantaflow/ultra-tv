@@ -75,6 +75,14 @@ export function candidates(source: Source, t: PlayTarget, opts: { liveFormat: "m
   return out;
 }
 
+/** Playlist M3U : adresse d'un épisode, relue dans la fiche de la série rangée à la synchro (reprise depuis l'historique). */
+export async function m3uEpisodeUrl(t: PlayTarget): Promise<string | null> {
+  if (t.url) return t.url;
+  if (t.kind !== "episode" || t.seriesId == null) return null;
+  const info = (await db.details.get(`series:${t.sourceId}:${t.seriesId}`))?.json as { media?: Array<{ id: number; url: string }> } | undefined;
+  return info?.media?.find((e) => e.id === t.refId)?.url ?? null;
+}
+
 // ---------------------------------------------------------------- portail Stalker
 
 /** Adresse interne `stalker:…` de l'élément à jouer : celle de la cible, sinon relue dans le catalogue (reprise, favoris). */

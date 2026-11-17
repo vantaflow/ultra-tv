@@ -679,6 +679,11 @@ function AboutPane() {
           }}>{t("set.about.update")}</button>
         )}
       </Pref>
+      {b?.openLogsDir && (
+        <Pref label={t("set.about.logs")} desc={t("set.about.logsD")}>
+          <button className="btn" onClick={() => void b.openLogsDir!()}>{t("player.openLogs")}</button>
+        </Pref>
+      )}
       {autoUpd !== null && (
         <Pref label={t("set.about.autoUpdate")} desc={t("set.about.autoUpdateD")}>
           <Switch on={autoUpd} onChange={(v) => { setAutoUpd(v); void writeAutoUpdate(v).then(setAutoUpd); }} label={t("set.about.autoUpdate")} />

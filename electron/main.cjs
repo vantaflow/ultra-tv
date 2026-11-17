@@ -15,6 +15,7 @@ const fs = require("node:fs");
 const { createProxyServer } = require("./proxy.cjs");
 const { findFfmpeg, findVideoFfmpeg } = require("./transcode.cjs");
 const externalPlayer = require("./externalplayer.cjs");
+const { createLogger } = require("./logger.cjs");
 const { resolveAppFile, mimeFor } = require("./appfiles.cjs");
 const { createSecrets } = require("./secrets.cjs");
 const { createUpdater } = require("./updates.cjs");
@@ -74,6 +75,8 @@ let ffmpegPath = null;
 // ffmpeg avec encodeur H.264 ({ path, encoder }) : conversion vidéo des flux que Chromium ne décode pas.
 let videoFfmpeg = null;
 let vlc = null;
+// Journal de lecture (logger.cjs) : dossier des journaux d'Electron ; créé au démarrage.
+let playLog = { log() {}, dir: "" };
 let updater = null;
 const secrets = createSecrets(safeStorage);
 
@@ -415,6 +418,12 @@ function registerIpc() {
       title: typeof req.title === "string" ? req.title : null,
     });
   });
+  // Journal de lecture : le renderer envoie ses erreurs de lecteur (hls.js, mpegts, MediaError) ; le journal masque tout identifiant.
+  ipcMain.on("ut:log", (event, name, fields) => {
+    if (!trustedSender(event) || typeof name !== "string") return;
+    playLog.log(`ui.${name}`, fields && typeof fields === "object" ? fields : {});
+  });
+  handle("ut:logs:open", async () => !!playLog.dir && (await shell.openPath(playLog.dir)) === "");
   handle("ut:dns:get", () => ({ settings: dnsSettings, appliesToChromium: dnsMod.chromiumResolverConfig(dnsSettings).appliesToChromium }));
   handle("ut:dns:set", (raw) => setDnsSettings(raw));
   handle("ut:dns:test", (host) => testDns(host));
@@ -664,10 +673,13 @@ if (!app.requestSingleInstanceLock()) {
     autoUpdateEnabled = autoUpdateMod.loadAutoUpdate(autoUpdateFile());
     applyChromiumDns();
     ffmpegPath = findFfmpeg({ resourcesPath: app.isPackaged ? process.resourcesPath : null });
+    playLog = createLogger({ dir: app.getPath("logs") });
     const ffOpts = { resourcesPath: app.isPackaged ? process.resourcesPath : null };
     videoFfmpeg = ffmpegPath ? findVideoFfmpeg(ffOpts) : null;
     vlc = externalPlayer.findVlc({ home: app.getPath("home") });
+    playLog.log("app.start", { version: app.getVersion(), platform: process.platform, arch: process.arch, electron: process.versions.electron, ffmpeg: !!ffmpegPath, videoEncoder: videoFfmpeg?.encoder ?? null, vlc: !!vlc });
     proxy = createProxyServer({
+      log: (name, fields) => playLog.log(name, fields),
       ffmpeg: ffmpegPath,
       videoFfmpeg,
       nas: nasRegistry,

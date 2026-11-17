@@ -10,10 +10,13 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Bureau : le message d'échec de lecture indique la vraie cause (code HTTP du fournisseur, codec vidéo non pris en charge, serveur injoignable) au lieu de toujours évoquer la limite de connexions ; en cas de refus 403 / 458 / 509, l'autre format (m3u8 ou ts) est essayé avant de conclure
 - Bureau : sans User-Agent choisi dans la source, les flux sont demandés avec celui de VLC (les fournisseurs refusent souvent celui d'Electron et de ffmpeg)
 - Bureau : sans ffmpeg complet (Linux : encodeur H.264 absent du ffmpeg embarqué), le message dit comment l'installer (apt / dnf install ffmpeg, brew install ffmpeg sous macOS)
+- Playlist M3U : les fichiers vidéo (.mp4, .mkv, .avi…), les chemins /movie/ et /series/ et les types tvg-type / group-title VOD sont rangés dans Films et Séries et lus comme de la VOD (position, durée, reprise) au lieu d'être pris pour des chaînes du Direct, pour un lien comme pour un fichier local
+- Bureau, VOD : un film ou un épisode que Chromium ne lit pas (conteneur MKV / AVI, audio AC-3 / E-AC-3 / DTS) est remuxé par ffmpeg (vidéo copiée, audio AAC) avec sa durée, ou converti en H.264 si la vidéo est illisible ; le diagnostic couvre aussi la VOD
 
 ### Ajouté
 - Bureau : « Ouvrir dans VLC » pour le direct, les films et les séries (panneau Lecteur et message d'échec), avec le User-Agent et le Referer de la source ; VLC est détecté dans Program Files et le registre (Windows), /Applications (macOS), le PATH, flatpak et snap (Linux)
 - Bibliothèques Plex, Jellyfin, Emby et NAS : serveurs et bibliothèques visibles par profil (synchronisés avec les appareils), « Tout voir » ouvre la bibliothèque choisie, journaux de diagnostic UtvCloud/UtvMedia/UtvSync/UtvSport/UtvPlay sans secret
+- Bureau : journal de lecture détaillé (format, conteneur, codecs sondés, décision de repli, code HTTP, redirections, User-Agent, délai jusqu'à la première image, erreurs du lecteur) dans le dossier des journaux, rotation à 5 Mo sur 3 fichiers, identifiants et jetons masqués ; bouton « Ouvrir le dossier des journaux » dans Réglages › À propos et dans le message d'échec
 
 ## [1.3.48] — 2026-11-17 (Android)
 
