@@ -1824,4 +1824,33 @@
     <string name="mlib_counts">%1$d movies · %2$d series</string>
     <string name="mlib_nas_folders">Folders</string>
     <string name="mlib_nas_auto">Recognised automatically</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">TV guide</string>
+    <string name="sport_mode_leagues">Competitions</string>
+    <string name="sport_lg_live">Live</string>
+    <string name="sport_lg_results">Results</string>
+    <string name="sport_lg_fixtures">Fixtures</string>
+    <string name="sport_lg_table">Standings</string>
+    <string name="sport_lg_empty">No match to show for now.</string>
+    <string name="sport_lg_unavailable">Scores are unavailable right now. Try again in a few minutes.</string>
+    <string name="sport_lg_not_paired">Pair this device with your account to see scores and standings.</string>
+    <string name="sport_lg_stale">Showing the last known data.</string>
+    <string name="sport_lg_customize">Customize leagues</string>
+    <string name="sport_lg_done">Done</string>
+    <string name="sport_lg_hide">Hide</string>
+    <string name="sport_lg_show">Show</string>
+    <string name="sport_nospoiler_label">No-spoiler mode</string>
+    <string name="sport_nospoiler_hint">Hides scores and standings until you choose to show them. Saved per profile.</string>
+    <string name="sport_spoiler_hidden">Score hidden</string>
+    <string name="sport_spoiler_show_all">Show results</string>
+    <string name="sport_spoiler_show_score">Show score</string>
+    <string name="sport_match_key_moments">Key moments</string>
+    <string name="sport_match_stats">Statistics</string>
+    <string name="sport_match_watch">Watch on your channels</string>
+    <string name="sport_match_no_channel">None of your channels shows this match.</string>
+    <string name="sport_match_round">Round %1$d</string>
+    <string name="sport_tbl_played">P</string>
+    <string name="sport_tbl_gd">GD</string>
+    <string name="sport_tbl_pts">Pts</string>
 </resources>

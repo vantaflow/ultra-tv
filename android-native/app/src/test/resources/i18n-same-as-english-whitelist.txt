@@ -150,3 +150,5 @@ es|handoff_no
 fr|prof_sources
 es|mlib_conn_local
 es|mlib_libs_series
+fr|sport_tbl_pts
+es|sport_tbl_pts

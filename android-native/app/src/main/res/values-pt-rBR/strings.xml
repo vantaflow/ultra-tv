@@ -1842,4 +1842,33 @@
     <string name="mlib_counts">%1$d filmes · %2$d séries</string>
     <string name="mlib_nas_folders">Pastas</string>
     <string name="mlib_nas_auto">Reconhecido automaticamente</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Guia de TV</string>
+    <string name="sport_mode_leagues">Competições</string>
+    <string name="sport_lg_live">Ao vivo</string>
+    <string name="sport_lg_results">Resultados</string>
+    <string name="sport_lg_fixtures">Próximos</string>
+    <string name="sport_lg_table">Classificação</string>
+    <string name="sport_lg_empty">Nenhuma partida para mostrar por enquanto.</string>
+    <string name="sport_lg_unavailable">Os placares estão indisponíveis agora. Tente novamente em alguns minutos.</string>
+    <string name="sport_lg_not_paired">Associe este dispositivo à sua conta para ver placares e classificações.</string>
+    <string name="sport_lg_stale">Exibindo os últimos dados conhecidos.</string>
+    <string name="sport_lg_customize">Personalizar ligas</string>
+    <string name="sport_lg_done">Concluir</string>
+    <string name="sport_lg_hide">Ocultar</string>
+    <string name="sport_lg_show">Mostrar</string>
+    <string name="sport_nospoiler_label">Modo sem spoilers</string>
+    <string name="sport_nospoiler_hint">Oculta placares e classificações até você escolher mostrá-los. Salvo por perfil.</string>
+    <string name="sport_spoiler_hidden">Placar oculto</string>
+    <string name="sport_spoiler_show_all">Mostrar resultados</string>
+    <string name="sport_spoiler_show_score">Mostrar placar</string>
+    <string name="sport_match_key_moments">Lances principais</string>
+    <string name="sport_match_stats">Estatísticas</string>
+    <string name="sport_match_watch">Assistir nos seus canais</string>
+    <string name="sport_match_no_channel">Nenhum dos seus canais transmite esta partida.</string>
+    <string name="sport_match_round">Rodada %1$d</string>
+    <string name="sport_tbl_played">J</string>
+    <string name="sport_tbl_gd">SG</string>
+    <string name="sport_tbl_pts">Pts</string>
 </resources>

@@ -1770,4 +1770,33 @@
     <string name="mlib_counts">%1$d elokuvaa · %2$d sarjaa</string>
     <string name="mlib_nas_folders">Kansiot</string>
     <string name="mlib_nas_auto">Tunnistettu automaattisesti</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">TV-opas</string>
+    <string name="sport_mode_leagues">Sarjat</string>
+    <string name="sport_lg_live">Suorana</string>
+    <string name="sport_lg_results">Tulokset</string>
+    <string name="sport_lg_fixtures">Tulevat</string>
+    <string name="sport_lg_table">Sarjataulukko</string>
+    <string name="sport_lg_empty">Ei näytettäviä otteluita juuri nyt.</string>
+    <string name="sport_lg_unavailable">Tulokset eivät ole juuri nyt saatavilla. Yritä uudelleen muutaman minuutin kuluttua.</string>
+    <string name="sport_lg_not_paired">Yhdistä tämä laite tiliisi nähdäksesi tulokset ja sarjataulukot.</string>
+    <string name="sport_lg_stale">Näytetään viimeksi tiedossa olleet tiedot.</string>
+    <string name="sport_lg_customize">Muokkaa sarjoja</string>
+    <string name="sport_lg_done">Valmis</string>
+    <string name="sport_lg_hide">Piilota</string>
+    <string name="sport_lg_show">Näytä</string>
+    <string name="sport_nospoiler_label">Spoilerivapaa tila</string>
+    <string name="sport_nospoiler_hint">Piilottaa tulokset ja sarjataulukot, kunnes päätät näyttää ne. Tallennetaan profiilikohtaisesti.</string>
+    <string name="sport_spoiler_hidden">Tulos piilotettu</string>
+    <string name="sport_spoiler_show_all">Näytä tulokset</string>
+    <string name="sport_spoiler_show_score">Näytä tulos</string>
+    <string name="sport_match_key_moments">Tärkeimmät hetket</string>
+    <string name="sport_match_stats">Tilastot</string>
+    <string name="sport_match_watch">Katso kanavillasi</string>
+    <string name="sport_match_no_channel">Mikään kanavistasi ei lähetä tätä ottelua.</string>
+    <string name="sport_match_round">%1$d. kierros</string>
+    <string name="sport_tbl_played">O</string>
+    <string name="sport_tbl_gd">ME</string>
+    <string name="sport_tbl_pts">P</string>
 </resources>

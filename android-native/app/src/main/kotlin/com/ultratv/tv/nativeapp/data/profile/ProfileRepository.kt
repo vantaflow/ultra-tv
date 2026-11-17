@@ -60,6 +60,10 @@ class ProfileRepository(
     /** Recherche dans toutes les sources visibles du profil courant. */
     val currentSearchAll: Flow<Boolean> = currentPrefs.map { it.searchAllSources == true }.distinctUntilChanged()
 
+    /** Espace Sport du profil courant : ligues (ordre et masquage, codage de LeaguePrefs) et mode sans spoiler. */
+    val currentSportLeagues: Flow<String?> = currentPrefs.map { it.sportLeagues }.distinctUntilChanged()
+    val currentSportNoSpoiler: Flow<Boolean> = currentPrefs.map { it.sportNoSpoiler == true }.distinctUntilChanged()
+
     val startupMode: Flow<StartupMode> = state.startupMode
 
     private val chosenThisSession = MutableStateFlow(false)
@@ -162,6 +166,11 @@ class ProfileRepository(
     }
 
     suspend fun setSearchAll(on: Boolean) = putPref(ProfilePrefs.SEARCH_ALL, on.toString())
+
+    suspend fun setSportLeagues(encoded: String?) {
+        if (encoded.isNullOrEmpty()) dao.removePref(currentIdNow, ProfilePrefs.SPORT_LEAGUES) else putPref(ProfilePrefs.SPORT_LEAGUES, encoded)
+    }
+    suspend fun setSportNoSpoiler(on: Boolean) = putPref(ProfilePrefs.SPORT_NO_SPOILER, on.toString())
 
     suspend fun sourcesOf(profileId: Long): List<String>? =
         dao.observePrefs(profileId).first().firstOrNull { it.key == ProfilePrefs.SOURCES }?.value?.let(ProfileSourcesRules::decode)

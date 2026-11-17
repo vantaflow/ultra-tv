@@ -1886,4 +1886,33 @@
     <string name="mlib_counts">%1$d أفلام · %2$d مسلسلات</string>
     <string name="mlib_nas_folders">المجلدات</string>
     <string name="mlib_nas_auto">تم التعرف تلقائيًا</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">دليل التلفزيون</string>
+    <string name="sport_mode_leagues">المسابقات</string>
+    <string name="sport_lg_live">مباشر</string>
+    <string name="sport_lg_results">النتائج</string>
+    <string name="sport_lg_fixtures">المباريات القادمة</string>
+    <string name="sport_lg_table">الترتيب</string>
+    <string name="sport_lg_empty">لا توجد مباريات للعرض حاليًا.</string>
+    <string name="sport_lg_unavailable">النتائج غير متاحة حاليًا. حاول مرة أخرى بعد بضع دقائق.</string>
+    <string name="sport_lg_not_paired">اربط هذا الجهاز بحسابك لعرض النتائج والترتيب.</string>
+    <string name="sport_lg_stale">يتم عرض آخر البيانات المعروفة.</string>
+    <string name="sport_lg_customize">تخصيص الدوريات</string>
+    <string name="sport_lg_done">تم</string>
+    <string name="sport_lg_hide">إخفاء</string>
+    <string name="sport_lg_show">إظهار</string>
+    <string name="sport_nospoiler_label">وضع بدون حرق الأحداث</string>
+    <string name="sport_nospoiler_hint">يخفي النتائج والترتيب حتى تختار إظهارها. يُحفظ لكل ملف شخصي.</string>
+    <string name="sport_spoiler_hidden">النتيجة مخفية</string>
+    <string name="sport_spoiler_show_all">إظهار النتائج</string>
+    <string name="sport_spoiler_show_score">إظهار النتيجة</string>
+    <string name="sport_match_key_moments">أبرز اللحظات</string>
+    <string name="sport_match_stats">إحصائيات</string>
+    <string name="sport_match_watch">شاهد على قنواتك</string>
+    <string name="sport_match_no_channel">لا توجد قناة لديك تعرض هذه المباراة.</string>
+    <string name="sport_match_round">الجولة %1$d</string>
+    <string name="sport_tbl_played">لعب</string>
+    <string name="sport_tbl_gd">فارق</string>
+    <string name="sport_tbl_pts">نقاط</string>
 </resources>

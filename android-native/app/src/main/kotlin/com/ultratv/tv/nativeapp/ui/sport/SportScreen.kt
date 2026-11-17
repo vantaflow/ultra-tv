@@ -77,6 +77,8 @@ import com.ultratv.tv.nativeapp.i18n.sportKindMotor
 import com.ultratv.tv.nativeapp.i18n.sportKindRugby
 import com.ultratv.tv.nativeapp.i18n.sportKindTennis
 import com.ultratv.tv.nativeapp.i18n.sportLiveNow
+import com.ultratv.tv.nativeapp.i18n.sportModeLeagues
+import com.ultratv.tv.nativeapp.i18n.sportModeTv
 import com.ultratv.tv.nativeapp.i18n.sportNav
 import com.ultratv.tv.nativeapp.i18n.sportNoChannels
 import com.ultratv.tv.nativeapp.i18n.sportNoGuideBody
@@ -166,9 +168,23 @@ fun SportScreen(
         }
     }
 
-    androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) {
-        if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
-        else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
+    // Deux espaces : « Programme TV » (le guide de l'utilisateur) et « Compétitions » (scores, classements, feuilles de match).
+    var leagues by rememberSaveable { mutableStateOf(false) }
+    Column(Modifier.fillMaxSize().background(Ux.Bg)) {
+        Row(
+            Modifier.padding(start = if (touch) 16.dp else 56.design, top = if (touch) 8.dp else 20.design),
+            horizontalArrangement = Arrangement.spacedBy(8.design),
+        ) {
+            SportTab(D.sportModeTv, !leagues) { leagues = false }
+            SportTab(D.sportModeLeagues, leagues) { leagues = true }
+        }
+        Box(Modifier.weight(1f)) {
+            if (leagues) LeaguesContent(st.entries, play)
+            else androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) {
+                if (touch) SportTouchContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
+                else SportTvContent(st, D, clock, reminded, play, onRemind, onRecord, onGoSettings, onAlso = { alsoFor = it })
+            }
+        }
     }
     alsoFor?.let { e ->
         val others = st.alsoOn[SportMatching.entryKey(e)].orEmpty()

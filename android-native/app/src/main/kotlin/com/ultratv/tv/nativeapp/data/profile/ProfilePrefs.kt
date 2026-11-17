@@ -36,6 +36,10 @@ data class ProfilePrefs(
     val sources: List<String>? = null,
     /** Recherche dans toutes les sources visibles du profil (et non la seule source active) ; local à l'appareil. */
     val searchAllSources: Boolean? = null,
+    /** Espace Sport : ligues dans l'ordre choisi, les masquées préfixées de « - » (codage de LeaguePrefs) ; null = ordre par défaut. */
+    val sportLeagues: String? = null,
+    /** Espace Sport : mode sans spoiler (scores masqués jusqu'à ce qu'on les affiche) ; null = désactivé. */
+    val sportNoSpoiler: Boolean? = null,
 ) {
     /** Applique les surcharges du profil sur les préférences globales. [isKids] force le contrôle parental. */
     fun applyTo(base: UserPrefs, isKids: Boolean = false): UserPrefs = base.copy(
@@ -74,6 +78,8 @@ data class ProfilePrefs(
         const val SCREEN_TIME = "screen_time"
         const val SOURCES = "sources"
         const val SEARCH_ALL = "search_all"
+        const val SPORT_LEAGUES = "sport_leagues"
+        const val SPORT_NO_SPOILER = "sport_no_spoiler"
 
         fun fromMap(m: Map<String, String>) = ProfilePrefs(
             theme = m[THEME]?.let { AppTheme.parse(it) },
@@ -94,6 +100,8 @@ data class ProfilePrefs(
             screenTime = m[SCREEN_TIME]?.takeIf { it.isNotEmpty() },
             sources = ProfileSourcesRules.decode(m[SOURCES]),
             searchAllSources = m[SEARCH_ALL]?.toBooleanStrictOrNull(),
+            sportLeagues = m[SPORT_LEAGUES]?.takeIf { it.isNotEmpty() },
+            sportNoSpoiler = m[SPORT_NO_SPOILER]?.toBooleanStrictOrNull(),
         )
     }
 }

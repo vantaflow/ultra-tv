@@ -1828,4 +1828,33 @@
     <string name="mlib_counts">%1$d películas · %2$d series</string>
     <string name="mlib_nas_folders">Carpetas</string>
     <string name="mlib_nas_auto">Reconocido automáticamente</string>
+
+    <!-- Espace Sport : compétitions, classements, feuille de match, mode sans spoiler -->
+    <string name="sport_mode_tv">Guía de TV</string>
+    <string name="sport_mode_leagues">Competiciones</string>
+    <string name="sport_lg_live">En directo</string>
+    <string name="sport_lg_results">Resultados</string>
+    <string name="sport_lg_fixtures">Próximos</string>
+    <string name="sport_lg_table">Clasificación</string>
+    <string name="sport_lg_empty">No hay partidos que mostrar por ahora.</string>
+    <string name="sport_lg_unavailable">Los resultados no están disponibles ahora. Inténtalo de nuevo en unos minutos.</string>
+    <string name="sport_lg_not_paired">Vincula este dispositivo a tu cuenta para ver resultados y clasificaciones.</string>
+    <string name="sport_lg_stale">Se muestran los últimos datos conocidos.</string>
+    <string name="sport_lg_customize">Personalizar ligas</string>
+    <string name="sport_lg_done">Listo</string>
+    <string name="sport_lg_hide">Ocultar</string>
+    <string name="sport_lg_show">Mostrar</string>
+    <string name="sport_nospoiler_label">Modo sin spoilers</string>
+    <string name="sport_nospoiler_hint">Oculta los marcadores y las clasificaciones hasta que decidas mostrarlos. Se guarda por perfil.</string>
+    <string name="sport_spoiler_hidden">Marcador oculto</string>
+    <string name="sport_spoiler_show_all">Mostrar resultados</string>
+    <string name="sport_spoiler_show_score">Mostrar marcador</string>
+    <string name="sport_match_key_moments">Momentos clave</string>
+    <string name="sport_match_stats">Estadísticas</string>
+    <string name="sport_match_watch">Ver en tus canales</string>
+    <string name="sport_match_no_channel">Ninguno de tus canales emite este partido.</string>
+    <string name="sport_match_round">Jornada %1$d</string>
+    <string name="sport_tbl_played">PJ</string>
+    <string name="sport_tbl_gd">DG</string>
+    <string name="sport_tbl_pts">Pts</string>
 </resources>
