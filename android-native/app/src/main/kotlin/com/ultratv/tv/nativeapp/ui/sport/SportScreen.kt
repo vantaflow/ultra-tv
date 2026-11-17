@@ -177,7 +177,7 @@ fun SportScreen(
     val hub = HubState(
         lg = lg, all = all,
         onAll = { all = true }, onSelect = { k -> all = false; lvm.select(k) },
-        onOpenMatch = lvm::openMatch, onNoSpoiler = lvm::setNoSpoiler, onRevealTable = lvm::revealTable,
+        onOpenMatch = { m -> lvm.openMatch(m) }, onOpenCard = lvm::openCard, onNoSpoiler = lvm::setNoSpoiler, onRevealTable = lvm::revealTable,
         onFullTable = { fullTable = true }, onCustomize = { customizing = true },
     )
     androidx.compose.runtime.CompositionLocalProvider(LocalTeamBadges provides badges) {
@@ -190,7 +190,12 @@ fun SportScreen(
             val live = lg.matches.firstOrNull { it.id == s.match.id } ?: lg.liveAll.values.firstNotNullOfOrNull { l -> l.firstOrNull { it.id == s.match.id } } ?: s.match
             MatchSheetScreen(
                 D, live, s.sheet, s.loading, lg.noSpoiler, s.match.id in lg.revealed,
-                channels = remember(live, st.entries) { LeagueChannels.channelsFor(live, st.entries) },
+                channels = remember(live, st.entries, s.channels) {
+                    com.ultratv.tv.nativeapp.data.sport.SportMatching.orderChannels(
+                        (s.channels + LeagueChannels.channelsFor(live, st.entries)).distinctBy { it.channel.id },
+                    )
+                },
+                league = s.league, programme = s.programme,
                 onReveal = { lvm.reveal(s.match.id) }, onPlay = { c -> lvm.closeMatch(); play(c) }, onClose = lvm::closeMatch,
             )
         }

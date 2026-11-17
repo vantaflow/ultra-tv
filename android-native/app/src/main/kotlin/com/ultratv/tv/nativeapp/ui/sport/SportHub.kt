@@ -117,6 +117,8 @@ internal data class HubState(
     val onAll: () -> Unit = {},
     val onSelect: (String) -> Unit = {},
     val onOpenMatch: (LeagueMatch) -> Unit = {},
+    /** OK sur une carte « En direct » : ouvre toujours une feuille (match ou programme) avec le choix de la chaîne. */
+    val onOpenCard: ((LiveCardModel) -> Unit)? = null,
     val onNoSpoiler: (Boolean) -> Unit = {},
     val onRevealTable: (String) -> Unit = {},
     val onFullTable: () -> Unit = {},
@@ -453,7 +455,14 @@ internal fun SportTvContent(
     val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
     val lists = rememberHubLists(st, D, hub, clock)
     val showSections = !st.loading && st.hasSource
-    val open: (LiveCardModel) -> Unit = { m -> if (m.match != null) hub.onOpenMatch(m.match) else m.channels.firstOrNull()?.let { onPlay(it.channel) } }
+    val open: (LiveCardModel) -> Unit = { m ->
+        val card = hub.onOpenCard
+        when {
+            card != null -> card(m)
+            m.match != null -> hub.onOpenMatch(m.match)
+            else -> m.channels.firstOrNull()?.let { onPlay(it.channel) }
+        }
+    }
 
     Column(
         modifier.fillMaxSize().background(Ux.Bg).padding(start = 48.design, end = 56.design, top = 40.design, bottom = 28.design),
@@ -515,7 +524,14 @@ internal fun SportTouchContent(
     val locale = remember(D.lang) { D.lang.code.takeIf { it.length in 2..3 }?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault() }
     val lists = rememberHubLists(st, D, hub, clock)
     val showSections = !st.loading && st.hasSource
-    val open: (LiveCardModel) -> Unit = { m -> if (m.match != null) hub.onOpenMatch(m.match) else m.channels.firstOrNull()?.let { onPlay(it.channel) } }
+    val open: (LiveCardModel) -> Unit = { m ->
+        val card = hub.onOpenCard
+        when {
+            card != null -> card(m)
+            m.match != null -> hub.onOpenMatch(m.match)
+            else -> m.channels.firstOrNull()?.let { onPlay(it.channel) }
+        }
+    }
     LazyColumn(
         modifier.fillMaxSize().background(Ux.Bg),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 54.design),

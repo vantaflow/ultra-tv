@@ -12,6 +12,9 @@ import com.ultratv.tv.nativeapp.data.sport.LeagueRepository
 import com.ultratv.tv.nativeapp.data.sport.LeagueResult
 import com.ultratv.tv.nativeapp.data.sport.MatchSheet
 import com.ultratv.tv.nativeapp.data.sport.MatchState
+import com.ultratv.tv.nativeapp.data.sport.LiveCardModel
+import com.ultratv.tv.nativeapp.data.sport.SportEntry
+import com.ultratv.tv.nativeapp.data.sport.SportHubLogic
 import com.ultratv.tv.nativeapp.data.sport.StandingRow
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,7 +39,17 @@ enum class LeagueStatus { LOADING, OK, UNAVAILABLE, NOT_PAIRED }
 
 /** Feuille de match ouverte : chargement, puis contenu (null = indisponible). */
 @Immutable
-data class SheetState(val match: LeagueMatch, val loading: Boolean = true, val sheet: MatchSheet? = null)
+data class SheetState(
+    val match: LeagueMatch,
+    val loading: Boolean = true,
+    val sheet: MatchSheet? = null,
+    /** Nom de la compétition affiché dans le bandeau. */
+    val league: String? = null,
+    /** Chaînes déjà trouvées par l'accueil (meilleure qualité d'abord), complétées par celles du match. */
+    val channels: List<SportEntry> = emptyList(),
+    /** Programme du guide quand aucun match de la source de scores n'est relié (feuille « programme »). */
+    val programme: SportEntry? = null,
+)
 
 @Immutable
 data class LeaguesState(
@@ -159,8 +172,15 @@ class LeaguesViewModel @Inject constructor(
     fun move(key: String, delta: Int) { viewModelScope.launch { profiles.setSportLeagues(state.value.prefs.moved(key, delta).encode()) } }
     fun setHidden(key: String, hide: Boolean) { viewModelScope.launch { profiles.setSportLeagues(state.value.prefs.withHidden(key, hide).encode()) } }
 
-    fun openMatch(m: LeagueMatch) {
-        _sheet.value = SheetState(m)
+    /** OK sur une carte « En direct » : feuille du match relié, sinon feuille du programme avec le choix de la chaîne. */
+    fun openCard(c: LiveCardModel) {
+        val m = c.match
+        if (m != null) openMatch(m, c.league.ifEmpty { null }, c.channels)
+        else _sheet.value = SheetState(SportHubLogic.guideMatch(c), loading = false, league = c.league.ifEmpty { null }, channels = c.channels, programme = c.channels.firstOrNull())
+    }
+
+    fun openMatch(m: LeagueMatch, league: String? = null, channels: List<SportEntry> = emptyList()) {
+        _sheet.value = SheetState(m, league = league, channels = channels)
         viewModelScope.launch {
             val r = repo.sheet(m.id, finished = m.state == MatchState.POST)
             _sheet.update { cur -> if (cur?.match?.id == m.id) cur.copy(loading = false, sheet = (r as? LeagueResult.Ok)?.value) else cur }

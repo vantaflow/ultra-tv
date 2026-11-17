@@ -64,6 +64,15 @@ object SportHubLogic {
 
     fun entryKey(e: SportEntry) = "${e.channel.id}-${e.prog.startMs}"
 
+    /**
+     * Match « du guide » d'une carte sans score relié (compétition non couverte par la source de scores, titre non
+     * reconnu) : la feuille s'ouvre quand même, avec les équipes du titre et le choix de la chaîne.
+     */
+    fun guideMatch(c: LiveCardModel): LeagueMatch = LeagueMatch(
+        id = c.key, startMs = c.channels.firstOrNull()?.prog?.startMs, name = c.title, home = c.home, away = c.away,
+        homeBadge = null, awayBadge = null, homeScore = null, awayScore = null, state = MatchState.LIVE, progress = null, round = null,
+    )
+
     /** Qualité d'une chaîne pour les puces : « 4K », « HD » (HD et FHD), « SD », ou vide si inconnue. */
     fun qualityOf(c: ChannelEntity): String = when (c.quality) { 4 -> "4K"; 3, 2 -> "HD"; 1 -> "SD"; else -> "" }
 
