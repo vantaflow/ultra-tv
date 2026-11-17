@@ -13,6 +13,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ### Ajouté
 - Bureau : « Ouvrir dans VLC » pour le direct, les films et les séries (panneau Lecteur et message d'échec), avec le User-Agent et le Referer de la source ; VLC est détecté dans Program Files et le registre (Windows), /Applications (macOS), le PATH, flatpak et snap (Linux)
+- Bibliothèques Plex, Jellyfin, Emby et NAS : serveurs et bibliothèques visibles par profil (synchronisés avec les appareils), « Tout voir » ouvre la bibliothèque choisie, journaux de diagnostic UtvCloud/UtvMedia/UtvSync/UtvSport/UtvPlay sans secret
 
 ## [1.3.48] — 2026-11-17 (Android)
 

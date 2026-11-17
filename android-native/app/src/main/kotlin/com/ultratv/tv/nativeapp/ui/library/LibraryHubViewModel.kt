@@ -44,7 +44,7 @@ data class LibraryRow(
 enum class ShelfKind { RESUME, RECENT, MOVIES, SERIES, LIBRARY }
 
 /** Rangée courte (au plus [MediaLibraryLogic.SHELF_MAX] affiches). [title] ne sert que pour LIBRARY (nom de la bibliothèque du serveur). */
-data class Shelf(val kind: ShelfKind, val title: String, val tiles: List<MediaLibraryLogic.Tile>, val seeAllSeries: Boolean?)
+data class Shelf(val kind: ShelfKind, val title: String, val tiles: List<MediaLibraryLogic.Tile>, val seeAllSeries: Boolean?, val libraryId: String? = null)
 
 /** Vue « dossiers » d'un partage NAS : dossiers de premier niveau + fichiers reconnus automatiquement. */
 data class NasDetail(
@@ -57,6 +57,7 @@ data class NasDetail(
 @HiltViewModel
 class LibraryHubViewModel @Inject constructor(
     providers: ProviderRepository,
+    profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
     private val movieDao: MovieDao,
     private val seriesDao: SeriesDao,
     private val categoryDao: CategoryDao,
@@ -66,16 +67,19 @@ class LibraryHubViewModel @Inject constructor(
     private val reach = MutableStateFlow<Map<Long, Boolean>>(emptyMap())
     private val probed = HashSet<Long>()
 
-    private val sources = providers.observeProviders()
-        .map { list -> list.filter { MediaServer.isMediaKind(it.kind) || Nas.isNasKind(it.kind) } }
+    /** Serveurs visibles pour le profil courant (choix des sources du profil), avec ses bibliothèques masquées. */
+    private val sources = combine(providers.observeProviders(), profiles.currentSources) { list, names ->
+        com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(list, names)
+            .filter { MediaServer.isMediaKind(it.kind) || Nas.isNasKind(it.kind) } to names
+    }
 
-    val rows: StateFlow<List<LibraryRow>?> = sources.flatMapLatest { list ->
+    val rows: StateFlow<List<LibraryRow>?> = sources.flatMapLatest { (list, names) ->
         list.forEach(::probeOnce)
         if (list.isEmpty()) flowOf(emptyList())
-        else combine(list.map { rowFlow(it) }) { it.toList() }
+        else combine(list.map { rowFlow(it, names) }) { it.toList() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    private fun rowFlow(p: ProviderEntity) = combine(
+    private fun rowFlow(p: ProviderEntity, names: List<String>?) = combine(
         movieDao.observeCount(p.id), seriesDao.observeCount(p.id), history.continueWatching(p.id, 12),
         movieDao.observeLatest(p.id, 14), seriesDao.observeLatest(p.id, 14), reach,
     ) { values ->
@@ -87,7 +91,7 @@ class LibraryHubViewModel @Inject constructor(
         val latestS = values[4] as List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>
         val reachable = (values[5] as Map<Long, Boolean>)[p.id]
         val last = maxOf(p.lastVodSyncAt, p.lastSeriesSyncAt)
-        LibraryRow(p, MediaLibraryLogic.status(p.kind, p.baseUrl, reachable, last), movies, series, last, shelvesOf(p, progress, latestM, latestS, movies, series))
+        LibraryRow(p, MediaLibraryLogic.status(p.kind, p.baseUrl, reachable, last), movies, series, last, shelvesOf(p, progress, latestM, latestS, movies, series, names))
     }
 
     /**
@@ -97,7 +101,7 @@ class LibraryHubViewModel @Inject constructor(
     private suspend fun shelvesOf(
         p: ProviderEntity, progress: List<com.ultratv.tv.nativeapp.data.db.WatchHistoryEntity>,
         latestM: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>, latestS: List<com.ultratv.tv.nativeapp.data.db.SeriesEntity>,
-        movies: Int, series: Int,
+        movies: Int, series: Int, names: List<String>?,
     ): List<Shelf> = withContext(Dispatchers.IO) {
         val max = MediaLibraryLogic.SHELF_MAX
         fun m(l: List<com.ultratv.tv.nativeapp.data.db.MovieEntity>) = l.map { MediaLibraryLogic.Tile(false, it.id, it.title, it.poster, 0f) }
@@ -109,9 +113,9 @@ class LibraryHubViewModel @Inject constructor(
         }
         val recent = MediaLibraryLogic.pickTiles(emptyList(), (m(latestM) + s(latestS)).shuffledStable(), max)
         val libs = buildList {
-            for (kind in listOf("MOVIE", "SERIES")) for (c in categoryDao.forProviderKind(p.id, kind).filter { it.enabled }.take(MediaLibraryLogic.LIBRARY_SHELVES)) {
+            for (kind in listOf("MOVIE", "SERIES")) for (c in categoryDao.forProviderKind(p.id, kind).filter { it.enabled && com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.libraryVisible(names, p.name, it.name) }.take(MediaLibraryLogic.LIBRARY_SHELVES)) {
                 val tiles = if (kind == "MOVIE") m(movieDao.latestInCategory(p.id, c.remoteId, max)) else s(seriesDao.latestInCategory(p.id, c.remoteId, max))
-                if (tiles.isNotEmpty()) add(Shelf(ShelfKind.LIBRARY, c.name, tiles, kind == "SERIES"))
+                if (tiles.isNotEmpty()) add(Shelf(ShelfKind.LIBRARY, c.name, tiles, kind == "SERIES", c.remoteId))
             }
         }
         MediaLibraryLogic.shelfPlan(

@@ -797,8 +797,9 @@ private fun NavGraph(nav: androidx.navigation.NavHostController, simpleHome: Boo
                 onOpenMovie = { id -> nav.navigate(Routes.movieDetail(id)) },
                 onOpenSeries = { id -> nav.navigate(Routes.seriesDetail(id)) },
                 // « Tout voir » : Films / Séries sur ce serveur (grille paginée, catégories, genre, tri).
-                onSeeAll = { pid, series ->
+                onSeeAll = { pid, series, lib ->
                     com.ultratv.tv.nativeapp.ui.catalog.CatalogSourceChoice.id.value = pid
+                    com.ultratv.tv.nativeapp.ui.catalog.CatalogSourceChoice.pendingCategory.value = lib
                     nav.navigate(if (series) Routes.SERIES else Routes.MOVIES)
                 },
             )

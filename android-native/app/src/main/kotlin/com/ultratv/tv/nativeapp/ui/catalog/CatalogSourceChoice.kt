@@ -13,6 +13,9 @@ object CatalogSourceChoice {
     /** Choix de l'utilisateur pour cette session (null = source active). */
     val id = MutableStateFlow<Long?>(null)
 
+    /** Bibliothèque (catégorie) à ouvrir à la prochaine arrivée sur Films / Séries (« Tout voir » d'une rangée de bibliothèque) ; consommée une fois. */
+    val pendingCategory = MutableStateFlow<String?>(null)
+
     /** Source à afficher : le choix s'il existe encore, sinon la source active, sinon la première. [providers] = (id, active). */
     fun resolve(providers: List<Pair<Long, Boolean>>, choice: Long?): Long? =
         providers.firstOrNull { it.first == choice }?.first ?: (providers.firstOrNull { it.second } ?: providers.firstOrNull())?.first

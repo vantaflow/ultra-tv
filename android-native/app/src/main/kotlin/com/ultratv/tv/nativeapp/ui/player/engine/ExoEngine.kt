@@ -76,6 +76,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         override fun onRenderedFirstFrame() { firstFrameRendered = true; _events.tryEmit(EngineEvent.FirstFrame); applyFrameRate() }
         override fun onPlayerError(error: PlaybackException) {
             val status = (error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+            com.ultratv.tv.nativeapp.UtvLog.e(com.ultratv.tv.nativeapp.UtvLog.PLAY, "erreur lecture moteur=exo code=${error.errorCodeName} http=${status ?: "-"} cause=${error.cause?.javaClass?.simpleName ?: "-"} url=${com.ultratv.tv.nativeapp.UtvLog.maskUrl(player.currentMediaItem?.localConfiguration?.uri?.toString())} vidéo=${player.videoFormat?.sampleMimeType ?: "-"} audio=${player.audioFormat?.sampleMimeType ?: "-"}")
             _events.tryEmit(EngineEvent.Error(PlaybackPlanner.classifyExo(error.errorCode, status), status))
         }
         override fun onVideoSizeChanged(videoSize: VideoSize) { applyFrameRate() }   // sans effet avant la première image rendue
@@ -320,6 +321,7 @@ class ExoEngine(private val ctx: Context, override val config: EngineConfig) : P
         else MediaItem.Builder().setUri(url).apply {
             if (config.isLive) setLiveConfiguration(MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(config.buffer.liveOffsetMs).build())
         }.build()
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.PLAY, "ouverture moteur=exo live=${config.isLive} protégé=${props?.isProtected == true} reprise=${startPositionMs / 1000}s url=${com.ultratv.tv.nativeapp.UtvLog.maskUrl(url)}")
         player.setMediaItem(item)
         player.prepare()
         if (startPositionMs > 5_000) player.seekTo(startPositionMs)

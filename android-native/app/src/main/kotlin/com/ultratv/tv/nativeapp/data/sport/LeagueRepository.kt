@@ -34,8 +34,11 @@ class LeagueRepository @Inject constructor(private val api: ExtMetaApi) {
         @Suppress("UNCHECKED_CAST")
         val old = lastGood[key] as T?
         failedAt[key]?.let { if (now - it in 0 until COOLDOWN_MS) return@withLock if (old != null) LeagueResult.Ok(old, true) else LeagueResult.Unavailable }
-        val body = try { api.get(path) } catch (e: java.io.IOException) { null }
+        val t0 = System.nanoTime()
+        val body = try { api.get(path) } catch (e: java.io.IOException) { com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.SPORT, "$key: réseau ${com.ultratv.tv.nativeapp.UtvLog.why(e)}"); null }
         val v = if (body?.code == 200) parse(body.body) else null
+        if (body != null) com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SPORT, "$key: HTTP ${body.code} ${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms éléments=${(v as? Collection<*>)?.size ?: if (v != null) 1 else 0}")
+        if (body != null && body.code != 200) com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.SPORT, "$key: HTTP ${body.code}")
         if (v == null) {
             failedAt[key] = now
             return@withLock if (old != null) LeagueResult.Ok(old, true) else LeagueResult.Unavailable

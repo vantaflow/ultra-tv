@@ -24,6 +24,7 @@ class ProfileViewModel @Inject constructor(
     val providers: StateFlow<List<com.ultratv.tv.nativeapp.data.db.ProviderEntity>> =
         providerRepo.observeProviders().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
     suspend fun sourcesOf(id: Long): List<String>? = repo.sourcesOf(id)
+    suspend fun libraryNames(): Map<String, List<String>> = providerRepo.mediaLibraryNames()
     fun setSources(id: Long, names: List<String>?) = viewModelScope.launch { repo.setSourcesFor(id, names) }
 
     val profiles: StateFlow<List<ProfileEntity>> = repo.profiles

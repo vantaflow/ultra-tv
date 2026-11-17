@@ -551,12 +551,24 @@ class ProviderRepository @Inject constructor(
         // quitter l'écran qui l'a lancée (ViewModel détruit) ne l'annule plus.
         return syncScope.async {
             syncMutex.withLock {
+                val t0 = System.nanoTime()
+                val kind0 = providerDao.byId(providerId)?.kind.orEmpty()
+                com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SYNC, "début $kind0 '$name' force=$force")
                 try {
                     syncStatus.clearPartial(providerId)
-                    syncAllInternal(providerId, onProgress, force).also { syncStatus.clearFailure(providerId) }
+                    syncAllInternal(providerId, onProgress, force).also {
+                        syncStatus.clearFailure(providerId)
+                        val lib = if (MediaServer.isMediaKind(kind0) || Nas.isNasKind(kind0)) " films=${movieDao.observeCount(providerId).first()} séries=${seriesDao.observeCount(providerId).first()}" else ""
+                        if (MediaServer.isMediaKind(kind0) || Nas.isNasKind(kind0)) {
+                            val perLib = listOf("MOVIE", "SERIES").flatMap { k -> categoryDao.forProviderKind(providerId, k).map { c -> "${c.name}=${if (k == "MOVIE") movieDao.countInCategory(providerId, c.remoteId) else seriesDao.countInCategory(providerId, c.remoteId)}" } }
+                            com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "indexé '$name': ${perLib.joinToString(", ").ifEmpty { "aucune bibliothèque" }}")
+                        }
+                        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SYNC, "fin $kind0 '$name': compte=$it$lib ${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms")
+                    }
                 } catch (c: kotlinx.coroutines.CancellationException) {
                     throw c
                 } catch (t: Throwable) {
+                    com.ultratv.tv.nativeapp.UtvLog.e(com.ultratv.tv.nativeapp.UtvLog.SYNC, "échec $kind0 '$name' après ${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms: ${com.ultratv.tv.nativeapp.UtvLog.why(t)}")
                     syncStatus.fail(SyncStatusBus.Failure(providerId, name, com.ultratv.tv.nativeapp.data.net.NetErrors.classify(t)))
                     throw t
                 }
@@ -604,6 +616,7 @@ class ProviderRepository @Inject constructor(
         val enabledParts = buildSet { if (u.syncLive) add(SyncPart.LIVE); if (u.syncEpg) add(SyncPart.EPG); if (u.syncVod) add(SyncPart.VOD); if (u.syncSeries) add(SyncPart.SERIES) }
         val heavyOk = !(u.syncUnmeteredOnly && a.net.metered)
         val due = SyncPolicy.dueParts(p, now, ttl, channelDao.count(p.id), force || u.syncMode == "launch", enabledParts, heavyOk)
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.SYNC, "parties dues ${p.kind}: ${due.joinToString(",").ifEmpty { "aucune" }} (heavyOk=$heavyOk)")
         if (due.isEmpty()) return 0
 
         if (p.kind == "M3U") return syncM3u(providerId, onProgress).also {
@@ -789,7 +802,11 @@ class ProviderRepository @Inject constructor(
     suspend fun addMediaServer(kind: String, name: String, server: String, username: String, password: String, apiKey: String = ""): Long {
         require(MediaServer.isMediaKind(kind))
         val base = MediaServer.normalizeServerUrl(server) ?: throw IllegalArgumentException("url")
-        val login = mediaServer.login(base, username.trim(), password, apiKey)
+        val t0 = System.nanoTime()
+        val login = try { mediaServer.login(base, username.trim(), password, apiKey) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (t: Throwable) {
+            com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "$kind ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(base)}: connexion refusée (${com.ultratv.tv.nativeapp.UtvLog.why(t)})"); throw t
+        }
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "$kind ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(base)}: connecté (${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms)")
         providerDao.findByIdentity(kind, base, login.userId)?.let { existing ->
             providerDao.upsert(existing.copy(password = login.token)); providerDao.resetSyncAt(existing.id); return existing.id
         }
@@ -801,6 +818,12 @@ class ProviderRepository @Inject constructor(
             ),
         )
     }
+
+    /** Bibliothèques (sections) de chaque serveur multimédia / NAS, par nom de source : choix des bibliothèques visibles d'un profil. */
+    suspend fun mediaLibraryNames(): Map<String, List<String>> =
+        observeProviders().first().filter { MediaServer.isMediaKind(it.kind) || Nas.isNasKind(it.kind) }.associate { p ->
+            p.name to listOf("MOVIE", "SERIES").flatMap { k -> categoryDao.forProviderKind(p.id, k).map { it.name } }.distinct()
+        }
 
     /** Nombre de films et de séries indexés pour une source (ligne de la source dans Réglages › Sources). */
     suspend fun mediaCounts(providerId: Long): Pair<Int, Int> =
@@ -823,7 +846,13 @@ class ProviderRepository @Inject constructor(
      * joignable : [java.io.IOException] et RIEN n'est enregistré. Un serveur déjà ajouté renvoie sa source (jeton rafraîchi).
      */
     suspend fun addPlexServer(server: com.ultratv.tv.nativeapp.data.mediaserver.Plex.Server): Long {
-        val conn = mediaServer.plex.bestConnection(server) ?: throw java.io.IOException("plex: no reachable connection")
+        val t0 = System.nanoTime()
+        val conn = mediaServer.plex.bestConnection(server)
+        if (conn == null) {
+            com.ultratv.tv.nativeapp.UtvLog.w(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "plex '${server.name}': aucune connexion joignable sur ${server.connections.size} (${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms)")
+            throw java.io.IOException("plex: no reachable connection")
+        }
+        com.ultratv.tv.nativeapp.UtvLog.i(com.ultratv.tv.nativeapp.UtvLog.MEDIA, "plex '${server.name}': connexion ${if (conn.relay) "relais" else if (conn.local) "locale" else "distante"} ${com.ultratv.tv.nativeapp.UtvLog.maskUrl(conn.uri)} (${com.ultratv.tv.nativeapp.UtvLog.ms(t0)} ms)")
         val kind = com.ultratv.tv.nativeapp.data.mediaserver.Plex.KIND
         providerDao.findByIdentity(kind, conn.uri, server.machineId)?.let { existing ->
             providerDao.upsert(existing.copy(password = server.accessToken)); providerDao.resetSyncAt(existing.id); return existing.id

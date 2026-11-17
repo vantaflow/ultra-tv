@@ -11,6 +11,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -22,6 +23,7 @@ class RailBadgesViewModel @Inject constructor(
     providers: ProviderRepository,
     catalog: CatalogRepository,
     recordings: RecordingDao,
+    profiles: com.ultratv.tv.nativeapp.data.profile.ProfileRepository,
 ) : ViewModel() {
     @OptIn(ExperimentalCoroutinesApi::class)
     val favorites: StateFlow<Int> = providers.observeProviders()
@@ -31,8 +33,9 @@ class RailBadgesViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     /** Au moins une source Jellyfin, Emby, Plex ou NAS : l'entrée « Mes bibliothèques » apparaît dans le menu. */
-    val hasLibraries: StateFlow<Boolean> = providers.observeProviders()
-        .map { ps -> hasLibrarySource(ps.map { it.kind }) }.distinctUntilChanged()
+    val hasLibraries: StateFlow<Boolean> = combine(providers.observeProviders(), profiles.currentSources) { ps, names ->
+        hasLibrarySource(com.ultratv.tv.nativeapp.data.profile.ProfileSourcesRules.visible(ps, names).map { it.kind })
+    }.distinctUntilChanged()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
     val recording: StateFlow<Int> = recordings.observeRunningCount().distinctUntilChanged()
