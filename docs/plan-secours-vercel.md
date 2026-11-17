@@ -99,3 +99,23 @@ le secours tombe aussi (il ne couvre qu'une panne de **Cloudflare**) ; 3) limite
 4) divergence de code si le Worker change d'interface interne (le bundle doit être reconstruit à chaque évolution de `src/` :
 test de fumée dans `npm test`) ; 5) quota Hobby ou conditions d'usage ; 6) une panne Vercel en même temps = repli sans effet,
 les applis gardent leur dernière configuration locale.
+
+## 6. Mise en service (à faire par le propriétaire)
+
+Projet Vercel : `utv-backup`, adresse `https://utv-backup.vercel.app` (squelette déployé, sans secrets : répond
+`503 backup_not_configured`). Santé : `GET /api/backup/health`.
+
+Variables à fournir (valeurs jamais dans le dépôt ; saisie au clavier ou par `printf %s "$VALEUR" |`) :
+
+```bash
+cd cloudflare-config/backup
+vercel env add TURSO_URL production                  # même base que le Worker (libsql://…)
+vercel env add TURSO_AUTH_TOKEN production --sensitive   # jeton Turso en LECTURE SEULE : turso db tokens create <base> --read-only
+vercel env add PROVIDER_ENC_KEY production --sensitive   # identique au secret Wrangler (base64, 32 octets)
+vercel env add PROVIDER_ENC_KEY_PREVIOUS production --sensitive   # seulement pendant une rotation de clé
+vercel env add SITE_HOST production                  # facultatif : ultratv.dpdns.org
+npm run bundle && vercel deploy --prod
+```
+
+Contrôle : `curl https://utv-backup.vercel.app/api/backup/health` doit afficher `"configured":true`, puis
+`GET /api/config` avec un jeton d'appareil réel doit rendre la même configuration que le Worker (même `ETag`).
