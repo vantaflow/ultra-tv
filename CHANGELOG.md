@@ -4,6 +4,11 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+## [1.3.46] — 2026-11-17 (Android)
+
+### Corrigé
+- Logo Ultra TV visible sur tous les thèmes : un liseré aux couleurs du thème détoure la tuile, qui se fondait dans les fonds sombres (Noir OLED, Bleu nuit, Forêt, Turquoise…)
+
 ## [1.3.45] — 2026-11-17 (Android)
 
 ### Ajouté
