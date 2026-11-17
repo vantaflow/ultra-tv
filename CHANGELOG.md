@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Modifié
+- Tableau de bord, serveurs multimédias : un clic sur un serveur Plex l'ajoute (sans bouton Add), liste des serveurs configurés (type, badge, date, appareils, partage, suppression), retour sur la carte avec un message clair et refus des doublons (Plex, Jellyfin, Emby, NAS)
+
 ## [1.3.49] — 2026-11-17 (Android) · Bureau 1.2.68 · Worker
 
 ### Corrigé
