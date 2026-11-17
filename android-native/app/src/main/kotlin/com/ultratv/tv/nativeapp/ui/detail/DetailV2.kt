@@ -21,6 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -254,6 +256,7 @@ fun MovieDetailTv(
         // Voile : couleur de fond pleine sur la colonne de texte, fondu vers l'image ; lisière basse pour la rangée suivante.
         Box(Modifier.fillMaxSize().background(startToEndBrush(0f to Ux.Bg, 0.45f to Ux.Bg, 0.62f to Ux.Bg.copy(alpha = 0.55f), 0.88f to Color.Transparent)))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.7f to Color.Transparent, 1f to Ux.Bg.copy(alpha = 0.9f))))
+        val castReq = remember { FocusRequester() }
         Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
             // ─── En-tête : le focus qui y revient remonte la fiche ───
             Column(
@@ -291,13 +294,16 @@ fun MovieDetailTv(
                     afterActions()
                     if (m.skeleton) Row(horizontalArrangement = Arrangement.spacedBy(16.design)) {
                         repeat(5) { Column(Modifier.width(120.design), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.design)) { Skeleton(Modifier.size(88.design), circle = true); Skeleton(Modifier.width(80.design).height(16.design)) } }
-                    } else V2CastRow(m.castTitle, m.cast, onOpenPerson, Modifier.padding(top = 4.design))
+                    } else V2CastRow(m.castTitle, m.cast, onOpenPerson, Modifier.padding(top = 4.design).focusRequester(castReq).focusGroup())
                 }
             }
             // ─── Titres proches : le focus qui y entre amène la rangée à l'écran ───
             if (below != null) Column(
                 Modifier.fillMaxWidth().padding(start = 72.design, end = 72.design, bottom = 60.design)
                     .onFocusChanged { if (it.hasFocus) scope.launch { scroll.animateScrollTo(scroll.maxValue, tween(160)) } }
+                    // Haut depuis les titres proches : la distribution, juste au-dessus (l'en-tête, groupe de focus, rendait
+                    // sinon le focus à « Lecture »).
+                    .focusProperties { if (!m.skeleton && m.cast.isNotEmpty()) up = castReq }
                     .focusGroup(),
                 verticalArrangement = Arrangement.spacedBy(28.design),
             ) { below() }

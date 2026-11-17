@@ -4,6 +4,9 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 
 ## [Non publié]
 
+### Corrigé
+- Fiche film (TV) : Haut depuis « Titres similaires » remonte sur la distribution juste au-dessus, et non plus sur « Lecture ».
+
 ## [1.3.52] — 2026-11-17 (Android)
 
 ### Corrigé
