@@ -289,6 +289,9 @@ export function PlayerHost() {
     if (!isTx) txRef.current = null;
     await engineRef.current.load({
       url: c.url, format: c.format, live: tg.kind === "live" && !tg.replay,
+      // Conversion du bureau : MPEG-TS continu sans durée annoncée — ouvert comme un flux continu, sinon MSE
+      // reste sans durée et l'horloge de lecture ne démarre jamais (image figée, chargeur permanent).
+      continuous: isTx,
       // Portail Stalker : flux demandés avec l'identité MAG du portail, sauf User-Agent choisi par l'utilisateur.
       userAgent: src.userAgent || (src.type === "stalker" ? STALKER_UA : null), referer: src.referer || null, startAt: isTx ? 0 : resume ?? tg.startAt,
     });

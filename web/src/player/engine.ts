@@ -18,6 +18,9 @@ export interface LoadArgs {
   url: string;
   format: Format;
   live: boolean;
+  /** Flux continu sans durée annoncée (conversion du bureau) : MSE ouvert en direct — sans lui, l'horloge de
+   * lecture ne démarre jamais (durée indéterminée) et la lecture reste figée sur la première image. */
+  continuous?: boolean;
   userAgent?: string | null;
   referer?: string | null;
   startAt?: number;
@@ -195,8 +198,10 @@ export class PlayerEngine {
     if (my !== this.token) return;
     if (!mod.isSupported()) { this.fail("mpegts-unsupported"); return; }
     const player = mod.createPlayer(
-      { type: "mpegts", isLive: a.live, url: wrapUrl(t, a.url), headers } as never,
-      { enableWorker: true, liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 8, liveBufferLatencyMinRemain: 1.5, lazyLoadMaxDuration: 60 } as never,
+      { type: "mpegts", isLive: !!a.continuous || a.live, url: wrapUrl(t, a.url), headers } as never,
+      // Flux continu = conversion du bureau : jamais de rattrapage de latence (le convertisseur écrit plus vite
+      // que le temps réel, le chasing sauterait des scènes). Le direct garde son comportement.
+      { enableWorker: true, liveBufferLatencyChasing: !a.continuous && a.live, liveBufferLatencyMaxLatency: 8, liveBufferLatencyMinRemain: 1.5, lazyLoadMaxDuration: 60 } as never,
     );
     this.engineName = "mpegts.js";
     player.on(mod.Events.ERROR, (_t: unknown, _d: unknown, info: unknown) => this.fail("mpegts", (info as { code?: number } | undefined)?.code));

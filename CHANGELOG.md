@@ -8,6 +8,7 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/). Ver
 - Direct (TV) : un titre de programme contenant un retour à la ligne (données du guide) restait sur deux lignes et poussait le programme suivant hors de la carte.
 - Réglages (TV) : espace vide supprimé entre le menu de gauche et la liste des rubriques.
 - Sport : le nombre de matchs s'accorde correctement (« 1 match », « 2 matchs ») dans les 14 langues, sur Android et sur le bureau.
+- Bureau : la lecture des VOD converties (AC-3 / E-AC-3 / DTS) restait figée sur la première image avec le chargeur au centre jusqu'au repli muet — le flux converti est un MPEG-TS continu qui n'annonce aucune durée ; ouvert comme un VOD, MSE restait sans durée et l'horloge de lecture ne démarrait jamais. Il est désormais ouvert comme un flux continu (durée infinie côté MSE), sans rattrapage de latence : la lecture démarre normalement.
 
 ### Modifié
 - Tableau de bord : une seule carte « Service de suivi » (service actuel et son état, Trakt et Simkl avec Connecter / Déconnecter, choix du service actif) ; nouvelle section « Profils » pour choisir les sources visibles de chaque profil, synchronisée avec les appareils.
