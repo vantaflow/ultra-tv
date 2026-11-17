@@ -210,4 +210,31 @@ class CloudSyncLogicTest {
     }
 
     private fun JSONObjectOf(s: String) = org.json.JSONObject(s)
+
+    @Test fun serveursMultimedias_recusDuSite() {
+        val cfg = CloudSyncLogic.parseConfig("""{"version":3,"providers":[
+          {"id":"a1","kind":"JELLYFIN","name":"Maison","url":"http://192.168.1.20:8096","username":"anna","password":"","apiKey":"k1"},
+          {"id":"a2","kind":"PLEX","name":"Salon","url":"https://relay.plex.direct:8443","username":"m1","password":"srv","plex":{"owned":true,"conns":[{"uri":"https://relay.plex.direct:8443","local":false,"relay":true},{"uri":"http://192.168.1.5:32400","local":true,"relay":false},{"uri":"ftp://x","local":true}]}},
+          {"id":"a3","kind":"NAS","name":"NAS","url":"smb://nas/films","username":"","password":""}
+        ]}""")
+        assertEquals("k1", cfg.providers[0].apiKey)
+        val plex = CloudSyncLogic.plexServerOf(cfg.providers[1])!!
+        assertEquals("m1", plex.machineId)
+        assertEquals("srv", plex.accessToken)
+        assertEquals(listOf("http://192.168.1.5:32400", "https://relay.plex.direct:8443"), plex.connections.map { it.uri })
+        val actions = CloudSyncLogic.plan(emptyList(), cfg.providers, emptyMap(), emptyMap())
+        assertEquals(3, actions.count { it is SyncAction.Add })
+    }
+
+    @Test fun serveurAJeton_jamaisReecrit_seulLeNomSuit() {
+        val c = CloudProvider("a1", "JELLYFIN", "Maison", "http://jf:8096", "anna", "pw", "", null, "dashboard", 0L)
+        // Localement : identifiant utilisateur + jeton (différents des identifiants du site, par nature).
+        val l = LocalProvider(7, "JELLYFIN", "Maison", "http://jf:8096", "user-guid", "token", "", "a1")
+        assertTrue(CloudSyncLogic.plan(listOf(l), listOf(c), emptyMap(), mapOf("a1" to "Maison")).isEmpty())
+        val renamed = CloudSyncLogic.plan(listOf(l), listOf(c.copy(name = "Grenier")), emptyMap(), mapOf("a1" to "Maison"))
+        assertEquals(1, renamed.size)
+        assertTrue((renamed[0] as SyncAction.Update).renameLocal)
+        // Supprimé du site : supprimé de l'appareil.
+        assertTrue(CloudSyncLogic.plan(listOf(l), emptyList(), emptyMap(), emptyMap()).single() is SyncAction.Remove)
+    }
 }

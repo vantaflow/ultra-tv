@@ -511,6 +511,13 @@ class ProviderRepository @Inject constructor(
      * Met à jour une source reçue du cloud (le cloud gagne pour l'adresse et les identifiants). Les préférences locales
      * (source par défaut, favoris, langues) sont conservées ; le catalogue est relu à la prochaine synchro.
      */
+    /** Renomme une source sans toucher à son accès (serveurs multimédias reçus du site). */
+    suspend fun renameProvider(id: Long, name: String) {
+        val n = name.trim().take(64).ifEmpty { return }
+        val p = providerDao.byId(id) ?: return
+        if (p.name != n) providerDao.upsert(p.copy(name = n))
+    }
+
     suspend fun updateFromCloud(id: Long, name: String?, url: String, username: String, password: String) {
         val p = providerDao.byId(id) ?: return
         providerDao.upsert(p.copy(name = name ?: p.name, baseUrl = url.trim().trimEnd('/'), username = username, password = password))

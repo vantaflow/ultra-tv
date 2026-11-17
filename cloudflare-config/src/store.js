@@ -153,6 +153,8 @@ export const MEDIA_KINDS = ["JELLYFIN", "EMBY", "PLEX", "NAS"];
 export function nasUrl(raw) {
   let s = cleanLine(raw, 1024).replace(/\\/g, "/");
   if (!s) return null;
+  // Autre protocole (http, ftp…) : ce n'est pas un partage SMB.
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s) && !/^smb:\/\//i.test(s)) return null;
   if (s.startsWith("//")) s = `smb:${s}`;
   else if (!/^smb:\/\//i.test(s)) s = `smb://${s.replace(/^\/+/, "")}`;
   try {
