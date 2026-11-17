@@ -177,7 +177,7 @@ class SportHubRenderTest {
             )
         }
         assertTrue(rule.onAllNodesWithText("RD Congo").fetchSemanticsNodes().isNotEmpty())
-        assertTrue(rule.onAllNodesWithText("Stade 1 SD").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("n° 312", substring = true).fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test fun classementComplet_etMesLigues() {
