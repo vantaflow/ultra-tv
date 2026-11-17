@@ -308,7 +308,7 @@ pre{white-space:pre-wrap;word-break:break-word;margin:8px 0 0;font:12px var(--mo
 .lvl-error td.level,.lvl-warn td.level{color:var(--dng)}
 .atable th a{color:inherit;text-decoration:none;white-space:nowrap}.atable th a:hover{color:var(--fg);text-decoration:none}
 .atable th[aria-sort] a{color:var(--fg)}
-.atable{overflow-wrap:normal}.atable td strong,.atable td time,.kind{white-space:nowrap}
+.atable{overflow-wrap:normal}.atable td.msg{min-width:220px;max-width:380px;white-space:normal;overflow-wrap:anywhere;word-break:break-word}.atable td.ids{max-width:120px;overflow-wrap:anywhere;word-break:break-all;font-size:12px;color:var(--mut)}.atable td strong,.atable td time,.kind{white-space:nowrap}
 .atable td time{border-bottom:1px dotted var(--mut);cursor:help}
 .atable td.num,.atable th.num{text-align:end;font-variant-numeric:tabular-nums}
 .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin:0 0 14px;padding:var(--sp-3);background:var(--s1);border:1px solid var(--bd);border-radius:var(--r-lg)}

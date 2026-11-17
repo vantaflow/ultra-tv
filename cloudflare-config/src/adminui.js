@@ -201,7 +201,7 @@ export function eventsAdminPage(n, kind, { rows, pg, params, facets, now = Date.
 <td><details><summary>Pile</summary><pre>${e(it.stack || "")}</pre></details></td></tr>`
     : (it) => {
       const lvl = String(it.level || "info").toLowerCase();
-      return `<tr class="lvl-${e(lvl)}"><td title="${e(fmtTime(it.ts))} UTC">${dateCell(it.ts, now)}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td>${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${flagCode(it.country)}</td><td>${e(it.deviceId || "")}</td><td>${e(it.acct || "")}</td></tr>`;
+      return `<tr class="lvl-${e(lvl)}"><td title="${e(fmtTime(it.ts))} UTC">${dateCell(it.ts, now)}</td><td class="level">${e(lvl.toUpperCase())}</td><td>${e(it.tag || "")}</td><td class="msg">${e(it.message || "")}</td><td>${e(it.device || "")}</td><td>${e(it.version || "")} (${e(it.versionCode ?? "?")})</td><td>${flagCode(it.country)}</td><td class="ids">${e(it.deviceId || "")}</td><td class="ids">${e(it.acct || "")}</td></tr>`;
     };
   const head = crash
     ? `${th(base, params, "ts", "Date")}${th(base, params, "version", "Version")}${th(base, params, "device", "Appareil")}<th>Android</th>${th(base, params, "country", "Pays")}<th>Compte (empreinte)</th><th>Détail</th>`

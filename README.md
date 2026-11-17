@@ -1,413 +1,408 @@
 <p align="center">
-  <img src="docs/screenshots/fr/banner.png" alt="Ultra TV" width="100%" />
+  <img src="docs/screenshots/en/banner.png" alt="Ultra TV" width="100%" />
 </p>
 
 <h1 align="center">Ultra TV</h1>
 
 <p align="center">
-  <strong>Lecteur IPTV gratuit et open source pour Android TV, téléphone, tablette, Windows et Mac — sans pub, sans compte, pensé pour la télécommande.</strong>
+  <strong>Free, open-source IPTV player for Android TV, phones, tablets, Windows and Mac — no ads, no account, built for the remote.</strong>
 </p>
 
 <p align="center">
   <a href="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vantaflow/ultra-tv/actions/workflows/ci.yml/badge.svg" /></a>
   <a href="https://github.com/vantaflow/ultra-tv/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/vantaflow/ultra-tv?label=release" /></a>
-  <a href="LICENSE"><img alt="Licence MIT" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
-  <a href="https://vantaflow.github.io/ultra-tv/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
-  <a href="https://ko-fi.com/ultratv"><img alt="Soutenir sur Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
-  <a href="https://liberapay.com/ultratv/"><img alt="Soutenir sur Liberapay" src="https://img.shields.io/liberapay/receives/ultratv.svg?logo=liberapay" /></a>
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-0284c7" /></a>
+  <a href="https://vantaflow.github.io/ultra-tv/en/"><img alt="Site" src="https://img.shields.io/badge/site-GitHub%20Pages-d91e2b" /></a>
+  <a href="https://ko-fi.com/ultratv"><img alt="Support on Ko-fi" src="https://img.shields.io/badge/Ko--fi-ultratv-ff5e5b?logo=ko-fi&logoColor=white" /></a>
+  <a href="https://liberapay.com/ultratv/"><img alt="Support on Liberapay" src="https://img.shields.io/liberapay/receives/ultratv.svg?logo=liberapay" /></a>
 </p>
 
 <p align="center">
-  <a href="README.en.md">🇬🇧 English version</a> ·
-  <a href="https://vantaflow.github.io/ultra-tv/">Site</a> ·
-  <a href="https://ultratv.dpdns.org/download/android">Télécharger l'APK</a> ·
+  <a href="README.fr.md">🇫🇷 Version française</a> ·
+  <a href="https://vantaflow.github.io/ultra-tv/en/">Website</a> ·
+  <a href="https://ultratv.dpdns.org/download/android">Download the APK</a> ·
   <a href="https://github.com/vantaflow/ultra-tv/releases">Releases</a> ·
-  <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="ROADMAP.md">Feuille de route</a>
+  <a href="CHANGELOG.md">Changelog (French)</a> ·
+  <a href="ROADMAP.md">Roadmap</a>
 </p>
 
 ---
 
-## Télécharger
+## Download
 
-| Appareil | Lien |
+| Device | Link |
 |---|---|
-| **Android TV, Google TV, box, Fire TV**, téléphone et tablette Android (Android 9+, 7.1+ avec l’APK android7) | Voir « Quel APK prendre ? » ci-dessous · sur une box : appli Downloader, code **`5189921`** |
-| **TV Samsung** (Tizen 5.5+, modèles 2020+) | [.wgt non signé](https://github.com/vantaflow/ultra-tv/releases) — installation développeur, [voir la procédure](docs/tv.md) |
-| **TV LG** (webOS 6+, modèles 2021+) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — mode développeur, [voir la procédure](docs/tv.md) |
-| **Windows** (x64) | [Installeur .exe](https://ultratv.dpdns.org/download/windows) |
-| **Mac** (Apple Silicon et Intel) | [Image disque .dmg](https://ultratv.dpdns.org/download/mac) |
-| **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+ : `sudo apt install libfuse2` si l'AppImage ne démarre pas |
+| **Android TV, Google TV, boxes, Fire TV**, Android phones and tablets (Android 9+, 7.1+ with the android7 APK) | See « Which APK? » below · on a box: Downloader app, code **`5189921`** |
+| **Samsung TVs** (Tizen 5.5+, 2020 models and later) | [Unsigned .wgt](https://github.com/vantaflow/ultra-tv/releases) — developer install, [see the guide](docs/tv.md) |
+| **LG TVs** (webOS 6+, 2021 models and later) | [.ipk](https://github.com/vantaflow/ultra-tv/releases) — developer mode, [see the guide](docs/tv.md) |
+| **Windows** (x64) | [.exe installer](https://ultratv.dpdns.org/download/windows) |
+| **Mac** (Apple Silicon and Intel) | [.dmg disk image](https://ultratv.dpdns.org/download/mac) |
+| **Linux** (x86_64) | [AppImage](https://ultratv.dpdns.org/download/linux) · [.deb](https://ultratv.dpdns.org/download/linux-deb) (Debian, Ubuntu) · [.rpm](https://ultratv.dpdns.org/download/linux-rpm) (Fedora, openSUSE) · Ubuntu 22.04+: `sudo apt install libfuse2` if the AppImage doesn't start |
 
-Mises à jour automatiques ensuite, sur toutes les plateformes. Aucun compte n'est nécessaire.
+Automatic updates afterwards, on every platform. No account needed.
 
-### TV Samsung et LG
+### Samsung and LG TVs
 
-La même application existe en paquets natifs pour les téléviseurs connectés : **widget Tizen**
-(`.wgt`, Samsung, Tizen 5.5+ / modèles 2020+) et **application webOS** (`.ipk`, LG, webOS 6+ /
-modèles 2021+). Les deux sont pilotées à la télécommande (Retour, lecture/pause, chaînes +/−,
-Exit) et lisent le HLS **nativement** sans proxy quand le fournisseur le permet. Installation
-développeur (certificats Samsung / mode développeur LG) et publication boutiques : voir
-[docs/tv.md](docs/tv.md).
+The same app ships as native packages for smart TVs: a **Tizen widget** (`.wgt`, Samsung, Tizen
+5.5+ / 2020 models and later) and a **webOS app** (`.ipk`, LG, webOS 6+ / 2021 models and later).
+Both are remote-first (Back, play/pause, channel ±, Exit) and play HLS **natively** without a
+CORS proxy whenever the provider allows it. Developer install (Samsung certificates / LG
+developer mode) and store publishing: see [docs/tv.md](docs/tv.md).
 
 
-Ultra TV lit vos propres abonnements IPTV (**Xtream Codes**, **M3U / M3U8** en lien ou en fichier, **portails Stalker / Ministra** par adresse MAC). Toute l'interface est native et pilotée à la télécommande ; le catalogue (chaînes, films, séries, guide, historique, favoris) vit dans une base Room locale. Il ne fournit **aucun contenu**.
+Ultra TV plays your own IPTV subscriptions (**Xtream Codes**, **M3U / M3U8** as a link or a file, **Stalker / Ministra portals** by MAC address). The whole interface is native and built for the remote; the catalogue (channels, movies, series, guide, history, favourites) lives in a local Room database. It provides **no content** at all.
 
-> Captures de la nouvelle interface (1.2.98), rendues avec un **catalogue entièrement fictif** : chaînes, catégories, programmes et titres inventés. Ultra TV ne fournit aucun contenu.
-
-<p align="center">
-  <img src="docs/screenshots/fr/home.png" alt="Accueil" width="48%" />
-  <img src="docs/screenshots/fr/live.png" alt="Liste des chaînes du lecteur" width="48%" />
-  <img src="docs/screenshots/fr/guide.png" alt="Guide des programmes" width="48%" />
-  <img src="docs/screenshots/fr/sport.png" alt="Rubrique Sport" width="48%" />
-  <img src="docs/screenshots/fr/categories.png" alt="Films par catégories" width="48%" />
-  <img src="docs/screenshots/fr/movie-detail.png" alt="Fiche film" width="48%" />
-  <img src="docs/screenshots/fr/detail.png" alt="Fiche série : saisons et épisodes" width="48%" />
-  <img src="docs/screenshots/fr/movie-player.png" alt="Lecteur des films" width="48%" />
-  <img src="docs/screenshots/fr/player.png" alt="Surcouche du Direct" width="48%" />
-  <img src="docs/screenshots/fr/settings.png" alt="Réglages" width="48%" />
-  <img src="docs/screenshots/fr/home-light.png" alt="Accueil, thème clair" width="48%" />
-  <img src="docs/screenshots/fr/profiles.png" alt="Qui regarde ?" width="48%" />
-</p>
-
-Captures aussi disponibles en anglais ([`docs/screenshots/en`](docs/screenshots/en)) et en arabe, interface en miroir ([`docs/screenshots/ar`](docs/screenshots/ar)).
-
-## Fonctionnalités
-
-- **Nouvelle interface (1.2.98)** sur TV, téléphone, tablette et bureau : thèmes sombre et clair redessinés, accueil avec « À la une » et raccourcis, surcouche du Direct (chaînes récentes, programme en cours, « Ensuite », ruban de la soirée), liste des chaînes en feuille latérale, guide filtrable par catégorie, fiches et lecteurs films / séries refaits, courte animation d'ouverture.
-- **Sport** (rubrique facultative, Réglages › Affichage, sur TV et bureau) : un écran unifié avec les **matchs en direct** (score et chaînes qui les diffusent), les **matchs à venir** et les émissions sportives du guide de vos sources, et le **classement** de la ligue choisie. **Feuille de match**, classement complet (forme, zones), **« Mes ligues »** (ordre, masquer) et **mode sans spoiler**. Rappels, enregistrements et **écussons des équipes**. Les scores viennent de plusieurs fournisseurs gratuits combinés ([football-data.org](https://www.football-data.org), [API-Football](https://www.api-football.com), [Jolpica](https://github.com/jolpica/jolpica-f1) pour la F1 et [TheSportsDB](https://www.thesportsdb.com)) ; le Worker les interroge, l'appareil n'envoie qu'une clé de ligue ou un numéro de match.
-- **Bibliothèques personnelles** (Android TV et bureau) : vos propres films et séries depuis un serveur **Jellyfin**, **Emby** ou **Plex** (liaison par code sur plex.tv/link), ou depuis un **partage NAS** (SMB sur Android ; sur le bureau, un dossier déjà monté par le système). Assistant en 3 étapes (trouver le serveur, se connecter, choisir les bibliothèques) avec **découverte automatique des serveurs** du réseau local. Écran **« Mes bibliothèques »** (état de chaque serveur, affiches avec progression, vue par dossiers pour le NAS) et **points de reprise synchronisés avec le serveur**. Sur Android TV : Réglages › Sources › Ajouter une source › « Ma bibliothèque » ; « Mes bibliothèques » apparaît ensuite en haut de Réglages › Sources.
-- **Recherche** depuis n'importe quel écran : bouton en haut du menu latéral, touches Recherche et micro de la télécommande.
-- **Direct** : **aperçu vidéo** de la chaîne sélectionnée dans la liste (avec le son, délai réglable), **OK la passe en plein écran sans recharger le flux** ; Haut/Bas zappent, **OK ouvre la liste des chaînes**, touches chaîne +/− et TV des télécommandes Google TV ; bandeau chaîne et programme ; zapping par numéro, Retour revient au menu (touche « chaîne précédente » pour la dernière chaîne), 20 chaînes récentes, recherche instantanée (FTS).
-- **Catégories** : noms et ordre de la playlist tels que fournis par la source, activer / désactiver / réordonner, filtre texte (« FR » = mot entier) ; pastilles de qualité (SD, HD, FHD, 4K, RAW, HEVC…) pour distinguer les flux d'une même chaîne.
-- **Guide** : grille horaire, rappels, enregistrements programmés, **replay** (catch-up Xtream) depuis le guide quand la source le permet. Programme repris d'une chaîne du même nom quand le fournisseur n'en donne qu'à une catégorie (HEVC, Général…), chaînes « +1 / +2 » décalées d'autant, programme court du fournisseur en secours, et **guide complémentaire gratuit** (XMLTV France par défaut, epgshare01 beIN Sports / Arabie saoudite / Émirats) pour les chaînes restées sans programme.
-- **Pause du direct** (timeshift) : tampon disque circulaire pour les flux MPEG-TS.
-- **Films et séries** : fiches enrichies via **TMDB** (affiche, synopsis, distribution, bande-annonce, en anglais si aucune n'existe dans votre langue), **logo officiel du titre et fond HD** via [Fanart.tv](https://fanart.tv), **prochain épisode** d'une série (date, titre) via [TVmaze](https://www.tvmaze.com), **reprise automatique** (position enregistrée toutes les 30 s), saisons en onglets, rangées par catégorie.
-- **Passer l'intro** : boutons « Passer l'intro », « Passer le résumé » et « Épisode suivant » pendant les génériques, d'après [TheIntroDB](https://theintrodb.org) (base communautaire, sans clé).
-- **Notes IMDb / Rotten Tomatoes** sur les fiches (OMDb via le Worker), **pages acteurs et réalisateurs** (leurs titres présents dans la playlist).
-- **Accueil** : « À la une » qui défile, rangée **« Nouveaux épisodes »** (séries favorites ou en cours dont un épisode est sorti ou sort dans les 7 jours), rangées « Parce que vous avez regardé… », « Films / Séries les mieux notés » ; **filtres** Films / Séries (tri, note minimale, période) ; **recherche tolérante aux fautes**.
-- **Guide personnalisé** : une **adresse de guide XMLTV** (`http://` ou `https://`, finissant par `.xml` ou `.xml.gz`, query string tolérée). Deux usages. (1) **Guide complémentaire** : Réglages › Synchronisation › Guide complémentaire › *Adresse personnalisée…* (lu seulement pour les chaînes restées sans programme). (2) **Guide de cette source** : Réglages › Sources › (menu de la source) › *Guide de cette source*, avec le mode **remplacer** (seule cette adresse est lue) ou **compléter** (guide du fournisseur d'abord, puis cette adresse pour les chaînes sans programme) ; utile pour une playlist M3U sans `url-tvg` et pour un portail Stalker, qui n'a pas de guide XMLTV propre (chaînes rattachées par `epgChannelId`, sinon par nom). L'adresse est **vérifiée avant l'enregistrement** (requête réseau, gzip détecté, balise `<tv` obligatoire ; message clair si injoignable, code HTTP ou pas un guide XMLTV). Saisie à la télécommande, depuis le téléphone (page `/envoyer`, type *Guide XMLTV*, pour le guide complémentaire) ou sur le bureau (Réglages › Synchronisation, et *Options avancées* d'une source).
-- **Synchronisés entre appareils** (compte cloud) : profils (nom, couleur ou avatar, profil Enfants, langue de l'interface, horaires et limite de temps d'écran ; le code PIN et le temps déjà regardé restent sur chaque appareil), catégories visibles par profil et leur ordre, ordre des chaînes, chaînes masquées, favoris, historique et reprises. Les changements venus des autres appareils sont vérifiés toutes les 2 min appli ouverte, et aussitôt au changement de profil.
-- **Envoi depuis le téléphone, sans compte** : la TV affiche un QR code et un code ; la playlist (Xtream, M3U ou Stalker) se saisit sur le téléphone ou l'ordinateur (page `/envoyer` du Worker), puis la TV l'ajoute et la synchronise. Plus besoin de tout taper à la télécommande.
-- **Télécommande et recherche sur le téléphone** (Réglages › Sources) : la box sert une page sur le réseau local (QR code) pour chercher un film, une série ou une chaîne et piloter la lecture ; désactivée par défaut, protégée par une clé.
-- **Mode simple** : six grandes tuiles (Télé en direct, Reprendre, Films, Séries, Favoris, Rechercher), réglable par profil.
-- **Mémoire et stockage** : espace utilisé détaillé, mémoire vive, nettoyage du cache et de la base, mode économie de mémoire pour les box modestes, **Optimiser les images** (logos et fonds Fanart.tv / TVmaze servis en WebP à la bonne taille par wsrv.nl ; désactivable).
-- **Catégories masquées jamais chargées** : une catégorie désactivée (par sa langue ou à la main, séparément pour le Direct, les Films et les Séries) n'est ni téléchargée en base ni indexée : synchro plus rapide, moins de mémoire.
-- **Films et Séries par genres automatiques** : liste des catégories ou des genres détectés (Action, Comédie, Anime…) avec leur nombre de titres, grille d'affiches, tri et filtres.
-- **Téléchargements** (Android) : films, épisodes ou saison entière ; file d'attente avec pause, reprise, annulation et nouvel essai, reprise après coupure, Wi-Fi seulement en option ; écran « Téléchargements » utilisable hors ligne.
-- **Deux moteurs de lecture** : ExoPlayer (Media3) et **LibVLC**, choix Auto / ExoPlayer / VLC, décodage Auto / Matériel / Logiciel, repli automatique et mémorisation par chaîne.
-- **Sous-titres** : recherche en ligne (OpenSubtitles via le Worker), style avancé (taille, couleur, fond, contour, position, décalage). Rien à configurer sur l'appareil ; un compte OpenSubtitles personnel se relie, au besoin, depuis le tableau de bord cloud.
-- **Suivi (Trakt ou Simkl)** : vous choisissez le service actif ; Simkl se connecte par OAuth avec PKCE. Le tableau de bord a une seule carte **« Service de suivi »** (service actuel et son état, Connecter / Déconnecter).
-- **Trakt** : films et épisodes regardés envoyés à Trakt (en cours, puis vu à la fin) ; à l'accueil, **watchlist**, **recommandations**, **tendances**, **populaires**, **listes personnelles** et **« À suivre »**, limitées aux titres disponibles dans la playlist chargée ; marque **« Vu »** ; depuis les fiches : ajouter / retirer de la watchlist, marquer vu / non vu (film, épisode, saison), **noter de 1 à 10** ; positions de reprise importées. Connexion depuis le tableau de bord cloud, rien à régler sur la TV.
-- **Profils** : « Qui regarde ? », profil Enfants, favoris, historique et langues par profil ; **horaires de visionnage et temps d'écran quotidien** par profil (Android et bureau, modifiables avec le code parental) : hors plage ou limite atteinte, écran de blocage déverrouillable par le code parental, avertissement 5 minutes avant la fin. Les règles suivent le profil sur tous les appareils, le temps de lecture est compté séparément sur chaque appareil.
-- **Abonnement** (menu) : état de votre abonnement IPTV tel que l'indique le fournisseur — statut, date d'expiration et jours restants, connexions utilisées / autorisées, compte d'essai, serveur. Android, Windows et macOS.
-- **Google TV, Android TV et lanceurs tiers** : « Continuer à regarder » (films, épisodes et dernières chaînes du direct, titres nettoyés, un seul exemplaire par film), chaîne d'accueil **Favoris** (favoris puis dernières chaînes) et chaîne **Nouveautés** (derniers films et séries ajoutés, sans doublon), recherche vocale et globale, liens profonds `ultratv://`. Ces rangées passent par le fournisseur TV d'Android : les lanceurs qui le lisent (Kairo…) les affichent aussi.
-- **Lecture** : pas de mise en veille pendant un film ou le direct, pause en quittant l'application (plus de son en arrière-plan) ; horloge sans décalage et fuseau horaire réglable (Réglages › Affichage).
-- **Thèmes** Sombre / Clair / **Noir (OLED)** / Automatique (le lecteur reste toujours sombre) ; interface en anglais, français, espagnol et arabe (RTL), plus le polonais et le portugais du Brésil (premiers jets communautaires).
-- **Personnalisation** (Réglages › Affichage) : **couleur d'accent** (12 choix), **taille du texte**, **format de l'heure** (Automatique, 12 h ou 24 h), **rangées de l'accueil** (afficher, masquer, réordonner), **écran d'ouverture** (Accueil, Direct, Films, Séries, Guide, dernière chaîne ou dernier écran utilisé ; aussi sur le bureau).
-- **DNS personnalisé** (Android et bureau) : Google, Cloudflare, Quad9, DNS-over-HTTPS ou serveur au choix ; appliqué au catalogue, au guide, aux images et aux flux (sur Android : flux ExoPlayer, pas VLC ; bouton Tester), repli automatique sur le DNS du système.
-- **Veille** : minuterie 30 / 60 / 90 min ou fin de programme ; mise à jour intégrée depuis les releases GitHub.
-
-## Appareils
-
-Un seul compte, tous vos écrans : même interface, même fournisseur partout. Ajoutez-le une fois dans le [tableau de bord cloud](#synchronisation-cloud) et chaque appareil le reçoit.
-
-### Android TV et Google TV
-
-L'application d'origine, pilotée à la télécommande (voir les captures ci-dessus et [Fonctionnalités](#fonctionnalités)).
-
-### Smartphone Android
-
-Interface tactile : barre de navigation en bas (rubriques au choix et dans l'ordre voulu : Réglages › Affichage › Raccourcis), listes et grilles au doigt, lecteur à gestes avec image dans l'image ; les formulaires se calent au-dessus du clavier.
+> Screenshots of the new interface (1.2.98), rendered with an **entirely fictional catalog**: made-up channels, categories, programmes and titles. Ultra TV provides no content.
 
 <p align="center">
-  <img src="docs/screenshots/phone/fr/home.png" alt="Accueil sur smartphone" width="23%" />
-  <img src="docs/screenshots/phone/fr/live.png" alt="Direct sur smartphone" width="23%" />
-  <img src="docs/screenshots/phone/fr/detail.png" alt="Fiche film sur smartphone" width="23%" />
-  <img src="docs/screenshots/phone/fr/player.png" alt="Lecteur sur smartphone" width="23%" />
+  <img src="docs/screenshots/en/home.png" alt="Home" width="48%" />
+  <img src="docs/screenshots/en/live.png" alt="Player channel list" width="48%" />
+  <img src="docs/screenshots/en/guide.png" alt="TV guide" width="48%" />
+  <img src="docs/screenshots/en/sport.png" alt="Sport section" width="48%" />
+  <img src="docs/screenshots/en/categories.png" alt="Movies by category" width="48%" />
+  <img src="docs/screenshots/en/movie-detail.png" alt="Movie details" width="48%" />
+  <img src="docs/screenshots/en/detail.png" alt="Series details: seasons and episodes" width="48%" />
+  <img src="docs/screenshots/en/movie-player.png" alt="Movie player" width="48%" />
+  <img src="docs/screenshots/en/player.png" alt="Live TV overlay" width="48%" />
+  <img src="docs/screenshots/en/settings.png" alt="Settings" width="48%" />
+  <img src="docs/screenshots/en/profiles.png" alt="Who's watching?" width="48%" />
 </p>
 
-### Tablette Android
+The same screenshots exist in French ([`docs/screenshots/fr`](docs/screenshots/fr)) and in Arabic, with a mirrored interface ([`docs/screenshots/ar`](docs/screenshots/ar)).
 
-Menu latéral, liste et fiche côte à côte.
+## Features
+
+- **New interface (1.2.98)** on TV, phone, tablet and desktop: redesigned dark and light themes, home screen with “Featured” and shortcuts, live TV overlay (recent channels, current programme, “Up next”, evening ribbon), channel list as a side sheet, TV guide filtered by category, redesigned movie / series pages and players, short opening animation.
+- **Sport** (optional section, Settings › Display, on TV and desktop): one unified screen with **live matches** (score and the channels showing them), **upcoming matches** and sports programmes from your sources' guide, and the **standings** of the chosen league. **Match sheet**, full standings (form, zones), **“My leagues”** (order, hide) and a **no-spoiler mode**. Reminders, recordings and **team badges**. Scores come from several free providers combined ([football-data.org](https://www.football-data.org), [API-Football](https://www.api-football.com), [Jolpica](https://github.com/jolpica/jolpica-f1) for F1 and [TheSportsDB](https://www.thesportsdb.com)); the Worker queries them, the device only sends a league key or a match number.
+- **Personal libraries** (Android TV and desktop): your own movies and series from a **Jellyfin**, **Emby** or **Plex** server (linking by code at plex.tv/link), or from a **NAS share** (SMB on Android; on desktop, a folder already mounted by the system). 3-step wizard (find the server, sign in, choose libraries) with **automatic discovery of servers** on the local network. **“My libraries”** screen (status of each server, posters with progress, folder view for the NAS) and **resume points synced with the server**. On Android TV: Settings › Sources › Add a source › “My library”; “My libraries” then appears at the top of Settings › Sources.
+- **Search** from any screen: a button at the top of the side rail, plus the remote's Search and microphone keys.
+- **Live TV**: **video preview** of the selected channel in the list (with sound, adjustable delay), **OK switches it to full screen without reloading the stream**; Up/Down zap, **OK opens the channel list**, Channel +/− and TV keys of Google TV remotes; channel and programme banner; number zapping, Back returns to the menu (Last channel key recalls the previous one), 20 recent channels, instant search (FTS).
+- **Categories**: names and playlist order exactly as the source provides them, enable / disable / reorder, text filter ("FR" = whole word); quality badges (SD, HD, FHD, 4K, RAW, HEVC…) to tell apart streams of the same channel.
+- **Guide**: time grid, reminders, scheduled recordings, **replay** (Xtream catch-up) from the guide when the source allows it. Programme borrowed from a channel with the same name when the provider only tags one category (HEVC, General…), "+1 / +2" channels shifted accordingly, the provider's short EPG as a fallback, and a **free additional guide** (XMLTV France by default, epgshare01 beIN Sports / Saudi Arabia / UAE) for channels still without a programme.
+- **Live pause** (timeshift): circular disk buffer for MPEG-TS streams.
+- **Movies and series**: rich details through **TMDB** (poster, plot, cast, trailer, in English when none exists in your language), **official title logo and HD backdrop** through [Fanart.tv](https://fanart.tv), a series' **next episode** (date, title) through [TVmaze](https://www.tvmaze.com), **automatic resume** (position saved every 30 s), seasons as tabs, rows by category.
+- **Skip intro**: “Skip intro”, “Skip recap” and “Next episode” buttons during intros and credits, from [TheIntroDB](https://theintrodb.org) (community database, no key).
+- **IMDb / Rotten Tomatoes ratings** on detail pages (OMDb through the Worker), **actor and director pages** (their titles found in your playlist).
+- **Home**: rotating “Featured” banner, a **“New episodes”** row (favourite or in-progress series with an episode out or due within 7 days), “Because you watched…” and “Top rated movies / series” rows; movie and series **filters** (sort, minimum rating, decade); **typo-tolerant search** (“brekin bad” → Breaking Bad).
+- **Custom guide**: an **XMLTV guide address** (`http://` or `https://`, ending in `.xml` or `.xml.gz`, a query string is fine). Two uses. (1) **Additional guide**: Settings › Synchronization › Additional guide › *Custom address…* (read only for channels still without a programme). (2) **Guide of this source**: Settings › Sources › (the source's menu) › *Guide of this source*, in **replace** mode (only this address is read) or **complete** mode (the provider's guide first, then this address for channels without a programme); handy for an M3U playlist without `url-tvg` and for a Stalker portal, which has no XMLTV guide of its own (channels matched by `epgChannelId`, otherwise by name). The address is **checked before it is saved** (network request, gzip detected, a `<tv` tag is required; clear message if unreachable, HTTP code or not an XMLTV guide). Enter it with the remote, from your phone (the `/envoyer` page, *XMLTV guide* type, for the additional guide) or on desktop (Settings › Synchronization, and a source's *Advanced options*).
+- **Synced across devices** (cloud account): profiles (name, colour or avatar, kids profile, interface language; the PIN stays on each device), categories visible per profile and their order, channel order, hidden channels, favourites, history and resume points. Changes coming from other devices are checked every 2 min while the app is open, and right away when you switch profile.
+- **Send from your phone, no account**: the TV shows a QR code and a code; type the playlist (Xtream, M3U or Stalker) on your phone or computer (the Worker's `/envoyer` page) and the TV adds and syncs it. No more typing with the remote.
+- **Phone remote and search** (Settings › Sources): the box serves a page on the local network (QR code) to search movies, series and channels and control playback; off by default, protected by a key.
+- **Simple mode**: six large tiles (Live TV, Resume, Movies, Series, Favorites, Search), per profile.
+- **Memory & storage**: detailed storage use, RAM, cache and database clean-up, memory-saving mode for modest boxes, **Optimise images** (Fanart.tv / TVmaze logos and backdrops served as right-sized WebP by wsrv.nl; can be turned off).
+- **Hidden categories are never loaded**: a disabled category (by its language or by hand, separately for Live, Movies and Series) is neither stored nor indexed: faster sync, less memory.
+- **Movies and series by automatic genres**: category or detected-genre list (Action, Comedy, Anime…) with title counts, poster grid, sorting and filters.
+- **Downloads** (Android): movies, episodes or a whole season; queue with pause, resume, cancel and retry, resume after a dropout, optional Wi-Fi only; a « Downloads » screen that works offline.
+- **Two playback engines**: ExoPlayer (Media3) and **LibVLC**; Auto / ExoPlayer / VLC, decoding Auto / Hardware / Software, automatic fallback and per-channel memory.
+- **Subtitles**: online search (OpenSubtitles through the Worker), advanced style (size, colour, background, outline, position, offset). Nothing to set up on the device; a personal OpenSubtitles account can be linked from the cloud dashboard if needed.
+- **Tracking (Trakt or Simkl)**: you choose the active service; Simkl signs in with OAuth and PKCE. The dashboard has a single **“Tracking service”** card (current service and its state, Connect / Disconnect).
+- **Trakt**: movies and episodes you watch are sent to Trakt (watching, then watched at the end); on Home, your Trakt **watchlist**, **recommendations**, **trending**, **popular**, **personal lists** and **Up next**, limited to titles available in the loaded playlist; a **"Watched"** mark; from detail pages: add / remove from the watchlist, mark watched / unwatched (movie, episode, season), **rate 1–10**; resume positions imported. Connect from the cloud dashboard, nothing to set on the TV.
+- **Profiles**: "Who's watching?", Kids profile, per-profile favourites, history and languages.
+- **Subscription** (menu): your IPTV subscription as reported by the provider — status, expiry date and days left, connections in use / allowed, trial account, server. Android, Windows and macOS.
+- **Google TV, Android TV and third-party launchers**: "Continue watching" (movies, episodes and recent live channels, cleaned titles, one tile per movie), **Favorites** home channel (favourites then recent channels) and **New releases** channel (latest movies and series added, no duplicates), voice and global search, `ultratv://` deep links. These rows go through Android's TV provider, so launchers that read it (Kairo…) show them too.
+- **Playback**: no sleep during a movie or live TV, pauses when you leave the app (no background audio); clock without offset and adjustable time zone (Settings › Display).
+- **Themes** Dark / Light / **Black (OLED)** / Automatic (the player always stays dark); interface in English, French, Spanish and Arabic (RTL), plus Polish and Brazilian Portuguese (community first drafts).
+- **Personalisation** (Settings › Display): **accent colour** (12 choices), **text size**, **time format** (Automatic, 12-hour or 24-hour), **Home rows** (show, hide, reorder), **start screen** (Home, Live, Movies, Series, Guide, last channel or last screen used; also on desktop).
+- **Custom DNS** (Android and desktop): Google, Cloudflare, Quad9, DNS-over-HTTPS or your own server; applied to catalogue, guide, images and streams (on Android: ExoPlayer streams, not VLC; Test button), automatic fallback to the system DNS.
+- **Sleep**: 30 / 60 / 90 min timer or end of programme; built-in update from GitHub releases.
+
+## Devices
+
+One account, all your screens: same interface, same provider everywhere. Add it once in the [cloud dashboard](#cloud-sync) and every device receives it.
+
+### Android TV and Google TV
+
+The original app, driven by the remote (see the screenshots above and [Features](#features)).
+
+### Android smartphone
+
+Touch interface: bottom navigation bar (pick its sections and their order: Settings › Display › Shortcuts), lists and grids by finger, gesture player with picture-in-picture; forms sit above the keyboard.
 
 <p align="center">
-  <img src="docs/screenshots/tablet/fr/live.png" alt="Direct sur tablette" width="48%" />
-  <img src="docs/screenshots/tablet/fr/home.png" alt="Accueil sur tablette" width="48%" />
+  <img src="docs/screenshots/phone/en/home.png" alt="Home on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/live.png" alt="Live TV on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/detail.png" alt="Movie details on smartphone" width="23%" />
+  <img src="docs/screenshots/phone/en/player.png" alt="Player on smartphone" width="23%" />
 </p>
 
-### Windows et macOS
+### Android tablet
 
-Le même design sur ordinateur : l'application web de [`web/`](web/README.md) empaquetée par Electron ([`electron/`](electron/README.md)). Sur le web, seul le tableau de bord de gestion est proposé (pas de lecteur). Xtream Codes et M3U (lien ou fichier) ; catalogue gardé en local (IndexedDB), identifiants chiffrés avec le trousseau du système, lecture directe (aucun proxy distant), mise à jour automatique via les Releases GitHub ; synchro cloud toutes les 2 min fenêtre visible. **Recherche** : bouton rond sous le logo, raccourci `Ctrl/Cmd + K` ou `/` depuis n'importe quel écran. **Sport, rappels et enregistrements** : rubrique Sport, « Me rappeler » (notification système) et « Enregistrer » (fichier .ts dans Vidéos/Ultra TV, l'application doit rester ouverte) depuis le guide et Sport, écran « Enregistrés » ; bouton **Épisodes** dans le lecteur des séries (touche E). **Son AC-3 / DTS** : converti automatiquement en AAC par ffmpeg (embarqué sous Windows ; sur macOS, installez-le avec `brew install ffmpeg`) ; les VOD converties ne se figent plus et une seule conversion tourne à la fois par hôte. **Direct** : « Depuis le début » (Xtream avec archive) et « Retour au direct » (1.2.66).
+Side rail, list and details side by side.
 
 <p align="center">
-  <img src="docs/screenshots/desktop/fr/06-direct.png" alt="Direct sur le bureau" width="48%" />
-  <img src="docs/screenshots/desktop/fr/14-reglages.png" alt="Réglages sur le bureau" width="48%" />
+  <img src="docs/screenshots/tablet/en/live.png" alt="Live TV on tablet" width="48%" />
+  <img src="docs/screenshots/tablet/en/home.png" alt="Home on tablet" width="48%" />
 </p>
 
-Toutes les captures du bureau (données synthétiques, FR et EN) : [`docs/screenshots/desktop/`](docs/screenshots/desktop/). Publication : tag `desktop-vX.Y.Z` (workflow `desktop-release.yml`, séparé des tags Android `v*`).
+### Windows and macOS
 
-### Tableau de bord cloud
-
-Gérez appareils et sources depuis un navigateur : **<https://ultratv.dpdns.org>** (le site existe en anglais, français, espagnol, arabe et polonais). `tv.weedy.dpdns.org` sert l'API des applis ; ses pages redirigent vers le site. L'ancienne adresse `ultratv-config.khalilbenaz.workers.dev` reste active ; les applis basculent d'elle-même si l'une est bloquée sur votre réseau.
+The same design on desktop: the web app in [`web/`](web/README.md) packaged with Electron ([`electron/`](electron/README.md)). On the web, only the management dashboard is offered (no player). Xtream Codes and M3U (link or file); catalogue kept locally (IndexedDB), credentials encrypted with the system keychain, direct playback (no remote proxy), automatic updates through GitHub Releases; cloud sync every 2 min while the window is visible. **Search**: round button under the logo, shortcut `Ctrl/Cmd + K` or `/` from any screen. **Sport, reminders and recordings**: Sport section, “Remind me” (system notification) and “Record” (.ts file in Videos/Ultra TV, the app must stay open) from the guide and Sport, “Recorded” screen; **Episodes** button in the series player (E key). **AC-3 / DTS sound**: converted to AAC by ffmpeg (bundled on Windows; on macOS install it with `brew install ffmpeg`); converted VODs no longer freeze and only one conversion runs per host. **Live**: “From the start” (Xtream with archive) and “Back to live” (1.2.66).
 
 <p align="center">
-  <img src="docs/screenshots/cloud/devices.png" alt="Appareils appairés" width="48%" />
-  <img src="docs/screenshots/cloud/sharing.png" alt="Partage des sources par appareil" width="48%" />
+  <img src="docs/screenshots/desktop/en/06-direct.png" alt="Live TV on desktop" width="48%" />
+  <img src="docs/screenshots/desktop/en/14-reglages.png" alt="Settings on desktop" width="48%" />
 </p>
 
-Sources **Xtream**, **M3U** et **portails Stalker** (adresse MAC masquée). Chaque appareil affiche son modèle, son édition, sa **version de l'appli** et sa dernière activité. Chaque source Xtream ou M3U a un bouton **Afficher le lien IPTV** (lien M3U complet, à la demande, avec bouton Copier) et son **abonnement** (statut, date d'expiration, jours restants, connexions), lu chez le fournisseur ; listes paginées avec recherche quand elles s'allongent.
+All desktop screenshots (synthetic data, FR and EN): [`docs/screenshots/desktop/`](docs/screenshots/desktop/). Release: `desktop-vX.Y.Z` tag (workflow `desktop-release.yml`, separate from the Android `v*` tags).
 
-Rubrique **Administration** (comptes listés dans `ADMIN_LOGINS`) : statistiques, comptes et **alertes**. Une alerte est un message (titre, texte, niveau Information / Avertissement / Urgent) programmé avec une date de début et de fin, pour tous les appareils ou seulement les TV ou les téléphones, éventuellement réservé aux versions de l'application antérieures à une version donnée et accompagné d'un bouton « Mettre à jour ». Les applications le vérifient au lancement puis toutes les 15 minutes. « Information » s'affiche en bandeau discret, « Avertissement » et « Urgent » en fenêtre à valider ; pendant la lecture, seule une alerte « Urgent » s'affiche (en bandeau). Le tableau de bord indique pour chaque alerte sur combien d'appareils elle a été affichée et fermée. Les alertes reçues restent lisibles dans Réglages › Messages.
+### Cloud dashboard
 
-Rubrique **Compte** :
-- **Trakt** : bouton *Connecter Trakt*, autorisation chez Trakt ; vos appareils y envoient ensuite ce que vous regardez. Le mot de passe Trakt ne passe jamais par le site.
-- **Sous-titres · OpenSubtitles** (facultatif) : reliez votre compte OpenSubtitles, gratuit ou VIP, pour utiliser votre propre quota de téléchargements au lieu du quota commun.
-
-Appairage en un scan : la TV affiche un QR, l'appareil photo du téléphone ouvre la page d'appairage avec le code déjà rempli. Le code se saisit aussi à la main, avec ou sans tiret.
+Manage devices and sources from a browser: **<https://ultratv.dpdns.org>** (the site is available in English, French, Spanish, Arabic and Polish). `tv.weedy.dpdns.org` serves the apps' API; its pages redirect to the site. The old address `ultratv-config.khalilbenaz.workers.dev` still works; the apps switch automatically if one is blocked on your network.
 
 <p align="center">
-  <img src="docs/screenshots/cloud/pair-qr.png" alt="Confirmation d'appairage avec le code pré-rempli" width="30%" />
-  <img src="docs/screenshots/cloud/mobile.png" alt="Tableau de bord sur téléphone, thème clair" width="30%" />
+  <img src="docs/screenshots/cloud/devices.png" alt="Paired devices" width="48%" />
+  <img src="docs/screenshots/cloud/sharing.png" alt="Per-device source sharing" width="48%" />
 </p>
 
-### Synchronisation multi-appareils
+**Xtream**, **M3U** and **Stalker portal** sources (MAC address masked). Each device shows its model, edition, **app version** and last activity. Each Xtream or M3U source has a **Show IPTV link** button (full M3U link, on demand, with a Copy button) and its **subscription** (status, expiry date, days left, connections), read from the provider; lists are paginated and searchable as they grow.
 
-- **Même fournisseur partout** : un fournisseur ajouté dans le tableau de bord est reçu par tous les appareils du compte.
-- **Source propre à un appareil** : une source ajoutée sur un appareil lui reste privée tant que vous ne la partagez pas.
-- **Partage choisi par appareil** : source par source, vous cochez les appareils destinataires (dans l'application : Réglages › Sources › *Partager cette source* ; ou dans le tableau de bord).
-- **Catégories partagées** : activer, désactiver, réordonner une catégorie sur un appareil s'applique aux autres, par profil (la modification la plus récente gagne). Il en va de même pour l'ordre des chaînes et les chaînes masquées.
-- **Profils partagés** : nom, couleur ou avatar, profil Enfants et langue de l'interface suivent le compte ; jamais le code PIN.
-- **Favoris, reprises et derniers vus partagés** : un film commencé sur la TV reprend au même endroit sur le Mac ; un favori ajouté ou retiré l'est partout. Par source du compte, profils rapprochés par leur nom.
-- Les modifications d'un compte sont sérialisées côté Worker (verrou Durable Object) : deux appareils qui écrivent en même temps ne s'écrasent pas.
+**Account** section:
+- **Trakt**: *Connect Trakt* button, authorise on Trakt; your devices then send what you watch. Your Trakt password never goes through the site.
+- **Subtitles · OpenSubtitles** (optional): link your OpenSubtitles account, free or VIP, to use your own download quota instead of the shared one.
 
-## Téléchargements
+Pair in one scan: the TV shows a QR, the phone camera opens the pairing page with the code already filled in. The code can also be typed by hand, with or without the dash.
 
-| Appareil | Fichier |
+<p align="center">
+  <img src="docs/screenshots/cloud/pair-qr.png" alt="Pairing confirmation with the code pre-filled" width="30%" />
+  <img src="docs/screenshots/cloud/mobile.png" alt="Dashboard on a phone, light theme" width="30%" />
+</p>
+
+### Multi-device sync
+
+- **Same provider everywhere**: a provider added in the dashboard is received by every device on the account.
+- **Device-only source**: a source added on a device stays private to it until you share it.
+- **Sharing chosen per device**: source by source, tick the receiving devices (in the app: Settings › Sources › *Share this source*; or in the dashboard).
+- **Shared categories**: enabling, disabling or reordering a category on one device applies to the others, per profile (latest change wins). The same goes for channel order and hidden channels.
+- **Shared profiles**: name, colour or avatar, kids profile and interface language follow the account; never the PIN.
+- **Shared favourites, resume points and recently watched**: a movie started on the TV resumes at the same spot on the Mac; a favourite added or removed is everywhere. Per account source, profiles matched by name.
+- Account changes are serialized on the Worker (Durable Object lock): two devices writing at once do not overwrite each other.
+
+## Downloads
+
+| Device | File |
 |---|---|
-| Android (TV, smartphone, tablette) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (par défaut), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32 bits), ou l'universel [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk) ; fichiers versionnés `UltraTV-<version>-<abi>.apk` avec leur profil précompilé `.dm`, plus `SHA256SUMS.txt` |
-| macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon et Intel) |
-| Windows | `UltraTV-<version>-win-x64.exe` (installeur NSIS) |
-| Tableau de bord cloud | <https://ultratv.dpdns.org> (aucune installation) |
+| Android (TV, smartphone, tablet) | [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (default), [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) (32-bit), or the universal [`UltraTV.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk); versioned files `UltraTV-<version>-<abi>.apk` with their precompiled profile `.dm`, plus `SHA256SUMS.txt` |
+| macOS | `UltraTV-<version>-mac-universal.dmg` (Apple Silicon and Intel) |
+| Windows | `UltraTV-<version>-win-x64.exe` (NSIS installer) |
+| Cloud dashboard | <https://ultratv.dpdns.org> (nothing to install) |
 
-Tout est sur la page [Releases](https://github.com/vantaflow/ultra-tv/releases) (les fichiers bureau portent les tags `desktop-v…`).
+Everything is on the [Releases](https://github.com/vantaflow/ultra-tv/releases) page (desktop files carry `desktop-v…` tags).
 
 ## Installation
 
-Android 9 ou plus récent (API 28) pour l’APK habituel ; Android 7.1 (API 25), donc les Fire TV Stick sous Fire OS 6 (Stick 2e génération, Stick 4K 1re génération), avec l’APK **android7** (`UltraTV-android7.apk`, 32 bits).
+Android 9 or newer (API 28) for the regular APK; Android 7.1 (API 25), i.e. Fire TV Sticks running Fire OS 6 (2nd-generation Stick, 1st-generation Stick 4K), with the **android7** APK (`UltraTV-android7.apk`, 32-bit).
 
-**APK.** Téléchargez [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (somme SHA-256 sur la page de la release) et installez-le. Si l'installation échoue (appareil 32 bits comme le Chromecast avec Google TV HD), prenez [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk) ; en dernier recours, l'[APK universel](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk).
+**APK.** Download [`UltraTV-arm64-v8a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-arm64-v8a.apk) (SHA-256 sum on the release page) and install it. If the install fails (32-bit device such as the Chromecast with Google TV HD), take [`UltraTV-armeabi-v7a.apk`](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV-armeabi-v7a.apk); as a last resort, the [universal APK](https://github.com/vantaflow/ultra-tv/releases/latest/download/UltraTV.apk). The in-app updater picks the right build for your device.
 
-**Downloader** (box sans navigateur) : ouvrez l'application [Downloader](https://www.aftvnews.com/downloader/), saisissez le code **`5189921`**, autorisez les sources inconnues, installez.
+**Downloader** (boxes without a browser): open the [Downloader](https://www.aftvnews.com/downloader/) app, enter the code **`5189921`**, allow unknown sources, install.
 
-**adb** :
+**adb**:
 
 ```bash
-adb connect IP_DE_LA_BOX:5555
+adb connect BOX_IP:5555
 adb install -r UltraTV.apk
 ```
 
-**adb, démarrage plus rapide** (Android 12 ou plus récent) : installez l'APK de votre processeur avec son profil précompilé `.dm` (même nom, publié dans la release). Android compile alors l'application dès l'installation au lieu d'attendre une optimisation en tâche de fond. Mesuré sur une box 2 Go : démarrage 1,1 s → 0,6 s, défilement nettement plus fluide.
+**adb, faster startup** (Android 12 or newer): install your processor's APK together with its precompiled profile `.dm` (same name, published in the release). Android then compiles the app at install time instead of waiting for a background optimisation. Measured on a 2 GB box: startup 1.1 s → 0.6 s, noticeably smoother scrolling.
 
 ```bash
 adb install-multiple -r UltraTV-<version>-armeabi-v7a.apk UltraTV-<version>-armeabi-v7a.dm
 ```
 
-Au premier lancement : choisissez le type de source (Xtream Codes, lien M3U, fichier M3U, **portail Stalker** ou **Depuis le cloud**), saisissez-la, puis choisissez vos catégories (seules les catégories actives sont téléchargées).
+On first launch: choose the source type (Xtream Codes, M3U link, M3U file, **Stalker portal** or **From the cloud**), enter it, then choose your categories (only active categories are downloaded).
 
-Une adresse du type `…/get.php?username=…&password=…` collée comme lien M3U est reconnue et ajoutée comme source Xtream Codes (beaucoup de fournisseurs bloquent `get.php`).
+An address like `…/get.php?username=…&password=…` pasted as an M3U link is recognised and added as an Xtream Codes source (many providers block `get.php`).
 
-### Quel APK prendre ?
+### Which APK?
 
-| Votre appareil | APK | Lien court (à taper dans Downloader) |
+| Your device | APK | Short link (type it in Downloader) |
 |---|---|---|
-| Fire TV Stick récent, Shield, la plupart des box et téléphones récents (64 bits) | **arm64** (≈ 36 Mo), recommandé | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
-| **Chromecast avec Google TV (HD)**, vieilles box (32 bits) | **32 bits (armv7)** (≈ 34 Mo) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
-| Vous ne savez pas | Universel (≈ 58 Mo), dernier recours | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
+| Recent Fire TV Stick, Shield, most recent boxes and phones (64-bit) | **arm64** (≈ 36 MB), recommended | [`ultratv.dpdns.org/download/android-arm64`](https://ultratv.dpdns.org/download/android-arm64) |
+| **Chromecast with Google TV (HD)**, older boxes (32-bit) | **32-bit (armv7)** (≈ 34 MB) | [`ultratv.dpdns.org/download/android-32`](https://ultratv.dpdns.org/download/android-32) |
+| You do not know | Universal (≈ 58 MB), last resort | [`ultratv.dpdns.org/download/android-universal`](https://ultratv.dpdns.org/download/android-universal) |
 
-`ultratv.dpdns.org/apk` affiche le choix 64 bits / 32 bits / universel (pratique dans Downloader) ; `…/download/android` renvoie directement l'APK arm64. Dans Downloader, saisissez le code **`5189921`** ou l'un des liens courts ci-dessus. Si l'installation échoue, prenez la version 32 bits.
+`ultratv.dpdns.org/download/android` returns the arm64 APK. In Downloader, enter the code **`5189921`** or one of the short links above. If the install fails, take the 32-bit version.
 
-### Installation impossible (« problème de package »)
+### Installation impossible (« package problem »)
 
-- **Espace libre** : prévoyez au moins 200 Mo ; l’APK universel (58 Mo) en demande un peu plus que les APK par processeur.
-- **Mauvais APK** : sur un appareil 32 bits (Chromecast avec Google TV HD), prenez l'APK 32 bits (`android-32`) plutôt que l'universel.
-- **Ancienne version signée autrement** : désinstallez d'abord l'ancienne Ultra TV (Réglages › Applications), puis réinstallez. Vos sources restent dans le cloud si vous l'avez activé.
-- **Téléchargement tronqué** : comparez la taille du fichier à celle de la release et sa somme SHA-256 au fichier `.sha256` (ou `SHA256SUMS.txt`) publié avec lui ; retéléchargez en cas de différence.
-- **Fire TV Stick sous Fire OS 6 (Android 7.1) : « problème lors de l’analyse du package »** : les APK habituels sont signés en v3 seul (rotation de clé, Android 9 minimum), un format qu’Android 7.x ne sait pas lire. Prenez l’APK **android7** (`UltraTV-android7.apk`, 32 bits, signé v1/v2) ; il se met ensuite à jour avec les versions suivantes de l’appli. Sur Fire OS 7 (Android 9), l’APK 32 bits habituel convient. Si l’erreur persiste : fichier incomplet (comparez le SHA-256) ou espace insuffisant (le Stick de base n’a que 8 Go). Un Fire TV Stick basique n’a pas de sortie 4K : c’est le matériel, pas l’appli.
-- **Android 7.1 minimum** (API 25) : les versions plus anciennes ne sont pas prises en charge.
+- **Free space**: keep at least 200 MB free; the universal APK (58 MB) needs a little more than the per-CPU APKs.
+- **Wrong APK**: on a 32-bit device (Chromecast with Google TV HD), take the 32-bit APK (`android-32`) rather than the universal one.
+- **Older version signed differently**: uninstall the old Ultra TV first (Settings › Apps), then reinstall. Your sources stay in the cloud if you enabled it.
+- **Truncated download**: compare the file size with the release's, and its SHA-256 with the `.sha256` file (or `SHA256SUMS.txt`) published alongside; download again if they differ.
+- **Fire TV Stick on Fire OS 6 (Android 7.1): "problem parsing the package"**: the regular APKs are signed with v3 only (key rotation, Android 9 minimum), a format Android 7.x cannot read. Take the **android7** APK (`UltraTV-android7.apk`, 32-bit, v1/v2 signed); it then updates with later app versions. On Fire OS 7 (Android 9) the regular 32-bit APK works. If the error persists: incomplete file (compare the SHA-256) or not enough space (the basic Stick has only 8 GB). A basic Fire TV Stick has no 4K output: that is the hardware, not the app.
+- **Android 7.1 minimum** (API 25): older versions are not supported.
 
-## Synchronisation cloud
+## Cloud sync
 
-Pour ne pas saisir d'identifiants à la télécommande, gérez vos sources depuis un navigateur : **<https://ultratv.dpdns.org>** (l'adresse est aussi affichée, avec un QR code, dans l'application : Réglages › Sources).
+To avoid typing credentials with a remote, manage your sources from a browser: **<https://ultratv.dpdns.org>** (the address is also shown in the app, with a QR code: Settings › Sources).
 
-1. Créez un compte sur le tableau de bord et ajoutez vos sources.
-2. Dans le tableau de bord, choisissez **Appairer un appareil**.
-3. Sur la box : **Depuis le cloud** (écran Source de l'assistant) ou Réglages › Sources › *Synchroniser depuis le cloud*. Un code à 8 caractères s'affiche ; saisissez-le dans le tableau de bord.
-4. La box importe la configuration puis synchronise.
+1. Create an account on the dashboard and add your sources.
+2. In the dashboard, choose **Pair a device**.
+3. On the box: **From the cloud** (Source step of the wizard) or Settings › Sources › *Sync from the cloud*. An 8-character code is displayed; enter it in the dashboard.
+4. The box imports the configuration, then syncs.
 
-L'appareil reçoit un jeton aléatoire de 256 bits (haché côté serveur, chiffré dans le Keystore, révocable). **Appareil révoqué** depuis le tableau de bord (perdu, prêté, vendu) : dès sa vérification suivante (retour sur l'appli, ou toutes les 2 min appli ouverte), il retire les sources reçues du cloud, oublie l'appairage et l'indique ; les sources ajoutées à la main sur l'appareil restent. Vos identifiants sont **chiffrés côté serveur** (AES-256-GCM). L'étiquette affichée pour la box (« UTV-XXXXXX ») n'est qu'un nom, jamais une clé.
+The device receives a random 256-bit token (hashed on the server, encrypted in the Keystore, revocable). **Revoked device** (lost, lent, sold): at its next check (back to the app, or every 2 min while the app is open), it removes the sources received from the cloud, forgets the pairing and says so; sources added by hand on the device stay. Your credentials are **encrypted on the server side** (AES-256-GCM). The label shown for the box ("UTV-XXXXXX") is only a name, never a key.
 
-**Auto-hébergement.** Vous pouvez déployer votre propre Worker (voir [Worker Cloudflare](#worker-cloudflare)) : créez une base [Turso](https://turso.tech) (offre gratuite), appliquez le schéma (`node scripts/turso-migrate.mjs schema` dans `cloudflare-config`), renseignez `TURSO_URL` dans `wrangler.toml` et le secret `TURSO_AUTH_TOKEN` : elle porte tout le stockage (comptes, appareils, jetons, synchro, télémétrie). Sans Turso, `STORAGE_MODE = "d1"` utilise une base D1 et un espace KV de Cloudflare (blocs à remettre dans `wrangler.toml`). Définissez les secrets obligatoires `SESSION_SECRET`, `PROVIDER_ENC_KEY` et `OPS_TOKEN` (aucune valeur n'est publiée ; sans eux le Worker répond 500), puis `wrangler deploy` ; dans l'application, Réglages › Sources › *Adresse du tableau de bord* pointe alors vers le vôtre.
+**Self-hosting.** You can deploy your own Worker (see [Cloudflare Worker](#cloudflare-worker)): create a [Turso](https://turso.tech) database (free plan), apply the schema (`node scripts/turso-migrate.mjs schema` in `cloudflare-config`), set `TURSO_URL` in `wrangler.toml` and the `TURSO_AUTH_TOKEN` secret: it holds all storage (accounts, devices, tokens, sync, telemetry). Without Turso, `STORAGE_MODE = "d1"` uses a Cloudflare D1 database and KV namespace (blocks to put back in `wrangler.toml`). Set the required secrets `SESSION_SECRET`, `PROVIDER_ENC_KEY` and `OPS_TOKEN` (no value is published here; without them the Worker answers 500), then `wrangler deploy`; in the app, Settings › Sources › *Dashboard address* then points to yours.
 
-## Sécurité
+## Security
 
-- Identifiants des sources **chiffrés au repos** sur l'appareil ; sur le Worker, AES-256-GCM.
-- **Aucune URL de flux, aucun identifiant n'est affiché** ni journalisé ; les messages d'erreur sont filtrés (`UserText`). Un nom de source vide ne reprend pas l'adresse du serveur.
-- Aucun jeton partagé dans l'APK. Détails, modèle de menace et rotation des anciens secrets : [SECURITY.md](SECURITY.md).
+- Source credentials **encrypted at rest** on the device; AES-256-GCM on the Worker.
+- **No stream URL and no credential is displayed** or logged; error messages are filtered (`UserText`). An empty source name does not fall back to the server address.
+- No shared token in the APK. Details, threat model and rotation of old secrets: [SECURITY.md](SECURITY.md).
 
-## Confidentialité
+## Privacy
 
-Ultra TV ne fournit **aucun contenu** : vous ajoutez vos propres sources (Xtream Codes, M3U, portail Stalker) et l'application contacte directement votre fournisseur. Elle ne contient ni publicité ni bibliothèque d'analyse tierce. Le « Worker » est le serveur de configuration cloud ([`cloudflare-config/`](cloudflare-config/)), hébergé chez Cloudflare ; son adresse se change dans Réglages › Sources › *Adresse du tableau de bord*.
+Ultra TV provides **no content**: you add your own sources (Xtream Codes, M3U, Stalker portal) and the app talks directly to your provider. It contains no ads and no third-party analytics library. The "Worker" is the cloud configuration server ([`cloudflare-config/`](cloudflare-config/)), hosted on Cloudflare; its address can be changed in Settings › Sources › *Dashboard address*.
 
-### Vos identifiants IPTV
+### Your IPTV credentials
 
-L'adresse du serveur, le nom d'utilisateur, le mot de passe, les adresses de flux et la MAC d'un portail Stalker ne partent **que vers votre fournisseur**, sauf dans deux cas voulus :
+The server address, username, password, stream URLs and the MAC of a Stalker portal are sent **only to your provider**, except in two intended cases:
 
-- **Synchronisation cloud** : sur un appareil appairé, une source n'est envoyée au Worker que si vous la partagez (proposition après l'ajout, ou bouton de partage) ou si vous l'ajoutez depuis le tableau de bord. Elle est conservée **chiffrée** (AES-256-GCM, chiffrement côté serveur avec une clé secrète du Worker : ce n'est pas du bout en bout). À l'ouverture du tableau de bord, le Worker interroge lui-même votre fournisseur avec ces identifiants pour afficher l'abonnement. Si votre fournisseur bloque les serveurs Cloudflare, cette requête passe par un relais hébergé chez Vercel (code dans [`cloudflare-config/relay/`](cloudflare-config/relay/)) : il reçoit alors l'adresse et les identifiants le temps de la requête, sans les enregistrer.
-- **Envoi depuis le téléphone** : la source saisie sur la page web est chiffrée, gardée 15 minutes au plus, supprimée dès que la TV la reçoit.
+- **Cloud sync**: on a paired device, a source is sent to the Worker only if you share it (offer shown after adding, or the share button) or add it from the dashboard. It is stored **encrypted** (AES-256-GCM, server-side encryption with a Worker secret key: not end-to-end). When you open the dashboard, the Worker itself queries your provider with these credentials to show the subscription status. If your provider blocks Cloudflare servers, this request goes through a relay hosted on Vercel (code in [`cloudflare-config/relay/`](cloudflare-config/relay/)): it receives the address and credentials for that request only and does not store them.
+- **Send from your phone**: the source typed on the web page is encrypted, kept for 15 minutes at most and deleted as soon as the TV receives it.
 
-Les journaux et rapports de plantage sont nettoyés (paramètres `username`, `password`, `token`…, `utilisateur:mot-de-passe@`, chemins `/live/utilisateur/mot-de-passe/`) côté application puis côté Worker. Limite : le nom de domaine d'un serveur peut subsister dans un message d'erreur. L'ajout d'une source Stalker n'envoie que des événements de parcours (« tentative d'ajout », succès ou échec, classe d'erreur), jamais le nom d'hôte du portail.
+Logs and crash reports are scrubbed (`username`, `password`, `token`… parameters, `user:password@`, `/live/user/password/` paths) in the app, then again by the Worker. Limit: a server's domain name can remain in an error message. Adding a Stalker source only sends journey events ("add attempt", success or failure, error class), never the portal's host name.
 
-### Ce que l'application Android envoie d'elle-même
+### What the Android app sends on its own
 
-| Envoi | Quand | Vers | Ce qui part | Coupé par le réglage |
+| What | When | To | Content | Turned off by the setting |
 |---|---|---|---|---|
-| Comptage anonyme | ≈ 10 s après le démarrage, au plus une fois par 20 h, appareil **non appairé** | Worker `/api/anon/ping` | identifiant aléatoire d'installation, version, application utilisée (`android-tv` ou `android-mobile`), modèle de l'appareil (fabricant + modèle, 64 caractères au plus) | Oui |
-| Journaux de diagnostic | pendant l'usage, appareil **appairé** | Worker `/api/event` | niveau, étiquette, message nettoyé (démarrage, écran affiché, mesures de fluidité, blocages, compteurs de touches, Google TV, mise à jour, échecs de synchro), version, modèle, étiquette d'appareil | Oui |
-| Rapports de plantage | au plantage (ou au démarrage suivant), appareil **appairé** | Worker `/api/crash` | trace nettoyée, version, modèle, version d'Android | Oui |
-| Mise à jour | 30 s après chaque lancement, ou à la demande | `api.github.com`, puis GitHub | requête sans identifiant ; si une version plus récente existe, l'APK est téléchargé et l'installateur d'Android demande confirmation | **Non** |
-| Alertes (lecture) | à l'ouverture, puis toutes les 15 min au premier plan | Worker `/api/announcements` | type d'écran, version | **Non** |
-| Alertes (statistiques) | alerte affichée, fermée ou bouton utilisé | Worker `/api/announcements/<id>/stat` | type d'événement, identifiant aléatoire d'installation | Oui |
-| Guide complémentaire | à la synchro du guide, si des chaînes restent sans programme | `xmltvfr.fr` (par défaut) | téléchargement d'un fichier ; modifiable, adresse personnalisée possible (ainsi qu'un guide par source) : Réglages › Synchronisation. Seul l'hôte de l'adresse est affiché et elle n'est jamais journalisée en entier | Non |
-| Passer l'intro | à l'ouverture d'un film ou épisode (identifiant TMDB connu) | `api.theintrodb.org` | identifiant TMDB, saison, épisode, durée | **Non** |
-| Fiches TMDB, notes | à l'ouverture d'une fiche, appareil **appairé** | Worker `/api/tmdb`, `/api/ratings` | titre nettoyé, année, langue, ou identifiant TMDB | **Non** |
-| Logos et fonds (Fanart.tv), épisodes (TVmaze) | à l'ouverture d'une fiche ou de l'accueil, appareil **appairé** | Worker `/api/fanart`, `/api/tvmaze/show` | identifiant TMDB, TheTVDB ou IMDb du titre, langue | **Non** |
-| Écussons des équipes (TheSportsDB) | rubrique Sport activée, appareil **appairé** | Worker `/api/sports/team` | nom d'équipe tel qu'écrit dans le guide | **Non** |
-| Scores, calendriers, classements, feuille de match (football-data.org, API-Football, Jolpica, TheSportsDB) | Sport ouvert, appareil **appairé** | Worker `/api/sports/league`, `/api/sports/match` ; c'est le Worker qui interroge les fournisseurs | une clé de ligue d'une liste fixe, ou un numéro de match (l'appareil ne contacte jamais ces fournisseurs) | **Non** |
-| Football du jour (scores des directs hors ligues suivies, feuille de match) | Sport ouvert (écran Sport ou carte de match en direct), au plus une fois par minute | ESPN (`site.api.espn.com`), **directement depuis l'appareil** (le Worker n'intervient pas ; il reste en secours si ESPN échoue) | une requête GET sans identifiant ni donnée personnelle, avec le User-Agent `UltraTV/<version> (Android)` ; seule l'adresse IP de l'appareil est visible par ESPN | **Non** |
-| Images (affiches, logos, fonds, écussons) | à l'affichage | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | requête d'image directe depuis l'appareil, rien d'autre transmis | **Non** |
-| Bibliothèques personnelles (Jellyfin, Emby, Plex, NAS) | seulement si vous ajoutez une telle source | directement le serveur que vous indiquez ; pour Plex aussi `plex.tv` (code de liaison, liste de vos serveurs) | vos identifiants ou votre jeton envers ce serveur, requêtes de bibliothèque, rapports de lecture ; vers plex.tv : identifiant d'installation, nom du produit, jeton. Rien ne passe par le Worker ; jetons et mots de passe chiffrés sur l'appareil | **Non** |
-| Sous-titres en ligne | seulement sur *Rechercher en ligne*, appareil appairé | Worker `/api/subtitles` | titre, langues, année | **Non** |
-| Synchro cloud | appairé : au lancement, toutes les 6 h ; appli ouverte : toutes les 2 min et au changement de profil ; favoris et historique ≈ 60 s après un changement | Worker | jeton d'appareil, version, édition ; réglages d'affichage ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface ; jamais le code PIN) ; catégories visibles par profil, ordre des catégories et des chaînes, chaînes masquées ; favoris et historique par profil (titre, adresse de l'affiche, position, durée) | **Non** (dissocier l'appareil l'arrête) |
-| Trakt | pendant la lecture d'un film ou épisode, appareil appairé | Worker `/api/device/trakt` | action, progression, titre, année, identifiants TMDB, saison, épisode | **Non** |
-| DNS | seulement si vous choisissez un DNS autre que celui du système (Réglages › Lecture) | Google, Cloudflare, Quad9 ou le vôtre | noms de domaine | Non |
+| Anonymous install count | ≈ 10 s after start, at most once per 20 h, **unpaired** device | Worker `/api/anon/ping` | random install ID, version, app in use (`android-tv` or `android-mobile`), device model (manufacturer + model, 64 characters at most) | Yes |
+| Diagnostic logs | during use, **paired** device | Worker `/api/event` | level, tag, scrubbed message (start, screen shown, smoothness metrics, freezes, key counters, Google TV, update, sync failures), version, model, device label | Yes |
+| Crash reports | on crash (or next start), **paired** device | Worker `/api/crash` | scrubbed stack trace, version, model, Android version | Yes |
+| Update check | 30 s after each launch, or on request | `api.github.com`, then GitHub | request without identifier; if a newer version exists the APK is downloaded and Android's installer asks for confirmation | **No** |
+| Alerts (read) | on open, then every 15 min in the foreground | Worker `/api/announcements` | screen type, version | **No** |
+| Alerts (statistics) | alert shown, dismissed or button used | Worker `/api/announcements/<id>/stat` | event type, random install ID | Yes |
+| Extra guide | during guide sync, if channels have no programme | `xmltvfr.fr` (default) | file download; changeable, custom address possible (and a guide per source): Settings › Synchronization. Only the host of an address is shown, the full address is never logged | No |
+| Skip intro | when opening a movie/episode (TMDB id known) | `api.theintrodb.org` | TMDB id, season, episode, duration | **No** |
+| TMDB details, ratings | when opening a details page, **paired** device | Worker `/api/tmdb`, `/api/ratings` | cleaned title, year, language, or TMDB id | **No** |
+| Logos and backdrops (Fanart.tv), episodes (TVmaze) | when opening a details page or the home screen, **paired** device | Worker `/api/fanart`, `/api/tvmaze/show` | TMDB, TheTVDB or IMDb id of the title, language | **No** |
+| Team badges (TheSportsDB) | Sport section enabled, **paired** device | Worker `/api/sports/team` | team name as written in the guide | **No** |
+| Scores, fixtures, standings, match sheet (football-data.org, API-Football, Jolpica, TheSportsDB) | Sport open, **paired** device | Worker `/api/sports/league`, `/api/sports/match`; the Worker queries the providers itself | a league key from a fixed list, or a match number (the device never contacts these providers) | **No** |
+| Today's football (scores of live matches outside followed leagues, match sheet) | Sport open (Sport screen or a live match card), at most once a minute | ESPN (`site.api.espn.com`), **directly from the device** (the Worker is not involved; it stays as a fallback if ESPN fails) | a plain GET request with no identifier or personal data, using the `UltraTV/<version> (Android)` User-Agent; only the device's IP address is visible to ESPN | **No** |
+| Images (posters, logos, backdrops, badges) | on display | `image.tmdb.org`, `assets.fanart.tv`, `static.tvmaze.com`, `www.thesportsdb.com`, `wsrv.nl` | image request sent directly from the device, nothing else transmitted | **No** |
+| Personal libraries (Jellyfin, Emby, Plex, NAS) | only if you add such a source | directly the server you enter; for Plex also `plex.tv` (link code, list of your servers) | your credentials or token towards that server, library requests, playback reports; to plex.tv: installation id, product name, token. Nothing goes through the Worker; tokens and passwords are encrypted on the device | **No** |
+| Online subtitles | only on *Search online*, paired device | Worker `/api/subtitles` | title, languages, year | **No** |
+| Cloud sync | paired: at launch, every 6 h; app open: every 2 min and on profile switch; favourites and history ≈ 60 s after a change | Worker | device token, version, edition; display settings; profiles (name, colour or avatar, kids profile, interface language; never the PIN); categories visible per profile, category and channel order, hidden channels; favourites and history per profile (title, poster address, position, duration) | **No** (unpairing stops it) |
+| Trakt | while playing a movie/episode, paired device | Worker `/api/device/trakt` | action, progress, title, year, TMDB ids, season, episode | **No** |
+| DNS | only if you pick a DNS other than the system one (Settings › Playback) | Google, Cloudflare, Quad9 or yours | domain names | No |
 
-Les images fournies par votre source sont chargées directement depuis les adresses qu'elle indique.
+Images supplied by your source are loaded directly from the addresses it gives.
 
-### Windows et macOS
+### Windows and macOS
 
-Pas de rapport de plantage, de journal distant ni d'alertes. **Comptage anonyme** (même règle qu'Android) : au plus une fois par 20 h, appareil **non appairé** seulement, vers le Worker `/api/anon/ping` ; part un identifiant d'installation aléatoire gardé sur l'appareil, la version et le système (`windows`, `macos` ou `linux`). Il se coupe dans Réglages › À propos › *Télémétrie anonyme* (activée par défaut) : plus rien ne part et l'identifiant est effacé. Autres envois : vérification de mise à jour (`api.github.com`, 5 s après le lancement puis toutes les 6 h ; activée par défaut, elle se coupe dans Réglages › À propos › *Vérifier les mises à jour automatiquement*, le bouton de recherche manuelle reste utilisable), synchro cloud (toutes les 2 min fenêtre visible), Trakt, TMDB et notes via le Worker (appareil appairé), « Passer l'intro », affiches de repli et DNS choisi.
+No crash report, remote log or alerts. **Anonymous count** (same rule as Android): at most once per 20 h, **unpaired** device only, to the Worker `/api/anon/ping`; it sends a random install ID kept on the device, the version and the system (`windows`, `macos` or `linux`). It turns off in Settings › About › *Anonymous telemetry* (on by default): nothing is sent any more and the ID is erased. Other sends: update check (`api.github.com`, 5 s after launch then every 6 h; on by default, it can be turned off in Settings › About › *Check for updates automatically*, the manual check button stays usable), cloud sync (every 2 min while the window is visible), Trakt, TMDB and ratings through the Worker (paired device), "Skip intro", fallback posters and the chosen DNS.
 
-### Ce que le Worker conserve
+### What the Worker keeps
 
-- **Compte** : identifiant, empreinte PBKDF2 du mot de passe, pays (code fourni par Cloudflare), dates ; jusqu'à la suppression du compte. **Appareils** : empreinte du jeton, nom, modèle, version, pays, dernière activité.
-- **Sources, jetons Trakt et OpenSubtitles, favoris et historique partagés** : chiffrés, jusqu'à suppression.
-- **Réglages partagés et profils** : catégories visibles, ordre des catégories et des chaînes, chaînes masquées ; profils (nom, couleur ou avatar, profil Enfants, langue de l'interface, jamais le code PIN) ; jusqu'à suppression.
-- **Où** : dans la base Turso du Worker (région Francfort) ; l'ancienne base D1 et l'espace KV de Cloudflare sont conservés en secours, sans plus être écrits.
-- **Journaux de diagnostic** : 7 jours ; **rapports de plantage** : 30 jours. Ils contiennent identifiant d'appareil, empreinte du compte (HMAC non réversible, jamais l'identifiant ni l'adresse e-mail), pays, version, modèle, étiquette d'appareil dérivée par hachage de l'identifiant Android.
-- **Comptage anonyme** : empreinte de l'identifiant d'installation, dates, version, application utilisée (Android TV, Android mobile, Windows, macOS, Linux), modèle de l'appareil (Android), pays, nombre de sources envoyées depuis le web ; 180 jours. **Statistiques d'alerte** : empreinte, jusqu'à 31 jours après la fin de l'alerte.
-- **Envoi depuis le téléphone** : 15 min au plus. **Code d'appairage** : 10 min.
-- **Adresse IP** : elle n'est écrite dans aucune donnée conservée ; elle sert seulement à compter les requêtes (limitation de débit) dans des compteurs sans adresse qui s'effacent seuls.
+- **Account**: login, PBKDF2 password hash, country (code supplied by Cloudflare), dates; until the account is deleted. **Devices**: token hash, name, model, version, country, last activity.
+- **Sources, Trakt and OpenSubtitles tokens, shared favourites and history**: encrypted, until deleted.
+- **Shared settings and profiles**: visible categories, category and channel order, hidden channels; profiles (name, colour or avatar, kids profile, interface language, never the PIN); until deleted.
+- **Where**: in the Worker's Turso database (Frankfurt region); the former Cloudflare D1 database and KV namespace are kept as a backup and no longer written.
+- **Diagnostic logs**: 7 days; **crash reports**: 30 days. They hold device ID, an account fingerprint (non-reversible HMAC, never the account ID or e-mail address), country, version, model, a device label derived by hashing the Android ID.
+- **Anonymous count**: hash of the install ID, dates, version, app in use (Android TV, Android mobile, Windows, macOS, Linux), device model (Android), country, number of sources sent from the web; 180 days. **Alert statistics**: hash, up to 31 days after the alert ends.
+- **Send from phone**: 15 min at most. **Pairing code**: 10 min.
+- **IP address**: not written to any stored data; used only to count requests (rate limiting) in counters that hold no address and expire on their own.
 
-### Couper la télémétrie
+### Turning telemetry off
 
-**Réglages › À propos › *Télémétrie et rapports de plantage*** (activé par défaut ; sur Windows et macOS, le réglage s'appelle *Télémétrie anonyme* et ne concerne que le comptage anonyme). Désactivé : plus de journaux de diagnostic, de rapports de plantage, de comptage anonyme ni de statistiques d'alertes, et pas d'identifiant d'installation lors de l'envoi depuis le téléphone. Cela **ne coupe pas** la mise à jour, la lecture des alertes, la synchro cloud, Trakt, TMDB, les sous-titres, « Passer l'intro », le guide complémentaire ni le DNS. Sans appairage, aucun journal ni rapport de plantage n'est envoyé.
+**Settings › About › *Telemetry and crash reports*** (on by default; on Windows and macOS the setting is called *Anonymous telemetry* and only covers the anonymous count). Off: no more diagnostic logs, crash reports, anonymous count or alert statistics, and no install ID in send-from-phone. It does **not** turn off the update check, reading alerts, cloud sync, Trakt, TMDB, subtitles, "Skip intro", the extra guide or DNS. Without pairing, no log or crash report is sent anyway.
 
-### Vérifier dans le code
+### Check it in the code
 
-Chaque point ci-dessus se vérifie dans le code source (liens figés sur une version précise) :
+Every point above can be checked in the source code (links pinned to a specific version):
 
-| Ce qui est affirmé | Où le voir |
+| Claim | Where to see it |
 |---|---|
-| Sur l'appareil, les mots de passe de vos sources sont chiffrés (AES-256-GCM) avec une clé de l'Android Keystore, non exportable | [`SecretBox.kt`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/security/SecretBox.kt#L12-L21) |
-| Envoi depuis le téléphone : code valable 15 minutes | [`index.js` — `ENVOI_TTL_S`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L500) |
-| … la source est chiffrée avant d'être confiée au relais | [`index.js` — `encryptJson` puis `envoiPut`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L568-L573) |
-| … livrée une seule fois à la TV puis supprimée (`envoiTake` efface l'entrée) | [`guard.js` — `envoiInit` / `envoiPut` / `envoiTake`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/guard.js#L122-L153) |
-| Synchro cloud : sources stockées chiffrées (`providersEnc`) | [`store.js` — `loadProviders` / `saveProviders`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/store.js#L41-L48) |
-| Mots de passe de compte : seule une empreinte PBKDF2 est gardée | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
-| Comptage anonyme (Android) : identifiant aléatoire d'installation, version, application (TV ou mobile) et modèle, rien d'autre | [`AnonPing.kt` — corps de la requête](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
-| Comptage anonyme (bureau) : identifiant aléatoire, version et système, au plus une fois par 20 h, jamais appairé, réglage respecté | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
-| … rien n'est envoyé si la télémétrie est coupée | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
-| Le Worker ne garde que le code pays fourni par Cloudflare, jamais l'adresse IP | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
+| On the device, your sources' passwords are encrypted (AES-256-GCM) with a non-exportable Android Keystore key | [`SecretBox.kt`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/security/SecretBox.kt#L12-L21) |
+| Sending from the phone: the code is valid for 15 minutes | [`index.js` — `ENVOI_TTL_S`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L500) |
+| … the source is encrypted before being handed to the relay | [`index.js` — `encryptJson` then `envoiPut`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L568-L573) |
+| … delivered once to the TV, then deleted (`envoiTake` removes the entry) | [`guard.js` — `envoiInit` / `envoiPut` / `envoiTake`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/guard.js#L122-L153) |
+| Cloud sync: sources stored encrypted (`providersEnc`) | [`store.js` — `loadProviders` / `saveProviders`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/store.js#L41-L48) |
+| Account passwords: only a PBKDF2 hash is kept | [`crypto.js` — `hashPassword`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/crypto.js#L115-L119) |
+| Anonymous count (Android): a random install ID, version, app (TV or mobile) and model, nothing else | [`AnonPing.kt` — request body](https://github.com/vantaflow/ultra-tv/blob/main/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt) |
+| Anonymous count (desktop): random ID, version and system, at most once per 20 h, never when paired, setting respected | [`anon.ts` — `reportAnonPing`](https://github.com/vantaflow/ultra-tv/blob/main/web/src/cloud/anon.ts) |
+| … nothing is sent when telemetry is off | [`AnonPing.kt` — `telemetryEnabled`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/android-native/app/src/main/kotlin/com/ultratv/tv/nativeapp/data/config/AnonPing.kt#L53) |
+| The Worker only keeps the country code provided by Cloudflare, never the IP address | [`index.js` — `countryOf`](https://github.com/vantaflow/ultra-tv/blob/5db533b515e1d9c107166499ec5ba69e5a410fec/cloudflare-config/src/index.js#L421-L424) |
 
-Une question ou un doute sur ce code ? Ouvrez une [issue](https://github.com/vantaflow/ultra-tv/issues) : la réponse sera publique.
+Questions or doubts about this code? Open an [issue](https://github.com/vantaflow/ultra-tv/issues) and it will be answered publicly.
 
-## Réglages automatiques
+## Automatic tuning
 
-À la première ouverture, l'**`AdaptiveProfile`** mesure l'appareil (mémoire, tas, micro-benchmark) et le classe **Bas / Moyen / Haut**. Il en déduit tampon, parallélisme et taille des lots de synchro, plafond de résolution et de débit (box à peu de mémoire : 720p / 6 Mb/s) et ajuste le tampon si des coupures surviennent. Tout reste modifiable : Réglages › Lecture (moteur, décodage, préréglage de tampon : Faible latence, Auto, Équilibré, Stable, Personnalisé).
+On first launch, the **`AdaptiveProfile`** measures the device (memory, heap, micro-benchmark) and rates it **Low / Medium / High**. From that it derives buffer, parallelism and sync batch size, resolution and bitrate caps (low-memory boxes: 720p / 6 Mb/s) and adjusts the buffer if drop-outs occur. Everything stays adjustable: Settings › Playback (engine, decoding, buffer preset: Low latency, Auto, Balanced, Stable, Custom).
 
-## Soutenir le projet
+## Support the project
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/A2F42AM3QY)
 
-Ultra TV est gratuit, sans publicité, et le restera. Pour aider à payer les serveurs et le temps passé à l'améliorer : <https://ko-fi.com/ultratv> (carte bancaire ou PayPal, depuis n'importe quel pays) ou <https://liberapay.com/ultratv/> (don régulier), aussi accessible par le bouton « Sponsor » du dépôt, par <https://ultratv.dpdns.org/donate> et dans l'appli (Réglages › À propos › Soutenir Ultra TV, QR code sur TV). Aucune donnée bancaire ne passe par Ultra TV.
+Ultra TV is free and ad-free, and will stay that way. To help pay for the servers and the time spent improving it: <https://ko-fi.com/ultratv> (card or PayPal, from any country) or <https://liberapay.com/ultratv/> (recurring), also reachable from the repository's "Sponsor" button, from <https://ultratv.dpdns.org/donate> and in the app (Settings › About › Support Ultra TV, QR code on TV). No card details ever go through Ultra TV.
 
-## Aider à traduire
+## Help translate
 
-L'interface existe en français, anglais, espagnol et arabe (langues officielles), et en polonais et portugais du Brésil (langues communautaires, premiers jets à relire). D'autres langues sont les bienvenues : elles peuvent être partielles, l'anglais s'affiche pour les textes manquants.
+The interface is available in French, English, Spanish and Arabic (official languages), and in Polish and Brazilian Portuguese (community languages, first drafts awaiting review). More languages are welcome: they can be partial, and English is shown for missing texts.
 
-- Seule l'interface se traduit, jamais le contenu des playlists (chaînes, catégories, titres, guide).
-- Sans Git : Weblate, <https://hosted.weblate.org/projects/ultra-tv/>.
+- Only the interface is translated, never playlist content (channels, categories, titles, guide).
+- Without Git: Weblate, <https://hosted.weblate.org/projects/ultra-tv/>.
 
-[![État de la traduction](https://hosted.weblate.org/widget/ultra-tv/svg-badge.svg)](https://hosted.weblate.org/engage/ultra-tv/)
+[![Translation status](https://hosted.weblate.org/widget/ultra-tv/svg-badge.svg)](https://hosted.weblate.org/engage/ultra-tv/)
 
-- Avec GitHub : ajoutez les fichiers de langue et ouvrez une pull request.
-- Une erreur de traduction ? Utilisez le [modèle d'issue « Translation »](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
+- With GitHub: add the language files and open a pull request.
+- Spotted a mistake? Use the ["Translation" issue template](https://github.com/vantaflow/ultra-tv/issues/new?template=translation.yml).
 
-Le guide complet est dans [TRANSLATING.md](TRANSLATING.md).
+The full guide is in [TRANSLATING.md](TRANSLATING.md).
 
-## Pour les développeurs
+## For developers
 
-Stack : Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt.
+Stack: Kotlin · Compose for TV · Media3 (ExoPlayer) + LibVLC · Room · Hilt.
 
-JDK 17 requis.
+JDK 17 required.
 
 ```bash
 git clone https://github.com/vantaflow/ultra-tv && cd ultra-tv/android-native
 export JAVA_HOME=$(/usr/libexec/java_home -v 17)   # macOS
-./gradlew assembleDebug                            # APK universel
-./gradlew testDebugUnitTest                        # tests unitaires (JUnit, Robolectric)
-./gradlew assembleRelease                          # APK par ABI (arm64-v8a, armeabi-v7a)
+./gradlew assembleDebug                            # universal APK
+./gradlew testDebugUnitTest                        # unit tests (JUnit, Robolectric)
+./gradlew assembleRelease                          # per-ABI APKs (arm64-v8a, armeabi-v7a)
 ```
 
-- La version vient du fichier [`VERSION`](VERSION) ; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200).
-- **Faux serveur Xtream** pour tester sans abonnement : `python3 android-native/tools/fake-xtream/server.py` (l'émulateur y accède via `http://10.0.2.2:8099`, identifiants `test` / `test`).
-- Build debug : intents de débogage (`debug_route`, `debug_theme`, `debug_engine`, `debug_decoder`, `debug_buffer`…) pour les captures et les mesures.
-- **CI** ([ci.yml](.github/workflows/ci.yml)) : web (tsc + vitest), Android (compilation + tests unitaires), Worker. Publication : [release.yml](.github/workflows/release.yml) sur tag `v*` (APK universel `UltraTV-debug.apk`, APK par processeur `UltraTV-<version>-<abi>.apk` et `SHA256SUMS.txt`) ; site : [pages.yml](.github/workflows/pages.yml).
+- The version comes from the [`VERSION`](VERSION) file; `versionCode = major×10000 + minor×100 + patch` (1.2.0 → 10200), identical for every ABI.
+- **Fake Xtream server** to test without a subscription: `python3 android-native/tools/fake-xtream/server.py` (the emulator reaches it at `http://10.0.2.2:8099`, credentials `test` / `test`); `demo.py` serves the synthetic data set used for the screenshots.
+- Debug build: debug intents (`debug_route`, `debug_theme`, `debug_lang`, `debug_engine`, `debug_decoder`, `debug_buffer`…) for screenshots and measurements.
+- **CI** ([ci.yml](.github/workflows/ci.yml)): web (tsc + vitest), Android (compile + unit tests), Worker. Publishing: [release.yml](.github/workflows/release.yml) on a `v*` tag (universal `UltraTV-debug.apk`, per-processor `UltraTV-<version>-<abi>.apk` and `SHA256SUMS.txt`); website: [pages.yml](.github/workflows/pages.yml).
 
-## Worker Cloudflare
+## Cloudflare Worker
 
-`cloudflare-config/` : tableau de bord d'appairage, stockage chiffré des sources, ingestion des crashs, proxies TMDB et OpenSubtitles. Procédure complète : [cloudflare-config/README.md](cloudflare-config/README.md).
+`cloudflare-config/`: pairing dashboard, encrypted source storage, crash ingestion, TMDB and OpenSubtitles proxies. Full procedure: [cloudflare-config/README.md](cloudflare-config/README.md).
 
 ```bash
 cd cloudflare-config && npm ci
-TURSO_URL=libsql://… TURSO_AUTH_TOKEN=… node scripts/turso-migrate.mjs schema   # base Turso ; TURSO_URL dans wrangler.toml
-wrangler secret put TURSO_AUTH_TOKEN               # jeton de la base Turso
-wrangler secret put SESSION_SECRET                 # >= 32 caractères aléatoires
-wrangler secret put PROVIDER_ENC_KEY               # clé AES-256 en base64
-wrangler secret put OPS_TOKEN                      # mot de passe de /crashes et /logs
-wrangler secret put TMDB_READ_TOKEN                # jeton de lecture TMDB v4 (fiches enrichies)
-wrangler secret put TMDB_API_KEY                   # clé TMDB v3 (repli si pas de jeton v4)
-wrangler secret put OPENSUBTITLES_API_KEY          # clé OpenSubtitles (sous-titres en ligne)
-wrangler secret put OMDB_API_KEY           # facultatif : notes IMDb / Rotten Tomatoes (clé gratuite omdbapi.com)
-wrangler secret put ACCOUNT_RELAY_KEY              # facultatif : relais d'abonnement hors Cloudflare (cloudflare-config/relay)
+TURSO_URL=libsql://… TURSO_AUTH_TOKEN=… node scripts/turso-migrate.mjs schema   # Turso database; TURSO_URL in wrangler.toml
+wrangler secret put TURSO_AUTH_TOKEN               # Turso database token
+wrangler secret put SESSION_SECRET                 # >= 32 random characters
+wrangler secret put PROVIDER_ENC_KEY               # AES-256 key, base64
+wrangler secret put OPS_TOKEN                      # password for /crashes and /logs
+wrangler secret put TMDB_READ_TOKEN                # TMDB v4 read token (rich details)
+wrangler secret put TMDB_API_KEY                   # TMDB v3 key (fallback without a v4 token)
+wrangler secret put OPENSUBTITLES_API_KEY          # OpenSubtitles key (online subtitles)
+wrangler secret put ACCOUNT_RELAY_KEY              # optional: subscription relay outside Cloudflare (cloudflare-config/relay)
 npm test && wrangler deploy --dry-run
 ```
 
-TMDB et OpenSubtitles sont facultatifs : sans leurs secrets, l'application masque les fonctions correspondantes. Ko-fi et Liberapay ne demandent aucun secret. La variable `SITE_HOST` (`wrangler.toml`) désigne l'adresse du site principal : les anciennes adresses redirigent leurs pages vers elle, sauf `/api/*`. Trakt utilise `TRAKT_CLIENT_ID` (`wrangler.toml`, application Trakt en PKCE : pas de secret client). Pour un fork, compilez avec `-PULTRA_WORKER_URL=https://votre-worker.workers.dev`.
+TMDB and OpenSubtitles are optional: without their secrets, the app hides the matching features. Ko-fi and Liberapay need no secret. The `SITE_HOST` variable (`wrangler.toml`) names the main site address: the old addresses redirect their pages to it, except `/api/*`. Trakt uses `TRAKT_CLIENT_ID` (`wrangler.toml`, Trakt app in PKCE mode: no client secret). For a fork, build with `-PULTRA_WORKER_URL=https://your-worker.workers.dev`.
 
-## Limites connues
+## Known limitations
 
-- Jellyfin, Emby, Plex et les partages NAS n'ont pas été testés sur un vrai serveur par l'auteur (tests automatisés seulement) : signalez tout problème.
-- Les offres gratuites des fournisseurs sportifs sont limitées : certaines ligues peuvent être vides.
-- Le **replay** et la **pause du direct** dépendent de la source (catch-up Xtream, flux MPEG-TS) ; indisponibles sinon.
-- Les fiches TMDB et les sous-titres en ligne exigent un Worker configuré avec les secrets ci-dessus.
-- Un épisode commencé sur la TV apparaît dans « Reprendre » sur l'ordinateur une fois la série ouverte au moins une fois sur celui-ci.
-- Aucun guide gratuit ne couvre les chaînes marocaines (2M, Al Aoula…) : seul le guide du fournisseur les renseigne.
-- La première synchro d'un très gros catalogue (≈ 55 000 chaînes) prend environ une minute sur un appareil de milieu de gamme et davantage sur un modèle d'entrée de gamme.
-- L'APK grossit avec LibVLC (≈ 53 Mo en arm64-v8a, contre ≈ 9 Mo en 1.0.x).
-- Les mesures publiées dans les notes de version viennent d'émulateurs Android TV (rendu logiciel) : à confirmer sur matériel réel.
+- Jellyfin, Emby, Plex and NAS shares have not been tested on a real server by the author (automated tests only): please report any problem.
+- The sports providers' free plans are limited: some leagues may be empty.
+- **Replay** and **live pause** depend on the source (Xtream catch-up, MPEG-TS streams); unavailable otherwise.
+- TMDB details and online subtitles require a Worker configured with the secrets above.
+- An episode started on the TV shows up in "Resume" on the computer once the series has been opened there at least once.
+- No free guide covers Moroccan channels (2M, Al Aoula…): only the provider's guide does.
+- The first sync of a very large catalogue (≈ 55,000 channels) takes about a minute on a mid-range device and longer on an entry-level one.
+- The APK grows with LibVLC (≈ 53 MB in arm64-v8a, against ≈ 9 MB in 1.0.x).
+- Measurements published in the release notes come from Android TV emulators (software rendering): to be confirmed on real hardware.
 
 ## Licence
 
-MIT, voir [LICENSE](LICENSE). Ultra TV est un client IPTV : utilisez uniquement des listes, guides et identifiants que vous avez le droit d'utiliser. Les polices Sora et Manrope sont sous licence OFL.
+MIT, see [LICENSE](LICENSE). Ultra TV is an IPTV client: only use playlists, guides and credentials you are entitled to use. The Sora and Manrope fonts are under the OFL licence.
