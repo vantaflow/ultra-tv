@@ -76,13 +76,11 @@ ${xtreamCredsOf(p) ? `<div class="acct card-meta mt10" data-id="${e(p.id)}" aria
 ${p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted">${e(t.srcs.stalkerSub)}</span></div>` : ""}
 <div class="reveal-box mt10" id="lk-${e(p.id)}" hidden><label class="mt0" for="lki-${e(p.id)}">${e(t.srcs.iptvLink)}</label>
 <div class="row"><input id="lki-${e(p.id)}" readonly spellcheck="false" autocomplete="off"/><button type="button" class="secondary copy-link" data-for="lki-${e(p.id)}">${e(t.srcs.copy)}</button></div></div>
+${p.managed === "reseller" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.resellerCredsNote)}</span></div>`
+    : MEDIA_KINDS.includes(p.kind) ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.mediaNoLink)}</span></div>`
+    : p.kind === "STALKER" ? `<div class="card-meta mt10"><span class="muted small">${e(t.srcs.stalkerNoLink)}</span></div>` : ""}
 <div class="actions">${sh.form}
-${p.managed === "reseller"
-    ? `<span class="muted small">${e(t.srcs.resellerCredsNote)}</span>`
-    : `${MEDIA_KINDS.includes(p.kind)
-    ? `<span class="muted small">${e(t.srcs.mediaNoLink)}</span>`
-    : p.kind === "STALKER"
-    ? `<span class="muted small">${e(t.srcs.stalkerNoLink)}</span>`
+${p.managed === "reseller" ? "" : `${MEDIA_KINDS.includes(p.kind) || p.kind === "STALKER" ? ""
     : `<button type="button" class="secondary reveal-link" data-id="${e(p.id)}" aria-controls="lk-${e(p.id)}" aria-expanded="false">${e(t.srcs.showLink)}</button>`}
 <form method="post" action="/providers/${e(p.id)}/delete" data-confirm="${e(t.srcs.delProvConfirm)}">${csrfInput}<button class="danger" type="submit">${e(t.srcs.deleteBtn)}</button></form>`}</div></article>`;
   }).join("");
